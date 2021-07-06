@@ -6,6 +6,7 @@ LL |       let result = panic::catch_unwind(move || {
 LL | |
 LL | |
 LL | |         f.0()
+   | |         --- in Rust 2018, closure captures all of `f`, but in Rust 2021, it only captures `f.0`
 LL | |     });
    | |_____^
    |

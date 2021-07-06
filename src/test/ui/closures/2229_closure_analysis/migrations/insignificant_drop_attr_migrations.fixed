@@ -39,6 +39,7 @@ fn significant_drop_needs_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
     };
 
     c();
@@ -57,6 +58,7 @@ fn generic_struct_with_significant_drop_needs_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.1;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.1`
     };
 
     c();

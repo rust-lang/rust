@@ -7,6 +7,9 @@ LL | |
 LL | |
 LL | |
 LL | |         let _t = t.0;
+   | |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+LL | |
+LL | |
 LL | |     };
    | |_____^
    |
@@ -23,14 +26,16 @@ LL |
 LL |
 LL |
 LL |         let _t = t.0;
-LL |     };
-   |
+LL |
+ ...
 
 error: drop order will change in Rust 2021
-  --> $DIR/migrations_rustfix.rs:31:13
+  --> $DIR/migrations_rustfix.rs:33:13
    |
 LL |     let c = || t.0;
-   |             ^^^^^^
+   |             ^^^---
+   |                |
+   |                in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured

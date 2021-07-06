@@ -510,6 +510,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                         .as_str(),
                     );
+                    for (var_hir_id, diagnostics_info) in need_migrations.iter() {
+                        for (captured_hir_id, captured_name) in diagnostics_info.iter() {
+                            if let Some(captured_hir_id) = captured_hir_id {
+                                let cause_span = self.tcx.hir().span(*captured_hir_id);
+                                diagnostics_builder.span_label(cause_span, format!("in Rust 2018, closure captures all of `{}`, but in Rust 2021, it only captures `{}`",
+                                    self.tcx.hir().name(*var_hir_id),
+                                    captured_name,
+                                ));
+                            }
+                        }
+                    }
                     diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
                     let closure_body_span = self.tcx.hir().span(body_id.hir_id);
                     let (sugg, app) =
@@ -579,13 +590,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         var_hir_id: hir::HirId,
         check_trait: Option<DefId>,
         closure_clause: hir::CaptureBy,
-    ) -> bool {
+    ) -> Option<(Option<hir::HirId>, String)> {
         let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
             min_captures.and_then(|m| m.get(&var_hir_id))
         {
             root_var_min_capture_list
         } else {
-            return false;
+            return None;
         };
 
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
@@ -639,10 +650,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .unwrap_or(false);
 
             if !obligation_holds_for_capture && obligation_should_hold {
-                return true;
+                return Some((capture.info.path_expr_id, capture.to_string(self.tcx)));
             }
         }
-        false
+        None
     }
 
     /// Figures out the list of root variables (and their types) that aren't completely
@@ -660,68 +671,75 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: hir::HirId,
         closure_clause: hir::CaptureBy,
-    ) -> Option<FxHashSet<&str>> {
+    ) -> Option<(FxHashSet<&str>, FxHashSet<(Option<hir::HirId>, String)>)> {
         let tcx = self.infcx.tcx;
 
         // Check whether catpured fields also implement the trait
         let mut auto_trait_reasons = FxHashSet::default();
+        let mut diagnostics_info = FxHashSet::default();
 
-        if self.need_2229_migrations_for_trait(
+        if let Some(info) = self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
             tcx.lang_items().clone_trait(),
             closure_clause,
         ) {
             auto_trait_reasons.insert("`Clone`");
+            diagnostics_info.insert(info);
         }
 
-        if self.need_2229_migrations_for_trait(
+        if let Some(info) = self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
             tcx.lang_items().sync_trait(),
             closure_clause,
         ) {
             auto_trait_reasons.insert("`Sync`");
+            diagnostics_info.insert(info);
         }
 
-        if self.need_2229_migrations_for_trait(
+        if let Some(info) = self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
             tcx.get_diagnostic_item(sym::send_trait),
             closure_clause,
         ) {
             auto_trait_reasons.insert("`Send`");
+            diagnostics_info.insert(info);
         }
 
-        if self.need_2229_migrations_for_trait(
+        if let Some(info) = self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
             tcx.lang_items().unpin_trait(),
             closure_clause,
         ) {
             auto_trait_reasons.insert("`Unpin`");
+            diagnostics_info.insert(info);
         }
 
-        if self.need_2229_migrations_for_trait(
+        if let Some(info) = self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
             tcx.get_diagnostic_item(sym::unwind_safe_trait),
             closure_clause,
         ) {
             auto_trait_reasons.insert("`UnwindSafe`");
+            diagnostics_info.insert(info);
         }
 
-        if self.need_2229_migrations_for_trait(
+        if let Some(info) = self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
             tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
             closure_clause,
         ) {
             auto_trait_reasons.insert("`RefUnwindSafe`");
+            diagnostics_info.insert(info);
         }
 
         if auto_trait_reasons.len() > 0 {
-            return Some(auto_trait_reasons);
+            return Some((auto_trait_reasons, diagnostics_info));
         }
 
         return None;
@@ -746,11 +764,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
-    ) -> bool {
+    ) -> Option<FxHashSet<(Option<hir::HirId>, String)>> {
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
-            return false;
+            return None;
         }
 
         let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
@@ -763,21 +781,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             match closure_clause {
                 // Only migrate if closure is a move closure
-                hir::CaptureBy::Value => return true,
+                hir::CaptureBy::Value => return Some(FxHashSet::default()),
                 hir::CaptureBy::Ref => {}
             }
 
-            return false;
+            return None;
         };
 
-        let projections_list = root_var_min_capture_list
-            .iter()
-            .filter_map(|captured_place| match captured_place.info.capture_kind {
+        let mut projections_list = Vec::new();
+        let mut diagnostics_info = FxHashSet::default();
+
+        for captured_place in root_var_min_capture_list.iter() {
+            match captured_place.info.capture_kind {
                 // Only care about captures that are moved into the closure
-                ty::UpvarCapture::ByValue(..) => Some(captured_place.place.projections.as_slice()),
-                ty::UpvarCapture::ByRef(..) => None,
-            })
-            .collect::<Vec<_>>();
+                ty::UpvarCapture::ByValue(..) => {
+                    projections_list.push(captured_place.place.projections.as_slice());
+                    diagnostics_info.insert((
+                        captured_place.info.path_expr_id,
+                        captured_place.to_string(self.tcx),
+                    ));
+                }
+                ty::UpvarCapture::ByRef(..) => {}
+            }
+        }
 
         let is_moved = !projections_list.is_empty();
 
@@ -793,10 +819,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 projections_list,
             )
         {
-            return true;
+            return Some(diagnostics_info);
         }
 
-        return false;
+        return None;
     }
 
     /// Figures out the list of root variables (and their types) that aren't completely
@@ -820,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_span: Span,
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-    ) -> (Vec<hir::HirId>, String) {
+    ) -> (Vec<(hir::HirId, FxHashSet<(Option<hir::HirId>, String)>)>, String) {
         let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
             upvars
         } else {
@@ -834,14 +860,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Perform auto-trait analysis
         for (&var_hir_id, _) in upvars.iter() {
             let mut need_migration = false;
-            if let Some(trait_migration_cause) =
+            let mut responsible_captured_hir_ids = FxHashSet::default();
+
+            if let Some((trait_migration_cause, diagnostics_info)) =
                 self.compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
             {
                 need_migration = true;
                 auto_trait_reasons.extend(trait_migration_cause);
+                responsible_captured_hir_ids.extend(diagnostics_info);
             }
 
-            if self.compute_2229_migrations_for_drop(
+            if let Some(diagnostics_info) = self.compute_2229_migrations_for_drop(
                 closure_def_id,
                 closure_span,
                 min_captures,
@@ -850,10 +879,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 need_migration = true;
                 drop_reorder_reason = true;
+                responsible_captured_hir_ids.extend(diagnostics_info);
             }
 
             if need_migration {
-                need_migrations.push(var_hir_id);
+                need_migrations.push((var_hir_id, responsible_captured_hir_ids));
             }
         }
 
@@ -1877,10 +1907,10 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
 /// - s2: Comma separated names of the variables being migrated.
 fn migration_suggestion_for_2229(
     tcx: TyCtxt<'_>,
-    need_migrations: &Vec<hir::HirId>,
+    need_migrations: &Vec<(hir::HirId, FxHashSet<(Option<hir::HirId>, String)>)>,
 ) -> (String, String) {
     let need_migrations_variables =
-        need_migrations.iter().map(|v| var_name(tcx, *v)).collect::<Vec<_>>();
+        need_migrations.iter().map(|(v, _)| var_name(tcx, *v)).collect::<Vec<_>>();
 
     let migration_ref_concat =
         need_migrations_variables.iter().map(|v| format!("&{}", v)).collect::<Vec<_>>().join(", ");

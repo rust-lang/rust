@@ -6,6 +6,7 @@ LL |       thread::spawn(move || unsafe {
 LL | |
 LL | |
 LL | |         *fptr.0 = 20;
+   | |         ------- in Rust 2018, closure captures all of `fptr`, but in Rust 2021, it only captures `fptr.0`
 LL | |     });
    | |_____^
    |
@@ -32,6 +33,7 @@ LL |       thread::spawn(move || unsafe {
 LL | |
 LL | |
 LL | |         *fptr.0.0 = 20;
+   | |         --------- in Rust 2018, closure captures all of `fptr`, but in Rust 2021, it only captures `fptr.0.0`
 LL | |     });
    | |_____^
    |
@@ -53,6 +55,7 @@ LL |       let c = || {
 LL | |
 LL | |
 LL | |         let f_1 = f.1;
+   | |                   --- in Rust 2018, closure captures all of `f`, but in Rust 2021, it only captures `f.1`
 LL | |         println!("{:?}", f_1.0);
 LL | |     };
    | |_____^

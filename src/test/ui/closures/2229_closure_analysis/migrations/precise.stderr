@@ -6,6 +6,7 @@ LL |       let c = || {
 LL | |
 LL | |
 LL | |         let _t = t.0;
+   | |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
 LL | |         let _t = &t.1;
 LL | |     };
    | |_____^
@@ -34,8 +35,11 @@ LL |       let c = || {
 LL | |
 LL | |
 LL | |         let _x = u.0.0;
+   | |                  ----- in Rust 2018, closure captures all of `u`, but in Rust 2021, it only captures `u.0.0`
 LL | |         let _x = u.0.1;
+   | |                  ----- in Rust 2018, closure captures all of `u`, but in Rust 2021, it only captures `u.0.1`
 LL | |         let _x = u.1.0;
+   | |                  ----- in Rust 2018, closure captures all of `u`, but in Rust 2021, it only captures `u.1.0`
 LL | |     };
    | |_____^
    |
