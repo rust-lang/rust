@@ -74,6 +74,12 @@ impl Completions {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
 
+    pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext, keyword: &'static str) {
+        let mut item = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), keyword);
+        item.kind(CompletionItemKind::Keyword);
+        item.add_to(self);
+    }
+
     pub(crate) fn add_resolution(
         &mut self,
         ctx: &CompletionContext,

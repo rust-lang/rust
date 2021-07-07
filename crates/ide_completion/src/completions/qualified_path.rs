@@ -1,18 +1,22 @@
 //! Completion of paths, i.e. `some::prefix::$0`.
 
+use std::iter;
+
 use hir::HasVisibility;
 use rustc_hash::FxHashSet;
-use syntax::AstNode;
+use syntax::{ast, AstNode};
 
-use crate::{CompletionContext, Completions};
+use crate::{context::PathCompletionContext, CompletionContext, Completions};
 
 pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.is_path_disallowed() {
         return;
     }
-    let path = match ctx.path_qual() {
-        Some(path) => path,
-        None => return,
+    let (path, use_tree_parent) = match &ctx.path_context {
+        Some(PathCompletionContext { qualifier: Some(qualifier), use_tree_parent, .. }) => {
+            (qualifier, *use_tree_parent)
+        }
+        _ => return,
     };
 
     let resolution = match ctx.sema.resolve_path(path) {
@@ -37,6 +41,23 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
         }
         return;
+    }
+
+    if ctx.in_use_tree() {
+        if iter::successors(Some(path.clone()), |p| p.qualifier())
+            .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
+        {
+            acc.add_keyword(ctx, "super::");
+        }
+        // only show `self` in a new use-tree when the qualifier doesn't end in self
+        if use_tree_parent
+            && !matches!(
+                path.segment().and_then(|it| it.kind()),
+                Some(ast::PathSegmentKind::SelfKw)
+            )
+        {
+            acc.add_keyword(ctx, "self");
+        }
     }
 
     // Add associated types on type parameters and `Self`.

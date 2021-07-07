@@ -22,11 +22,11 @@ mod foo {}
 // nothing here
 "#,
         expect![[r#"
-            kw crate::
-            kw self::
-            kw super::
             md foo
             md other_crate
+            kw self::
+            kw super::
+            kw crate::
         "#]],
     );
 }
@@ -41,7 +41,6 @@ mod foo { pub struct S; }
 use self::{foo::*, bar$0};
 "#,
         expect![[r#"
-            kw self
             st S
             md foo
         "#]],
@@ -230,10 +229,10 @@ pub mod bar {}
 pub use $0;
 "#,
         expect![[r#"
-            kw crate::
+            md bar
             kw self::
             kw super::
-            md bar
+            kw crate::
         "#]],
     );
 }
@@ -247,10 +246,10 @@ mod bar {}
 use {$0};
 "#,
         expect![[r#"
-            kw crate::
+            md bar
             kw self::
             kw super::
-            md bar
+            kw crate::
         "#]],
     );
 }

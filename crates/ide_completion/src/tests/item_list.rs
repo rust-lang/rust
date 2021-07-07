@@ -30,6 +30,9 @@ fn in_mod_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
+            kw self
+            kw super
+            kw crate
             ma makro!(…)           #[macro_export] macro_rules! makro
         "##]],
     )
@@ -58,6 +61,9 @@ fn in_source_file_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
+            kw self
+            kw super
+            kw crate
             ma makro!(…)           #[macro_export] macro_rules! makro
             md module
             ma makro!(…)           #[macro_export] macro_rules! makro
@@ -174,6 +180,9 @@ fn in_impl_assoc_item_list() {
             kw fn
             kw const
             kw type
+            kw self
+            kw super
+            kw crate
             ma makro!(…)  #[macro_export] macro_rules! makro
             md module
             ma makro!(…)  #[macro_export] macro_rules! makro
@@ -205,6 +214,9 @@ fn in_trait_assoc_item_list() {
             kw fn
             kw const
             kw type
+            kw self
+            kw super
+            kw crate
             md module
             ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
