@@ -1744,6 +1744,194 @@ macro_rules! int_impl {
             }
         }
 
+        /// Returns the logarithm of the number with respect to an arbitrary base.
+        ///
+        /// This method may not be optimized owing to implementation details;
+        /// `log2` can produce results more efficiently for base 2, and `log10`
+        /// can produce results more efficiently for base 10.
+        ///
+        /// # Panics
+        ///
+        /// When the number is zero, or if the base is not at least 2; it
+        /// panics in debug mode and the return value is wrapped to 0 in release
+        /// mode (the only situation in which the method can return 0).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_log)]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".log(5), 1);")]
+        /// ```
+        #[unstable(feature = "int_log", issue = "70887")]
+        #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+        #[inline]
+        #[track_caller]
+        #[rustc_inherit_overflow_checks]
+        #[allow(arithmetic_overflow)]
+        pub const fn log(self, base: Self) -> Self {
+            match self.checked_log(base) {
+                Some(n) => n,
+                None => {
+                    // In debug builds, trigger a panic on None.
+                    // This should optimize completely out in release builds.
+                    let _ = Self::MAX + 1;
+
+                    0
+                },
+            }
+        }
+
+        /// Returns the base 2 logarithm of the number.
+        ///
+        /// # Panics
+        ///
+        /// When the number is zero it panics in debug mode and the return value
+        /// is wrapped to 0 in release mode (the only situation in which the
+        /// method can return 0).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_log)]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".log2(), 1);")]
+        /// ```
+        #[unstable(feature = "int_log", issue = "70887")]
+        #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+        #[inline]
+        #[track_caller]
+        #[rustc_inherit_overflow_checks]
+        #[allow(arithmetic_overflow)]
+        pub const fn log2(self) -> Self {
+            match self.checked_log2() {
+                Some(n) => n,
+                None => {
+                    // In debug builds, trigger a panic on None.
+                    // This should optimize completely out in release builds.
+                    let _ = Self::MAX + 1;
+
+                    0
+                },
+            }
+        }
+
+        /// Returns the base 10 logarithm of the number.
+        ///
+        /// # Panics
+        ///
+        /// When the number is zero it panics in debug mode and the return value
+        /// is wrapped to 0 in release mode (the only situation in which the
+        /// method can return 0).
+        ///
+        /// # Example
+        ///
+        /// ```
+        /// #![feature(int_log)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".log10(), 1);")]
+        /// ```
+        #[unstable(feature = "int_log", issue = "70887")]
+        #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+        #[inline]
+        #[track_caller]
+        #[rustc_inherit_overflow_checks]
+        #[allow(arithmetic_overflow)]
+        pub const fn log10(self) -> Self {
+            match self.checked_log10() {
+                Some(n) => n,
+                None => {
+                    // In debug builds, trigger a panic on None.
+                    // This should optimize completely out in release builds.
+                    let _ = Self::MAX + 1;
+
+                    0
+                },
+            }
+        }
+
+        /// Returns the logarithm of the number with respect to an arbitrary base.
+        ///
+        /// Returns `None` if the number is negative or zero, or if the base is not at least 2.
+        ///
+        /// This method may not be optimized owing to implementation details;
+        /// `checked_log2` can produce results more efficiently for base 2, and
+        /// `checked_log10` can produce results more efficiently for base 10.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_log)]
+        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_log(5), Some(1));")]
+        /// ```
+        #[unstable(feature = "int_log", issue = "70887")]
+        #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+        #[inline]
+        pub const fn checked_log(self, base: Self) -> Option<Self> {
+            if self <= 0 || base <= 1 {
+                None
+            } else {
+                let mut n = 0;
+                let mut r = self;
+
+                // Optimization for 128 bit wide integers.
+                if Self::BITS == 128 {
+                    let b = Self::log2(self) / (Self::log2(base) + 1);
+                    n += b;
+                    r /= base.pow(b as u32);
+                }
+
+                while r >= base {
+                    r /= base;
+                    n += 1;
+                }
+                Some(n)
+            }
+        }
+
+        /// Returns the base 2 logarithm of the number.
+        ///
+        /// Returns `None` if the number is negative or zero.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_log)]
+        #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_log2(), Some(1));")]
+        /// ```
+        #[unstable(feature = "int_log", issue = "70887")]
+        #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+        #[inline]
+        pub const fn checked_log2(self) -> Option<Self> {
+            if self <= 0 {
+                None
+            } else {
+                // SAFETY: We just checked that this number is positive
+                let log = (Self::BITS - 1) as Self - unsafe { intrinsics::ctlz_nonzero(self) };
+                Some(log)
+            }
+        }
+
+        /// Returns the base 10 logarithm of the number.
+        ///
+        /// Returns `None` if the number is negative or zero.
+        ///
+        /// # Example
+        ///
+        /// ```
+        /// #![feature(int_log)]
+        #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_log10(), Some(1));")]
+        /// ```
+        #[unstable(feature = "int_log", issue = "70887")]
+        #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+        #[inline]
+        pub const fn checked_log10(self) -> Option<Self> {
+            self.checked_log(10)
+        }
+
         /// Computes the absolute value of `self`.
         ///
         /// # Overflow behavior
