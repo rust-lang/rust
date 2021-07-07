@@ -188,7 +188,7 @@ don't request anyone; the bot will assign someone automatically.
 
 The reviewer may request changes before they approve your PR. Feel free to ask
 questions or discuss things you don't understand or disagree with. However,
-recognize that the PR won't be merged unless someone on the rust team approves
+recognize that the PR won't be merged unless someone on the Rust team approves
 it.
 
 When your reviewer approves the PR, it will go into a queue for yet another bot
