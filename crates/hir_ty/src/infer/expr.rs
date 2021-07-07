@@ -729,7 +729,7 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
             }
             Expr::Array(array) => {
-                let elem_ty =
+                let mut elem_ty =
                     match expected.to_option(&mut self.table).as_ref().map(|t| t.kind(&Interner)) {
                         Some(TyKind::Array(st, _) | TyKind::Slice(st)) => st.clone(),
                         _ => self.table.new_type_var(),
@@ -738,8 +738,8 @@ impl<'a> InferenceContext<'a> {
                 let len = match array {
                     Array::ElementList(items) => {
                         for expr in items.iter() {
-                            // FIXME: use CoerceMany (coerce_merge_branch)
-                            self.infer_expr_coerce(*expr, &Expectation::has_type(elem_ty.clone()));
+                            let cur_elem_ty = self.infer_expr_inner(*expr, expected);
+                            elem_ty = self.coerce_merge_branch(Some(*expr), &elem_ty, &cur_elem_ty);
                         }
                         Some(items.len() as u64)
                     }
