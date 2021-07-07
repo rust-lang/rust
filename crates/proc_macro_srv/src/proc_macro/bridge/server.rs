@@ -181,21 +181,24 @@ impl ExecutionStrategy for CrossThread1 {
         let (req_tx, req_rx) = channel();
         let (res_tx, res_rx) = channel();
 
-        let join_handle = thread::spawn(move || {
-            let mut dispatch = |b| {
-                req_tx.send(b).unwrap();
-                res_rx.recv().unwrap()
-            };
+        let join_handle = thread::Builder::new()
+            .name("DispatchThread".to_owned())
+            .spawn(move || {
+                let mut dispatch = |b| {
+                    req_tx.send(b).unwrap();
+                    res_rx.recv().unwrap()
+                };
 
-            run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                },
-                client_data,
-            )
-        });
+                run_client(
+                    Bridge {
+                        cached_buffer: input,
+                        dispatch: (&mut dispatch).into(),
+                        force_show_panics,
+                    },
+                    client_data,
+                )
+            })
+            .expect("failed to spawn thread");
 
         for b in req_rx {
             res_tx.send(dispatcher.dispatch(b)).unwrap();
@@ -227,33 +230,36 @@ impl ExecutionStrategy for CrossThread2 {
 
         let server_thread = thread::current();
         let state2 = state.clone();
-        let join_handle = thread::spawn(move || {
-            let mut dispatch = |b| {
-                *state2.lock().unwrap() = State::Req(b);
-                server_thread.unpark();
-                loop {
-                    thread::park();
-                    if let State::Res(b) = &mut *state2.lock().unwrap() {
-                        break b.take();
+        let join_handle = thread::Builder::new()
+            .name("ServerThread".to_owned())
+            .spawn(move || {
+                let mut dispatch = |b| {
+                    *state2.lock().unwrap() = State::Req(b);
+                    server_thread.unpark();
+                    loop {
+                        thread::park();
+                        if let State::Res(b) = &mut *state2.lock().unwrap() {
+                            break b.take();
+                        }
                     }
-                }
-            };
+                };
 
-            let r = run_client(
-                Bridge {
-                    cached_buffer: input,
-                    dispatch: (&mut dispatch).into(),
-                    force_show_panics,
-                },
-                client_data,
-            );
+                let r = run_client(
+                    Bridge {
+                        cached_buffer: input,
+                        dispatch: (&mut dispatch).into(),
+                        force_show_panics,
+                    },
+                    client_data,
+                );
 
-            // Wake up the server so it can exit the dispatch loop.
-            drop(state2);
-            server_thread.unpark();
+                // Wake up the server so it can exit the dispatch loop.
+                drop(state2);
+                server_thread.unpark();
 
-            r
-        });
+                r
+            })
+            .expect("failed to spawn thread");
 
         // Check whether `state2` was dropped, to know when to stop.
         while Arc::get_mut(&mut state).is_none() {
