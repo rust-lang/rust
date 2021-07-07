@@ -1736,8 +1736,11 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `linkat` function with no flags
-/// on Unix and the `CreateHardLink` function on Windows.
+/// This function currently corresponds the `CreateHardLink` function on Windows.
+/// On most Unix systems, it corresponds to the `linkat` function with no flags.
+/// On Android, VxWorks, and Redox, it instead corresponds to the `link` function.
+/// On MacOS, it uses the `linkat` function if it is available, but on very old
+/// systems where `linkat` is not available, `link` is selected at runtime instead.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
