@@ -139,7 +139,7 @@ fn write_code(
         )
         .highlight(&mut |highlight| {
             match highlight {
-                Highlight::Token { text, class } => string(out, Escape(text), class, context_info),
+                Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
                 Highlight::EnterSpan { class } => enter_span(out, class),
                 Highlight::ExitSpan => exit_span(out),
             };

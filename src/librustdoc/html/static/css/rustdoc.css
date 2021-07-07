@@ -1257,6 +1257,11 @@ pre.rust {
 	-moz-tab-size: 4;
 }
 
+pre .data-hidden {
+	width: 100%;
+	display: block;
+}
+
 .search-failed {
 	text-align: center;
 	margin-top: 20px;

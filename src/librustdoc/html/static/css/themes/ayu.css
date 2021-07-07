@@ -57,6 +57,10 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #191f26;
 }
 
+pre .data-hidden {
+	background-color: #313942;
+}
+
 .sidebar {
 	background-color: #14191f;
 }

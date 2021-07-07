@@ -28,6 +28,10 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #2A2A2A;
 }
 
+pre .data-hidden {
+	background-color: #373636;
+}
+
 .sidebar {
 	background-color: #505050;
 }
