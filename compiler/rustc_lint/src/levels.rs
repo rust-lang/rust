@@ -328,8 +328,7 @@ impl<'s> LintLevelsBuilder<'s> {
                 };
                 let tool_name = tool_ident.map(|ident| ident.name);
                 let name = pprust::path_to_string(&meta_item.path);
-                let lint_result =
-                    store.check_lint_and_tool_name(sess, tool_name, &name, self.crate_attrs);
+                let lint_result = store.check_lint_name(sess, &name, tool_name, self.crate_attrs);
                 match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintLevelSource::Node(
@@ -477,7 +476,9 @@ impl<'s> LintLevelsBuilder<'s> {
                 if let CheckLintNameResult::Warning(_, Some(new_name)) = lint_result {
                     // Ignore any errors or warnings that happen because the new name is inaccurate
                     // NOTE: `new_name` already includes the tool name, so we don't have to add it again.
-                    if let CheckLintNameResult::Ok(ids) = store.check_lint_name(&new_name, None) {
+                    if let CheckLintNameResult::Ok(ids) =
+                        store.check_lint_name(sess, &new_name, None, self.crate_attrs)
+                    {
                         let src = LintLevelSource::Node(Symbol::intern(&new_name), sp, reason);
                         for &id in ids {
                             self.check_gated_lint(id, attr.span);

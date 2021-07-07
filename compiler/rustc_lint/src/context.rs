@@ -344,9 +344,9 @@ impl LintStore {
         level: Level,
         crate_attrs: &[ast::Attribute],
     ) {
-        let (tool_name, lint_name) = parse_lint_and_tool_name(lint_name);
+        let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
 
-        let db = match self.check_lint_and_tool_name(sess, tool_name, lint_name, crate_attrs) {
+        let db = match self.check_lint_name(sess, lint_name_only, tool_name, crate_attrs) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
@@ -408,22 +408,6 @@ impl LintStore {
         }
     }
 
-    pub fn check_lint_and_tool_name(
-        &self,
-        sess: &Session,
-        tool_name: Option<Symbol>,
-        lint_name: &str,
-        crate_attrs: &[ast::Attribute],
-    ) -> CheckLintNameResult<'_> {
-        if let Some(tool_name) = tool_name {
-            if !is_known_lint_tool(tool_name, sess, crate_attrs) {
-                return CheckLintNameResult::NoTool;
-            }
-        }
-
-        self.check_lint_name(lint_name, tool_name)
-    }
-
     /// Checks the name of a lint for its existence, and whether it was
     /// renamed or removed. Generates a DiagnosticBuilder containing a
     /// warning for renamed and removed lints. This is over both lint
@@ -433,9 +417,17 @@ impl LintStore {
     /// printing duplicate warnings.
     pub fn check_lint_name(
         &self,
+        sess: &Session,
         lint_name: &str,
         tool_name: Option<Symbol>,
+        crate_attrs: &[ast::Attribute],
     ) -> CheckLintNameResult<'_> {
+        if let Some(tool_name) = tool_name {
+            if !is_known_lint_tool(tool_name, sess, crate_attrs) {
+                return CheckLintNameResult::NoTool;
+            }
+        }
+
         let complete_name = if let Some(tool_name) = tool_name {
             format!("{}::{}", tool_name, lint_name)
         } else {
