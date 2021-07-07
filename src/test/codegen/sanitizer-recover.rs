@@ -1,6 +1,7 @@
 // Verifies that AddressSanitizer and MemorySanitizer
 // recovery mode can be enabled with -Zsanitizer-recover.
 //
+// no-system-llvm
 // needs-sanitizer-address
 // needs-sanitizer-memory
 // revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
