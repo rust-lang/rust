@@ -116,16 +116,58 @@ pub struct Ipv6Addr {
     inner: c::in6_addr,
 }
 
-#[allow(missing_docs)]
+/// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
+///
+/// # Stability Guarantees
+///
+/// Not all possible values for a multicast scope have been assigned.
+/// Future RFCs may introduce new scopes, which will be added as variants to this enum;
+/// because of this the enum is marked as `#[non_exhaustive]`.
+///
+/// # Examples
+/// ```
+/// #![feature(ip)]
+///
+/// use std::net::Ipv6Addr;
+/// use std::net::Ipv6MulticastScope::*;
+///
+/// // An IPv6 multicast address with global scope (`ff0e::`).
+/// let address = Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0);
+///
+/// // Will print "Global scope".
+/// match address.multicast_scope() {
+///     Some(InterfaceLocal) => println!("Interface-Local scope"),
+///     Some(LinkLocal) => println!("Link-Local scope"),
+///     Some(RealmLocal) => println!("Realm-Local scope"),
+///     Some(AdminLocal) => println!("Admin-Local scope"),
+///     Some(SiteLocal) => println!("Site-Local scope"),
+///     Some(OrganizationLocal) => println!("Organization-Local scope"),
+///     Some(Global) => println!("Global scope"),
+///     Some(_) => println!("Unknown scope"),
+///     None => println!("Not a multicast address!")
+/// }
+///
+/// ```
+///
+/// [IPv6 multicast address]: Ipv6Addr
+/// [IETF RFC 7346 section 2]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 #[unstable(feature = "ip", issue = "27709")]
+#[non_exhaustive]
 pub enum Ipv6MulticastScope {
+    /// Interface-Local scope.
     InterfaceLocal,
+    /// Link-Local scope.
     LinkLocal,
+    /// Realm-Local scope.
     RealmLocal,
+    /// Admin-Local scope.
     AdminLocal,
+    /// Site-Local scope.
     SiteLocal,
+    /// Organization-Local scope.
     OrganizationLocal,
+    /// Global scope.
     Global,
 }
 
