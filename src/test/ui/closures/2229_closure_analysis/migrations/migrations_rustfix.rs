@@ -22,11 +22,11 @@ fn closure_contains_block() {
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
         //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
-
     };
 
     c();
 }
+//~^ NOTE: in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 fn closure_doesnt_contain_block() {
     let t = (Foo(0), Foo(0));
@@ -38,6 +38,7 @@ fn closure_doesnt_contain_block() {
 
     c();
 }
+//~^ NOTE: in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 fn main() {
     closure_contains_block();

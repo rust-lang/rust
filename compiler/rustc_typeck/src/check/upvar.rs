@@ -511,6 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .as_str(),
                     );
                     for (var_hir_id, diagnostics_info) in need_migrations.iter() {
+                        let mut captured_names = format!("");
                         for (captured_hir_id, captured_name) in diagnostics_info.iter() {
                             if let Some(captured_hir_id) = captured_hir_id {
                                 let cause_span = self.tcx.hir().span(*captured_hir_id);
@@ -518,7 +519,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     self.tcx.hir().name(*var_hir_id),
                                     captured_name,
                                 ));
+                                if captured_names == "" {
+                                    captured_names = format!("`{}`", captured_name);
+                                } else {
+                                    captured_names = format!("{}, `{}`", captured_names, captured_name);
+                                }
                             }
+                        }
+
+                        if reasons.contains("drop order") {
+                            let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
+
+                            diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` would be dropped here, but in Rust 2021, only {} would be dropped here alongside the closure",
+                                self.tcx.hir().name(*var_hir_id),
+                                captured_names,
+                            ));
                         }
                     }
                     diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
@@ -1347,6 +1362,31 @@ fn apply_capture_kind_on_capture_ty(
         ty::UpvarCapture::ByValue(_) => ty,
         ty::UpvarCapture::ByRef(borrow) => tcx
             .mk_ref(borrow.region, ty::TypeAndMut { ty: ty, mutbl: borrow.kind.to_mutbl_lossy() }),
+    }
+}
+
+/// Returns the Span of where the value with the provided HirId would be dropped
+fn drop_location_span(tcx: TyCtxt<'tcx>, hir_id: &hir::HirId) -> Span {
+    let owner_id = tcx.hir().get_enclosing_scope(*hir_id).unwrap();
+
+    let owner_node = tcx.hir().get(owner_id);
+    match owner_node {
+        hir::Node::Item(item) => match item.kind {
+            hir::ItemKind::Fn(_, _, owner_id) => {
+                let owner_span = tcx.hir().span(owner_id.hir_id);
+                tcx.sess.source_map().end_point(owner_span)
+            }
+            _ => {
+                bug!("Drop location span error: need to handle more ItemKind {:?}", item.kind);
+            }
+        },
+        hir::Node::Block(block) => {
+            let owner_span = tcx.hir().span(block.hir_id);
+            tcx.sess.source_map().end_point(owner_span)
+        }
+        _ => {
+            bug!("Drop location span error: need to handle more Node {:?}", owner_node);
+        }
     }
 }
 

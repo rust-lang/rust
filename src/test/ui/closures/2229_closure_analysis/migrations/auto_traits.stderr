@@ -1,12 +1,14 @@
 error: changes to closure capture in Rust 2021 will affect `Send` closure trait implementation
-  --> $DIR/auto_traits.rs:13:19
+  --> $DIR/auto_traits.rs:14:19
    |
 LL |       thread::spawn(move || unsafe {
    |  ___________________^
 LL | |
 LL | |
+LL | |
 LL | |         *fptr.0 = 20;
    | |         ------- in Rust 2018, closure captures all of `fptr`, but in Rust 2021, it only captures `fptr.0`
+LL | |
 LL | |     });
    | |_____^
    |
@@ -21,19 +23,22 @@ help: add a dummy let to cause `fptr` to be fully captured
 LL |     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
 LL |
+LL |
 LL |         *fptr.0 = 20;
-LL |     } });
-   |
+LL |
+ ...
 
 error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` closure trait implementation
-  --> $DIR/auto_traits.rs:30:19
+  --> $DIR/auto_traits.rs:33:19
    |
 LL |       thread::spawn(move || unsafe {
    |  ___________________^
 LL | |
 LL | |
+LL | |
 LL | |         *fptr.0.0 = 20;
    | |         --------- in Rust 2018, closure captures all of `fptr`, but in Rust 2021, it only captures `fptr.0.0`
+LL | |
 LL | |     });
    | |_____^
    |
@@ -43,22 +48,28 @@ help: add a dummy let to cause `fptr` to be fully captured
 LL |     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
 LL |
+LL |
 LL |         *fptr.0.0 = 20;
-LL |     } });
-   |
+LL |
+ ...
 
 error: changes to closure capture in Rust 2021 will affect `Clone` closure trait implementation, and drop order
-  --> $DIR/auto_traits.rs:51:13
+  --> $DIR/auto_traits.rs:56:13
    |
 LL |       let c = || {
    |  _____________^
 LL | |
 LL | |
+LL | |
 LL | |         let f_1 = f.1;
    | |                   --- in Rust 2018, closure captures all of `f`, but in Rust 2021, it only captures `f.1`
+LL | |
 LL | |         println!("{:?}", f_1.0);
 LL | |     };
    | |_____^
+...
+LL |   }
+   |   - in Rust 2018, `f` would be dropped here, but in Rust 2021, only `f.1` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f` to be fully captured
@@ -66,10 +77,10 @@ help: add a dummy let to cause `f` to be fully captured
 LL |     let c = || { let _ = &f; 
 LL |
 LL |
+LL |
 LL |         let f_1 = f.1;
-LL |         println!("{:?}", f_1.0);
-LL |     };
-   |
+LL |
+ ...
 
 error: aborting due to 3 previous errors
 
