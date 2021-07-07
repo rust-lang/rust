@@ -1,3 +1,6 @@
+// run-rustfix
+#![allow(dead_code)]
+
 macro_rules! y {
     () => {}
 }
@@ -7,7 +10,11 @@ mod m {
 }
 
 mod foo {
-    #[derive(Debug)]
+    // FIXME: UsePlacementFinder is broken because active attributes are
+    // removed, and thus the `derive` attribute here is not in the AST.
+    // An inert attribute should work, though.
+    // #[derive(Debug)]
+    #[allow(warnings)]
     pub struct Foo;
 
     // test whether the use suggestion isn't

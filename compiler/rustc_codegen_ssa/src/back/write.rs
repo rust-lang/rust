@@ -1,5 +1,4 @@
 use super::link::{self, ensure_removed};
-use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
 
@@ -430,8 +429,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
     let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
 
-    let linker_info = LinkerInfo::new(tcx, target_cpu);
-    let crate_info = CrateInfo::new(tcx);
+    let crate_info = CrateInfo::new(tcx, target_cpu);
 
     let regular_config =
         ModuleConfig::new(ModuleKind::Regular, sess, no_builtins, is_compiler_builtins);
@@ -461,7 +459,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     OngoingCodegen {
         backend,
         metadata,
-        linker_info,
         crate_info,
 
         coordinator_send,
@@ -994,7 +991,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
             Lto::Fat | Lto::Thin => {
                 exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
-                for &cnum in tcx.crates().iter() {
+                for &cnum in tcx.crates(()).iter() {
                     exported_symbols.insert(cnum, copy_symbols(cnum));
                 }
                 Some(Arc::new(exported_symbols))
@@ -1799,7 +1796,6 @@ impl SharedEmitterMain {
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
     pub metadata: EncodedMetadata,
-    pub linker_info: LinkerInfo,
     pub crate_info: CrateInfo,
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
     pub codegen_worker_receive: Receiver<Message<B>>,
@@ -1842,7 +1838,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         (
             CodegenResults {
                 metadata: self.metadata,
-                linker_info: self.linker_info,
                 crate_info: self.crate_info,
 
                 modules: compiled_modules.modules,

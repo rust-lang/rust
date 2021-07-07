@@ -101,6 +101,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         let (method_sig, method_predicates) =
             self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
+        let method_sig = ty::Binder::dummy(method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
@@ -119,12 +120,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
-            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig, self.tcx));
-            self.add_obligations(method_ty, all_substs, method_predicates);
+            self.add_obligations(self.tcx.mk_fn_ptr(method_sig), all_substs, method_predicates);
         }
 
         // Create the final `MethodCallee`.
-        let callee = MethodCallee { def_id: pick.item.def_id, substs: all_substs, sig: method_sig };
+        let callee = MethodCallee {
+            def_id: pick.item.def_id,
+            substs: all_substs,
+            sig: method_sig.skip_binder(),
+        };
         ConfirmResult { callee, illegal_sized_bound }
     }
 

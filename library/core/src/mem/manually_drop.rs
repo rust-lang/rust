@@ -44,7 +44,7 @@ use crate::ptr;
 /// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[lang = "manually_drop"]
-#[derive(Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct ManuallyDrop<T: ?Sized> {
     value: T,
@@ -158,18 +158,5 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value
-    }
-}
-
-#[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T: Clone> Clone for ManuallyDrop<T> {
-    #[inline]
-    fn clone(&self) -> ManuallyDrop<T> {
-        ManuallyDrop { value: self.value.clone() }
-    }
-
-    #[inline]
-    fn clone_from(&mut self, other: &Self) {
-        self.value.clone_from(&other.value)
     }
 }

@@ -674,7 +674,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.combine_map(t).insert(vars, c);
         self.undo_log.push(AddCombination(t, vars));
         let new_r = tcx.mk_region(ReVar(c));
-        for &old_r in &[a, b] {
+        for old_r in [a, b] {
             match t {
                 Glb => self.make_subregion(origin.clone(), new_r, old_r),
                 Lub => self.make_subregion(origin.clone(), old_r, new_r),

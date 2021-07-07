@@ -97,7 +97,6 @@ pub trait ExactSizeIterator: Iterator {
     ///
     /// assert_eq!(5, five.len());
     /// ```
-    #[doc(alias = "length")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len(&self) -> usize {

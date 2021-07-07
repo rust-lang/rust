@@ -185,7 +185,7 @@ where
             if let Ok(cls) = cls_or_mem {
                 let mut needed_int = 0;
                 let mut needed_sse = 0;
-                for &c in &cls {
+                for c in cls {
                     match c {
                         Some(Class::Int) => needed_int += 1,
                         Some(Class::Sse) => needed_sse += 1,

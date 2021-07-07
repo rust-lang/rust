@@ -2,7 +2,7 @@ use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, Node, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -148,6 +148,20 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {
         Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Main))
     } else if let Some(def_id) = tcx.main_def.and_then(|main_def| main_def.opt_fn_def_id()) {
+        // non-local main imports are handled below
+        if def_id.is_local() {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+            if matches!(tcx.hir().find(hir_id), Some(Node::ForeignItem(_))) {
+                tcx.sess
+                    .struct_span_err(
+                        tcx.hir().span(hir_id),
+                        "the `main` function cannot be declared in an `extern` block",
+                    )
+                    .emit();
+                return None;
+            }
+        }
+
         if tcx.main_def.unwrap().is_import && !tcx.features().imported_main {
             let span = tcx.main_def.unwrap().span;
             feature_err(

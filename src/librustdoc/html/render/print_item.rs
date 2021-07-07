@@ -15,16 +15,22 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
+    render_impl, render_impl_summary, render_stability_since_raw, write_srclink, AssocItemLink,
+    Context,
 };
 use crate::clean::{self, GetDefId};
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
-use crate::html::format::{print_abi_with_space, print_where_clause, Buffer, PrintWithSpace};
+use crate::html::format::{
+    print_abi_with_space, print_constness_with_space, print_where_clause, Buffer, PrintWithSpace,
+};
 use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::MarkdownSummaryLine;
+
+const ITEM_TABLE_OPEN: &'static str = "<div class=\"item-table\">";
+const ITEM_TABLE_CLOSE: &'static str = "</div>";
 
 pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
@@ -93,7 +99,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
     render_stability_since_raw(
         buf,
         item.stable_since(cx.tcx()).as_deref(),
-        item.const_stable_since(cx.tcx()).as_deref(),
+        item.const_stability(cx.tcx()),
         None,
         None,
     );
@@ -260,14 +266,15 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             curty = myty;
         } else if myty != curty {
             if curty.is_some() {
-                w.write_str("</table>");
+                w.write_str(ITEM_TABLE_CLOSE);
             }
             curty = myty;
             let (short, name) = item_ty_to_strs(myty.unwrap());
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"section-header\">\
-                       <a href=\"#{id}\">{name}</a></h2>\n<table>",
+                       <a href=\"#{id}\">{name}</a></h2>\n{}",
+                ITEM_TABLE_OPEN,
                 id = cx.derive_id(short.to_owned()),
                 name = name
             );
@@ -280,23 +287,23 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 match *src {
                     Some(ref src) => write!(
                         w,
-                        "<tr><td><code>{}extern crate {} as {};",
+                        "<div class=\"item-left\"><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(myitem.def_id.expect_real(), &*src.as_str(), cx),
+                        anchor(myitem.def_id.expect_def_id(), &*src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
-                        "<tr><td><code>{}extern crate {};",
+                        "<div class=\"item-left\"><code>{}extern crate {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
                         anchor(
-                            myitem.def_id.expect_real(),
+                            myitem.def_id.expect_def_id(),
                             &*myitem.name.as_ref().unwrap().as_str(),
                             cx
                         ),
                     ),
                 }
-                w.write_str("</code></td></tr>");
+                w.write_str("</code></div>");
             }
 
             clean::ImportItem(ref import) => {
@@ -323,10 +330,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 write!(
                     w,
-                    "<tr class=\"{stab}{add}import-item\">\
-                         <td><code>{vis}{imp}</code></td>\
-                         <td class=\"docblock-short\">{stab_tags}</td>\
-                     </tr>",
+                    "<div class=\"item-left {stab}{add}import-item\">\
+                         <code>{vis}{imp}</code>\
+                     </div>\
+                     <div class=\"item-right docblock-short\">{stab_tags}</div>",
                     stab = stab.unwrap_or_default(),
                     add = add,
                     vis = myitem.visibility.print_with_space(myitem.def_id, cx),
@@ -355,11 +362,12 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 write!(
                     w,
-                    "<tr class=\"{stab}{add}module-item\">\
-                         <td><a class=\"{class}\" href=\"{href}\" \
-                             title=\"{title}\">{name}</a>{unsafety_flag}</td>\
-                         <td class=\"docblock-short\">{stab_tags}{docs}</td>\
-                     </tr>",
+                    "<div class=\"item-left {stab}{add}module-item\">\
+                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                             {unsafety_flag}\
+                             {stab_tags}\
+                     </div>\
+                     <div class=\"item-right docblock-short\">{docs}</div>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
@@ -379,7 +387,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     }
 
     if curty.is_some() {
-        w.write_str("</table>");
+        w.write_str(ITEM_TABLE_CLOSE);
     }
 }
 
@@ -429,29 +437,36 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
-    let header_len = format!(
-        "{}{}{}{}{:#}fn {}{:#}",
-        it.visibility.print_with_space(it.def_id, cx),
-        f.header.constness.print_with_space(),
-        f.header.asyncness.print_with_space(),
-        f.header.unsafety.print_with_space(),
-        print_abi_with_space(f.header.abi),
-        it.name.as_ref().unwrap(),
-        f.generics.print(cx),
-    )
-    .len();
+    let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
+    let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
+    let asyncness = f.header.asyncness.print_with_space();
+    let unsafety = f.header.unsafety.print_with_space();
+    let abi = print_abi_with_space(f.header.abi).to_string();
+    let name = it.name.as_ref().unwrap();
+
+    let generics_len = format!("{:#}", f.generics.print(cx)).len();
+    let header_len = "fn ".len()
+        + vis.len()
+        + constness.len()
+        + asyncness.len()
+        + unsafety.len()
+        + abi.len()
+        + name.as_str().len()
+        + generics_len;
+
     w.write_str("<pre class=\"rust fn\">");
     render_attributes_in_pre(w, it, "");
+    w.reserve(header_len);
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
          {name}{generics}{decl}{notable_traits}{where_clause}</pre>",
-        vis = it.visibility.print_with_space(it.def_id, cx),
-        constness = f.header.constness.print_with_space(),
-        asyncness = f.header.asyncness.print_with_space(),
-        unsafety = f.header.unsafety.print_with_space(),
-        abi = print_abi_with_space(f.header.abi),
-        name = it.name.as_ref().unwrap(),
+        vis = vis,
+        constness = constness,
+        asyncness = asyncness,
+        unsafety = unsafety,
+        abi = abi,
+        name = name,
         generics = f.generics.print(cx),
         where_clause = print_where_clause(&f.generics, cx, 0, true),
         decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
@@ -585,11 +600,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         }
-        write!(w, "<div id=\"{}\" class=\"method has-srclink\"><code>", id);
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
-        w.write_str("</code>");
+        write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
+        write!(w, "<div class=\"rightside\">");
         render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w);
+        write!(w, "</div>");
+        write!(w, "<code>");
+        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
+        w.write_str("</code>");
         w.write_str("</div>");
         if toggled {
             write!(w, "</summary>");
@@ -651,9 +669,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     }
 
     // If there are methods directly on this trait object, render them here.
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All);
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All);
 
-    if let Some(implementors) = cx.cache.implementors.get(&it.def_id.expect_real()) {
+    if let Some(implementors) = cx.cache.implementors.get(&it.def_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
@@ -701,8 +719,6 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     it,
                     assoc_link,
                     RenderMode::Normal,
-                    implementor.impl_item.stable_since(cx.tcx()).as_deref(),
-                    implementor.impl_item.const_stable_since(cx.tcx()).as_deref(),
                     false,
                     None,
                     true,
@@ -771,7 +787,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         path = if it.def_id.is_local() {
             cx.current.join("/")
         } else {
-            let (ref path, _) = cx.cache.external_paths[&it.def_id.expect_real()];
+            let (ref path, _) = cx.cache.external_paths[&it.def_id.expect_def_id()];
             path[..path.len() - 1].join("/")
         },
         ty = it.type_(),
@@ -797,7 +813,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
@@ -818,7 +834,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
@@ -835,7 +851,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
 
     document(w, cx, it, None);
 
-    let def_id = it.def_id.expect_real();
+    let def_id = it.def_id.expect_def_id();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
@@ -864,7 +880,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     if fields.peek().is_some() {
         write!(
             w,
-            "<h2 id=\"fields\" class=\"fields small-section-header\">
+            "<h2 id=\"fields\" class=\"fields small-section-header\">\
                    Fields<a href=\"#fields\" class=\"anchor\"></a></h2>"
         );
         for (field, ty) in fields {
@@ -887,7 +903,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             document(w, cx, field, Some(it));
         }
     }
-    let def_id = it.def_id.expect_real();
+    let def_id = it.def_id.expect_def_id();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
     document_type_layout(w, cx, def_id);
 }
@@ -953,8 +969,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
     if !e.variants.is_empty() {
         write!(
             w,
-            "<h2 id=\"variants\" class=\"variants small-section-header\">
-                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>\n",
+            "<h2 id=\"variants\" class=\"variants small-section-header\">\
+                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>",
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
@@ -979,7 +995,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 }
                 w.write_str(")");
             }
-            w.write_str("</code></div>");
+            w.write_str("</code>");
+            render_stability_since(w, variant, it, cx.tcx());
+            w.write_str("</div>");
             document(w, cx, variant, Some(it));
             document_non_exhaustive(w, variant);
 
@@ -1021,10 +1039,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 w.write_str("</div></div>");
                 toggle_close(w);
             }
-            render_stability_since(w, variant, it, cx.tcx());
         }
     }
-    let def_id = it.def_id.expect_real();
+    let def_id = it.def_id.expect_def_id();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
     document_type_layout(w, cx, def_id);
 }
@@ -1076,7 +1093,7 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean
 
 fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     document(w, cx, it, None);
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::Constant) {
@@ -1139,7 +1156,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
         if fields.peek().is_some() {
             write!(
                 w,
-                "<h2 id=\"fields\" class=\"fields small-section-header\">
+                "<h2 id=\"fields\" class=\"fields small-section-header\">\
                        Fields{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
                 document_non_exhaustive_header(it)
             );
@@ -1165,7 +1182,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             }
         }
     }
-    let def_id = it.def_id.expect_real();
+    let def_id = it.def_id.expect_def_id();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
     document_type_layout(w, cx, def_id);
 }
@@ -1196,7 +1213,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
 
     document(w, cx, it, None);
 
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
 fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
@@ -1288,7 +1305,7 @@ fn render_stability_since(
     render_stability_since_raw(
         w,
         item.stable_since(tcx).as_deref(),
-        item.const_stable_since(tcx).as_deref(),
+        item.const_stability(tcx),
         containing_item.stable_since(tcx).as_deref(),
         containing_item.const_stable_since(tcx).as_deref(),
     )
@@ -1310,7 +1327,7 @@ fn render_implementor(
     implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
     aliases: &[String],
 ) {
-    // If there's already another implementor that has the same abbridged name, use the
+    // If there's already another implementor that has the same abridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
         clean::ResolvedPath { ref path, is_generic: false, .. }
@@ -1320,18 +1337,14 @@ fn render_implementor(
         } => implementor_dups[&path.last()].1,
         _ => false,
     };
-    render_impl(
+    render_impl_summary(
         w,
         cx,
         implementor,
         trait_,
-        AssocItemLink::Anchor(None),
-        RenderMode::Normal,
-        trait_.stable_since(cx.tcx()).as_deref(),
-        trait_.const_stable_since(cx.tcx()).as_deref(),
+        trait_,
         false,
         Some(use_absolute),
-        false,
         false,
         aliases,
     );

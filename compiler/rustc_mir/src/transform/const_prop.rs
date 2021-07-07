@@ -181,6 +181,7 @@ impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
+    const PANIC_ON_ALLOC_FAIL: bool = true; // all allocations are small (see `MAX_ALLOC_LIMIT`)
 
     type MemoryKind = !;
 
@@ -393,7 +394,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .filter(|ret_layout| {
                 !ret_layout.is_zst() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
-            .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack).into());
+            .map(|ret_layout| {
+                ecx.allocate(ret_layout, MemoryKind::Stack)
+                    .expect("couldn't perform small allocation")
+                    .into()
+            });
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
@@ -528,14 +533,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
         message: &'static str,
         panic: AssertKind<impl std::fmt::Debug>,
-    ) -> Option<()> {
-        let lint_root = self.lint_root(source_info)?;
-        self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
-            let mut err = lint.build(message);
-            err.span_label(source_info.span, format!("{:?}", panic));
-            err.emit()
-        });
-        None
+    ) {
+        if let Some(lint_root) = self.lint_root(source_info) {
+            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
+                let mut err = lint.build(message);
+                err.span_label(source_info.span, format!("{:?}", panic));
+                err.emit()
+            });
+        }
     }
 
     fn check_unary_op(
@@ -557,7 +562,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 source_info,
                 "this arithmetic operation will overflow",
                 AssertKind::OverflowNeg(val.to_const_int()),
-            )?;
+            );
+            return None;
         }
 
         Some(())
@@ -602,7 +608,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         },
                         r.to_const_int(),
                     ),
-                )?;
+                );
+                return None;
             }
         }
 
@@ -617,7 +624,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     source_info,
                     "this arithmetic operation will overflow",
                     AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
-                )?;
+                );
+                return None;
             }
         }
         Some(())
@@ -1202,12 +1210,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         let mut eval_to_int = |op| {
                             // This can be `None` if the lhs wasn't const propagated and we just
                             // triggered the assert on the value of the rhs.
-                            match self.eval_operand(op, source_info) {
-                                Some(op) => DbgVal::Val(
-                                    self.ecx.read_immediate(&op).unwrap().to_const_int(),
-                                ),
-                                None => DbgVal::Underscore,
-                            }
+                            self.eval_operand(op, source_info).map_or(DbgVal::Underscore, |op| {
+                                DbgVal::Val(self.ecx.read_immediate(&op).unwrap().to_const_int())
+                            })
                         };
                         let msg = match msg {
                             AssertKind::DivisionByZero(op) => {

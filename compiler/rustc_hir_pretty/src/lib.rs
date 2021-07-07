@@ -1070,8 +1070,6 @@ impl<'a> State<'a> {
     ) {
         match blk.rules {
             hir::BlockCheckMode::UnsafeBlock(..) => self.word_space("unsafe"),
-            hir::BlockCheckMode::PushUnsafeBlock(..) => self.word_space("push_unsafe"),
-            hir::BlockCheckMode::PopUnsafeBlock(..) => self.word_space("pop_unsafe"),
             hir::BlockCheckMode::DefaultBlock => (),
         }
         self.maybe_print_comment(blk.span.lo());
@@ -1446,6 +1444,9 @@ impl<'a> State<'a> {
                 if opts.contains(ast::InlineAsmOptions::ATT_SYNTAX) {
                     options.push("att_syntax");
                 }
+                if opts.contains(ast::InlineAsmOptions::RAW) {
+                    options.push("raw");
+                }
                 s.commasep(Inconsistent, &options, |s, &opt| {
                     s.word(opt);
                 });
@@ -1538,7 +1539,6 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 self.head("loop");
-                self.s.space();
                 self.print_block(&blk);
             }
             hir::ExprKind::Match(ref expr, arms, _) => {

@@ -6,5 +6,5 @@ wait-for: "#titles"
 // less good.
 //
 // Checking that the CSS is displaying " (keyword)" in italic.
-assert: (".result-name span.keyword > i", "(keyword)")
-assert: (".result-name span.keyword", "CookieMonster (keyword)")
+assert-text: (".result-name span.keyword > i", "(keyword)")
+assert-text: (".result-name span.keyword", "CookieMonster (keyword)")

@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/capture-analysis-1.rs:17:13
+  --> $DIR/capture-analysis-1.rs:15:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,17 +7,8 @@ LL |     let c = #[rustc_capture_analysis]
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/capture-analysis-1.rs:1:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
-
 error: First Pass analysis includes:
-  --> $DIR/capture-analysis-1.rs:20:5
+  --> $DIR/capture-analysis-1.rs:18:5
    |
 LL | /     || {
 LL | |
@@ -29,28 +20,28 @@ LL | |     };
    | |_____^
    |
 note: Capturing p[] -> ImmBorrow
-  --> $DIR/capture-analysis-1.rs:23:26
+  --> $DIR/capture-analysis-1.rs:21:26
    |
 LL |         println!("{:?}", p);
    |                          ^
 note: Capturing p[(0, 0)] -> ImmBorrow
-  --> $DIR/capture-analysis-1.rs:26:26
+  --> $DIR/capture-analysis-1.rs:24:26
    |
 LL |         println!("{:?}", p.x);
    |                          ^^^
 note: Capturing q[(0, 0)] -> ImmBorrow
-  --> $DIR/capture-analysis-1.rs:29:26
+  --> $DIR/capture-analysis-1.rs:27:26
    |
 LL |         println!("{:?}", q.x);
    |                          ^^^
 note: Capturing q[] -> ImmBorrow
-  --> $DIR/capture-analysis-1.rs:31:26
+  --> $DIR/capture-analysis-1.rs:29:26
    |
 LL |         println!("{:?}", q);
    |                          ^
 
 error: Min Capture analysis includes:
-  --> $DIR/capture-analysis-1.rs:20:5
+  --> $DIR/capture-analysis-1.rs:18:5
    |
 LL | /     || {
 LL | |
@@ -62,16 +53,16 @@ LL | |     };
    | |_____^
    |
 note: Min Capture p[] -> ImmBorrow
-  --> $DIR/capture-analysis-1.rs:23:26
+  --> $DIR/capture-analysis-1.rs:21:26
    |
 LL |         println!("{:?}", p);
    |                          ^
 note: Min Capture q[] -> ImmBorrow
-  --> $DIR/capture-analysis-1.rs:31:26
+  --> $DIR/capture-analysis-1.rs:29:26
    |
 LL |         println!("{:?}", q);
    |                          ^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

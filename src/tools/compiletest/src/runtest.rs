@@ -778,6 +778,14 @@ impl<'test> TestCx<'test> {
         script_str.push_str("version\n"); // List CDB (and more) version info in test output
         script_str.push_str(".nvlist\n"); // List loaded `*.natvis` files, bulk of custom MSVC debug
 
+        // If a .js file exists next to the source file being tested, then this is a JavaScript
+        // debugging extension that needs to be loaded.
+        let mut js_extension = self.testpaths.file.clone();
+        js_extension.set_extension("cdb.js");
+        if js_extension.exists() {
+            script_str.push_str(&format!(".scriptload \"{}\"\n", js_extension.to_string_lossy()));
+        }
+
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap().to_string_lossy();
         for line in &breakpoint_lines {
@@ -1785,6 +1793,9 @@ impl<'test> TestCx<'test> {
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
+        if !self.props.aux_crates.is_empty() {
+            rustc.arg("-Zunstable-options");
+        }
 
         aux_dir
     }
@@ -2326,13 +2337,17 @@ impl<'test> TestCx<'test> {
         // useful flag.
         //
         // For now, though…
-        if let Some(rev) = self.revision {
-            let prefixes = format!("CHECK,{}", rev);
-            if self.config.llvm_version.unwrap_or(0) >= 130000 {
-                filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
-            } else {
-                filecheck.args(&["--check-prefixes", &prefixes]);
-            }
+        let prefix_for_target =
+            if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
+        let prefixes = if let Some(rev) = self.revision {
+            format!("CHECK,{},{}", prefix_for_target, rev)
+        } else {
+            format!("CHECK,{}", prefix_for_target)
+        };
+        if self.config.llvm_version.unwrap_or(0) >= 130000 {
+            filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
+        } else {
+            filecheck.args(&["--check-prefixes", &prefixes]);
         }
         self.compose_and_run(filecheck, "", None, None)
     }
@@ -2488,6 +2503,7 @@ impl<'test> TestCx<'test> {
 
         {
             let mut diff_output = File::create(&diff_filename).unwrap();
+            let mut wrote_data = false;
             for entry in walkdir::WalkDir::new(out_dir) {
                 let entry = entry.expect("failed to read file");
                 let extension = entry.path().extension().and_then(|p| p.to_str());
@@ -2500,16 +2516,27 @@ impl<'test> TestCx<'test> {
                         if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
                     let actual_path = entry.path();
                     let actual = std::fs::read(&actual_path).unwrap();
-                    diff_output
-                        .write_all(&unified_diff::diff(
-                            &expected,
-                            &expected_path.to_string_lossy(),
-                            &actual,
-                            &actual_path.to_string_lossy(),
-                            3,
-                        ))
-                        .unwrap();
+                    let diff = unified_diff::diff(
+                        &expected,
+                        &expected_path.to_string_lossy(),
+                        &actual,
+                        &actual_path.to_string_lossy(),
+                        3,
+                    );
+                    wrote_data |= !diff.is_empty();
+                    diff_output.write_all(&diff).unwrap();
                 }
+            }
+
+            if !wrote_data {
+                println!("note: diff is identical to nightly rustdoc");
+                assert!(diff_output.metadata().unwrap().len() == 0);
+                return;
+            } else if self.config.verbose {
+                eprintln!("printing diff:");
+                let mut buf = Vec::new();
+                diff_output.read_to_end(&mut buf).unwrap();
+                std::io::stderr().lock().write_all(&mut buf).unwrap();
             }
         }
 
@@ -3313,8 +3340,11 @@ impl<'test> TestCx<'test> {
                 },
             )
             .unwrap();
-            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).unwrap_or_else(|_| {
-                panic!("failed to apply suggestions for {:?} with rustfix", self.testpaths.file)
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).unwrap_or_else(|e| {
+                panic!(
+                    "failed to apply suggestions for {:?} with rustfix: {}",
+                    self.testpaths.file, e
+                )
             });
 
             errors += self.compare_output("fixed", &fixed_code, &expected_fixed);

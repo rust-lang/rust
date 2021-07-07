@@ -1,8 +1,8 @@
 error: values of the type `[u8; 18446744073709551615]` are too big for the current architecture
-  --> $DIR/issue-69485-var-size-diffs-too-large.rs:6:12
+  --> $DIR/issue-69485-var-size-diffs-too-large.rs:6:5
    |
 LL |     Bug::V([0; !0]);
-   |            ^^^^^^^
+   |     ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

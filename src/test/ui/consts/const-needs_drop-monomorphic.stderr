@@ -1,0 +1,20 @@
+error[E0599]: no function or associated item named `assert` found for struct `Bool<{ std::mem::needs_drop::<T>() }>` in the current scope
+  --> $DIR/const-needs_drop-monomorphic.rs:11:46
+   |
+LL | struct Bool<const B: bool> {}
+   | -------------------------- function or associated item `assert` not found for this
+...
+LL |     Bool::<{ std::mem::needs_drop::<T>() }>::assert();
+   |                                              ^^^^^^ function or associated item cannot be called on `Bool<{ std::mem::needs_drop::<T>() }>` due to unsatisfied trait bounds
+
+error: constant expression depends on a generic parameter
+  --> $DIR/const-needs_drop-monomorphic.rs:11:5
+   |
+LL |     Bool::<{ std::mem::needs_drop::<T>() }>::assert();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

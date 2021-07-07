@@ -6,5 +6,5 @@
 
 fn main() {
     let r#dyn = (); //~ ERROR dyn
-    //~^ WARN hard error in the 2018 edition
+    //~^ WARN this is accepted in the current edition
 }

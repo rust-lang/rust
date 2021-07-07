@@ -136,11 +136,11 @@ pub fn print_crate<'a>(
     s.s.eof()
 }
 
-// This makes printed token streams look slightly nicer,
-// and also addresses some specific regressions described in #63896 and #73345.
+/// This makes printed token streams look slightly nicer,
+/// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token) = prev {
-        if matches!(token.kind, token::Dot) {
+        if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
         if let token::DocComment(comment_kind, ..) = token.kind {
@@ -367,6 +367,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
+    }
+
+    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) {
+        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
     }
 
     fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) {
@@ -1713,11 +1717,16 @@ impl<'a> State<'a> {
 
     fn print_expr_struct(
         &mut self,
+        qself: &Option<ast::QSelf>,
         path: &ast::Path,
         fields: &[ast::ExprField],
         rest: &ast::StructRest,
     ) {
-        self.print_path(path, true, 0);
+        if let Some(qself) = qself {
+            self.print_qpath(path, qself, true);
+        } else {
+            self.print_path(path, true, 0);
+        }
         self.s.word("{");
         self.commasep_cmnt(
             Consistent,
@@ -1874,7 +1883,7 @@ impl<'a> State<'a> {
                 self.print_expr_repeat(element, count);
             }
             ast::ExprKind::Struct(ref se) => {
-                self.print_expr_struct(&se.path, &se.fields, &se.rest);
+                self.print_expr_struct(&se.qself, &se.path, &se.fields, &se.rest);
             }
             ast::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(exprs);
@@ -1945,7 +1954,6 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 self.head("loop");
-                self.s.space();
                 self.print_block_with_attrs(blk, attrs);
             }
             ast::ExprKind::Match(ref expr, ref arms) => {
@@ -1955,6 +1963,7 @@ impl<'a> State<'a> {
                 self.print_expr_as_cond(expr);
                 self.s.space();
                 self.bopen();
+                self.print_inner_attributes_no_trailing_hardbreak(attrs);
                 for arm in arms {
                     self.print_arm(arm);
                 }
@@ -2274,6 +2283,9 @@ impl<'a> State<'a> {
                 if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
                     options.push("att_syntax");
                 }
+                if opts.contains(InlineAsmOptions::RAW) {
+                    options.push("raw");
+                }
                 s.commasep(Inconsistent, &options, |s, &opt| {
                     s.word(opt);
                 });
@@ -2340,8 +2352,12 @@ impl<'a> State<'a> {
                     self.print_pat(p);
                 }
             }
-            PatKind::TupleStruct(ref path, ref elts) => {
-                self.print_path(path, true, 0);
+            PatKind::TupleStruct(ref qself, ref path, ref elts) => {
+                if let Some(qself) = qself {
+                    self.print_qpath(path, qself, true);
+                } else {
+                    self.print_path(path, true, 0);
+                }
                 self.popen();
                 self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.pclose();
@@ -2355,8 +2371,12 @@ impl<'a> State<'a> {
             PatKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false);
             }
-            PatKind::Struct(ref path, ref fields, etc) => {
-                self.print_path(path, true, 0);
+            PatKind::Struct(ref qself, ref path, ref fields, etc) => {
+                if let Some(qself) = qself {
+                    self.print_qpath(path, qself, true);
+                } else {
+                    self.print_path(path, true, 0);
+                }
                 self.nbsp();
                 self.word_space("{");
                 self.commasep_cmnt(

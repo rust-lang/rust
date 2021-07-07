@@ -58,7 +58,7 @@ RUN curl https://www.busybox.net/downloads/busybox-1.32.1.tar.bz2 | tar xjf - &&
 # Download the ubuntu rootfs, which we'll use as a chroot for all our tests.
 WORKDIR /tmp
 RUN mkdir rootfs/ubuntu
-RUN curl http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.1-base-armhf.tar.gz | \
+RUN curl https://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.1-base-armhf.tar.gz | \
       tar xzf - -C rootfs/ubuntu && \
       cd rootfs && mkdir proc sys dev etc etc/init.d
 

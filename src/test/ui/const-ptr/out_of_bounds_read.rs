@@ -1,4 +1,4 @@
-// error-pattern: any use of this value will cause an error
+// error-pattern: evaluation of constant value failed
 
 #![feature(const_ptr_read)]
 #![feature(const_ptr_offset)]

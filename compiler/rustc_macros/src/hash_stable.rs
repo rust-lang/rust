@@ -54,7 +54,7 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
             quote! {}
         } else if let Some(project) = attrs.project {
             quote! {
-                &#bi.#project.hash_stable(__hcx, __hasher);
+                (&#bi.#project).hash_stable(__hcx, __hasher);
             }
         } else {
             quote! {
@@ -96,7 +96,7 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
             quote! {}
         } else if let Some(project) = attrs.project {
             quote! {
-                &#bi.#project.hash_stable(__hcx, __hasher);
+                (&#bi.#project).hash_stable(__hcx, __hasher);
             }
         } else {
             quote! {

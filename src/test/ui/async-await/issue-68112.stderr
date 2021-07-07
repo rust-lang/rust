@@ -41,14 +41,14 @@ LL |     require_send(send_fut);
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: required because of the requirements on the impl of `Send` for `Arc<RefCell<i32>>`
-   = note: required because it appears within the type `[static generator@$DIR/issue-68112.rs:47:31: 47:36 {}]`
-   = note: required because it appears within the type `from_generator::GenFuture<[static generator@$DIR/issue-68112.rs:47:31: 47:36 {}]>`
+   = note: required because it appears within the type `[static generator@$DIR/issue-68112.rs:47:31: 47:36]`
+   = note: required because it appears within the type `from_generator::GenFuture<[static generator@$DIR/issue-68112.rs:47:31: 47:36]>`
    = note: required because it appears within the type `impl Future`
    = note: required because it appears within the type `impl Future`
    = note: required because it appears within the type `impl Future`
    = note: required because it appears within the type `{ResumeTy, impl Future, (), i32, Ready<i32>}`
-   = note: required because it appears within the type `[static generator@$DIR/issue-68112.rs:55:26: 59:6 {ResumeTy, impl Future, (), i32, Ready<i32>}]`
-   = note: required because it appears within the type `from_generator::GenFuture<[static generator@$DIR/issue-68112.rs:55:26: 59:6 {ResumeTy, impl Future, (), i32, Ready<i32>}]>`
+   = note: required because it appears within the type `[static generator@$DIR/issue-68112.rs:55:26: 59:6]`
+   = note: required because it appears within the type `from_generator::GenFuture<[static generator@$DIR/issue-68112.rs:55:26: 59:6]>`
    = note: required because it appears within the type `impl Future`
 
 error: aborting due to 3 previous errors

@@ -18,7 +18,7 @@ prefix. You can display these options by running:
 
     $ sudo ./install.sh --help
 
-Read [The Book](http://doc.rust-lang.org/book/index.html) to learn how
+Read [The Book](https://doc.rust-lang.org/book/index.html) to learn how
 to use Rust.
 
 Rust is primarily distributed under the terms of both the MIT license

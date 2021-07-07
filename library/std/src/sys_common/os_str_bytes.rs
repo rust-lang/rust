@@ -2,36 +2,45 @@
 //! systems: just a `Vec<u8>`/`[u8]`.
 
 use crate::borrow::Cow;
-use crate::ffi::{OsStr, OsString};
 use crate::fmt;
+use crate::fmt::Write;
 use crate::mem;
 use crate::rc::Rc;
-use crate::sealed::Sealed;
 use crate::str;
 use crate::sync::Arc;
-use crate::sys_common::bytestring::debug_fmt_bytestring;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, IntoInner};
 
-use core::str::lossy::Utf8Lossy;
+use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Hash)]
-pub(crate) struct Buf {
+#[repr(transparent)]
+pub struct Buf {
     pub inner: Vec<u8>,
 }
 
-// FIXME:
-// `Buf::as_slice` current implementation relies
-// on `Slice` being layout-compatible with `[u8]`.
-// When attribute privacy is implemented, `Slice` should be annotated as `#[repr(transparent)]`.
-// Anyway, `Slice` representation and layout are considered implementation detail, are
-// not documented and must not be relied upon.
-pub(crate) struct Slice {
+#[repr(transparent)]
+pub struct Slice {
     pub inner: [u8],
 }
 
 impl fmt::Debug for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        debug_fmt_bytestring(&self.inner, formatter)
+        // Writes out a valid unicode string with the correct escape sequences
+
+        formatter.write_str("\"")?;
+        for Utf8LossyChunk { valid, broken } in Utf8Lossy::from_bytes(&self.inner).chunks() {
+            for c in valid.chars().flat_map(|c| c.escape_debug()) {
+                formatter.write_char(c)?
+            }
+
+            for b in broken {
+                write!(formatter, "\\x{:02X}", b)?;
+            }
+        }
+        formatter.write_str("\"")
     }
 }
 
@@ -241,65 +250,5 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
-    }
-}
-
-/// Platform-specific extensions to [`OsString`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStringExt: Sealed {
-    /// Creates an [`OsString`] from a byte vector.
-    ///
-    /// See the module documentation for an example.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_vec(vec: Vec<u8>) -> Self;
-
-    /// Yields the underlying byte vector of this [`OsString`].
-    ///
-    /// See the module documentation for an example.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn into_vec(self) -> Vec<u8>;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl OsStringExt for OsString {
-    fn from_vec(vec: Vec<u8>) -> OsString {
-        FromInner::from_inner(Buf { inner: vec })
-    }
-    fn into_vec(self) -> Vec<u8> {
-        self.into_inner().inner
-    }
-}
-
-/// Platform-specific extensions to [`OsStr`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStrExt: Sealed {
-    #[stable(feature = "rust1", since = "1.0.0")]
-    /// Creates an [`OsStr`] from a byte slice.
-    ///
-    /// See the module documentation for an example.
-    fn from_bytes(slice: &[u8]) -> &Self;
-
-    /// Gets the underlying byte view of the [`OsStr`] slice.
-    ///
-    /// See the module documentation for an example.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn as_bytes(&self) -> &[u8];
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl OsStrExt for OsStr {
-    #[inline]
-    fn from_bytes(slice: &[u8]) -> &OsStr {
-        unsafe { mem::transmute(slice) }
-    }
-    #[inline]
-    fn as_bytes(&self) -> &[u8] {
-        &self.as_inner().inner
     }
 }

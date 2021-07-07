@@ -514,7 +514,7 @@ impl File {
                 }
                 _ => {
                     return Err(io::Error::new_const(
-                        io::ErrorKind::Other,
+                        io::ErrorKind::Uncategorized,
                         &"Unsupported reparse point type",
                     ));
                 }
@@ -961,9 +961,8 @@ pub fn try_exists(path: &Path) -> io::Result<bool> {
             // `ERROR_SHARING_VIOLATION` means that the file has been locked by
             // another process. This is often temporary so we simply report it
             // as the file existing.
-            io::ErrorKind::Other if e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as i32) => {
-                Ok(true)
-            }
+            _ if e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as i32) => Ok(true),
+
             // Other errors such as `ERROR_ACCESS_DENIED` may indicate that the
             // file exists. However, these types of errors are usually more
             // permanent so we report them here.

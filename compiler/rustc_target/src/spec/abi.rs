@@ -8,16 +8,11 @@ mod tests;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Abi {
-    // Multiplatform / generic ABIs
-    //
-    // These ABIs come first because every time we add a new ABI, we
-    // have to re-bless all the hashing tests. These are used in many
-    // places, so giving them stable values reduces test churn. The
-    // specific values are meaningless.
+    // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all the
+    // hashing tests. These are used in many places, so giving them stable values reduces test
+    // churn. The specific values are meaningless.
     Rust,
     C { unwind: bool },
-
-    // Single platform ABIs
     Cdecl,
     Stdcall { unwind: bool },
     Fastcall,
@@ -35,8 +30,6 @@ pub enum Abi {
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
     Wasm,
-
-    // Multiplatform / generic ABIs
     System { unwind: bool },
     RustIntrinsic,
     RustCall,
@@ -50,48 +43,38 @@ pub struct AbiData {
 
     /// Name of this ABI as we like it called.
     name: &'static str,
-
-    /// A generic ABI is supported on all platforms.
-    generic: bool,
 }
 
 #[allow(non_upper_case_globals)]
 const AbiDatas: &[AbiData] = &[
-    // Cross-platform ABIs
-    AbiData { abi: Abi::Rust, name: "Rust", generic: true },
-    AbiData { abi: Abi::C { unwind: false }, name: "C", generic: true },
-    AbiData { abi: Abi::C { unwind: true }, name: "C-unwind", generic: true },
-    // Platform-specific ABIs
-    AbiData { abi: Abi::Cdecl, name: "cdecl", generic: false },
-    AbiData { abi: Abi::Stdcall { unwind: false }, name: "stdcall", generic: false },
-    AbiData { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind", generic: false },
-    AbiData { abi: Abi::Fastcall, name: "fastcall", generic: false },
-    AbiData { abi: Abi::Vectorcall, name: "vectorcall", generic: false },
-    AbiData { abi: Abi::Thiscall { unwind: false }, name: "thiscall", generic: false },
-    AbiData { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind", generic: false },
-    AbiData { abi: Abi::Aapcs, name: "aapcs", generic: false },
-    AbiData { abi: Abi::Win64, name: "win64", generic: false },
-    AbiData { abi: Abi::SysV64, name: "sysv64", generic: false },
-    AbiData { abi: Abi::PtxKernel, name: "ptx-kernel", generic: false },
-    AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt", generic: false },
-    AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt", generic: false },
-    AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel", generic: false },
-    AbiData { abi: Abi::EfiApi, name: "efiapi", generic: false },
-    AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt", generic: false },
-    AbiData {
-        abi: Abi::AvrNonBlockingInterrupt,
-        name: "avr-non-blocking-interrupt",
-        generic: false,
-    },
-    AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call", generic: false },
-    AbiData { abi: Abi::Wasm, name: "wasm", generic: false },
-    // Cross-platform ABIs
-    AbiData { abi: Abi::System { unwind: false }, name: "system", generic: true },
-    AbiData { abi: Abi::System { unwind: true }, name: "system-unwind", generic: true },
-    AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic", generic: true },
-    AbiData { abi: Abi::RustCall, name: "rust-call", generic: true },
-    AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic", generic: true },
-    AbiData { abi: Abi::Unadjusted, name: "unadjusted", generic: true },
+    AbiData { abi: Abi::Rust, name: "Rust" },
+    AbiData { abi: Abi::C { unwind: false }, name: "C" },
+    AbiData { abi: Abi::C { unwind: true }, name: "C-unwind" },
+    AbiData { abi: Abi::Cdecl, name: "cdecl" },
+    AbiData { abi: Abi::Stdcall { unwind: false }, name: "stdcall" },
+    AbiData { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind" },
+    AbiData { abi: Abi::Fastcall, name: "fastcall" },
+    AbiData { abi: Abi::Vectorcall, name: "vectorcall" },
+    AbiData { abi: Abi::Thiscall { unwind: false }, name: "thiscall" },
+    AbiData { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind" },
+    AbiData { abi: Abi::Aapcs, name: "aapcs" },
+    AbiData { abi: Abi::Win64, name: "win64" },
+    AbiData { abi: Abi::SysV64, name: "sysv64" },
+    AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
+    AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
+    AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
+    AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel" },
+    AbiData { abi: Abi::EfiApi, name: "efiapi" },
+    AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
+    AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
+    AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call" },
+    AbiData { abi: Abi::Wasm, name: "wasm" },
+    AbiData { abi: Abi::System { unwind: false }, name: "system" },
+    AbiData { abi: Abi::System { unwind: true }, name: "system-unwind" },
+    AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
+    AbiData { abi: Abi::RustCall, name: "rust-call" },
+    AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
+    AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
 ];
 
 /// Returns the ABI with the given name (if any).
@@ -162,10 +145,6 @@ impl Abi {
 
     pub fn name(self) -> &'static str {
         self.data().name
-    }
-
-    pub fn generic(self) -> bool {
-        self.data().generic
     }
 }
 

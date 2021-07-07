@@ -1,7 +1,8 @@
-// ignore-windows pretty-printers are not loaded
+// pretty-printers are not loaded
 // compile-flags:-g
 
 // min-gdb-version: 8.1
+// min-cdb-version: 10.0.18317.1001
 
 // === GDB TESTS ==================================================================================
 
@@ -21,6 +22,29 @@
 // lldb-check:[...]$0 = strong=2, weak=1 { value = 42 }
 // lldb-command:print a
 // lldb-check:[...]$1 = strong=2, weak=1 { data = 42 }
+
+// === CDB TESTS ==================================================================================
+
+// cdb-command:g
+
+// cdb-command:dx r,d
+// cdb-check:r,d              : 42 [Type: alloc::rc::Rc<i32>]
+
+// cdb-command:dx r1,d
+// cdb-check:r1,d             : 42 [Type: alloc::rc::Rc<i32>]
+
+// cdb-command:dx w1,d
+// cdb-check:w1,d             [Type: alloc::rc::Weak<i32>]
+// cdb-check:    [...] ptr              : [...] [Type: core::ptr::non_null::NonNull<alloc::rc::RcBox<i32> >]
+
+// cdb-command:dx a,d
+// cdb-check:a,d              : 42 [Type: alloc::sync::Arc<i32>]
+
+// cdb-command:dx a1,d
+// cdb-check:a1,d             : 42 [Type: alloc::sync::Arc<i32>]
+
+// cdb-command:dx w2,d
+// cdb-check:w2,d             : 42 [Type: alloc::sync::Weak<i32>]
 
 use std::rc::Rc;
 use std::sync::Arc;

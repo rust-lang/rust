@@ -880,8 +880,7 @@ impl OpenOptions {
     /// This function will return an error under a number of different
     /// circumstances. Some of these error conditions are listed here, together
     /// with their [`io::ErrorKind`]. The mapping to [`io::ErrorKind`]s is not
-    /// part of the compatibility contract of the function, especially the
-    /// [`Other`] kind might change to more specific kinds in the future.
+    /// part of the compatibility contract of the function.
     ///
     /// * [`NotFound`]: The specified file does not exist and neither `create`
     ///   or `create_new` is set.
@@ -895,9 +894,11 @@ impl OpenOptions {
     ///   exists.
     /// * [`InvalidInput`]: Invalid combinations of open options (truncate
     ///   without write access, no access mode set, etc.).
-    /// * [`Other`]: One of the directory components of the specified file path
+    ///
+    /// The following errors don't match any existing [`io::ErrorKind`] at the moment:
+    /// * One of the directory components of the specified file path
     ///   was not, in fact, a directory.
-    /// * [`Other`]: Filesystem-level errors: full disk, write permission
+    /// * Filesystem-level errors: full disk, write permission
     ///   requested on a read-only file system, exceeded disk quota, too many
     ///   open files, too long filename, too many symbolic links in the
     ///   specified path (Unix-like systems only), etc.
@@ -913,7 +914,6 @@ impl OpenOptions {
     /// [`AlreadyExists`]: io::ErrorKind::AlreadyExists
     /// [`InvalidInput`]: io::ErrorKind::InvalidInput
     /// [`NotFound`]: io::ErrorKind::NotFound
-    /// [`Other`]: io::ErrorKind::Other
     /// [`PermissionDenied`]: io::ErrorKind::PermissionDenied
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
@@ -1005,6 +1005,32 @@ impl Metadata {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_file(&self) -> bool {
         self.file_type().is_file()
+    }
+
+    /// Returns `true` if this metadata is for a symbolic link.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(unix, doc = "```no_run")]
+    #[cfg_attr(not(unix), doc = "```ignore")]
+    /// #![feature(is_symlink)]
+    /// use std::fs;
+    /// use std::path::Path;
+    /// use std::os::unix::fs::symlink;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let link_path = Path::new("link");
+    ///     symlink("/origin_does_not_exists/", link_path)?;
+    ///
+    ///     let metadata = fs::symlink_metadata(link_path)?;
+    ///
+    ///     assert!(metadata.is_symlink());
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "is_symlink", issue = "85748")]
+    pub fn is_symlink(&self) -> bool {
+        self.file_type().is_symlink()
     }
 
     /// Returns the size of the file, in bytes, this metadata is for.
@@ -1525,7 +1551,6 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "delete")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::unlink(path.as_ref())
@@ -1960,7 +1985,6 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "delete")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::rmdir(path.as_ref())
@@ -1998,7 +2022,6 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "delete")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::remove_dir_all(path.as_ref())
@@ -2190,7 +2213,7 @@ impl DirBuilder {
             Some(p) => self.create_dir_all(p)?,
             None => {
                 return Err(io::Error::new_const(
-                    io::ErrorKind::Other,
+                    io::ErrorKind::Uncategorized,
                     &"failed to create whole tree",
                 ));
             }

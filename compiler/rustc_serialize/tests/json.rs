@@ -437,7 +437,7 @@ fn test_decode_str() {
         ("\"\\uAB12\"", "\u{AB12}"),
     ];
 
-    for &(i, o) in &s {
+    for (i, o) in s {
         let v: string::String = json::decode(i).unwrap();
         assert_eq!(v, o);
     }

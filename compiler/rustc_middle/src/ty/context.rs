@@ -11,7 +11,7 @@ use crate::middle;
 use crate::middle::cstore::{CrateStoreDyn, EncodedMetadata};
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
+use crate::mir::interpret::{self, AllocId, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::thir::Thir;
 use crate::traits;
@@ -19,14 +19,14 @@ use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
-    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
-    DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid, GenericParamDefKind, InferConst,
-    InferTy, IntTy, IntVar, IntVid, List, MainDefinition, ParamConst, ParamTy, PolyFnSig,
-    Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind, ReprOptions,
-    TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
+    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
+    ClosureSizeProfileData, Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar,
+    FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
+    MainDefinition, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
+    ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
+    TyVid, TypeAndMut, UintTy, Visibility,
 };
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -43,7 +43,8 @@ use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    Constness, HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate,
+    Constness, ExprKind, HirId, ImplItemKind, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet,
+    Node, TraitCandidate, TraitItemKind,
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -52,7 +53,9 @@ use rustc_middle::ty::OpaqueTypeKey;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
+use rustc_session::Limit;
 use rustc_session::Session;
+use rustc_span::def_id::StableCrateId;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -391,6 +394,34 @@ pub struct TypeckResults<'tcx> {
     /// (including late-bound regions) are replaced with free
     /// equivalents. This table is not used in codegen (since regions
     /// are erased there) and hence is not serialized to metadata.
+    ///
+    /// This table also contains the "revealed" values for any `impl Trait`
+    /// that appear in the signature and whose values are being inferred
+    /// by this function.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// fn foo(x: &u32) -> impl Debug { *x }
+    /// ```
+    ///
+    /// The function signature here would be:
+    ///
+    /// ```
+    /// for<'a> fn(&'a u32) -> Foo
+    /// ```
+    ///
+    /// where `Foo` is an opaque type created for this function.
+    ///
+    ///
+    /// The *liberated* form of this would be
+    ///
+    /// ```
+    /// fn(&'a u32) -> u32
+    /// ```
+    ///
+    /// Note that `'a` is not bound (it would be an `ReFree`) and
+    /// that the `Foo` opaque type is replaced by its hidden type.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
     /// For each FRU expression, record the normalized types of the fields
@@ -454,6 +485,10 @@ pub struct TypeckResults<'tcx> {
     /// This hashset records all instances where we behave
     /// like this to allow `const_to_pat` to reliably handle this situation.
     pub treat_byte_string_as_slice: ItemLocalSet,
+
+    /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
+    /// on closure size.
+    pub closure_size_eval: FxHashMap<DefId, ClosureSizeProfileData<'tcx>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -480,6 +515,7 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             generator_interior_types: ty::Binder::dummy(Default::default()),
             treat_byte_string_as_slice: Default::default(),
+            closure_size_eval: Default::default(),
         }
     }
 
@@ -724,6 +760,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             ref closure_fake_reads,
             ref generator_interior_types,
             ref treat_byte_string_as_slice,
+            ref closure_size_eval,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -750,6 +787,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             closure_fake_reads.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
             treat_byte_string_as_slice.hash_stable(hcx, hasher);
+            closure_size_eval.hash_stable(hcx, hasher);
         })
     }
 }
@@ -1015,6 +1053,9 @@ pub struct GlobalCtxt<'tcx> {
     output_filenames: Arc<OutputFilenames>,
 
     pub main_def: Option<MainDefinition>,
+
+    pub(super) vtables_cache:
+        Lock<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), AllocId>>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -1172,6 +1213,7 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
             main_def: resolutions.main_def,
+            vtables_cache: Default::default(),
         }
     }
 
@@ -1226,14 +1268,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.stability_index(())
     }
 
-    pub fn crates(self) -> &'tcx [CrateNum] {
-        self.all_crate_nums(())
-    }
-
-    pub fn allocator_kind(self) -> Option<AllocatorKind> {
-        self.cstore.allocator_kind()
-    }
-
     pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(())
     }
@@ -1264,32 +1298,37 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn stable_crate_id(self, crate_num: CrateNum) -> StableCrateId {
+        if crate_num == LOCAL_CRATE {
+            self.sess.local_stable_crate_id()
+        } else {
+            self.cstore.stable_crate_id_untracked(crate_num)
+        }
+    }
+
     pub fn def_path_debug_str(self, def_id: DefId) -> String {
         // We are explicitly not going through queries here in order to get
-        // crate name and disambiguator since this code is called from debug!()
+        // crate name and stable crate id since this code is called from debug!()
         // statements within the query system and we'd run into endless
         // recursion otherwise.
-        let (crate_name, crate_disambiguator) = if def_id.is_local() {
-            (self.crate_name, self.sess.local_crate_disambiguator())
+        let (crate_name, stable_crate_id) = if def_id.is_local() {
+            (self.crate_name, self.sess.local_stable_crate_id())
         } else {
             (
                 self.cstore.crate_name_untracked(def_id.krate),
-                self.cstore.crate_disambiguator_untracked(def_id.krate),
+                self.def_path_hash(def_id.krate.as_def_id()).stable_crate_id(),
             )
         };
 
         format!(
             "{}[{}]{}",
             crate_name,
-            // Don't print the whole crate disambiguator. That's just
+            // Don't print the whole stable crate id. That's just
             // annoying in debug output.
-            &(crate_disambiguator.to_fingerprint().to_hex())[..4],
+            &(format!("{:08x}", stable_crate_id.to_u64()))[..4],
             self.def_path(def_id).to_string_no_crate_verbose()
         )
-    }
-
-    pub fn metadata_encoding_version(self) -> Vec<u8> {
-        self.cstore.metadata_encoding_version().to_vec()
     }
 
     pub fn encode_metadata(self) -> EncodedMetadata {
@@ -1468,18 +1507,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
-        // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
+        // `type_of()` will fail on these (#55796, #86483), so only allow `fn`s or closures.
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
         match self.hir().get(hir_id) {
-            Node::Item(item) => {
-                match item.kind {
-                    ItemKind::Fn(..) => { /* `type_of_def_id()` will work */ }
-                    _ => {
-                        return None;
-                    }
-                }
-            }
-            _ => { /* `type_of_def_id()` will work or panic */ }
+            Node::Item(&hir::Item { kind: ItemKind::Fn(..), .. }) => {}
+            Node::TraitItem(&hir::TraitItem { kind: TraitItemKind::Fn(..), .. }) => {}
+            Node::ImplItem(&hir::ImplItem { kind: ImplItemKind::Fn(..), .. }) => {}
+            Node::Expr(&hir::Expr { kind: ExprKind::Closure(..), .. }) => {}
+            _ => return None,
         }
 
         let ret_ty = self.type_of(scope_def_id);
@@ -1538,6 +1573,22 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             def_kind => (def_kind.article(), def_kind.descr(def_id)),
         }
+    }
+
+    pub fn type_length_limit(self) -> Limit {
+        self.limits(()).type_length_limit
+    }
+
+    pub fn recursion_limit(self) -> Limit {
+        self.limits(()).recursion_limit
+    }
+
+    pub fn move_size_limit(self) -> Limit {
+        self.limits(()).move_size_limit
+    }
+
+    pub fn const_eval_limit(self) -> Limit {
+        self.limits(()).const_eval_limit
     }
 }
 
@@ -2793,7 +2844,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.stability().local_deprecation_entry(id)
     };
     providers.extern_mod_stmt_cnum = |tcx, id| tcx.extern_crate_map.get(&id).cloned();
-    providers.all_crate_nums = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
+    providers.crates = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
     providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {

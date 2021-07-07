@@ -27,8 +27,6 @@ enum ParsedNameDirective {
 /// the test.
 #[derive(Default)]
 pub struct EarlyProps {
-    pub ignore: bool,
-    pub should_fail: bool,
     pub aux: Vec<String>,
     pub aux_crate: Vec<(String, String)>,
     pub revisions: Vec<String>,
@@ -36,238 +34,22 @@ pub struct EarlyProps {
 
 impl EarlyProps {
     pub fn from_file(config: &Config, testfile: &Path) -> Self {
-        let file = File::open(testfile).unwrap();
+        let file = File::open(testfile).expect("open test file to parse earlyprops");
         Self::from_reader(config, testfile, file)
     }
 
     pub fn from_reader<R: Read>(config: &Config, testfile: &Path, rdr: R) -> Self {
         let mut props = EarlyProps::default();
-        let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
-        let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
-        let has_asm_support = util::has_asm_support(&config.target);
-        let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-        let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-        let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-        let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
-        let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-
-        iter_header(testfile, None, rdr, &mut |ln| {
-            // we should check if any only-<platform> exists and if it exists
-            // and does not matches the current platform, skip the test
-            if !props.ignore {
-                props.ignore = match config.parse_cfg_name_directive(ln, "ignore") {
-                    ParsedNameDirective::Match => true,
-                    ParsedNameDirective::NoMatch => props.ignore,
-                };
-
-                if config.has_cfg_prefix(ln, "only") {
-                    props.ignore = match config.parse_cfg_name_directive(ln, "only") {
-                        ParsedNameDirective::Match => props.ignore,
-                        ParsedNameDirective::NoMatch => true,
-                    };
-                }
-
-                if ignore_llvm(config, ln) {
-                    props.ignore = true;
-                }
-
-                if config.run_clang_based_tests_with.is_none()
-                    && config.parse_needs_matching_clang(ln)
-                {
-                    props.ignore = true;
-                }
-
-                if !has_asm_support && config.parse_name_directive(ln, "needs-asm-support") {
-                    props.ignore = true;
-                }
-
-                if !rustc_has_profiler_support && config.parse_needs_profiler_support(ln) {
-                    props.ignore = true;
-                }
-
-                if !config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled") {
-                    props.ignore = true;
-                }
-
-                if !rustc_has_sanitizer_support
-                    && config.parse_name_directive(ln, "needs-sanitizer-support")
-                {
-                    props.ignore = true;
-                }
-
-                if !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address") {
-                    props.ignore = true;
-                }
-
-                if !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak") {
-                    props.ignore = true;
-                }
-
-                if !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory") {
-                    props.ignore = true;
-                }
-
-                if !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread") {
-                    props.ignore = true;
-                }
-
-                if !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress") {
-                    props.ignore = true;
-                }
-
-                if config.target_panic == PanicStrategy::Abort
-                    && config.parse_name_directive(ln, "needs-unwind")
-                {
-                    props.ignore = true;
-                }
-
-                if config.target == "wasm32-unknown-unknown" && config.parse_check_run_results(ln) {
-                    props.ignore = true;
-                }
-
-                if config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln) {
-                    props.ignore = true;
-                }
-
-                if config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln) {
-                    props.ignore = true;
-                }
-
-                if config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln) {
-                    props.ignore = true;
-                }
-            }
-
+        iter_header(testfile, rdr, &mut |_, ln| {
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
             }
-
             if let Some(ac) = config.parse_aux_crate(ln) {
                 props.aux_crate.push(ac);
             }
-
             config.parse_and_update_revisions(ln, &mut props.revisions);
-
-            props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");
         });
-
         return props;
-
-        fn ignore_cdb(config: &Config, line: &str) -> bool {
-            if let Some(actual_version) = config.cdb_version {
-                if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
-                    let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
-                        panic!("couldn't parse version range: {:?}", min_version);
-                    });
-
-                    // Ignore if actual version is smaller than the minimum
-                    // required version
-                    return actual_version < min_version;
-                }
-            }
-            false
-        }
-
-        fn ignore_gdb(config: &Config, line: &str) -> bool {
-            if let Some(actual_version) = config.gdb_version {
-                if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
-                    let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
-                        .unwrap_or_else(|| {
-                            panic!("couldn't parse version range: {:?}", rest);
-                        });
-
-                    if start_ver != end_ver {
-                        panic!("Expected single GDB version")
-                    }
-                    // Ignore if actual version is smaller than the minimum
-                    // required version
-                    return actual_version < start_ver;
-                } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
-                    let (min_version, max_version) =
-                        extract_version_range(rest, extract_gdb_version).unwrap_or_else(|| {
-                            panic!("couldn't parse version range: {:?}", rest);
-                        });
-
-                    if max_version < min_version {
-                        panic!("Malformed GDB version range: max < min")
-                    }
-
-                    return actual_version >= min_version && actual_version <= max_version;
-                }
-            }
-            false
-        }
-
-        fn ignore_lldb(config: &Config, line: &str) -> bool {
-            if let Some(actual_version) = config.lldb_version {
-                if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
-                    let min_version = min_version.parse().unwrap_or_else(|e| {
-                        panic!(
-                            "Unexpected format of LLDB version string: {}\n{:?}",
-                            min_version, e
-                        );
-                    });
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    actual_version < min_version
-                } else {
-                    line.starts_with("rust-lldb") && !config.lldb_native_rust
-                }
-            } else {
-                false
-            }
-        }
-
-        fn ignore_llvm(config: &Config, line: &str) -> bool {
-            if config.system_llvm && line.starts_with("no-system-llvm") {
-                return true;
-            }
-            if let Some(needed_components) =
-                config.parse_name_value_directive(line, "needs-llvm-components")
-            {
-                let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
-                if let Some(missing_component) = needed_components
-                    .split_whitespace()
-                    .find(|needed_component| !components.contains(needed_component))
-                {
-                    if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
-                        panic!("missing LLVM component: {}", missing_component);
-                    }
-                    return true;
-                }
-            }
-            if let Some(actual_version) = config.llvm_version {
-                if let Some(rest) = line.strip_prefix("min-llvm-version:").map(str::trim) {
-                    let min_version = extract_llvm_version(rest).unwrap();
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    actual_version < min_version
-                } else if let Some(rest) =
-                    line.strip_prefix("min-system-llvm-version:").map(str::trim)
-                {
-                    let min_version = extract_llvm_version(rest).unwrap();
-                    // Ignore if using system LLVM and actual version
-                    // is smaller the minimum required version
-                    config.system_llvm && actual_version < min_version
-                } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim)
-                {
-                    // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
-                    let (v_min, v_max) = extract_version_range(rest, extract_llvm_version)
-                        .unwrap_or_else(|| {
-                            panic!("couldn't parse version range: {:?}", rest);
-                        });
-                    if v_max < v_min {
-                        panic!("Malformed LLVM version range: max < min")
-                    }
-                    // Ignore if version lies inside of range.
-                    actual_version >= v_min && actual_version <= v_max
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
     }
 }
 
@@ -427,7 +209,11 @@ impl TestProps {
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
 
-            iter_header(testfile, cfg, file, &mut |ln| {
+            iter_header(testfile, file, &mut |revision, ln| {
+                if revision.is_some() && revision != cfg {
+                    return;
+                }
+
                 if let Some(ep) = config.parse_error_pattern(ln) {
                     self.error_patterns.push(ep);
                 }
@@ -438,6 +224,9 @@ impl TestProps {
 
                 if let Some(edition) = config.parse_edition(ln) {
                     self.compile_flags.push(format!("--edition={}", edition));
+                    if edition == "2021" {
+                        self.compile_flags.push("-Zunstable-options".to_string());
+                    }
                 }
 
                 config.parse_and_update_revisions(ln, &mut self.revisions);
@@ -656,12 +445,12 @@ impl TestProps {
     }
 }
 
-fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn FnMut(&str)) {
+fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str)) {
     if testfile.is_dir() {
         return;
     }
 
-    let comment = if testfile.to_string_lossy().ends_with(".rs") { "//" } else { "#" };
+    let comment = if testfile.extension().map(|e| e == "rs") == Some(true) { "//" } else { "#" };
 
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
@@ -683,18 +472,12 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
             if let Some(close_brace) = ln.find(']') {
                 let open_brace = ln.find('[').unwrap();
                 let lncfg = &ln[open_brace + 1..close_brace];
-                let matches = match cfg {
-                    Some(s) => s == &lncfg[..],
-                    None => false,
-                };
-                if matches {
-                    it(ln[(close_brace + 1)..].trim_start());
-                }
+                it(Some(lncfg), ln[(close_brace + 1)..].trim_start());
             } else {
                 panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
             }
         } else if ln.starts_with(comment) {
-            it(ln[comment.len()..].trim_start());
+            it(None, ln[comment.len()..].trim_start());
         }
     }
 }
@@ -876,6 +659,7 @@ impl Config {
             name == util::get_arch(&self.target) ||             // architecture
             name == util::get_pointer_width(&self.target) ||    // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
+            name == self.channel ||                             // channel
             (self.target != self.host && name == "cross-compile") ||
             (name == "endian-big" && util::is_big_endian(&self.target)) ||
             (self.remote_test_client.is_some() && name == "remote") ||
@@ -1009,11 +793,12 @@ pub fn extract_llvm_version(version: &str) -> Option<u32> {
     Some(version)
 }
 
-// Takes a directive of the form "<version1> [- <version2>]",
-// returns the numeric representation of <version1> and <version2> as
-// tuple: (<version1> as u32, <version2> as u32)
-// If the <version2> part is omitted, the second component of the tuple
-// is the same as <version1>.
+/// Takes a directive of the form "<version1> [- <version2>]",
+/// returns the numeric representation of <version1> and <version2> as
+/// tuple: (<version1> as u32, <version2> as u32)
+///
+/// If the <version2> part is omitted, the second component of the tuple
+/// is the same as <version1>.
 fn extract_version_range<F>(line: &str, parse: F) -> Option<(u32, u32)>
 where
     F: Fn(&str) -> Option<u32>,
@@ -1038,4 +823,198 @@ where
     };
 
     Some((min, max))
+}
+
+pub fn make_test_description<R: Read>(
+    config: &Config,
+    name: test::TestName,
+    path: &Path,
+    src: R,
+    cfg: Option<&str>,
+) -> test::TestDesc {
+    let mut ignore = false;
+    let mut should_fail = false;
+
+    let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
+    let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
+    let has_asm_support = util::has_asm_support(&config.target);
+    let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    // for `-Z gcc-ld=lld`
+    let has_rust_lld = config
+        .compile_lib_path
+        .join("rustlib")
+        .join(&config.target)
+        .join("bin")
+        .join("gcc-ld")
+        .join(if config.host.contains("windows") { "ld.exe" } else { "ld" })
+        .exists();
+    iter_header(path, src, &mut |revision, ln| {
+        if revision.is_some() && revision != cfg {
+            return;
+        }
+        ignore = match config.parse_cfg_name_directive(ln, "ignore") {
+            ParsedNameDirective::Match => true,
+            ParsedNameDirective::NoMatch => ignore,
+        };
+        if config.has_cfg_prefix(ln, "only") {
+            ignore = match config.parse_cfg_name_directive(ln, "only") {
+                ParsedNameDirective::Match => ignore,
+                ParsedNameDirective::NoMatch => true,
+            };
+        }
+        ignore |= ignore_llvm(config, ln);
+        ignore |=
+            config.run_clang_based_tests_with.is_none() && config.parse_needs_matching_clang(ln);
+        ignore |= !has_asm_support && config.parse_name_directive(ln, "needs-asm-support");
+        ignore |= !rustc_has_profiler_support && config.parse_needs_profiler_support(ln);
+        ignore |= !config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled");
+        ignore |= !rustc_has_sanitizer_support
+            && config.parse_name_directive(ln, "needs-sanitizer-support");
+        ignore |= !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address");
+        ignore |= !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak");
+        ignore |= !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory");
+        ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
+        ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
+        ignore |= config.target_panic == PanicStrategy::Abort
+            && config.parse_name_directive(ln, "needs-unwind");
+        ignore |= config.target == "wasm32-unknown-unknown" && config.parse_check_run_results(ln);
+        ignore |= config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln);
+        ignore |= config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln);
+        ignore |= config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln);
+        ignore |= !has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld");
+        should_fail |= config.parse_name_directive(ln, "should-fail");
+    });
+
+    // The `should-fail` annotation doesn't apply to pretty tests,
+    // since we run the pretty printer across all tests by default.
+    // If desired, we could add a `should-fail-pretty` annotation.
+    let should_panic = match config.mode {
+        crate::common::Pretty => test::ShouldPanic::No,
+        _ if should_fail => test::ShouldPanic::Yes,
+        _ => test::ShouldPanic::No,
+    };
+
+    test::TestDesc {
+        name,
+        ignore,
+        should_panic,
+        allow_fail: false,
+        compile_fail: false,
+        no_run: false,
+        test_type: test::TestType::Unknown,
+    }
+}
+
+fn ignore_cdb(config: &Config, line: &str) -> bool {
+    if let Some(actual_version) = config.cdb_version {
+        if let Some(min_version) = line.strip_prefix("min-cdb-version:").map(str::trim) {
+            let min_version = extract_cdb_version(min_version).unwrap_or_else(|| {
+                panic!("couldn't parse version range: {:?}", min_version);
+            });
+
+            // Ignore if actual version is smaller than the minimum
+            // required version
+            return actual_version < min_version;
+        }
+    }
+    false
+}
+
+fn ignore_gdb(config: &Config, line: &str) -> bool {
+    if let Some(actual_version) = config.gdb_version {
+        if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
+            let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
+                .unwrap_or_else(|| {
+                    panic!("couldn't parse version range: {:?}", rest);
+                });
+
+            if start_ver != end_ver {
+                panic!("Expected single GDB version")
+            }
+            // Ignore if actual version is smaller than the minimum
+            // required version
+            return actual_version < start_ver;
+        } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
+            let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
+                .unwrap_or_else(|| {
+                    panic!("couldn't parse version range: {:?}", rest);
+                });
+
+            if max_version < min_version {
+                panic!("Malformed GDB version range: max < min")
+            }
+
+            return actual_version >= min_version && actual_version <= max_version;
+        }
+    }
+    false
+}
+
+fn ignore_lldb(config: &Config, line: &str) -> bool {
+    if let Some(actual_version) = config.lldb_version {
+        if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
+            let min_version = min_version.parse().unwrap_or_else(|e| {
+                panic!("Unexpected format of LLDB version string: {}\n{:?}", min_version, e);
+            });
+            // Ignore if actual version is smaller the minimum required
+            // version
+            actual_version < min_version
+        } else {
+            line.starts_with("rust-lldb") && !config.lldb_native_rust
+        }
+    } else {
+        false
+    }
+}
+
+fn ignore_llvm(config: &Config, line: &str) -> bool {
+    if config.system_llvm && line.starts_with("no-system-llvm") {
+        return true;
+    }
+    if let Some(needed_components) =
+        config.parse_name_value_directive(line, "needs-llvm-components")
+    {
+        let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
+        if let Some(missing_component) = needed_components
+            .split_whitespace()
+            .find(|needed_component| !components.contains(needed_component))
+        {
+            if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
+                panic!("missing LLVM component: {}", missing_component);
+            }
+            return true;
+        }
+    }
+    if let Some(actual_version) = config.llvm_version {
+        if let Some(rest) = line.strip_prefix("min-llvm-version:").map(str::trim) {
+            let min_version = extract_llvm_version(rest).unwrap();
+            // Ignore if actual version is smaller the minimum required
+            // version
+            actual_version < min_version
+        } else if let Some(rest) = line.strip_prefix("min-system-llvm-version:").map(str::trim) {
+            let min_version = extract_llvm_version(rest).unwrap();
+            // Ignore if using system LLVM and actual version
+            // is smaller the minimum required version
+            config.system_llvm && actual_version < min_version
+        } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim) {
+            // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
+            let (v_min, v_max) =
+                extract_version_range(rest, extract_llvm_version).unwrap_or_else(|| {
+                    panic!("couldn't parse version range: {:?}", rest);
+                });
+            if v_max < v_min {
+                panic!("Malformed LLVM version range: max < min")
+            }
+            // Ignore if version lies inside of range.
+            actual_version >= v_min && actual_version <= v_max
+        } else {
+            false
+        }
+    } else {
+        false
+    }
 }

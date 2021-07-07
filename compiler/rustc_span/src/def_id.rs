@@ -1,7 +1,6 @@
-use crate::crate_disambiguator::CrateDisambiguator;
 use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
@@ -127,26 +126,51 @@ impl Borrow<Fingerprint> for DefPathHash {
     }
 }
 
-/// A [StableCrateId] is a 64 bit hash of `(crate-name, crate-disambiguator)`. It
-/// is to [CrateNum] what [DefPathHash] is to [DefId]. It is stable across
-/// compilation sessions.
+/// A [StableCrateId] is a 64 bit hash of the crate name combined with all
+/// `-Cmetadata` arguments. It is to [CrateNum] what [DefPathHash] is to
+/// [DefId]. It is stable across compilation sessions.
 ///
 /// Since the ID is a hash value there is a (very small) chance that two crates
 /// end up with the same [StableCrateId]. The compiler will check for such
 /// collisions when loading crates and abort compilation in order to avoid
 /// further trouble.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub struct StableCrateId(u64);
 
 impl StableCrateId {
+    pub fn to_u64(self) -> u64 {
+        self.0
+    }
+
     /// Computes the stable ID for a crate with the given name and
-    /// disambiguator.
-    pub fn new(crate_name: &str, crate_disambiguator: CrateDisambiguator) -> StableCrateId {
+    /// `-Cmetadata` arguments.
+    pub fn new(crate_name: &str, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
         use std::hash::Hash;
+        use std::hash::Hasher;
 
         let mut hasher = StableHasher::new();
         crate_name.hash(&mut hasher);
-        crate_disambiguator.hash(&mut hasher);
+
+        // We don't want the stable crate id to dependent on the order
+        // -C metadata arguments, so sort them:
+        metadata.sort();
+        // Every distinct -C metadata value is only incorporated once:
+        metadata.dedup();
+
+        hasher.write(b"metadata");
+        for s in &metadata {
+            // Also incorporate the length of a metadata string, so that we generate
+            // different values for `-Cmetadata=ab -Cmetadata=c` and
+            // `-Cmetadata=a -Cmetadata=bc`
+            hasher.write_usize(s.len());
+            hasher.write(s.as_bytes());
+        }
+
+        // Also incorporate crate type, so that we don't get symbol conflicts when
+        // linking against a library of the same name, if this is an executable.
+        hasher.write(if is_exe { b"exe" } else { b"lib" });
+
         StableCrateId(hasher.finish())
     }
 }
@@ -308,13 +332,49 @@ impl<D: Decoder> Decodable<D> for LocalDefId {
 rustc_data_structures::define_id_collections!(LocalDefIdMap, LocalDefIdSet, LocalDefId);
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
+    #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        hcx.hash_def_id(*self, hasher)
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
+    #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        hcx.hash_crate_num(*self, hasher)
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        hcx.def_path_hash(*self)
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for LocalDefId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        hcx.def_path_hash(self.to_def_id())
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        self.as_def_id().to_stable_hash_key(hcx)
     }
 }

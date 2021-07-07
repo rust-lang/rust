@@ -11,7 +11,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(bool_to_option)]
-#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
@@ -336,15 +335,15 @@ impl UsePlacementFinder {
                     if self.span.map_or(true, |span| item.span < span)
                         && !item.span.from_expansion()
                     {
+                        self.span = Some(item.span.shrink_to_lo());
                         // don't insert between attributes and an item
-                        if item.attrs.is_empty() {
-                            self.span = Some(item.span.shrink_to_lo());
-                        } else {
-                            // find the first attribute on the item
-                            for attr in &item.attrs {
-                                if self.span.map_or(true, |span| attr.span < span) {
-                                    self.span = Some(attr.span.shrink_to_lo());
-                                }
+                        // find the first attribute on the item
+                        // FIXME: This is broken for active attributes.
+                        for attr in &item.attrs {
+                            if !attr.span.is_dummy()
+                                && self.span.map_or(true, |span| attr.span < span)
+                            {
+                                self.span = Some(attr.span.shrink_to_lo());
                             }
                         }
                     }
@@ -1198,7 +1197,7 @@ impl<'a> Resolver<'a> {
         session: &'a Session,
         krate: &Crate,
         crate_name: &str,
-        metadata_loader: &'a MetadataLoaderDyn,
+        metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a> {
         let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
@@ -1222,7 +1221,7 @@ impl<'a> Resolver<'a> {
         let mut module_map = FxHashMap::default();
         module_map.insert(root_local_def_id, graph_root);
 
-        let definitions = Definitions::new(crate_name, session.local_crate_disambiguator());
+        let definitions = Definitions::new(session.local_stable_crate_id());
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();

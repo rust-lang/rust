@@ -29,6 +29,7 @@ mod u8;
 mod bignum;
 mod dec2flt;
 mod flt2dec;
+mod int_log;
 mod ops;
 mod wrapping;
 

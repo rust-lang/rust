@@ -252,6 +252,10 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
 
+    fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
+        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
+    }
+
     fn read_lazy_with_meta<T: ?Sized + LazyMeta>(
         &mut self,
         meta: T::Meta,
@@ -322,10 +326,6 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
         self.opaque = old_opaque;
         self.lazy_state = old_state;
         r
-    }
-
-    fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
     }
 
     fn decode_alloc_id(&mut self) -> Result<rustc_middle::mir::interpret::AllocId, Self::Error> {
@@ -601,10 +601,23 @@ impl MetadataBlob {
     }
 
     crate fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
-        write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
+        writeln!(out, "Crate info:")?;
+        writeln!(out, "name {}{}", root.name, root.extra_filename)?;
+        writeln!(out, "hash {} stable_crate_id {:?}", root.hash, root.stable_crate_id)?;
+        writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
+        writeln!(out, "=External Dependencies=")?;
         for (i, dep) in root.crate_deps.decode(self).enumerate() {
-            write!(out, "{} {}{}\n", i + 1, dep.name, dep.extra_filename)?;
+            writeln!(
+                out,
+                "{} {}{} hash {} host_hash {:?} kind {:?}",
+                i + 1,
+                dep.name,
+                dep.extra_filename,
+                dep.hash,
+                dep.host_hash,
+                dep.kind
+            )?;
         }
         write!(out, "\n")?;
         Ok(())
@@ -618,10 +631,6 @@ impl CrateRoot<'_> {
 
     crate fn name(&self) -> Symbol {
         self.name
-    }
-
-    crate fn disambiguator(&self) -> CrateDisambiguator {
-        self.disambiguator
     }
 
     crate fn hash(&self) -> Svh {
@@ -1927,8 +1936,8 @@ impl CrateMetadata {
         self.root.name
     }
 
-    crate fn disambiguator(&self) -> CrateDisambiguator {
-        self.root.disambiguator
+    crate fn stable_crate_id(&self) -> StableCrateId {
+        self.root.stable_crate_id
     }
 
     crate fn hash(&self) -> Svh {

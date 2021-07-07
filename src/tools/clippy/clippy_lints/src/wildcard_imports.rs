@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::{in_macro, is_test_module_or_function};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -106,7 +106,7 @@ impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if is_test_module_or_function(item) {
+        if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
         if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
@@ -183,8 +183,8 @@ impl LateLintPass<'_> for WildcardImports {
         }
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
-        if is_test_module_or_function(item) {
+    fn check_item_post(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_sub(1);
         }
     }
@@ -207,8 +207,4 @@ fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
 // Allow "super::*" imports in tests.
 fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
     segments.len() == 1 && segments[0].ident.name == kw::Super
-}
-
-fn is_test_module_or_function(item: &Item<'_>) -> bool {
-    matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
 }

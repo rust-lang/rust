@@ -26,9 +26,12 @@ impl<'tcx> Cx<'tcx> {
             expr: block.expr.map(|expr| self.mirror_expr(expr)),
             safety_mode: match block.rules {
                 hir::BlockCheckMode::DefaultBlock => BlockSafety::Safe,
-                hir::BlockCheckMode::UnsafeBlock(..) => BlockSafety::ExplicitUnsafe(block.hir_id),
-                hir::BlockCheckMode::PushUnsafeBlock(..) => BlockSafety::PushUnsafe,
-                hir::BlockCheckMode::PopUnsafeBlock(..) => BlockSafety::PopUnsafe,
+                hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated) => {
+                    BlockSafety::BuiltinUnsafe
+                }
+                hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) => {
+                    BlockSafety::ExplicitUnsafe(block.hir_id)
+                }
             },
         }
     }

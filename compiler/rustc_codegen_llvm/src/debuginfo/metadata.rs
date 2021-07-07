@@ -1,4 +1,3 @@
-use self::EnumTagInfo::*;
 use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 
@@ -28,7 +27,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ich::NodeIdHashingMode;
-use rustc_middle::mir::{self, Field, GeneratorLayout};
+use rustc_middle::mir::{self, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::Instance;
@@ -471,21 +470,28 @@ fn trait_pointer_metadata(
     // type is assigned the correct name, size, namespace, and source location.
     // However, it does not describe the trait's methods.
 
-    let containing_scope = match trait_type.kind() {
-        ty::Dynamic(ref data, ..) => {
-            data.principal_def_id().map(|did| get_namespace_for_item(cx, did))
-        }
-        _ => {
-            bug!(
-                "debuginfo: unexpected trait-object type in \
-                  trait_pointer_metadata(): {:?}",
-                trait_type
-            );
-        }
-    };
+    let (containing_scope, trait_type_name) = match trait_object_type {
+        Some(trait_object_type) => match trait_object_type.kind() {
+            ty::Adt(def, _) => (
+                Some(get_namespace_for_item(cx, def.did)),
+                compute_debuginfo_type_name(cx.tcx, trait_object_type, false),
+            ),
+            ty::RawPtr(_) | ty::Ref(..) => {
+                (NO_SCOPE_METADATA, compute_debuginfo_type_name(cx.tcx, trait_object_type, true))
+            }
+            _ => {
+                bug!(
+                    "debuginfo: unexpected trait-object type in \
+                      trait_pointer_metadata(): {:?}",
+                    trait_object_type
+                );
+            }
+        },
 
-    let trait_object_type = trait_object_type.unwrap_or(trait_type);
-    let trait_type_name = compute_debuginfo_type_name(cx.tcx, trait_object_type, false);
+        // No object type, use the trait type directly (no scope here since the type
+        // will be wrapped in the dyn$ synthetic type).
+        None => (NO_SCOPE_METADATA, compute_debuginfo_type_name(cx.tcx, trait_type, true)),
+    };
 
     let file_metadata = unknown_file_metadata(cx);
 
@@ -525,7 +531,7 @@ fn trait_pointer_metadata(
 
     composite_type_metadata(
         cx,
-        trait_object_type,
+        trait_object_type.unwrap_or(trait_type),
         &trait_type_name[..],
         unique_type_id,
         member_descriptions,
@@ -1181,7 +1187,7 @@ enum MemberDescriptionFactory<'ll, 'tcx> {
     TupleMDF(TupleMemberDescriptionFactory<'tcx>),
     EnumMDF(EnumMemberDescriptionFactory<'ll, 'tcx>),
     UnionMDF(UnionMemberDescriptionFactory<'tcx>),
-    VariantMDF(VariantMemberDescriptionFactory<'ll, 'tcx>),
+    VariantMDF(VariantMemberDescriptionFactory<'tcx>),
 }
 
 impl MemberDescriptionFactory<'ll, 'tcx> {
@@ -1498,14 +1504,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 }
 
                 let variant_info = variant_info_for(index);
-                let (variant_type_metadata, member_description_factory) = describe_enum_variant(
-                    cx,
-                    self.layout,
-                    variant_info,
-                    None,
-                    self_metadata,
-                    self.span,
-                );
+                let (variant_type_metadata, member_description_factory) =
+                    describe_enum_variant(cx, self.layout, variant_info, self_metadata, self.span);
 
                 let member_descriptions = member_description_factory.create_member_descriptions(cx);
 
@@ -1517,7 +1517,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     Some(&self.common_members),
                 );
                 vec![MemberDescription {
-                    name: if fallback { String::new() } else { variant_info.variant_name() },
+                    name: variant_info.variant_name(),
                     type_metadata: variant_type_metadata,
                     offset: Size::ZERO,
                     size: self.layout.size,
@@ -1533,28 +1533,38 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 ref variants,
                 ..
             } => {
-                let tag_info = if fallback {
-                    // For MSVC, we generate a union of structs for each variant with an explicit
-                    // discriminant field roughly equivalent to the following C:
+                let fallback_discr_variant = if fallback {
+                    // For MSVC, we generate a union of structs for each variant and an
+                    // explicit discriminant field roughly equivalent to the following C:
                     // ```c
                     // union enum$<{name}> {
                     //   struct {variant 0 name} {
-                    //     tag$ variant$;
                     //     <variant 0 fields>
                     //   } variant0;
                     //   <other variant structs>
+                    //   {name} discriminant;
                     // }
                     // ```
-                    // The natvis in `intrinsic.nativs` then matches on `this.variant0.variant$` to
+                    // The natvis in `intrinsic.natvis` then matches on `this.discriminant` to
                     // determine which variant is active and then displays it.
-                    Some(DirectTag {
-                        tag_field: Field::from(tag_field),
-                        tag_type_metadata: self.tag_type_metadata.unwrap(),
+                    let enum_layout = self.layout;
+                    let offset = enum_layout.fields.offset(tag_field);
+                    let discr_ty = enum_layout.field(cx, tag_field).ty;
+                    let (size, align) = cx.size_and_align_of(discr_ty);
+                    Some(MemberDescription {
+                        name: "discriminant".into(),
+                        type_metadata: self.tag_type_metadata.unwrap(),
+                        offset,
+                        size,
+                        align,
+                        flags: DIFlags::FlagZero,
+                        discriminant: None,
+                        source_info: None,
                     })
                 } else {
-                    // This doesn't matter in this case.
                     None
                 };
+
                 variants
                     .iter_enumerated()
                     .map(|(i, _)| {
@@ -1564,7 +1574,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             cx,
                             variant,
                             variant_info,
-                            tag_info,
                             self_metadata,
                             self.span,
                         );
@@ -1598,6 +1607,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             source_info: variant_info.source_info(cx),
                         }
                     })
+                    .chain(fallback_discr_variant.into_iter())
                     .collect()
             }
             Variants::Multiple {
@@ -1695,7 +1705,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         cx,
                         dataful_variant_layout,
                         variant_info,
-                        Some(NicheTag),
                         self_metadata,
                         self.span,
                     );
@@ -1747,7 +1756,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                     cx,
                                     variant,
                                     variant_info,
-                                    Some(NicheTag),
                                     self_metadata,
                                     self.span,
                                 );
@@ -1784,51 +1792,33 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 }
 
 // Creates `MemberDescription`s for the fields of a single enum variant.
-struct VariantMemberDescriptionFactory<'ll, 'tcx> {
+struct VariantMemberDescriptionFactory<'tcx> {
     /// Cloned from the `layout::Struct` describing the variant.
     offsets: Vec<Size>,
     args: Vec<(String, Ty<'tcx>)>,
-    tag_type_metadata: Option<&'ll DIType>,
     span: Span,
 }
 
-impl VariantMemberDescriptionFactory<'ll, 'tcx> {
+impl VariantMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
         self.args
             .iter()
             .enumerate()
             .map(|(i, &(ref name, ty))| {
-                // Discriminant is always the first field of our variant
-                // when using the enum fallback.
-                let is_artificial_discr = use_enum_fallback(cx) && i == 0;
                 let (size, align) = cx.size_and_align_of(ty);
                 MemberDescription {
                     name: name.to_string(),
-                    type_metadata: if is_artificial_discr {
-                        self.tag_type_metadata.unwrap_or_else(|| type_metadata(cx, ty, self.span))
-                    } else {
-                        type_metadata(cx, ty, self.span)
-                    },
+                    type_metadata: type_metadata(cx, ty, self.span),
                     offset: self.offsets[i],
                     size,
                     align,
-                    flags: if is_artificial_discr {
-                        DIFlags::FlagArtificial
-                    } else {
-                        DIFlags::FlagZero
-                    },
+                    flags: DIFlags::FlagZero,
                     discriminant: None,
                     source_info: None,
                 }
             })
             .collect()
     }
-}
-
-#[derive(Copy, Clone)]
-enum EnumTagInfo<'ll> {
-    DirectTag { tag_field: Field, tag_type_metadata: &'ll DIType },
-    NicheTag,
 }
 
 #[derive(Copy, Clone)]
@@ -1909,7 +1899,6 @@ fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
     layout: layout::TyAndLayout<'tcx>,
     variant: VariantInfo<'_, 'tcx>,
-    discriminant_info: Option<EnumTagInfo<'ll>>,
     containing_scope: &'ll DIScope,
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
@@ -1928,50 +1917,13 @@ fn describe_enum_variant(
         )
     });
 
-    // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let (offsets, args) = if use_enum_fallback(cx) {
-        // If this is not a univariant enum, there is also the discriminant field.
-        let (discr_offset, discr_arg) = match discriminant_info {
-            Some(DirectTag { tag_field, .. }) => {
-                // We have the layout of an enum variant, we need the layout of the outer enum
-                let enum_layout = cx.layout_of(layout.ty);
-                let offset = enum_layout.fields.offset(tag_field.as_usize());
-                let args = ("variant$".to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
-                (Some(offset), Some(args))
-            }
-            _ => (None, None),
-        };
-        (
-            discr_offset
-                .into_iter()
-                .chain((0..layout.fields.count()).map(|i| layout.fields.offset(i)))
-                .collect(),
-            discr_arg
-                .into_iter()
-                .chain(
-                    (0..layout.fields.count())
-                        .map(|i| (variant.field_name(i), layout.field(cx, i).ty)),
-                )
-                .collect(),
-        )
-    } else {
-        (
-            (0..layout.fields.count()).map(|i| layout.fields.offset(i)).collect(),
-            (0..layout.fields.count())
-                .map(|i| (variant.field_name(i), layout.field(cx, i).ty))
-                .collect(),
-        )
-    };
+    let offsets = (0..layout.fields.count()).map(|i| layout.fields.offset(i)).collect();
+    let args = (0..layout.fields.count())
+        .map(|i| (variant.field_name(i), layout.field(cx, i).ty))
+        .collect();
 
-    let member_description_factory = VariantMDF(VariantMemberDescriptionFactory {
-        offsets,
-        args,
-        tag_type_metadata: match discriminant_info {
-            Some(DirectTag { tag_type_metadata, .. }) => Some(tag_type_metadata),
-            _ => None,
-        },
-        span,
-    });
+    let member_description_factory =
+        VariantMDF(VariantMemberDescriptionFactory { offsets, args, span });
 
     (metadata_stub, member_description_factory)
 }

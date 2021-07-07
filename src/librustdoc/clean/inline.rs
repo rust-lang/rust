@@ -13,9 +13,10 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
 
-use crate::clean::{self, Attributes, AttributesExt, FakeDefId, GetDefId, ToSource};
+use crate::clean::{
+    self, utils, Attributes, AttributesExt, GetDefId, ItemId, NestedAttributesExt, Type,
+};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
@@ -420,6 +421,21 @@ crate fn build_impl(
     if trait_.def_id() == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
+
+    // Return if the trait itself or any types of the generic parameters are doc(hidden).
+    let mut stack: Vec<&Type> = trait_.iter().collect();
+    stack.push(&for_);
+    while let Some(ty) = stack.pop() {
+        if let Some(did) = ty.def_id() {
+            if cx.tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
+                return;
+            }
+        }
+        if let Some(generics) = ty.generics() {
+            stack.extend(generics);
+        }
+    }
+
     if let Some(trait_did) = trait_.def_id() {
         record_extern_trait(cx, trait_did);
     }
@@ -467,10 +483,11 @@ fn build_module(
             }
             if let Res::PrimTy(p) = item.res {
                 // Primitive types can't be inlined so generate an import instead.
+                let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: FakeDefId::new_fake(did.krate),
+                    def_id: ItemId::Primitive(prim_ty, did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
@@ -479,7 +496,7 @@ fn build_module(
                                 global: false,
                                 res: item.res,
                                 segments: vec![clean::PathSegment {
-                                    name: clean::PrimitiveType::from(p).as_sym(),
+                                    name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Vec::new(),
                                         bindings: Vec::new(),
@@ -530,23 +547,20 @@ fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::Item
     let imported_from = cx.tcx.crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {
-            let matchers: Vec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
+            if let ast::ItemKind::MacroDef(ref def) = def.kind {
                 let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
-                tts.chunks(4).map(|arm| arm[0].span()).collect()
+                let matchers = tts.chunks(4).map(|arm| &arm[0]);
+
+                let source = format!(
+                    "macro_rules! {} {{\n{}}}",
+                    name,
+                    utils::render_macro_arms(matchers, ";")
+                );
+
+                clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from) })
             } else {
                 unreachable!()
-            };
-
-            let source = format!(
-                "macro_rules! {} {{\n{}}}",
-                name.clean(cx),
-                matchers
-                    .iter()
-                    .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                    .collect::<String>()
-            );
-
-            clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from) })
+            }
         }
         LoadedMacro::ProcMacro(ext) => clean::ProcMacroItem(clean::ProcMacro {
             kind: ext.macro_kind(),
@@ -566,9 +580,11 @@ fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::Item
 fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean::Generics {
     for pred in &mut g.where_predicates {
         match *pred {
-            clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref mut bounds }
-                if *s == kw::SelfUpper =>
-            {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref mut bounds,
+                ..
+            } if *s == kw::SelfUpper => {
                 bounds.retain(|bound| match *bound {
                     clean::GenericBound::TraitBound(
                         clean::PolyTrait { trait_: clean::ResolvedPath { did, .. }, .. },
@@ -591,6 +607,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     ..
                 },
             ref bounds,
+            ..
         } => !(bounds.is_empty() || *s == kw::SelfUpper && did == trait_did),
         _ => true,
     });
@@ -605,7 +622,7 @@ fn separate_supertrait_bounds(
 ) -> (clean::Generics, Vec<clean::GenericBound>) {
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| match *pred {
-        clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref bounds }
+        clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref bounds, .. }
             if *s == kw::SelfUpper =>
         {
             ty_bounds.extend(bounds.iter().cloned());

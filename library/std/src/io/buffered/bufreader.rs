@@ -438,7 +438,13 @@ impl<R: Seek> Seek for BufReader<R> {
 }
 
 impl<T> SizeHint for BufReader<T> {
+    #[inline]
     fn lower_bound(&self) -> usize {
-        self.buffer().len()
+        SizeHint::lower_bound(self.get_ref()) + self.buffer().len()
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        SizeHint::upper_bound(self.get_ref()).and_then(|up| self.buffer().len().checked_add(up))
     }
 }

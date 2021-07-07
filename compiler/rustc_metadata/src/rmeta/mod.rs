@@ -18,7 +18,6 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
-use rustc_session::CrateDisambiguator;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol};
@@ -52,7 +51,7 @@ const METADATA_VERSION: u8 = 5;
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
 /// and further followed by the rustc version string.
-crate const METADATA_HEADER: &[u8; 8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
@@ -202,7 +201,6 @@ crate struct CrateRoot<'tcx> {
     triple: TargetTriple,
     extra_filename: String,
     hash: Svh,
-    disambiguator: CrateDisambiguator,
     stable_crate_id: StableCrateId,
     panic_strategy: PanicStrategy,
     edition: Edition,

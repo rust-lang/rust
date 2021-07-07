@@ -1,3 +1,4 @@
+// compile-flags: -Zunstable-options
 // check-pass
 #![warn(rustc::internal)]
 

@@ -24,13 +24,15 @@ pub struct UnrecognizedAtomicOperation<'a> {
 
 #[derive(SessionDiagnostic)]
 #[error = "E0094"]
-pub struct WrongNumberOfTypeArgumentsToInstrinsic {
-    #[message = "intrinsic has wrong number of type \
+pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
+    #[message = "intrinsic has wrong number of {descr} \
                          parameters: found {found}, expected {expected}"]
-    #[label = "expected {expected} type parameter"]
+    #[label = "expected {expected} {descr} parameter{expected_pluralize}"]
     pub span: Span,
     pub found: usize,
     pub expected: usize,
+    pub expected_pluralize: &'a str,
+    pub descr: &'a str,
 }
 
 #[derive(SessionDiagnostic)]
@@ -147,6 +149,10 @@ pub struct TypeofReservedKeywordUsed {
 pub struct ReturnStmtOutsideOfFnBody {
     #[message = "return statement outside of function body"]
     pub span: Span,
+    #[label = "the return is part of this body..."]
+    pub encl_body_span: Option<Span>,
+    #[label = "...not the enclosing function body"]
+    pub encl_fn_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]

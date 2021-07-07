@@ -14,6 +14,7 @@ extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
+extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -97,7 +98,7 @@ mod prelude {
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
-    pub(crate) use cranelift_module::{self, DataContext, DataId, FuncId, Linkage, Module};
+    pub(crate) use cranelift_module::{self, DataContext, FuncId, Linkage, Module};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};
@@ -218,7 +219,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             sess,
             &codegen_results,
             outputs,
-            &codegen_results.crate_info.local_crate_name.as_str(),
         );
 
         Ok(())

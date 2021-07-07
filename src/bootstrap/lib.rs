@@ -483,6 +483,12 @@ impl Build {
             job::setup(self);
         }
 
+        // If the LLVM submodule has been initialized already, sync it unconditionally. This avoids
+        // contributors checking in a submodule change by accident.
+        if self.in_tree_llvm_info.is_git() {
+            native::update_llvm_submodule(self);
+        }
+
         if let Subcommand::Format { check, paths } = &self.config.cmd {
             return format::format(self, *check, &paths);
         }
@@ -857,7 +863,7 @@ impl Build {
         }
 
         // Work around an apparently bad MinGW / GCC optimization,
-        // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
+        // See: https://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
         // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
         if &*target.triple == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());
@@ -921,6 +927,21 @@ impl Build {
     // Only MSVC targets use LLD directly at the moment.
     fn is_fuse_ld_lld(&self, target: TargetSelection) -> bool {
         self.config.use_lld && !target.contains("msvc")
+    }
+
+    fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
+        let mut options = [None, None];
+
+        if self.config.use_lld {
+            if self.is_fuse_ld_lld(target) {
+                options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
+            }
+
+            let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
+            options[1] = Some(format!("-Clink-arg=-Wl,{}", threads));
+        }
+
+        std::array::IntoIter::new(options).flatten()
     }
 
     /// Returns if this target should statically link the C runtime, if specified

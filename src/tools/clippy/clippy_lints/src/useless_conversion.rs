@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     }
                 }
                 if_chain! {
-                    if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into";
+                    if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && name.ident.name == sym::try_into;
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
                     if is_type_diagnostic_item(cx, a, sym::result_type);

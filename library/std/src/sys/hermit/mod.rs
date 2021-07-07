@@ -149,7 +149,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         x if x == 1 as i32 => ErrorKind::PermissionDenied,
         x if x == 32 as i32 => ErrorKind::BrokenPipe,
         x if x == 110 as i32 => ErrorKind::TimedOut,
-        _ => ErrorKind::Other,
+        _ => ErrorKind::Uncategorized,
     }
 }
 

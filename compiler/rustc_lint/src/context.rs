@@ -209,8 +209,8 @@ impl LintStore {
                 bug!("duplicate specification of lint {}", lint.name_lower())
             }
 
-            if let Some(FutureIncompatibleInfo { edition, .. }) = lint.future_incompatible {
-                if let Some(edition) = edition {
+            if let Some(FutureIncompatibleInfo { reason, .. }) = lint.future_incompatible {
+                if let Some(edition) = reason.edition() {
                     self.lint_groups
                         .entry(edition.lint_name())
                         .or_insert(LintGroup {
@@ -220,17 +220,20 @@ impl LintStore {
                         })
                         .lint_ids
                         .push(id);
+                } else {
+                    // Lints belonging to the `future_incompatible` lint group are lints where a
+                    // future version of rustc will cause existing code to stop compiling.
+                    // Lints tied to an edition don't count because they are opt-in.
+                    self.lint_groups
+                        .entry("future_incompatible")
+                        .or_insert(LintGroup {
+                            lint_ids: vec![],
+                            from_plugin: lint.is_plugin,
+                            depr: None,
+                        })
+                        .lint_ids
+                        .push(id);
                 }
-
-                self.lint_groups
-                    .entry("future_incompatible")
-                    .or_insert(LintGroup {
-                        lint_ids: vec![],
-                        from_plugin: lint.is_plugin,
-                        depr: None,
-                    })
-                    .lint_ids
-                    .push(id);
             }
         }
     }
@@ -270,22 +273,6 @@ impl LintStore {
 
         if !new {
             bug!("duplicate specification of lint group {}", name);
-        }
-    }
-
-    /// This lint should be available with either the old or the new name.
-    ///
-    /// Using the old name will not give a warning.
-    /// You must register a lint with the new name before calling this function.
-    #[track_caller]
-    pub fn register_alias(&mut self, old_name: &str, new_name: &str) {
-        let target = match self.by_name.get(new_name) {
-            Some(&Id(lint_id)) => lint_id,
-            _ => bug!("cannot add alias {} for lint {} that does not exist", old_name, new_name),
-        };
-        match self.by_name.insert(old_name.to_string(), Id(target)) {
-            None | Some(Ignored) => {}
-            Some(x) => bug!("duplicate specification of lint {} (was {:?})", old_name, x),
         }
     }
 
@@ -334,14 +321,8 @@ impl LintStore {
         }
     }
 
-    /// Checks the validity of lint names derived from the command line. Returns
-    /// true if the lint is valid, false otherwise.
-    pub fn check_lint_name_cmdline(
-        &self,
-        sess: &Session,
-        lint_name: &str,
-        level: Option<Level>,
-    ) -> bool {
+    /// Checks the validity of lint names derived from the command line
+    pub fn check_lint_name_cmdline(&self, sess: &Session, lint_name: &str, level: Level) {
         let db = match self.check_lint_name(lint_name, None) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
@@ -367,23 +348,19 @@ impl LintStore {
         };
 
         if let Some(mut db) = db {
-            if let Some(level) = level {
-                let msg = format!(
-                    "requested on the command line with `{} {}`",
-                    match level {
-                        Level::Allow => "-A",
-                        Level::Warn => "-W",
-                        Level::Deny => "-D",
-                        Level::Forbid => "-F",
-                    },
-                    lint_name
-                );
-                db.note(&msg);
-            }
+            let msg = format!(
+                "requested on the command line with `{} {}`",
+                match level {
+                    Level::Allow => "-A",
+                    Level::Warn => "-W",
+                    Level::ForceWarn => "--force-warns",
+                    Level::Deny => "-D",
+                    Level::Forbid => "-F",
+                },
+                lint_name
+            );
+            db.note(&msg);
             db.emit();
-            false
-        } else {
-            true
         }
     }
 
@@ -722,6 +699,15 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
                     db.span_suggestion(span, "use pat_param to preserve semantics", suggestion, Applicability::MachineApplicable);
+                }
+                BuiltinLintDiagnostics::ReservedPrefix(span) => {
+                    db.span_label(span, "unknown prefix");
+                    db.span_suggestion_verbose(
+                        span.shrink_to_hi(),
+                        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
+                        " ".into(),
+                        Applicability::MachineApplicable,
+                    );
                 }
             }
             // Rewrap `db`, and pass control to the user.

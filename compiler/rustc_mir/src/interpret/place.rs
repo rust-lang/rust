@@ -982,7 +982,7 @@ where
                         let (size, align) = self
                             .size_and_align_of(&meta, &local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
-                        let ptr = self.memory.allocate(size, align, MemoryKind::Stack);
+                        let ptr = self.memory.allocate(size, align, MemoryKind::Stack)?;
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
                         if let LocalValue::Live(Operand::Immediate(value)) = local_val {
                             // Preserve old value.
@@ -1018,9 +1018,9 @@ where
         &mut self,
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
-        MPlaceTy::from_aligned_ptr(ptr, layout)
+    ) -> InterpResult<'static, MPlaceTy<'tcx, M::PointerTag>> {
+        let ptr = self.memory.allocate(layout.size, layout.align.abi, kind)?;
+        Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
     }
 
     /// Returns a wide MPlace of type `&'static [mut] str` to a new 1-aligned allocation.

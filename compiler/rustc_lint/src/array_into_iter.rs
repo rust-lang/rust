@@ -3,8 +3,10 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
-use rustc_session::lint::FutureBreakage;
+use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 declare_lint! {
     /// The `array_into_iter` lint detects calling `into_iter` on arrays.
@@ -20,37 +22,44 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In the future, it is planned to add an `IntoIter` implementation for
-    /// arrays such that it will iterate over *values* of the array instead of
-    /// references. Due to how method resolution works, this will change
-    /// existing code that uses `into_iter` on arrays. The solution to avoid
-    /// this warning is to use `iter()` instead of `into_iter()`.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #66145] for more details and a more thorough
-    /// description of the lint.
-    ///
-    /// [issue #66145]: https://github.com/rust-lang/rust/issues/66145
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    /// Since Rust 1.53, arrays implement `IntoIterator`. However, to avoid
+    /// breakage, `array.into_iter()` in Rust 2015 and 2018 code will still
+    /// behave as `(&array).into_iter()`, returning an iterator over
+    /// references, just like in Rust 1.52 and earlier.
+    /// This only applies to the method call syntax `array.into_iter()`, not to
+    /// any other syntax such as `for _ in array` or `IntoIterator::into_iter(array)`.
     pub ARRAY_INTO_ITER,
     Warn,
-    "detects calling `into_iter` on arrays",
+    "detects calling `into_iter` on arrays in Rust 2015 and 2018",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #66145 <https://github.com/rust-lang/rust/issues/66145>",
-        edition: None,
-        future_breakage: Some(FutureBreakage {
-            date: None
-        })
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
     };
 }
 
-declare_lint_pass!(
-    /// Checks for instances of calling `into_iter` on arrays.
-    ArrayIntoIter => [ARRAY_INTO_ITER]
-);
+#[derive(Copy, Clone, Default)]
+pub struct ArrayIntoIter {
+    for_expr_span: Span,
+}
+
+impl_lint_pass!(ArrayIntoIter => [ARRAY_INTO_ITER]);
 
 impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        // Save the span of expressions in `for _ in expr` syntax,
+        // so we can give a better suggestion for those later.
+        if let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) = &expr.kind {
+            if let hir::ExprKind::Call(path, [arg]) = &arg.kind {
+                if let hir::ExprKind::Path(hir::QPath::LangItem(
+                    hir::LangItem::IntoIterIntoIter,
+                    _,
+                )) = &path.kind
+                {
+                    self.for_expr_span = arg.span;
+                }
+            }
+        }
+
         // We only care about method call expressions.
         if let hir::ExprKind::MethodCall(call, span, args, _) = &expr.kind {
             if call.ident.name != sym::into_iter {
@@ -106,19 +115,37 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 _ => bug!("array type coerced to something other than array or slice"),
             };
             cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
-                lint.build(&format!(
-                "this method call currently resolves to `<&{} as IntoIterator>::into_iter` (due \
-                    to autoref coercions), but that might change in the future when \
-                    `IntoIterator` impls for arrays are added.",
-                target,
-                ))
-                .span_suggestion(
+                let mut diag = lint.build(&format!(
+                    "this method call resolves to `<&{} as IntoIterator>::into_iter` \
+                    (due to backwards compatibility), \
+                    but will resolve to <{} as IntoIterator>::into_iter in Rust 2021.",
+                    target, target,
+                ));
+                diag.span_suggestion(
                     call.ident.span,
                     "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
                     "iter".into(),
                     Applicability::MachineApplicable,
-                )
-                .emit();
+                );
+                if self.for_expr_span == expr.span {
+                    let expr_span = expr.span.ctxt().outer_expn_data().call_site;
+                    diag.span_suggestion(
+                        receiver_arg.span.shrink_to_hi().to(expr_span.shrink_to_hi()),
+                        "or remove `.into_iter()` to iterate by value",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    diag.multipart_suggestion(
+                        "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
+                        vec![
+                            (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
+                            (receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()), ")".into()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                diag.emit();
             })
         }
     }

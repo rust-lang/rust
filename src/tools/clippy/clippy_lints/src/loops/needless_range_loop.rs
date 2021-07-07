@@ -192,7 +192,7 @@ fn is_len_call(expr: &Expr<'_>, var: Symbol) -> bool {
     if_chain! {
         if let ExprKind::MethodCall(method, _, len_args, _) = expr.kind;
         if len_args.len() == 1;
-        if method.ident.name == sym!(len);
+        if method.ident.name == sym::len;
         if let ExprKind::Path(QPath::Resolved(_, path)) = len_args[0].kind;
         if path.segments.len() == 1;
         if path.segments[0].ident.name == var;

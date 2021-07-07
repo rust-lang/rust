@@ -180,7 +180,7 @@ fn exported_symbols_provider_local(
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
-    if tcx.allocator_kind().is_some() {
+    if tcx.allocator_kind(()).is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
@@ -277,7 +277,7 @@ fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
-    let cnums = tcx.all_crate_nums(());
+    let cnums = tcx.crates(());
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 

@@ -1,6 +1,6 @@
 use rustc_span::symbol::{sym, Symbol};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy, HashStable_Generic)]
 pub enum AllocatorKind {
     Global,
     Default,

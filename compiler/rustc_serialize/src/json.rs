@@ -1114,6 +1114,15 @@ impl Json {
         }
     }
 
+    /// If the Json value is an Object, deletes the value associated with the
+    /// provided key from the Object and returns it. Otherwise, returns None.
+    pub fn remove_key(&mut self, key: &str) -> Option<Json> {
+        match *self {
+            Json::Object(ref mut map) => map.remove(key),
+            _ => None,
+        }
+    }
+
     /// Attempts to get a nested Json Object for each key in `keys`.
     /// If any key is found not to exist, `find_path` will return `None`.
     /// Otherwise, it will return the Json value associated with the final key.

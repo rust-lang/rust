@@ -11,8 +11,8 @@ fn foo() -> Result<usize, ()> {
     let x: Result<usize, ()> = Ok(22);
     try!(x);
     //~^ WARNING `try` is a keyword in the 2018 edition
-    //~| WARNING this was previously accepted
+    //~| WARNING this is accepted in the current edition
     Ok(44)
 }
 
-fn main() { }
+fn main() {}

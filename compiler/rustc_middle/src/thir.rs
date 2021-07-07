@@ -1,3 +1,13 @@
+//! THIR datatypes and definitions. See the [rustc dev guide] for more info.
+//!
+//! If you compare the THIR [`ExprKind`] to [`hir::ExprKind`], you will see it is
+//! a good bit simpler. In fact, a number of the more straight-forward
+//! MIR simplifications are already done in the lowering to THIR. For
+//! example, method calls and overloaded operators are absent: they are
+//! expected to be converted into [`ExprKind::Call`] instances.
+//!
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
+
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -24,6 +34,7 @@ use std::fmt;
 use std::ops::Index;
 
 newtype_index! {
+    /// An index to an [`Arm`] stored in [`Thir::arms`]
     #[derive(HashStable)]
     pub struct ArmId {
         DEBUG_FORMAT = "a{}"
@@ -31,6 +42,7 @@ newtype_index! {
 }
 
 newtype_index! {
+    /// An index to an [`Expr`] stored in [`Thir::exprs`]
     #[derive(HashStable)]
     pub struct ExprId {
         DEBUG_FORMAT = "e{}"
@@ -39,6 +51,7 @@ newtype_index! {
 
 newtype_index! {
     #[derive(HashStable)]
+    /// An index to a [`Stmt`] stored in [`Thir::stmts`]
     pub struct StmtId {
         DEBUG_FORMAT = "s{}"
     }
@@ -46,6 +59,9 @@ newtype_index! {
 
 macro_rules! thir_with_elements {
     ($($name:ident: $id:ty => $value:ty,)*) => {
+        /// A container for a THIR body.
+        ///
+        /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
         #[derive(Debug, HashStable)]
         pub struct Thir<'tcx> {
             $(
@@ -88,21 +104,47 @@ pub enum LintLevel {
 
 #[derive(Debug, HashStable)]
 pub struct Block {
+    /// Whether the block itself has a label. Used by `label: {}`
+    /// and `try` blocks.
+    ///
+    /// This does *not* include labels on loops, e.g. `'label: loop {}`.
     pub targeted_by_break: bool,
     pub region_scope: region::Scope,
     pub opt_destruction_scope: Option<region::Scope>,
+    /// The span of the block, including the opening braces,
+    /// the label, and the `unsafe` keyword, if present.
     pub span: Span,
+    /// The statements in the blocK.
     pub stmts: Box<[StmtId]>,
+    /// The trailing expression of the block, if any.
     pub expr: Option<ExprId>,
     pub safety_mode: BlockSafety,
+}
+
+#[derive(Debug, HashStable)]
+pub struct Adt<'tcx> {
+    /// The ADT we're constructing.
+    pub adt_def: &'tcx AdtDef,
+    /// The variant of the ADT.
+    pub variant_index: VariantIdx,
+    pub substs: SubstsRef<'tcx>,
+
+    /// Optional user-given substs: for something like `let x =
+    /// Bar::<T> { ... }`.
+    pub user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+
+    pub fields: Box<[FieldExpr]>,
+    /// The base, e.g. `Foo {x: 1, .. base}`.
+    pub base: Option<FruInfo<'tcx>>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum BlockSafety {
     Safe,
+    /// A compiler-generated unsafe block
+    BuiltinUnsafe,
+    /// An `unsafe` block. The `HirId` is the ID of the block.
     ExplicitUnsafe(hir::HirId),
-    PushUnsafe,
-    PopUnsafe,
 }
 
 #[derive(Debug, HashStable)]
@@ -113,61 +155,50 @@ pub struct Stmt<'tcx> {
 
 #[derive(Debug, HashStable)]
 pub enum StmtKind<'tcx> {
+    /// An expression with a trailing semicolon.
     Expr {
-        /// scope for this statement; may be used as lifetime of temporaries
+        /// The scope for this statement; may be used as lifetime of temporaries.
         scope: region::Scope,
 
-        /// expression being evaluated in this statement
+        /// The expression being evaluated in this statement.
         expr: ExprId,
     },
 
+    /// A `let` binding.
     Let {
-        /// scope for variables bound in this let; covers this and
-        /// remaining statements in block
+        /// The scope for variables bound in this `let`; it covers this and
+        /// all the remaining statements in the block.
         remainder_scope: region::Scope,
 
-        /// scope for the initialization itself; might be used as
-        /// lifetime of temporaries
+        /// The scope for the initialization itself; might be used as
+        /// lifetime of temporaries.
         init_scope: region::Scope,
 
         /// `let <PAT> = ...`
         ///
-        /// if a type is included, it is added as an ascription pattern
+        /// If a type annotation is included, it is added as an ascription pattern.
         pattern: Pat<'tcx>,
 
-        /// let pat: ty = <INIT> ...
+        /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
 
-        /// the lint level for this let-statement
+        /// The lint level for this `let` statement.
         lint_level: LintLevel,
     },
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 144);
+rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
-/// The Thir trait implementor lowers their expressions (`&'tcx H::Expr`)
-/// into instances of this `Expr` enum. This lowering can be done
-/// basically as lazily or as eagerly as desired: every recursive
-/// reference to an expression in this enum is an `ExprId`, which
-/// may in turn be another instance of this enum (boxed), or else an
-/// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
-/// short-lived. They are created by `Thir::to_expr`, analyzed and
-/// converted into MIR, and then discarded.
-///
-/// If you compare `Expr` to the full compiler AST, you will see it is
-/// a good bit simpler. In fact, a number of the more straight-forward
-/// MIR simplifications are already done in the impl of `Thir`. For
-/// example, method calls and overloaded operators are absent: they are
-/// expected to be converted into `Expr::Call` instances.
+/// A THIR expression.
 #[derive(Debug, HashStable)]
 pub struct Expr<'tcx> {
-    /// type of this expression
+    /// The type of this expression
     pub ty: Ty<'tcx>,
 
-    /// lifetime of this expression if it should be spilled into a
-    /// temporary; should be None only if in a constant context
+    /// The lifetime of this expression if it should be spilled into a
+    /// temporary; should be `None` only if in a constant context
     pub temp_lifetime: Option<region::Scope>,
 
     /// span of the expression in the source
@@ -179,88 +210,120 @@ pub struct Expr<'tcx> {
 
 #[derive(Debug, HashStable)]
 pub enum ExprKind<'tcx> {
+    /// `Scope`s are used to explicitely mark destruction scopes,
+    /// and to track the `HirId` of the expressions within the scope.
     Scope {
         region_scope: region::Scope,
         lint_level: LintLevel,
         value: ExprId,
     },
+    /// A `box <value>` expression.
     Box {
         value: ExprId,
     },
+    /// An `if` expression.
     If {
         cond: ExprId,
         then: ExprId,
         else_opt: Option<ExprId>,
     },
+    /// A function call. Method calls and overloaded operators are converted to plain function calls.
     Call {
+        /// The type of the function. This is often a [`FnDef`] or a [`FnPtr`].
+        ///
+        /// [`FnDef`]: ty::TyKind::FnDef
+        /// [`FnPtr`]: ty::TyKind::FnPtr
         ty: Ty<'tcx>,
+        /// The function itself.
         fun: ExprId,
+        /// The arguments passed to the function.
+        ///
+        /// Note: in some cases (like calling a closure), the function call `f(...args)` gets
+        /// rewritten as a call to a function trait method (e.g. `FnOnce::call_once(f, (...args))`).
         args: Box<[ExprId]>,
-        /// Whether this is from a call in HIR, rather than from an overloaded
-        /// operator. `true` for overloaded function call.
+        /// Whether this is from an overloaded operator rather than a
+        /// function call from HIR. `true` for overloaded function call.
         from_hir_call: bool,
-        /// This `Span` is the span of the function, without the dot and receiver
-        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+        /// The span of the function, without the dot and receiver
+        /// (e.g. `foo(a, b)` in `x.foo(a, b)`).
         fn_span: Span,
     },
+    /// A *non-overloaded* dereference.
     Deref {
         arg: ExprId,
-    }, // NOT overloaded!
+    },
+    /// A *non-overloaded* binary operation.
     Binary {
         op: BinOp,
         lhs: ExprId,
         rhs: ExprId,
-    }, // NOT overloaded!
+    },
+    /// A logical operation. This is distinct from `BinaryOp` because
+    /// the operands need to be lazily evaluated.
     LogicalOp {
         op: LogicalOp,
         lhs: ExprId,
         rhs: ExprId,
-    }, // NOT overloaded!
-    // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
+    },
+    /// A *non-overloaded* unary operation. Note that here the deref (`*`)
+    /// operator is represented by `ExprKind::Deref`.
     Unary {
         op: UnOp,
         arg: ExprId,
-    }, // NOT overloaded!
+    },
+    /// A cast: `<source> as <type>`. The type we cast to is the type of
+    /// the parent expression.
     Cast {
         source: ExprId,
     },
     Use {
         source: ExprId,
     }, // Use a lexpr to get a vexpr.
+    /// A coercion from `!` to any type.
     NeverToAny {
         source: ExprId,
     },
+    /// A pointer cast. More information can be found in [`PointerCast`].
     Pointer {
         cast: PointerCast,
         source: ExprId,
     },
+    /// A `loop` expression.
     Loop {
         body: ExprId,
     },
+    /// A `match` expression.
     Match {
         scrutinee: ExprId,
         arms: Box<[ArmId]>,
     },
+    /// A block.
     Block {
         body: Block,
     },
+    /// An assignment: `lhs = rhs`.
     Assign {
         lhs: ExprId,
         rhs: ExprId,
     },
+    /// A *non-overloaded* operation assignment, e.g. `lhs += rhs`.
     AssignOp {
         op: BinOp,
         lhs: ExprId,
         rhs: ExprId,
     },
+    /// Access to a struct or tuple field.
     Field {
         lhs: ExprId,
+        /// This can be a named (`.foo`) or unnamed (`.0`) field.
         name: Field,
     },
+    /// A *non-overloaded* indexing operation.
     Index {
         lhs: ExprId,
         index: ExprId,
     },
+    /// A local variable.
     VarRef {
         id: hir::HirId,
     },
@@ -272,6 +335,7 @@ pub enum ExprKind<'tcx> {
         /// HirId of the root variable
         var_hir_id: hir::HirId,
     },
+    /// A borrow, e.g. `&arg`.
     Borrow {
         borrow_kind: BorrowKind,
         arg: ExprId,
@@ -281,51 +345,51 @@ pub enum ExprKind<'tcx> {
         mutability: hir::Mutability,
         arg: ExprId,
     },
+    /// A `break` expression.
     Break {
         label: region::Scope,
         value: Option<ExprId>,
     },
+    /// A `continue` expression.
     Continue {
         label: region::Scope,
     },
+    /// A `return` expression.
     Return {
         value: Option<ExprId>,
     },
+    /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         value: &'tcx Const<'tcx>,
     },
+    /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: ExprId,
         count: &'tcx Const<'tcx>,
     },
+    /// An array, e.g. `[a, b, c, d]`.
     Array {
         fields: Box<[ExprId]>,
     },
+    /// A tuple, e.g. `(a, b, c, d)`.
     Tuple {
         fields: Box<[ExprId]>,
     },
-    Adt {
-        adt_def: &'tcx AdtDef,
-        variant_index: VariantIdx,
-        substs: SubstsRef<'tcx>,
-
-        /// Optional user-given substs: for something like `let x =
-        /// Bar::<T> { ... }`.
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
-
-        fields: Box<[FieldExpr]>,
-        base: Option<FruInfo<'tcx>>,
-    },
+    /// An ADT constructor, e.g. `Foo {x: 1, y: 2}`.
+    Adt(Box<Adt<'tcx>>),
+    /// A type ascription on a place.
     PlaceTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
+    /// A type ascription on a value, e.g. `42: i32`.
     ValueTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
+    /// A closure definition.
     Closure {
         closure_id: DefId,
         substs: UpvarSubsts<'tcx>,
@@ -333,6 +397,7 @@ pub enum ExprKind<'tcx> {
         movability: Option<hir::Movability>,
         fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
     },
+    /// A literal.
     Literal {
         literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
@@ -349,6 +414,7 @@ pub enum ExprKind<'tcx> {
         literal: &'tcx Const<'tcx>,
         def_id: DefId,
     },
+    /// Inline assembly, i.e. `asm!()`.
     InlineAsm {
         template: &'tcx [InlineAsmTemplatePiece],
         operands: Box<[InlineAsmOperand<'tcx>]>,
@@ -357,16 +423,21 @@ pub enum ExprKind<'tcx> {
     },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),
+    /// Inline LLVM assembly, i.e. `llvm_asm!()`.
     LlvmInlineAsm {
         asm: &'tcx hir::LlvmInlineAsmInner,
         outputs: Box<[ExprId]>,
         inputs: Box<[ExprId]>,
     },
+    /// A `yield` expression.
     Yield {
         value: ExprId,
     },
 }
 
+/// Represents the association of a field identifier and an expression.
+///
+/// This is used in struct constructors.
 #[derive(Debug, HashStable)]
 pub struct FieldExpr {
     pub name: Field,
@@ -379,6 +450,7 @@ pub struct FruInfo<'tcx> {
     pub field_types: Box<[Ty<'tcx>]>,
 }
 
+/// A `match` arm.
 #[derive(Debug, HashStable)]
 pub struct Arm<'tcx> {
     pub pattern: Pat<'tcx>,
@@ -389,6 +461,7 @@ pub struct Arm<'tcx> {
     pub span: Span,
 }
 
+/// A `match` guard.
 #[derive(Debug, HashStable)]
 pub enum Guard<'tcx> {
     If(ExprId),
@@ -397,7 +470,9 @@ pub enum Guard<'tcx> {
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum LogicalOp {
+    /// The `&&` operator.
     And,
+    /// The `||` operator.
     Or,
 }
 
@@ -514,6 +589,7 @@ pub struct Ascription<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, HashStable)]
 pub enum PatKind<'tcx> {
+    /// A wildward pattern: `_`.
     Wild,
 
     AscribeUserType {

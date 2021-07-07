@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:12:14
+  --> $DIR/patterns-capture-analysis.rs:10:14
    |
 LL |     let c =  #[rustc_capture_analysis]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let c =  #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:33:14
+  --> $DIR/patterns-capture-analysis.rs:31:14
    |
 LL |     let c =  #[rustc_capture_analysis]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let c =  #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:54:14
+  --> $DIR/patterns-capture-analysis.rs:52:14
    |
 LL |     let c =  #[rustc_capture_analysis]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     let c =  #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:70:14
+  --> $DIR/patterns-capture-analysis.rs:68:14
    |
 LL |     let c =  #[rustc_capture_analysis]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     let c =  #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:92:14
+  --> $DIR/patterns-capture-analysis.rs:90:14
    |
 LL |     let c =  #[rustc_capture_analysis]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,25 +44,16 @@ LL |     let c =  #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/patterns-capture-analysis.rs:116:14
+  --> $DIR/patterns-capture-analysis.rs:114:14
    |
 LL |     let c =  #[rustc_capture_analysis]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/patterns-capture-analysis.rs:1:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:16:5
+  --> $DIR/patterns-capture-analysis.rs:14:5
    |
 LL | /     || {
 LL | |
@@ -74,13 +65,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:19:15
+  --> $DIR/patterns-capture-analysis.rs:17:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:16:5
+  --> $DIR/patterns-capture-analysis.rs:14:5
    |
 LL | /     || {
 LL | |
@@ -92,13 +83,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:19:15
+  --> $DIR/patterns-capture-analysis.rs:17:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:36:5
+  --> $DIR/patterns-capture-analysis.rs:34:5
    |
 LL | /     || {
 LL | |
@@ -109,7 +100,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:57:5
+  --> $DIR/patterns-capture-analysis.rs:55:5
    |
 LL | /     || {
 LL | |
@@ -120,7 +111,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:73:5
+  --> $DIR/patterns-capture-analysis.rs:71:5
    |
 LL | /     || {
 LL | |
@@ -132,18 +123,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:76:15
+  --> $DIR/patterns-capture-analysis.rs:74:15
    |
 LL |         match variant {
    |               ^^^^^^^
 note: Capturing variant[(0, 0)] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:76:15
+  --> $DIR/patterns-capture-analysis.rs:74:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:73:5
+  --> $DIR/patterns-capture-analysis.rs:71:5
    |
 LL | /     || {
 LL | |
@@ -155,13 +146,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:76:15
+  --> $DIR/patterns-capture-analysis.rs:74:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:95:5
+  --> $DIR/patterns-capture-analysis.rs:93:5
    |
 LL | /     || {
 LL | |
@@ -172,7 +163,7 @@ LL | |     };
    | |_____^
 
 error: First Pass analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:119:5
+  --> $DIR/patterns-capture-analysis.rs:117:5
    |
 LL | /     || {
 LL | |
@@ -184,13 +175,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:122:15
+  --> $DIR/patterns-capture-analysis.rs:120:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/patterns-capture-analysis.rs:119:5
+  --> $DIR/patterns-capture-analysis.rs:117:5
    |
 LL | /     || {
 LL | |
@@ -202,11 +193,11 @@ LL | |     };
    | |_____^
    |
 note: Min Capture variant[] -> ImmBorrow
-  --> $DIR/patterns-capture-analysis.rs:122:15
+  --> $DIR/patterns-capture-analysis.rs:120:15
    |
 LL |         match variant {
    |               ^^^^^^^
 
-error: aborting due to 15 previous errors; 1 warning emitted
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

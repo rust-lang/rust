@@ -61,6 +61,7 @@ features = [
 ]
 
 [dependencies]
+bstr = { version = "0.2.13", features = ["default"] }
 byteorder = { version = "1", features = ['default', 'std'] }
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 crossbeam-utils = { version = "0.8.0", features = ["nightly"] }
@@ -77,7 +78,7 @@ syn = { version = "1", features = ['fold', 'full', 'extra-traits', 'visit', 'vis
 url = { version = "2.0", features = ['serde'] }
 
 [target.'cfg(not(windows))'.dependencies]
-openssl = { version = "0.10.12", optional = true }
+openssl = { version = "0.10.35", optional = true }
 
 [features]
 all-static = ['openssl/vendored', 'curl-sys/static-curl', 'curl-sys/force-system-lib-on-osx']

@@ -5,6 +5,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, subst::SubstsRef, InstanceDef, TyCtxt};
+use rustc_session::Limit;
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
 // this query riddiculously often.
@@ -30,7 +31,7 @@ crate fn mir_callgraph_reachable(
     );
     #[instrument(
         level = "debug",
-        skip(tcx, param_env, target, stack, seen, recursion_limiter, caller)
+        skip(tcx, param_env, target, stack, seen, recursion_limiter, caller, recursion_limit)
     )]
     fn process(
         tcx: TyCtxt<'tcx>,
@@ -40,6 +41,7 @@ crate fn mir_callgraph_reachable(
         stack: &mut Vec<ty::Instance<'tcx>>,
         seen: &mut FxHashSet<ty::Instance<'tcx>>,
         recursion_limiter: &mut FxHashMap<DefId, usize>,
+        recursion_limit: Limit,
     ) -> bool {
         trace!(%caller);
         for &(callee, substs) in tcx.mir_inliner_callees(caller.def) {
@@ -96,11 +98,20 @@ crate fn mir_callgraph_reachable(
             if seen.insert(callee) {
                 let recursion = recursion_limiter.entry(callee.def_id()).or_default();
                 trace!(?callee, recursion = *recursion);
-                if tcx.sess.recursion_limit().value_within_limit(*recursion) {
+                if recursion_limit.value_within_limit(*recursion) {
                     *recursion += 1;
                     stack.push(callee);
                     let found_recursion = ensure_sufficient_stack(|| {
-                        process(tcx, param_env, callee, target, stack, seen, recursion_limiter)
+                        process(
+                            tcx,
+                            param_env,
+                            callee,
+                            target,
+                            stack,
+                            seen,
+                            recursion_limiter,
+                            recursion_limit,
+                        )
                     });
                     if found_recursion {
                         return true;
@@ -122,6 +133,7 @@ crate fn mir_callgraph_reachable(
         &mut Vec::new(),
         &mut FxHashSet::default(),
         &mut FxHashMap::default(),
+        tcx.recursion_limit(),
     )
 }
 

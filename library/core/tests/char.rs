@@ -67,10 +67,20 @@ fn test_to_digit() {
     assert_eq!('A'.to_digit(16), Some(10));
     assert_eq!('b'.to_digit(16), Some(11));
     assert_eq!('B'.to_digit(16), Some(11));
+    assert_eq!('A'.to_digit(36), Some(10));
     assert_eq!('z'.to_digit(36), Some(35));
     assert_eq!('Z'.to_digit(36), Some(35));
-    assert_eq!(' '.to_digit(10), None);
+    assert_eq!('['.to_digit(36), None);
+    assert_eq!('`'.to_digit(36), None);
+    assert_eq!('{'.to_digit(36), None);
     assert_eq!('$'.to_digit(36), None);
+    assert_eq!('@'.to_digit(16), None);
+    assert_eq!('G'.to_digit(16), None);
+    assert_eq!('g'.to_digit(16), None);
+    assert_eq!(' '.to_digit(10), None);
+    assert_eq!('/'.to_digit(10), None);
+    assert_eq!(':'.to_digit(10), None);
+    assert_eq!(':'.to_digit(11), None);
 }
 
 #[test]

@@ -687,21 +687,47 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn from_secs_f64(secs: f64) -> Duration {
+        match Duration::try_from_secs_f64(secs) {
+            Ok(v) => v,
+            Err(e) => crate::panicking::panic(e.description()),
+        }
+    }
+
+    /// The checked version of [`from_secs_f64`].
+    ///
+    /// [`from_secs_f64`]: Duration::from_secs_f64
+    ///
+    /// This constructor will return an `Err` if `secs` is not finite, negative or overflows `Duration`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_checked_float)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::try_from_secs_f64(2.7);
+    /// assert_eq!(dur, Ok(Duration::new(2, 700_000_000)));
+    ///
+    /// let negative = Duration::try_from_secs_f64(-5.0);
+    /// assert!(negative.is_err());
+    /// ```
+    #[unstable(feature = "duration_checked_float", issue = "83400")]
+    #[inline]
+    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, FromSecsError> {
         const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f64;
         let nanos = secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
-            panic!("got non-finite value when converting float to duration");
-        }
-        if nanos >= MAX_NANOS_F64 {
-            panic!("overflow when converting float to duration");
-        }
-        if nanos < 0.0 {
-            panic!("underflow when converting float to duration");
-        }
-        let nanos = nanos as u128;
-        Duration {
-            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+            Err(FromSecsError { kind: FromSecsErrorKind::NonFinite })
+        } else if nanos >= MAX_NANOS_F64 {
+            Err(FromSecsError { kind: FromSecsErrorKind::Overflow })
+        } else if nanos < 0.0 {
+            Err(FromSecsError { kind: FromSecsErrorKind::Underflow })
+        } else {
+            let nanos = nanos as u128;
+            Ok(Duration {
+                secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
+                nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+            })
         }
     }
 
@@ -722,21 +748,47 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn from_secs_f32(secs: f32) -> Duration {
+        match Duration::try_from_secs_f32(secs) {
+            Ok(v) => v,
+            Err(e) => crate::panicking::panic(e.description()),
+        }
+    }
+
+    /// The checked version of [`from_secs_f32`].
+    ///
+    /// [`from_secs_f32`]: Duration::from_secs_f32
+    ///
+    /// This constructor will return an `Err` if `secs` is not finite, negative or overflows `Duration`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_checked_float)]
+    ///
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::try_from_secs_f32(2.7);
+    /// assert_eq!(dur, Ok(Duration::new(2, 700_000_000)));
+    ///
+    /// let negative = Duration::try_from_secs_f32(-5.0);
+    /// assert!(negative.is_err());
+    /// ```
+    #[unstable(feature = "duration_checked_float", issue = "83400")]
+    #[inline]
+    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, FromSecsError> {
         const MAX_NANOS_F32: f32 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f32;
         let nanos = secs * (NANOS_PER_SEC as f32);
         if !nanos.is_finite() {
-            panic!("got non-finite value when converting float to duration");
-        }
-        if nanos >= MAX_NANOS_F32 {
-            panic!("overflow when converting float to duration");
-        }
-        if nanos < 0.0 {
-            panic!("underflow when converting float to duration");
-        }
-        let nanos = nanos as u128;
-        Duration {
-            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+            Err(FromSecsError { kind: FromSecsErrorKind::NonFinite })
+        } else if nanos >= MAX_NANOS_F32 {
+            Err(FromSecsError { kind: FromSecsErrorKind::Overflow })
+        } else if nanos < 0.0 {
+            Err(FromSecsError { kind: FromSecsErrorKind::Underflow })
+        } else {
+            let nanos = nanos as u128;
+            Ok(Duration {
+                secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
+                nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+            })
         }
     }
 
@@ -1098,4 +1150,56 @@ impl fmt::Debug for Duration {
             f.write_str("ns")
         }
     }
+}
+
+/// An error which can be returned when converting a floating-point value of seconds
+/// into a [`Duration`].
+///
+/// This error is used as the error type for [`Duration::try_from_secs_f32`] and
+/// [`Duration::try_from_secs_f64`].
+///
+/// # Example
+///
+/// ```
+/// #![feature(duration_checked_float)]
+///
+/// use std::time::Duration;
+///
+/// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
+///     println!("Failed conversion to Duration: {}", e);
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[unstable(feature = "duration_checked_float", issue = "83400")]
+pub struct FromSecsError {
+    kind: FromSecsErrorKind,
+}
+
+impl FromSecsError {
+    const fn description(&self) -> &'static str {
+        match self.kind {
+            FromSecsErrorKind::NonFinite => {
+                "got non-finite value when converting float to duration"
+            }
+            FromSecsErrorKind::Overflow => "overflow when converting float to duration",
+            FromSecsErrorKind::Underflow => "underflow when converting float to duration",
+        }
+    }
+}
+
+#[unstable(feature = "duration_checked_float", issue = "83400")]
+impl fmt::Display for FromSecsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.description(), f)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum FromSecsErrorKind {
+    // Value is not a finite value (either infinity or NaN).
+    NonFinite,
+    // Value is too large to store in a `Duration`.
+    Overflow,
+    // Value is less than `0.0`.
+    Underflow,
 }

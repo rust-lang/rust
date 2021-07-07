@@ -29,6 +29,8 @@ use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
 use crate::{Build, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
+// FIXME: replace with std::lazy after it gets stabilized and reaches beta
+use once_cell::sync::Lazy;
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -195,7 +197,7 @@ impl StepDescription {
 
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
-                if desc.default && should_run.is_really_default {
+                if desc.default && should_run.is_really_default() {
                     for pathset in &should_run.paths {
                         desc.maybe_run(builder, pathset);
                     }
@@ -228,7 +230,11 @@ impl StepDescription {
     }
 }
 
-#[derive(Clone)]
+enum ReallyDefault<'a> {
+    Bool(bool),
+    Lazy(Lazy<bool, Box<dyn Fn() -> bool + 'a>>),
+}
+
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
     // use a BTreeSet to maintain sort order
@@ -236,7 +242,7 @@ pub struct ShouldRun<'a> {
 
     // If this is a default rule, this is an additional constraint placed on
     // its run. Generally something like compiler docs being enabled.
-    is_really_default: bool,
+    is_really_default: ReallyDefault<'a>,
 }
 
 impl<'a> ShouldRun<'a> {
@@ -244,13 +250,25 @@ impl<'a> ShouldRun<'a> {
         ShouldRun {
             builder,
             paths: BTreeSet::new(),
-            is_really_default: true, // by default no additional conditions
+            is_really_default: ReallyDefault::Bool(true), // by default no additional conditions
         }
     }
 
     pub fn default_condition(mut self, cond: bool) -> Self {
-        self.is_really_default = cond;
+        self.is_really_default = ReallyDefault::Bool(cond);
         self
+    }
+
+    pub fn lazy_default_condition(mut self, lazy_cond: Box<dyn Fn() -> bool + 'a>) -> Self {
+        self.is_really_default = ReallyDefault::Lazy(Lazy::new(lazy_cond));
+        self
+    }
+
+    pub fn is_really_default(&self) -> bool {
+        match &self.is_really_default {
+            ReallyDefault::Bool(val) => *val,
+            ReallyDefault::Lazy(lazy) => *lazy.deref(),
+        }
     }
 
     /// Indicates it should run if the command-line selects the given crate or
@@ -432,6 +450,7 @@ impl<'a> Builder<'a> {
                 test::RustdocTheme,
                 test::RustdocUi,
                 test::RustdocJson,
+                test::HtmlCheck,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
@@ -446,6 +465,7 @@ impl<'a> Builder<'a> {
                 doc::Std,
                 doc::Rustc,
                 doc::Rustdoc,
+                doc::Rustfmt,
                 doc::ErrorIndex,
                 doc::Nomicon,
                 doc::Reference,
@@ -1142,6 +1162,7 @@ impl<'a> Builder<'a> {
         }
         if self.is_fuse_ld_lld(compiler.host) {
             cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
+            cargo.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
 
         if let Some(target_linker) = self.linker(target) {
@@ -1151,6 +1172,9 @@ impl<'a> Builder<'a> {
         if self.is_fuse_ld_lld(target) {
             rustflags.arg("-Clink-args=-fuse-ld=lld");
         }
+        self.lld_flags(target).for_each(|flag| {
+            rustdocflags.arg(&flag);
+        });
 
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));

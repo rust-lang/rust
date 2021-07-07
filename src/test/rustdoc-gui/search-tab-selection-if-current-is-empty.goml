@@ -2,7 +2,7 @@ goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "Foo")
 // Waiting for the search results to appear...
 wait-for: "#titles"
-assert: ("#titles > button:nth-of-type(1)", "class", "selected")
+assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
 
 // To go back to the original "state"
 goto: file://|DOC_PATH|/test_docs/index.html
@@ -10,7 +10,7 @@ write: (".search-input", "-> String")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 // With this search, only the last tab shouldn't be empty so it should be selected.
-assert: ("#titles > button:nth-of-type(3)", "class", "selected")
+assert-attribute: ("#titles > button:nth-of-type(3)", {"class": "selected"})
 
 // To go back to the original "state"
 goto: file://|DOC_PATH|/test_docs/index.html
@@ -18,4 +18,4 @@ write: (".search-input", "-> Something")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 // With this search, all the tabs are empty so the first one should remain selected.
-assert: ("#titles > button:nth-of-type(1)", "class", "selected")
+assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})

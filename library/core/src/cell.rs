@@ -488,6 +488,13 @@ impl<T: ?Sized> Cell<T> {
     /// This call borrows `Cell` mutably (at compile-time) which guarantees
     /// that we possess the only reference.
     ///
+    /// However be cautious: this method expects `self` to be mutable, which is
+    /// generally not the case when using a `Cell`. If you require interior
+    /// mutability by reference, consider using `RefCell` which provides
+    /// run-time checked mutable borrows through its [`borrow_mut`] method.
+    ///
+    /// [`borrow_mut`]: RefCell::borrow_mut()
+    ///
     /// # Examples
     ///
     /// ```
@@ -578,7 +585,7 @@ pub struct RefCell<T: ?Sized> {
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenver we go from having zero borrows
     // to having a single borrow. When a borrow occurs, this gets included
-    // in the generated `BorroeError/`BorrowMutError`
+    // in the generated `BorrowError/`BorrowMutError`
     #[cfg(feature = "debug_refcell")]
     borrowed_at: Cell<Option<&'static crate::panic::Location<'static>>>,
     value: UnsafeCell<T>,
@@ -586,8 +593,8 @@ pub struct RefCell<T: ?Sized> {
 
 /// An error returned by [`RefCell::try_borrow`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
+#[non_exhaustive]
 pub struct BorrowError {
-    _private: (),
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
@@ -613,8 +620,8 @@ impl Display for BorrowError {
 
 /// An error returned by [`RefCell::try_borrow_mut`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
+#[non_exhaustive]
 pub struct BorrowMutError {
-    _private: (),
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
@@ -865,7 +872,6 @@ impl<T: ?Sized> RefCell<T> {
                 Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b })
             }
             None => Err(BorrowError {
-                _private: (),
                 // If a borrow occured, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
@@ -951,7 +957,6 @@ impl<T: ?Sized> RefCell<T> {
                 Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b })
             }
             None => Err(BorrowMutError {
-                _private: (),
                 // If a borrow occured, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
@@ -1073,7 +1078,6 @@ impl<T: ?Sized> RefCell<T> {
             Ok(unsafe { &*self.value.get() })
         } else {
             Err(BorrowError {
-                _private: (),
                 // If a borrow occured, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]

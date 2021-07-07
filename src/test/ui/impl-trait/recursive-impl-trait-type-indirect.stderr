@@ -95,7 +95,7 @@ LL | /     move || {
 LL | |         yield;
 LL | |         x;
 LL | |     }
-   | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 64:6 {()}]`
+   | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 64:6]`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:67:35
@@ -117,7 +117,7 @@ LL | |         let x = generator_hold();
 LL | |         yield;
 LL | |         x;
 LL | |     }
-   | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:74:5: 78:6 {impl Sized, ()}]`
+   | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:74:5: 78:6]`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26

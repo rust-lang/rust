@@ -1,12 +1,13 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::error::Error as StdError;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -29,6 +30,7 @@ use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::static_files::PAGE;
 use crate::html::{layout, sources};
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -51,9 +53,6 @@ crate struct Context<'tcx> {
     pub(super) render_redirect_pages: bool,
     /// The map used to ensure all generated 'id=' attributes are unique.
     pub(super) id_map: RefCell<IdMap>,
-    /// Tracks section IDs for `Deref` targets so they match in both the main
-    /// body and the sidebar.
-    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
@@ -74,7 +73,7 @@ crate struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Context<'_>, 152);
+rustc_data_structures::static_assert_size!(Context<'_>, 112);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 crate struct SharedContext<'tcx> {
@@ -124,6 +123,8 @@ crate struct SharedContext<'tcx> {
     /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
+
+    pub(crate) templates: tera::Tera,
 }
 
 impl SharedContext<'_> {
@@ -221,6 +222,7 @@ impl<'tcx> Context<'tcx> {
 
         if !self.render_redirect_pages {
             layout::render(
+                &self.shared.templates,
                 &self.shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
@@ -228,7 +230,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id.expect_real()) {
+            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id.expect_def_id()) {
                 let mut path = String::new();
                 for name in &names[..names.len() - 1] {
                     path.push_str(name);
@@ -411,6 +413,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
 
+        let mut templates = tera::Tera::default();
+        templates.add_raw_template("page.html", PAGE).map_err(|e| Error {
+            file: "page.html".into(),
+            error: format!("{}: {}", e, e.source().map(|e| e.to_string()).unwrap_or_default()),
+        })?;
+
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
         for attr in krate.module.attrs.lists(sym::doc) {
@@ -457,6 +465,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
+            templates,
         };
 
         // Add the default themes to the `Vec` of stylepaths
@@ -486,7 +495,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::new(scx),
             cache: Rc::new(cache),
         };
@@ -504,7 +512,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
             id_map: RefCell::new(IdMap::new()),
-            deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::clone(&self.shared),
             cache: Rc::clone(&self.cache),
         }
@@ -545,6 +552,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = self.shared.all.replace(AllTypes::new());
         let v = layout::render(
+            &self.shared.templates,
             &self.shared.layout,
             &page,
             sidebar,
@@ -562,6 +570,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let sidebar = "<p class=\"location\">Settings</p><div class=\"sidebar-elems\"></div>";
         style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
         let v = layout::render(
+            &self.shared.templates,
             &self.shared.layout,
             &page,
             sidebar,

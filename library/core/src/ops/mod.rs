@@ -147,8 +147,6 @@ mod function;
 mod generator;
 mod index;
 mod range;
-#[cfg(bootstrap)]
-mod r#try;
 mod try_trait;
 mod unsize;
 
@@ -183,19 +181,10 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
-#[unstable(feature = "try_trait", issue = "42327")]
-#[cfg(bootstrap)]
-pub use self::r#try::Try;
-
-#[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
-#[cfg(bootstrap)]
-pub(crate) use self::r#try::Try as TryV1;
-
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub use self::try_trait::FromResidual;
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-#[cfg(not(bootstrap))]
 pub use self::try_trait::Try;
 
 #[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]

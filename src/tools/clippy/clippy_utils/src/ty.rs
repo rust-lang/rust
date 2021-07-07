@@ -15,6 +15,7 @@ use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::{match_def_path, must_use_attr};
 
@@ -112,6 +113,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 }
 
 /// Checks whether a type implements a trait.
+/// The function returns false in case the type contains an inference variable.
 /// See also `get_trait_def_id`.
 pub fn implements_trait<'tcx>(
     cx: &LateContext<'tcx>,
@@ -119,16 +121,18 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
-    // Do not check on infer_types to avoid panic in evaluate_obligation.
-    if ty.has_infer_types() {
-        return false;
-    }
+    // Clippy shouldn't have infer types
+    assert!(!ty.needs_infer());
+
     let ty = cx.tcx.erase_regions(ty);
     if ty.has_escaping_bound_vars() {
         return false;
     }
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
-    cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
+    cx.tcx.infer_ctxt().enter(|infcx|
+        infcx.type_implements_trait(trait_id, ty, ty_params, cx.param_env)
+        .must_apply_modulo_regions()
+    )
 }
 
 /// Checks whether this type implements `Drop`.

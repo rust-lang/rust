@@ -42,7 +42,7 @@
 //!   of the `try` intrinsic.
 //!
 //! [win64]: https://docs.microsoft.com/en-us/cpp/build/exception-handling-x64
-//! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
+//! [llvm]: https://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
 #![allow(nonstandard_style)]
 
@@ -100,7 +100,7 @@ struct Exception {
 // In any case, these structures are all constructed in a similar manner, and
 // it's just somewhat verbose for us.
 //
-// [1]: http://www.geoffchappell.com/studies/msvc/language/predefined/
+// [1]: https://www.geoffchappell.com/studies/msvc/language/predefined/
 
 #[cfg(target_arch = "x86")]
 #[macro_use]

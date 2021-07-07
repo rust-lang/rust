@@ -305,7 +305,7 @@ impl Error for VarError {
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
-///  - [Austin Group Bugzilla](http://austingroupbugs.net/view.php?id=188)
+///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
 /// # Panics
@@ -344,7 +344,7 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
-///  - [Austin Group Bugzilla](http://austingroupbugs.net/view.php?id=188)
+///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
 /// # Panics

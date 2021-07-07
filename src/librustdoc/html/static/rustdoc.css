@@ -23,21 +23,27 @@
 	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif 4'), url("SourceSerif4-Regular.ttf.woff") format('woff');
+	src: local('Source Serif 4'),
+		url("SourceSerif4-Regular.ttf.woff2") format("woff2"),
+		url("SourceSerif4-Regular.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif 4';
 	font-style: italic;
 	font-weight: 400;
-	src: local('Source Serif 4 Italic'), url("SourceSerif4-It.ttf.woff") format('woff');
+	src: local('Source Serif 4 Italic'),
+		url("SourceSerif4-It.ttf.woff2") format("woff2"),
+		url("SourceSerif4-It.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif 4 Bold'), url("SourceSerif4-Bold.ttf.woff") format('woff');
+	src: local('Source Serif 4 Bold'),
+		url("SourceSerif4-Bold.ttf.woff2") format("woff2"),
+		url("SourceSerif4-Bold.ttf.woff") format("woff");
 	font-display: swap;
 }
 
@@ -48,21 +54,24 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff2") format("woff2"),
+		url("SourceCodePro-Regular.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It.ttf.woff") format('woff');
+	src: url("SourceCodePro-It.ttf.woff2") format("woff2"),
+		url("SourceCodePro-It.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
+	src: url("SourceCodePro-Semibold.ttf.woff2") format("woff2"),
+		url("SourceCodePro-Semibold.ttf.woff") format("woff");
 	font-display: swap;
 }
 
@@ -137,9 +146,15 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-.impl, .method,
-.type:not(.container-rustdoc), .associatedconstant,
-.associatedtype {
+.impl,
+.impl-items .method,
+.methods .method,
+.impl-items .type,
+.methods .type,
+.impl-items .associatedconstant,
+.methods .associatedconstant,
+.impl-items .associatedtype,
+.methods .associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
@@ -160,6 +175,7 @@ div.impl-items > div {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
+.item-left > a,
 div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
@@ -188,6 +204,33 @@ p {
 
 summary {
 	outline: none;
+}
+
+/* Fix some style changes due to normalize.css 8 */
+
+td,
+th {
+	padding: 0;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+	color: inherit;
+	font: inherit;
+	margin: 0;
+}
+
+/* end tweaks for normalize.css 8 */
+
+details:not(.rustdoc-toggle) summary {
+	margin-bottom: .6em;
 }
 
 code, pre, a.test-arrow {
@@ -581,7 +624,6 @@ nav.sub {
 .content .item-info {
 	position: relative;
 	margin-left: 33px;
-	margin-top: -13px;
 }
 
 .sub-variant > div > .item-info {
@@ -654,6 +696,12 @@ a {
 	background: transparent;
 }
 
+.small-section-header {
+	display: flex;
+	justify-content: space-between;
+	position: relative;
+}
+
 .small-section-header:hover > .anchor {
 	display: initial;
 }
@@ -695,6 +743,25 @@ a {
 }
 
 .block a.current.crate { font-weight: 500; }
+
+.item-table {
+	display: grid;
+	column-gap: 1.2rem;
+	row-gap: 0.0rem;
+	grid-template-columns: auto 1fr;
+	/* align content left */
+	justify-items: start;
+}
+
+.item-left, .item-right {
+	display: block;
+}
+.item-left {
+	grid-column: 1;
+}
+.item-right {
+	grid-column: 2;
+}
 
 .search-container {
 	position: relative;
@@ -852,19 +919,15 @@ body.blur > :not(#help) {
 }
 
 .stab {
-	display: table;
 	border-width: 1px;
 	border-style: solid;
 	padding: 3px;
 	margin-bottom: 5px;
 	font-size: 90%;
+	font-weight: normal;
 }
 .stab p {
 	display: inline;
-}
-
-.stab summary {
-	display: list-item;
 }
 
 .stab .emoji {
@@ -887,7 +950,7 @@ body.blur > :not(#help) {
 	font-size: 80%;
 	line-height: 1.2;
 	margin-bottom: 0;
-	margin-right: .3em;
+	margin-left: .3em;
 	padding: 2px;
 	vertical-align: text-bottom;
 }
@@ -900,32 +963,25 @@ body.blur > :not(#help) {
 .since {
 	font-weight: normal;
 	font-size: initial;
-	position: absolute;
-	right: 0;
-	top: 0;
 }
 
 .impl-items .since, .impl .since, .methods .since {
-	flex-grow: 0;
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
 }
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
-	flex-grow: 0;
 	/* Override header settings otherwise it's too bold */
 	font-size: 17px;
 	font-weight: normal;
 }
 
-.impl-items code, .impl code, .methods code {
-	flex-grow: 1;
+.rightside {
+	float: right;
 }
 
 .has-srclink {
-	display: flex;
-	flex-basis: 100%;
 	font-size: 16px;
 	margin-bottom: 12px;
 	/* Push the src link out to the right edge consistently */
@@ -986,7 +1042,6 @@ a.test-arrow:hover{
 }
 
 .since + .srclink {
-	display: table-cell;
 	padding-left: 10px;
 }
 
@@ -1044,6 +1099,10 @@ a.test-arrow:hover{
 
 :target > code {
 	opacity: 1;
+}
+
+:target {
+	padding-right: 3px;
 }
 
 .information {
@@ -1589,9 +1648,25 @@ details.undocumented[open] > summary::before {
 	}
 
 	.sidebar > .block.version {
+		overflow: hidden;
 		border-bottom: none;
-		margin-top: 12px;
 		margin-bottom: 0;
+		height: 100%;
+		padding-left: 12px;
+	}
+	.sidebar > .block.version > div.narrow-helper {
+		float: left;
+		width: 1px;
+		height: 100%;
+	}
+	.sidebar > .block.version > p {
+		/* hide Version text if too narrow */
+		margin: 0;
+		min-width: 55px;
+		/* vertically center */
+		display: flex;
+		align-items: center;
+		height: 100%;
 	}
 
 	nav.sub {
@@ -1610,11 +1685,6 @@ details.undocumented[open] > summary::before {
 
 	#search {
 		margin-left: 0;
-	}
-
-	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
-	.impl-items > .associatedtype {
-		display: flex;
 	}
 
 	.anchor {
@@ -1732,6 +1802,16 @@ details.undocumented[open] > summary::before {
 	#help-button {
 		display: none;
 	}
+
+	/* Display an alternating layout on tablets and phones */
+	.item-table {
+		display: flex;
+		flex-flow: column wrap;
+	}
+	.item-left, .item-right {
+		width: 100%;
+	}
+
 	.search-container > div {
 		width: calc(100% - 32px);
 	}
@@ -1744,7 +1824,7 @@ details.undocumented[open] > summary::before {
 	.search-results .result-name, .search-results div.desc, .search-results .result-description {
 		width: 100%;
 	}
-	.search-results div.desc, .search-results .result-description {
+	.search-results div.desc, .search-results .result-description, .item-right {
 		padding-left: 2em;
 	}
 }

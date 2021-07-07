@@ -1,5 +1,5 @@
 // Reference: PTX Writer's Guide to Interoperability
-// http://docs.nvidia.com/cuda/ptx-writers-guide-to-interoperability
+// https://docs.nvidia.com/cuda/ptx-writers-guide-to-interoperability
 
 use crate::abi::call::{ArgAbi, FnAbi};
 

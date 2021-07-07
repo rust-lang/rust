@@ -70,7 +70,7 @@ pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
         Err(crate::io::Error::new_const(
-            ErrorKind::Other,
+            ErrorKind::Uncategorized,
             &"operation can't be trusted to have any effect on SGX",
         ))
     } else {
@@ -115,11 +115,11 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
     } else if code == Error::Interrupted as _ {
         ErrorKind::Interrupted
     } else if code == Error::Other as _ {
-        ErrorKind::Other
+        ErrorKind::Uncategorized
     } else if code == Error::UnexpectedEof as _ {
         ErrorKind::UnexpectedEof
     } else {
-        ErrorKind::Other
+        ErrorKind::Uncategorized
     }
 }
 

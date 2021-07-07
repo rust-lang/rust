@@ -14,7 +14,7 @@ use crate::sys::hermit::abi;
 /// This structure behaves a lot like a common mutex. There are some differences:
 ///
 /// - By using busy waiting, it can be used outside the runtime.
-/// - It is a so called ticket lock and is completly fair.
+/// - It is a so called ticket lock and is completely fair.
 #[cfg_attr(target_arch = "x86_64", repr(align(128)))]
 #[cfg_attr(not(target_arch = "x86_64"), repr(align(64)))]
 struct Spinlock<T: ?Sized> {

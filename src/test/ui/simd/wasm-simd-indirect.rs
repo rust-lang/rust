@@ -1,7 +1,5 @@
 // build-pass
 
-#![cfg_attr(target_arch = "wasm32", feature(wasm_simd, wasm_target_feature))]
-
 #[cfg(target_arch = "wasm32")]
 fn main() {
     unsafe {

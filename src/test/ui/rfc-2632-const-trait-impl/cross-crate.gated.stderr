@@ -1,0 +1,9 @@
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/cross-crate.rs:16:5
+   |
+LL |     NonConst.func();
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

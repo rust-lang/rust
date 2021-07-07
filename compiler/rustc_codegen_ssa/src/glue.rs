@@ -23,7 +23,12 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         ty::Dynamic(..) => {
             // load size/align from vtable
             let vtable = info.unwrap();
-            (meth::SIZE.get_usize(bx, vtable), meth::ALIGN.get_usize(bx, vtable))
+            (
+                meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
+                    .get_usize(bx, vtable),
+                meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
+                    .get_usize(bx, vtable),
+            )
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(bx, 0);

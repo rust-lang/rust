@@ -157,3 +157,8 @@ pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
         .filter_map(ast::Attribute::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }
+
+/// Return true if the attributes contain `#[unstable]`
+pub fn is_unstable(attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(|attr| attr.has_name(sym::unstable))
+}

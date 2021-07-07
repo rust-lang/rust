@@ -10,6 +10,10 @@ const {Options, runTest} = require('browser-ui-test');
 function showHelp() {
     console.log("rustdoc-js options:");
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
+    console.log("  --file [PATH]              : file to run (can be repeated)");
+    console.log("  --debug                    : show extra information about script run");
+    console.log("  --show-text                : render font in pages");
+    console.log("  --no-headless              : disable headless mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
 }
@@ -18,24 +22,38 @@ function parseOptions(args) {
     var opts = {
         "doc_folder": "",
         "tests_folder": "",
+        "files": [],
+        "debug": false,
+        "show_text": false,
+        "no_headless": false,
     };
     var correspondances = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
+        "--debug": "debug",
+        "--show-text": "show_text",
+        "--no-headless": "no_headless",
     };
 
     for (var i = 0; i < args.length; ++i) {
         if (args[i] === "--doc-folder"
-            || args[i] === "--tests-folder") {
+            || args[i] === "--tests-folder"
+            || args[i] === "--file") {
             i += 1;
             if (i >= args.length) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
                 return null;
             }
-            opts[correspondances[args[i - 1]]] = args[i];
+            if (args[i - 1] !== "--file") {
+                opts[correspondances[args[i - 1]]] = args[i];
+            } else {
+                opts["files"].push(args[i]);
+            }
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
+        } else if (correspondances[args[i]]) {
+            opts[correspondances[args[i]]] = true;
         } else {
             console.log("Unknown option `" + args[i] + "`.");
             console.log("Use `--help` to see the list of options");
@@ -61,24 +79,32 @@ async function main(argv) {
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
-        options.parseArguments([
+        let args = [
             "--no-screenshot",
-            // This option shows what puppeteer "code" is run
-            // "--debug",
-            // This option disable the headless mode, allowing you to see what's going on.
-            // "--no-headless",
-            // The text isn't rendered by default because of a lot of small differences
-            // between hosts.
-            // "--show-text",
             "--variable", "DOC_PATH", opts["doc_folder"],
-        ]);
+        ];
+        if (opts["debug"]) {
+            args.push("--debug");
+        }
+        if (opts["show_text"]) {
+            args.push("--show-text");
+        }
+        if (opts["no_headless"]) {
+            args.push("--no-headless");
+        }
+        options.parseArguments(args);
     } catch (error) {
         console.error(`invalid argument: ${error}`);
         process.exit(1);
     }
 
     let failed = false;
-    let files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
+    let files;
+    if (opts["files"].length === 0) {
+        files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
+    } else {
+        files = opts["files"].filter(file => path.extname(file) == ".goml");
+    }
 
     files.sort();
     for (var i = 0; i < files.length; ++i) {

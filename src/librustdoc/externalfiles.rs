@@ -4,7 +4,9 @@ use std::fs;
 use std::path::Path;
 use std::str;
 
-#[derive(Clone, Debug)]
+use serde::Serialize;
+
+#[derive(Clone, Debug, Serialize)]
 crate struct ExternalHtml {
     /// Content that will be included inline in the <head> section of a
     /// rendered Markdown file or generated documentation

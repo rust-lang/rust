@@ -88,23 +88,32 @@ struct NormalizeAfterErasingRegionsFolder<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
+impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
+    fn normalize_generic_arg_after_erasing_regions(
+        &self,
+        arg: ty::GenericArg<'tcx>,
+    ) -> ty::GenericArg<'tcx> {
+        let arg = self.param_env.and(arg);
+        self.tcx.normalize_generic_arg_after_erasing_regions(arg)
+    }
+}
+
 impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let arg = self.param_env.and(ty.into());
-        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_ty()
+        self.normalize_generic_arg_after_erasing_regions(ty.into()).expect_ty()
     }
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        let arg = self.param_env.and(c.into());
-        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_const()
+        self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
     }
 
     #[inline]
     fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        // FIXME: This *probably* needs canonicalization too!
         let arg = self.param_env.and(c);
         self.tcx.normalize_mir_const_after_erasing_regions(arg)
     }

@@ -262,6 +262,7 @@ use core::marker::{self, PhantomData, Unpin, Unsize};
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw, forget};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+#[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
@@ -346,6 +347,7 @@ impl<T> Rc<T> {
     ///
     /// let five = Rc::new(5);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
         // There is an implicit weak pointer owned by all the strong
@@ -381,6 +383,7 @@ impl<T> Rc<T> {
     ///     }
     /// }
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
@@ -577,6 +580,7 @@ impl<T> Rc<T> {
     }
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn pin(value: T) -> Pin<Rc<T>> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
@@ -1473,6 +1477,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
     /// Creates a new `Rc<T>`, with the `Default` value for `T`.
@@ -1731,6 +1736,7 @@ impl<T: ?Sized> fmt::Pointer for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
     /// Converts a generic type `T` into a `Rc<T>`

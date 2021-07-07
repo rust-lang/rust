@@ -361,6 +361,7 @@ E0626: include_str!("./error_codes/E0626.md"),
 E0627: include_str!("./error_codes/E0627.md"),
 E0628: include_str!("./error_codes/E0628.md"),
 E0631: include_str!("./error_codes/E0631.md"),
+E0632: include_str!("./error_codes/E0632.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0634: include_str!("./error_codes/E0634.md"),
 E0635: include_str!("./error_codes/E0635.md"),
@@ -609,7 +610,7 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0540, // multiple rustc_deprecated attributes
     E0544, // multiple stability levels
 //  E0548, // replaced with a generic attribute input check
-    E0553, // multiple rustc_const_unstable attributes
+//  E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
 //  E0558, // replaced with a generic attribute input check
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
@@ -620,12 +621,9 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0625, // thread-local statics cannot be accessed at compile-time
-    E0629, // missing 'feature' (rustc_const_unstable)
-    // rustc_const_unstable attribute must be paired with stable/unstable
-    // attribute
-    E0630,
-    E0632, // cannot provide explicit generic arguments when `impl Trait` is
-           // used in argument position
+//  E0629, // missing 'feature' (rustc_const_unstable)
+//  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
+           // attribute
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
     E0667, // `impl Trait` in projections

@@ -21,7 +21,7 @@ Read ["Installation"] from [The Book].
 The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. It lives in the root of the project.
 
-The `x.py` command can be run directly on most systems in the following format: 
+The `x.py` command can be run directly on most systems in the following format:
 
 ```sh
 ./x.py <subcommand> [flags]
@@ -272,15 +272,14 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 
 ## Trademark
 
-The Rust programming language is an open source, community project governed
-by a core team. It is also sponsored by the Mozilla Foundation (“Mozilla”),
-which owns and protects the Rust and Cargo trademarks and logos
-(the “Rust Trademarks”).
+[The Rust Foundation][rust-foundation] owns and protects the Rust and Cargo
+trademarks and logos (the “Rust Trademarks”).
 
 If you want to use these names or brands, please read the [media guide][media-guide].
 
 Third-party logos may be subject to third-party copyrights and trademarks. See
 [Licenses][policies-licenses] for details.
 
+[rust-foundation]: https://foundation.rust-lang.org/
 [media-guide]: https://www.rust-lang.org/policies/media-guide
 [policies-licenses]: https://www.rust-lang.org/policies/licenses

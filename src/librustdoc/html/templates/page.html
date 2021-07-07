@@ -1,0 +1,119 @@
+<!DOCTYPE html> {#- -#}
+<html lang="en"> {#- -#}
+<head> {#- -#}
+    <meta charset="utf-8"> {#- -#}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> {#- -#}
+    <meta name="generator" content="rustdoc"> {#- -#}
+    <meta name="description" content="{{page.description}}"> {#- -#}
+    <meta name="keywords" content="{{page.keywords}}"> {#- -#}
+    <title>{{page.title}}</title> {#- -#}
+    <link rel="stylesheet" type="text/css" {# -#}
+          href="{{static_root_path | safe}}normalize{{page.resource_suffix}}.css"> {#- -#}
+    <link rel="stylesheet" type="text/css" {# -#}
+          href="{{static_root_path | safe}}rustdoc{{page.resource_suffix}}.css" {# -#}
+          id="mainThemeStyle"> {#- -#}
+    {{- style_files | safe -}}
+    <script id="default-settings" {# -#}
+      {% for k, v in layout.default_settings %}
+        data-{{k}}="{{v}}"
+      {%- endfor -%}
+    ></script> {#- -#}
+    <script src="{{static_root_path | safe}}storage{{page.resource_suffix}}.js"></script> {#- -#}
+    <script src="{{page.root_path | safe}}crates{{page.resource_suffix}}.js"></script> {#- -#}
+    <noscript> {#- -#}
+        <link rel="stylesheet" {# -#}
+           href="{{static_root_path | safe}}noscript{{page.resource_suffix}}.css"> {#- -#}
+    </noscript> {#- -#}
+    {%- if layout.css_file_extension -%}
+        <link rel="stylesheet" type="text/css" {# -#}
+            href="{{static_root_path | safe}}theme{{page.resource_suffix}}.css"> {#- -#}
+    {%- endif -%}
+    {%- if layout.favicon -%}
+        <link rel="shortcut icon" href="{{layout.favicon}}"> {#- -#}
+    {%- else -%}
+        <link rel="icon" type="image/svg+xml" {# -#}
+            href="{{static_root_path | safe}}favicon{{page.resource_suffix}}.svg"> {#- -#}
+        <link rel="alternate icon" type="image/png" {# -#}
+            href="{{static_root_path | safe}}favicon-16x16{{page.resource_suffix}}.png"> {#- -#}
+        <link rel="alternate icon" type="image/png" {# -#}
+            href="{{static_root_path | safe}}favicon-32x32{{page.resource_suffix}}.png"> {#- -#}
+    {%- endif -%}
+    {{- layout.external_html.in_header | safe -}}
+    <style type="text/css"> {#- -#}
+    #crate-search{ {#- -#}
+        background-image:url("{{static_root_path | safe}}down-arrow{{page.resource_suffix}}.svg"); {#- -#}
+    } {#- -#}
+    </style> {#- -#}
+</head> {#- -#}
+<body class="rustdoc {{page.css_class}}"> {#- -#}
+    <!--[if lte IE 11]> {#- -#}
+    <div class="warning"> {#- -#}
+        This old browser is unsupported and will most likely display funky things. {#- -#}
+    </div> {#- -#}
+    <![endif]--> {#- -#}
+    {{- layout.external_html.before_content | safe -}}
+    <nav class="sidebar"> {#- -#}
+        <div class="sidebar-menu" role="button">&#9776;</div> {#- -#}
+        <a href='{{page.root_path | safe}}{{krate_with_trailing_slash | safe}}index.html'> {#- -#}
+            <div class='logo-container rust-logo'> {#- -#}
+            <img src='
+                {%- if layout.logo -%}
+                {{layout.logo}}
+                {%- else -%}
+                {{static_root_path | safe}}rust-logo{{page.resource_suffix}}.png
+                {%- endif -%}
+                ' alt='logo'> {#- -#}
+            </div> {#- -#}
+        </a> {#- -#}
+        {{- sidebar | safe -}}
+    </nav> {#- -#}
+    <div class="theme-picker"> {#- -#}
+        <button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"> {#- -#}
+            <img width="18" height="18" alt="Pick another theme!" {# -#}
+             src="{{static_root_path | safe}}brush{{page.resource_suffix}}.svg"> {#- -#}
+        </button> {#- -#}
+        <div id="theme-choices" role="menu"></div> {#- -#}
+    </div> {#- -#}
+    <nav class="sub"> {#- -#}
+        <form class="search-form"> {#- -#}
+            <div class="search-container"> {#- -#}
+                <div>{%- if layout.generate_search_filter -%}
+                    <select id="crate-search"> {#- -#}
+                        <option value="All crates">All crates</option> {#- -#}
+                    </select> {#- -#}
+                    {%- endif -%}
+                    <input {# -#}
+                        class="search-input"{# -#}
+                        name="search" {# -#}
+                        disabled {# -#}
+                        autocomplete="off" {# -#}
+                        spellcheck="false" {# -#}
+                        placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
+                        type="search"> {#- -#}
+                </div> {#- -#}
+                <button type="button" id="help-button" title="help">?</button> {#- -#}
+                <a id="settings-menu" href="{{page.root_path | safe}}settings.html" title="settings"> {#- -#}
+                    <img width="18" height="18" alt="Change settings" {# -#}
+                         src="{{static_root_path | safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
+                </a> {#- -#}
+            </div> {#- -#}
+        </form> {#- -#}
+    </nav> {#- -#}
+    <section id="main" class="content">{{- content | safe -}}</section> {#- -#}
+    <section id="search" class="content hidden"></section> {#- -#}
+    {{- layout.external_html.after_content | safe -}}
+    <div id="rustdoc-vars" {# -#}
+         data-root-path="{{page.root_path | safe}}" {# -#}
+         data-current-crate="{{layout.krate}}" {# -#}
+         data-search-index-js="{{page.root_path | safe}}search-index{{page.resource_suffix}}.js" {# -#}
+         data-search-js="{{static_root_path | safe}}search{{page.resource_suffix}}.js"> {#- -#}
+    </div>
+    <script src="{{static_root_path | safe}}main{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- for script in page.static_extra_scripts -%}
+    <script src="{{static_root_path | safe}}{{script}}.js"></script> {#- -#}
+    {% endfor %}
+    {%- for script in page.extra_scripts -%}
+    <script src="{{page.root_path | safe}}{{script}}.js"></script> {#- -#}
+    {% endfor %}
+</body> {#- -#}
+</html> {#- -#}

@@ -155,6 +155,7 @@ use crate::fmt;
 use crate::io;
 use crate::mem;
 use crate::num::NonZeroU64;
+use crate::num::NonZeroUsize;
 use crate::panic;
 use crate::panicking;
 use crate::str;
@@ -174,14 +175,8 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
-#[unstable(feature = "available_concurrency", issue = "74479")]
-mod available_concurrency;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
-
-#[unstable(feature = "available_concurrency", issue = "74479")]
-pub use available_concurrency::available_concurrency;
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -656,22 +651,23 @@ pub fn current() -> Thread {
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
 ///
-/// This is used when the programmer knows that the thread will have nothing
-/// to do for some time, and thus avoid wasting computing time.
+/// This calls the underlying OS scheduler's yield primitive, signaling
+/// that the calling thread is willing to give up its remaining timeslice
+/// so that the OS may schedule other threads on the CPU.
 ///
-/// For example when polling on a resource, it is common to check that it is
-/// available, and if not to yield in order to avoid busy waiting.
+/// A drawback of yielding in a loop is that if the OS does not have any
+/// other ready threads to run on the current CPU, the thread will effectively
+/// busy-wait, which wastes CPU time and energy.
 ///
-/// Thus the pattern of `yield`ing after a failed poll is rather common when
-/// implementing low-level shared resources or synchronization primitives.
+/// Therefore, when waiting for events of interest, a programmer's first
+/// choice should be to use synchronization devices such as [`channel`]s,
+/// [`Condvar`]s, [`Mutex`]es or [`join`] since these primitives are
+/// implemented in a blocking manner, giving up the CPU until the event
+/// of interest has occurred which avoids repeated yielding.
 ///
-/// However programmers will usually prefer to use [`channel`]s, [`Condvar`]s,
-/// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
-/// thinking about thread scheduling.
-///
-/// Note that [`channel`]s for example are implemented using this primitive.
-/// Indeed when you call `send` or `recv`, which are blocking, they will yield
-/// if the channel is not available.
+/// `yield_now` should thus be used only rarely, mostly in situations where
+/// repeated polling is required because there is no other suitable way to
+/// learn when an event of interest has occurred.
 ///
 /// # Examples
 ///
@@ -1421,4 +1417,40 @@ fn _assert_sync_and_send() {
     fn _assert_both<T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();
     _assert_both::<Thread>();
+}
+
+/// Returns the number of hardware threads available to the program.
+///
+/// This value should be considered only a hint.
+///
+/// # Platform-specific behavior
+///
+/// If interpreted as the number of actual hardware threads, it may undercount on
+/// Windows systems with more than 64 hardware threads. If interpreted as the
+/// available concurrency for that process, it may overcount on Windows systems
+/// when limited by a process wide affinity mask or job object limitations, and
+/// it may overcount on Linux systems when limited by a process wide affinity
+/// mask or affected by cgroups limits.
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// - If the number of hardware threads is not known for the target platform.
+/// - The process lacks permissions to view the number of hardware threads
+///   available.
+///
+/// # Examples
+///
+/// ```
+/// # #![allow(dead_code)]
+/// #![feature(available_concurrency)]
+/// use std::thread;
+///
+/// let count = thread::available_concurrency().map(|n| n.get()).unwrap_or(1);
+/// ```
+#[unstable(feature = "available_concurrency", issue = "74479")]
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    imp::available_concurrency()
 }

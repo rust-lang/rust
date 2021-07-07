@@ -1,10 +1,8 @@
+// edition:2021
 // run-pass
 
 // Test that we can mutate a place through a mut-borrow
 // that is captured by the closure
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 // Check that we can mutate when one deref is required
 fn mut_ref_1() {

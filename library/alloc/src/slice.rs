@@ -1042,7 +1042,7 @@ where
 }
 
 /// This merge sort borrows some (but not all) ideas from TimSort, which is described in detail
-/// [here](http://svn.python.org/projects/python/trunk/Objects/listsort.txt).
+/// [here](https://github.com/python/cpython/blob/main/Objects/listsort.txt).
 ///
 /// The algorithm identifies strictly descending and non-descending subsequences, which are called
 /// natural runs. There is a stack of pending runs yet to be merged. Each newly found run is pushed

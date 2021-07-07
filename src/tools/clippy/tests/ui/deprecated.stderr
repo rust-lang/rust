@@ -60,11 +60,11 @@ error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cs
 LL | #[warn(clippy::temporary_cstring_as_ptr)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
 
-error: lint `clippy::panic_params` has been renamed to `non_fmt_panic`
+error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
   --> $DIR/deprecated.rs:11:8
    |
 LL | #[warn(clippy::panic_params)]
-   |        ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panic`
+   |        ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
 
 error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
   --> $DIR/deprecated.rs:12:8
@@ -84,13 +84,13 @@ error: lint `clippy::filter_map` has been removed: this lint has been replaced b
 LL | #[warn(clippy::filter_map)]
    |        ^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::pub_enum_variant_names` has been removed: set the `avoid_breaking_exported_api` config option to `false` to enable the `enum_variant_names` lint for public items
+error: lint `clippy::pub_enum_variant_names` has been removed: set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items
   --> $DIR/deprecated.rs:15:8
    |
 LL | #[warn(clippy::pub_enum_variant_names)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items
+error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items
   --> $DIR/deprecated.rs:16:8
    |
 LL | #[warn(clippy::wrong_pub_self_convention)]

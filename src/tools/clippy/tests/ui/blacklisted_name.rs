@@ -43,3 +43,15 @@ fn issue_1647_ref_mut() {
     let ref mut baz = 0;
     if let Some(ref mut quux) = Some(42) {}
 }
+
+mod tests {
+    fn issue_7305() {
+        // `blackisted_name` lint should not be triggered inside of the test code.
+        let foo = 0;
+
+        // Check that even in nested functions warning is still not triggere.
+        fn nested() {
+            let foo = 0;
+        }
+    }
+}

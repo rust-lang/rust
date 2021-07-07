@@ -12,7 +12,7 @@ use crate::clean::types::{
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
+use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
 crate enum ExternalLocation {
@@ -34,18 +34,26 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     // has since been learned.
     for &(did, ref item) in &cache.orphan_impl_items {
         if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
+            let desc = item
+                .doc_value()
+                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(&cache)));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
+                desc,
                 parent: Some(did.into()),
                 parent_idx: None,
-                search_type: get_index_search_type(&item, cache, tcx),
+                search_type: get_index_search_type(&item, tcx),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
     }
+
+    let crate_doc = krate
+        .module
+        .doc_value()
+        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(&cache)));
 
     let Cache { ref mut search_index, ref paths, .. } = *cache;
 
@@ -99,9 +107,6 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         }
         crate_items.push(&*item);
     }
-
-    let crate_doc =
-        krate.module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s));
 
     struct CrateData<'a> {
         doc: String,
@@ -187,7 +192,6 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
 
 crate fn get_index_search_type<'tcx>(
     item: &clean::Item,
-    cache: &Cache,
     tcx: TyCtxt<'tcx>,
 ) -> Option<IndexItemFunctionType> {
     let (all_types, ret_types) = match *item.kind {
@@ -199,12 +203,12 @@ crate fn get_index_search_type<'tcx>(
 
     let inputs = all_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect();
     let output = ret_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect::<Vec<_>>();
     let output = if output.is_empty() { None } else { Some(output) };
@@ -212,12 +216,10 @@ crate fn get_index_search_type<'tcx>(
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type, cache: &Cache) -> RenderType {
+fn get_index_type(clean_type: &clean::Type) -> RenderType {
     RenderType {
-        ty: clean_type.def_id_full(cache),
-        idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
-        generics: get_generics(clean_type, cache),
+        generics: get_generics(clean_type),
     }
 }
 
@@ -233,6 +235,7 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
             });
             Some(path_segment.name)
         }
+        clean::DynTrait(ref bounds, _) => get_index_type_name(&bounds[0].trait_, accept_generic),
         clean::Generic(s) if accept_generic => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
@@ -249,16 +252,17 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
     }
 }
 
-fn get_generics(clean_type: &clean::Type, cache: &Cache) -> Option<Vec<Generic>> {
+/// Return a list of generic parameters for use in the search index.
+///
+/// This function replaces bounds with types, so that `T where T: Debug` just becomes `Debug`.
+/// It does return duplicates, and that's intentional, since search queries like `Result<usize, usize>`
+/// are supposed to match only results where both parameters are `usize`.
+fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
     clean_type.generics().and_then(|types| {
         let r = types
             .iter()
             .filter_map(|t| {
-                get_index_type_name(t, false).map(|name| Generic {
-                    name: name.as_str().to_ascii_lowercase(),
-                    defid: t.def_id_full(cache),
-                    idx: None,
-                })
+                get_index_type_name(t, false).map(|name| name.as_str().to_ascii_lowercase())
             })
             .collect::<Vec<_>>();
         if r.is_empty() { None } else { Some(r) }

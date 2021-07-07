@@ -3,7 +3,7 @@
 #![feature(associated_type_defaults)]
 
 // A Collection trait and collection families. Based on
-// http://smallcultfollowing.com/babysteps/blog/2016/11/03/
+// https://smallcultfollowing.com/babysteps/blog/2016/11/03/
 // associated-type-constructors-part-2-family-traits/
 
 // check that we don't normalize with trait defaults.

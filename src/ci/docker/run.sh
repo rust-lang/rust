@@ -219,6 +219,14 @@ else
   command="/checkout/src/ci/run.sh"
 fi
 
+if [ "$CI" != "" ]; then
+    # Get some needed information for $BASE_COMMIT
+    git fetch "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_BASE_REF"
+    BASE_COMMIT="$(git merge-base FETCH_HEAD HEAD)"
+else
+    BASE_COMMIT=""
+fi
+
 docker \
   run \
   --workdir /checkout/obj \
@@ -235,7 +243,9 @@ docker \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
   --env TOOLSTATE_PUBLISH \
+  --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
+  --env BASE_COMMIT="$BASE_COMMIT" \
   --init \
   --rm \
   rust-ci \

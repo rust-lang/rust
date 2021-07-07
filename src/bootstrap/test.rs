@@ -9,7 +9,7 @@ use std::fmt;
 use std::fs;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use build_helper::{self, output, t};
 
@@ -124,8 +124,25 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
 
         builder.info(&format!("Linkcheck ({})", host));
 
+        // Test the linkchecker itself.
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/linkchecker",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+
+        // Build all the default documentation.
         builder.default_doc(&[]);
 
+        // Run the linkchecker.
         let _time = util::timeit(&builder);
         try_run(
             builder,
@@ -141,6 +158,49 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Linkcheck { host: run.target });
+    }
+}
+
+fn check_if_tidy_is_installed() -> bool {
+    Command::new("tidy")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .status()
+        .map_or(false, |status| status.success())
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct HtmlCheck {
+    target: TargetSelection,
+}
+
+impl Step for HtmlCheck {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let run = run.path("src/tools/html-checker");
+        run.lazy_default_condition(Box::new(check_if_tidy_is_installed))
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(HtmlCheck { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        if !check_if_tidy_is_installed() {
+            eprintln!("not running HTML-check tool because `tidy` is missing");
+            eprintln!(
+                "Note that `tidy` is not the in-tree `src/tools/tidy` but needs to be installed"
+            );
+            panic!("Cannot run html-check tests");
+        }
+        // Ensure that a few different kinds of documentation are available.
+        builder.default_doc(&[]);
+        builder.ensure(crate::doc::Rustc { target: self.target, stage: builder.top_stage });
+
+        try_run(builder, builder.tool_cmd(Tool::HtmlChecker).arg(builder.doc_out(self.target)));
     }
 }
 
@@ -805,16 +865,16 @@ impl Step for RustdocGUI {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        let run = run.path("src/test/rustdoc-gui");
-        run.default_condition(
+        let run = run.suite_path("src/test/rustdoc-gui");
+        run.lazy_default_condition(Box::new(move || {
             builder.config.nodejs.is_some()
                 && builder
                     .config
                     .npm
                     .as_ref()
                     .map(|p| check_if_browser_ui_test_is_installed(p))
-                    .unwrap_or(false),
-        )
+                    .unwrap_or(false)
+        }))
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -870,6 +930,16 @@ impl Step for RustdocGUI {
             .arg(out_dir)
             .arg("--tests-folder")
             .arg(builder.build.src.join("src/test/rustdoc-gui"));
+        for path in &builder.paths {
+            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                if name.ends_with(".goml") {
+                    command.arg("--file").arg(name);
+                }
+            }
+        }
+        for test_arg in builder.config.cmd.test_args() {
+            command.arg(test_arg);
+        }
         builder.run(&mut command);
     }
 }
@@ -1131,19 +1201,6 @@ struct Compiletest {
     compare_mode: Option<&'static str>,
 }
 
-impl Compiletest {
-    fn add_lld_flags(builder: &Builder<'_>, target: TargetSelection, flags: &mut Vec<String>) {
-        if builder.config.use_lld {
-            if builder.is_fuse_ld_lld(target) {
-                flags.push("-Clink-arg=-fuse-ld=lld".to_string());
-            }
-
-            let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
-            flags.push(format!("-Clink-arg=-Wl,{}", threads));
-        }
-    }
-}
-
 impl Step for Compiletest {
     type Output = ();
 
@@ -1280,7 +1337,6 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
-        flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
         if let Some(linker) = builder.linker(target) {
@@ -1289,12 +1345,12 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
-        Self::add_lld_flags(builder, compiler.host, &mut hostflags);
+        hostflags.extend(builder.lld_flags(compiler.host));
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        Self::add_lld_flags(builder, target, &mut targetflags);
+        targetflags.extend(builder.lld_flags(target));
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
         cmd.arg("--docck-python").arg(builder.python());
@@ -1516,6 +1572,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         cmd.env("BOOTSTRAP_CARGO", &builder.initial_cargo);
+
+        cmd.arg("--channel").arg(&builder.config.channel);
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 

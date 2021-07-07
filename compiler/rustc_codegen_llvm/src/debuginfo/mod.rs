@@ -5,7 +5,6 @@ use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use self::metadata::{file_metadata, type_metadata, TypeMap};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
-use self::type_names::compute_debuginfo_type_name;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 
 use crate::abi::FnAbi;
@@ -311,10 +310,10 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
         };
 
-        // Find the enclosing function, in case this is a closure.
-        let def_key = self.tcx().def_key(def_id);
-        let mut name = def_key.disambiguated_data.data.to_string();
+        let mut name = String::new();
+        type_names::push_item_name(self.tcx(), def_id, false, &mut name);
 
+        // Find the enclosing function, in case this is a closure.
         let enclosing_fn_def_id = self.tcx().closure_base_def_id(def_id);
 
         // Get_template_parameters() will append a `<...>` clause to the function
@@ -428,23 +427,15 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             substs: SubstsRef<'tcx>,
             name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
+            type_names::push_generic_params(
+                cx.tcx,
+                cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
+                name_to_append_suffix_to,
+            );
+
             if substs.types().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
             }
-
-            name_to_append_suffix_to.push('<');
-            for (i, actual_type) in substs.types().enumerate() {
-                if i != 0 {
-                    name_to_append_suffix_to.push(',');
-                }
-
-                let actual_type =
-                    cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), actual_type);
-                // Add actual type name to <...> clause of function name
-                let actual_type_name = compute_debuginfo_type_name(cx.tcx(), actual_type, true);
-                name_to_append_suffix_to.push_str(&actual_type_name[..]);
-            }
-            name_to_append_suffix_to.push('>');
 
             // Again, only create type information if full debuginfo is enabled
             let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {

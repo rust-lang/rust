@@ -167,7 +167,7 @@ type BoxedNode<K, V> = NonNull<LeafNode<K, V>>;
 ///   carry a lifetime, because we want it to return `&'a` references.
 ///   Therefore, we define it only for the least powerful type `Immut<'a>`.
 /// - We cannot get implicit coercion from say `Mut<'a>` to `Immut<'a>`.
-///   Therefore, we have to explicitly call `reborrow` on a more powerfull
+///   Therefore, we have to explicitly call `reborrow` on a more powerful
 ///   `NodeRef` in order to reach a method like `into_kv`.
 ///
 /// All methods on `NodeRef` that return some kind of reference, either:

@@ -7,5 +7,3 @@
 //~| HELP add `#![register_tool(abc)]`
 //~| ERROR unknown tool name `abc`
 //~| HELP add `#![register_tool(abc)]`
-//~| ERROR unknown tool name `abc`
-//~| HELP add `#![register_tool(abc)]`

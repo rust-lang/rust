@@ -5,7 +5,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::free_regions::FreeRegionRelations;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -982,8 +981,8 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
                             parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
                         };
-                        let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
-                            Some(Node::Item(item)) => match item.kind {
+                        let (in_definition_scope, origin) =
+                            match tcx.hir().expect_item(opaque_hir_id).kind {
                                 // Anonymous `impl Trait`
                                 hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: Some(parent),
@@ -1000,12 +999,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     origin,
                                 ),
                                 _ => (def_scope_default(), hir::OpaqueTyOrigin::Misc),
-                            },
-                            _ => bug!(
-                                "expected item, found {}",
-                                tcx.hir().node_to_string(opaque_hir_id),
-                            ),
-                        };
+                            };
                         if in_definition_scope {
                             let opaque_type_key =
                                 OpaqueTypeKey { def_id: def_id.to_def_id(), substs };

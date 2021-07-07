@@ -1,6 +1,5 @@
 //! impl char {}
 
-use crate::intrinsics::likely;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -16,8 +15,8 @@ impl char {
     /// Point], but only ones within a certain range. `MAX` is the highest valid
     /// code point that's a valid [Unicode Scalar Value].
     ///
-    /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
-    /// [Code Point]: http://www.unicode.org/glossary/#code_point
+    /// [Unicode Scalar Value]: https://www.unicode.org/glossary/#unicode_scalar_value
+    /// [Code Point]: https://www.unicode.org/glossary/#code_point
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const MAX: char = '\u{10ffff}';
 
@@ -29,7 +28,7 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
-    /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
+    /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
     /// `char` and `str` methods are based on.
     ///
     /// New versions of Unicode are released regularly and subsequently all methods
@@ -332,21 +331,16 @@ impl char {
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
         assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
-        // the code is split up here to improve execution speed for cases where
-        // the `radix` is constant and 10 or smaller
-        let val = if likely(radix <= 10) {
-            // If not a digit, a number greater than radix will be created.
-            (self as u32).wrapping_sub('0' as u32)
-        } else {
-            match self {
-                '0'..='9' => self as u32 - '0' as u32,
-                'a'..='z' => self as u32 - 'a' as u32 + 10,
-                'A'..='Z' => self as u32 - 'A' as u32 + 10,
-                _ => return None,
+        // If not a digit, a number greater than radix will be created.
+        let mut digit = (self as u32).wrapping_sub('0' as u32);
+        if radix > 10 {
+            if digit < 10 {
+                return Some(digit);
             }
-        };
-
-        if val < radix { Some(val) } else { None }
+            // Force the 6th bit to be set to ensure ascii is lower case.
+            digit = (self as u32 | 0b10_0000).wrapping_sub('a' as u32).saturating_add(10);
+        }
+        (digit < radix).then_some(digit)
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -1500,8 +1494,8 @@ impl char {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
     ///
     /// # Examples
     ///

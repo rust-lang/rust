@@ -58,7 +58,7 @@ pub use common::*;
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
     if errno > u16::MAX as i32 || errno < 0 {
-        return Other;
+        return Uncategorized;
     }
     match errno as u16 {
         wasi::ERRNO_CONNREFUSED => ConnectionRefused,
@@ -77,7 +77,7 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         wasi::ERRNO_AGAIN => WouldBlock,
         wasi::ERRNO_NOSYS => Unsupported,
         wasi::ERRNO_NOMEM => OutOfMemory,
-        _ => Other,
+        _ => Uncategorized,
     }
 }
 

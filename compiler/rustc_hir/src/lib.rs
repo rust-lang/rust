@@ -3,7 +3,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![feature(min_specialization)]

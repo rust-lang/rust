@@ -1,4 +1,4 @@
-#![allow(non_fmt_panic)]
+#![allow(non_fmt_panics)]
 
 macro_rules! assert_const {
     ($len:expr) => {
@@ -28,4 +28,7 @@ fn main() {
     debug_assert!(false); // #3948
     assert_const!(3);
     assert_const!(-1);
+
+    // Don't lint on this:
+    assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
 }

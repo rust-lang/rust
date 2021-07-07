@@ -310,6 +310,8 @@ language_item_table! {
 
     Try,                     sym::Try,                 try_trait,                  Target::Trait;
 
+    SliceLen,                sym::slice_len_fn,        slice_len_fn,               Target::Method(MethodKind::Inherent);
+
     // Language items from AST lowering
     TryTraitFromResidual,    sym::from_residual,       from_residual_fn,           Target::Method(MethodKind::Trait { body: false });
     TryTraitFromOutput,      sym::from_output,         from_output_fn,             Target::Method(MethodKind::Trait { body: false });

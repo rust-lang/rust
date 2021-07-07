@@ -1,8 +1,7 @@
+// edition:2021
+
 // Test that borrow checker error is accurate and that min capture pass of the
 // closure analysis is working as expected.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 #[derive(Debug)]
 struct Point {

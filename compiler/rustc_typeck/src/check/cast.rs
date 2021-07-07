@@ -45,6 +45,7 @@ use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 
@@ -440,16 +441,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                             let expr_ty = fcx.tcx.erase_regions(expr_ty);
                             let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
-                            // Check for infer types because cases like `Option<{integer}>` would
-                            // panic otherwise.
-                            if !expr_ty.has_infer_types()
-                                && !ty.has_infer_types()
-                                && fcx.tcx.type_implements_trait((
-                                    from_trait,
-                                    ty,
-                                    ty_params,
-                                    fcx.param_env,
-                                ))
+                            if fcx
+                                .infcx
+                                .type_implements_trait(from_trait, ty, ty_params, fcx.param_env)
+                                .must_apply_modulo_regions()
                             {
                                 label = false;
                                 err.span_suggestion(

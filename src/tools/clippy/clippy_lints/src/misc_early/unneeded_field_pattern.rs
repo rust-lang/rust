@@ -5,7 +5,7 @@ use rustc_lint::{EarlyContext, LintContext};
 use super::UNNEEDED_FIELD_PATTERN;
 
 pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
-    if let PatKind::Struct(ref npat, ref pfields, _) = pat.kind {
+    if let PatKind::Struct(_, ref npat, ref pfields, _) = pat.kind {
         let mut wilds = 0;
         let type_name = npat
             .segments

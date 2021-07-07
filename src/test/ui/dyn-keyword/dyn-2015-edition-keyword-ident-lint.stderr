@@ -1,132 +1,132 @@
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:13:13
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:14:13
    |
 LL |     pub mod dyn {
    |             ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
 note: the lint level is defined here
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:10:9
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:11:9
    |
 LL | #![deny(keyword_idents)]
    |         ^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:16:20
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:17:20
    |
 LL |         pub struct dyn;
    |                    ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:21:16
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:22:16
    |
 LL | use outer_mod::dyn::dyn;
    |                ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:21:21
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:22:21
    |
 LL | use outer_mod::dyn::dyn;
    |                     ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:28:11
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:29:11
    |
 LL |     match dyn { dyn => {} }
    |           ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:28:17
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:29:17
    |
 LL |     match dyn { dyn => {} }
    |                 ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:33:17
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:34:17
    |
 LL |     macro_defn::dyn();
    |                 ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:43:18
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:44:18
    |
 LL |     macro_rules! dyn {
    |                  ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:51:12
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:52:12
    |
 LL |     pub fn dyn() -> ::outer_mod::dyn::dyn {
    |            ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:51:34
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:52:34
    |
 LL |     pub fn dyn() -> ::outer_mod::dyn::dyn {
    |                                  ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:51:39
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:52:39
    |
 LL |     pub fn dyn() -> ::outer_mod::dyn::dyn {
    |                                       ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:58:22
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:59:22
    |
 LL |         ::outer_mod::dyn::dyn
    |                      ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:58:27
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:59:27
    |
 LL |         ::outer_mod::dyn::dyn
    |                           ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `dyn` is a keyword in the 2018 edition
-  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:67:23
+  --> $DIR/dyn-2015-edition-keyword-ident-lint.rs:68:23
    |
 LL |     pub fn boxed() -> dyn!(
    |                       ^^^ help: you can use a raw identifier to stay compatible: `r#dyn`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: aborting due to 14 previous errors

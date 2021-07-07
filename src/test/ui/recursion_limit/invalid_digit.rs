@@ -2,5 +2,6 @@
 
 #![recursion_limit = "-100"] //~ ERROR `limit` must be a non-negative integer
                              //~| not a valid integer
-
+                             //~| ERROR `limit` must be a non-negative integer
+                             //~| not a valid integer
 fn main() {}

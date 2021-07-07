@@ -737,14 +737,13 @@ impl<T: Clone> Bound<&T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bound_cloned)]
     /// use std::ops::Bound::*;
     /// use std::ops::RangeBounds;
     ///
     /// assert_eq!((1..12).start_bound(), Included(&1));
     /// assert_eq!((1..12).start_bound().cloned(), Included(1));
     /// ```
-    #[unstable(feature = "bound_cloned", issue = "61356")]
+    #[stable(feature = "bound_cloned", since = "1.55.0")]
     pub fn cloned(self) -> Bound<T> {
         match self {
             Bound::Unbounded => Bound::Unbounded,

@@ -28,18 +28,6 @@ error[E0452]: malformed lint attribute input
 LL | #![allow(bar = "baz")]
    |          ^^^^^^^^^^^ bad attribute argument
 
-error[E0452]: malformed lint attribute input
-  --> $DIR/lint-malformed.rs:2:10
-   |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
-
-error[E0452]: malformed lint attribute input
-  --> $DIR/lint-malformed.rs:2:10
-   |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0452`.

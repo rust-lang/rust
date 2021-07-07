@@ -24,61 +24,60 @@ crate fn expand(
     annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
-    cfg_eval(ecx, annotatable)
+    vec![cfg_eval(ecx, annotatable)]
 }
 
-crate fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Vec<Annotatable> {
-    let mut visitor = CfgEval {
+crate fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Annotatable {
+    CfgEval {
         cfg: &mut StripUnconfigured {
             sess: ecx.sess,
             features: ecx.ecfg.features,
             config_tokens: true,
         },
-    };
-    let annotatable = visitor.configure_annotatable(annotatable);
-    vec![annotatable]
+    }
+    .configure_annotatable(annotatable)
+    // Since the item itself has already been configured by the `InvocationCollector`,
+    // we know that fold result vector will contain exactly one element.
+    .unwrap()
 }
 
 struct CfgEval<'a, 'b> {
     cfg: &'a mut StripUnconfigured<'b>,
 }
 
-fn flat_map_annotatable(vis: &mut impl MutVisitor, annotatable: Annotatable) -> Annotatable {
-    // Since the item itself has already been configured by the InvocationCollector,
-    // we know that fold result vector will contain exactly one element
+fn flat_map_annotatable(
+    vis: &mut impl MutVisitor,
+    annotatable: Annotatable,
+) -> Option<Annotatable> {
     match annotatable {
-        Annotatable::Item(item) => Annotatable::Item(vis.flat_map_item(item).pop().unwrap()),
+        Annotatable::Item(item) => vis.flat_map_item(item).pop().map(Annotatable::Item),
         Annotatable::TraitItem(item) => {
-            Annotatable::TraitItem(vis.flat_map_trait_item(item).pop().unwrap())
+            vis.flat_map_trait_item(item).pop().map(Annotatable::TraitItem)
         }
         Annotatable::ImplItem(item) => {
-            Annotatable::ImplItem(vis.flat_map_impl_item(item).pop().unwrap())
+            vis.flat_map_impl_item(item).pop().map(Annotatable::ImplItem)
         }
         Annotatable::ForeignItem(item) => {
-            Annotatable::ForeignItem(vis.flat_map_foreign_item(item).pop().unwrap())
+            vis.flat_map_foreign_item(item).pop().map(Annotatable::ForeignItem)
         }
         Annotatable::Stmt(stmt) => {
-            Annotatable::Stmt(stmt.map(|stmt| vis.flat_map_stmt(stmt).pop().unwrap()))
+            vis.flat_map_stmt(stmt.into_inner()).pop().map(P).map(Annotatable::Stmt)
         }
-        Annotatable::Expr(mut expr) => Annotatable::Expr({
+        Annotatable::Expr(mut expr) => {
             vis.visit_expr(&mut expr);
-            expr
-        }),
-        Annotatable::Arm(arm) => Annotatable::Arm(vis.flat_map_arm(arm).pop().unwrap()),
+            Some(Annotatable::Expr(expr))
+        }
+        Annotatable::Arm(arm) => vis.flat_map_arm(arm).pop().map(Annotatable::Arm),
         Annotatable::ExprField(field) => {
-            Annotatable::ExprField(vis.flat_map_expr_field(field).pop().unwrap())
+            vis.flat_map_expr_field(field).pop().map(Annotatable::ExprField)
         }
-        Annotatable::PatField(fp) => {
-            Annotatable::PatField(vis.flat_map_pat_field(fp).pop().unwrap())
-        }
+        Annotatable::PatField(fp) => vis.flat_map_pat_field(fp).pop().map(Annotatable::PatField),
         Annotatable::GenericParam(param) => {
-            Annotatable::GenericParam(vis.flat_map_generic_param(param).pop().unwrap())
+            vis.flat_map_generic_param(param).pop().map(Annotatable::GenericParam)
         }
-        Annotatable::Param(param) => Annotatable::Param(vis.flat_map_param(param).pop().unwrap()),
-        Annotatable::FieldDef(sf) => {
-            Annotatable::FieldDef(vis.flat_map_field_def(sf).pop().unwrap())
-        }
-        Annotatable::Variant(v) => Annotatable::Variant(vis.flat_map_variant(v).pop().unwrap()),
+        Annotatable::Param(param) => vis.flat_map_param(param).pop().map(Annotatable::Param),
+        Annotatable::FieldDef(sf) => vis.flat_map_field_def(sf).pop().map(Annotatable::FieldDef),
+        Annotatable::Variant(v) => vis.flat_map_variant(v).pop().map(Annotatable::Variant),
     }
 }
 
@@ -123,11 +122,11 @@ impl CfgEval<'_, '_> {
         self.cfg.configure(node)
     }
 
-    pub fn configure_annotatable(&mut self, mut annotatable: Annotatable) -> Annotatable {
+    fn configure_annotatable(&mut self, mut annotatable: Annotatable) -> Option<Annotatable> {
         // Tokenizing and re-parsing the `Annotatable` can have a significant
         // performance impact, so try to avoid it if possible
         if !CfgFinder::has_cfg_or_cfg_attr(&annotatable) {
-            return annotatable;
+            return Some(annotatable);
         }
 
         // The majority of parsed attribute targets will never need to have early cfg-expansion

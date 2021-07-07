@@ -28,11 +28,6 @@ LL | fn a() -> i32 {
 ...
 LL |     assert_eq!(a, 0);
    |     ^^^^^^^^^^^^^^^^^ `fn() -> i32 {a}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   | 
-  ::: $SRC_DIR/core/src/panicking.rs:LL:COL
-   |
-LL |     T: fmt::Debug + ?Sized,
-   |        ---------- required by this bound in `core::panicking::assert_failed`
    |
    = help: the trait `Debug` is not implemented for `fn() -> i32 {a}`
    = help: use parentheses to call the function: `a()`

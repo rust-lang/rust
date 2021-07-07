@@ -38,7 +38,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
         str::from_utf8(CStr::from_ptr(libc::gai_strerror(err)).to_bytes()).unwrap().to_owned()
     };
     Err(io::Error::new(
-        io::ErrorKind::Other,
+        io::ErrorKind::Uncategorized,
         &format!("failed to lookup address information: {}", detail)[..],
     ))
 }
@@ -178,7 +178,7 @@ impl Socket {
                     if pollfd.revents & libc::POLLHUP != 0 {
                         let e = self.take_error()?.unwrap_or_else(|| {
                             io::Error::new_const(
-                                io::ErrorKind::Other,
+                                io::ErrorKind::Uncategorized,
                                 &"no error set after POLLHUP",
                             )
                         });

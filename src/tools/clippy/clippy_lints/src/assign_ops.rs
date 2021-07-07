@@ -55,7 +55,7 @@ declare_clippy_lint! {
     /// a += a + b;
     /// ```
     pub MISREFACTORED_ASSIGN_OP,
-    complexity,
+    suspicious,
     "having a variable on both sides of an assign op"
 }
 

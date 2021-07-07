@@ -296,7 +296,7 @@ pub fn lower_crate<'a, 'hir>(
     resolver: &'a mut dyn ResolverAstLowering,
     nt_to_tokenstream: NtToTokenstream,
     arena: &'hir Arena<'hir>,
-) -> hir::Crate<'hir> {
+) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
     LoweringContext {
@@ -331,7 +331,7 @@ pub fn lower_crate<'a, 'hir>(
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
-        allow_try_trait: Some([sym::control_flow_enum, sym::try_trait_v2][..].into()),
+        allow_try_trait: Some([sym::try_trait_v2][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
     }
     .lower_crate(krate)
@@ -403,7 +403,7 @@ enum AnonymousLifetimeMode {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
+    fn lower_crate(mut self, c: &Crate) -> &'hir hir::Crate<'hir> {
         /// Full-crate AST visitor that inserts into a fresh
         /// `LoweringContext` any information that may be
         /// needed from arbitrary locations in the crate,
@@ -417,7 +417,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             fn allocate_use_tree_hir_id_counters(&mut self, tree: &UseTree) {
                 match tree.kind {
                     UseTreeKind::Simple(_, id1, id2) => {
-                        for &id in &[id1, id2] {
+                        for id in [id1, id2] {
                             self.lctx.allocate_hir_id_counter(id);
                         }
                     }
@@ -530,7 +530,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        hir::Crate {
+        let krate = hir::Crate {
             item: module,
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
@@ -545,7 +545,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             proc_macros,
             trait_map,
             attrs: self.attrs,
-        }
+        };
+        self.arena.alloc(krate)
     }
 
     fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {

@@ -1,3 +1,9 @@
+error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/check-doc-alias-attr-location.rs:22:12
+   |
+LL |     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
+   |            ^^^^^^^^^^^^^^^^^^^^^
+
 error: `#[doc(alias = "...")]` isn't allowed on extern block
   --> $DIR/check-doc-alias-attr-location.rs:9:7
    |
@@ -22,5 +28,5 @@ error: `#[doc(alias = "...")]` isn't allowed on type alias in implementation blo
 LL |     #[doc(alias = "assoc")]
    |           ^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

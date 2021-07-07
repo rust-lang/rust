@@ -1,0 +1,14 @@
+error: cannot implement trait on type alias impl trait
+  --> $DIR/issue-65384.rs:11:1
+   |
+LL | impl MyTrait for Bar {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/issue-65384.rs:9:12
+   |
+LL | type Bar = impl MyTrait;
+   |            ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

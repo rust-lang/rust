@@ -1613,10 +1613,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                     self.r.record_pat_span(pat.id, pat.span);
                 }
-                PatKind::TupleStruct(ref path, ref sub_patterns) => {
+                PatKind::TupleStruct(ref qself, ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
                         pat.id,
-                        None,
+                        qself.as_ref(),
                         path,
                         PathSource::TupleStruct(
                             pat.span,
@@ -1627,8 +1627,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
                 }
-                PatKind::Struct(ref path, ..) => {
-                    self.smart_resolve_path(pat.id, None, path, PathSource::Struct);
+                PatKind::Struct(ref qself, ref path, ..) => {
+                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Struct);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -2288,7 +2288,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ExprKind::Struct(ref se) => {
-                self.smart_resolve_path(expr.id, None, &se.path, PathSource::Struct);
+                self.smart_resolve_path(expr.id, se.qself.as_ref(), &se.path, PathSource::Struct);
                 visit::walk_expr(self, expr);
             }
 

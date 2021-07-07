@@ -39,14 +39,14 @@ fn syntax() {
                     #![attr]
                 };
     let _ =
-        #[attr] loop  {
+        #[attr] loop {
                     #![attr]
                 };
     let _ =
-        #[attr] match true
-                    {
-                     #[attr]
-                     _ => false,
+        #[attr] match true {
+                    #![attr]
+                            #[attr]
+                            _ => false,
                 };
     let _ = #[attr] || #[attr] foo;
     let _ = #[attr] move || #[attr] foo;

@@ -2,7 +2,6 @@ use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("ios", Arch::Armv7);
     Target {
         llvm_target: "armv7-apple-ios".to_string(),
         pointer_width: 32,
@@ -11,8 +10,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp3,+neon".to_string(),
             max_atomic_width: Some(64),
-            unsupported_abis: super::arm_base::unsupported_abis(),
-            ..base
+            ..opts("ios", Arch::Armv7)
         },
     }
 }

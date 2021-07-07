@@ -39,6 +39,27 @@
 // lldbg-check:[...]$3 = AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
 // lldbr-check:(generic_struct::AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>>) float_int_float = AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
 
+// === CDB TESTS ===================================================================================
+
+// cdb-command:g
+
+// cdb-command:dx int_int
+// cdb-check:int_int          [Type: generic_struct::AGenericStruct<i32, i32>]
+// cdb-check:[...]key              : 0 [Type: int]
+// cdb-check:[...]value            : 1 [Type: int]
+// cdb-command:dx int_float
+// cdb-check:int_float        [Type: generic_struct::AGenericStruct<i32, f64>]
+// cdb-check:[...]key              : 2 [Type: int]
+// cdb-check:[...]value            : 3.500000 [Type: double]
+// cdb-command:dx float_int
+// cdb-check:float_int        [Type: generic_struct::AGenericStruct<f64, i32>]
+// cdb-check:[...]key              : 4.500000 [Type: double]
+// cdb-check:[...]value            : 5 [Type: int]
+// cdb-command:dx float_int_float
+// cdb-check:float_int_float  [Type: generic_struct::AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64> >]
+// cdb-check:[...]key              : 6.500000 [Type: double]
+// cdb-check:[...]value            [Type: generic_struct::AGenericStruct<i32, f64>]
+
 
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]

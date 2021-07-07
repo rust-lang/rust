@@ -12,12 +12,12 @@ fn main() {
     // Before 2021, the method dispatched to `IntoIterator for &[T; N]`,
     // which we continue to support for compatibility.
     let _: Iter<'_, i32> = array.into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
+    //~| WARNING this changes meaning
 
     let _: Iter<'_, i32> = Box::new(array).into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
+    //~| WARNING this changes meaning
 
     // The `array_into_iter` lint doesn't cover other wrappers that deref to an array.
     let _: Iter<'_, i32> = Rc::new(array).into_iter();
@@ -25,6 +25,10 @@ fn main() {
 
     // But you can always use the trait method explicitly as an array.
     let _: IntoIter<i32, 10> = IntoIterator::into_iter(array);
+
+    for _ in [1, 2, 3].into_iter() {}
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
+    //~| WARNING this changes meaning
 }
 
 /// User type that dereferences to an array.

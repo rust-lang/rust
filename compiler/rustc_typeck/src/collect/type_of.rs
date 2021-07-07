@@ -9,7 +9,7 @@ use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -285,7 +285,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
                     if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
+                        Some(infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        ))
                     } else {
                         None
                     }
@@ -304,7 +306,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ImplItemKind::Const(ref ty, body_id) => {
                 if is_suggestable_infer_ty(ty) {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant")
                 } else {
                     icx.to_ty(ty)
                 }
@@ -320,9 +322,25 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
+                ItemKind::Static(ref ty, .., body_id) => {
                     if is_suggestable_infer_ty(ty) {
-                        infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                        infer_placeholder_type(
+                            tcx,
+                            def_id,
+                            body_id,
+                            ty.span,
+                            item.ident,
+                            "static variable",
+                        )
+                    } else {
+                        icx.to_ty(ty)
+                    }
+                }
+                ItemKind::Const(ref ty, body_id) => {
+                    if is_suggestable_infer_ty(ty) {
+                        infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        )
                     } else {
                         icx.to_ty(ty)
                     }
@@ -474,7 +492,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
-                    &format!("unexpected const parent in type_of_def_id(): {:?}", x),
+                    &format!("unexpected const parent in type_of(): {:?}", x),
                 ),
             }
         }
@@ -486,7 +504,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         },
 
         x => {
-            bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
+            bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     }
 }
@@ -742,13 +760,48 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
     concrete_ty
 }
 
-fn infer_placeholder_type(
-    tcx: TyCtxt<'_>,
+fn infer_placeholder_type<'a>(
+    tcx: TyCtxt<'a>,
     def_id: LocalDefId,
     body_id: hir::BodyId,
     span: Span,
     item_ident: Ident,
-) -> Ty<'_> {
+    kind: &'static str,
+) -> Ty<'a> {
+    // Attempts to make the type nameable by turning FnDefs into FnPtrs.
+    struct MakeNameable<'tcx> {
+        success: bool,
+        tcx: TyCtxt<'tcx>,
+    }
+
+    impl<'tcx> MakeNameable<'tcx> {
+        fn new(tcx: TyCtxt<'tcx>) -> Self {
+            MakeNameable { success: true, tcx }
+        }
+    }
+
+    impl TypeFolder<'tcx> for MakeNameable<'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            if !self.success {
+                return ty;
+            }
+
+            match ty.kind() {
+                ty::FnDef(def_id, _) => self.tcx.mk_fn_ptr(self.tcx.fn_sig(*def_id)),
+                // FIXME: non-capturing closures should also suggest a function pointer
+                ty::Closure(..) | ty::Generator(..) => {
+                    self.success = false;
+                    ty
+                }
+                _ => ty.super_fold_with(self),
+            }
+        }
+    }
+
     let ty = tcx.diagnostic_only_typeck(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
@@ -760,24 +813,47 @@ fn infer_placeholder_type(
             // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
             // We are typeck and have the real type, so remove that and suggest the actual type.
             err.suggestions.clear();
-            err.span_suggestion(
-                span,
-                "provide a type for the item",
-                format!("{}: {}", item_ident, ty),
-                Applicability::MachineApplicable,
-            )
-            .emit_unless(ty.references_error());
+
+            // Suggesting unnameable types won't help.
+            let mut mk_nameable = MakeNameable::new(tcx);
+            let ty = mk_nameable.fold_ty(ty);
+            let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
+            if let Some(sugg_ty) = sugg_ty {
+                err.span_suggestion(
+                    span,
+                    &format!("provide a type for the {item}", item = kind),
+                    format!("{}: {}", item_ident, sugg_ty),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_note(
+                    tcx.hir().body(body_id).value.span,
+                    &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                );
+            }
+
+            err.emit_unless(ty.references_error());
         }
         None => {
-            let mut diag = bad_placeholder_type(tcx, vec![span]);
+            let mut diag = bad_placeholder_type(tcx, vec![span], kind);
 
             if !ty.references_error() {
-                diag.span_suggestion(
-                    span,
-                    "replace with the correct type",
-                    ty.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+                let mut mk_nameable = MakeNameable::new(tcx);
+                let ty = mk_nameable.fold_ty(ty);
+                let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
+                if let Some(sugg_ty) = sugg_ty {
+                    diag.span_suggestion(
+                        span,
+                        "replace with the correct type",
+                        sugg_ty.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    diag.span_note(
+                        tcx.hir().body(body_id).value.span,
+                        &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                    );
+                }
             }
 
             diag.emit();

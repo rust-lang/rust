@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target};
+use crate::spec::{FramePointer, LinkerFlavor, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
@@ -21,7 +21,7 @@ pub fn target() -> Target {
     //
     // This may or may not be related to this bug:
     // https://llvm.org/bugs/show_bug.cgi?id=30879
-    base.eliminate_frame_pointer = false;
+    base.frame_pointer = FramePointer::Always;
 
     Target {
         llvm_target: "i686-unknown-linux-musl".to_string(),

@@ -809,6 +809,7 @@ impl SyntaxExtension {
         call_site: Span,
         descr: Symbol,
         macro_def_id: Option<DefId>,
+        parent_module: Option<DefId>,
     ) -> ExpnData {
         use SyntaxExtensionKind::*;
         let proc_macro = match self.kind {
@@ -828,6 +829,7 @@ impl SyntaxExtension {
             self.local_inner_macros,
             self.edition,
             macro_def_id,
+            parent_module,
         )
     }
 }
@@ -835,7 +837,7 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Option<Lrc<SyntaxExtension>>)>;
+pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>)>;
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;

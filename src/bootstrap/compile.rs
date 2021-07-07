@@ -1108,6 +1108,13 @@ impl Step for Assemble {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
             builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
+            // for `-Z gcc-ld=lld`
+            let gcc_ld_dir = libdir_bin.join("gcc-ld");
+            t!(fs::create_dir(&gcc_ld_dir));
+            builder.copy(
+                &lld_install.join("bin").join(&src_exe),
+                &gcc_ld_dir.join(exe("ld", target_compiler.host)),
+            );
         }
 
         // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM
@@ -1359,7 +1366,7 @@ pub fn stream_cargo(
 
     // Make sure Cargo actually succeeded after we read all of its stdout.
     let status = t!(child.wait());
-    if !status.success() {
+    if builder.is_verbose() && !status.success() {
         eprintln!(
             "command did not execute successfully: {:?}\n\
                   expected success, got: {}",

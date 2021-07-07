@@ -1,5 +1,5 @@
+use crate::abi::Endian;
 use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, TargetOptions};
-use crate::{abi::Endian, spec::abi::Abi};
 
 pub fn opts(endian: Endian) -> TargetOptions {
     TargetOptions {
@@ -21,22 +21,6 @@ pub fn opts(endian: Endian) -> TargetOptions {
         requires_lto: false,
         singlethread: true,
         max_atomic_width: Some(64),
-        unsupported_abis: vec![
-            Abi::Cdecl,
-            Abi::Stdcall { unwind: false },
-            Abi::Stdcall { unwind: true },
-            Abi::Fastcall,
-            Abi::Vectorcall,
-            Abi::Thiscall { unwind: false },
-            Abi::Thiscall { unwind: true },
-            Abi::Aapcs,
-            Abi::Win64,
-            Abi::SysV64,
-            Abi::PtxKernel,
-            Abi::Msp430Interrupt,
-            Abi::X86Interrupt,
-            Abi::AmdGpuKernel,
-        ],
         ..Default::default()
     }
 }

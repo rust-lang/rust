@@ -122,6 +122,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// that is added to the memory so that the work is not done twice.
     const GLOBAL_KIND: Option<Self::MemoryKind>;
 
+    /// Should the machine panic on allocation failures?
+    const PANIC_ON_ALLOC_FAIL: bool;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(memory_extra: &Self::MemoryExtra) -> bool;
 

@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
     }
 }
 
-/// Checks if `Mutex::lock` is called in the `if let _ = expr.
+/// Checks if `Mutex::lock` is called in the `if let` expr.
 pub struct OppVisitor<'a, 'tcx> {
     mutex_lock_called: bool,
     found_mutex: Option<&'tcx Expr<'tcx>>,

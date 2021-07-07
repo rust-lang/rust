@@ -27,8 +27,6 @@ use crate::util::pretty;
 pub enum MemoryKind<T> {
     /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
-    /// Memory backing vtables. Error if ever deallocated.
-    Vtable,
     /// Memory allocated by `caller_location` intrinsic. Error if ever deallocated.
     CallerLocation,
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones.
@@ -40,7 +38,6 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
     fn may_leak(self) -> bool {
         match self {
             MemoryKind::Stack => false,
-            MemoryKind::Vtable => true,
             MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak(),
         }
@@ -51,7 +48,6 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MemoryKind::Stack => write!(f, "stack variable"),
-            MemoryKind::Vtable => write!(f, "vtable"),
             MemoryKind::CallerLocation => write!(f, "caller location"),
             MemoryKind::Machine(m) => write!(f, "{}", m),
         }
@@ -211,9 +207,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::uninit(size, align);
-        self.allocate_with(alloc, kind)
+    ) -> InterpResult<'static, Pointer<M::PointerTag>> {
+        let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
+        Ok(self.allocate_with(alloc, kind))
     }
 
     pub fn allocate_bytes(
@@ -261,7 +257,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate(new_size, new_align, kind);
+        let new_ptr = self.allocate(new_size, new_align, kind)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
             None => self.get_raw(ptr.alloc_id)?.size(),

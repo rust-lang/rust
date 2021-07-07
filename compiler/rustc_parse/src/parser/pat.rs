@@ -859,7 +859,8 @@ impl<'a> Parser<'a> {
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
     fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
-            return self.error_qpath_before_pat(&path, "{");
+            // Feature gate the use of qualified paths in patterns
+            self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
         }
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
@@ -869,27 +870,17 @@ impl<'a> Parser<'a> {
             (vec![], true)
         });
         self.bump();
-        Ok(PatKind::Struct(path, fields, etc))
+        Ok(PatKind::Struct(qself, path, fields, etc))
     }
 
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
     fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
-        if qself.is_some() {
-            return self.error_qpath_before_pat(&path, "(");
-        }
         let (fields, _) =
             self.parse_paren_comma_seq(|p| p.parse_pat_allow_top_alt(None, RecoverComma::No))?;
-        Ok(PatKind::TupleStruct(path, fields))
-    }
-
-    /// Error when there's a qualified path, e.g. `<Foo as Bar>::Baz`
-    /// as the path of e.g., a tuple or record struct pattern.
-    fn error_qpath_before_pat(&mut self, path: &Path, token: &str) -> PResult<'a, PatKind> {
-        let msg = &format!("unexpected `{}` after qualified path", token);
-        let mut err = self.struct_span_err(self.token.span, msg);
-        err.span_label(self.token.span, msg);
-        err.span_label(path.span, "the qualified path");
-        Err(err)
+        if qself.is_some() {
+            self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
+        }
+        Ok(PatKind::TupleStruct(qself, path, fields))
     }
 
     /// Parses the fields of a struct-like pattern.

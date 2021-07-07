@@ -399,3 +399,12 @@ fn test_command_implements_send_sync() {
     fn take_send_sync_type<T: Send + Sync>(_: T) {}
     take_send_sync_type(Command::new(""))
 }
+
+// Ensure that starting a process with no environment variables works on Windows.
+// This will fail if the environment block is ill-formed.
+#[test]
+#[cfg(windows)]
+fn env_empty() {
+    let p = Command::new("cmd").args(&["/C", "exit 0"]).env_clear().spawn();
+    assert!(p.is_ok());
+}

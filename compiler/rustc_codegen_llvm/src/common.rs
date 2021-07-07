@@ -282,6 +282,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
+    fn const_data_from_alloc(&self, alloc: &Allocation) -> Self::Value {
+        const_alloc_to_llvm(self, alloc)
+    }
+
     fn from_const_alloc(
         &self,
         layout: TyAndLayout<'tcx>,

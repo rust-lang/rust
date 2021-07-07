@@ -671,7 +671,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: tcx.crate_hash(LOCAL_CRATE),
-            disambiguator: tcx.sess.local_crate_disambiguator(),
             stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
             panic_strategy: tcx.sess.panic_strategy(),
             edition: tcx.sess.edition(),
@@ -1223,7 +1222,12 @@ impl EncodeContext<'a, 'tcx> {
                 let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
                     FnData {
                         asyncness: sig.header.asyncness,
-                        constness: sig.header.constness,
+                        // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
+                        constness: if self.tcx.is_const_fn_raw(def_id) {
+                            hir::Constness::Const
+                        } else {
+                            hir::Constness::NotConst
+                        },
                         param_names: self.encode_fn_param_names_for_body(body),
                     }
                 } else {
@@ -1668,7 +1672,7 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_crate_deps(&mut self) -> Lazy<[CrateDep]> {
         empty_proc_macro!(self);
-        let crates = self.tcx.crates();
+        let crates = self.tcx.crates(());
 
         let mut deps = crates
             .iter()

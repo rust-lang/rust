@@ -138,7 +138,7 @@ pub trait Iterator {
     /// A more complex example:
     ///
     /// ```
-    /// // The even numbers from zero to ten.
+    /// // The even numbers in the range of zero to nine.
     /// let iter = (0..10).filter(|x| x % 2 == 0);
     ///
     /// // We might iterate from zero to ten times. Knowing that it's five
@@ -1959,6 +1959,31 @@ pub trait Iterator {
     /// assert_eq!(it.len(), 2);
     /// assert_eq!(it.next(), Some(&40));
     /// ```
+    ///
+    /// While you cannot `break` from a closure, the [`crate::ops::ControlFlow`]
+    /// type allows a similar idea:
+    ///
+    /// ```
+    /// use std::ops::ControlFlow;
+    ///
+    /// let triangular = (1..30).try_fold(0_i8, |prev, x| {
+    ///     if let Some(next) = prev.checked_add(x) {
+    ///         ControlFlow::Continue(next)
+    ///     } else {
+    ///         ControlFlow::Break(prev)
+    ///     }
+    /// });
+    /// assert_eq!(triangular, ControlFlow::Break(120));
+    ///
+    /// let triangular = (1..30).try_fold(0_u64, |prev, x| {
+    ///     if let Some(next) = prev.checked_add(x) {
+    ///         ControlFlow::Continue(next)
+    ///     } else {
+    ///         ControlFlow::Break(prev)
+    ///     }
+    /// });
+    /// assert_eq!(triangular, ControlFlow::Continue(435));
+    /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
@@ -2001,6 +2026,22 @@ pub trait Iterator {
     /// // It short-circuited, so the remaining items are still in the iterator:
     /// assert_eq!(it.next(), Some("stale_bread.json"));
     /// ```
+    ///
+    /// The [`crate::ops::ControlFlow`] type can be used with this method for the
+    /// situations in which you'd use `break` and `continue` in a normal loop:
+    ///
+    /// ```
+    /// use std::ops::ControlFlow;
+    ///
+    /// let r = (2..100).try_for_each(|x| {
+    ///     if 323 % x == 0 {
+    ///         return ControlFlow::Break(x)
+    ///     }
+    ///
+    ///     ControlFlow::Continue(())
+    /// });
+    /// assert_eq!(r, ControlFlow::Break(17));
+    /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_for_each<F, R>(&mut self, f: F) -> R
@@ -2042,6 +2083,11 @@ pub trait Iterator {
     /// Note: [`reduce()`] can be used to use the first element as the initial
     /// value, if the accumulator type and item type is the same.
     ///
+    /// Note: `fold()` combines elements in a *left-associative* fashion. For associative
+    /// operators like `+`, the order the elements are combined in is not important, but for non-associative
+    /// operators like `-` the order will affect the final result.
+    /// For a *right-associative* version of `fold()`, see [`DoubleEndedIterator::rfold()`].
+    ///
     /// # Note to Implementors
     ///
     /// Several of the other (forward) methods have default implementations in
@@ -2075,6 +2121,21 @@ pub trait Iterator {
     ///
     /// And so, our final result, `6`.
     ///
+    /// This example demonstrates the left-associative nature of `fold()`:
+    /// it builds a string, starting with an initial value
+    /// and continuing with each element from the front until the back:
+    ///
+    /// ```
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let zero = "0".to_string();
+    ///
+    /// let result = numbers.iter().fold(zero, |acc, &x| {
+    ///     format!("({} + {})", acc, x)
+    /// });
+    ///
+    /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");
+    /// ```
     /// It's common for people who haven't used iterators a lot to
     /// use a `for` loop with a list of things to build up a result. Those
     /// can be turned into `fold()`s:
@@ -2099,7 +2160,7 @@ pub trait Iterator {
     /// ```
     ///
     /// [`reduce()`]: Iterator::reduce
-    #[doc(alias = "inject")]
+    #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
@@ -2378,7 +2439,6 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    #[cfg(not(bootstrap))]
     fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
     where
         Self: Sized,
@@ -2399,32 +2459,6 @@ pub trait Iterator {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,
                 ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
                 ControlFlow::Break(Err(x)) => ControlFlow::Break(Err(x)),
-            }
-        }
-
-        self.try_fold((), check(f)).break_value().transpose()
-    }
-
-    /// We're bootstrapping.
-    #[inline]
-    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    #[cfg(bootstrap)]
-    fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
-    where
-        Self: Sized,
-        F: FnMut(&Self::Item) -> R,
-        R: Try<Output = bool>,
-    {
-        #[inline]
-        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
-        where
-            F: FnMut(&T) -> R,
-            R: Try<Output = bool>,
-        {
-            move |(), x| match f(&x).into_result() {
-                Ok(false) => ControlFlow::CONTINUE,
-                Ok(true) => ControlFlow::Break(Ok(x)),
-                Err(x) => ControlFlow::Break(Err(x)),
             }
         }
 

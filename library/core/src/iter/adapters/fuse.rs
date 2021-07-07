@@ -114,6 +114,7 @@ where
     }
 
     #[inline]
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,

@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   libssl-dev \
   sudo \
-  xz-utils
+  xz-utils \
+  tidy
 
 # Install dependencies for chromium browser
 RUN apt-get install -y \
@@ -71,7 +72,7 @@ ENV PATH="/node-v14.4.0-linux-x64/bin:${PATH}"
 # https://github.com/puppeteer/puppeteer/issues/375
 #
 # We also specify the version in case we need to update it to go around cache limitations.
-RUN npm install -g browser-ui-test@0.2.12 --unsafe-perm=true
+RUN npm install -g browser-ui-test@0.4.1 --unsafe-perm=true
 
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \

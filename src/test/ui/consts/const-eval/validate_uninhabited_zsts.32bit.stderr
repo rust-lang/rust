@@ -1,4 +1,4 @@
-warning: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/validate_uninhabited_zsts.rs:5:14
    |
 LL |     unsafe { std::mem::transmute(()) }
@@ -6,24 +6,15 @@ LL |     unsafe { std::mem::transmute(()) }
    |              |
    |              transmuting to uninhabited type
    |              inside `foo` at $DIR/validate_uninhabited_zsts.rs:5:14
-   |              inside `FOO` at $DIR/validate_uninhabited_zsts.rs:15:26
 ...
 LL | const FOO: [Empty; 3] = [foo(); 3];
-   | -----------------------------------
-   |
-note: the lint level is defined here
-  --> $DIR/validate_uninhabited_zsts.rs:14:8
-   |
-LL | #[warn(const_err)]
-   |        ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   |                          ----- inside `FOO` at $DIR/validate_uninhabited_zsts.rs:14:26
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validate_uninhabited_zsts.rs:18:1
+  --> $DIR/validate_uninhabited_zsts.rs:17:1
    |
 LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of uninhabited type Empty at [0]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at [0]: encountered a value of uninhabited type Empty
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 0, align: 1) {}
@@ -41,7 +32,7 @@ LL |     unsafe { std::mem::transmute(()) }
    = note: the `!` type has no valid value
 
 warning: the type `Empty` does not permit zero-initialization
-  --> $DIR/validate_uninhabited_zsts.rs:18:35
+  --> $DIR/validate_uninhabited_zsts.rs:17:35
    |
 LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,6 +42,6 @@ LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    |
    = note: enums with no variants have no valid value
 
-error: aborting due to previous error; 3 warnings emitted
+error: aborting due to 2 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

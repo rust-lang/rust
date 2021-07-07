@@ -124,12 +124,7 @@ pub fn expand_deriving_rustc_encodable(
             explicit_self: borrowed_explicit_self(),
             args: vec![(
                 Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
-                // FIXME: we could use `sym::s` here, but making `s` a static
-                // symbol changes the symbol index ordering in a way that makes
-                // ui/lint/rfc-2457-non-ascii-idents/lint-confusable-idents.rs
-                // fail. The linting code should be fixed so that its output
-                // does not depend on the symbol index ordering.
-                Symbol::intern("s"),
+                sym::s,
             )],
             ret_ty: Literal(Path::new_(
                 pathvec_std!(result::Result),

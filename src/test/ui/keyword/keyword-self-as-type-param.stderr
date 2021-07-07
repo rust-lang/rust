@@ -1,0 +1,24 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/keyword-self-as-type-param.rs:3:12
+   |
+LL | struct Foo<Self>(Self);
+   |            ^^^^ expected identifier, found keyword
+
+error: expected identifier, found keyword `Self`
+  --> $DIR/keyword-self-as-type-param.rs:7:11
+   |
+LL | trait Bar<Self> {}
+   |           ^^^^ expected identifier, found keyword
+
+error[E0392]: parameter `Self` is never used
+  --> $DIR/keyword-self-as-type-param.rs:3:12
+   |
+LL | struct Foo<Self>(Self);
+   |            ^^^^ unused parameter
+   |
+   = help: consider removing `Self`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `Self` to be a const parameter, use `const Self: usize` instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

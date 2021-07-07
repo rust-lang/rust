@@ -8,7 +8,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-use crate::clean::{self, FakeDefId, GetDefId};
+use crate::clean::{self, GetDefId, ItemId};
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
@@ -122,13 +122,12 @@ crate struct Cache {
     /// All intra-doc links resolved so far.
     ///
     /// Links are indexed by the DefId of the item they document.
-    crate intra_doc_links: BTreeMap<FakeDefId, Vec<clean::ItemLink>>,
+    crate intra_doc_links: FxHashMap<ItemId, Vec<clean::ItemLink>>,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
 struct CacheBuilder<'a, 'tcx> {
     cache: &'a mut Cache,
-    empty_cache: Cache,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -173,7 +172,7 @@ impl Cache {
             self.primitive_locations.insert(prim, def_id);
         }
 
-        krate = CacheBuilder { tcx, cache: self, empty_cache: Cache::default() }.fold_crate(krate);
+        krate = CacheBuilder { tcx, cache: self }.fold_crate(krate);
 
         for (trait_did, dids, impl_) in self.orphan_trait_impls.drain(..) {
             if self.traits.contains_key(&trait_did) {
@@ -216,7 +215,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.def_id.expect_real()).or_insert_with(|| {
+            self.cache.traits.entry(item.def_id.expect_def_id()).or_insert_with(|| {
                 clean::TraitWithExtraInfo {
                     trait_: t.clone(),
                     is_notable: item.attrs.has_doc_flag(sym::notable_trait),
@@ -292,16 +291,17 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
                     if item.def_id.index().map_or(false, |idx| idx != CRATE_DEF_INDEX) {
+                        let desc = item.doc_value().map_or_else(String::new, |x| {
+                            short_markdown_summary(&x.as_str(), &item.link_names(&self.cache))
+                        });
                         self.cache.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
-                            desc: item
-                                .doc_value()
-                                .map_or_else(String::new, |x| short_markdown_summary(&x.as_str())),
+                            desc,
                             parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item, &self.empty_cache, self.tcx),
+                            search_type: get_index_search_type(&item, self.tcx),
                             aliases: item.attrs.get_doc_aliases(),
                         });
                     }
@@ -348,11 +348,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // `public_items` map, so we can skip inserting into the
                     // paths map if there was already an entry present and we're
                     // not a public item.
-                    if !self.cache.paths.contains_key(&item.def_id.expect_real())
-                        || self.cache.access_levels.is_public(item.def_id.expect_real())
+                    if !self.cache.paths.contains_key(&item.def_id.expect_def_id())
+                        || self.cache.access_levels.is_public(item.def_id.expect_def_id())
                     {
                         self.cache.paths.insert(
-                            item.def_id.expect_real(),
+                            item.def_id.expect_def_id(),
                             (self.cache.stack.clone(), item.type_()),
                         );
                     }
@@ -361,7 +361,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::PrimitiveItem(..) => {
                 self.cache
                     .paths
-                    .insert(item.def_id.expect_real(), (self.cache.stack.clone(), item.type_()));
+                    .insert(item.def_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
             }
 
             clean::ExternCrateItem { .. }
@@ -391,7 +391,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..) => {
-                self.cache.parent_stack.push(item.def_id.expect_real());
+                self.cache.parent_stack.push(item.def_id.expect_def_id());
                 self.cache.parent_is_trait_impl = false;
                 true
             }
@@ -401,6 +401,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     clean::ResolvedPath { did, .. } => {
                         self.cache.parent_stack.push(did);
                         true
+                    }
+                    clean::DynTrait(ref bounds, _)
+                    | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
+                        if let Some(did) = bounds[0].trait_.def_id() {
+                            self.cache.parent_stack.push(did);
+                            true
+                        } else {
+                            false
+                        }
                     }
                     ref t => {
                         let prim_did = t
@@ -431,6 +440,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 clean::ResolvedPath { did, .. }
                 | clean::BorrowedRef { type_: box clean::ResolvedPath { did, .. }, .. } => {
                     dids.insert(did);
+                }
+                clean::DynTrait(ref bounds, _)
+                | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
+                    if let Some(did) = bounds[0].trait_.def_id() {
+                        dids.insert(did);
+                    }
                 }
                 ref t => {
                     let did = t

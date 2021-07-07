@@ -1,7 +1,8 @@
 // compile-flags: -g
 //
 // CHECK-LABEL: @main
-// CHECK: {{.*}}DIDerivedType(tag: DW_TAG_pointer_type, name: "fn() -> <recursive_type>",{{.*}}
+// MSVC: {{.*}}DIDerivedType(tag: DW_TAG_pointer_type, name: "recursive_type$ (*)()",{{.*}}
+// NONMSVC: {{.*}}DIDerivedType(tag: DW_TAG_pointer_type, name: "fn() -> <recursive_type>",{{.*}}
 //
 // CHECK: {{.*}}DISubroutineType{{.*}}
 // CHECK: {{.*}}DIBasicType(name: "<recur_type>", encoding: DW_ATE_unsigned)

@@ -187,8 +187,6 @@ impl<T> Box<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline(always)]
-    #[doc(alias = "alloc")]
-    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(x: T) -> Self {
         box x
@@ -239,7 +237,6 @@ impl<T> Box<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[doc(alias = "calloc")]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
@@ -1209,7 +1206,7 @@ impl<T: ?Sized + Hasher, A: Allocator> Hasher for Box<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Box<T> {
-    /// Converts a generic type `T` into a `Box<T>`
+    /// Converts a `T` into a `Box<T>`
     ///
     /// The conversion allocates on the heap and moves `t`
     /// from the stack into it.

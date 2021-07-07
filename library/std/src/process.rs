@@ -452,7 +452,7 @@ impl fmt::Debug for ChildStderr {
 ///
 /// let output = if cfg!(target_os = "windows") {
 ///     Command::new("cmd")
-///             .args(&["/C", "echo hello"])
+///             .args(["/C", "echo hello"])
 ///             .output()
 ///             .expect("failed to execute process")
 /// } else {
@@ -609,7 +609,7 @@ impl Command {
     /// use std::process::Command;
     ///
     /// Command::new("ls")
-    ///         .args(&["-l", "-a"])
+    ///         .args(["-l", "-a"])
     ///         .spawn()
     ///         .expect("ls command failed to start");
     /// ```
@@ -1568,7 +1568,7 @@ impl ExitStatusError {
 
     /// Reports the exit code, if applicable, from an `ExitStatusError`, as a `NonZero`
     ///
-    /// This is exaclty like [`code()`](Self::code), except that it returns a `NonZeroI32`.
+    /// This is exactly like [`code()`](Self::code), except that it returns a `NonZeroI32`.
     ///
     /// Plain `code`, returning a plain integer, is provided because is is often more convenient.
     /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
@@ -1658,8 +1658,7 @@ impl Child {
     /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
     /// error is returned.
     ///
-    /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function,
-    /// especially the [`Other`] kind might change to more specific kinds in the future.
+    /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function.
     ///
     /// This is equivalent to sending a SIGKILL on Unix platforms.
     ///
@@ -1680,7 +1679,6 @@ impl Child {
     ///
     /// [`ErrorKind`]: io::ErrorKind
     /// [`InvalidInput`]: io::ErrorKind::InvalidInput
-    /// [`Other`]: io::ErrorKind::Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
@@ -1900,6 +1898,9 @@ pub fn exit(code: i32) -> ! {
 /// process, no destructors on the current stack or any other thread's stack
 /// will be run.
 ///
+/// Rust IO buffers (eg, from `BufWriter`) will not be flushed.
+/// Likewise, C stdio buffers will (on most platforms) not be flushed.
+///
 /// This is in contrast to the default behaviour of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
 /// When `panic="abort"` is set, either as an argument to `rustc` or in a
@@ -1909,6 +1910,10 @@ pub fn exit(code: i32) -> ! {
 /// If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
+///
+/// The process's termination will be similar to that from the C `abort()`
+/// function.  On Unix, the process will terminate with signal `SIGABRT`, which
+/// typically means that the shell prints "Aborted".
 ///
 /// # Examples
 ///

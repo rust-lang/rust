@@ -193,7 +193,7 @@ fn span_of_self_arg_pat_idents_are_correct() {
             "impl z { fn a (self: Foo, &myarg: i32) {} }",
         ];
 
-        for &src in &srcs {
+        for src in srcs {
             let spans = get_spans_of_pat_idents(src);
             let (lo, hi) = (spans[0].lo(), spans[0].hi());
             assert!(

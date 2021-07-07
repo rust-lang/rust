@@ -324,10 +324,9 @@ macro_rules! __thread_local_inner {
 
 /// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
+#[non_exhaustive]
 #[derive(Clone, Copy, Eq, PartialEq)]
-pub struct AccessError {
-    _private: (),
-}
+pub struct AccessError;
 
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Debug for AccessError {
@@ -396,7 +395,7 @@ impl<T: 'static> LocalKey<T> {
         F: FnOnce(&T) -> R,
     {
         unsafe {
-            let thread_local = (self.inner)().ok_or(AccessError { _private: () })?;
+            let thread_local = (self.inner)().ok_or(AccessError)?;
             Ok(f(thread_local))
         }
     }

@@ -73,7 +73,7 @@ function removeEmptyStringsFromArray(x) {
  * Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported
  * Full License can be found at http://creativecommons.org/licenses/by-sa/3.0/legalcode
  * This code is an unmodified version of the code written by Marco de Wit
- * and was found at http://stackoverflow.com/a/18514751/745719
+ * and was found at https://stackoverflow.com/a/18514751/745719
  */
 var levenshtein_row2 = [];
 function levenshtein(s1, s2) {
@@ -106,7 +106,7 @@ function levenshtein(s1, s2) {
 window.initSearch = function(rawSearchIndex) {
     var MAX_LEV_DISTANCE = 3;
     var MAX_RESULTS = 200;
-    var GENERICS_DATA = 1;
+    var GENERICS_DATA = 2;
     var NAME = 0;
     var INPUTS_DATA = 0;
     var OUTPUT_DATA = 1;
@@ -306,6 +306,9 @@ window.initSearch = function(rawSearchIndex) {
                     var elems = Object.create(null);
                     var elength = obj[GENERICS_DATA].length;
                     for (var x = 0; x < elength; ++x) {
+                        if (!elems[getObjectNameFromId(obj[GENERICS_DATA][x])]) {
+                            elems[getObjectNameFromId(obj[GENERICS_DATA][x])] = 0;
+                        }
                         elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
                     }
                     var total = 0;
@@ -354,10 +357,13 @@ window.initSearch = function(rawSearchIndex) {
                 if (literalSearch) {
                     if (val.generics && val.generics.length !== 0) {
                         if (obj.length > GENERICS_DATA &&
-                              obj[GENERICS_DATA].length >= val.generics.length) {
+                             obj[GENERICS_DATA].length > 0) {
                             var elems = Object.create(null);
                             len = obj[GENERICS_DATA].length;
                             for (x = 0; x < len; ++x) {
+                                if (!elems[getObjectNameFromId(obj[GENERICS_DATA][x])]) {
+                                    elems[getObjectNameFromId(obj[GENERICS_DATA][x])] = 0;
+                                }
                                 elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
                             }
 
@@ -375,26 +381,23 @@ window.initSearch = function(rawSearchIndex) {
                             if (allFound) {
                                 return true;
                             }
-                        } else {
-                            return false;
                         }
+                        return false;
                     }
                     return true;
-                }
-                // If the type has generics but don't match, then it won't return at this point.
-                // Otherwise, `checkGenerics` will return 0 and it'll return.
-                if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length !== 0) {
-                    var tmp_lev = checkGenerics(obj, val);
-                    if (tmp_lev <= MAX_LEV_DISTANCE) {
-                        return tmp_lev;
-                    }
                 } else {
-                    return 0;
+                    // If the type has generics but don't match, then it won't return at this point.
+                    // Otherwise, `checkGenerics` will return 0 and it'll return.
+                    if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length !== 0) {
+                        var tmp_lev = checkGenerics(obj, val);
+                        if (tmp_lev <= MAX_LEV_DISTANCE) {
+                            return tmp_lev;
+                        }
+                    }
                 }
-            }
-            // Names didn't match so let's check if one of the generic types could.
-            if (literalSearch) {
-                 if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
+            } else if (literalSearch) {
+                if ((!val.generics || val.generics.length === 0) &&
+                      obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     return obj[GENERICS_DATA].some(
                         function(name) {
                             return name === val.name;
@@ -801,7 +804,8 @@ window.initSearch = function(rawSearchIndex) {
                     results_returned[fullId].lev =
                         Math.min(results_returned[fullId].lev, returned);
                 }
-                if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
+                if (typePassesFilter(typeFilter, ty.ty) &&
+                        (index !== -1 || lev <= MAX_LEV_DISTANCE)) {
                     if (index !== -1 && paths.length < 2) {
                         lev = 0;
                     }
@@ -1058,14 +1062,14 @@ window.initSearch = function(rawSearchIndex) {
         return "<button>" + text + " <div class=\"count\">(" + nbElems + ")</div></button>";
     }
 
-    function showResults(results) {
+    function showResults(results, go_to_first) {
         var search = searchState.outputElement();
-        if (results.others.length === 1
+        if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true"
             // By default, the search DOM element is "empty" (meaning it has no children not
             // text content). Once a search has been run, it won't be empty, even if you press
             // ESC or empty the search input (which also "cancels" the search).
-            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText))
+            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText)))
         {
             var elem = document.createElement("a");
             elem.href = results.others[0].href;
@@ -1166,7 +1170,48 @@ window.initSearch = function(rawSearchIndex) {
             return ret;
         }
 
-        var queries = query.raw.split(",");
+        // Split search query by ",", while respecting angle bracket nesting.
+        // Since "<" is an alias for the Ord family of traits, it also uses
+        // lookahead to distinguish "<"-as-less-than from "<"-as-angle-bracket.
+        //
+        // tokenizeQuery("A<B, C>, D") == ["A<B, C>", "D"]
+        // tokenizeQuery("A<B, C, D") == ["A<B", "C", "D"]
+        function tokenizeQuery(raw) {
+            var i, matched;
+            var l = raw.length;
+            var depth = 0;
+            var nextAngle = /(<|>)/g;
+            var ret = [];
+            var start = 0;
+            for (i = 0; i < l; ++i) {
+                switch (raw[i]) {
+                    case "<":
+                        nextAngle.lastIndex = i + 1;
+                        matched = nextAngle.exec(raw);
+                        if (matched && matched[1] === '>') {
+                            depth += 1;
+                        }
+                        break;
+                    case ">":
+                        if (depth > 0) {
+                            depth -= 1;
+                        }
+                        break;
+                    case ",":
+                        if (depth === 0) {
+                            ret.push(raw.substring(start, i));
+                            start = i + 1;
+                        }
+                        break;
+                }
+            }
+            if (start !== i) {
+                ret.push(raw.substring(start, i));
+            }
+            return ret;
+        }
+
+        var queries = tokenizeQuery(query.raw);
         var results = {
             "in_args": [],
             "returned": [],
@@ -1242,7 +1287,7 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         var filterCrates = getFilterCrates();
-        showResults(execSearch(query, index, filterCrates));
+        showResults(execSearch(query, index, filterCrates), params.go_to_first);
     }
 
     function buildIndex(rawSearchIndex) {
@@ -1442,6 +1487,10 @@ window.initSearch = function(rawSearchIndex) {
         if (selectCrate) {
             selectCrate.onchange = function() {
                 updateLocalStorage("rustdoc-saved-filter-crate", selectCrate.value);
+                // In case you "cut" the entry from the search input, then change the crate filter
+                // before paste back the previous search, you get the old search results without
+                // the filter. To prevent this, we need to remove the previous results.
+                currentResults = null;
                 search(undefined, true);
             };
         }

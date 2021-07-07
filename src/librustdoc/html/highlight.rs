@@ -413,7 +413,7 @@ impl<'a> Classifier<'a> {
                 },
                 c => c,
             },
-            TokenKind::RawIdent => Class::Ident,
+            TokenKind::RawIdent | TokenKind::UnknownPrefix => Class::Ident,
             TokenKind::Lifetime { .. } => Class::Lifetime,
         };
         // Anything that didn't return above is the simple case where we the

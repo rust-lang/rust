@@ -1,4 +1,4 @@
-use crate::clean::{self, FakeDefIdSet};
+use crate::clean::{self, ItemIdSet};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
@@ -14,7 +14,7 @@ crate const STRIP_PRIVATE: Pass = Pass {
 /// crate, specified by the `xcrate` flag.
 crate fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     // This stripper collects all *retained* nodes.
-    let mut retained = FakeDefIdSet::default();
+    let mut retained = ItemIdSet::default();
 
     // strip all private items
     {

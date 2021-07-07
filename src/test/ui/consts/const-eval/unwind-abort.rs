@@ -2,7 +2,7 @@
 
 #[unwind(aborts)]
 const fn foo() {
-    panic!() //~ ERROR any use of this value will cause an error
+    panic!() //~ ERROR evaluation of constant value failed
 }
 
 const _: () = foo();

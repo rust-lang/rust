@@ -2,25 +2,25 @@ goto: file://|DOC_PATH|/test_docs/index.html
 // First, we check that the search results are hidden when the Escape key is pressed.
 write: (".search-input", "test")
 wait-for: "#search > h1" // The search element is empty before the first search 
-assert: ("#search", "class", "content")
-assert: ("#main", "class", "content hidden")
+assert-attribute: ("#search", {"class": "content"})
+assert-attribute: ("#main", {"class": "content hidden"})
 press-key: "Escape"
-assert: ("#search", "class", "content hidden")
-assert: ("#main", "class", "content")
+assert-attribute: ("#search", {"class": "content hidden"})
+assert-attribute: ("#main", {"class": "content"})
 
 // Check that focusing the search input brings back the search results
 focus: ".search-input"
-assert: ("#search", "class", "content")
-assert: ("#main", "class", "content hidden")
+assert-attribute: ("#search", {"class": "content"})
+assert-attribute: ("#main", {"class": "content hidden"})
 
 // Now let's check that when the help popup is displayed and we press Escape, it doesn't
 // hide the search results too.
 click: "#help-button"
-assert: ("#help", "class", "")
+assert-attribute: ("#help", {"class": ""})
 press-key: "Escape"
-assert: ("#help", "class", "hidden")
-assert: ("#search", "class", "content")
-assert: ("#main", "class", "content hidden")
+assert-attribute: ("#help", {"class": "hidden"})
+assert-attribute: ("#search", {"class": "content"})
+assert-attribute: ("#main", {"class": "content hidden"})
 
 // Check that Escape hides the search results when a search result is focused.
 focus: ".search-input"
@@ -29,6 +29,6 @@ press-key: "ArrowDown"
 assert-false: ".search-input:focus"
 assert: "#results a:focus"
 press-key: "Escape"
-assert: ("#help", "class", "hidden")
-assert: ("#search", "class", "content hidden")
-assert: ("#main", "class", "content")
+assert-attribute: ("#help", {"class": "hidden"})
+assert-attribute: ("#search", {"class": "content hidden"})
+assert-attribute: ("#main", {"class": "content"})

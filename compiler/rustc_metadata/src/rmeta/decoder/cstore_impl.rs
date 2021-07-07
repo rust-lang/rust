@@ -1,10 +1,9 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
-use crate::rmeta::{self, encoder};
+use crate::rmeta::encoder;
 
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
@@ -19,7 +18,7 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
-use rustc_session::{CrateDisambiguator, Session};
+use rustc_session::{Session, StableCrateId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
@@ -186,7 +185,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     foreign_modules => { cdata.get_foreign_modules(tcx) }
-    crate_disambiguator => { cdata.root.disambiguator }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.name }
@@ -242,6 +240,7 @@ pub fn provide(providers: &mut Providers) {
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
+        allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
             Some(
                 NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
@@ -312,7 +311,7 @@ pub fn provide(providers: &mut Providers) {
             // which is to say, its not deterministic in general. But
             // we believe that libstd is consistently assigned crate
             // num 1, so it should be enough to resolve #46112.
-            let mut crates: Vec<CrateNum> = (*tcx.crates()).to_owned();
+            let mut crates: Vec<CrateNum> = (*tcx.crates(())).to_owned();
             crates.sort();
 
             for &cnum in crates.iter() {
@@ -489,8 +488,8 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).root.name
     }
 
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator {
-        self.get_crate_data(cnum).root.disambiguator
+    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId {
+        self.get_crate_data(cnum).root.stable_crate_id
     }
 
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh {
@@ -534,13 +533,5 @@ impl CrateStore for CStore {
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
-    }
-
-    fn metadata_encoding_version(&self) -> &[u8] {
-        rmeta::METADATA_HEADER
-    }
-
-    fn allocator_kind(&self) -> Option<AllocatorKind> {
-        self.allocator_kind()
     }
 }

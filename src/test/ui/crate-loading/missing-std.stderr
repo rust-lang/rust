@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `core`
-  --> $DIR/missing-std.rs:5:1
+  --> $DIR/missing-std.rs:6:1
    |
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ can't find crate

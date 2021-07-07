@@ -466,7 +466,7 @@ pub struct LookupHost(!);
 
 impl LookupHost {
     fn new(host: String) -> io::Result<LookupHost> {
-        Err(io::Error::new(io::ErrorKind::Other, NonIpSockAddr { host }))
+        Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host }))
     }
 
     pub fn port(&self) -> u16 {

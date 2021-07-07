@@ -344,7 +344,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {
-                        let recursion_limit = self.tcx().sess.recursion_limit();
+                        let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             let obligation = Obligation::with_depth(
                                 self.cause.clone(),
@@ -726,7 +726,7 @@ fn project_type<'cx, 'tcx>(
 ) -> Result<ProjectedTy<'tcx>, ProjectionTyError<'tcx>> {
     debug!(?obligation, "project_type");
 
-    if !selcx.tcx().sess.recursion_limit().value_within_limit(obligation.recursion_depth) {
+    if !selcx.tcx().recursion_limit().value_within_limit(obligation.recursion_depth) {
         debug!("project: overflow!");
         // This should really be an immediate error, but some existing code
         // relies on being able to recover from this.
@@ -1301,7 +1301,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         ty: self_ty.ptr_metadata_ty(tcx),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate, tcx), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(

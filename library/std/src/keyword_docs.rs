@@ -971,7 +971,7 @@ mod match_keyword {}
 /// ```
 ///
 /// Like [`struct`]s and [`enum`]s, a module and its content are private by
-/// default, unaccessible to code outside of the module.
+/// default, inaccessible to code outside of the module.
 ///
 /// To learn more about allowing access, see the documentation for the [`pub`]
 /// keyword.
@@ -987,13 +987,13 @@ mod mod_keyword {}
 /// Capture a [closure]'s environment by value.
 ///
 /// `move` converts any variables captured by reference or mutable reference
-/// to owned by value variables.
+/// to variables captured by value.
 ///
 /// ```rust
-/// let capture = "hello";
-/// let closure = move || {
-///     println!("rust says {}", capture);
-/// };
+/// let data = vec![1, 2, 3];
+/// let closure = move || println!("captured {:?} by value", data);
+///
+/// // data is no longer available, it is owned by the closure
 /// ```
 ///
 /// Note: `move` closures may still implement [`Fn`] or [`FnMut`], even though
@@ -1004,31 +1004,29 @@ mod mod_keyword {}
 /// ```rust
 /// fn create_fn() -> impl Fn() {
 ///     let text = "Fn".to_owned();
-///
 ///     move || println!("This is a: {}", text)
 /// }
 ///
 /// let fn_plain = create_fn();
-///
 /// fn_plain();
 /// ```
 ///
 /// `move` is often used when [threads] are involved.
 ///
 /// ```rust
-/// let x = 5;
+/// let data = vec![1, 2, 3];
 ///
 /// std::thread::spawn(move || {
-///     println!("captured {} by value", x)
+///     println!("captured {:?} by value", data)
 /// }).join().unwrap();
 ///
-/// // x is no longer available
+/// // data was moved to the spawned thread, so we cannot use it here
 /// ```
 ///
 /// `move` is also valid before an async block.
 ///
 /// ```rust
-/// let capture = "hello";
+/// let capture = "hello".to_owned();
 /// let block = async move {
 ///     println!("rust says {} from async block", capture);
 /// };
@@ -1094,8 +1092,7 @@ mod move_keyword {}
 /// Mutable raw pointers work much like mutable references, with the added
 /// possibility of not pointing to a valid object. The syntax is `*mut Type`.
 ///
-/// More information on mutable references and pointers can be found in```
-/// [Reference].
+/// More information on mutable references and pointers can be found in the [Reference].
 ///
 /// [Reference]: ../reference/types/pointer.html#mutable-references-mut
 mod mut_keyword {}
@@ -2259,6 +2256,9 @@ mod await_keyword {}
 /// At run-time, when a method needs to be called on the `dyn Trait`, the vtable is consulted to get
 /// the function pointer and then that function pointer is called.
 ///
+/// See the Reference for more information on [trait objects][ref-trait-obj]
+/// and [object safety][ref-obj-safety].
+///
 /// ## Trade-offs
 ///
 /// The above indirection is the additional runtime cost of calling a function on a `dyn Trait`.
@@ -2267,9 +2267,9 @@ mod await_keyword {}
 /// However, `dyn Trait` is likely to produce smaller code than `impl Trait` / generic parameters as
 /// the method won't be duplicated for each concrete type.
 ///
-/// Read more about `object safety` and [trait object]s.
-///
 /// [trait object]: ../book/ch17-02-trait-objects.html
+/// [ref-trait-obj]: ../reference/types/trait-object.html
+/// [ref-obj-safety]: ../reference/items/traits.html#object-safety
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
 mod dyn_keyword {}
 

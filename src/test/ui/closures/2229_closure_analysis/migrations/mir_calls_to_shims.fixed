@@ -1,19 +1,23 @@
 // run-rustfix
 
-#![deny(disjoint_capture_migration)]
+#![deny(rust_2021_incompatible_closure_captures)]
 // ignore-wasm32-bare compiled with panic=abort by default
-
 #![feature(fn_traits)]
 #![feature(never_type)]
 
 use std::panic;
 
-fn foo_diverges() -> ! { panic!() }
+fn foo_diverges() -> ! {
+    panic!()
+}
 
-fn assert_panics<F>(f: F) where F: FnOnce() {
+fn assert_panics<F>(f: F)
+where
+    F: FnOnce(),
+{
     let f = panic::AssertUnwindSafe(f);
     let result = panic::catch_unwind(move || { let _ = &f; 
-        //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` trait implementation affected for closure because of `capture_disjoint_fields`
+        //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` trait implementation
         //~| HELP: add a dummy let to cause `f` to be fully captured
         f.0()
     });
@@ -23,7 +27,8 @@ fn assert_panics<F>(f: F) where F: FnOnce() {
 }
 
 fn test_fn_ptr_panic<T>(mut t: T)
-    where T: Fn() -> !
+where
+    T: Fn() -> !,
 {
     let as_fn = <T as Fn<()>>::call;
     assert_panics(|| as_fn(&t, ()));

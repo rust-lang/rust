@@ -233,6 +233,33 @@ fn test_zip_trusted_random_access_composition() {
 }
 
 #[test]
+#[cfg(panic = "unwind")]
+fn test_zip_trusted_random_access_next_back_drop() {
+    use std::panic::catch_unwind;
+    use std::panic::AssertUnwindSafe;
+
+    let mut counter = 0;
+
+    let it = [42].iter().map(|e| {
+        let c = counter;
+        counter += 1;
+        if c == 0 {
+            panic!("bomb");
+        }
+
+        e
+    });
+    let it2 = [(); 0].iter();
+    let mut zip = it.zip(it2);
+    catch_unwind(AssertUnwindSafe(|| {
+        zip.next_back();
+    }))
+    .unwrap_err();
+    assert!(zip.next().is_none());
+    assert_eq!(counter, 1);
+}
+
+#[test]
 fn test_double_ended_zip() {
     let xs = [1, 2, 3, 4, 5, 6];
     let ys = [1, 2, 3, 7];

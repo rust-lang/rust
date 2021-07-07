@@ -652,7 +652,7 @@ impl<'a> AstValidator<'a> {
                 self.err_handler()
                     .struct_span_err(
                         *span,
-                        "only foreign or `unsafe extern \"C\" functions may be C-variadic",
+                        "only foreign or `unsafe extern \"C\"` functions may be C-variadic",
                     )
                     .emit();
             }
@@ -889,35 +889,32 @@ fn validate_generic_param_order(
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
-    let mut param_idents = vec![];
+    let mut param_idents = Vec::with_capacity(generics.len());
 
-    for param in generics {
-        let ident = Some(param.ident.to_string());
-        let (kind, bounds, span) = (&param.kind, Some(&*param.bounds), param.ident.span);
+    for (idx, param) in generics.iter().enumerate() {
+        let ident = param.ident;
+        let (kind, bounds, span) = (&param.kind, &param.bounds, ident.span);
         let (ord_kind, ident) = match &param.kind {
-            GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
-            GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
+            GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident.to_string()),
+            GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident.to_string()),
             GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
                 let ty = pprust::ty_to_string(ty);
                 let unordered = sess.features_untracked().unordered_const_ty_params();
-                (ParamKindOrd::Const { unordered }, Some(format!("const {}: {}", param.ident, ty)))
+                (ParamKindOrd::Const { unordered }, format!("const {}: {}", ident, ty))
             }
         };
-        if let Some(ident) = ident {
-            param_idents.push((kind, ord_kind, bounds, param_idents.len(), ident));
-        }
-        let max_param = &mut max_param;
+        param_idents.push((kind, ord_kind, bounds, idx, ident));
         match max_param {
-            Some(max_param) if *max_param > ord_kind => {
-                let entry = out_of_order.entry(ord_kind).or_insert((*max_param, vec![]));
+            Some(max_param) if max_param > ord_kind => {
+                let entry = out_of_order.entry(ord_kind).or_insert((max_param, vec![]));
                 entry.1.push(span);
             }
-            Some(_) | None => *max_param = Some(ord_kind),
+            Some(_) | None => max_param = Some(ord_kind),
         };
     }
 
-    let mut ordered_params = "<".to_string();
     if !out_of_order.is_empty() {
+        let mut ordered_params = "<".to_string();
         param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
         let mut first = true;
         for (kind, _, bounds, _, ident) in param_idents {
@@ -925,12 +922,12 @@ fn validate_generic_param_order(
                 ordered_params += ", ";
             }
             ordered_params += &ident;
-            if let Some(bounds) = bounds {
-                if !bounds.is_empty() {
-                    ordered_params += ": ";
-                    ordered_params += &pprust::bounds_to_string(&bounds);
-                }
+
+            if !bounds.is_empty() {
+                ordered_params += ": ";
+                ordered_params += &pprust::bounds_to_string(&bounds);
             }
+
             match kind {
                 GenericParamKind::Type { default: Some(default) } => {
                     ordered_params += " = ";
@@ -938,37 +935,40 @@ fn validate_generic_param_order(
                 }
                 GenericParamKind::Type { default: None } => (),
                 GenericParamKind::Lifetime => (),
-                // FIXME(const_generics_defaults)
-                GenericParamKind::Const { ty: _, kw_span: _, default: _ } => (),
+                GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
+                    ordered_params += " = ";
+                    ordered_params += &pprust::expr_to_string(&*default.value);
+                }
+                GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
             }
             first = false;
         }
-    }
-    ordered_params += ">";
 
-    for (param_ord, (max_param, spans)) in &out_of_order {
-        let mut err =
-            handler.struct_span_err(
+        ordered_params += ">";
+
+        for (param_ord, (max_param, spans)) in &out_of_order {
+            let mut err = handler.struct_span_err(
                 spans.clone(),
                 &format!(
                     "{} parameters must be declared prior to {} parameters",
                     param_ord, max_param,
                 ),
             );
-        err.span_suggestion(
-            span,
-            &format!(
-                "reorder the parameters: lifetimes, {}",
-                if sess.features_untracked().const_generics {
-                    "then consts and types"
-                } else {
-                    "then types, then consts"
-                }
-            ),
-            ordered_params.clone(),
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+            err.span_suggestion(
+                span,
+                &format!(
+                    "reorder the parameters: lifetimes, {}",
+                    if sess.features_untracked().unordered_const_ty_params() {
+                        "then consts and types"
+                    } else {
+                        "then types, then consts"
+                    }
+                ),
+                ordered_params.clone(),
+                Applicability::MachineApplicable,
+            );
+            err.emit();
+        }
     }
 }
 

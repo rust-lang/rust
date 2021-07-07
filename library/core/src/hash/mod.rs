@@ -481,6 +481,50 @@ pub trait BuildHasher {
     /// ```
     #[stable(since = "1.7.0", feature = "build_hasher")]
     fn build_hasher(&self) -> Self::Hasher;
+
+    /// Calculates the hash of a single value.
+    ///
+    /// This is intended as a convenience for code which *consumes* hashes, such
+    /// as the implementation of a hash table or in unit tests that check
+    /// whether a custom [`Hash`] implementation behaves as expected.
+    ///
+    /// This must not be used in any code which *creates* hashes, such as in an
+    /// implementation of [`Hash`].  The way to create a combined hash of
+    /// multiple values is to call [`Hash::hash`] multiple times using the same
+    /// [`Hasher`], not to call this method repeatedly and combine the results.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(build_hasher_simple_hash_one)]
+    ///
+    /// use std::cmp::{max, min};
+    /// use std::hash::{BuildHasher, Hash, Hasher};
+    /// struct OrderAmbivalentPair<T: Ord>(T, T);
+    /// impl<T: Ord + Hash> Hash for OrderAmbivalentPair<T> {
+    ///     fn hash<H: Hasher>(&self, hasher: &mut H) {
+    ///         min(&self.0, &self.1).hash(hasher);
+    ///         max(&self.0, &self.1).hash(hasher);
+    ///     }
+    /// }
+    ///
+    /// // Then later, in a `#[test]` for the type...
+    /// let bh = std::collections::hash_map::RandomState::new();
+    /// assert_eq!(
+    ///     bh.hash_one(OrderAmbivalentPair(1, 2)),
+    ///     bh.hash_one(OrderAmbivalentPair(2, 1))
+    /// );
+    /// assert_eq!(
+    ///     bh.hash_one(OrderAmbivalentPair(10, 2)),
+    ///     bh.hash_one(&OrderAmbivalentPair(2, 10))
+    /// );
+    /// ```
+    #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
+    fn hash_one<T: Hash>(&self, x: T) -> u64 {
+        let mut hasher = self.build_hasher();
+        x.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 /// Used to create a default [`BuildHasher`] instance for types that implement

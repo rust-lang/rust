@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
+use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
@@ -37,7 +39,7 @@ impl Thread {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(p));
-            Err(io::Error::new_const(io::ErrorKind::Other, &"Unable to create thread!"))
+            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })
         };
@@ -93,6 +95,10 @@ impl Thread {
         mem::forget(self);
         id
     }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    unsupported()
 }
 
 pub mod guard {

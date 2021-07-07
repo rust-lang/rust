@@ -1,0 +1,10 @@
+error: trait methods cannot be stable const fn
+  --> $DIR/staged-api.rs:22:5
+   |
+LL | /     fn func() {
+LL | |
+LL | |     }
+   | |_____^
+
+error: aborting due to previous error
+

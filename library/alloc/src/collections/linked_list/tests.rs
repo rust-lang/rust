@@ -428,3 +428,50 @@ fn test_cursor_mut_insert() {
     check_links(&m);
     assert_eq!(m.iter().cloned().collect::<Vec<_>>(), &[200, 201, 202, 203, 1, 100, 101]);
 }
+
+#[test]
+fn test_cursor_push_front_back() {
+    let mut ll: LinkedList<u32> = LinkedList::new();
+    ll.extend(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    let mut c = ll.cursor_front_mut();
+    assert_eq!(c.current(), Some(&mut 1));
+    assert_eq!(c.index(), Some(0));
+    c.push_front(0);
+    assert_eq!(c.current(), Some(&mut 1));
+    assert_eq!(c.peek_prev(), Some(&mut 0));
+    assert_eq!(c.index(), Some(1));
+    c.push_back(11);
+    drop(c);
+    let p = ll.cursor_back().front().unwrap();
+    assert_eq!(p, &0);
+    assert_eq!(ll, (0..12).collect());
+    check_links(&ll);
+}
+
+#[test]
+fn test_cursor_pop_front_back() {
+    let mut ll: LinkedList<u32> = LinkedList::new();
+    ll.extend(&[1, 2, 3, 4, 5, 6]);
+    let mut c = ll.cursor_back_mut();
+    assert_eq!(c.pop_front(), Some(1));
+    c.move_prev();
+    c.move_prev();
+    c.move_prev();
+    assert_eq!(c.pop_back(), Some(6));
+    let c = c.as_cursor();
+    assert_eq!(c.front(), Some(&2));
+    assert_eq!(c.back(), Some(&5));
+    assert_eq!(c.index(), Some(1));
+    drop(c);
+    assert_eq!(ll, (2..6).collect());
+    check_links(&ll);
+    let mut c = ll.cursor_back_mut();
+    assert_eq!(c.current(), Some(&mut 5));
+    assert_eq!(c.index, 3);
+    assert_eq!(c.pop_back(), Some(5));
+    assert_eq!(c.current(), None);
+    assert_eq!(c.index, 3);
+    assert_eq!(c.pop_back(), Some(4));
+    assert_eq!(c.current(), None);
+    assert_eq!(c.index, 2);
+}

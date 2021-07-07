@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub SUSPICIOUS_ARITHMETIC_IMPL,
-    correctness,
+    suspicious,
     "suspicious use of operators in impl of arithmetic trait"
 }
 
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub SUSPICIOUS_OP_ASSIGN_IMPL,
-    correctness,
+    suspicious,
     "suspicious use of operators in impl of OpAssign trait"
 }
 

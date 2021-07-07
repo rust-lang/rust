@@ -1,0 +1,21 @@
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/type-placeholder-fn-in-const.rs:4:25
+   |
+LL |     const TEST: fn() -> _;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/type-placeholder-fn-in-const.rs:4:25
+   |
+LL |     const TEST: fn() -> _;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/type-placeholder-fn-in-const.rs:10:25
+   |
+LL |     const TEST: fn() -> _ = 42;
+   |                         ^ not allowed in type signatures
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

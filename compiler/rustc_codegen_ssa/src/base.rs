@@ -19,8 +19,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::middle::cstore::EncodedMetadata;
-use rustc_middle::middle::cstore::{self, LinkagePreference};
+use rustc_middle::middle::cstore::{self, EncodedMetadata};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
@@ -406,7 +405,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         // `main` should respect same config for frame pointer elimination as rest of code
-        cx.set_frame_pointer_elimination(llfn);
+        cx.set_frame_pointer_type(llfn);
         cx.apply_target_cpu_attr(llfn);
 
         let llbb = Bx::append_block(&cx, llfn, "top");
@@ -518,7 +517,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     });
     let allocator_module = if any_dynamic_crate {
         None
-    } else if let Some(kind) = tcx.allocator_kind() {
+    } else if let Some(kind) = tcx.allocator_kind(()) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let mut modules = backend.new_metadata(tcx, &llmod_id);
@@ -755,7 +754,13 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 }
 
 impl CrateInfo {
-    pub fn new(tcx: TyCtxt<'_>) -> CrateInfo {
+    pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> CrateInfo {
+        let exported_symbols = tcx
+            .sess
+            .crate_types()
+            .iter()
+            .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
+            .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -771,16 +776,16 @@ impl CrateInfo {
         });
 
         let mut info = CrateInfo {
+            target_cpu,
+            exported_symbols,
             local_crate_name,
-            panic_runtime: None,
             compiler_builtins: None,
             profiler_runtime: None,
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
             crate_name: Default::default(),
-            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
-            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crates: cstore::used_crates(tcx),
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
@@ -789,7 +794,7 @@ impl CrateInfo {
         };
         let lang_items = tcx.lang_items();
 
-        let crates = tcx.crates();
+        let crates = tcx.crates(());
 
         let n_crates = crates.len();
         info.native_libraries.reserve(n_crates);
@@ -802,9 +807,6 @@ impl CrateInfo {
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
-            if tcx.is_panic_runtime(cnum) {
-                info.panic_runtime = Some(cnum);
-            }
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);
             }

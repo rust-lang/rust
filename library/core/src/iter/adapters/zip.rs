@@ -88,6 +88,7 @@ where
     }
 
     #[inline]
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
@@ -226,6 +227,8 @@ where
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
         if self.index < self.len {
             let i = self.index;
+            // since get_unchecked executes code which can panic we increment the counters beforehand
+            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
             self.index += 1;
             // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
             unsafe {
@@ -233,6 +236,7 @@ where
             }
         } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a_len {
             let i = self.index;
+            // as above, increment before executing code that may panic
             self.index += 1;
             self.len += 1;
             // match the base implementation's potential side effects
@@ -258,6 +262,8 @@ where
         let end = self.index + delta;
         while self.index < end {
             let i = self.index;
+            // since get_unchecked executes code which can panic we increment the counters beforehand
+            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
             self.index += 1;
             if A::MAY_HAVE_SIDE_EFFECT {
                 // SAFETY: the usage of `cmp::min` to calculate `delta`
@@ -294,9 +300,12 @@ where
                 let sz_a = self.a.size();
                 if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
                     for _ in 0..sz_a - self.len {
+                        // since next_back() may panic we increment the counters beforehand
+                        // to keep Zip's state in sync with the underlying iterator source
+                        self.a_len -= 1;
                         self.a.next_back();
                     }
-                    self.a_len = self.len;
+                    debug_assert_eq!(self.a_len, self.len);
                 }
                 let sz_b = self.b.size();
                 if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
@@ -307,6 +316,8 @@ where
             }
         }
         if self.index < self.len {
+            // since get_unchecked executes code which can panic we increment the counters beforehand
+            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
             self.len -= 1;
             self.a_len -= 1;
             let i = self.len;

@@ -838,6 +838,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                         let leaf = leaf.subst(self.tcx, ct.substs);
                         self.visit_const(leaf)
                     }
+                    Node::Cast(_, _, ty) => self.visit_ty(ty),
                     Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
                         ControlFlow::CONTINUE
                     }
@@ -859,6 +860,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                             let leaf = leaf.subst(self.tcx, ct.substs);
                             self.visit_const(leaf)
                         }
+                        Node::Cast(_, _, ty) => self.visit_ty(ty),
                         Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
                             ControlFlow::CONTINUE
                         }

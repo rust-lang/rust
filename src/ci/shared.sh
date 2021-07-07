@@ -7,7 +7,7 @@
 
 export MIRRORS_BASE="https://ci-mirrors.rust-lang.org/rustc"
 
-# See http://unix.stackexchange.com/questions/82598
+# See https://unix.stackexchange.com/questions/82598
 # Duplicated in docker/dist-various-2/shared.sh
 function retry {
   echo "Attempting with retry:" "$@"
@@ -139,5 +139,13 @@ function ciCommandSetEnv {
     else
         echo "ciCommandSetEnv only works inside CI!"
         exit 1
+    fi
+}
+
+function releaseChannel {
+    if [[ -z "${RUST_CI_OVERRIDE_RELEASE_CHANNEL+x}" ]]; then
+        cat "${ci_dir}/channel"
+    else
+        echo $RUST_CI_OVERRIDE_RELEASE_CHANNEL
     fi
 }

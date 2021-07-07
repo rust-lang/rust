@@ -10,5 +10,5 @@ write: (".search-input", "thisisanalias")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 // Checking that the colors for the alias element are the ones expected.
-assert: (".result-name > .alias", {"color": "rgb(255, 255, 255)"})
-assert: (".result-name > .alias > .grey", {"color": "rgb(204, 204, 204)"})
+assert-css: (".result-name > .alias", {"color": "rgb(255, 255, 255)"})
+assert-css: (".result-name > .alias > .grey", {"color": "rgb(204, 204, 204)"})

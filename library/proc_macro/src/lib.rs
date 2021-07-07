@@ -31,7 +31,6 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
-#![feature(bound_cloned)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -85,14 +84,13 @@ impl !Sync for TokenStream {}
 
 /// Error returned from `TokenStream::from_str`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
+#[non_exhaustive]
 #[derive(Debug)]
-pub struct LexError {
-    _inner: (),
-}
+pub struct LexError;
 
 impl LexError {
     fn new() -> Self {
-        LexError { _inner: () }
+        LexError
     }
 }
 
@@ -708,7 +706,7 @@ impl Group {
     /// pub fn span_open(&self) -> Span {
     ///                 ^
     /// ```
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_open(&self) -> Span {
         Span(self.0.span_open())
     }
@@ -719,7 +717,7 @@ impl Group {
     /// pub fn span_close(&self) -> Span {
     ///                        ^
     /// ```
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_close(&self) -> Span {
         Span(self.0.span_close())
     }
@@ -766,7 +764,7 @@ impl fmt::Debug for Group {
     }
 }
 
-/// An `Punct` is an single punctuation character like `+`, `-` or `#`.
+/// A `Punct` is a single punctuation character such as `+`, `-` or `#`.
 ///
 /// Multi-character operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
@@ -779,16 +777,19 @@ impl !Send for Punct {}
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Sync for Punct {}
 
-/// Whether an `Punct` is followed immediately by another `Punct` or
-/// followed by another token or whitespace.
+/// Describes whether a `Punct` is followed immediately by another `Punct` ([`Spacing::Joint`]) or
+/// by a different token or whitespace ([`Spacing::Alone`]).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
-    /// e.g., `+` is `Alone` in `+ =`, `+ident` or `+()`.
+    /// A `Punct` is not immediately followed by another `Punct`.
+    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Alone,
-    /// e.g., `+` is `Joint` in `+=` or `'#`.
-    /// Additionally, single quote `'` can join with identifiers to form lifetimes `'ident`.
+    /// A `Punct` is immediately followed by another `Punct`.
+    /// E.g. `+` is `Joint` in `+=` and `++`.
+    ///
+    /// Additionally, single quote `'` can join with identifiers to form lifetimes: `'ident`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
 }
@@ -1231,5 +1232,19 @@ pub mod tracked_env {
         let value = env::var(key);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
+    }
+}
+
+/// Tracked access to additional files.
+#[unstable(feature = "track_path", issue = "73921")]
+pub mod tracked_path {
+
+    /// Track a file explicitly.
+    ///
+    /// Commonly used for tracking asset preprocessing.
+    #[unstable(feature = "track_path", issue = "73921")]
+    pub fn path<P: AsRef<str>>(path: P) {
+        let path: &str = path.as_ref();
+        crate::bridge::client::FreeFunctions::track_path(path);
     }
 }

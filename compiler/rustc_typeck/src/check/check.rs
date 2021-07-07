@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, RegionKind, Ty, TyCtxt};
-use rustc_session::lint::builtin::UNINHABITED_STATIC;
+use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
@@ -34,16 +34,22 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
     tcx.hir().krate().par_visit_all_item_likes(&visit);
 }
 
-pub(super) fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
-    if !tcx.sess.target.is_abi_supported(abi) {
-        struct_span_err!(
+pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
+    match tcx.sess.target.is_abi_supported(abi) {
+        Some(true) => (),
+        Some(false) => struct_span_err!(
             tcx.sess,
             span,
             E0570,
-            "The ABI `{}` is not supported for the current target",
+            "`{}` is not a supported ABI for the current target",
             abi
         )
-        .emit()
+        .emit(),
+        None => {
+            tcx.struct_span_lint_hir(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
+                lint.build("use of calling convention not supported on this target").emit()
+            });
+        }
     }
 
     // This ABI is only allowed on function pointers
@@ -828,7 +834,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
         hir::ItemKind::ForeignMod { abi, items } => {
-            check_abi(tcx, it.span, abi);
+            check_abi(tcx, it.hir_id(), it.span, abi);
 
             if abi == Abi::RustIntrinsic {
                 for item in items {
@@ -1382,7 +1388,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: &'tcx ty
     let non_zst_fields =
         field_infos.clone().filter_map(|(span, zst, _align1)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
-    if non_zst_count != 1 {
+    if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
     for (span, zst, align1) in field_infos {

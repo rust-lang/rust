@@ -174,13 +174,12 @@ impl Needs {
 pub struct UnsafetyState {
     pub def: hir::HirId,
     pub unsafety: hir::Unsafety,
-    pub unsafe_push_count: u32,
     from_fn: bool,
 }
 
 impl UnsafetyState {
     pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
-        UnsafetyState { def, unsafety, unsafe_push_count: 0, from_fn: true }
+        UnsafetyState { def, unsafety, from_fn: true }
     }
 
     pub fn recurse(self, blk: &hir::Block<'_>) -> UnsafetyState {
@@ -193,19 +192,11 @@ impl UnsafetyState {
             hir::Unsafety::Unsafe if self.from_fn => self,
 
             unsafety => {
-                let (unsafety, def, count) = match blk.rules {
-                    BlockCheckMode::PushUnsafeBlock(..) => {
-                        (unsafety, blk.hir_id, self.unsafe_push_count.checked_add(1).unwrap())
-                    }
-                    BlockCheckMode::PopUnsafeBlock(..) => {
-                        (unsafety, blk.hir_id, self.unsafe_push_count.checked_sub(1).unwrap())
-                    }
-                    BlockCheckMode::UnsafeBlock(..) => {
-                        (hir::Unsafety::Unsafe, blk.hir_id, self.unsafe_push_count)
-                    }
-                    BlockCheckMode::DefaultBlock => (unsafety, self.def, self.unsafe_push_count),
+                let (unsafety, def) = match blk.rules {
+                    BlockCheckMode::UnsafeBlock(..) => (hir::Unsafety::Unsafe, blk.hir_id),
+                    BlockCheckMode::DefaultBlock => (unsafety, self.def),
                 };
-                UnsafetyState { def, unsafety, unsafe_push_count: count, from_fn: false }
+                UnsafetyState { def, unsafety, from_fn: false }
             }
         }
     }
@@ -508,7 +499,7 @@ fn typeck_with_fallback<'tcx>(
                 tcx.fn_sig(def_id)
             };
 
-            check_abi(tcx, span, fn_sig.abi());
+            check_abi(tcx, id, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
@@ -858,7 +849,7 @@ fn missing_items_err(
     // Obtain the level of indentation ending in `sugg_sp`.
     let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
     // Make the whitespace that will make the suggestion have the right indentation.
-    let padding: String = std::iter::repeat(" ").take(indentation).collect();
+    let padding: String = " ".repeat(indentation);
 
     for trait_item in missing_items {
         let snippet = suggestion_signature(&trait_item, tcx);
@@ -1029,7 +1020,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-/// Emit an error when encountering more or less than one variant in a transparent enum.
+/// Emit an error when encountering two or more variants in a transparent enum.
 fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, did: DefId) {
     let variant_spans: Vec<_> = adt
         .variants
@@ -1048,7 +1039,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
     err.emit();
 }
 
-/// Emit an error when encountering more or less than one non-zero-sized field in a transparent
+/// Emit an error when encountering two or more non-zero-sized fields in a transparent
 /// enum.
 fn bad_non_zero_sized_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1057,7 +1048,7 @@ fn bad_non_zero_sized_fields<'tcx>(
     field_spans: impl Iterator<Item = Span>,
     sp: Span,
 ) {
-    let msg = format!("needs exactly one non-zero-sized field, but has {}", field_count);
+    let msg = format!("needs at most one non-zero-sized field, but has {}", field_count);
     let mut err = struct_span_err!(
         tcx.sess,
         sp,

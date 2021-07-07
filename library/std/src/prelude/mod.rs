@@ -25,8 +25,10 @@
 //!
 //! # Prelude contents
 //!
-//! The current version of the prelude (version 1) lives in
-//! [`std::prelude::v1`], and re-exports the following:
+//! The first version of the prelude is used in Rust 2015 and Rust 2018,
+//! and lives in [`std::prelude::v1`].
+//! [`std::prelude::rust_2015`] and [`std::prelude::rust_2018`] re-export this prelude.
+//! It re-exports the following:
 //!
 //! * <code>[std::marker]::{[Copy], [Send], [Sized], [Sync], [Unpin]}</code>,
 //!   marker traits that indicate fundamental properties of types.
@@ -58,6 +60,12 @@
 //! * <code>[std::string]::{[String], [ToString]}</code>, heap-allocated strings.
 //! * <code>[std::vec]::[Vec]</code>, a growable, heap-allocated vector.
 //!
+//! The prelude used in Rust 2021, [`std::prelude::rust_2021`], includes all of the above,
+//! and in addition re-exports:
+//!
+//! * <code>[std::convert]::{[TryFrom], [TryInto]}</code>,
+//! * <code>[std::iter]::[FromIterator]</code>.
+//!
 //! [mem::drop]: crate::mem::drop
 //! [std::borrow]: crate::borrow
 //! [std::boxed]: crate::boxed
@@ -71,10 +79,16 @@
 //! [std::ops]: crate::ops
 //! [std::option]: crate::option
 //! [`std::prelude::v1`]: v1
+//! [`std::prelude::rust_2015`]: rust_2015
+//! [`std::prelude::rust_2018`]: rust_2018
+//! [`std::prelude::rust_2021`]: rust_2021
 //! [std::result]: crate::result
 //! [std::slice]: crate::slice
 //! [std::string]: crate::string
 //! [std::vec]: mod@crate::vec
+//! [TryFrom]: crate::convert::TryFrom
+//! [TryInto]: crate::convert::TryInto
+//! [FromIterator]: crate::iter::FromIterator
 //! [`to_owned`]: crate::borrow::ToOwned::to_owned
 //! [book-closures]: ../../book/ch13-01-closures.html
 //! [book-dtor]: ../../book/ch15-03-drop.html
@@ -88,9 +102,9 @@ pub mod v1;
 /// The 2015 version of the prelude of The Rust Standard Library.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2015", issue = "85684")]
+#[stable(feature = "prelude_2015", since = "1.55.0")]
 pub mod rust_2015 {
-    #[unstable(feature = "prelude_2015", issue = "85684")]
+    #[stable(feature = "prelude_2015", since = "1.55.0")]
     #[doc(no_inline)]
     pub use super::v1::*;
 }
@@ -98,9 +112,9 @@ pub mod rust_2015 {
 /// The 2018 version of the prelude of The Rust Standard Library.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2018", issue = "85684")]
+#[stable(feature = "prelude_2018", since = "1.55.0")]
 pub mod rust_2018 {
-    #[unstable(feature = "prelude_2018", issue = "85684")]
+    #[stable(feature = "prelude_2018", since = "1.55.0")]
     #[doc(no_inline)]
     pub use super::v1::*;
 }
@@ -108,13 +122,13 @@ pub mod rust_2018 {
 /// The 2021 version of the prelude of The Rust Standard Library.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2021", issue = "85684")]
+#[stable(feature = "prelude_2021", since = "1.55.0")]
 pub mod rust_2021 {
-    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use super::v1::*;
 
-    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use core::prelude::rust_2021::*;
 }

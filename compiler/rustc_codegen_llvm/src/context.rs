@@ -71,7 +71,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
-    /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
@@ -410,8 +410,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.used_statics
     }
 
-    fn set_frame_pointer_elimination(&self, llfn: &'ll Value) {
-        attributes::set_frame_pointer_elimination(self, llfn)
+    fn set_frame_pointer_type(&self, llfn: &'ll Value) {
+        attributes::set_frame_pointer_type(self, llfn)
     }
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {

@@ -1,4 +1,4 @@
-// compile-flags: --force-warns const_err
+// compile-flags: --force-warns const_err -Zunstable-options
 // check-pass
 
 #![allow(const_err)]

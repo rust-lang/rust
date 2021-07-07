@@ -391,7 +391,6 @@ fn result_opt_conversions() {
 }
 
 #[test]
-#[cfg(not(bootstrap))] // Needs the V2 trait
 fn result_try_trait_v2_branch() {
     use core::num::NonZeroU32;
     use core::ops::{ControlFlow::*, Try};

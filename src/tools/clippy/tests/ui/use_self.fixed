@@ -492,3 +492,26 @@ mod issue7206 {
         }
     }
 }
+
+mod self_is_ty_param {
+    trait Trait {
+        type Type;
+        type Hi;
+
+        fn test();
+    }
+
+    impl<I> Trait for I
+    where
+        I: Iterator,
+        I::Item: Trait, // changing this to Self would require <Self as Iterator>
+    {
+        type Type = I;
+        type Hi = I::Item;
+
+        fn test() {
+            let _: I::Item;
+            let _: I; // this could lint, but is questionable
+        }
+    }
+}

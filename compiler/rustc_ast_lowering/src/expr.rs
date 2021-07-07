@@ -237,7 +237,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
                             e.id,
-                            &None,
+                            &se.qself,
                             &se.path,
                             ParamMode::Optional,
                             ImplTraitContext::disallowed(),
@@ -1041,10 +1041,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// It is not a complete check, but just tries to reject most paths early
     /// if they are not tuple structs.
     /// Type checking will take care of the full validation later.
-    fn extract_tuple_struct_path<'a>(&mut self, expr: &'a Expr) -> Option<&'a Path> {
-        // For tuple struct destructuring, it must be a non-qualified path (like in patterns).
-        if let ExprKind::Path(None, path) = &expr.kind {
-            // Does the path resolves to something disallowed in a tuple struct/variant pattern?
+    fn extract_tuple_struct_path<'a>(
+        &mut self,
+        expr: &'a Expr,
+    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+        if let ExprKind::Path(qself, path) = &expr.kind {
+            // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
                 if partial_res.unresolved_segments() == 0
                     && !partial_res.base_res().expected_in_tuple_struct_pat()
@@ -1052,7 +1054,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     return None;
                 }
             }
-            return Some(path);
+            return Some((qself, path));
         }
         None
     }
@@ -1088,7 +1090,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             // Tuple structs.
             ExprKind::Call(callee, args) => {
-                if let Some(path) = self.extract_tuple_struct_path(callee) {
+                if let Some((qself, path)) = self.extract_tuple_struct_path(callee) {
                     let (pats, rest) = self.destructure_sequence(
                         args,
                         "tuple struct or variant",
@@ -1097,7 +1099,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     let qpath = self.lower_qpath(
                         callee.id,
-                        &None,
+                        qself,
                         path,
                         ParamMode::Optional,
                         ImplTraitContext::disallowed(),
@@ -1122,7 +1124,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }));
                 let qpath = self.lower_qpath(
                     lhs.id,
-                    &None,
+                    &se.qself,
                     &se.path,
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),

@@ -252,7 +252,9 @@
 mod tests;
 
 use crate::cmp;
+use crate::convert::TryInto;
 use crate::fmt;
+use crate::mem::replace;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::slice;
@@ -275,6 +277,8 @@ pub use self::error::{Error, ErrorKind, Result};
 pub use self::stdio::set_output_capture;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub use self::stdio::{stderr_locked, stdin_locked, stdout_locked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
@@ -1044,6 +1048,32 @@ impl<'a> IoSliceMut<'a> {
 
     /// Advance the internal cursor of the slice.
     ///
+    /// Also see [`IoSliceMut::advance_slices`] to advance the cursors of
+    /// multiple buffers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSliceMut;
+    /// use std::ops::Deref;
+    ///
+    /// let mut data = [1; 8];
+    /// let mut buf = IoSliceMut::new(&mut data);
+    ///
+    /// // Mark 3 bytes as read.
+    /// buf.advance(3);
+    /// assert_eq!(buf.deref(), [1; 5].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        self.0.advance(n)
+    }
+
+    /// Advance the internal cursor of the slices.
+    ///
     /// # Notes
     ///
     /// Elements in the slice may be modified if the cursor is not advanced to
@@ -1070,13 +1100,13 @@ impl<'a> IoSliceMut<'a> {
     /// ][..];
     ///
     /// // Mark 10 bytes as read.
-    /// bufs = IoSliceMut::advance(bufs, 10);
+    /// IoSliceMut::advance_slices(&mut bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     /// ```
     #[unstable(feature = "io_slice_advance", issue = "62726")]
     #[inline]
-    pub fn advance<'b>(bufs: &'b mut [IoSliceMut<'a>], n: usize) -> &'b mut [IoSliceMut<'a>] {
+    pub fn advance_slices(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
         // Number of buffers to remove.
         let mut remove = 0;
         // Total length of all the to be removed buffers.
@@ -1090,11 +1120,10 @@ impl<'a> IoSliceMut<'a> {
             }
         }
 
-        let bufs = &mut bufs[remove..];
+        *bufs = &mut replace(bufs, &mut [])[remove..];
         if !bufs.is_empty() {
-            bufs[0].0.advance(n - accumulated_len)
+            bufs[0].advance(n - accumulated_len)
         }
-        bufs
     }
 }
 
@@ -1153,6 +1182,32 @@ impl<'a> IoSlice<'a> {
 
     /// Advance the internal cursor of the slice.
     ///
+    /// Also see [`IoSlice::advance_slices`] to advance the cursors of multiple
+    /// buffers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSlice;
+    /// use std::ops::Deref;
+    ///
+    /// let mut data = [1; 8];
+    /// let mut buf = IoSlice::new(&mut data);
+    ///
+    /// // Mark 3 bytes as read.
+    /// buf.advance(3);
+    /// assert_eq!(buf.deref(), [1; 5].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        self.0.advance(n)
+    }
+
+    /// Advance the internal cursor of the slices.
+    ///
     /// # Notes
     ///
     /// Elements in the slice may be modified if the cursor is not advanced to
@@ -1179,12 +1234,12 @@ impl<'a> IoSlice<'a> {
     /// ][..];
     ///
     /// // Mark 10 bytes as written.
-    /// bufs = IoSlice::advance(bufs, 10);
+    /// IoSlice::advance_slices(&mut bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     #[unstable(feature = "io_slice_advance", issue = "62726")]
     #[inline]
-    pub fn advance<'b>(bufs: &'b mut [IoSlice<'a>], n: usize) -> &'b mut [IoSlice<'a>] {
+    pub fn advance_slices(bufs: &mut &mut [IoSlice<'a>], n: usize) {
         // Number of buffers to remove.
         let mut remove = 0;
         // Total length of all the to be removed buffers.
@@ -1198,11 +1253,10 @@ impl<'a> IoSlice<'a> {
             }
         }
 
-        let bufs = &mut bufs[remove..];
+        *bufs = &mut replace(bufs, &mut [])[remove..];
         if !bufs.is_empty() {
-            bufs[0].0.advance(n - accumulated_len)
+            bufs[0].advance(n - accumulated_len)
         }
-        bufs
     }
 }
 
@@ -1364,6 +1418,27 @@ pub trait Write {
     /// The default implementation calls [`write`] with either the first nonempty
     /// buffer provided, or an empty one if none exists.
     ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::IoSlice;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut data1 = [1; 8];
+    ///     let mut data2 = [15; 8];
+    ///     let io_slice1 = IoSlice::new(&mut data1);
+    ///     let io_slice2 = IoSlice::new(&mut data2);
+    ///
+    ///     let mut buffer = File::create("foo.txt")?;
+    ///
+    ///     // Writes some prefix of the byte string, not necessarily all of it.
+    ///     buffer.write_vectored(&[io_slice1, io_slice2])?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
     /// [`write`]: Write::write
     #[stable(feature = "iovec", since = "1.36.0")]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
@@ -1511,7 +1586,7 @@ pub trait Write {
     fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
         // Guarantee that bufs is empty if it contains no data,
         // to avoid calling write_vectored if there is no data to be written.
-        bufs = IoSlice::advance(bufs, 0);
+        IoSlice::advance_slices(&mut bufs, 0);
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
@@ -1520,7 +1595,7 @@ pub trait Write {
                         &"failed to write whole buffer",
                     ));
                 }
-                Ok(n) => bufs = IoSlice::advance(bufs, n),
+                Ok(n) => IoSlice::advance_slices(&mut bufs, n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
@@ -1592,7 +1667,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error::new_const(ErrorKind::Other, &"formatter error"))
+                    Err(Error::new_const(ErrorKind::Uncategorized, &"formatter error"))
                 }
             }
         }
@@ -1684,7 +1759,6 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_rewind)]
     /// use std::io::{Read, Seek, Write};
     /// use std::fs::OpenOptions;
     ///
@@ -1702,7 +1776,7 @@ pub trait Seek {
     /// f.read_to_string(&mut buf).unwrap();
     /// assert_eq!(&buf, hello);
     /// ```
-    #[unstable(feature = "seek_rewind", issue = "85149")]
+    #[stable(feature = "seek_rewind", since = "1.55.0")]
     fn rewind(&mut self) -> Result<()> {
         self.seek(SeekFrom::Start(0))?;
         Ok(())
@@ -1952,6 +2026,37 @@ pub trait BufRead: Read {
     /// [`fill_buf`]: BufRead::fill_buf
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
+
+    /// Check if the underlying `Read` has any data left to be read.
+    ///
+    /// This function may fill the buffer to check for data,
+    /// so this functions returns `Result<bool>`, not `bool`.
+    ///
+    /// Default implementation calls `fill_buf` and checks that
+    /// returned slice is empty (which means that there is no data left,
+    /// since EOF is reached).
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// #![feature(buf_read_has_data_left)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    /// let mut stdin = stdin.lock();
+    ///
+    /// while stdin.has_data_left().unwrap() {
+    ///     let mut line = String::new();
+    ///     stdin.read_line(&mut line).unwrap();
+    ///     // work with line
+    ///     println!("{:?}", line);
+    /// }
+    /// ```
+    #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "86423")]
+    fn has_data_left(&mut self) -> Result<bool> {
+        self.fill_buf().map(|b| !b.is_empty())
+    }
 
     /// Read all bytes into `buf` until the delimiter `byte` or EOF is reached.
     ///
@@ -2291,13 +2396,15 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 }
 
 impl<T, U> SizeHint for Chain<T, U> {
+    #[inline]
     fn lower_bound(&self) -> usize {
         SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
     }
 
+    #[inline]
     fn upper_bound(&self) -> Option<usize> {
         match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
-            (Some(first), Some(second)) => Some(first + second),
+            (Some(first), Some(second)) => first.checked_add(second),
             _ => None,
         }
     }
@@ -2502,6 +2609,21 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
+impl<T> SizeHint for Take<T> {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        cmp::min(SizeHint::lower_bound(&self.inner) as u64, self.limit) as usize
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        match SizeHint::upper_bound(&self.inner) {
+            Some(upper_bound) => Some(cmp::min(upper_bound as u64, self.limit) as usize),
+            None => self.limit.try_into().ok(),
+        }
+    }
+}
+
 /// An iterator over `u8` values of a reader.
 ///
 /// This struct is generally created by calling [`bytes`] on a reader.
@@ -2546,12 +2668,50 @@ trait SizeHint {
 }
 
 impl<T> SizeHint for T {
+    #[inline]
     default fn lower_bound(&self) -> usize {
         0
     }
 
+    #[inline]
     default fn upper_bound(&self) -> Option<usize> {
         None
+    }
+}
+
+impl<T> SizeHint for &mut T {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(*self)
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        SizeHint::upper_bound(*self)
+    }
+}
+
+impl<T> SizeHint for Box<T> {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(&**self)
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        SizeHint::upper_bound(&**self)
+    }
+}
+
+impl SizeHint for &[u8] {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        Some(self.len())
     }
 }
 

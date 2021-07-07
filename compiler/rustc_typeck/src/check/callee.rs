@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_arg_exprs: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
-        for &(opt_trait_def_id, method_name, borrow) in &[
+        for (opt_trait_def_id, method_name, borrow) in [
             (self.tcx.lang_items().fn_trait(), Ident::with_dummy_span(sym::call), true),
             (self.tcx.lang_items().fn_mut_trait(), Ident::with_dummy_span(sym::call_mut), true),
             (self.tcx.lang_items().fn_once_trait(), Ident::with_dummy_span(sym::call_once), false),

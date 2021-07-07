@@ -2,7 +2,6 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
@@ -14,6 +13,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
+use rustc_session::Limit;
 use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
@@ -41,9 +41,8 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// The virtual memory system.
     pub memory: Memory<'mir, 'tcx, M>,
 
-    /// A cache for deduplicating vtables
-    pub(super) vtables:
-        FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer<M::PointerTag>>,
+    /// The recursion limit (cached from `tcx.recursion_limit(())`)
+    pub recursion_limit: Limit,
 }
 
 // The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
@@ -393,7 +392,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             tcx: tcx.at(root_span),
             param_env,
             memory: Memory::new(tcx, memory_extra),
-            vtables: FxHashMap::default(),
+            recursion_limit: tcx.recursion_limit(),
         }
     }
 

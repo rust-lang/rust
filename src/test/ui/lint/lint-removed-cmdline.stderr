@@ -10,10 +10,6 @@ warning: lint `raw_pointer_derive` has been removed: using derive with raw point
    |
    = note: requested on the command line with `-D raw_pointer_derive`
 
-warning: lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
-   |
-   = note: requested on the command line with `-D raw_pointer_derive`
-
 error: unused variable: `unused`
   --> $DIR/lint-removed-cmdline.rs:12:17
    |
@@ -27,5 +23,5 @@ LL | #[deny(warnings)]
    |        ^^^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
 
-error: aborting due to previous error; 4 warnings emitted
+error: aborting due to previous error; 3 warnings emitted
 

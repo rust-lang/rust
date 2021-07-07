@@ -26,6 +26,8 @@ impl MultiItemModifier for Expander {
             return ExpandResult::Ready(vec![item]);
         }
 
+        let item = cfg_eval(ecx, item);
+
         let result =
             ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
                 let template =
@@ -54,12 +56,12 @@ impl MultiItemModifier for Expander {
                         report_path_args(sess, &meta);
                         meta.path
                     })
-                    .map(|path| (path, None))
+                    .map(|path| (path, item.clone(), None))
                     .collect()
             });
 
         match result {
-            Ok(()) => ExpandResult::Ready(cfg_eval(ecx, item)),
+            Ok(()) => ExpandResult::Ready(vec![item]),
             Err(Indeterminate) => ExpandResult::Retry(item),
         }
     }

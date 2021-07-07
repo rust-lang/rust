@@ -3,7 +3,6 @@ use crate::spec::{Target, TargetOptions};
 // This target is for musl Linux on ARMv7 without thumb-mode or NEON.
 
 pub fn target() -> Target {
-    let base = super::linux_musl_base::opts();
     Target {
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
         // uses it to determine the calling convention and float ABI, and LLVM
@@ -18,9 +17,8 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
             max_atomic_width: Some(64),
-            unsupported_abis: super::arm_base::unsupported_abis(),
             mcount: "\u{1}mcount".to_string(),
-            ..base
+            ..super::linux_musl_base::opts()
         },
     }
 }

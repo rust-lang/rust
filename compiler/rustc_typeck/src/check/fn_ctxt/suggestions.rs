@@ -52,9 +52,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
-            pointing_at_return_type =
-                self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
             let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
+            pointing_at_return_type = self.suggest_missing_return_type(
+                err,
+                &fn_decl,
+                expected,
+                found,
+                can_suggest,
+                fn_id,
+            );
             self.suggest_missing_break_or_return_expr(
                 err, expr, &fn_decl, expected, found, blk_id, fn_id,
             );
@@ -433,6 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
+        fn_id: hir::HirId,
     ) -> bool {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
@@ -465,7 +472,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
-                if ty.kind() == expected.kind() {
+                let bound_vars = self.tcx.late_bound_vars(fn_id);
+                let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
+                let ty = self.normalize_associated_types_in(sp, ty);
+                if self.can_coerce(expected, ty) {
                     err.span_label(sp, format!("expected `{}` because of return type", expected));
                     return true;
                 }

@@ -77,7 +77,7 @@ def download(path, url, probably_big, verbose):
 def _download(path, url, probably_big, verbose, exception):
     if probably_big or verbose:
         print("downloading {}".format(url))
-    # see http://serverfault.com/questions/301128/how-to-download
+    # see https://serverfault.com/questions/301128/how-to-download
     if sys.platform == 'win32':
         run(["PowerShell.exe", "/nologo", "-Command",
              "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -138,7 +138,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     shutil.rmtree(os.path.join(dst, fname))
 
 
-def run(args, verbose=False, exception=False, **kwargs):
+def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
@@ -151,7 +151,14 @@ def run(args, verbose=False, exception=False, **kwargs):
         err = "failed to run: " + ' '.join(args)
         if verbose or exception:
             raise RuntimeError(err)
-        sys.exit(err)
+        # For most failures, we definitely do want to print this error, or the user will have no
+        # idea what went wrong. But when we've successfully built bootstrap and it failed, it will
+        # have already printed an error above, so there's no need to print the exact command we're
+        # running.
+        if is_bootstrap:
+            sys.exit(1)
+        else:
+            sys.exit(err)
 
 
 def require(cmd, exit=True):
@@ -993,28 +1000,20 @@ class RustBuild(object):
         ).decode(default_encoding).splitlines()]
         filtered_submodules = []
         submodules_names = []
-        llvm_checked_out = os.path.exists(os.path.join(self.rust_root, "src/llvm-project/.git"))
-        external_llvm_provided = self.get_toml('llvm-config') or self.downloading_llvm()
-        llvm_needed = not self.get_toml('codegen-backends', 'rust') \
-            or "llvm" in self.get_toml('codegen-backends', 'rust')
         for module in submodules:
+            # This is handled by native::Llvm in rustbuild, not here
             if module.endswith("llvm-project"):
-                # Don't sync the llvm-project submodule if an external LLVM was
-                # provided, if we are downloading LLVM or if the LLVM backend is
-                # not being built. Also, if the submodule has been initialized
-                # already, sync it anyways so that it doesn't mess up contributor
-                # pull requests.
-                if external_llvm_provided or not llvm_needed:
-                    if self.get_toml('lld') != 'true' and not llvm_checked_out:
-                        continue
+                continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)
         recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
                                     cwd=self.rust_root, stdout=subprocess.PIPE)
         recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
+        # { filename: hash }
         recorded_submodules = {}
         for data in recorded:
+            # [mode, kind, hash, filename]
             data = data.split()
             recorded_submodules[data[3]] = data[2]
         for module in filtered_submodules:
@@ -1178,7 +1177,7 @@ def bootstrap(help_triggered):
         env["BOOTSTRAP_CONFIG"] = toml_path
     if build.rustc_commit is not None:
         env["BOOTSTRAP_DOWNLOAD_RUSTC"] = '1'
-    run(args, env=env, verbose=build.verbose)
+    run(args, env=env, verbose=build.verbose, is_bootstrap=True)
 
 
 def main():

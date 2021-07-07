@@ -6,6 +6,8 @@ LL |     type A;
 LL |     type B;
    |     ------- the expected foreign type
 ...
+LL | fn foo(r: &A) -> &B {
+   |                  -- expected `&B` because of return type
 LL |     r
    |     ^ expected extern type `B`, found extern type `A`
    |

@@ -1,4 +1,4 @@
-error: only foreign or `unsafe extern "C" functions may be C-variadic
+error: only foreign or `unsafe extern "C"` functions may be C-variadic
   --> $DIR/issue-83499-input-output-iteration-ice.rs:7:16
    |
 LL | fn foo(_: Bar, ...) -> impl {}

@@ -606,7 +606,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 // According to LLVM [1] building a nontemporal store must
                 // *always* point to a metadata value of the integer 1.
                 //
-                // [1]: http://llvm.org/docs/LangRef.html#store-instruction
+                // [1]: https://llvm.org/docs/LangRef.html#store-instruction
                 let one = self.cx.const_i32(1);
                 let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
                 llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);

@@ -31,7 +31,7 @@ use crate::hash::Hasher;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "send_trait")]
-#[cfg_attr(not(bootstrap), lang = "send")]
+#[lang = "send"]
 #[rustc_on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"

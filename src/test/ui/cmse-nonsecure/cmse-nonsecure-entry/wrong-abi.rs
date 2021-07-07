@@ -1,10 +1,13 @@
 // compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
-// only-thumbv8m.main-none-eabi
-#![feature(cmse_nonsecure_entry)]
-#![no_std]
+// needs-llvm-components: arm
+#![feature(cmse_nonsecure_entry, no_core, lang_items)]
+#![no_core]
+#[lang="sized"]
+trait Sized { }
 
 #[no_mangle]
 #[cmse_nonsecure_entry]
-pub fn entry_function(a: u32, b: u32, c: u32, d: u32) -> u32 { //~ ERROR [E0776]
-    a + b + c + d
+//~^ ERROR `#[cmse_nonsecure_entry]` requires C ABI [E0776]
+pub fn entry_function(_: u32, _: u32, _: u32, d: u32) -> u32 {
+    d
 }

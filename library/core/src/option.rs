@@ -50,8 +50,8 @@
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
 //! The following example uses [`Option`] to create an optional box of
-//! [`i32`]. Notice that in order to use the inner [`i32`] value first, the
-//! `check_optional` function needs to use pattern matching to
+//! [`i32`]. Notice that in order to use the inner [`i32`] value, the
+//! `check_optional` function first needs to use pattern matching to
 //! determine whether the box has a value (i.e., it is [`Some(...)`][`Some`]) or
 //! not ([`None`]).
 //!
@@ -1350,7 +1350,7 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     ///
     /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
     /// The [`map`] method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `as_ref` to first take an `Option` to a reference
+    /// so this technique uses `from` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: Option::map
@@ -1633,38 +1633,6 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         // performance bug is closed.
 
         iter.into_iter().map(|x| x.ok_or(())).collect::<Result<_, _>>().ok()
-    }
-}
-
-/// The error type that results from applying the try operator (`?`) to a `None` value. If you wish
-/// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can
-/// implement `impl From<NoneError>` for `YourErrorType`. In that case, `x?` within a function that
-/// returns `Result<_, YourErrorType>` will translate a `None` value into an `Err` result.
-#[rustc_diagnostic_item = "none_error"]
-#[unstable(feature = "try_trait", issue = "42327")]
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[cfg(bootstrap)]
-pub struct NoneError;
-
-#[unstable(feature = "try_trait", issue = "42327")]
-#[cfg(bootstrap)]
-impl<T> ops::TryV1 for Option<T> {
-    type Output = T;
-    type Error = NoneError;
-
-    #[inline]
-    fn into_result(self) -> Result<T, NoneError> {
-        self.ok_or(NoneError)
-    }
-
-    #[inline]
-    fn from_ok(v: T) -> Self {
-        Some(v)
-    }
-
-    #[inline]
-    fn from_error(_: NoneError) -> Self {
-        None
     }
 }
 

@@ -2,11 +2,11 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
-use crate::clean::{self, FakeDefIdSet, GetDefId, Item};
+use crate::clean::{self, GetDefId, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 
 crate struct Stripper<'a> {
-    crate retained: &'a mut FakeDefIdSet,
+    crate retained: &'a mut ItemIdSet,
     crate access_levels: &'a AccessLevels<DefId>,
     crate update_retained: bool,
 }
@@ -42,7 +42,7 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::TraitAliasItem(..)
             | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
-                    if !self.access_levels.is_exported(i.def_id.expect_real()) {
+                    if !self.access_levels.is_exported(i.def_id.expect_def_id()) {
                         debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                         return None;
                     }
@@ -116,7 +116,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
 /// This stripper discards all impls which reference stripped items
 crate struct ImplStripper<'a> {
-    crate retained: &'a FakeDefIdSet,
+    crate retained: &'a ItemIdSet,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {

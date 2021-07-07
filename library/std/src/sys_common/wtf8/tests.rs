@@ -301,7 +301,7 @@ fn wtf8_slice() {
 #[test]
 #[should_panic]
 fn wtf8_slice_not_code_point_boundary() {
-    &Wtf8::from_str("aé 💩")[2..4];
+    let _ = &Wtf8::from_str("aé 💩")[2..4];
 }
 
 #[test]
@@ -312,7 +312,7 @@ fn wtf8_slice_from() {
 #[test]
 #[should_panic]
 fn wtf8_slice_from_not_code_point_boundary() {
-    &Wtf8::from_str("aé 💩")[2..];
+    let _ = &Wtf8::from_str("aé 💩")[2..];
 }
 
 #[test]
@@ -323,7 +323,7 @@ fn wtf8_slice_to() {
 #[test]
 #[should_panic]
 fn wtf8_slice_to_not_code_point_boundary() {
-    &Wtf8::from_str("aé 💩")[5..];
+    let _ = &Wtf8::from_str("aé 💩")[5..];
 }
 
 #[test]
@@ -394,4 +394,16 @@ fn wtf8_encode_wide() {
         string.encode_wide().collect::<Vec<_>>(),
         vec![0x61, 0xE9, 0x20, 0xD83D, 0xD83D, 0xDCA9]
     );
+}
+
+#[test]
+fn wtf8_encode_wide_size_hint() {
+    let string = Wtf8Buf::from_str("\u{12345}");
+    let mut iter = string.encode_wide();
+    assert_eq!((1, Some(8)), iter.size_hint());
+    iter.next().unwrap();
+    assert_eq!((1, Some(1)), iter.size_hint());
+    iter.next().unwrap();
+    assert_eq!((0, Some(0)), iter.size_hint());
+    assert!(iter.next().is_none());
 }

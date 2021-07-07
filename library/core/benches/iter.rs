@@ -45,7 +45,7 @@ fn bench_max_by_key(b: &mut Bencher) {
     })
 }
 
-// http://www.reddit.com/r/rust/comments/31syce/using_iterators_to_find_the_index_of_the_min_or/
+// https://www.reddit.com/r/rust/comments/31syce/using_iterators_to_find_the_index_of_the_min_or/
 #[bench]
 fn bench_max_by_key2(b: &mut Bencher) {
     fn max_index_iter(array: &[i32]) -> usize {

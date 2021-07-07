@@ -74,8 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // First we build all the statements in the block.
         let mut let_scope_stack = Vec::with_capacity(8);
         let outer_source_scope = this.source_scope;
-        let outer_push_unsafe_count = this.push_unsafe_count;
-        let outer_unpushed_unsafe = this.unpushed_unsafe;
+        let outer_in_scope_unsafe = this.in_scope_unsafe;
         this.update_source_scope_for_safety_mode(span, safety_mode);
 
         let source_info = this.source_info(span);
@@ -206,8 +205,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         // Restore the original source scope.
         this.source_scope = outer_source_scope;
-        this.push_unsafe_count = outer_push_unsafe_count;
-        this.unpushed_unsafe = outer_unpushed_unsafe;
+        this.in_scope_unsafe = outer_in_scope_unsafe;
         block.unit()
     }
 
@@ -216,9 +214,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => None,
+            BlockSafety::BuiltinUnsafe => Some(Safety::BuiltinUnsafe),
             BlockSafety::ExplicitUnsafe(hir_id) => {
-                assert_eq!(self.push_unsafe_count, 0);
-                match self.unpushed_unsafe {
+                match self.in_scope_unsafe {
                     Safety::Safe => {}
                     // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
                     Safety::FnUnsafe
@@ -226,19 +224,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             != Level::Allow => {}
                     _ => return,
                 }
-                self.unpushed_unsafe = Safety::ExplicitUnsafe(hir_id);
+                self.in_scope_unsafe = Safety::ExplicitUnsafe(hir_id);
                 Some(Safety::ExplicitUnsafe(hir_id))
-            }
-            BlockSafety::PushUnsafe => {
-                self.push_unsafe_count += 1;
-                Some(Safety::BuiltinUnsafe)
-            }
-            BlockSafety::PopUnsafe => {
-                self.push_unsafe_count = self
-                    .push_unsafe_count
-                    .checked_sub(1)
-                    .unwrap_or_else(|| span_bug!(span, "unsafe count underflow"));
-                if self.push_unsafe_count == 0 { Some(self.unpushed_unsafe) } else { None }
             }
         };
 

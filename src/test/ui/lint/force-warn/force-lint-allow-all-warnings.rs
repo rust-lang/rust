@@ -1,4 +1,4 @@
-// compile-flags: --force-warns dead_code
+// compile-flags: --force-warns dead_code -Zunstable-options
 // check-pass
 
 #![allow(warnings)]

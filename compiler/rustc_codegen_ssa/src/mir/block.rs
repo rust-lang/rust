@@ -332,7 +332,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let fn_abi = FnAbi::of_instance(&bx, virtual_drop, &[]);
                 let vtable = args[1];
                 args = &args[..1];
-                (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_abi), fn_abi)
+                (
+                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                        .get_fn(&mut bx, vtable, &fn_abi),
+                    fn_abi,
+                )
             }
             _ => (bx.get_fn_addr(drop_fn), FnAbi::of_instance(&bx, drop_fn, &[])),
         };

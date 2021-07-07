@@ -117,25 +117,42 @@ impl FileLoader for RealFileLoader {
     }
 }
 
-// This is a `SourceFile` identifier that is used to correlate `SourceFile`s between
-// subsequent compilation sessions (which is something we need to do during
-// incremental compilation).
+/// This is a [SourceFile] identifier that is used to correlate source files between
+/// subsequent compilation sessions (which is something we need to do during
+/// incremental compilation).
+///
+/// The [StableSourceFileId] also contains the CrateNum of the crate the source
+/// file was originally parsed for. This way we get two separate entries in
+/// the [SourceMap] if the same file is part of both the local and an upstream
+/// crate. Trying to only have one entry for both cases is problematic because
+/// at the point where we discover that there's a local use of the file in
+/// addition to the upstream one, we might already have made decisions based on
+/// the assumption that it's an upstream file. Treating the two files as
+/// different has no real downsides.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
-pub struct StableSourceFileId(u128);
+pub struct StableSourceFileId {
+    // A hash of the source file's FileName. This is hash so that it's size
+    // is more predictable than if we included the actual FileName value.
+    pub file_name_hash: u64,
+
+    // The CrateNum of the crate this source file was originally parsed for.
+    // We cannot include this information in the hash because at the time
+    // of hashing we don't have the context to map from the CrateNum's numeric
+    // value to a StableCrateId.
+    pub cnum: CrateNum,
+}
 
 // FIXME: we need a more globally consistent approach to the problem solved by
 // StableSourceFileId, perhaps built atop source_file.name_hash.
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
-        StableSourceFileId::new_from_name(&source_file.name)
+        StableSourceFileId::new_from_name(&source_file.name, source_file.cnum)
     }
 
-    fn new_from_name(name: &FileName) -> StableSourceFileId {
+    fn new_from_name(name: &FileName, cnum: CrateNum) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
-
         name.hash(&mut hasher);
-
-        StableSourceFileId(hasher.finish())
+        StableSourceFileId { file_name_hash: hasher.finish(), cnum }
     }
 }
 
@@ -274,7 +291,7 @@ impl SourceMap {
         // be empty, so the working directory will be used.
         let (filename, _) = self.path_mapping.map_filename_prefix(&filename);
 
-        let file_id = StableSourceFileId::new_from_name(&filename);
+        let file_id = StableSourceFileId::new_from_name(&filename, LOCAL_CRATE);
 
         let lrc_sf = match self.source_file_by_stable_id(file_id) {
             Some(lrc_sf) => lrc_sf,
@@ -287,6 +304,10 @@ impl SourceMap {
                     Pos::from_usize(start_pos),
                     self.hash_kind,
                 ));
+
+                // Let's make sure the file_id we generated above actually matches
+                // the ID we generate for the SourceFile we just created.
+                debug_assert_eq!(StableSourceFileId::new(&source_file), file_id);
 
                 let mut files = self.files.borrow_mut();
 
@@ -407,7 +428,7 @@ impl SourceMap {
     }
 
     fn span_to_string(&self, sp: Span, prefer_local: bool) -> String {
-        if self.files.borrow().source_files.is_empty() && sp.is_dummy() {
+        if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return "no-location".to_string();
         }
 
@@ -440,9 +461,13 @@ impl SourceMap {
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
-        let lo = self.lookup_char_pos(sp.lo());
-        let hi = self.lookup_char_pos(sp.hi());
-        lo.line != hi.line
+        let lo = self.lookup_source_file_idx(sp.lo());
+        let hi = self.lookup_source_file_idx(sp.hi());
+        if lo != hi {
+            return true;
+        }
+        let f = (*self.files.borrow().source_files)[lo].clone();
+        f.lookup_line(sp.lo()) != f.lookup_line(sp.hi())
     }
 
     pub fn is_valid_span(&self, sp: Span) -> Result<(Loc, Loc), SpanLinesError> {

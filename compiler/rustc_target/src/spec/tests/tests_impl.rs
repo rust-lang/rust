@@ -3,7 +3,7 @@ use super::super::*;
 // Test target self-consistency and JSON encoding/decoding roundtrip.
 pub(super) fn test_target(target: Target) {
     target.check_consistency();
-    assert_eq!(Target::from_json(target.to_json()), Ok(target));
+    assert_eq!(Target::from_json(target.to_json()).map(|(j, _)| j), Ok(target));
 }
 
 impl Target {

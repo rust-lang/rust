@@ -94,3 +94,10 @@ pub unsafe fn dont_remove_nonpure() {
     asm!("", options(nomem));
     asm!("", options(readonly));
 }
+
+// CHECK-LABEL: @raw
+// CHECK: call void asm sideeffect inteldialect "{} {}", ""()
+#[no_mangle]
+pub unsafe fn raw() {
+    asm!("{} {}", options(nostack, nomem, preserves_flags, raw));
+}

@@ -4,7 +4,6 @@ use crate::spec::{Target, TargetOptions};
 // hardfloat.
 
 pub fn target() -> Target {
-    let base = super::linux_musl_base::opts();
     // Most of these settings are copied from the armv7_unknown_linux_gnueabi
     // target.
     Target {
@@ -19,9 +18,8 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+thumb2,+soft-float,-neon".to_string(),
             max_atomic_width: Some(64),
-            unsupported_abis: super::arm_base::unsupported_abis(),
             mcount: "\u{1}mcount".to_string(),
-            ..base
+            ..super::linux_musl_base::opts()
         },
     }
 }

@@ -419,8 +419,6 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[doc(alias = "alloc")]
-    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> String {
         String { vec: Vec::with_capacity(capacity) }
@@ -1451,7 +1449,7 @@ impl String {
 
         unsafe {
             ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-            ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
+            ptr::copy_nonoverlapping(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
             self.vec.set_len(len + amt);
         }
     }
@@ -1534,7 +1532,6 @@ impl String {
     /// assert_eq!(fancy_f.len(), 4);
     /// assert_eq!(fancy_f.chars().count(), 3);
     /// ```
-    #[doc(alias = "length")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
@@ -2769,33 +2766,31 @@ impl<'a> Drain<'a> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_drain_as_str)]
     /// let mut s = String::from("abc");
     /// let mut drain = s.drain(..);
     /// assert_eq!(drain.as_str(), "abc");
     /// let _ = drain.next().unwrap();
     /// assert_eq!(drain.as_str(), "bc");
     /// ```
-    #[unstable(feature = "string_drain_as_str", issue = "76905")] // Note: uncomment AsRef impls below when stabilizing.
+    #[stable(feature = "string_drain_as_str", since = "1.55.0")]
     pub fn as_str(&self) -> &str {
         self.iter.as_str()
     }
 }
 
-// Uncomment when stabilizing `string_drain_as_str`.
-// #[unstable(feature = "string_drain_as_str", issue = "76905")]
-// impl<'a> AsRef<str> for Drain<'a> {
-//     fn as_ref(&self) -> &str {
-//         self.as_str()
-//     }
-// }
-//
-// #[unstable(feature = "string_drain_as_str", issue = "76905")]
-// impl<'a> AsRef<[u8]> for Drain<'a> {
-//     fn as_ref(&self) -> &[u8] {
-//         self.as_str().as_bytes()
-//     }
-// }
+#[stable(feature = "string_drain_as_str", since = "1.55.0")]
+impl<'a> AsRef<str> for Drain<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+#[stable(feature = "string_drain_as_str", since = "1.55.0")]
+impl<'a> AsRef<[u8]> for Drain<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_str().as_bytes()
+    }
+}
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl Iterator for Drain<'_> {

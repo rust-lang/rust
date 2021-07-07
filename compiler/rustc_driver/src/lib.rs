@@ -29,7 +29,7 @@ use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
-use rustc_session::config::nightly_options;
+use rustc_session::config::{nightly_options, CG_OPTIONS, DB_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
@@ -46,7 +46,6 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::lazy::SyncLazy;
-use std::mem;
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -316,12 +315,12 @@ fn run_compiler(
 
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
+                    let expanded_crate = queries.expansion()?.peek().0.clone();
                     queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                        let expanded_crate = queries.expansion()?.take().0;
                         pretty::print_after_hir_lowering(
                             tcx,
                             compiler.input(),
-                            &expanded_crate,
+                            &*expanded_crate,
                             *ppm,
                             compiler.output_file().as_ref().map(|p| &**p),
                         );
@@ -376,12 +375,6 @@ fn run_compiler(
             }
 
             queries.global_ctxt()?;
-
-            // Drop AST after creating GlobalCtxt to free memory
-            {
-                let _timer = sess.prof.generic_activity("drop_ast");
-                mem::drop(queries.expansion()?.take());
-            }
 
             if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
                 return early_exit();
@@ -528,8 +521,12 @@ fn stderr_isatty() -> bool {
 }
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
-    let normalised =
-        if code.starts_with('E') { code.to_string() } else { format!("E{0:0>4}", code) };
+    let upper_cased_code = code.to_ascii_uppercase();
+    let normalised = if upper_cased_code.starts_with('E') {
+        upper_cased_code
+    } else {
+        format!("E{0:0>4}", code)
+    };
     match registry.try_find_description(&normalised) {
         Ok(Some(description)) => {
             let mut is_in_code_block = false;
@@ -1013,9 +1010,18 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     for option in config::rustc_optgroups() {
         (option.apply)(&mut options);
     }
-    let matches = options
-        .parse(args)
-        .unwrap_or_else(|f| early_error(ErrorOutputType::default(), &f.to_string()));
+    let matches = options.parse(args).unwrap_or_else(|e| {
+        let msg = match e {
+            getopts::Fail::UnrecognizedOption(ref opt) => CG_OPTIONS
+                .iter()
+                .map(|&(name, ..)| ('C', name))
+                .chain(DB_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
+                .find(|&(_, name)| *opt == name.replace("_", "-"))
+                .map(|(flag, _)| format!("{}. Did you mean `-{} {}`?", e, flag, opt)),
+            _ => None,
+        };
+        early_error(ErrorOutputType::default(), &msg.unwrap_or_else(|| e.to_string()));
+    });
 
     // For all options we just parsed, we check a few aspects:
     //
@@ -1163,23 +1169,26 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
 static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
     SyncLazy::new(|| {
         let hook = panic::take_hook();
-        panic::set_hook(Box::new(|info| report_ice(info, BUG_REPORT_URL)));
+        panic::set_hook(Box::new(|info| {
+            // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+            (*DEFAULT_HOOK)(info);
+
+            // Separate the output with an empty line
+            eprintln!();
+
+            // Print the ICE message
+            report_ice(info, BUG_REPORT_URL);
+        }));
         hook
     });
 
-/// Prints the ICE message, including backtrace and query stack.
+/// Prints the ICE message, including query stack, but without backtrace.
 ///
 /// The message will point the user at `bug_report_url` to report the ICE.
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
-    // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-    (*DEFAULT_HOOK)(info);
-
-    // Separate the output with an empty line
-    eprintln!();
-
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,
@@ -1296,10 +1305,60 @@ pub fn init_env_logger(env: &str) {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
+#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
+mod signal_handler {
+    extern "C" {
+        fn backtrace_symbols_fd(
+            buffer: *const *mut libc::c_void,
+            size: libc::c_int,
+            fd: libc::c_int,
+        );
+    }
+
+    extern "C" fn print_stack_trace(_: libc::c_int) {
+        const MAX_FRAMES: usize = 256;
+        static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] =
+            [std::ptr::null_mut(); MAX_FRAMES];
+        unsafe {
+            let depth = libc::backtrace(STACK_TRACE.as_mut_ptr(), MAX_FRAMES as i32);
+            if depth == 0 {
+                return;
+            }
+            backtrace_symbols_fd(STACK_TRACE.as_ptr(), depth, 2);
+        }
+    }
+
+    // When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
+    // process, print a stack trace and then exit.
+    pub(super) fn install() {
+        unsafe {
+            const ALT_STACK_SIZE: usize = libc::MINSIGSTKSZ + 64 * 1024;
+            let mut alt_stack: libc::stack_t = std::mem::zeroed();
+            alt_stack.ss_sp =
+                std::alloc::alloc(std::alloc::Layout::from_size_align(ALT_STACK_SIZE, 1).unwrap())
+                    as *mut libc::c_void;
+            alt_stack.ss_size = ALT_STACK_SIZE;
+            libc::sigaltstack(&mut alt_stack, std::ptr::null_mut());
+
+            let mut sa: libc::sigaction = std::mem::zeroed();
+            sa.sa_sigaction = print_stack_trace as libc::sighandler_t;
+            sa.sa_flags = libc::SA_NODEFER | libc::SA_RESETHAND | libc::SA_ONSTACK;
+            libc::sigemptyset(&mut sa.sa_mask);
+            libc::sigaction(libc::SIGSEGV, &sa, std::ptr::null_mut());
+        }
+    }
+}
+
+#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
+mod signal_handler {
+    pub(super) fn install() {}
+}
+
 pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
     init_rustc_env_logger();
+    signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
     let exit_code = catch_with_exit_code(|| {

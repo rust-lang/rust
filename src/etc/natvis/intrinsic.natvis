@@ -15,7 +15,7 @@
       </Synthetic>
     </Expand>
   </Type>
-  <Type Name="slice&lt;*&gt;">
+  <Type Name="slice$&lt;*&gt;">
     <DisplayString>{{ len={length} }}</DisplayString>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">length</Item>
@@ -25,23 +25,23 @@
       </ArrayItems>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;&gt;">
+  <Type Name="tuple$&lt;&gt;">
     <DisplayString>()</DisplayString>
   </Type>
-  <Type Name="tuple&lt;*&gt;">
+  <Type Name="tuple$&lt;*&gt;">
     <DisplayString>({__0})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*&gt;">
+  <Type Name="tuple$&lt;*,*&gt;">
     <DisplayString>({__0}, {__1})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
       <Item Name="[1]">__1</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -49,7 +49,7 @@
       <Item Name="[2]">__2</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -58,7 +58,7 @@
       <Item Name="[3]">__3</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -68,7 +68,7 @@
       <Item Name="[4]">__4</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -79,7 +79,7 @@
       <Item Name="[5]">__5</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -91,7 +91,7 @@
       <Item Name="[6]">__6</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -104,7 +104,7 @@
       <Item Name="[7]">__7</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -118,7 +118,7 @@
       <Item Name="[8]">__8</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*,*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8}, {__9})</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -133,7 +133,7 @@
       <Item Name="[9]">__9</Item>
     </Expand>
   </Type>
-  <Type Name="tuple&lt;*,*,*,*,*,*,*,*,*,*,*&gt;">
+  <Type Name="tuple$&lt;*,*,*,*,*,*,*,*,*,*,*&gt;">
     <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8}, {__9}, ...)</DisplayString>
     <Expand>
       <Item Name="[0]">__0</Item>
@@ -149,8 +149,10 @@
       <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
     </Expand>
   </Type>
+
+  <!-- Directly tagged enums. $T1 is the type name -->
   <Type Name="enum$&lt;*&gt;">
-    <Intrinsic Name="tag" Expression="variant0.variant$" />
+    <Intrinsic Name="tag" Expression="discriminant" />
     <DisplayString Condition="tag() == 0">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 1" Optional="true">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 2" Optional="true">{tag(),en}</DisplayString>
@@ -169,6 +171,9 @@
     <DisplayString Condition="tag() == 15" Optional="true">{tag(),en}</DisplayString>
 
     <Expand>
+      <Synthetic Name="[variant]">
+        <DisplayString>{tag(),en}</DisplayString>
+      </Synthetic>
       <ExpandedItem Condition="tag() == 0">variant0</ExpandedItem>
       <ExpandedItem Condition="tag() == 1" Optional="true">variant1</ExpandedItem>
       <ExpandedItem Condition="tag() == 2" Optional="true">variant2</ExpandedItem>
@@ -188,8 +193,20 @@
     </Expand>
   </Type>
 
-  <!-- $T1 is the name of the enum, $T2 is the low value of the dataful variant tag,
-       $T3 is the high value of the dataful variant tag, $T4 is the name of the dataful variant -->
+  <!-- Single variant enums. $T1 is the name of the enum, $T2 is the name of the variant -->
+  <Type Name="enum$&lt;*, *&gt;">
+    <DisplayString>{"$T2",sb}</DisplayString>
+    <Expand>
+      <Synthetic Name="[variant]">
+        <DisplayString>{"$T2",sb}</DisplayString>
+      </Synthetic>
+      <ExpandedItem>$T2</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- Niche-layout enums. $T1 is the name of the enum, $T2 is the low value of the dataful
+       variant tag, $T3 is the high value of the dataful variant tag, $T4 is the name of
+       the dataful variant -->
   <Type Name="enum$&lt;*, *, *, *&gt;">
     <Intrinsic Name="tag" Expression="discriminant" />
     <Intrinsic Name="is_dataful" Expression="tag() &gt;= $T2 &amp;&amp; tag() &lt;= $T3" />
@@ -199,6 +216,9 @@
       <ExpandedItem Condition="is_dataful()">dataful_variant</ExpandedItem>
       <Synthetic Condition="is_dataful()" Name="[variant]">
         <DisplayString>{"$T4",sb}</DisplayString>
+      </Synthetic>
+      <Synthetic Condition="!is_dataful()" Name="[variant]">
+        <DisplayString>{discriminant,en}</DisplayString>
       </Synthetic>
     </Expand>
   </Type>

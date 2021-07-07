@@ -1,12 +1,12 @@
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
+use rustc_hir::def::Namespace::TypeNS;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::HirId;
 use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
@@ -23,14 +23,14 @@ use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
 
 use crate::clean::inline::build_external_trait;
-use crate::clean::{self, FakeDefId, TraitWithExtraInfo};
+use crate::clean::{self, ItemId, TraitWithExtraInfo};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*, ConditionalPass};
@@ -78,7 +78,7 @@ crate struct DocContext<'tcx> {
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
-    crate inlined: FxHashSet<FakeDefId>,
+    crate inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     crate output_format: OutputFormat,
 }
@@ -128,12 +128,13 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: FakeDefId) -> Option<HirId> {
+    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: ItemId) -> Option<HirId> {
         match def_id {
-            FakeDefId::Real(real_id) => {
+            ItemId::DefId(real_id) => {
                 real_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }
-            FakeDefId::Fake(_, _) => None,
+            // FIXME: Can this be `Some` for `Auto` or `Blanket`?
+            _ => None,
         }
     }
 }
@@ -300,17 +301,41 @@ crate fn create_config(
 }
 
 crate fn create_resolver<'a>(
+    externs: config::Externs,
     queries: &Queries<'a>,
     sess: &Session,
 ) -> Rc<RefCell<interface::BoxedResolver>> {
-    let parts = abort_on_err(queries.expansion(), sess).peek();
-    let (krate, resolver, _) = &*parts;
-    let resolver = resolver.borrow().clone();
+    let extern_names: Vec<String> = externs
+        .iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name)
+        .cloned()
+        .collect();
 
-    let mut loader = crate::passes::collect_intra_doc_links::IntraLinkCrateLoader::new(resolver);
-    ast::visit::walk_crate(&mut loader, krate);
+    let (_, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
 
-    loader.resolver
+    // Before we actually clone it, let's force all the extern'd crates to
+    // actually be loaded, just in case they're only referred to inside
+    // intra-doc links
+    resolver.borrow_mut().access(|resolver| {
+        sess.time("load_extern_crates", || {
+            for extern_name in &extern_names {
+                debug!("loading extern crate {}", extern_name);
+                if let Err(()) = resolver
+                    .resolve_str_path_error(
+                        DUMMY_SP,
+                        extern_name,
+                        TypeNS,
+                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                  ) {
+                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
+                  }
+            }
+        });
+    });
+
+    // Now we're good to clone the resolver because everything should be loaded
+    resolver.clone()
 }
 
 crate fn run_global_ctxt(

@@ -16,15 +16,6 @@ LL | #![warn(nonstandard_style, reason = "the standard should be respected")]
    = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
    = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
 
-error[E0658]: lint reasons are experimental
-  --> $DIR/feature-gate-lint-reasons.rs:1:28
-   |
-LL | #![warn(nonstandard_style, reason = "the standard should be respected")]
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
-   = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
