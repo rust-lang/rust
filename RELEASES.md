@@ -39,6 +39,9 @@ Compiler
    and `bpfeb-unknown-none`.][79608]
 - [Added tier 3 support for `powerpc64le-unknown-freebsd`.][83572]
 
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
 Libraries
 -----------------------
 
