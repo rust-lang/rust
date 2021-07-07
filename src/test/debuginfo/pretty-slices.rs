@@ -1,3 +1,4 @@
+// ignore-android: FIXME(#10381)
 // compile-flags:-g
 
 // gdb-command: run
@@ -33,7 +34,6 @@
 fn b() {}
 
 fn main() {
-
     let slice: &[i32] = &[0, 1, 2];
     let mut_slice: &mut [i32] = &mut [2, 3, 5, 7];
 
