@@ -12,8 +12,8 @@ fn test_send_trait() {
     let mut f = 10;
     let fptr = SendPointer(&mut f as *mut i32);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Send` closure trait implementation
-        //~| NOTE: in Rust 2018, this closure would implement `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0` does not implement `Send`
+        //~^ ERROR: `Send` trait implementation for closure
+        //~| NOTE: in Rust 2018, this closure would implement `Send` as `fptr` implements `Send`, but in Rust 2021, this closure would no longer implement `Send` as `fptr.0` does not implement `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0 = 20;
@@ -32,8 +32,8 @@ fn test_sync_trait() {
     let f = CustomInt(&mut f as *mut i32);
     let fptr = SyncPointer(f);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Sync`, `Send` closure trait implementation
-        //~| NOTE: in Rust 2018, this closure would implement `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure will no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
+        //~^ ERROR: `Sync`, `Send` trait implementation for closure
+        //~| NOTE: in Rust 2018, this closure would implement `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure would no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0.0 = 20;
@@ -56,8 +56,8 @@ impl Clone for U {
 fn test_clone_trait() {
     let f = U(S(String::from("Hello World")), T(0));
     let c = || {
-        //~^ ERROR: `Clone` closure trait implementation, and drop order
-        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f.1` does not implement `Clone`
+        //~^ ERROR: `Clone` trait implementation for closure, and drop order
+        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f.1` does not implement `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f` to be fully captured
         let f_1 = f.1;

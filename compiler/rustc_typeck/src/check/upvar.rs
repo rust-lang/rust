@@ -498,10 +498,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
+            let closure_span = self.tcx.hir().span(closure_hir_id);
+            let closure_head_span = self.tcx.sess.source_map().guess_head_span(closure_span);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
-                span,
+                closure_head_span,
                 |lint| {
                     let mut diagnostics_builder = lint.build(
                         format!(
@@ -512,6 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     for (var_hir_id, diagnostics_info) in need_migrations.iter() {
                         let mut captured_names = format!("");
+                        // Label every Span which are responsible for the captured values
                         for (captured_hir_id, captured_name) in diagnostics_info.iter() {
                             if let Some(captured_hir_id) = captured_hir_id {
                                 let cause_span = self.tcx.hir().span(*captured_hir_id);
@@ -527,6 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
 
+                        // Add a label pointing to where a closure and it's captured variables affected by drop order are dropped
                         if reasons.contains("drop order") {
                             let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
 
@@ -536,13 +540,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ));
                         }
 
-                        if reasons.contains("closure trait implementation") {
-                            let closure_body_span = self.tcx.hir().span(body_id.hir_id);
-                            let closure_ending_span = self.tcx.sess.source_map().guess_head_span(closure_body_span).shrink_to_lo();
+                        // Add a label explaining why a closure no longer implements a trait
+                        if reasons.contains("trait implementation") {
+                            let missing_trait = &reasons[..reasons.find("trait implementation").unwrap() - 1];
 
-                            let missing_trait = &reasons[..reasons.find("closure trait implementation").unwrap() - 1];
-
-                            diagnostics_builder.span_label(closure_ending_span, format!("in Rust 2018, this closure would implement {} as `{}` implements {}, but in Rust 2021, this closure will no longer implement {} as {} does not implement {}",
+                            diagnostics_builder.span_label(closure_head_span, format!("in Rust 2018, this closure would implement {} as `{}` implements {}, but in Rust 2021, this closure would no longer implement {} as {} does not implement {}",
                                 missing_trait,
                                 self.tcx.hir().name(*var_hir_id),
                                 missing_trait,
@@ -598,7 +600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if auto_trait_reasons.len() > 0 {
             reasons = format!(
-                "{} closure trait implementation",
+                "{} trait implementation for closure",
                 auto_trait_reasons.clone().into_iter().collect::<Vec<&str>>().join(", ")
             );
         }
@@ -1386,24 +1388,19 @@ fn drop_location_span(tcx: TyCtxt<'tcx>, hir_id: &hir::HirId) -> Span {
     let owner_id = tcx.hir().get_enclosing_scope(*hir_id).unwrap();
 
     let owner_node = tcx.hir().get(owner_id);
-    match owner_node {
+    let owner_span = match owner_node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(_, _, owner_id) => {
-                let owner_span = tcx.hir().span(owner_id.hir_id);
-                tcx.sess.source_map().end_point(owner_span)
-            }
+            hir::ItemKind::Fn(_, _, owner_id) => tcx.hir().span(owner_id.hir_id),
             _ => {
                 bug!("Drop location span error: need to handle more ItemKind {:?}", item.kind);
             }
         },
-        hir::Node::Block(block) => {
-            let owner_span = tcx.hir().span(block.hir_id);
-            tcx.sess.source_map().end_point(owner_span)
-        }
+        hir::Node::Block(block) => tcx.hir().span(block.hir_id),
         _ => {
             bug!("Drop location span error: need to handle more Node {:?}", owner_node);
         }
-    }
+    };
+    tcx.sess.source_map().end_point(owner_span)
 }
 
 struct InferBorrowKind<'a, 'tcx> {
