@@ -507,3 +507,17 @@ fn main() {
         "#,
     );
 }
+
+#[test]
+fn coerce_array_elems_lub() {
+    check_no_mismatches(
+        r#"
+fn f() {}
+fn g() {}
+
+fn test() {
+    [f, g];
+}
+        "#,
+    );
+}
