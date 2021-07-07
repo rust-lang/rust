@@ -1,4 +1,4 @@
 // compile-flags: -A unknown_tool::foo
-// check-fail
+// error-pattern: unknown lint tool: `unknown_tool`
 
 fn main() {}
