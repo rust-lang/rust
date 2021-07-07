@@ -7,6 +7,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
         arch: "mips64".to_string(),
         options: TargetOptions {
+            abi: "abi64".to_string(),
             // NOTE(mips64r6) matches C toolchain
             cpu: "mips64r6".to_string(),
             features: "+mips64r6".to_string(),

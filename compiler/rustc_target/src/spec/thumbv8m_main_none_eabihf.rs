@@ -11,6 +11,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
+            abi: "eabihf".to_string(),
             // If the Floating Point extension is implemented in the Cortex-M33
             // processor, the Cortex-M33 Technical Reference Manual states that
             // the FPU uses the FPv5 architecture, single-precision instructions

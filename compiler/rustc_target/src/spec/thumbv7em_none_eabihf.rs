@@ -18,6 +18,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
+            abi: "eabihf".to_string(),
             // `+vfp4` is the lowest common denominator between the Cortex-M4 (vfp4-16) and the
             // Cortex-M7 (vfp5)
             // `-d32` both the Cortex-M4 and the Cortex-M7 only have 16 double-precision registers

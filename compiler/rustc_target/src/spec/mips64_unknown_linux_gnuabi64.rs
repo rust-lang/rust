@@ -8,6 +8,7 @@ pub fn target() -> Target {
         data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
         arch: "mips64".to_string(),
         options: TargetOptions {
+            abi: "abi64".to_string(),
             endian: Endian::Big,
             // NOTE(mips64r2) matches C toolchain
             cpu: "mips64r2".to_string(),
