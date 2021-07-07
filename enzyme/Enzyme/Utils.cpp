@@ -269,3 +269,150 @@ llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
   }
   return F;
 }
+
+llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
+                                   ConcreteType CT, llvm::Type *intType,
+                                   IRBuilder<> &B2) {
+  std::string name = "__enzyme_mpi_sum" + CT.str();
+  assert(CT.isFloat());
+  auto FlT = CT.isFloat();
+
+  if (auto Glob = M.getGlobalVariable(name))
+    return Glob;
+
+  std::vector<llvm::Type *> types = {PointerType::getUnqual(FlT),
+                                     PointerType::getUnqual(FlT),
+                                     PointerType::getUnqual(intType), OpPtr};
+  FunctionType *FuT =
+      FunctionType::get(Type::getVoidTy(M.getContext()), types, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *F =
+      cast<Function>(M.getOrInsertFunction(name + "_run", FuT).getCallee());
+#else
+  Function *F = cast<Function>(M.getOrInsertFunction(name + "_run", FuT));
+#endif
+
+  F->setLinkage(Function::LinkageTypes::InternalLinkage);
+  F->addFnAttr(Attribute::ArgMemOnly);
+  F->addFnAttr(Attribute::NoUnwind);
+  F->addParamAttr(0, Attribute::NoCapture);
+  F->addParamAttr(0, Attribute::ReadOnly);
+  F->addParamAttr(1, Attribute::NoCapture);
+  F->addParamAttr(2, Attribute::NoCapture);
+  F->addParamAttr(2, Attribute::ReadOnly);
+  F->addParamAttr(3, Attribute::NoCapture);
+  F->addParamAttr(3, Attribute::ReadNone);
+
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
+  BasicBlock *body = BasicBlock::Create(M.getContext(), "for.body", F);
+  BasicBlock *end = BasicBlock::Create(M.getContext(), "for.end", F);
+
+  auto src = F->arg_begin();
+  src->setName("src");
+  auto dst = src + 1;
+  dst->setName("dst");
+  auto lenp = dst + 1;
+  lenp->setName("lenp");
+  Value *len;
+  // TODO consider using datatype arg and asserting same size as assumed
+  // by type analysis
+
+  {
+    IRBuilder<> B(entry);
+    len = B.CreateLoad(lenp);
+    B.CreateCondBr(B.CreateICmpEQ(len, ConstantInt::get(len->getType(), 0)),
+                   end, body);
+  }
+
+  {
+    IRBuilder<> B(body);
+    B.setFastMathFlags(getFast());
+    PHINode *idx = B.CreatePHI(len->getType(), 2, "idx");
+    idx->addIncoming(ConstantInt::get(len->getType(), 0), entry);
+
+    Value *dsti = B.CreateGEP(dst, idx, "dst.i");
+    LoadInst *dstl = B.CreateLoad(dsti, "dst.i.l");
+
+    Value *srci = B.CreateGEP(src, idx, "src.i");
+    LoadInst *srcl = B.CreateLoad(srci, "src.i.l");
+
+    B.CreateStore(B.CreateFAdd(srcl, dstl), dsti);
+
+    Value *next =
+        B.CreateNUWAdd(idx, ConstantInt::get(len->getType(), 1), "idx.next");
+    idx->addIncoming(next, body);
+    B.CreateCondBr(B.CreateICmpEQ(len, next), end, body);
+  }
+
+  {
+    IRBuilder<> B(end);
+    B.CreateRetVoid();
+  }
+
+  std::vector<llvm::Type *> rtypes = {Type::getInt8PtrTy(M.getContext()),
+                                      intType, OpPtr};
+  FunctionType *RFT = FunctionType::get(intType, rtypes, false);
+
+  Constant *RF = M.getNamedValue("MPI_Op_create");
+  if (!RF) {
+#if LLVM_VERSION_MAJOR >= 9
+    RF =
+        cast<Function>(M.getOrInsertFunction("MPI_Op_create", RFT).getCallee());
+#else
+    RF = cast<Function>(M.getOrInsertFunction("MPI_Op_create", RFT));
+#endif
+  } else {
+    RF = ConstantExpr::getBitCast(RF, PointerType::getUnqual(RFT));
+  }
+
+  GlobalVariable *GV = new GlobalVariable(
+      M, cast<PointerType>(OpPtr)->getElementType(), false,
+      GlobalVariable::InternalLinkage,
+      UndefValue::get(cast<PointerType>(OpPtr)->getElementType()), name);
+
+  Type *i1Ty = Type::getInt1Ty(M.getContext());
+  GlobalVariable *initD = new GlobalVariable(
+      M, i1Ty, false, GlobalVariable::InternalLinkage,
+      ConstantInt::getFalse(M.getContext()), name + "_initd");
+
+  // Finish initializing mpi sum
+  // https://www.mpich.org/static/docs/v3.2/www3/MPI_Op_create.html
+  FunctionType *IFT = FunctionType::get(Type::getVoidTy(M.getContext()),
+                                        ArrayRef<Type *>(), false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *initializerFunction = cast<Function>(
+      M.getOrInsertFunction(name + "initializer", IFT).getCallee());
+#else
+  Function *initializerFunction =
+      cast<Function>(M.getOrInsertFunction(name + "initializer", IFT));
+#endif
+
+  initializerFunction->setLinkage(Function::LinkageTypes::InternalLinkage);
+  initializerFunction->addFnAttr(Attribute::NoUnwind);
+
+  {
+    BasicBlock *entry =
+        BasicBlock::Create(M.getContext(), "entry", initializerFunction);
+    BasicBlock *run =
+        BasicBlock::Create(M.getContext(), "run", initializerFunction);
+    BasicBlock *end =
+        BasicBlock::Create(M.getContext(), "end", initializerFunction);
+    IRBuilder<> B(entry);
+    B.CreateCondBr(B.CreateLoad(initD), end, run);
+
+    B.SetInsertPoint(run);
+    Value *args[] = {ConstantExpr::getPointerCast(F, rtypes[0]),
+                     ConstantInt::get(rtypes[1], 1, false),
+                     ConstantExpr::getPointerCast(GV, rtypes[2])};
+    B.CreateCall(RFT, RF, args);
+    B.CreateStore(ConstantInt::getTrue(M.getContext()), initD);
+    B.CreateBr(end);
+    B.SetInsertPoint(end);
+    B.CreateRetVoid();
+  }
+
+  B2.CreateCall(M.getFunction(name + "initializer"));
+  return GV;
+}

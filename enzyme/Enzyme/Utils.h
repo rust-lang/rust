@@ -57,6 +57,8 @@
 
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
+#include "TypeAnalysis/ConcreteType.h"
+
 extern "C" {
 /// Print additional debug info relevant to performance
 extern llvm::cl::opt<bool> EnzymePrintPerf;
@@ -791,4 +793,7 @@ enum class MPI_CallType {
   IRECV = 2,
 };
 
+llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
+                                   ConcreteType CT, llvm::Type *intType,
+                                   llvm::IRBuilder<> &B2);
 #endif

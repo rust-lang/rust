@@ -89,6 +89,7 @@ std::set<std::string> KnownInactiveFunctions = {
     "printf",
     "vprintf",
     "puts",
+    "fflush",
     "__enzyme_float",
     "__enzyme_double",
     "__enzyme_integer",

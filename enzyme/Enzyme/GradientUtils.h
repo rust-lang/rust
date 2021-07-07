@@ -438,6 +438,31 @@ private:
   std::map<BasicBlock *, std::map<Value *, Value *>> lookup_cache;
 
 public:
+  BasicBlock *addReverseBlock(BasicBlock *currentBlock, Twine name,
+                              bool forkCache = true) {
+    assert(reverseBlocks.size());
+
+    // todo speed this up
+    for (auto &pair : reverseBlocks) {
+      std::vector<BasicBlock *> &vec = pair.second;
+      if (vec.back() == currentBlock) {
+
+        BasicBlock *rev =
+            BasicBlock::Create(currentBlock->getContext(), name, newFunc);
+        rev->moveAfter(currentBlock);
+        vec.push_back(rev);
+        if (forkCache) {
+          unwrap_cache[rev] = unwrap_cache[currentBlock];
+          lookup_cache[rev] = lookup_cache[currentBlock];
+        }
+        return rev;
+      }
+    }
+    assert(0 && "cannot find reverse location to add into");
+    llvm_unreachable("cannot find reverse location to add into");
+  }
+
+public:
   bool legalRecompute(const Value *val, const ValueToValueMapTy &available,
                       IRBuilder<> *BuilderM, bool reverse = false,
                       bool legalRecomputeCache = true) const;
