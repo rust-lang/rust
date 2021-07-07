@@ -2648,7 +2648,11 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 ///     pub fn lock(&self) {
 ///         // Wait until the old value is `false`.
-///         while self.flag.compare_and_swap(false, true, Ordering::Relaxed) != false {}
+///         while self
+///             .flag
+///             .compare_exchange_weak(false, true, Ordering::Relaxed, Ordering::Relaxed)
+///             .is_err()
+///         {}
 ///         // This fence synchronizes-with store in `unlock`.
 ///         fence(Ordering::Acquire);
 ///     }
@@ -2710,7 +2714,7 @@ pub fn fence(order: Ordering) {
 /// Without `compiler_fence`, the `assert_eq!` in following code
 /// is *not* guaranteed to succeed, despite everything happening in a single thread.
 /// To see why, remember that the compiler is free to swap the stores to
-/// `IMPORTANT_VARIABLE` and `IS_READ` since they are both
+/// `IMPORTANT_VARIABLE` and `IS_READY` since they are both
 /// `Ordering::Relaxed`. If it does, and the signal handler is invoked right
 /// after `IS_READY` is updated, then the signal handler will see
 /// `IS_READY=1`, but `IMPORTANT_VARIABLE=0`.
