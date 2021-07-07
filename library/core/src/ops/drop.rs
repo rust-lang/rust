@@ -11,7 +11,7 @@
 /// This destructor consists of two components:
 /// - A call to `Drop::drop` for that value, if this special `Drop` trait is implemented for its type.
 /// - The automatically generated "drop glue" which recursively calls the destructors
-///     of the all fields of this value.
+///     of all the fields of this value.
 ///
 /// As Rust automatically calls the destructors of all contained fields,
 /// you don't have to implement `Drop` in most cases. But there are some cases where
