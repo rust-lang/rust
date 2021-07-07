@@ -385,11 +385,16 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let fty = self.type_variadic_func(&[], self.type_i32());
-                self.declare_cfn(name, llvm::UnnamedAddr::Global, fty)
+                if let Some(llfn) = self.get_declared_value(name) {
+                    llfn
+                } else {
+                    let fty = self.type_variadic_func(&[], self.type_i32());
+                    let llfn = self.declare_cfn(name, llvm::UnnamedAddr::Global, fty);
+                    attributes::apply_target_cpu_attr(self, llfn);
+                    llfn
+                }
             }
         };
-        attributes::apply_target_cpu_attr(self, llfn);
         self.eh_personality.set(Some(llfn));
         llfn
     }
