@@ -513,7 +513,7 @@ impl Options {
                     ))
                     .warn("the theme may appear incorrect when loaded")
                     .help(&format!(
-                        "to see what rules are missing, call `rustdoc  --check-theme \"{}\"`",
+                        "to see what rules are missing, call `rustdoc --check-theme \"{}\"`",
                         theme_s
                     ))
                     .emit();
