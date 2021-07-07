@@ -651,22 +651,23 @@ pub fn current() -> Thread {
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
 ///
-/// This is used when the programmer knows that the thread will have nothing
-/// to do for some time, and thus avoid wasting computing time.
+/// This calls the underlying OS scheduler's yield primitive, signaling
+/// that the calling thread is willing to give up its remaining timeslice
+/// so that the OS may schedule other threads on the CPU.
 ///
-/// For example when polling on a resource, it is common to check that it is
-/// available, and if not to yield in order to avoid busy waiting.
+/// A drawback of yielding in a loop is that if the OS does not have any
+/// other ready threads to run on the current CPU, the thread will effectively
+/// busy-wait, which wastes CPU time and energy.
 ///
-/// Thus the pattern of `yield`ing after a failed poll is rather common when
-/// implementing low-level shared resources or synchronization primitives.
+/// Therefore, when waiting for events of interest, a programmer's first
+/// choice should be to use synchronization devices such as [`channel`]s,
+/// [`Condvar`]s, [`Mutex`]es or [`join`] since these primitives are
+/// implemented in a blocking manner, giving up the CPU until the event
+/// of interest has occurred which avoids repeated yielding.
 ///
-/// However programmers will usually prefer to use [`channel`]s, [`Condvar`]s,
-/// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
-/// thinking about thread scheduling.
-///
-/// Note that [`channel`]s for example are implemented using this primitive.
-/// Indeed when you call `send` or `recv`, which are blocking, they will yield
-/// if the channel is not available.
+/// `yield_now` should thus be used only rarely, mostly in situations where
+/// repeated polling is required because there is no other suitable way to
+/// learn when an event of interest has occurred.
 ///
 /// # Examples
 ///
