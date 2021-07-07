@@ -16,7 +16,7 @@
 
 use self::TargetLint::*;
 
-use crate::levels::LintLevelsBuilder;
+use crate::levels::{is_known_lint_tool, LintLevelsBuilder};
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -129,6 +129,8 @@ pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
     /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
     NoLint(Option<Symbol>),
+    /// The lint refers to a tool that has not been registered.
+    NoTool,
     /// The lint is either renamed or removed. This is the warning
     /// message, and an optional new name (`None` if removed).
     Warning(String, Option<String>),
@@ -334,16 +336,17 @@ impl LintStore {
         }
     }
 
-    /// Checks the validity of lint names derived from the command line. Returns
-    /// true if the lint is valid, false otherwise.
+    /// Checks the validity of lint names derived from the command line.
     pub fn check_lint_name_cmdline(
         &self,
         sess: &Session,
         lint_name: &str,
-        level: Option<Level>,
-    ) -> bool {
+        level: Level,
+        crate_attrs: &[ast::Attribute],
+    ) {
         let (tool_name, lint_name) = parse_lint_and_tool_name(lint_name);
-        let db = match self.check_lint_name(lint_name, tool_name) {
+
+        let db = match self.check_lint_and_tool_name(sess, tool_name, lint_name, crate_attrs) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
@@ -365,6 +368,13 @@ impl LintStore {
                 ))),
                 _ => None,
             },
+            CheckLintNameResult::NoTool => Some(struct_span_err!(
+                sess,
+                DUMMY_SP,
+                E0602,
+                "unknown lint tool: `{}`",
+                tool_name.unwrap()
+            )),
         };
 
         if let Some(mut db) = db {
@@ -396,6 +406,22 @@ impl LintStore {
             let warnings_name_str = crate::WARNINGS.name_lower();
             lint_name_str == &*warnings_name_str
         }
+    }
+
+    pub fn check_lint_and_tool_name(
+        &self,
+        sess: &Session,
+        tool_name: Option<Symbol>,
+        lint_name: &str,
+        crate_attrs: &[ast::Attribute],
+    ) -> CheckLintNameResult<'_> {
+        if let Some(tool_name) = tool_name {
+            if !is_known_lint_tool(tool_name, sess, crate_attrs) {
+                return CheckLintNameResult::NoTool;
+            }
+        }
+
+        self.check_lint_name(lint_name, tool_name)
     }
 
     /// Checks the name of a lint for its existence, and whether it was
@@ -1028,7 +1054,11 @@ impl<'tcx> LayoutOf for LateContext<'tcx> {
 
 pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
     match lint_name.split_once("::") {
-        Some((tool_name, lint_name)) => (Some(Symbol::intern(tool_name)), lint_name),
+        Some((tool_name, lint_name)) => {
+            let tool_name = Symbol::intern(tool_name);
+
+            (Some(tool_name), lint_name)
+        }
         None => (None, lint_name),
     }
 }
