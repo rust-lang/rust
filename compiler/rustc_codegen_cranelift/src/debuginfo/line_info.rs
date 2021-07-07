@@ -10,7 +10,7 @@ use rustc_span::{
 };
 
 use cranelift_codegen::binemit::CodeOffset;
-use cranelift_codegen::machinst::MachSrcLoc;
+use cranelift_codegen::MachSrcLoc;
 
 use gimli::write::{
     Address, AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable,

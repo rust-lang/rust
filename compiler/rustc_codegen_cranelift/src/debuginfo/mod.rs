@@ -61,9 +61,11 @@ impl<'tcx> DebugContext<'tcx> {
 
         let mut dwarf = DwarfUnit::new(encoding);
 
-        // FIXME: how to get version when building out of tree?
-        // Normally this would use option_env!("CFG_VERSION").
-        let producer = format!("cg_clif (rustc {})", "unknown version");
+        let producer = format!(
+            "cg_clif (rustc {}, cranelift {})",
+            rustc_interface::util::version_str().unwrap_or("unknown version"),
+            cranelift_codegen::VERSION,
+        );
         let comp_dir = tcx.sess.working_dir.to_string_lossy(false).into_owned();
         let (name, file_info) = match tcx.sess.local_crate_source_file.clone() {
             Some(path) => {
