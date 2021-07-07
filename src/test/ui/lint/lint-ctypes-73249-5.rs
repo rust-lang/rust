@@ -14,11 +14,12 @@ fn assign() -> Qux { 3 }
 
 #[repr(transparent)]
 pub struct A {
+    //~^ ERROR type alias impl traits are not allowed as field types in structs
     x: Qux,
 }
 
 extern "C" {
-    pub fn lint_me() -> A; //~ ERROR: uses type `impl Baz`
+    pub fn lint_me() -> A;
 }
 
 fn main() {}

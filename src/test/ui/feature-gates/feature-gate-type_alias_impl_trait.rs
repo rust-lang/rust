@@ -6,6 +6,7 @@ type Foo = impl Debug;
 //~^ ERROR could not find defining uses
 
 struct Bar(Foo);
+//~^ ERROR type alias impl traits are not allowed as field types in structs
 fn define() -> Bar {
     Bar(42) //~ ERROR mismatched types
 }

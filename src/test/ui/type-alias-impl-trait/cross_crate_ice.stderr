@@ -1,0 +1,8 @@
+error: type alias impl traits are not allowed as field types in structs
+  --> $DIR/cross_crate_ice.rs:5:1
+   |
+LL | struct Bar(cross_crate_ice::Foo);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

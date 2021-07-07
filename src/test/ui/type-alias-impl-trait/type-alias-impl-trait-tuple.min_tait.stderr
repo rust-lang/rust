@@ -1,0 +1,16 @@
+error: type alias impl traits are not allowed as field types in structs
+  --> $DIR/type-alias-impl-trait-tuple.rs:11:1
+   |
+LL | / struct Blah {
+LL | |
+LL | |     my_foo: Foo,
+   | |     ----------- this field contains a type alias impl trait
+LL | |     my_u8: u8
+LL | | }
+   | |_^
+...
+LL |   type Foo = impl MyTrait;
+   |   ------------------------ type alias defined here
+
+error: aborting due to previous error
+

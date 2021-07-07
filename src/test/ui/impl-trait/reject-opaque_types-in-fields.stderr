@@ -1,0 +1,102 @@
+error[E0308]: mismatched types
+  --> $DIR/reject-opaque_types-in-fields.rs:20:13
+   |
+LL | type X = impl Iterator<Item = u64> + Unpin;
+   |          --------------------------------- the expected opaque type
+...
+LL |         Foo(z.into_iter())
+   |             ^^^^^^^^^^^^^ expected opaque type, found struct `std::vec::IntoIter`
+   |
+   = note: expected opaque type `impl Iterator+Unpin`
+                   found struct `std::vec::IntoIter<u64>`
+
+error[E0308]: mismatched types
+  --> $DIR/reject-opaque_types-in-fields.rs:30:13
+   |
+LL | type X = impl Iterator<Item = u64> + Unpin;
+   |          --------------------------------- the expected opaque type
+...
+LL |     Bar {a: z.into_iter() }
+   |             ^^^^^^^^^^^^^ expected opaque type, found struct `std::vec::IntoIter`
+   |
+   = note: expected opaque type `impl Iterator+Unpin`
+                   found struct `std::vec::IntoIter<u64>`
+
+error: could not find defining uses
+  --> $DIR/reject-opaque_types-in-fields.rs:3:17
+   |
+LL | type ImplCopy = impl Copy;
+   |                 ^^^^^^^^^
+
+error: type alias impl traits are not allowed as field types in enums
+  --> $DIR/reject-opaque_types-in-fields.rs:6:1
+   |
+LL |   type ImplCopy = impl Copy;
+   |   -------------------------- type alias defined here
+...
+LL | / enum Wrapper {
+LL | |
+LL | |     First(ImplCopy),
+   | |           -------- this field contains a type alias impl trait
+LL | |     Second
+LL | | }
+   | |_^
+
+error: could not find defining uses
+  --> $DIR/reject-opaque_types-in-fields.rs:12:10
+   |
+LL | type X = impl Iterator<Item = u64> + Unpin;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type alias impl traits are not allowed as field types in structs
+  --> $DIR/reject-opaque_types-in-fields.rs:15:1
+   |
+LL | type X = impl Iterator<Item = u64> + Unpin;
+   | ------------------------------------------- type alias defined here
+...
+LL | struct Foo(X);
+   | ^^^^^^^^^^^-^^
+   |            |
+   |            this field contains a type alias impl trait
+
+error: type alias impl traits are not allowed as field types in structs
+  --> $DIR/reject-opaque_types-in-fields.rs:25:1
+   |
+LL | type X = impl Iterator<Item = u64> + Unpin;
+   | ------------------------------------------- type alias defined here
+...
+LL | struct Bar {a : X}
+   | ^^^^^^^^^^^^-----^
+   |             |
+   |             this field contains a type alias impl trait
+
+error: type alias impl traits are not allowed as field types in unions
+  --> $DIR/reject-opaque_types-in-fields.rs:35:1
+   |
+LL |   type X = impl Iterator<Item = u64> + Unpin;
+   |   ------------------------------------------- type alias defined here
+...
+LL | / union MyUnion {
+LL | |
+LL | |   a: X,
+   | |   ---- this field contains a type alias impl trait
+LL | |
+LL | | }
+   | |_^
+
+error[E0740]: unions may not contain fields that need dropping
+  --> $DIR/reject-opaque_types-in-fields.rs:37:3
+   |
+LL |   a: X,
+   |   ^^^^
+   |
+note: `std::mem::ManuallyDrop` can be used to wrap the type
+  --> $DIR/reject-opaque_types-in-fields.rs:37:3
+   |
+LL |   a: X,
+   |   ^^^^
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0308, E0740.
+For more information about an error, try `rustc --explain E0308`.
