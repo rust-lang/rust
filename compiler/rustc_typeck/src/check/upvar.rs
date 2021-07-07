@@ -2003,9 +2003,13 @@ fn determine_place_ancestry_relation(
 fn truncate_capture_for_optimization<'tcx>(place: &Place<'tcx>) -> Place<'tcx> {
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
 
+    // Find the right-most deref (if any). All the projections that come after this
+    // are fields or other "in-place pointer adjustments"; these refer therefore to
+    // data owned by whatever pointer is being dereferenced here.
     let idx = place.projections.iter().rposition(|proj| ProjectionKind::Deref == proj.kind);
 
     match idx {
+        // If that pointer is a shared reference, then we don't need those fields.
         Some(idx) if is_shared_ref(place.ty_before_projection(idx)) => {
             Place { projections: place.projections[0..=idx].to_vec(), ..place.clone() }
         }
