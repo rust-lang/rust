@@ -6,6 +6,8 @@
 
 #![feature(assert_matches)]
 
+use std::assert::assert_matches;
+
 fn main() {
     assert_matches!(1 + 1, 3, "1 + 1 definitely should be 3");
 }

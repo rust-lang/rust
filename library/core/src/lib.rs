@@ -182,6 +182,16 @@ use prelude::v1::*;
 #[macro_use]
 mod macros;
 
+// We don't export this through #[macro_export] for now, to avoid breakage.
+// See https://github.com/rust-lang/rust/issues/82913
+#[cfg(not(test))]
+#[unstable(feature = "assert_matches", issue = "82775")]
+/// Unstable module containing the unstable `assert_matches` macro.
+pub mod assert {
+    #[unstable(feature = "assert_matches", issue = "82775")]
+    pub use crate::macros::{assert_matches, debug_assert_matches};
+}
+
 #[macro_use]
 mod internal_macros;
 
