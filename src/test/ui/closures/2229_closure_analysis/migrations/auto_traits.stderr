@@ -2,7 +2,10 @@ error: changes to closure capture in Rust 2021 will affect `Send` closure trait 
   --> $DIR/auto_traits.rs:14:19
    |
 LL |       thread::spawn(move || unsafe {
-   |  ___________________^
+   |                     ^       - in Rust 2018, this closure would implement `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0` does not implement `Send`
+   |  ___________________|
+   | |
+LL | |
 LL | |
 LL | |
 LL | |
@@ -24,15 +27,18 @@ LL |     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
 LL |
 LL |
-LL |         *fptr.0 = 20;
 LL |
+LL |         *fptr.0 = 20;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` closure trait implementation
-  --> $DIR/auto_traits.rs:33:19
+  --> $DIR/auto_traits.rs:34:19
    |
 LL |       thread::spawn(move || unsafe {
-   |  ___________________^
+   |                     ^       - in Rust 2018, this closure would implement `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure will no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
+   |  ___________________|
+   | |
+LL | |
 LL | |
 LL | |
 LL | |
@@ -49,15 +55,18 @@ LL |     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
 LL |
 LL |
-LL |         *fptr.0.0 = 20;
 LL |
+LL |         *fptr.0.0 = 20;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Clone` closure trait implementation, and drop order
-  --> $DIR/auto_traits.rs:56:13
+  --> $DIR/auto_traits.rs:58:13
    |
 LL |       let c = || {
-   |  _____________^
+   |               ^  - in Rust 2018, this closure would implement `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f.1` does not implement `Clone`
+   |  _____________|
+   | |
+LL | |
 LL | |
 LL | |
 LL | |
@@ -78,8 +87,8 @@ LL |     let c = || { let _ = &f;
 LL |
 LL |
 LL |
-LL |         let f_1 = f.1;
 LL |
+LL |         let f_1 = f.1;
  ...
 
 error: aborting due to 3 previous errors

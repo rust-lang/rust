@@ -2,7 +2,10 @@ error: changes to closure capture in Rust 2021 will affect `UnwindSafe`, `RefUnw
   --> $DIR/mir_calls_to_shims.rs:20:38
    |
 LL |       let result = panic::catch_unwind(move || {
-   |  ______________________________________^
+   |                                        ^       - in Rust 2018, this closure would implement `UnwindSafe`, `RefUnwindSafe` as `f` implements `UnwindSafe`, `RefUnwindSafe`, but in Rust 2021, this closure will no longer implement `UnwindSafe`, `RefUnwindSafe` as `f.0` does not implement `UnwindSafe`, `RefUnwindSafe`
+   |  ______________________________________|
+   | |
+LL | |
 LL | |
 LL | |
 LL | |
@@ -24,8 +27,8 @@ LL |     let result = panic::catch_unwind(move || { let _ = &f;
 LL |
 LL |
 LL |
-LL |         f.0()
 LL |
+LL |         f.0()
  ...
 
 error: aborting due to previous error

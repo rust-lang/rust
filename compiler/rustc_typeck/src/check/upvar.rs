@@ -535,6 +535,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 captured_names,
                             ));
                         }
+
+                        if reasons.contains("closure trait implementation") {
+                            let closure_body_span = self.tcx.hir().span(body_id.hir_id);
+                            let closure_ending_span = self.tcx.sess.source_map().guess_head_span(closure_body_span).shrink_to_lo();
+
+                            let missing_trait = &reasons[..reasons.find("closure trait implementation").unwrap() - 1];
+
+                            diagnostics_builder.span_label(closure_ending_span, format!("in Rust 2018, this closure would implement {} as `{}` implements {}, but in Rust 2021, this closure will no longer implement {} as {} does not implement {}",
+                                missing_trait,
+                                self.tcx.hir().name(*var_hir_id),
+                                missing_trait,
+                                missing_trait,
+                                captured_names,
+                                missing_trait,
+                            ));
+                        }
                     }
                     diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
                     let closure_body_span = self.tcx.hir().span(body_id.hir_id);
