@@ -37,9 +37,12 @@ impl ProcMacroProcessSrv {
         let process = Process::run(process_path, args)?;
 
         let (task_tx, task_rx) = bounded(0);
-        let handle = jod_thread::spawn(move || {
-            client_loop(task_rx, process);
-        });
+        let handle = jod_thread::Builder::new()
+            .name("ProcMacroClientThread".to_owned())
+            .spawn(move || {
+                client_loop(task_rx, process);
+            })
+            .expect("failed to spawn thread");
 
         let task_tx = Arc::new(task_tx);
         let srv = ProcMacroProcessSrv { inner: Arc::downgrade(&task_tx) };
