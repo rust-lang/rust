@@ -171,7 +171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
 
-        if should_do_disjoint_capture_migration_analysis(self.tcx, closure_hir_id) {
+        if should_do_rust_2021_incompatible_closure_captures_analysis(self.tcx, closure_hir_id) {
             self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
         }
 
@@ -503,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
             self.tcx.struct_span_lint_hir(
-                lint::builtin::DISJOINT_CAPTURE_MIGRATION,
+                lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
                 span,
                 |lint| {
@@ -1820,8 +1820,12 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
-fn should_do_disjoint_capture_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool {
-    let (level, _) = tcx.lint_level_at_node(lint::builtin::DISJOINT_CAPTURE_MIGRATION, closure_id);
+fn should_do_rust_2021_incompatible_closure_captures_analysis(
+    tcx: TyCtxt<'_>,
+    closure_id: hir::HirId,
+) -> bool {
+    let (level, _) =
+        tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
 
     !matches!(level, lint::Level::Allow)
 }

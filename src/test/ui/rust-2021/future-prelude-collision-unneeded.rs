@@ -1,12 +1,14 @@
 // edition:2018
 // check-pass
 #![allow(unused)]
-#![deny(future_prelude_collision)]
+#![deny(rust_2021_prelude_collisions)]
 
 struct S;
 
 impl S {
-    fn try_into(self) -> S { S }
+    fn try_into(self) -> S {
+        S
+    }
 }
 
 // See https://github.com/rust-lang/rust/issues/86633

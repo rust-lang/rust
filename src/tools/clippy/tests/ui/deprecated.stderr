@@ -60,11 +60,11 @@ error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cs
 LL | #[warn(clippy::temporary_cstring_as_ptr)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
 
-error: lint `clippy::panic_params` has been renamed to `non_fmt_panic`
+error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
   --> $DIR/deprecated.rs:11:8
    |
 LL | #[warn(clippy::panic_params)]
-   |        ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panic`
+   |        ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
 
 error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
   --> $DIR/deprecated.rs:12:8

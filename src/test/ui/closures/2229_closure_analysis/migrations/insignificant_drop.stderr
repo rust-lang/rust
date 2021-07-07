@@ -14,8 +14,8 @@ LL | |     };
 note: the lint level is defined here
   --> $DIR/insignificant_drop.rs:3:9
    |
-LL | #![deny(disjoint_capture_migration)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(rust_2021_incompatible_closure_captures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
    |

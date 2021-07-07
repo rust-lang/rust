@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # ignore-tidy-linelength
 
 # This is a small script that we use on CI to collect CPU usage statistics of
@@ -37,7 +37,10 @@ import datetime
 import sys
 import time
 
-if sys.platform == 'linux2':
+# Python 3.3 changed the value of `sys.platform` on Linux from "linux2" to just
+# "linux". We check here with `.startswith` to keep compatibility with older
+# Python versions (especially Python 2.7).
+if sys.platform.startswith('linux'):
     class State:
         def __init__(self):
             with open('/proc/stat', 'r') as file:

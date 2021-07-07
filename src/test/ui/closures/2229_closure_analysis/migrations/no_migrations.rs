@@ -2,8 +2,7 @@
 
 // Set of test cases that don't need migrations
 
-#![deny(disjoint_capture_migration)]
-
+#![deny(rust_2021_incompatible_closure_captures)]
 
 // Copy types as copied by the closure instead of being moved into the closure
 // Therefore their drop order isn't tied to the closure and won't be requiring any
@@ -53,7 +52,6 @@ fn test4_insignificant_drop_non_drop_aggregate() {
     c();
 }
 
-
 struct Foo(i32);
 impl Drop for Foo {
     fn drop(&mut self) {
@@ -80,5 +78,4 @@ fn main() {
     test3_only_copy_types_move_closure();
     test4_insignificant_drop_non_drop_aggregate();
     test5_significant_drop_non_drop_aggregate();
-
 }

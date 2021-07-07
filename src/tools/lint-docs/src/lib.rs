@@ -467,7 +467,9 @@ fn lint_name(line: &str) -> Result<String, &'static str> {
                 return Err("lint name should end with comma");
             }
             let name = &name[..name.len() - 1];
-            if !name.chars().all(|ch| ch.is_uppercase() || ch == '_') || name.is_empty() {
+            if !name.chars().all(|ch| ch.is_uppercase() || ch.is_ascii_digit() || ch == '_')
+                || name.is_empty()
+            {
                 return Err("lint name did not have expected format");
             }
             Ok(name.to_lowercase().to_string())
