@@ -83,6 +83,7 @@ pub enum TryReserveError {
 
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 impl From<LayoutError> for TryReserveError {
+    /// Always evaluates to [`TryReserveError::CapacityOverflow`].
     #[inline]
     fn from(_: LayoutError) -> Self {
         TryReserveError::CapacityOverflow
