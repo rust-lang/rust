@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
+use rustc_hir::{def::DefKind, def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -414,7 +414,12 @@ pub(super) fn check_fn<'a, 'tcx>(
 }
 
 fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
+    debug!("check_struct(def_id: {:?}, span: {:?})", def_id, span);
+
     let def = tcx.adt_def(def_id);
+
+    check_fields_for_opaque_types(tcx, def, def_id, span);
+
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
@@ -426,8 +431,119 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     check_packed(tcx, span, def);
 }
 
+fn check_fields_for_opaque_types(
+    tcx: TyCtxt<'tcx>,
+    adt_def: &ty::AdtDef,
+    def_id: LocalDefId,
+    span: Span,
+) {
+    fn find_span_of_field_def_and_ty_alias(
+        tcx: TyCtxt<'tcx>,
+        field_def: &ty::FieldDef,
+    ) -> (Option<Span>, Option<Span>) {
+        let field_def_def_id = field_def.did;
+        if let Some(field_def_local_id) = field_def_def_id.as_local() {
+            let field_def_hir_id = tcx.hir().local_def_id_to_hir_id(field_def_local_id);
+            if let hir::Node::Field(hir::FieldDef {
+                span: field_def_span, ty: field_def_ty, ..
+            }) = tcx.hir().get(field_def_hir_id)
+            {
+                if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = field_def_ty.kind {
+                    if let Res::Def(DefKind::TyAlias, ty_alias_def_id) = path.res {
+                        if let Some(ty_alias_local_id) = ty_alias_def_id.as_local() {
+                            let ty_alias_hir_id =
+                                tcx.hir().local_def_id_to_hir_id(ty_alias_local_id);
+                            let node = tcx.hir().get(ty_alias_hir_id);
+                            match node {
+                                hir::Node::Item(hir::Item {
+                                    kind, span: ty_alias_span, ..
+                                }) => match kind {
+                                    hir::ItemKind::TyAlias(_, _) => {
+                                        return (Some(*field_def_span), Some(*ty_alias_span));
+                                    }
+                                    _ => bug!("expected an item of kind TyAlias"),
+                                },
+                                _ => return (Some(*field_def_span), None),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        (None, None)
+    }
+
+    debug!("check_fields_of_opaque_types(adt_def: {:?}, span: {:?})", adt_def, span);
+
+    let item_type = tcx.type_of(def_id);
+    let substs = match item_type.kind() {
+        ty::Adt(_, substs) => substs,
+        _ => bug!("check_fields_for_opaque_types should only be called on Adts"),
+    };
+    adt_def.all_fields().for_each(|field_def| {
+        debug!("field_def: {:?}", field_def);
+
+        let field_ty = field_def.ty(tcx, substs);
+        match field_ty.kind() {
+            ty::Opaque(..) => {
+                use ty::AdtKind::*;
+                let adt_kind = match adt_def.adt_kind() {
+                    Struct => "struct",
+                    Enum => "enum",
+                    Union => "union",
+                };
+
+                let mut diag;
+                match find_span_of_field_def_and_ty_alias(tcx, field_def) {
+                    (Some(field_def_span), Some(ty_alias_span)) => {
+                        diag = tcx.sess.struct_span_err(
+                            span,
+                            &format!(
+                                "type alias impl traits are not allowed as field types in {}s",
+                                adt_kind
+                            ),
+                        );
+                        diag.span_label(
+                            field_def_span,
+                            "this field contains a type alias impl trait",
+                        );
+                        diag.span_label(ty_alias_span, "type alias defined here");
+                    }
+                    (Some(field_def_span), None) => {
+                        diag = tcx.sess.struct_span_err(
+                            span,
+                            &format!(
+                                "type alias impl traits are not allowed as field types in {}s",
+                                adt_kind
+                            ),
+                        );
+
+                        diag.span_label(
+                            field_def_span,
+                            "this field contains a type alias impl trait",
+                        );
+                    }
+                    _ => {
+                        diag = tcx.sess.struct_span_err(
+                            span,
+                            &format!(
+                                "type alias impl traits are not allowed as field types in {}s",
+                                adt_kind
+                            ),
+                        );
+                    }
+                }
+
+                diag.emit();
+            }
+            _ => {}
+        }
+    });
+}
+
 fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     let def = tcx.adt_def(def_id);
+    check_fields_for_opaque_types(tcx, def, def_id, span);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
     check_transparent(tcx, span, def);
@@ -1408,6 +1524,7 @@ fn check_enum<'tcx>(
     def_id: LocalDefId,
 ) {
     let def = tcx.adt_def(def_id);
+    check_fields_for_opaque_types(tcx, def, def_id, sp);
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() {
