@@ -126,6 +126,7 @@
 #![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
+#![feature(more_fallible_allocation_methods)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
