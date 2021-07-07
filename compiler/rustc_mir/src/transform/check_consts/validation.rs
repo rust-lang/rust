@@ -885,9 +885,17 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
-                if !tcx.is_const_fn_raw(callee) {
-                    self.check_op(ops::FnCallNonConst);
-                    return;
+                let caller_has_attr = tcx.has_attr(caller, sym::default_method_body_is_const);
+                let in_same_trait = match (tcx.trait_of_item(caller), tcx.trait_of_item(callee)) {
+                    (Some(t1), Some(t2)) => t1 == t2,
+                    _ => false
+                };
+
+                if !(caller_has_attr && in_same_trait) {
+                    if !tcx.is_const_fn_raw(callee) {
+                        self.check_op(ops::FnCallNonConst);
+                        return;
+                    }
                 }
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
