@@ -687,6 +687,9 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (active, more_qualified_paths, "1.54.0", Some(80080), None),
 
+    /// Allows `cfg(target_abi = "...")`.
+    (active, cfg_target_abi, "1.55.0", Some(80970), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
