@@ -31,7 +31,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, ParamEnv, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
+    self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
     COMMON_VTABLE_ENTRIES,
 };
 use rustc_span::Span;
@@ -541,44 +541,6 @@ fn vtable_trait_first_method_offset<'tcx>(
     vtable_base
 }
 
-/// Check whether a `ty` implements given trait(trait_def_id).
-/// See query definition for details.
-fn type_implements_trait<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: (
-        DefId,    // trait_def_id,
-        Ty<'tcx>, // type
-        SubstsRef<'tcx>,
-        ParamEnv<'tcx>,
-    ),
-) -> EvaluationResult {
-    let (trait_def_id, ty, params, param_env) = key;
-
-    debug!(
-        "type_implements_trait: trait_def_id={:?}, type={:?}, params={:?}, param_env={:?}",
-        trait_def_id, ty, params, param_env
-    );
-
-    let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, params) };
-
-    // FIXME(#86868): If there are inference variables anywhere, just give up and assume
-    // we don't know the answer. This works around the ICEs that would result from
-    // using those inference variables within the `infer_ctxt` we create below.
-    // Really we should be using canonicalized variables, or perhaps removing
-    // this query altogether.
-    if (trait_ref, param_env).needs_infer() {
-        return EvaluationResult::EvaluatedToUnknown;
-    }
-
-    let obligation = Obligation {
-        cause: ObligationCause::dummy(),
-        param_env,
-        recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(tcx),
-    };
-    tcx.infer_ctxt().enter(|infcx| infcx.evaluate_obligation_no_overflow(&obligation))
-}
-
 pub fn provide(providers: &mut ty::query::Providers) {
     object_safety::provide(providers);
     structural_match::provide(providers);
@@ -587,7 +549,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_entries,
-        type_implements_trait,
         subst_and_check_impossible_predicates,
         mir_abstract_const: |tcx, def_id| {
             let def_id = def_id.expect_local();
