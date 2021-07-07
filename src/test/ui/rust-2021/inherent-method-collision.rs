@@ -2,7 +2,7 @@
 //
 // check-pass
 
-#![deny(future_prelude_collision)]
+#![deny(rust_2021_prelude_collisions)]
 
 pub struct MySeq {}
 

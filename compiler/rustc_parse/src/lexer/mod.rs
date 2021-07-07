@@ -4,7 +4,7 @@ use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
-use rustc_session::lint::builtin::RESERVED_PREFIX;
+use rustc_session::lint::builtin::RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
@@ -526,7 +526,7 @@ impl<'a> StringReader<'a> {
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.sess.buffer_lint_with_diagnostic(
-                &RESERVED_PREFIX,
+                &RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
                 prefix_span,
                 ast::CRATE_NODE_ID,
                 &msg,

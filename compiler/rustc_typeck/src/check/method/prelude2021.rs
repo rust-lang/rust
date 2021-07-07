@@ -5,7 +5,7 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty::{Ref, Ty};
-use rustc_session::lint::builtin::FUTURE_PRELUDE_COLLISION;
+use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::Underscore;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -67,7 +67,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Inherent impls only require not relying on autoref and autoderef in order to
             // ensure that the trait implementation won't be used
             self.tcx.struct_span_lint_hir(
-                FUTURE_PRELUDE_COLLISION,
+                RUST_2021_PRELUDE_COLLISIONS,
                 self_expr.hir_id,
                 self_expr.span,
                 |lint| {
@@ -128,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // trait implementations require full disambiguation to not clash with the new prelude
             // additions (i.e. convert from dot-call to fully-qualified call)
             self.tcx.struct_span_lint_hir(
-                FUTURE_PRELUDE_COLLISION,
+                RUST_2021_PRELUDE_COLLISIONS,
                 call_expr.hir_id,
                 call_expr.span,
                 |lint| {
@@ -212,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        self.tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
+        self.tcx.struct_span_lint_hir(RUST_2021_PRELUDE_COLLISIONS, expr_id, span, |lint| {
             // "type" refers to either a type or, more likely, a trait from which
             // the associated function or method is from.
             let trait_path = self.trait_path_or_bare_name(span, expr_id, pick.item.container.id());

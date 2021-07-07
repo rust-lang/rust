@@ -7,8 +7,8 @@ LL |     <Vec<i32>>::from_iter(None);
 note: the lint level is defined here
   --> $DIR/generic-type-collision.rs:4:9
    |
-LL | #![warn(future_prelude_collision)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![warn(rust_2021_prelude_collisions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #85684 <https://github.com/rust-lang/rust/issues/85684>
 

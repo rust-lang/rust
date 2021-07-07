@@ -18,7 +18,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Features;
-use rustc_lint_defs::builtin::{OR_PATTERNS_BACK_COMPAT, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS};
+use rustc_lint_defs::builtin::{
+    RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+};
 use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
@@ -975,7 +977,7 @@ fn check_matcher_core(
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
                         sess.buffer_lint_with_diagnostic(
-                            &OR_PATTERNS_BACK_COMPAT,
+                            &RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
                             "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",
