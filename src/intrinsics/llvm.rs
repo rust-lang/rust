@@ -106,6 +106,26 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             let dest = CPlace::for_ptr(Pointer::new(mem_addr), a.layout());
             dest.write_cvalue(fx, a);
         };
+        "llvm.x86.addcarry.64", (v c_in, c a, c b) {
+            llvm_add_sub(
+                fx,
+                BinOp::Add,
+                ret,
+                c_in,
+                a,
+                b
+            );
+        };
+        "llvm.x86.subborrow.64", (v b_in, c a, c b) {
+            llvm_add_sub(
+                fx,
+                BinOp::Sub,
+                ret,
+                b_in,
+                a,
+                b
+            );
+        };
     }
 
     if let Some((_, dest)) = destination {
@@ -121,3 +141,41 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
 // llvm.x86.avx2.pshuf.b
 // llvm.x86.avx2.psrli.w
 // llvm.x86.sse2.psrli.w
+
+fn llvm_add_sub<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    bin_op: BinOp,
+    ret: CPlace<'tcx>,
+    cb_in: Value,
+    a: CValue<'tcx>,
+    b: CValue<'tcx>,
+) {
+    assert_eq!(
+        a.layout().ty,
+        fx.tcx.types.u64,
+        "llvm.x86.addcarry.64/llvm.x86.subborrow.64 second operand must be u64"
+    );
+    assert_eq!(
+        b.layout().ty,
+        fx.tcx.types.u64,
+        "llvm.x86.addcarry.64/llvm.x86.subborrow.64 third operand must be u64"
+    );
+
+    // c + carry -> c + first intermediate carry or borrow respectively
+    let int0 = crate::num::codegen_checked_int_binop(fx, bin_op, a, b);
+    let c = int0.value_field(fx, mir::Field::new(0));
+    let cb0 = int0.value_field(fx, mir::Field::new(1)).load_scalar(fx);
+
+    // c + carry -> c + second intermediate carry or borrow respectively
+    let cb_in_as_u64 = fx.bcx.ins().uextend(types::I64, cb_in);
+    let cb_in_as_u64 = CValue::by_val(cb_in_as_u64, fx.layout_of(fx.tcx.types.u64));
+    let int1 = crate::num::codegen_checked_int_binop(fx, bin_op, c, cb_in_as_u64);
+    let (c, cb1) = int1.load_scalar_pair(fx);
+
+    // carry0 | carry1 -> carry or borrow respectively
+    let cb_out = fx.bcx.ins().bor(cb0, cb1);
+
+    let layout = fx.layout_of(fx.tcx.mk_tup([fx.tcx.types.u8, fx.tcx.types.u64].iter()));
+    let val = CValue::by_val_pair(cb_out, c, layout);
+    ret.write_cvalue(fx, val);
+}

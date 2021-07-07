@@ -6,9 +6,11 @@ perf.data
 perf.data.old
 *.events
 *.string*
+/y.bin
 /build
 /build_sysroot/sysroot_src
 /build_sysroot/compiler-builtins
+/build_sysroot/rustc_version
 /rust
 /rand
 /regex
