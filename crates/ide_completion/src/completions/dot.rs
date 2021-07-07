@@ -101,7 +101,10 @@ fn complete_methods(
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{tests::filtered_completion_list, CompletionKind};
+    use crate::{
+        tests::{check_edit, filtered_completion_list},
+        CompletionKind,
+    };
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
@@ -252,6 +255,21 @@ fn foo(a: A) { a.$0 }
             expect![[r#"
                 me the_method() (as Trait) fn(&self)
             "#]],
+        );
+        check_edit(
+            "the_method",
+            r#"
+struct A {}
+trait Trait { fn the_method(&self); }
+impl Trait for A {}
+fn foo(a: A) { a.$0 }
+"#,
+            r#"
+struct A {}
+trait Trait { fn the_method(&self); }
+impl Trait for A {}
+fn foo(a: A) { a.the_method()$0 }
+"#,
         );
     }
 
