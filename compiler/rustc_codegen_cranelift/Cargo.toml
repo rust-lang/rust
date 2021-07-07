@@ -9,7 +9,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "main", features = ["unwind"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "main", features = ["unwind", "all-arch"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "main" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "main" }
 cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "main" }
@@ -17,7 +17,7 @@ cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", bran
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git", branch = "main" }
 target-lexicon = "0.12.0"
 gimli = { version = "0.24.0", default-features = false, features = ["write"]}
-object = { version = "0.24.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
+object = { version = "0.25.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.0.2"
