@@ -46,3 +46,8 @@ pub use reexports::Union;
 pub(crate) use reexports::UnionCrate;
 // @has 'foo/union.UnionSelf.html' '//*[@class="docblock type-decl"]' 'pub(crate) union UnionSelf {'
 pub(self) use reexports::UnionSelf;
+
+pub mod foo {
+    // @!has 'foo/foo/union.Union.html'
+    use crate::reexports::Union;
+}

@@ -2053,7 +2053,8 @@ fn clean_use_statement(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = (!import.vis.node.is_pub() && !cx.render_options.document_private)
+    let mut denied = !(import.vis.node.is_pub()
+        || (cx.render_options.document_private && import.vis.node.is_pub_restricted()))
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)
