@@ -2171,7 +2171,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::unused_label", "unused_labels");
     ls.register_renamed("clippy::drop_bounds", "drop_bounds");
     ls.register_renamed("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr");
-    ls.register_renamed("clippy::panic_params", "non_fmt_panic");
+    ls.register_renamed("clippy::panic_params", "non_fmt_panics");
     ls.register_renamed("clippy::unknown_clippy_lints", "unknown_lints");
 }
 
