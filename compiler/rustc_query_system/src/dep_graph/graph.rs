@@ -39,6 +39,7 @@ pub struct DepGraph<K: DepKind> {
     /// The cached event id for profiling node interning. This saves us
     /// from having to look up the event id every time we intern a node
     /// which may incur too much overhead.
+    /// This will be None if self-profiling is disabled.
     node_intern_event_id: Option<EventId>,
 }
 
@@ -265,7 +266,7 @@ impl<K: DepKind> DepGraph<K> {
             // Get timer for profiling `DepNode` interning
             let node_intern_timer = self
                 .node_intern_event_id
-                .map(|eid| dcx.profiler().generic_activity_with_event(eid));
+                .map(|eid| dcx.profiler().generic_activity_with_event_id(eid));
             // Intern the new `DepNode`.
             let (dep_node_index, prev_and_color) = data.current.intern_node(
                 dcx.profiler(),

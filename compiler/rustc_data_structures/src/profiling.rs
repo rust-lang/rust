@@ -255,7 +255,7 @@ impl SelfProfilerRef {
     /// Start profiling with some event filter for a given event. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
-    pub fn generic_activity_with_event(&self, event_id: EventId) -> TimingGuard<'_> {
+    pub fn generic_activity_with_event_id(&self, event_id: EventId) -> TimingGuard<'_> {
         self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
             TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
         })
@@ -390,7 +390,11 @@ impl SelfProfilerRef {
         }
     }
 
-    pub fn get_or_alloc_cached_string(&self, s: &'static str) -> Option<StringId> {
+    /// Gets a `StringId` for the given string. This method makes sure that
+    /// any strings going through it will only be allocated once in the
+    /// profiling data.
+    /// Returns `None` if the self-profiling is not enabled.
+    pub fn get_or_alloc_cached_string(&self, s: &str) -> Option<StringId> {
         self.profiler.as_ref().map(|p| p.get_or_alloc_cached_string(s))
     }
 
