@@ -16,6 +16,9 @@ fn predicate_start() {
 struct Foo<'lt, T, const C: usize> where $0 {}
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             en Enum
             st Record
@@ -38,6 +41,9 @@ fn bound_for_type_pred() {
 struct Foo<'lt, T, const C: usize> where T: $0 {}
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             md module
             ma makro!(…) #[macro_export] macro_rules! makro
@@ -54,6 +60,9 @@ fn bound_for_lifetime_pred() {
 struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             md module
             ma makro!(…) #[macro_export] macro_rules! makro
@@ -69,6 +78,9 @@ fn bound_for_for_pred() {
 struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             md module
             ma makro!(…) #[macro_export] macro_rules! makro
@@ -84,6 +96,9 @@ fn param_list_for_for_pred() {
 struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             en Enum
             st Record
@@ -107,6 +122,9 @@ impl Record {
 }
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             sp Self
             tt Trait
             en Enum

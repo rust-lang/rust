@@ -1,43 +1,11 @@
 //! Completes keywords.
 
-use std::iter;
-
 use syntax::{SyntaxKind, T};
 
 use crate::{
     context::PathCompletionContext, patterns::ImmediateLocation, CompletionContext, CompletionItem,
     CompletionItemKind, CompletionKind, Completions,
 };
-
-pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    // complete keyword "crate" in use stmt
-    let source_range = ctx.source_range();
-    let kw_completion = move |text: &str| {
-        let mut item = CompletionItem::new(CompletionKind::Keyword, source_range, text);
-        item.kind(CompletionItemKind::Keyword).insert_text(text);
-        item
-    };
-
-    if ctx.in_use_tree() {
-        match &ctx.path_context {
-            Some(PathCompletionContext { qualifier: Some(qual), use_tree_parent, .. }) => {
-                if iter::successors(Some(qual.clone()), |p| p.qualifier())
-                    .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
-                {
-                    kw_completion("super::").add_to(acc);
-                }
-                if *use_tree_parent {
-                    kw_completion("self").add_to(acc);
-                }
-            }
-            _ => {
-                kw_completion("crate::").add_to(acc);
-                kw_completion("self::").add_to(acc);
-                kw_completion("super::").add_to(acc);
-            }
-        };
-    }
-}
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.token.kind() == SyntaxKind::COMMENT {
@@ -243,6 +211,9 @@ mod tests {
                 kw for
                 kw let
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         );
     }
@@ -271,6 +242,9 @@ mod tests {
                 kw for
                 kw let
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         );
     }
@@ -301,6 +275,9 @@ mod tests {
                 kw else
                 kw else if
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         );
         check_edit(
@@ -330,6 +307,9 @@ fn quux() -> i32 {
                 kw if let
                 kw for
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         );
     }
@@ -360,6 +340,9 @@ fn quux() -> i32 {
                 kw continue
                 kw break
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         );
     }
@@ -448,6 +431,9 @@ fn foo() {
                 kw if let
                 kw for
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         )
     }
@@ -493,6 +479,9 @@ fn foo() {
                 kw if let
                 kw for
                 kw return
+                kw self
+                kw super
+                kw crate
             "#]],
         );
     }

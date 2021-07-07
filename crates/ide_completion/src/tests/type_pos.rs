@@ -30,6 +30,9 @@ struct Foo<'lt, T, const C: usize> {
 }
 "#,
         expect![[r#"
+            kw self
+            kw super
+            kw crate
             sp Self
             tp T
             tt Trait
@@ -54,6 +57,9 @@ struct Foo<'lt, T, const C: usize>(f$0);
         expect![[r#"
             kw pub(crate)
             kw pub
+            kw self
+            kw super
+            kw crate
             sp Self
             tp T
             tt Trait
@@ -76,6 +82,9 @@ fn fn_return_type() {
 fn x<'lt, T, const C: usize>() -> $0
 "#,
         expect![[r#"
+            kw self
+            kw super
+            kw crate
             tp T
             tt Trait
             en Enum
@@ -99,6 +108,9 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
+            kw self
+            kw super
+            kw crate
             tp T
             tt Trait
             en Enum
@@ -140,6 +152,9 @@ trait Trait2 {
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
         expect![[r#"
+            kw self
+            kw super
+            kw crate
             ta Foo =  (as Trait2) type Foo;
             tp T
             cp CONST_PARAM

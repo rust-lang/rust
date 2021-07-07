@@ -18,6 +18,9 @@ fn target_type_or_trait_in_impl_block() {
 impl Tra$0
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             en Enum
             st Record
@@ -38,6 +41,9 @@ fn target_type_in_trait_impl_block() {
 impl Trait for Str$0
 "#,
         expect![[r##"
+            kw self
+            kw super
+            kw crate
             tt Trait
             en Enum
             st Record

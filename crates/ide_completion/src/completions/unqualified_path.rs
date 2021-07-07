@@ -10,6 +10,21 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
+    if ctx.in_use_tree() {
+        // only show modules in a fresh UseTree
+        cov_mark::hit!(only_completes_modules_in_import);
+        ctx.scope.process_all_names(&mut |name, res| {
+            if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
+                acc.add_resolution(ctx, name, &res);
+            }
+        });
+
+        std::array::IntoIter::new(["self::", "super::", "crate::"])
+            .for_each(|kw| acc.add_keyword(ctx, kw));
+        return;
+    }
+    std::array::IntoIter::new(["self", "super", "crate"]).for_each(|kw| acc.add_keyword(ctx, kw));
+
     if ctx.expects_item() || ctx.expects_assoc_item() {
         // only show macros in {Assoc}ItemList
         ctx.scope.process_all_names(&mut |name, res| {
@@ -19,17 +34,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                 }
             }
             if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                acc.add_resolution(ctx, name, &res);
-            }
-        });
-        return;
-    }
-
-    if ctx.in_use_tree() {
-        // only show modules in a fresh UseTree
-        cov_mark::hit!(only_completes_modules_in_import);
-        ctx.scope.process_all_names(&mut |name, res| {
-            if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
                 acc.add_resolution(ctx, name, &res);
             }
         });
