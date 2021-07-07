@@ -109,6 +109,7 @@
 #![feature(iter_advance_by)]
 #![feature(iter_zip)]
 #![feature(layout_for_ptr)]
+#![feature(more_fallible_allocation_methods)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(new_uninit))]

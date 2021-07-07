@@ -34,10 +34,10 @@ use crate::alloc::{box_free, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
+use crate::collections::TryReserveError;
 use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
-#[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
 #[cfg(test)]
@@ -1203,11 +1203,23 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
         unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
+            match Self::try_allocate_for_slice(len) {
+                Ok(r) => r,
+                Err(e) => e.handle(),
+            }
+        }
+    }
+
+    /// Tries to allocate an `ArcInner<[T]>` with the given length.
+    unsafe fn try_allocate_for_slice(len: usize) -> Result<*mut ArcInner<[T]>, TryReserveError> {
+        unsafe {
+            let layout = Layout::array::<T>(len)?;
+            Self::try_allocate_for_layout(
+                layout,
+                |l| Global.allocate(l),
                 |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
             )
+            .map_err(|_| TryReserveErrorKind::AllocError { layout, non_exhaustive: () })
         }
     }
 
@@ -1217,11 +1229,23 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
         unsafe {
-            let ptr = Self::allocate_for_slice(v.len());
+            match Self::try_copy_from_slice(v) {
+                Ok(r) => r,
+                Err(e) => e.handle(),
+            }
+        }
+    }
+
+    /// Tries to copy elements from slice into newly allocated Arc<\[T\]>
+    ///
+    /// Unsafe because the caller must either take ownership or bind `T: Copy`.
+    unsafe fn try_copy_from_slice(v: &[T]) -> Result<Arc<[T]>, TryReserveError> {
+        unsafe {
+            let ptr = Self::try_allocate_for_slice(v.len())?;
 
             ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
 
-            Self::from_ptr(ptr)
+            Ok(Self::from_ptr(ptr))
         }
     }
 
@@ -2467,14 +2491,36 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Arc<[T]> {
+    fn from(v: Vec<T>) -> Arc<[T]> {
+        match Arc::try_from_vec(v) {
+            Ok(r) => r,
+            Err(e) => e.handle(),
+        }
+    }
+}
+
+// Avoid `error: specializing impl repeats parameter` implementing `TryFrom`.
+impl<T> Arc<[T]> {
+    /// Tries to allocate a reference-counted slice and move `v`'s items into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: Vec<i32> = vec![1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::try_from(unique).unwrap();
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[unstable(feature = "more_fallible_allocation_methods", issue = "86942")]
+    #[inline]
+    pub fn try_from_vec(mut v: Vec<T>) -> Result<Self, TryReserveError> {
         unsafe {
-            let arc = Arc::copy_from_slice(&v);
+            let arc = Arc::try_copy_from_slice(&v)?;
 
             // Allow the Vec to free its memory, but not destroy its contents
             v.set_len(0);
 
-            arc
+            Ok(arc)
         }
     }
 }
