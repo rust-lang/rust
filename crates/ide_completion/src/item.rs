@@ -437,6 +437,7 @@ impl Builder {
                 format_to!(label, " (use {})", original_path)
             }
         } else if let Some(trait_name) = self.trait_name {
+            insert_text = insert_text.or_else(|| Some(label.clone()));
             format_to!(label, " (as {})", trait_name)
         }
 
