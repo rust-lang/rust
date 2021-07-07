@@ -21,6 +21,11 @@ pub(crate) fn codegen_fn<'tcx>(
     debug_assert!(!instance.substs.needs_infer());
 
     let mir = tcx.instance_mir(instance.def);
+    let _mir_guard = crate::PrintOnPanic(|| {
+        let mut buf = Vec::new();
+        rustc_mir::util::write_mir_pretty(tcx, Some(instance.def_id()), &mut buf).unwrap();
+        String::from_utf8_lossy(&buf).into_owned()
+    });
 
     // Declare function
     let symbol_name = tcx.symbol_name(instance);
@@ -52,7 +57,6 @@ pub(crate) fn codegen_fn<'tcx>(
         module,
         tcx,
         pointer_type,
-        vtables: FxHashMap::default(),
         constants_cx: ConstantCx::new(),
 
         instance,
@@ -105,7 +109,14 @@ pub(crate) fn codegen_fn<'tcx>(
     let context = &mut cx.cached_context;
     context.func = func;
 
-    crate::pretty_clif::write_clif_file(tcx, "unopt", None, instance, &context, &clif_comments);
+    crate::pretty_clif::write_clif_file(
+        tcx,
+        "unopt",
+        module.isa(),
+        instance,
+        &context,
+        &clif_comments,
+    );
 
     // Verify function
     verify_func(tcx, &clif_comments, &context.func);
@@ -122,7 +133,13 @@ pub(crate) fn codegen_fn<'tcx>(
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
+        crate::optimize::optimize_function(
+            tcx,
+            module.isa(),
+            instance,
+            context,
+            &mut clif_comments,
+        );
     });
 
     // Define function
@@ -137,7 +154,7 @@ pub(crate) fn codegen_fn<'tcx>(
     crate::pretty_clif::write_clif_file(
         tcx,
         "opt",
-        Some(module.isa()),
+        module.isa(),
         instance,
         &context,
         &clif_comments,

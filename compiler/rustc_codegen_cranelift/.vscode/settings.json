@@ -1,7 +1,9 @@
 {
     // source for rustc_* is not included in the rust-src component; disable the errors about this
     "rust-analyzer.diagnostics.disabled": ["unresolved-extern-crate", "unresolved-macro-call"],
-    "rust-analyzer.assist.importMergeBehavior": "last",
+    "rust-analyzer.assist.importGranularity": "module",
+    "rust-analyzer.assist.importEnforceGranularity": true,
+    "rust-analyzer.assist.importPrefix": "crate",
     "rust-analyzer.cargo.runBuildScripts": true,
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
@@ -38,6 +40,23 @@
             "crates": [
                 {
                     "root_module": "./scripts/filter_profile.rs",
+                    "edition": "2018",
+                    "deps": [{ "crate": 1, "name": "std" }],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./build_sysroot/sysroot_src/library/std/src/lib.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
+        },
+        {
+            "roots": ["./y.rs"],
+            "crates": [
+                {
+                    "root_module": "./y.rs",
                     "edition": "2018",
                     "deps": [{ "crate": 1, "name": "std" }],
                     "cfg": [],
