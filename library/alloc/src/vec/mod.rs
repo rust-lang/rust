@@ -1023,11 +1023,9 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        // The capacity is never less than the length, and there's nothing to do when
-        // they are equal, so we can avoid the panic case in `RawVec::shrink_to_fit`
-        // by only calling it with a greater capacity.
-        if self.capacity() > self.len {
-            self.buf.shrink_to_fit(self.len);
+        match self.try_shrink_to_fit() {
+            Ok(r) => r,
+            Err(e) => e.handle(),
         }
     }
 
@@ -1110,13 +1108,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_boxed_slice(mut self) -> Box<[T], A> {
-        unsafe {
-            self.shrink_to_fit();
-            let me = ManuallyDrop::new(self);
-            let buf = ptr::read(&me.buf);
-            let len = me.len();
-            buf.into_box(len).assume_init()
+    pub fn into_boxed_slice(self) -> Box<[T], A> {
+        match self.try_into_boxed_slice() {
+            Ok(r) => r,
+            Err(e) => e.handle(),
         }
     }
 
@@ -1844,15 +1839,9 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.capacity() {
-            self.reserve(1);
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(self.len);
-            ptr::write(end, value);
-            self.len += 1;
+        match self.try_push(value) {
+            Ok(r) => r,
+            Err(e) => e.handle(),
         }
     }
 
@@ -1931,11 +1920,12 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn append_elements(&mut self, other: *const [T]) {
-        let count = unsafe { (*other).len() };
-        self.reserve(count);
-        let len = self.len();
-        unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
-        self.len += count;
+        unsafe {
+            match self.try_append_elements(other) {
+                Ok(r) => r,
+                Err(e) => e.handle(),
+            }
+        }
     }
 
     /// Tries to append elements to `Self` from other buffer.
@@ -2515,31 +2505,10 @@ impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
 impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
-    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
-        self.reserve(n);
-
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.next());
-                ptr = ptr.offset(1);
-                // Increment the length in every step in case next() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value.last());
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
+    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, value: E) {
+        match self.try_extend_with(n, value) {
+            Ok(r) => r,
+            Err(e) => e.handle(),
         }
     }
 
@@ -2886,27 +2855,10 @@ impl<T, A: Allocator> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     #[cfg(not(no_global_oom_handling))]
-    fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
-        // This is the case for a general iterator.
-        //
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iterator {
-        //          self.push(item);
-        //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-            unsafe {
-                ptr::write(self.as_mut_ptr().add(len), element);
-                // Since next() executes user code which can panic we have to bump the length
-                // after each step.
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
-            }
+    fn extend_desugared<I: Iterator<Item = T>>(&mut self, iterator: I) {
+        match self.try_extend_desugared(iterator) {
+            Ok(r) => r,
+            Err(e) => e.handle(),
         }
     }
 

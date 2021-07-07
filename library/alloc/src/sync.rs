@@ -1199,11 +1199,10 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
         unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
-            )
+            match Self::try_allocate_for_slice(len) {
+                Ok(r) => r,
+                Err(e) => e.handle(),
+            }
         }
     }
 
@@ -1226,11 +1225,10 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
         unsafe {
-            let ptr = Self::allocate_for_slice(v.len());
-
-            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
-
-            Self::from_ptr(ptr)
+            match Self::try_copy_from_slice(v) {
+                Ok(r) => r,
+                Err(e) => e.handle(),
+            }
         }
     }
 
@@ -2484,14 +2482,10 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Arc<[T]> {
-        unsafe {
-            let arc = Arc::copy_from_slice(&v);
-
-            // Allow the Vec to free its memory, but not destroy its contents
-            v.set_len(0);
-
-            arc
+    fn from(v: Vec<T>) -> Arc<[T]> {
+        match Arc::try_from_vec(v) {
+            Ok(r) => r,
+            Err(e) => e.handle(),
         }
     }
 }
