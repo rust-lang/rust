@@ -19,7 +19,10 @@ Language
 
 - [You can now cast between unsized slice types (and types which contain
   unsized slices) in `const fn`.][85078]
-- [TODO: stabilize member constraints][84701]
+- [You can now use multiple generic lifetimes with `impl Trait` where the
+   lifetimes don't explicitly outlive another.][84701] In code this means
+   that you can now have `impl Trait<'a, 'b>` where as before you could
+   only have `impl Trait<'a, 'b: 'a>`.
 
 Compiler
 -----------------------
@@ -44,7 +47,12 @@ Libraries
 - [`panic::panic_any` will now `#[track_caller]`.][85745]
 - [Added `OutOfMemory` as a variant of `io::ErrorKind`.][84744]
 - [ `proc_macro::Literal` now implements `FromStr`.][84717]
-- [TODO: Bump stdarch submodule][83278]
+- [The implementations of vendor intrinsics in core::arch have been
+   significantly refactored.][83278] The main user-visible changes are
+   a 50% reduction in the size of libcore.rlib and stricter validation
+   of constant operands passed to intrinsics. The latter is technically
+   a breaking change, but allows Rust to more closely match the C vendor
+   intrinsics API.
 
 Stabilized APIs
 ---------------
