@@ -616,7 +616,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         reasons
     }
 
-    /// Returns true if migration is needed for trait for the provided var_hir_id
+    /// Returns a tuple that contains the hir_id pointing to the use that resulted in the
+    /// corresponding place being captured and a String which contains the captured value's name
+    /// (i.e: a.b.c) if migration is needed for trait for the provided var_hir_id, otherwise returns None
     fn need_2229_migrations_for_trait(
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
@@ -693,12 +695,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// captured by the closure when `capture_disjoint_fields` is enabled and auto-traits
     /// differ between the root variable and the captured paths.
     ///
-    /// The output list would include a root variable if:
-    /// - It would have been captured into the closure when `capture_disjoint_fields` wasn't
-    ///   enabled, **and**
-    /// - It wasn't completely captured by the closure, **and**
-    /// - One of the paths captured does not implement all the auto-traits its root variable
-    ///   implements.
+    /// Returns a tuple containing a HashSet of traits that not implemented by the captured fields
+    /// of a root variables that has the provided var_hir_id and a HashSet of tuples that contains
+    /// the hir_id pointing to the use that resulted in the corresponding place being captured and
+    /// a String which contains the captured value's name (i.e: a.b.c) if migration is needed for
+    /// trait for the provided var_hir_id, otherwise returns None
     fn compute_2229_migrations_for_trait(
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
@@ -788,8 +789,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - It wasn't completely captured by the closure, **and**
     /// - One of the paths starting at this root variable, that is not captured needs Drop.
     ///
-    /// This function only returns true for significant drops. A type is considerent to have a
-    /// significant drop if it's Drop implementation is not annotated by `rustc_insignificant_dtor`.
+    /// This function only returns a HashSet of tuples for significant drops. The returned HashSet
+    /// of tuples contains  the hir_id pointing to the use that resulted in the corresponding place
+    /// being captured anda String which contains the captured value's name (i.e: a.b.c)
     fn compute_2229_migrations_for_drop(
         &self,
         closure_def_id: DefId,
@@ -871,8 +873,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - One of the paths captured does not implement all the auto-traits its root variable
     ///   implements.
     ///
-    /// Returns a tuple containing a vector of HirIds as well as a String containing the reason
-    /// why root variables whose HirId is contained in the vector should be fully captured.
+    /// Returns a tuple containing a vector of tuples of HirIds and a HashSet of tuples that contains
+    /// the hir_id pointing to the use that resulted in the corresponding place being captured and
+    /// a String which contains the captured value's name (i.e: a.b.c), as well as a String
+    /// containing the reason why root variables whose HirId is contained in the vector should
     fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
