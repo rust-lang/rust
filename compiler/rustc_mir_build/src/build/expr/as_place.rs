@@ -219,7 +219,6 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
 
             // We won't be building MIR if the closure wasn't local
             let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
-            let closure_span = tcx.hir().span(closure_hir_id);
 
             let (capture_index, capture) = if let Some(capture_details) =
                 find_capture_matching_projections(
@@ -230,7 +229,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                 ) {
                 capture_details
             } else {
-                if !enable_precise_capture(tcx, closure_span) {
+                if !tcx.features().capture_disjoint_fields {
                     bug!(
                         "No associated capture found for {:?}[{:#?}] even though \
                             capture_disjoint_fields isn't enabled",
@@ -782,10 +781,4 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.push_fake_read(bb, source_info, FakeReadCause::ForIndex, Place::from(*temp));
         }
     }
-}
-
-/// Precise capture is enabled if the feature gate `capture_disjoint_fields` is enabled or if
-/// user is using Rust Edition 2021 or higher.
-fn enable_precise_capture(tcx: TyCtxt<'_>, closure_span: Span) -> bool {
-    tcx.features().capture_disjoint_fields || closure_span.rust_2021()
 }
