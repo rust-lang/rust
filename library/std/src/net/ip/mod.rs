@@ -1,7 +1,3 @@
-// Tests for this module
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests;
-
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write as FmtWrite};
 use crate::hash;
@@ -9,6 +5,10 @@ use crate::io::Write as IoWrite;
 use crate::mem::transmute;
 use crate::sys::net::netc as c;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+
+// Tests for this module
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
 
 /// An IP address, either IPv4 or IPv6.
 ///
