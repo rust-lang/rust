@@ -677,7 +677,6 @@ impl Default for Options {
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
             lint_opts: Vec::new(),
-            force_warns: Vec::new(),
             lint_cap: None,
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
@@ -1172,20 +1171,20 @@ pub fn get_cmd_lint_options(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
     debugging_opts: &DebuggingOptions,
-) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>, Vec<String>) {
+) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
-    for level in [lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for (passed_arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
-            let arg_pos = if let lint::Forbid = level {
-                // HACK: forbid is always specified last, so it can't be overridden.
-                // FIXME: remove this once <https://github.com/rust-lang/rust/issues/70819> is
-                // fixed and `forbid` works as expected.
-                usize::MAX
-            } else {
-                passed_arg_pos
-            };
+    if !debugging_opts.unstable_options && matches.opt_present("force-warns") {
+        early_error(
+            error_format,
+            "the `-Z unstable-options` flag must also be passed to enable \
+            the flag `--force-warns=lints`",
+        );
+    }
+
+    for level in [lint::Allow, lint::Warn, lint::ForceWarn, lint::Deny, lint::Forbid] {
+        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {
@@ -1206,18 +1205,7 @@ pub fn get_cmd_lint_options(
             .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
     });
 
-    if !debugging_opts.unstable_options && matches.opt_present("force-warns") {
-        early_error(
-            error_format,
-            "the `-Z unstable-options` flag must also be passed to enable \
-            the flag `--force-warns=lints`",
-        );
-    }
-
-    let force_warns =
-        matches.opt_strs("force-warns").into_iter().map(|name| name.replace('-', "_")).collect();
-
-    (lint_opts, describe_lints, lint_cap, force_warns)
+    (lint_opts, describe_lints, lint_cap)
 }
 
 /// Parses the `--color` flag.
@@ -1955,7 +1943,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut debugging_opts = DebuggingOptions::build(matches, error_format);
-    let (lint_opts, describe_lints, lint_cap, force_warns) =
+    let (lint_opts, describe_lints, lint_cap) =
         get_cmd_lint_options(matches, error_format, &debugging_opts);
 
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
@@ -2129,7 +2117,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         optimize: opt_level,
         debuginfo,
         lint_opts,
-        force_warns,
         lint_cap,
         describe_lints,
         output_types,
