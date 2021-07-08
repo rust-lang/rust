@@ -304,6 +304,7 @@ More generally, always prefer types on the left
 &[T]         &Vec<T>
 &str         &String
 Option<&T>   &Option<T>
+&Path        &PathBuf
 ```
 
 **Rationale:** types on the left are strictly more general.
