@@ -38,7 +38,7 @@ impl ProcMacroProcessSrv {
 
         let (task_tx, task_rx) = bounded(0);
         let handle = jod_thread::Builder::new()
-            .name("ProcMacroClientThread".to_owned())
+            .name("ProcMacroClient".to_owned())
             .spawn(move || {
                 client_loop(task_rx, process);
             })
