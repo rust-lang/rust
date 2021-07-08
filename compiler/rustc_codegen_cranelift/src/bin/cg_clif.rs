@@ -6,8 +6,8 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_target;
 
-use std::panic;
 use std::lazy::SyncLazy;
+use std::panic;
 
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_interface::interface;

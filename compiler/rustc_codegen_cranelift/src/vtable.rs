@@ -1,10 +1,9 @@
 //! Codegen vtables and vtable accesses.
 //!
 //! See `rustc_codegen_ssa/src/meth.rs` for reference.
-// FIXME dedup this logic between miri, cg_llvm and cg_clif
 
+use crate::constant::data_id_for_alloc_id;
 use crate::prelude::*;
-use super::constant::pointer_for_allocation;
 
 fn vtable_memflags() -> MemFlags {
     let mut flags = MemFlags::trusted(); // A vtable access is always aligned and will never trap.
@@ -38,7 +37,7 @@ pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -
         pointer_ty(fx.tcx),
         vtable_memflags(),
         vtable,
-        (ty::COMMON_VTABLE_ENTRIES_SIZE * usize_size) as i32,
+        (ty::COMMON_VTABLE_ENTRIES_ALIGN * usize_size) as i32,
     )
 }
 
@@ -69,16 +68,12 @@ pub(crate) fn get_vtable<'tcx>(
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let vtable_ptr = if let Some(vtable_ptr) = fx.vtables.get(&(ty, trait_ref)) {
-        *vtable_ptr
-    } else {
-        let vtable_alloc_id = fx.tcx.vtable_allocation(ty, trait_ref);
-        let vtable_allocation = fx.tcx.global_alloc(vtable_alloc_id).unwrap_memory();
-        let vtable_ptr = pointer_for_allocation(fx, vtable_allocation);
-
-        fx.vtables.insert((ty, trait_ref), vtable_ptr);
-        vtable_ptr
-    };
-
-    vtable_ptr.get_addr(fx)
+    let alloc_id = fx.tcx.vtable_allocation(ty, trait_ref);
+    let data_id =
+        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, Mutability::Not);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    if fx.clif_comments.enabled() {
+        fx.add_comment(local_data_id, format!("vtable: {:?}", alloc_id));
+    }
+    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }

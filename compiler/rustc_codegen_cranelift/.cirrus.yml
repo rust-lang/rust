@@ -14,7 +14,7 @@ task:
     - . $HOME/.cargo/env
     - git config --global user.email "user@example.com"
     - git config --global user.name "User"
-    - ./prepare.sh
+    - ./y.rs prepare
   test_script:
     - . $HOME/.cargo/env
     - # Enable backtraces for easier debugging

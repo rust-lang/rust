@@ -254,6 +254,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "libloading",
     "log",
     "mach",
+    "memchr",
     "object",
     "regalloc",
     "region",
