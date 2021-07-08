@@ -25,9 +25,8 @@ impl InferenceContext<'_> {
         };
 
         // Deduction from where-clauses in scope, as well as fn-pointer coercion are handled here.
-        if let Ok(res) = self.coerce(closure_ty, &expected_ty) {
-            self.write_expr_adj(closure_expr, res.value.0);
-        }
+        let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
+
         // Deduction based on the expected `dyn Fn` is done separately.
         if let TyKind::Dyn(dyn_ty) = expected_ty.kind(&Interner) {
             if let Some(sig) = self.deduce_sig_from_dyn_ty(dyn_ty) {

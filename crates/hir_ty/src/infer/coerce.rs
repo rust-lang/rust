@@ -10,7 +10,7 @@ use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 
 use crate::{
     autoderef,
-    infer::{Adjust, Adjustment, AutoBorrow, PointerCast, TypeMismatch},
+    infer::{Adjust, Adjustment, AutoBorrow, InferResult, PointerCast, TypeMismatch},
     static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Interner, Solution, Substitution, Ty,
     TyBuilder, TyExt, TyKind,
 };
@@ -36,23 +36,25 @@ fn success(
 ) -> CoerceResult {
     Ok(InferOk { goals, value: (adj, target) })
 }
+#[derive(Clone, Debug)]
+pub(super) struct CoerceMany {
+    expected_ty: Ty,
+}
 
-impl<'a> InferenceContext<'a> {
-    /// Unify two types, but may coerce the first one to the second one
-    /// using "implicit coercion rules" if needed.
-    pub(super) fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> CoerceResult {
-        let from_ty = self.resolve_ty_shallow(from_ty);
-        let to_ty = self.resolve_ty_shallow(to_ty);
-        match self.coerce_inner(from_ty, &to_ty) {
-            Ok(InferOk { value, goals }) => {
-                self.table.register_infer_ok(InferOk { value: (), goals });
-                Ok(InferOk { value, goals: Vec::new() })
-            }
-            Err(e) => {
-                // FIXME deal with error
-                Err(e)
-            }
-        }
+impl CoerceMany {
+    pub(super) fn new(expected: Ty) -> Self {
+        CoerceMany { expected_ty: expected }
+    }
+
+    pub(super) fn once(
+        ctx: &mut InferenceContext<'_>,
+        expected: Ty,
+        expr: Option<ExprId>,
+        expr_ty: &Ty,
+    ) -> Ty {
+        let mut this = CoerceMany::new(expected);
+        this.coerce(ctx, expr, expr_ty);
+        this.complete()
     }
 
     /// Merge two types from different branches, with possible coercion.
@@ -62,51 +64,88 @@ impl<'a> InferenceContext<'a> {
     ///    coerce both to function pointers;
     ///  - if we were concerned with lifetime subtyping, we'd need to look for a
     ///    least upper bound.
-    pub(super) fn coerce_merge_branch(&mut self, id: Option<ExprId>, ty1: &Ty, ty2: &Ty) -> Ty {
-        // TODO
-        let ty1 = self.resolve_ty_shallow(ty1);
-        let ty2 = self.resolve_ty_shallow(ty2);
+    pub(super) fn coerce(
+        &mut self,
+        ctx: &mut InferenceContext<'_>,
+        expr: Option<ExprId>,
+        expr_ty: &Ty,
+    ) {
+        let expr_ty = ctx.resolve_ty_shallow(expr_ty);
+        self.expected_ty = ctx.resolve_ty_shallow(&self.expected_ty);
+
         // Special case: two function types. Try to coerce both to
         // pointers to have a chance at getting a match. See
         // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
-        let sig = match (ty1.kind(&Interner), ty2.kind(&Interner)) {
+        let sig = match (self.expected_ty.kind(&Interner), expr_ty.kind(&Interner)) {
             (TyKind::FnDef(..) | TyKind::Closure(..), TyKind::FnDef(..) | TyKind::Closure(..)) => {
                 // FIXME: we're ignoring safety here. To be more correct, if we have one FnDef and one Closure,
                 // we should be coercing the closure to a fn pointer of the safety of the FnDef
                 cov_mark::hit!(coerce_fn_reification);
-                let sig = ty1.callable_sig(self.db).expect("FnDef without callable sig");
+                let sig =
+                    self.expected_ty.callable_sig(ctx.db).expect("FnDef without callable sig");
                 Some(sig)
             }
             _ => None,
         };
         if let Some(sig) = sig {
             let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(&Interner);
-            let result1 = self.coerce_inner(ty1.clone(), &target_ty);
-            let result2 = self.coerce_inner(ty2.clone(), &target_ty);
+            let result1 = ctx.coerce_inner(self.expected_ty.clone(), &target_ty);
+            let result2 = ctx.coerce_inner(expr_ty.clone(), &target_ty);
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
-                self.table.register_infer_ok(result1);
-                self.table.register_infer_ok(result2);
-                return target_ty;
+                ctx.table.register_infer_ok(result1);
+                ctx.table.register_infer_ok(result2);
+                return self.expected_ty = target_ty;
             }
         }
 
-        // It might not seem like it, but order is important here: ty1 is our
-        // "previous" type, ty2 is the "new" one being added. If the previous
+        // It might not seem like it, but order is important here: If the expected
         // type is a type variable and the new one is `!`, trying it the other
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
-        if self.coerce(&ty2, &ty1).is_ok() {
-            ty1
-        } else if self.coerce(&ty1, &ty2).is_ok() {
-            ty2
+        if ctx.coerce(expr, &expr_ty, &self.expected_ty).is_ok() {
+            /* self.expected_ty is already correct */
+        } else if ctx.coerce(expr, &self.expected_ty, &expr_ty).is_ok() {
+            self.expected_ty = expr_ty;
         } else {
-            if let Some(id) = id {
-                self.result
-                    .type_mismatches
-                    .insert(id.into(), TypeMismatch { expected: ty1.clone(), actual: ty2 });
+            if let Some(id) = expr {
+                ctx.result.type_mismatches.insert(
+                    id.into(),
+                    TypeMismatch { expected: self.expected_ty.clone(), actual: expr_ty },
+                );
             }
             cov_mark::hit!(coerce_merge_fail_fallback);
-            ty1
+            /* self.expected_ty is already correct */
+        }
+    }
+
+    pub(super) fn complete(self) -> Ty {
+        self.expected_ty
+    }
+}
+
+impl<'a> InferenceContext<'a> {
+    /// Unify two types, but may coerce the first one to the second one
+    /// using "implicit coercion rules" if needed.
+    pub(super) fn coerce(
+        &mut self,
+        expr: Option<ExprId>,
+        from_ty: &Ty,
+        to_ty: &Ty,
+    ) -> InferResult<Ty> {
+        let from_ty = self.resolve_ty_shallow(from_ty);
+        let to_ty = self.resolve_ty_shallow(to_ty);
+        match self.coerce_inner(from_ty, &to_ty) {
+            Ok(InferOk { value: (adjustments, ty), goals }) => {
+                if let Some(expr) = expr {
+                    self.write_expr_adj(expr, adjustments);
+                }
+                self.table.register_infer_ok(InferOk { value: (), goals });
+                Ok(InferOk { value: ty, goals: Vec::new() })
+            }
+            Err(e) => {
+                // FIXME deal with error
+                Err(e)
+            }
         }
     }
 
@@ -189,7 +228,6 @@ impl<'a> InferenceContext<'a> {
 
         // Check that the types which they point at are compatible.
         let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(&Interner);
-        // self.table.try_unify(&from_raw, to_ty);
 
         // Although references and unsafe ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
@@ -518,15 +556,13 @@ impl<'a> InferenceContext<'a> {
             // FIXME: should we accept ambiguous results here?
             _ => return Err(TypeError),
         };
-        // TODO: this is probably wrong?
-        let coerce_target = self.table.new_type_var();
-        self.unify_and(&coerce_target, to_ty, |target| {
-            let unsize = Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target };
-            match reborrow {
-                None => vec![unsize],
-                Some((ref deref, ref autoref)) => vec![deref.clone(), autoref.clone(), unsize],
-            }
-        })
+        let unsize =
+            Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target: to_ty.clone() };
+        let adjustments = match reborrow {
+            None => vec![unsize],
+            Some((deref, autoref)) => vec![deref, autoref, unsize],
+        };
+        success(adjustments, to_ty.clone(), vec![])
     }
 }
 
