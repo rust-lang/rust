@@ -40,5 +40,5 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \
            # Runs checks to ensure that there are no ES5 issues in our JS code.
-           es-check es5 ../src/librustdoc/html/static/*.js && \
-           eslint ../src/librustdoc/html/static/*.js
+           es-check es5 ../src/librustdoc/html/static/js/*.js && \
+           eslint ../src/librustdoc/html/static/js/*.js
