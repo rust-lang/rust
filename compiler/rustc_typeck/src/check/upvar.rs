@@ -670,7 +670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
-            tcx.lang_items().send_trait(),
+            tcx.get_diagnostic_item(sym::send_trait),
         ) {
             auto_trait_reasons.insert("`Send`");
         }
@@ -686,7 +686,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
-            tcx.lang_items().unwind_safe_trait(),
+            tcx.get_diagnostic_item(sym::unwind_safe_trait),
         ) {
             auto_trait_reasons.insert("`UnwindSafe`");
         }
@@ -694,7 +694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.need_2229_migrations_for_trait(
             min_captures,
             var_hir_id,
-            tcx.lang_items().ref_unwind_safe_trait(),
+            tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
         ) {
             auto_trait_reasons.insert("`RefUnwindSafe`");
         }

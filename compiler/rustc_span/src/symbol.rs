@@ -13,7 +13,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::{Edition, Span, DUMMY_SP, SESSION_GLOBALS};
+use crate::{with_session_globals, Edition, Span, DUMMY_SP};
 
 #[cfg(test)]
 mod tests;
@@ -947,7 +947,7 @@ symbols! {
         receiver,
         recursion_limit,
         reexport_test_harness_main,
-        ref_unwind_safe,
+        ref_unwind_safe_trait,
         reference,
         reflect,
         reg,
@@ -1073,7 +1073,6 @@ symbols! {
         self_in_typedefs,
         self_struct_ctor,
         semitransparent,
-        send,
         send_trait,
         shl,
         shl_assign,
@@ -1299,7 +1298,7 @@ symbols! {
         unused_qualifications,
         unwind,
         unwind_attributes,
-        unwind_safe,
+        unwind_safe_trait,
         unwrap,
         unwrap_or,
         use_extern_macros,
@@ -1790,7 +1789,7 @@ impl Ident {
 
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
+    with_session_globals(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
 /// An alternative to [`Symbol`], useful when the chars within the symbol need to

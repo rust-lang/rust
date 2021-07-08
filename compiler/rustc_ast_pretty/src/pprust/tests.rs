@@ -1,8 +1,8 @@
 use super::*;
 
 use rustc_ast as ast;
+use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::Ident;
-use rustc_span::with_default_session_globals;
 
 fn fun_to_string(
     decl: &ast::FnDecl,
@@ -24,7 +24,7 @@ fn variant_to_string(var: &ast::Variant) -> String {
 
 #[test]
 fn test_fun_to_string() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let abba_ident = Ident::from_str("abba");
 
         let decl =
@@ -39,7 +39,7 @@ fn test_fun_to_string() {
 
 #[test]
 fn test_variant_to_string() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let ident = Ident::from_str("principal_skinner");
 
         let var = ast::Variant {

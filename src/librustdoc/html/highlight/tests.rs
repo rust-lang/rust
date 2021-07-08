@@ -1,8 +1,8 @@
 use super::write_code;
 use crate::html::format::Buffer;
 use expect_test::expect_file;
+use rustc_span::create_default_session_globals_then;
 use rustc_span::edition::Edition;
-use rustc_span::with_default_session_globals;
 
 const STYLE: &str = r#"
 <style>
@@ -18,7 +18,7 @@ const STYLE: &str = r#"
 
 #[test]
 fn test_html_highlighting() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let src = include_str!("fixtures/sample.rs");
         let html = {
             let mut out = Buffer::new();
@@ -31,7 +31,7 @@ fn test_html_highlighting() {
 
 #[test]
 fn test_dos_backline() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let src = "pub fn foo() {\r\n\
     println!(\"foo\");\r\n\
 }\r\n";

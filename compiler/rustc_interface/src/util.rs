@@ -150,7 +150,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     crate::callbacks::setup_callbacks();
 
     let main_handler = move || {
-        rustc_span::with_session_globals(edition, || {
+        rustc_span::create_session_globals_then(edition, || {
             io::set_output_capture(stderr.clone());
             f()
         })
@@ -171,12 +171,13 @@ unsafe fn handle_deadlock() {
     rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
     let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
 
-    let session_globals = rustc_span::SESSION_GLOBALS.with(|sg| sg as *const _);
+    let session_globals = rustc_span::with_session_globals(|sg| sg as *const _);
     let session_globals = &*session_globals;
     thread::spawn(move || {
         tls::enter_context(icx, |_| {
-            rustc_span::SESSION_GLOBALS
-                .set(session_globals, || tls::with(|tcx| tcx.queries.deadlock(tcx, &registry)))
+            rustc_span::set_session_globals_then(session_globals, || {
+                tls::with(|tcx| tcx.queries.deadlock(tcx, &registry))
+            })
         });
     });
 }
@@ -203,13 +204,13 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
 
     let with_pool = move |pool: &rayon::ThreadPool| pool.install(f);
 
-    rustc_span::with_session_globals(edition, || {
-        rustc_span::SESSION_GLOBALS.with(|session_globals| {
+    rustc_span::create_session_globals_then(edition, || {
+        rustc_span::with_session_globals(|session_globals| {
             // The main handler runs for each Rayon worker thread and sets up
             // the thread local rustc uses. `session_globals` is captured and set
             // on the new threads.
             let main_handler = move |thread: rayon::ThreadBuilder| {
-                rustc_span::SESSION_GLOBALS.set(session_globals, || {
+                rustc_span::set_session_globals_then(session_globals, || {
                     io::set_output_capture(stderr.clone());
                     thread.run()
                 })

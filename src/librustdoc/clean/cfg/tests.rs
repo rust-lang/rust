@@ -2,8 +2,8 @@ use super::*;
 
 use rustc_ast::attr;
 use rustc_ast::Path;
+use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::with_default_session_globals;
 use rustc_span::DUMMY_SP;
 
 fn word_cfg(s: &str) -> Cfg {
@@ -52,7 +52,7 @@ macro_rules! dummy_meta_item_list {
 
 #[test]
 fn test_cfg_not() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         assert_eq!(!Cfg::False, Cfg::True);
         assert_eq!(!Cfg::True, Cfg::False);
         assert_eq!(!word_cfg("test"), Cfg::Not(Box::new(word_cfg("test"))));
@@ -70,7 +70,7 @@ fn test_cfg_not() {
 
 #[test]
 fn test_cfg_and() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let mut x = Cfg::False;
         x &= Cfg::True;
         assert_eq!(x, Cfg::False);
@@ -154,7 +154,7 @@ fn test_cfg_and() {
 
 #[test]
 fn test_cfg_or() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let mut x = Cfg::True;
         x |= Cfg::False;
         assert_eq!(x, Cfg::True);
@@ -238,7 +238,7 @@ fn test_cfg_or() {
 
 #[test]
 fn test_parse_ok() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let mi = dummy_meta_item_word("all");
         assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
@@ -271,7 +271,7 @@ fn test_parse_ok() {
 
 #[test]
 fn test_parse_err() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let mi = attr::mk_name_value_item(Ident::from_str("foo"), LitKind::Bool(false), DUMMY_SP);
         assert!(Cfg::parse(&mi).is_err());
 
@@ -303,7 +303,7 @@ fn test_parse_err() {
 
 #[test]
 fn test_render_short_html() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         assert_eq!(word_cfg("unix").render_short_html(), "Unix");
         assert_eq!(name_value_cfg("target_os", "macos").render_short_html(), "macOS");
         assert_eq!(name_value_cfg("target_pointer_width", "16").render_short_html(), "16-bit");
@@ -358,7 +358,7 @@ fn test_render_short_html() {
 
 #[test]
 fn test_render_long_html() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         assert_eq!(
             word_cfg("unix").render_long_html(),
             "This is supported on <strong>Unix</strong> only."
@@ -442,7 +442,7 @@ fn test_render_long_html() {
 fn test_simplify_with() {
     // This is a tiny subset of things that could be simplified, but it likely covers 90% of
     // real world usecases well.
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let foo = word_cfg("foo");
         let bar = word_cfg("bar");
         let baz = word_cfg("baz");
