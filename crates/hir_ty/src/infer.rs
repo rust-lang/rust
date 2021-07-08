@@ -141,7 +141,46 @@ impl Default for InternedStandardTypes {
         InternedStandardTypes { unknown: TyKind::Error.intern(&Interner) }
     }
 }
-
+/// Represents coercing a value to a different type of value.
+///
+/// We transform values by following a number of `Adjust` steps in order.
+/// See the documentation on variants of `Adjust` for more details.
+///
+/// Here are some common scenarios:
+///
+/// 1. The simplest cases are where a pointer is not adjusted fat vs thin.
+///    Here the pointer will be dereferenced N times (where a dereference can
+///    happen to raw or borrowed pointers or any smart pointer which implements
+///    Deref, including Box<_>). The types of dereferences is given by
+///    `autoderefs`. It can then be auto-referenced zero or one times, indicated
+///    by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
+///    `false`.
+///
+/// 2. A thin-to-fat coercion involves unsizing the underlying data. We start
+///    with a thin pointer, deref a number of times, unsize the underlying data,
+///    then autoref. The 'unsize' phase may change a fixed length array to a
+///    dynamically sized one, a concrete object to a trait object, or statically
+///    sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
+///    represented by:
+///
+///    ```
+///    Deref(None) -> [i32; 4],
+///    Borrow(AutoBorrow::Ref) -> &[i32; 4],
+///    Unsize -> &[i32],
+///    ```
+///
+///    Note that for a struct, the 'deep' unsizing of the struct is not recorded.
+///    E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
+///    The autoderef and -ref are the same as in the above example, but the type
+///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
+///    the underlying conversions from `[i32; 4]` to `[i32]`.
+///
+/// 3. Coercing a `Box<T>` to `Box<dyn Trait>` is an interesting special case. In
+///    that case, we have the pointer we need coming in, so there are no
+///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
+///    At some point, of course, `Box` should move out of the compiler, in which
+///    case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
+///    Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Adjustment {
     pub kind: Adjust,
@@ -152,34 +191,25 @@ pub struct Adjustment {
 pub enum Adjust {
     /// Go from ! to any type.
     NeverToAny,
-
     /// Dereference once, producing a place.
     Deref(Option<OverloadedDeref>),
-
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow),
-
     Pointer(PointerCast),
 }
 
-// impl fmt::Display for Adjust {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self {
-//             Adjust::NeverToAny => write!(f, "NeverToAny"),
-//             Adjust::Deref(_) => write!(f, "Deref"), // FIXME
-//             Adjust::Borrow(AutoBorrow::Ref(mt)) => write!(f, "BorrowRef{:?}", mt),
-//             Adjust::Borrow(AutoBorrow::RawPtr(mt)) => write!(f, "BorrowRawPtr{:?}", mt),
-//             Adjust::Pointer(cast) => write!(f, "PtrCast{:?}", cast),
-//         }
-//     }
-// }
-
+/// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`
+/// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
+/// The target type is `U` in both cases, with the region and mutability
+/// being those shared by both the receiver and the returned reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OverloadedDeref(Mutability);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AutoBorrow {
+    /// Converts from T to &T.
     Ref(Mutability),
+    /// Converts from T to *T.
     RawPtr(Mutability),
 }
 
