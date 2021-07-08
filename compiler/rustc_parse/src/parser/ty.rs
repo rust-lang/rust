@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
         let and_span = self.prev_token.span;
         let mut opt_lifetime =
             if self.check_lifetime() { Some(self.expect_lifetime()) } else { None };
-        let mutbl = self.parse_mutability();
+        let mut mutbl = self.parse_mutability();
         if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
             // it to be followed by a plus, but we disallow plus in the pointee type.
@@ -417,6 +417,26 @@ impl<'a> Parser<'a> {
 
                 opt_lifetime = Some(self.expect_lifetime());
             }
+        } else if self.token.is_keyword(kw::Dyn)
+            && mutbl == Mutability::Not
+            && self.look_ahead(1, |t| t.is_keyword(kw::Mut))
+        {
+            // We have `&dyn mut ...`, which is invalid and should be `&mut dyn ...`.
+            let span = and_span.to(self.look_ahead(1, |t| t.span));
+            let mut err = self.struct_span_err(span, "`mut` must precede `dyn`");
+            err.span_suggestion(
+                span,
+                "place `mut` before `dyn`",
+                "&mut dyn".to_string(),
+                Applicability::MachineApplicable,
+            );
+            err.emit();
+
+            // Recovery
+            mutbl = Mutability::Mut;
+            let (dyn_tok, dyn_tok_sp) = (self.token.clone(), self.token_spacing);
+            self.bump();
+            self.bump_with((dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
         Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }))
