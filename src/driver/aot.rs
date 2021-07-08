@@ -4,7 +4,6 @@
 use std::path::PathBuf;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -299,8 +298,7 @@ pub(crate) fn run_aot(
             allocator_module,
             metadata_module,
             metadata,
-            linker_info: LinkerInfo::new(tcx, target_cpu),
-            crate_info: CrateInfo::new(tcx),
+            crate_info: CrateInfo::new(tcx, target_cpu),
         },
         work_products,
     ))

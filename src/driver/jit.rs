@@ -66,7 +66,7 @@ fn create_jit_module<'tcx>(
     backend_config: &BackendConfig,
     hotswap: bool,
 ) -> (JITModule, CodegenCx<'tcx>) {
-    let crate_info = CrateInfo::new(tcx);
+    let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
     let imported_symbols = load_imported_symbols_for_jit(tcx.sess, crate_info);
 
     let isa = crate::build_isa(tcx.sess, backend_config);
