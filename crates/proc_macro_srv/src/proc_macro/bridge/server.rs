@@ -182,7 +182,7 @@ impl ExecutionStrategy for CrossThread1 {
         let (res_tx, res_rx) = channel();
 
         let join_handle = thread::Builder::new()
-            .name("DispatchThread".to_owned())
+            .name("Dispatch".to_owned())
             .spawn(move || {
                 let mut dispatch = |b| {
                     req_tx.send(b).unwrap();
@@ -231,7 +231,7 @@ impl ExecutionStrategy for CrossThread2 {
         let server_thread = thread::current();
         let state2 = state.clone();
         let join_handle = thread::Builder::new()
-            .name("ServerThread".to_owned())
+            .name("ProcMacroServer".to_owned())
             .spawn(move || {
                 let mut dispatch = |b| {
                     *state2.lock().unwrap() = State::Req(b);

@@ -32,7 +32,7 @@ impl loader::Handle for NotifyHandle {
         let actor = NotifyActor::new(sender);
         let (sender, receiver) = unbounded::<Message>();
         let thread = jod_thread::Builder::new()
-            .name("LoaderThread".to_owned())
+            .name("VfsLoader".to_owned())
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
         NotifyHandle { sender, thread }
