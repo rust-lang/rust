@@ -3,7 +3,6 @@
 use std::{
     convert::{TryFrom, TryInto},
     ffi::{OsStr, OsString},
-    fmt,
     io::{self, BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
@@ -17,15 +16,10 @@ use crate::{
     rpc::{ListMacrosResult, ListMacrosTask, ProcMacroKind},
 };
 
+#[derive(Debug)]
 pub(crate) struct ProcMacroProcessSrv {
     process: Mutex<Process>,
     stdio: Mutex<(ChildStdin, BufReader<ChildStdout>)>,
-}
-
-impl fmt::Debug for ProcMacroProcessSrv {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ProcMacroProcessSrv").field("process", &self.process).finish()
-    }
 }
 
 impl ProcMacroProcessSrv {
