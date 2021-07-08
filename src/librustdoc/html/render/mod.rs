@@ -1027,7 +1027,7 @@ fn render_assoc_items(
                 write!(
                     w,
                     "<h2 id=\"deref-methods\" class=\"small-section-header\">\
-                         Methods from {trait_}&lt;Target = {type_}&gt;\
+                         <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
                          <a href=\"#deref-methods\" class=\"anchor\"></a>\
                      </h2>",
                     trait_ = trait_.print(cx),
