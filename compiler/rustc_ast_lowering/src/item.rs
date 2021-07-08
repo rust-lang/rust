@@ -306,7 +306,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     let sig = hir::FnSig {
                         decl,
-                        header: this.lower_fn_header(header, fn_sig_span, id),
+                        header: this.lower_fn_header(header),
                         span: fn_sig_span,
                     };
                     hir::ItemKind::Fn(sig, generics, body_id)
@@ -318,17 +318,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
             },
-            ItemKind::ForeignMod(ref fm) => {
-                if fm.abi.is_none() {
-                    self.maybe_lint_missing_abi(span, id, abi::Abi::C { unwind: false });
-                }
-                hir::ItemKind::ForeignMod {
-                    abi: fm.abi.map_or(abi::Abi::C { unwind: false }, |abi| self.lower_abi(abi)),
-                    items: self
-                        .arena
-                        .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
-                }
-            }
+            ItemKind::ForeignMod(ref fm) => hir::ItemKind::ForeignMod {
+                abi: fm.abi.map_or(abi::Abi::FALLBACK, |abi| self.lower_abi(abi)),
+                items: self
+                    .arena
+                    .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
+            },
             ItemKind::GlobalAsm(ref asm) => {
                 hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm))
             }
@@ -833,7 +828,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, None)) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) =
-                    self.lower_method_sig(generics, sig, trait_item_def_id, false, None, i.id);
+                    self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)))
             }
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, Some(ref body))) => {
@@ -846,7 +841,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     trait_item_def_id,
                     false,
                     asyncness.opt_return_id(),
-                    i.id,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)))
             }
@@ -911,7 +905,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     impl_item_def_id,
                     impl_trait_return_allow,
                     asyncness.opt_return_id(),
-                    i.id,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1305,9 +1298,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_def_id: LocalDefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
-        id: NodeId,
     ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
-        let header = self.lower_fn_header(sig.header, sig.span, id);
+        let header = self.lower_fn_header(sig.header);
         let (generics, decl) = self.add_in_band_defs(
             generics,
             fn_def_id,
@@ -1324,12 +1316,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         (generics, hir::FnSig { header, decl, span: sig.span })
     }
 
-    fn lower_fn_header(&mut self, h: FnHeader, span: Span, id: NodeId) -> hir::FnHeader {
+    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
         hir::FnHeader {
             unsafety: self.lower_unsafety(h.unsafety),
             asyncness: self.lower_asyncness(h.asyncness),
             constness: self.lower_constness(h.constness),
-            abi: self.lower_extern(h.ext, span, id),
+            abi: self.lower_extern(h.ext),
         }
     }
 
@@ -1340,13 +1332,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    pub(super) fn lower_extern(&mut self, ext: Extern, span: Span, id: NodeId) -> abi::Abi {
+    pub(super) fn lower_extern(&mut self, ext: Extern) -> abi::Abi {
         match ext {
             Extern::None => abi::Abi::Rust,
-            Extern::Implicit => {
-                self.maybe_lint_missing_abi(span, id, abi::Abi::C { unwind: false });
-                abi::Abi::C { unwind: false }
-            }
+            Extern::Implicit => abi::Abi::FALLBACK,
             Extern::Explicit(abi) => self.lower_abi(abi),
         }
     }

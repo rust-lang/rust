@@ -15,11 +15,12 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
+use rustc_session::lint::builtin::{MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use rustc_target::spec::abi;
 use std::mem;
 use std::ops::DerefMut;
 
@@ -877,6 +878,26 @@ impl<'a> AstValidator<'a> {
             _ => {}
         }
     }
+
+    fn maybe_lint_missing_abi(&mut self, span: Span, id: NodeId) {
+        // FIXME(davidtwco): This is a hack to detect macros which produce spans of the
+        // call site which do not have a macro backtrace. See #61963.
+        let is_macro_callsite = self
+            .session
+            .source_map()
+            .span_to_snippet(span)
+            .map(|snippet| snippet.starts_with("#["))
+            .unwrap_or(true);
+        if !is_macro_callsite {
+            self.lint_buffer.buffer_lint_with_diagnostic(
+                MISSING_ABI,
+                id,
+                span,
+                "extern declarations without an explicit ABI are deprecated",
+                BuiltinLintDiagnostics::MissingAbi(span, abi::Abi::FALLBACK),
+            )
+        }
+    }
 }
 
 /// Checks that generic parameters are in the correct order,
@@ -1111,7 +1132,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.error_item_without_body(item.span, "function", msg, " { <body> }");
                 }
             }
-            ItemKind::ForeignMod(ForeignMod { unsafety, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { abi, unsafety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.invalid_visibility(
                     &item.vis,
@@ -1119,6 +1140,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 );
                 if let Unsafe::Yes(span) = unsafety {
                     self.err_handler().span_err(span, "extern block cannot be declared unsafe");
+                }
+                if abi.is_none() {
+                    self.maybe_lint_missing_abi(item.span, item.id);
                 }
                 visit::walk_item(self, item);
                 self.extern_mod = old_item;
@@ -1457,6 +1481,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 .span_label(*aspan, "`async` because of this")
                 .span_label(span, "") // Point at the fn header.
                 .emit();
+        }
+
+        if let Some(FnHeader { ext: Extern::Implicit, .. }) = fk.header() {
+            self.maybe_lint_missing_abi(span, id);
         }
 
         // Functions without bodies cannot have patterns.
