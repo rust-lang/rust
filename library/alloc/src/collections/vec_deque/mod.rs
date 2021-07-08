@@ -496,7 +496,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let vector: VecDeque<u32> = VecDeque::new();
     /// ```
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(alloc: A) -> VecDeque<T, A> {
         VecDeque::with_capacity_in(INITIAL_CAPACITY, alloc)
     }
@@ -510,7 +510,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
