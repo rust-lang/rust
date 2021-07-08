@@ -2,9 +2,10 @@
 
 set -e
 
-source build/config.sh
+source scripts/config.sh
 source scripts/ext_config.sh
-MY_RUSTC="$RUSTC $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
+export RUSTC=false # ensure that cg_llvm isn't accidentally used
+MY_RUSTC="$(pwd)/build/bin/cg_clif $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 function no_sysroot_tests() {
     echo "[BUILD] mini_core"
@@ -46,7 +47,7 @@ function base_sysroot_tests() {
         $MY_RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
 
         echo "[JIT-lazy] std_example"
-        $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --cfg lazy_jit --target "$HOST_TRIPLE"
+        $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
     else
         echo "[JIT] std_example (skipped)"
     fi
@@ -75,63 +76,64 @@ function base_sysroot_tests() {
 
 function extended_sysroot_tests() {
     pushd rand
-    cargo clean
+    ../build/cargo clean
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[TEST] rust-random/rand"
-        ../build/cargo.sh test --workspace
+        ../build/cargo test --workspace
     else
         echo "[AOT] rust-random/rand"
-        ../build/cargo.sh build --workspace --target $TARGET_TRIPLE --tests
+        ../build/cargo build --workspace --target $TARGET_TRIPLE --tests
     fi
     popd
 
     pushd simple-raytracer
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[BENCH COMPILE] ebobby/simple-raytracer"
-        hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "cargo clean" \
+        hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "../build/cargo clean" \
         "RUSTC=rustc RUSTFLAGS='' cargo build" \
-        "../build/cargo.sh build"
+        "../build/cargo build"
 
         echo "[BENCH RUN] ebobby/simple-raytracer"
         cp ./target/debug/main ./raytracer_cg_clif
         hyperfine --runs "${RUN_RUNS:-10}" ./raytracer_cg_llvm ./raytracer_cg_clif
     else
+        ../build/cargo clean
         echo "[BENCH COMPILE] ebobby/simple-raytracer (skipped)"
         echo "[COMPILE] ebobby/simple-raytracer"
-        ../build/cargo.sh build --target $TARGET_TRIPLE
+        ../build/cargo build --target $TARGET_TRIPLE
         echo "[BENCH RUN] ebobby/simple-raytracer (skipped)"
     fi
     popd
 
     pushd build_sysroot/sysroot_src/library/core/tests
     echo "[TEST] libcore"
-    cargo clean
+    ../../../../../build/cargo clean
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
-        ../../../../../build/cargo.sh test
+        ../../../../../build/cargo test
     else
-        ../../../../../build/cargo.sh build --target $TARGET_TRIPLE --tests
+        ../../../../../build/cargo build --target $TARGET_TRIPLE --tests
     fi
     popd
 
     pushd regex
     echo "[TEST] rust-lang/regex example shootout-regex-dna"
-    cargo clean
+    ../build/cargo clean
     export RUSTFLAGS="$RUSTFLAGS --cap-lints warn" # newer aho_corasick versions throw a deprecation warning
     # Make sure `[codegen mono items] start` doesn't poison the diff
-    ../build/cargo.sh build --example shootout-regex-dna --target $TARGET_TRIPLE
+    ../build/cargo build --example shootout-regex-dna --target $TARGET_TRIPLE
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         cat examples/regexdna-input.txt \
-            | ../build/cargo.sh run --example shootout-regex-dna --target $TARGET_TRIPLE \
+            | ../build/cargo run --example shootout-regex-dna --target $TARGET_TRIPLE \
             | grep -v "Spawned thread" > res.txt
         diff -u res.txt examples/regexdna-output.txt
     fi
 
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[TEST] rust-lang/regex tests"
-        ../build/cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
+        ../build/cargo test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
     else
         echo "[AOT] rust-lang/regex tests"
-        ../build/cargo.sh build --tests --target $TARGET_TRIPLE
+        ../build/cargo build --tests --target $TARGET_TRIPLE
     fi
     popd
 }

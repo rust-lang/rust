@@ -1791,7 +1791,13 @@ impl<'a> Parser<'a> {
                     if self.check_keyword(kw::Pub) {
                         let sp = sp_start.to(self.prev_token.span);
                         if let Ok(snippet) = self.span_to_snippet(sp) {
-                            let vis = self.parse_visibility(FollowedByType::No)?;
+                            let vis = match self.parse_visibility(FollowedByType::No) {
+                                Ok(v) => v,
+                                Err(mut d) => {
+                                    d.cancel();
+                                    return Err(err);
+                                }
+                            };
                             let vs = pprust::vis_to_string(&vis);
                             let vs = vs.trim_end();
                             err.span_suggestion(

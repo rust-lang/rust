@@ -2,9 +2,10 @@
 #![forbid(unsafe_code)]/* This line is ignored by bash
 # This block is ignored by rustc
 pushd $(dirname "$0")/../
-source build/config.sh
+source scripts/config.sh
+RUSTC="$(pwd)/build/bin/cg_clif"
 popd
-PROFILE=$1 OUTPUT=$2 exec $RUSTC $RUSTFLAGS -Cllvm-args=mode=jit -Cprefer-dynamic $0
+PROFILE=$1 OUTPUT=$2 exec $RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic $0
 #*/
 
 //! This program filters away uninteresting samples and trims uninteresting frames for stackcollapse

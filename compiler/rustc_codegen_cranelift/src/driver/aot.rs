@@ -289,13 +289,16 @@ pub(crate) fn run_aot(
         None
     };
 
+    // FIXME handle `-Ctarget-cpu=native`
+    let target_cpu =
+        tcx.sess.opts.cg.target_cpu.as_ref().unwrap_or(&tcx.sess.target.cpu).to_owned();
     Box::new((
         CodegenResults {
             modules,
             allocator_module,
             metadata_module,
             metadata,
-            crate_info: CrateInfo::new(tcx, crate::target_triple(tcx.sess).to_string()),
+            crate_info: CrateInfo::new(tcx, target_cpu),
         },
         work_products,
     ))

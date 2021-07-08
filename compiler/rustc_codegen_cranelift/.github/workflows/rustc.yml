@@ -34,7 +34,7 @@ jobs:
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./prepare.sh
+        ./y.rs prepare
 
     - name: Test
       run: |
@@ -72,7 +72,7 @@ jobs:
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./prepare.sh
+        ./y.rs prepare
 
     - name: Test
       run: |

@@ -2,14 +2,14 @@
 
 rustc_codegen_cranelift can be used as a near-drop-in replacement for `cargo build` or `cargo run` for existing projects.
 
-Assuming `$cg_clif_dir` is the directory you cloned this repo into and you followed the instructions (`prepare.sh` and `build.sh` or `test.sh`).
+Assuming `$cg_clif_dir` is the directory you cloned this repo into and you followed the instructions (`y.rs prepare` and `y.rs build` or `test.sh`).
 
 ## Cargo
 
 In the directory with your project (where you can do the usual `cargo build`), run:
 
 ```bash
-$ $cg_clif_dir/build/cargo.sh build
+$ $cg_clif_dir/build/cargo build
 ```
 
 This will build your project with rustc_codegen_cranelift instead of the usual LLVM backend.
@@ -30,7 +30,7 @@ In jit mode cg_clif will immediately execute your code without creating an execu
 > The jit mode will probably need cargo integration to make this possible.
 
 ```bash
-$ $cg_clif_dir/build/cargo.sh jit
+$ $cg_clif_dir/build/cargo jit
 ```
 
 or
@@ -40,11 +40,10 @@ $ $cg_clif_dir/build/bin/cg_clif -Cllvm-args=mode=jit -Cprefer-dynamic my_crate.
 ```
 
 There is also an experimental lazy jit mode. In this mode functions are only compiled once they are
-first called. It currently does not work with multi-threaded programs. When a not yet compiled
-function is called from another thread than the main thread, you will get an ICE.
+first called.
 
 ```bash
-$ $cg_clif_dir/build/cargo.sh lazy-jit
+$ $cg_clif_dir/build/cargo lazy-jit
 ```
 
 ## Shell
