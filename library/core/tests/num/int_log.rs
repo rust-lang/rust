@@ -97,3 +97,57 @@ fn checked_log10() {
         assert_eq!(i.checked_log10(), Some((i as f32).log10() as u16));
     }
 }
+
+macro_rules! log10_loop {
+    ($T:ty, $log10_max:expr) => {
+        assert_eq!(<$T>::MAX.log10(), $log10_max);
+        for i in 0..=$log10_max {
+            let p = (10 as $T).pow(i as u32);
+            if p >= 10 {
+                assert_eq!((p - 9).log10(), i - 1);
+                assert_eq!((p - 1).log10(), i - 1);
+            }
+            assert_eq!(p.log10(), i);
+            assert_eq!((p + 1).log10(), i);
+            if p >= 10 {
+                assert_eq!((p + 9).log10(), i);
+            }
+
+            // also check `x.log(10)`
+            if p >= 10 {
+                assert_eq!((p - 9).log(10), i - 1);
+                assert_eq!((p - 1).log(10), i - 1);
+            }
+            assert_eq!(p.log(10), i);
+            assert_eq!((p + 1).log(10), i);
+            if p >= 10 {
+                assert_eq!((p + 9).log(10), i);
+            }
+        }
+    };
+}
+
+#[test]
+fn log10_u8() {
+    log10_loop! { u8, 2 }
+}
+
+#[test]
+fn log10_u16() {
+    log10_loop! { u16, 4 }
+}
+
+#[test]
+fn log10_u32() {
+    log10_loop! { u32, 9 }
+}
+
+#[test]
+fn log10_u64() {
+    log10_loop! { u64, 19 }
+}
+
+#[test]
+fn log10_u128() {
+    log10_loop! { u128, 38 }
+}
