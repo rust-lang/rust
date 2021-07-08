@@ -384,7 +384,8 @@ impl HirDisplay for Ty {
                     &TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
                         substitution: ref parameters,
-                    })) => {
+                    }))
+                    | &TyKind::OpaqueType(opaque_ty_id, ref parameters) => {
                         let impl_trait_id = f.db.lookup_intern_impl_trait_id(opaque_ty_id.into());
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
                             datas =

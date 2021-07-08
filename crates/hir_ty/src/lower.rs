@@ -38,7 +38,7 @@ use crate::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    FnSubst, ImplTraitId, Interner, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    FnSubst, ImplTraitId, Interner, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
     TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
@@ -250,11 +250,7 @@ impl<'a> TyLoweringContext<'a> {
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
                         let parameters = generics.bound_vars_subst(self.in_binders);
-                        TyKind::Alias(AliasTy::Opaque(OpaqueTy {
-                            opaque_ty_id,
-                            substitution: parameters,
-                        }))
-                        .intern(&Interner)
+                        TyKind::OpaqueType(opaque_ty_id, parameters).intern(&Interner)
                     }
                     ImplTraitLoweringMode::Param => {
                         let idx = self.impl_trait_counter.get();

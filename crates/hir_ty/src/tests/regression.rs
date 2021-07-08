@@ -1058,3 +1058,22 @@ fn cfg_tail() {
         "#]],
     )
 }
+
+#[test]
+fn impl_trait_in_option_9530() {
+    check_types(
+        r#"
+struct Option<T>;
+impl<T> Option<T> {
+    fn unwrap(self) -> T { loop {} }
+}
+fn make() -> Option<impl Copy> { Option }
+trait Copy {}
+fn test() {
+    let o = make();
+    o.unwrap();
+  //^^^^^^^^^^ impl Copy
+}
+        "#,
+    )
+}
