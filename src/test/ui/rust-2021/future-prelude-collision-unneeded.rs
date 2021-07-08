@@ -50,6 +50,8 @@ fn main() {
     let s = S;
     let s2 = s.try_into();
 
+    // Check that we do not issue suggestions for types that do not implement `FromIter`.
+    //
     // See https://github.com/rust-lang/rust/issues/86902
     X::from_iter(1);
     Y::from_iter(1);
