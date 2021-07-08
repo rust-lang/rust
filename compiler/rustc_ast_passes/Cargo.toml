@@ -14,4 +14,5 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
 rustc_ast = { path = "../rustc_ast" }

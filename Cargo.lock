@@ -3556,6 +3556,7 @@ dependencies = [
  "rustc_parse",
  "rustc_session",
  "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 
