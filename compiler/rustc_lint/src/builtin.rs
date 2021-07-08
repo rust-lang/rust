@@ -571,6 +571,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, krate.item.inner, "the", "crate");
 
         for macro_def in krate.exported_macros {
+            // Non exported MBE 2.0 macros should be skipped
+            if !macro_def.ast.macro_rules && !cx.access_levels.is_exported(macro_def.hir_id()) {
+                continue;
+            }
+
             let attrs = cx.tcx.hir().attrs(macro_def.hir_id());
             let has_doc = attrs.iter().any(|a| has_doc(cx.sess(), a));
             if !has_doc {
