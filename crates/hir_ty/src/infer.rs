@@ -34,10 +34,10 @@ use rustc_hash::FxHashMap;
 use stdx::impl_from;
 use syntax::SmolStr;
 
-use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
 use crate::{
     db::HirDatabase, fold_tys, lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy,
-    Goal, Interner, Substitution, TyBuilder, TyExt, TyKind,
+    DomainGoal, Goal, InEnvironment, Interner, ProjectionTy, Substitution, TraitEnvironment,
+    TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.

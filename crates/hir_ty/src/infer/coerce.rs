@@ -10,12 +10,13 @@ use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 
 use crate::{
     autoderef,
-    infer::{Adjust, Adjustment, AutoBorrow, InferResult, PointerCast, TypeMismatch},
-    static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Interner, Solution, Substitution, Ty,
-    TyBuilder, TyExt, TyKind,
+    infer::{
+        Adjust, Adjustment, AutoBorrow, InferOk, InferResult, InferenceContext, PointerCast,
+        TypeError, TypeMismatch,
+    },
+    static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, InEnvironment, Interner, Solution,
+    Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
-
-use super::{InEnvironment, InferOk, InferenceContext, TypeError};
 
 pub(crate) type CoerceResult = Result<InferOk<(Vec<Adjustment>, Ty)>, TypeError>;
 
@@ -36,6 +37,7 @@ fn success(
 ) -> CoerceResult {
     Ok(InferOk { goals, value: (adj, target) })
 }
+
 #[derive(Clone, Debug)]
 pub(super) struct CoerceMany {
     expected_ty: Ty,
@@ -171,12 +173,8 @@ impl<'a> InferenceContext<'a> {
 
         // Examine the supertype and consider auto-borrowing.
         match to_ty.kind(&Interner) {
-            TyKind::Raw(mt, _) => {
-                return self.coerce_ptr(from_ty, to_ty, *mt);
-            }
-            TyKind::Ref(mt, _, _) => {
-                return self.coerce_ref(from_ty, to_ty, *mt);
-            }
+            TyKind::Raw(mt, _) => return self.coerce_ptr(from_ty, to_ty, *mt),
+            TyKind::Ref(mt, _, _) => return self.coerce_ref(from_ty, to_ty, *mt),
             _ => {}
         }
 
@@ -337,7 +335,7 @@ impl<'a> InferenceContext<'a> {
                 return Err(err);
             }
         };
-        // FIXME: record overloarded deref adjustments
+        // FIXME: record overloaded deref adjustments
         success(
             vec![Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(to_mt)), target: ty.clone() }],
             ty,
