@@ -1,7 +1,6 @@
 //! Implementation of Chalk debug helper functions using TLS.
-use std::fmt::{self, Debug};
+use std::fmt;
 
-use chalk_ir::AliasTy;
 use itertools::Itertools;
 
 use crate::{
@@ -51,17 +50,6 @@ impl DebugContext<'_> {
         };
         let trait_data = self.0.trait_data(trait_);
         write!(fmt, "{}::{}", trait_data.name, type_alias_data.name)
-    }
-
-    pub(crate) fn debug_alias(
-        &self,
-        alias_ty: &AliasTy<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        match alias_ty {
-            AliasTy::Projection(projection_ty) => self.debug_projection_ty(projection_ty, fmt),
-            AliasTy::Opaque(opaque_ty) => opaque_ty.fmt(fmt),
-        }
     }
 
     pub(crate) fn debug_projection_ty(

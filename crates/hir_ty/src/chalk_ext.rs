@@ -183,7 +183,7 @@ impl TyExt for Ty {
 
     fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>> {
         match self.kind(&Interner) {
-            TyKind::OpaqueType(opaque_ty_id, ..) => {
+            TyKind::OpaqueType(opaque_ty_id, subst) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate();
@@ -206,7 +206,14 @@ impl TyExt for Ty {
                             None
                         }
                     }
-                    ImplTraitId::ReturnTypeImplTrait(..) => None,
+                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
+                        db.return_type_impl_traits(func).map(|it| {
+                            let data = (*it)
+                                .as_ref()
+                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            data.substitute(&Interner, &subst).into_value_and_skipped_binders().0
+                        })
+                    }
                 }
             }
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
