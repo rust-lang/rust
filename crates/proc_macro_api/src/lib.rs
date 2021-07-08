@@ -20,7 +20,7 @@ use std::{
 
 use tt::{SmolStr, Subtree};
 
-use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
+use crate::process::ProcMacroProcessSrv;
 
 pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
 pub use version::{read_dylib_info, RustCInfo};
@@ -64,16 +64,16 @@ impl base_db::ProcMacroExpander for ProcMacroProcessExpander {
 #[derive(Debug)]
 pub struct ProcMacroClient {
     process: Arc<ProcMacroProcessSrv>,
-    thread: ProcMacroProcessThread,
 }
 
 impl ProcMacroClient {
+    /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn extern_process(
         process_path: PathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<ProcMacroClient> {
-        let (thread, process) = ProcMacroProcessSrv::run(process_path, args)?;
-        Ok(ProcMacroClient { process: Arc::new(process), thread })
+        let process = ProcMacroProcessSrv::run(process_path, args)?;
+        Ok(ProcMacroClient { process: Arc::new(process) })
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
