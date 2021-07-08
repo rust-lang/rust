@@ -2308,6 +2308,16 @@ fn const_evaluatable_predicates_of<'tcx>(
                 ));
             }
         }
+
+        fn visit_const_param_default(&mut self, _param: HirId, _ct: &'tcx hir::AnonConst) {
+            // Do not look into const param defaults,
+            // these get checked when they are actually instantiated.
+            //
+            // We do not want the following to error:
+            //
+            //     struct Foo<const N: usize, const M: usize = { N + 1 }>;
+            //     struct Bar<const N: usize>(Foo<N, 3>);
+        }
     }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

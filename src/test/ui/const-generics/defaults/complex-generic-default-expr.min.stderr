@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/complex-generic-default-expr.rs:6:47
+  --> $DIR/complex-generic-default-expr.rs:7:47
    |
 LL | struct Foo<const N: usize, const M: usize = { N + 1 }>;
    |                                               ^ cannot perform const operation using `N`
