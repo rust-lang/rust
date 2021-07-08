@@ -104,20 +104,15 @@ impl<'s> LintLevelsBuilder<'s> {
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
+                // ForceWarn and Forbid cannot be overriden
+                match specs.get(&id) {
+                    Some((Level::ForceWarn | Level::Forbid, _)) => continue,
+                    _ => (),
+                }
+
                 self.check_gated_lint(id, DUMMY_SP);
                 let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
                 specs.insert(id, (level, src));
-            }
-        }
-
-        for lint_name in &sess.opts.force_warns {
-            store.check_lint_name_cmdline(sess, lint_name, Level::ForceWarn, self.crate_attrs);
-            let lints = store
-                .find_lints(lint_name)
-                .unwrap_or_else(|_| bug!("A valid lint failed to produce a lint ids"));
-            for id in lints {
-                let src = LintLevelSource::CommandLine(Symbol::intern(lint_name), Level::ForceWarn);
-                specs.insert(id, (Level::ForceWarn, src));
             }
         }
 
