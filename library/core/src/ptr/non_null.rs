@@ -602,6 +602,7 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> From<&mut T> for NonNull<T> {
+    /// Safely converts a mutable reference into a `NonNull` pointer.
     #[inline]
     fn from(reference: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -611,6 +612,7 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> From<&T> for NonNull<T> {
+    /// Safely converts an immutable reference to a `NonNull` pointer.
     #[inline]
     fn from(reference: &T) -> Self {
         // SAFETY: A reference cannot be null, so the conditions for
