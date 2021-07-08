@@ -202,7 +202,7 @@ impl MutVisitor for AddParens {
 }
 
 fn main() {
-    rustc_span::with_default_session_globals(|| run());
+    rustc_span::create_default_session_globals_then(|| run());
 }
 
 fn run() {

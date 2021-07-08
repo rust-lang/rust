@@ -19,7 +19,7 @@ use std::path::Path;
 mod gravy;
 
 pub fn main() {
-    rustc_span::with_default_session_globals(|| parse());
+    rustc_span::create_default_session_globals_then(|| parse());
 
     assert_eq!(gravy::foo(), 10);
 }
