@@ -208,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // For from_iter, check if the type actualy implements FromIterator.
+        // For from_iter, check if the type actually implements FromIterator.
         // If we know it does not, we don't need to warn.
         if method_name.name == sym::from_iter {
             if let Some(trait_def_id) = self.tcx.get_diagnostic_item(sym::FromIterator) {
