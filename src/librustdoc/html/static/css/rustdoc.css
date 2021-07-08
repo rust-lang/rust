@@ -1092,11 +1092,6 @@ a.test-arrow:hover{
 	left: -10px;
 }
 
-#main > .variant, #main > .structfield {
-	display: block;
-}
-
-
 :target > code {
 	opacity: 1;
 }
