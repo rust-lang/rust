@@ -513,7 +513,7 @@ crate fn make_test(
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
-        rustc_span::with_session_globals(edition, || {
+        rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;

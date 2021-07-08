@@ -26,6 +26,7 @@ use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Spa
 use rustc_span::{sym, FileName, Pos};
 use std::io;
 use std::ops::Range;
+use std::thread;
 use url::Url;
 
 declare_clippy_lint! {
@@ -584,10 +585,10 @@ fn get_current_span(spans: &[(usize, Span)], idx: usize) -> (usize, Span) {
 }
 
 fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
-    fn has_needless_main(code: &str, edition: Edition) -> bool {
+    fn has_needless_main(code: String, edition: Edition) -> bool {
         rustc_driver::catch_fatal_errors(|| {
-            rustc_span::with_session_globals(edition, || {
-                let filename = FileName::anon_source_code(code);
+            rustc_span::create_session_globals_then(edition, || {
+                let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
@@ -649,7 +650,10 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
         .unwrap_or_default()
     }
 
-    if has_needless_main(text, edition) {
+    // Because of the global session, we need to create a new session in a different thread with
+    // the edition we need.
+    let text = text.to_owned();
+    if thread::spawn(move || has_needless_main(text, edition)).join().expect("thread::spawn failed") {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }
