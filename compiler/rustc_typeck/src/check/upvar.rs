@@ -50,6 +50,7 @@ use rustc_span::sym;
 use rustc_span::{MultiSpan, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_index::vec::Idx;
 use rustc_target::abi::VariantIdx;
@@ -80,6 +81,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         assert!(self.deferred_call_resolutions.borrow().is_empty());
     }
 }
+
+/// Intermediate format to store the hir_id pointing to the use that resulted in the
+/// corresponding place being captured and a String which contains the captured value's
+/// name (i.e: a.b.c)
+type CapturesInfo = (Option<hir::HirId>, String);
+
+/// Intermediate format to store information needed to generate migration lint. The tuple
+/// contains the hir_id pointing to the use that resulted in the
+/// corresponding place being captured, a String which contains the captured value's
+/// name (i.e: a.b.c) and a String which contains the reason why migration is needed for that
+/// capture
+type MigrationNeededForCapture = (Option<hir::HirId>, String, String);
+
+/// Intermediate format to store the hir id of the root variable and a HashSet containing
+/// information on why the root variable should be fully captured
+type MigrationDiagnosticInfo = (hir::HirId, FxHashSet<MigrationNeededForCapture>);
 
 struct InferBorrowKindVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -513,45 +530,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .as_str(),
                     );
                     for (var_hir_id, diagnostics_info) in need_migrations.iter() {
-                        let mut captured_names = format!("");
-                        // Label every Span which are responsible for the captured values
-                        for (captured_hir_id, captured_name) in diagnostics_info.iter() {
+                        // Labels all the usage of the captured variable and why they are responsible
+                        // for migration being needed
+                        for (captured_hir_id, captured_name, reasons) in diagnostics_info.iter() {
                             if let Some(captured_hir_id) = captured_hir_id {
                                 let cause_span = self.tcx.hir().span(*captured_hir_id);
                                 diagnostics_builder.span_label(cause_span, format!("in Rust 2018, closure captures all of `{}`, but in Rust 2021, it only captures `{}`",
                                     self.tcx.hir().name(*var_hir_id),
                                     captured_name,
                                 ));
-                                if captured_names == "" {
-                                    captured_names = format!("`{}`", captured_name);
-                                } else {
-                                    captured_names = format!("{}, `{}`", captured_names, captured_name);
-                                }
                             }
-                        }
 
-                        // Add a label pointing to where a closure and it's captured variables affected by drop order are dropped
-                        if reasons.contains("drop order") {
-                            let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
+                            // Add a label pointing to where a captured variable affected by drop order
+                            // is dropped
+                            if reasons.contains("drop order") {
+                                let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
 
-                            diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` would be dropped here, but in Rust 2021, only {} would be dropped here alongside the closure",
-                                self.tcx.hir().name(*var_hir_id),
-                                captured_names,
-                            ));
-                        }
+                                diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` would be dropped here, but in Rust 2021, only `{}` would be dropped here alongside the closure",
+                                    self.tcx.hir().name(*var_hir_id),
+                                    captured_name,
+                                ));
+                            }
 
-                        // Add a label explaining why a closure no longer implements a trait
-                        if reasons.contains("trait implementation") {
-                            let missing_trait = &reasons[..reasons.find("trait implementation").unwrap() - 1];
+                            // Add a label explaining why a closure no longer implements a trait
+                            if reasons.contains("trait implementation") {
+                                let missing_trait = &reasons[..reasons.find("trait implementation").unwrap() - 1];
 
-                            diagnostics_builder.span_label(closure_head_span, format!("in Rust 2018, this closure would implement {} as `{}` implements {}, but in Rust 2021, this closure would no longer implement {} as {} does not implement {}",
-                                missing_trait,
-                                self.tcx.hir().name(*var_hir_id),
-                                missing_trait,
-                                missing_trait,
-                                captured_names,
-                                missing_trait,
-                            ));
+                                diagnostics_builder.span_label(closure_head_span, format!("in Rust 2018, this closure would implement {} as `{}` implements {}, but in Rust 2021, this closure would no longer implement {} as `{}` does not implement {}",
+                                    missing_trait,
+                                    self.tcx.hir().name(*var_hir_id),
+                                    missing_trait,
+                                    missing_trait,
+                                    captured_name,
+                                    missing_trait,
+                                ));
+                            }
                         }
                     }
                     diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
@@ -616,16 +629,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         reasons
     }
 
-    /// Returns a tuple that contains the hir_id pointing to the use that resulted in the
-    /// corresponding place being captured and a String which contains the captured value's name
-    /// (i.e: a.b.c) if migration is needed for trait for the provided var_hir_id, otherwise returns None
-    fn need_2229_migrations_for_trait(
+    /// Figures out the list of root variables (and their types) that aren't completely
+    /// captured by the closure when `capture_disjoint_fields` is enabled and auto-traits
+    /// differ between the root variable and the captured paths.
+    ///
+    /// Returns a tuple containing a HashMap of CapturesInfo that maps to a HashSet of trait names
+    /// if migration is needed for traits for the provided var_hir_id, otherwise returns None
+    fn compute_2229_migrations_for_trait(
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: hir::HirId,
-        check_trait: Option<DefId>,
         closure_clause: hir::CaptureBy,
-    ) -> Option<(Option<hir::HirId>, String)> {
+    ) -> Option<FxHashMap<CapturesInfo, FxHashSet<&str>>> {
+        let auto_traits_def_id = vec![
+            self.tcx.lang_items().clone_trait(),
+            self.tcx.lang_items().sync_trait(),
+            self.tcx.get_diagnostic_item(sym::send_trait),
+            self.tcx.lang_items().unpin_trait(),
+            self.tcx.get_diagnostic_item(sym::unwind_safe_trait),
+            self.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
+        ];
+        let auto_traits =
+            vec!["`Clone`", "`Sync`", "`Send`", "`Unpin`", "`UnwindSafe`", "`RefUnwindSafe`"];
+
         let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
             min_captures.and_then(|m| m.get(&var_hir_id))
         {
@@ -650,19 +676,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let obligation_should_hold = check_trait
-            .map(|check_trait| {
-                self.infcx
-                    .type_implements_trait(
-                        check_trait,
-                        ty,
-                        self.tcx.mk_substs_trait(ty, &[]),
-                        self.param_env,
-                    )
-                    .must_apply_modulo_regions()
-            })
-            .unwrap_or(false);
+        let mut obligations_should_hold = Vec::new();
+        // Checks if a root variable implements any of the auto traits
+        for check_trait in auto_traits_def_id.iter() {
+            obligations_should_hold.push(
+                check_trait
+                    .map(|check_trait| {
+                        self.infcx
+                            .type_implements_trait(
+                                check_trait,
+                                ty,
+                                self.tcx.mk_substs_trait(ty, &[]),
+                                self.param_env,
+                            )
+                            .must_apply_modulo_regions()
+                    })
+                    .unwrap_or(false),
+            );
+        }
 
+        let mut problematic_captures = FxHashMap::default();
         // Check whether captured fields also implement the trait
         for capture in root_var_min_capture_list.iter() {
             let ty = apply_capture_kind_on_capture_ty(
@@ -671,112 +704,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 capture.info.capture_kind,
             );
 
-            let obligation_holds_for_capture = check_trait
-                .map(|check_trait| {
-                    self.infcx
-                        .type_implements_trait(
-                            check_trait,
-                            ty,
-                            self.tcx.mk_substs_trait(ty, &[]),
-                            self.param_env,
-                        )
-                        .must_apply_modulo_regions()
-                })
-                .unwrap_or(false);
+            // Checks if a capture implements any of the auto traits
+            let mut obligations_holds_for_capture = Vec::new();
+            for check_trait in auto_traits_def_id.iter() {
+                obligations_holds_for_capture.push(
+                    check_trait
+                        .map(|check_trait| {
+                            self.infcx
+                                .type_implements_trait(
+                                    check_trait,
+                                    ty,
+                                    self.tcx.mk_substs_trait(ty, &[]),
+                                    self.param_env,
+                                )
+                                .must_apply_modulo_regions()
+                        })
+                        .unwrap_or(false),
+                );
+            }
 
-            if !obligation_holds_for_capture && obligation_should_hold {
-                return Some((capture.info.path_expr_id, capture.to_string(self.tcx)));
+            let mut capture_problems = FxHashSet::default();
+
+            // Checks if for any of the auto traits, one or more trait is implemented
+            // by the root variable but not by the capture
+            for (idx, _) in obligations_should_hold.iter().enumerate() {
+                if !obligations_holds_for_capture[idx] && obligations_should_hold[idx] {
+                    capture_problems.insert(auto_traits[idx]);
+                }
+            }
+
+            if capture_problems.len() > 0 {
+                problematic_captures.insert(
+                    (capture.info.path_expr_id, capture.to_string(self.tcx)),
+                    capture_problems,
+                );
             }
         }
+        if problematic_captures.len() > 0 {
+            return Some(problematic_captures);
+        }
         None
-    }
-
-    /// Figures out the list of root variables (and their types) that aren't completely
-    /// captured by the closure when `capture_disjoint_fields` is enabled and auto-traits
-    /// differ between the root variable and the captured paths.
-    ///
-    /// Returns a tuple containing a HashSet of traits that not implemented by the captured fields
-    /// of a root variables that has the provided var_hir_id and a HashSet of tuples that contains
-    /// the hir_id pointing to the use that resulted in the corresponding place being captured and
-    /// a String which contains the captured value's name (i.e: a.b.c) if migration is needed for
-    /// trait for the provided var_hir_id, otherwise returns None
-    fn compute_2229_migrations_for_trait(
-        &self,
-        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-        var_hir_id: hir::HirId,
-        closure_clause: hir::CaptureBy,
-    ) -> Option<(FxHashSet<&str>, FxHashSet<(Option<hir::HirId>, String)>)> {
-        let tcx = self.infcx.tcx;
-
-        // Check whether catpured fields also implement the trait
-        let mut auto_trait_reasons = FxHashSet::default();
-        let mut diagnostics_info = FxHashSet::default();
-
-        if let Some(info) = self.need_2229_migrations_for_trait(
-            min_captures,
-            var_hir_id,
-            tcx.lang_items().clone_trait(),
-            closure_clause,
-        ) {
-            auto_trait_reasons.insert("`Clone`");
-            diagnostics_info.insert(info);
-        }
-
-        if let Some(info) = self.need_2229_migrations_for_trait(
-            min_captures,
-            var_hir_id,
-            tcx.lang_items().sync_trait(),
-            closure_clause,
-        ) {
-            auto_trait_reasons.insert("`Sync`");
-            diagnostics_info.insert(info);
-        }
-
-        if let Some(info) = self.need_2229_migrations_for_trait(
-            min_captures,
-            var_hir_id,
-            tcx.get_diagnostic_item(sym::send_trait),
-            closure_clause,
-        ) {
-            auto_trait_reasons.insert("`Send`");
-            diagnostics_info.insert(info);
-        }
-
-        if let Some(info) = self.need_2229_migrations_for_trait(
-            min_captures,
-            var_hir_id,
-            tcx.lang_items().unpin_trait(),
-            closure_clause,
-        ) {
-            auto_trait_reasons.insert("`Unpin`");
-            diagnostics_info.insert(info);
-        }
-
-        if let Some(info) = self.need_2229_migrations_for_trait(
-            min_captures,
-            var_hir_id,
-            tcx.get_diagnostic_item(sym::unwind_safe_trait),
-            closure_clause,
-        ) {
-            auto_trait_reasons.insert("`UnwindSafe`");
-            diagnostics_info.insert(info);
-        }
-
-        if let Some(info) = self.need_2229_migrations_for_trait(
-            min_captures,
-            var_hir_id,
-            tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
-            closure_clause,
-        ) {
-            auto_trait_reasons.insert("`RefUnwindSafe`");
-            diagnostics_info.insert(info);
-        }
-
-        if auto_trait_reasons.len() > 0 {
-            return Some((auto_trait_reasons, diagnostics_info));
-        }
-
-        return None;
     }
 
     /// Figures out the list of root variables (and their types) that aren't completely
@@ -789,9 +756,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - It wasn't completely captured by the closure, **and**
     /// - One of the paths starting at this root variable, that is not captured needs Drop.
     ///
-    /// This function only returns a HashSet of tuples for significant drops. The returned HashSet
-    /// of tuples contains  the hir_id pointing to the use that resulted in the corresponding place
-    /// being captured anda String which contains the captured value's name (i.e: a.b.c)
+    /// This function only returns a HashSet of CapturesInfo for significant drops. If there
+    /// are no significant drops than None is returned
     fn compute_2229_migrations_for_drop(
         &self,
         closure_def_id: DefId,
@@ -799,7 +765,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
-    ) -> Option<FxHashSet<(Option<hir::HirId>, String)>> {
+    ) -> Option<FxHashSet<CapturesInfo>> {
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
@@ -873,17 +839,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - One of the paths captured does not implement all the auto-traits its root variable
     ///   implements.
     ///
-    /// Returns a tuple containing a vector of tuples of HirIds and a HashSet of tuples that contains
-    /// the hir_id pointing to the use that resulted in the corresponding place being captured and
-    /// a String which contains the captured value's name (i.e: a.b.c), as well as a String
+    /// Returns a tuple containing a vector of MigrationDiagnosticInfo, as well as a String
     /// containing the reason why root variables whose HirId is contained in the vector should
+    /// be captured
     fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
         closure_span: Span,
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-    ) -> (Vec<(hir::HirId, FxHashSet<(Option<hir::HirId>, String)>)>, String) {
+    ) -> (Vec<MigrationDiagnosticInfo>, String) {
         let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
             upvars
         } else {
@@ -891,42 +856,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut need_migrations = Vec::new();
-        let mut auto_trait_reasons = FxHashSet::default();
-        let mut drop_reorder_reason = false;
+        let mut auto_trait_migration_reasons = FxHashSet::default();
+        let mut drop_migration_needed = false;
 
         // Perform auto-trait analysis
         for (&var_hir_id, _) in upvars.iter() {
-            let mut need_migration = false;
             let mut responsible_captured_hir_ids = FxHashSet::default();
 
-            if let Some((trait_migration_cause, diagnostics_info)) =
+            let auto_trait_diagnostic = if let Some(diagnostics_info) =
                 self.compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
             {
-                need_migration = true;
-                auto_trait_reasons.extend(trait_migration_cause);
-                responsible_captured_hir_ids.extend(diagnostics_info);
+                diagnostics_info
+            } else {
+                FxHashMap::default()
+            };
+
+            let drop_reorder_diagnostic = if let Some(diagnostics_info) = self
+                .compute_2229_migrations_for_drop(
+                    closure_def_id,
+                    closure_span,
+                    min_captures,
+                    closure_clause,
+                    var_hir_id,
+                ) {
+                drop_migration_needed = true;
+                diagnostics_info
+            } else {
+                FxHashSet::default()
+            };
+
+            // Combine all the captures responsible for needing migrations into one HashSet
+            let mut capture_disagnostic = drop_reorder_diagnostic.clone();
+            for key in auto_trait_diagnostic.keys() {
+                capture_disagnostic.insert(key.clone());
             }
 
-            if let Some(diagnostics_info) = self.compute_2229_migrations_for_drop(
-                closure_def_id,
-                closure_span,
-                min_captures,
-                closure_clause,
-                var_hir_id,
-            ) {
-                need_migration = true;
-                drop_reorder_reason = true;
-                responsible_captured_hir_ids.extend(diagnostics_info);
+            for captured_info in capture_disagnostic.iter() {
+                // Get the auto trait reasons of why migration is needed because of that capture, if there are any
+                let capture_trait_reasons =
+                    if let Some(reasons) = auto_trait_diagnostic.get(captured_info) {
+                        reasons.clone()
+                    } else {
+                        FxHashSet::default()
+                    };
+
+                // Check if migration is needed because of drop reorder as a result of that capture
+                let capture_drop_reorder_reason = drop_reorder_diagnostic.contains(captured_info);
+
+                // Combine all the reasons of why the root variable should be captured as a result of
+                // auto trait implementation issues
+                auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
+
+                responsible_captured_hir_ids.insert((
+                    captured_info.0,
+                    captured_info.1.clone(),
+                    self.compute_2229_migrations_reasons(
+                        capture_trait_reasons,
+                        capture_drop_reorder_reason,
+                    ),
+                ));
             }
 
-            if need_migration {
+            if capture_disagnostic.len() > 0 {
                 need_migrations.push((var_hir_id, responsible_captured_hir_ids));
             }
         }
-
         (
             need_migrations,
-            self.compute_2229_migrations_reasons(auto_trait_reasons, drop_reorder_reason),
+            self.compute_2229_migrations_reasons(
+                auto_trait_migration_reasons,
+                drop_migration_needed,
+            ),
         )
     }
 
@@ -1964,7 +1964,7 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
 /// - s2: Comma separated names of the variables being migrated.
 fn migration_suggestion_for_2229(
     tcx: TyCtxt<'_>,
-    need_migrations: &Vec<(hir::HirId, FxHashSet<(Option<hir::HirId>, String)>)>,
+    need_migrations: &Vec<MigrationDiagnosticInfo>,
 ) -> (String, String) {
     let need_migrations_variables =
         need_migrations.iter().map(|(v, _)| var_name(tcx, *v)).collect::<Vec<_>>();
