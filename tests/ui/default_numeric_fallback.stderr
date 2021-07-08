@@ -115,37 +115,55 @@ LL |         let f = || -> i32 { 1 };
    |                             ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:93:21
+  --> $DIR/default_numeric_fallback.rs:98:21
    |
 LL |         generic_arg(1);
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:96:32
+  --> $DIR/default_numeric_fallback.rs:101:21
+   |
+LL |         generic_arg(1.0);
+   |                     ^^^ help: consider adding suffix: `1.0_f64`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:104:32
    |
 LL |         let x: _ = generic_arg(1);
    |                                ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:114:28
+  --> $DIR/default_numeric_fallback.rs:122:28
    |
 LL |         GenericStruct { x: 1 };
    |                            ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:117:36
+  --> $DIR/default_numeric_fallback.rs:125:36
    |
 LL |         let _ = GenericStruct { x: 1 };
    |                                    ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:137:23
+  --> $DIR/default_numeric_fallback.rs:147:24
+   |
+LL |         GenericEnum::X(1);
+   |                        ^ help: consider adding suffix: `1_i32`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:150:24
+   |
+LL |         GenericEnum::X(1.);
+   |                        ^^ help: consider adding suffix: `1._f64`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:170:23
    |
 LL |         s.generic_arg(1);
    |                       ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:144:21
+  --> $DIR/default_numeric_fallback.rs:177:21
    |
 LL |             let x = 22;
    |                     ^^ help: consider adding suffix: `22_i32`
@@ -155,5 +173,5 @@ LL |         internal_macro!();
    |
    = note: this error originates in the macro `internal_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 25 previous errors
+error: aborting due to 28 previous errors
 

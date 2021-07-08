@@ -78,7 +78,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                 if let Some(ty_bound) = self.ty_bounds.last();
                 if matches!(lit.node,
                             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));
-                if !ty_bound.is_integral();
+                if !ty_bound.is_numeric();
                 then {
                     let suffix = match lit_ty.kind() {
                         ty::Int(IntTy::I32) => "i32",
@@ -219,10 +219,10 @@ enum TyBound<'tcx> {
 }
 
 impl<'tcx> TyBound<'tcx> {
-    fn is_integral(self) -> bool {
+    fn is_numeric(self) -> bool {
         match self {
             TyBound::Any => true,
-            TyBound::Ty(t) => t.is_integral(),
+            TyBound::Ty(t) => t.is_numeric(),
             TyBound::Nothing => false,
         }
     }

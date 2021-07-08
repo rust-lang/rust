@@ -81,16 +81,24 @@ mod function_def {
 }
 
 mod function_calls {
-    fn concrete_arg(x: i32) {}
+    fn concrete_arg_i32(x: i32) {}
+
+    fn concrete_arg_f64(f: f64) {}
 
     fn generic_arg<T>(t: T) {}
 
     fn test() {
         // Should NOT lint this because the argument type is bound to a concrete type.
-        concrete_arg(1);
+        concrete_arg_i32(1);
+
+        // Should NOT lint this because the argument type is bound to a concrete type.
+        concrete_arg_f64(1.);
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         generic_arg(1);
+
+        // Should lint this because the argument type is inferred to `f32` and NOT bound to a concrete type.
+        generic_arg(1.0);
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         let x: _ = generic_arg(1);
@@ -115,6 +123,31 @@ mod struct_ctor {
 
         // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
         let _ = GenericStruct { x: 1 };
+    }
+}
+
+mod enum_ctor {
+    enum ConcreteEnum {
+        X(i32),
+        Y(f64),
+    }
+
+    enum GenericEnum<T> {
+        X(T),
+    }
+
+    fn test() {
+        // Should NOT lint this because the field type is bound to a concrete type.
+        ConcreteEnum::X(1);
+
+        // Should NOT lint this because the field type is bound to a concrete type.
+        ConcreteEnum::Y(1.);
+
+        // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
+        GenericEnum::X(1);
+
+        // Should lint this because the field type is inferred to `f64` and NOT bound to a concrete type.
+        GenericEnum::X(1.);
     }
 }
 
