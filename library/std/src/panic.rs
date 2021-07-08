@@ -133,7 +133,7 @@ pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
 /// [`AssertUnwindSafe`] wrapper struct can be used to force this trait to be
 /// implemented for any closed over variables passed to `catch_unwind`.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[cfg_attr(not(test), lang = "unwind_safe")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "unwind_safe_trait")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may not be safely transferred across an unwind boundary",
     label = "`{Self}` may not be safely transferred across an unwind boundary"
@@ -149,7 +149,7 @@ pub auto trait UnwindSafe {}
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// [`UnwindSafe`] trait, for more information see that documentation.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[cfg_attr(not(test), lang = "ref_unwind_safe")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "ref_unwind_safe_trait")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
                transferrable across a catch_unwind boundary",
