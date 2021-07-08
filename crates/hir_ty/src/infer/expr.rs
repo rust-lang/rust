@@ -735,10 +735,11 @@ impl<'a> InferenceContext<'a> {
                         _ => self.table.new_type_var(),
                     };
 
+                let expected = Expectation::has_type(elem_ty.clone());
                 let len = match array {
                     Array::ElementList(items) => {
                         for expr in items.iter() {
-                            let cur_elem_ty = self.infer_expr_inner(*expr, expected);
+                            let cur_elem_ty = self.infer_expr_inner(*expr, &expected);
                             elem_ty = self.coerce_merge_branch(Some(*expr), &elem_ty, &cur_elem_ty);
                         }
                         Some(items.len() as u64)
