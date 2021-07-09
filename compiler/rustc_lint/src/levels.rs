@@ -26,8 +26,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
 use tracing::debug;
 
-use std::cmp;
-
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
     let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
@@ -91,12 +89,6 @@ impl<'s> LintLevelsBuilder<'s> {
         for &(ref lint_name, level) in &sess.opts.lint_opts {
             store.check_lint_name_cmdline(sess, &lint_name, level, self.crate_attrs);
             let orig_level = level;
-
-            // If the cap is less than this specified level, e.g., if we've got
-            // `--cap-lints allow` but we've also got `-D foo` then we ignore
-            // this specification as the lint cap will set it to allow anyway.
-            let level = cmp::min(level, self.sets.lint_cap);
-
             let lint_flag_val = Symbol::intern(lint_name);
 
             let ids = match store.find_lints(&lint_name) {
@@ -105,9 +97,8 @@ impl<'s> LintLevelsBuilder<'s> {
             };
             for id in ids {
                 // ForceWarn and Forbid cannot be overriden
-                match specs.get(&id) {
-                    Some((Level::ForceWarn | Level::Forbid, _)) => continue,
-                    _ => (),
+                if let Some((Level::ForceWarn | Level::Forbid, _)) = specs.get(&id) {
+                    continue;
                 }
 
                 self.check_gated_lint(id, DUMMY_SP);
