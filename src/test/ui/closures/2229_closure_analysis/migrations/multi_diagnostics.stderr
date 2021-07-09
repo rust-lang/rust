@@ -1,4 +1,4 @@
-error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure, and drop order
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
   --> $DIR/multi_diagnostics.rs:23:13
    |
 LL |     let c = || {
@@ -75,7 +75,7 @@ LL |
 LL |
  ...
 
-error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure, and drop order
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
   --> $DIR/multi_diagnostics.rs:86:13
    |
 LL |     let c = || {
@@ -90,8 +90,8 @@ LL |         let _f_1 = f1.1;
 LL | }
    | -
    | |
-   | in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.0` would be dropped here alongside the closure
    | in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.1` would be dropped here alongside the closure
+   | in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f1` to be fully captured

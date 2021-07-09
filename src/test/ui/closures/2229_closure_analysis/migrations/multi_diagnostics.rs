@@ -21,7 +21,7 @@ fn test_multi_issues() {
     let f1 = U(S(String::from("foo")), T(0));
     let f2 = U(S(String::from("bar")), T(0));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure, and drop order
+        //~^ ERROR: `Clone` trait implementation for closure and drop order
         //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f1`, `f2` to be fully captured
@@ -84,7 +84,7 @@ fn test_capturing_several_disjoint_fields_individually_1() {
 fn test_capturing_several_disjoint_fields_individually_2() {
     let f1 = U1(S(String::from("foo")), T(0), S(String::from("bar")));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure, and drop order
+        //~^ ERROR: `Clone` trait implementation for closure and drop order
         //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f1` to be fully captured

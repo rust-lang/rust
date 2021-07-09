@@ -619,7 +619,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if auto_trait_reasons.len() > 0 && drop_reason {
-            reasons = format!("{}, and ", reasons);
+            reasons = format!("{} and ", reasons);
         }
 
         if drop_reason {
@@ -886,12 +886,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             // Combine all the captures responsible for needing migrations into one HashSet
-            let mut capture_disagnostic = drop_reorder_diagnostic.clone();
+            let mut capture_diagnostic = drop_reorder_diagnostic.clone();
             for key in auto_trait_diagnostic.keys() {
-                capture_disagnostic.insert(key.clone());
+                capture_diagnostic.insert(key.clone());
             }
 
-            for captured_info in capture_disagnostic.iter() {
+            for captured_info in capture_diagnostic.iter() {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =
                     if let Some(reasons) = auto_trait_diagnostic.get(captured_info) {
@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ));
             }
 
-            if capture_disagnostic.len() > 0 {
+            if capture_diagnostic.len() > 0 {
                 need_migrations.push((var_hir_id, responsible_captured_hir_ids));
             }
         }

@@ -43,7 +43,7 @@ LL |
 LL |         *fptr.0.0 = 20;
  ...
 
-error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure, and drop order
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
   --> $DIR/auto_traits.rs:58:13
    |
 LL |     let c = || {
