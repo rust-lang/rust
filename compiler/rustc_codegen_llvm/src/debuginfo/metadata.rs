@@ -1314,9 +1314,9 @@ struct TupleMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
-        let capture_names = match *self.ty.kind() {
+        let mut capture_names = match *self.ty.kind() {
             ty::Generator(def_id, ..) | ty::Closure(def_id, ..) => {
-                Some(closure_saved_names_of_captured_variables(cx.tcx, def_id))
+                Some(closure_saved_names_of_captured_variables(cx.tcx, def_id).into_iter())
             }
             _ => None,
         };
@@ -1326,8 +1326,8 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
             .enumerate()
             .map(|(i, &component_type)| {
                 let (size, align) = cx.size_and_align_of(component_type);
-                let name = if let Some(names) = capture_names.as_ref() {
-                    names[i].clone()
+                let name = if let Some(names) = capture_names.as_mut() {
+                    names.next().unwrap()
                 } else {
                     format!("__{}", i)
                 };
