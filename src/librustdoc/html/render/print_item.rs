@@ -7,13 +7,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::middle::stability;
+use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::Variants;
+use rustc_target::abi::{Layout, Variants};
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
@@ -1606,6 +1606,15 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
+    fn write_size_of_layout(w: &mut Buffer, layout: &Layout) {
+        if layout.abi.is_unsized() {
+            write!(w, "(unsized)");
+        } else {
+            let bytes = layout.size.bytes();
+            write!(w, "{size} byte{pl}", size = bytes, pl = if bytes == 1 { "" } else { "s" },);
+        }
+    }
+
     if !cx.shared.show_type_layout {
         return;
     }
@@ -1627,17 +1636,9 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                  <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \
                  chapter for details on type layout guarantees.</p></div>"
             );
-            if ty_layout.layout.abi.is_unsized() {
-                writeln!(w, "<p><strong>Size:</strong> (unsized)</p>");
-            } else {
-                let bytes = ty_layout.layout.size.bytes();
-                writeln!(
-                    w,
-                    "<p><strong>Size:</strong> {size} byte{pl}</p>",
-                    size = bytes,
-                    pl = if bytes == 1 { "" } else { "s" },
-                );
-            }
+            w.write_str("<p><strong>Size:</strong> ");
+            write_size_of_layout(w, ty_layout.layout);
+            writeln!(w, "</p>");
             if let Variants::Multiple { variants, .. } = &ty_layout.layout.variants {
                 if !variants.is_empty() {
                     w.write_str(
@@ -1649,23 +1650,14 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     let adt = if let Adt(adt, _) = ty_layout.ty.kind() {
                         adt
                     } else {
-                        bug!("not an adt")
+                        span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
 
                     for (index, layout) in variants.iter_enumerated() {
                         let ident = adt.variants[index].ident;
-                        if layout.abi.is_unsized() {
-                            writeln!(w, "<li><code>{name}</code> (unsized)</li>", name = ident);
-                        } else {
-                            let bytes = layout.size.bytes();
-                            writeln!(
-                                w,
-                                "<li><code>{name}</code>: {size} byte{pl}</li>",
-                                name = ident,
-                                size = bytes,
-                                pl = if bytes == 1 { "" } else { "s" },
-                            );
-                        }
+                        write!(w, "<li><code>{name}</code> ", name = ident);
+                        write_size_of_layout(w, layout);
+                        writeln!(w, "</li>");
                     }
                     w.write_str("</ul></p>");
                 }
