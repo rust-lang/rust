@@ -44,7 +44,7 @@ use crate::fmt;
 #[derive(Copy, PartialEq, Eq, Clone, Hash)]
 #[unstable(feature = "ip_prefix", issue = "86991")]
 pub struct Ipv4AddrPrefix {
-    address: Ipv4Addr,
+    address_raw: u32,
     len: u8,
 }
 
@@ -90,7 +90,7 @@ pub struct Ipv4AddrPrefix {
 #[derive(Copy, PartialEq, Eq, Clone, Hash)]
 #[unstable(feature = "ip_prefix", issue = "86991")]
 pub struct Ipv6AddrPrefix {
-    address: Ipv6Addr,
+    address_raw: u128,
     len: u8,
 }
 
@@ -122,13 +122,12 @@ impl Ipv4AddrPrefix {
     // Private constructor that assumes len <= 32.
     // Useful because `Result::unwrap` is not yet usable in const contexts, so `new` can't be used.
     pub(crate) const fn new_unchecked(address: Ipv4Addr, len: u32) -> Ipv4AddrPrefix {
-        let address = {
+        let masked = {
             let mask = Ipv4AddrPrefix::mask(len);
-            let masked = u32::from_be_bytes(address.octets()) & mask;
-            Ipv4Addr::from_u32(masked)
+            u32::from_be_bytes(address.octets()) & mask
         };
 
-        Ipv4AddrPrefix { address, len: len as u8 }
+        Ipv4AddrPrefix { address_raw: masked, len: len as u8 }
     }
 
     /// Returns the address specifying this address prefix.
@@ -153,7 +152,7 @@ impl Ipv4AddrPrefix {
     #[unstable(feature = "ip_prefix", issue = "86991")]
     #[inline]
     pub const fn address(&self) -> Ipv4Addr {
-        self.address
+        Ipv4Addr::from_u32(self.address_raw)
     }
 
     /// Returns the prefix length of this address prefix.
@@ -178,6 +177,7 @@ impl Ipv4AddrPrefix {
     }
 
     // Compute the bitmask specified by a prefix length.
+    #[inline]
     const fn mask(len: u32) -> u32 {
         if len == 0 {
             0
@@ -206,14 +206,14 @@ impl Ipv4AddrPrefix {
     #[inline]
     pub const fn contains(&self, address: &Ipv4Addr) -> bool {
         let mask = Ipv4AddrPrefix::mask(self.len as u32);
-        u32::from_be_bytes(address.octets()) & mask == u32::from_be_bytes(self.address.octets())
+        u32::from_be_bytes(address.octets()) & mask == self.address_raw
     }
 }
 
 #[unstable(feature = "ip_prefix", issue = "86991")]
 impl fmt::Display for Ipv4AddrPrefix {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}/{}", self.address, self.len)
+        write!(fmt, "{}/{}", Ipv4Addr::from_u32(self.address_raw), self.len)
     }
 }
 
@@ -228,7 +228,7 @@ impl fmt::Debug for Ipv4AddrPrefix {
 impl From<Ipv4Addr> for Ipv4AddrPrefix {
     /// Converts an IPv4 address `a.b.c.d` to the prefix `a.b.c.d/32`.
     fn from(address: Ipv4Addr) -> Self {
-        Ipv4AddrPrefix { address, len: u32::BITS as u8 }
+        Ipv4AddrPrefix::new_unchecked(address, u32::BITS)
     }
 }
 
@@ -260,13 +260,12 @@ impl Ipv6AddrPrefix {
     // Private constructor that assumes len <= 128.
     // Useful because `Result::unwrap` is not yet usable in const contexts, so `new` can't be used.
     pub(crate) const fn new_unchecked(address: Ipv6Addr, len: u32) -> Ipv6AddrPrefix {
-        let address = {
+        let masked = {
             let mask = Ipv6AddrPrefix::mask(len);
-            let masked = u128::from_be_bytes(address.octets()) & mask;
-            Ipv6Addr::from_u128(masked)
+            u128::from_be_bytes(address.octets()) & mask
         };
 
-        Ipv6AddrPrefix { address, len: len as u8 }
+        Ipv6AddrPrefix { address_raw: masked, len: len as u8 }
     }
 
     /// Returns the address specifying this address prefix.
@@ -291,7 +290,7 @@ impl Ipv6AddrPrefix {
     #[unstable(feature = "ip_prefix", issue = "86991")]
     #[inline]
     pub const fn address(&self) -> Ipv6Addr {
-        self.address
+        Ipv6Addr::from_u128(self.address_raw)
     }
 
     /// Returns the prefix length of this address prefix.
@@ -343,14 +342,14 @@ impl Ipv6AddrPrefix {
     #[inline]
     pub const fn contains(&self, address: &Ipv6Addr) -> bool {
         let mask = Ipv6AddrPrefix::mask(self.len as u32);
-        u128::from_be_bytes(address.octets()) & mask == u128::from_be_bytes(self.address.octets())
+        u128::from_be_bytes(address.octets()) & mask == self.address_raw
     }
 }
 
 #[unstable(feature = "ip_prefix", issue = "86991")]
 impl fmt::Display for Ipv6AddrPrefix {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}/{}", self.address, self.len)
+        write!(fmt, "{}/{}", Ipv6Addr::from_u128(self.address_raw), self.len)
     }
 }
 
@@ -365,7 +364,7 @@ impl fmt::Debug for Ipv6AddrPrefix {
 impl From<Ipv6Addr> for Ipv6AddrPrefix {
     /// Converts an IPv6 address `a:b:c:d:e:f:g:h` to the prefix `a:b:c:d:e:f:g:h/128`.
     fn from(address: Ipv6Addr) -> Self {
-        Ipv6AddrPrefix { address, len: u128::BITS as u8 }
+        Ipv6AddrPrefix::new_unchecked(address, u128::BITS)
     }
 }
 
