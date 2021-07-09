@@ -3,8 +3,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::middle::cstore::{DllImport, NativeLib};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::middle::cstore::{DllCallingConvention, DllImport, NativeLib};
+use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
@@ -199,22 +199,10 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
             }
 
             if lib.kind == NativeLibKind::RawDylib {
-                match abi {
-                    Abi::C { .. } => (),
-                    Abi::Cdecl => (),
-                    _ => {
-                        if sess.target.arch == "x86" {
-                            sess.span_fatal(
-                                it.span,
-                                r#"`#[link(kind = "raw-dylib")]` only supports C and Cdecl ABIs"#,
-                            );
-                        }
-                    }
-                };
                 lib.dll_imports.extend(
                     foreign_mod_items
                         .iter()
-                        .map(|child_item| DllImport { name: child_item.ident.name, ordinal: None }),
+                        .map(|child_item| self.build_dll_import(abi, child_item)),
                 );
             }
 
@@ -395,5 +383,59 @@ impl Collector<'tcx> {
                 self.libs.append(&mut existing);
             }
         }
+    }
+
+    fn i686_arg_list_size(&self, item: &hir::ForeignItemRef<'_>) -> usize {
+        let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
+            self.tcx
+                .type_of(item.id.def_id)
+                .fn_sig(self.tcx)
+                .inputs()
+                .map_bound(|slice| self.tcx.mk_type_list(slice.iter())),
+        );
+
+        argument_types
+            .iter()
+            .map(|ty| {
+                let layout = self
+                    .tcx
+                    .layout_of(ParamEnvAnd { param_env: ParamEnv::empty(), value: ty })
+                    .expect("layout")
+                    .layout;
+                // In both stdcall and fastcall, we always round up the argument size to the
+                // nearest multiple of 4 bytes.
+                (layout.size.bytes_usize() + 3) & !3
+            })
+            .sum()
+    }
+
+    fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef<'_>) -> DllImport {
+        let calling_convention = if self.tcx.sess.target.arch == "x86" {
+            match abi {
+                Abi::C { .. } | Abi::Cdecl => DllCallingConvention::C,
+                Abi::Stdcall { .. } | Abi::System { .. } => {
+                    DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                }
+                Abi::Fastcall => DllCallingConvention::Fastcall(self.i686_arg_list_size(item)),
+                // Vectorcall is intentionally not supported at this time.
+                _ => {
+                    self.tcx.sess.span_fatal(
+                        item.span,
+                        r#"ABI not supported by `#[link(kind = "raw-dylib")]` on i686"#,
+                    );
+                }
+            }
+        } else {
+            match abi {
+                Abi::C { .. } | Abi::Win64 | Abi::System { .. } => DllCallingConvention::C,
+                _ => {
+                    self.tcx.sess.span_fatal(
+                        item.span,
+                        r#"ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture"#,
+                    );
+                }
+            }
+        };
+        DllImport { name: item.ident.name, ordinal: None, calling_convention, span: item.span }
     }
 }

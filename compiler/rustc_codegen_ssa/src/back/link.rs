@@ -3,7 +3,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::DllImport;
+use rustc_middle::middle::cstore::{DllCallingConvention, DllImport};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
@@ -34,8 +34,8 @@ use object::write::Object;
 use object::{Architecture, BinaryFormat, Endianness, FileFlags, SectionFlags, SectionKind};
 use tempfile::Builder as TempFileBuilder;
 
-use std::cmp::Ordering;
 use std::ffi::OsString;
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
@@ -259,7 +259,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     }
 
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(&codegen_results.crate_info.used_libraries)
+        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)
     {
         ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
     }
@@ -451,8 +451,11 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 /// then the CodegenResults value contains one NativeLib instance for each block.  However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs(used_libraries: &[NativeLib]) -> Vec<(String, Vec<DllImport>)> {
-    let mut dylib_table: FxHashMap<String, FxHashSet<Symbol>> = FxHashMap::default();
+fn collate_raw_dylibs(
+    sess: &Session,
+    used_libraries: &[NativeLib],
+) -> Vec<(String, Vec<DllImport>)> {
+    let mut dylib_table: FxHashMap<String, FxHashSet<DllImport>> = FxHashMap::default();
 
     for lib in used_libraries {
         if lib.kind == NativeLibKind::RawDylib {
@@ -464,35 +467,51 @@ fn collate_raw_dylibs(used_libraries: &[NativeLib]) -> Vec<(String, Vec<DllImpor
             } else {
                 format!("{}.dll", name)
             };
-            dylib_table
-                .entry(name)
-                .or_default()
-                .extend(lib.dll_imports.iter().map(|import| import.name));
+            dylib_table.entry(name).or_default().extend(lib.dll_imports.iter().cloned());
         }
     }
 
-    // FIXME: when we add support for ordinals, fix this to propagate ordinals.  Also figure out
-    // what we should do if we have two DllImport values with the same name but different
-    // ordinals.
-    let mut result = dylib_table
+    // Rustc already signals an error if we have two imports with the same name but different
+    // calling conventions (or function signatures), so we don't have pay attention to those
+    // when ordering.
+    // FIXME: when we add support for ordinals, figure out if we need to do anything if we
+    // have two DllImport values with the same name but different ordinals.
+    let mut result: Vec<(String, Vec<DllImport>)> = dylib_table
         .into_iter()
-        .map(|(lib_name, imported_names)| {
-            let mut names = imported_names
-                .iter()
-                .map(|name| DllImport { name: *name, ordinal: None })
-                .collect::<Vec<_>>();
-            names.sort_unstable_by(|a: &DllImport, b: &DllImport| {
-                match a.name.as_str().cmp(&b.name.as_str()) {
-                    Ordering::Equal => a.ordinal.cmp(&b.ordinal),
-                    x => x,
-                }
-            });
-            (lib_name, names)
+        .map(|(lib_name, import_table)| {
+            let mut imports = Vec::from_iter(import_table.into_iter());
+            imports.sort_unstable_by_key(|x: &DllImport| x.name.as_str());
+            (lib_name, imports)
         })
         .collect::<Vec<_>>();
     result.sort_unstable_by(|a: &(String, Vec<DllImport>), b: &(String, Vec<DllImport>)| {
         a.0.cmp(&b.0)
     });
+    let result = result;
+
+    // Check for multiple imports with the same name but different calling conventions or
+    // (when relevant) argument list sizes.  Rustc only signals an error for this if the
+    // declarations are at the same scope level; if one shadows the other, we only get a lint
+    // warning.
+    for (library, imports) in &result {
+        let mut import_table: FxHashMap<Symbol, DllCallingConvention> = FxHashMap::default();
+        for import in imports {
+            if let Some(old_convention) =
+                import_table.insert(import.name, import.calling_convention)
+            {
+                if import.calling_convention != old_convention {
+                    sess.span_fatal(
+                        import.span,
+                        &format!(
+                            "multiple definitions of external function `{}` from library `{}` have different calling conventions",
+                            import.name,
+                            library,
+                    ));
+                }
+            }
+        }
+    }
+
     result
 }
 

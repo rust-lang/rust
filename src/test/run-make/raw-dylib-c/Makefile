@@ -1,7 +1,6 @@
 # Test the behavior of #[link(.., kind = "raw-dylib")] on windows-msvc
 
-# only-windows
-# only-msvc
+# only-windows-msvc
 
 -include ../../run-make-fulldeps/tools.mk
 
