@@ -21,15 +21,10 @@ mod basic_expr {
             _ => 2,
         };
 
-        // Should lint unsuffixed literals typed `f64`.
-        let x = 0.12;
-
         // Should NOT lint suffixed literals.
         let x = 22_i32;
-        let x = 0.12_f64;
 
         // Should NOT lint literals in init expr if `Local` has a type annotation.
-        let x: f64 = 0.1;
         let x: [i32; 3] = [1, 2, 3];
         let x: (i32, i32) = if true { (1, 2) } else { (3, 4) };
         let x: _ = 1;
@@ -81,24 +76,16 @@ mod function_def {
 }
 
 mod function_calls {
-    fn concrete_arg_i32(x: i32) {}
-
-    fn concrete_arg_f64(f: f64) {}
+    fn concrete_arg(x: i32) {}
 
     fn generic_arg<T>(t: T) {}
 
     fn test() {
         // Should NOT lint this because the argument type is bound to a concrete type.
-        concrete_arg_i32(1);
-
-        // Should NOT lint this because the argument type is bound to a concrete type.
-        concrete_arg_f64(1.);
+        concrete_arg(1);
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         generic_arg(1);
-
-        // Should lint this because the argument type is inferred to `f32` and NOT bound to a concrete type.
-        generic_arg(1.0);
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         let x: _ = generic_arg(1);
@@ -129,7 +116,6 @@ mod struct_ctor {
 mod enum_ctor {
     enum ConcreteEnum {
         X(i32),
-        Y(f64),
     }
 
     enum GenericEnum<T> {
@@ -140,14 +126,8 @@ mod enum_ctor {
         // Should NOT lint this because the field type is bound to a concrete type.
         ConcreteEnum::X(1);
 
-        // Should NOT lint this because the field type is bound to a concrete type.
-        ConcreteEnum::Y(1.);
-
         // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
         GenericEnum::X(1);
-
-        // Should lint this because the field type is inferred to `f64` and NOT bound to a concrete type.
-        GenericEnum::X(1.);
     }
 }
 
