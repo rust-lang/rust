@@ -13,12 +13,83 @@ use log::{info, warn};
 
 use crate::{
     db::HirDatabase, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
-    DebruijnIndex, InEnvironment, Interner, ProjectionTyExt, Solution, Substitution, Ty, TyBuilder,
-    TyKind,
+    DebruijnIndex, Environment, InEnvironment, Interner, ProjectionTyExt, Solution, Substitution,
+    Ty, TyBuilder, TyKind,
 };
+
+pub(crate) enum AutoderefKind {
+    Builtin,
+    Overloaded,
+}
+
+pub(crate) struct Autoderef<'db> {
+    db: &'db dyn HirDatabase,
+    ty: Canonical<Ty>,
+    at_start: bool,
+    krate: Option<CrateId>,
+    environment: Environment,
+    steps: Vec<(AutoderefKind, Ty)>,
+}
+
+impl<'db> Autoderef<'db> {
+    pub(crate) fn new(
+        db: &'db dyn HirDatabase,
+        krate: Option<CrateId>,
+        ty: InEnvironment<Canonical<Ty>>,
+    ) -> Self {
+        let InEnvironment { goal: ty, environment } = ty;
+        Autoderef { db, ty, at_start: true, environment, krate, steps: Vec::new() }
+    }
+
+    pub(crate) fn step_count(&self) -> usize {
+        self.steps.len()
+    }
+
+    pub(crate) fn steps(&self) -> &[(AutoderefKind, chalk_ir::Ty<Interner>)] {
+        &self.steps
+    }
+
+    pub(crate) fn final_ty(&self) -> Ty {
+        self.ty.value.clone()
+    }
+}
+
+impl Iterator for Autoderef<'_> {
+    type Item = (Canonical<Ty>, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.at_start {
+            self.at_start = false;
+            return Some((self.ty.clone(), 0));
+        }
+
+        if self.steps.len() >= AUTODEREF_RECURSION_LIMIT {
+            return None;
+        }
+
+        let (kind, new_ty) = if let Some(derefed) = builtin_deref(&self.ty.value) {
+            (AutoderefKind::Builtin, Canonical { value: derefed, binders: self.ty.binders.clone() })
+        } else {
+            (
+                AutoderefKind::Overloaded,
+                deref_by_trait(
+                    self.db,
+                    self.krate?,
+                    InEnvironment { goal: &self.ty, environment: self.environment.clone() },
+                )?,
+            )
+        };
+
+        self.steps.push((kind, self.ty.value.clone()));
+        self.ty = new_ty;
+
+        Some((self.ty.clone(), self.step_count()))
+    }
+}
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
+// FIXME: replace uses of this with Autoderef above
 pub fn autoderef<'a>(
     db: &'a dyn HirDatabase,
     krate: Option<CrateId>,

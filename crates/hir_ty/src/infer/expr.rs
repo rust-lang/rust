@@ -1,7 +1,10 @@
 //! Type inference for expressions.
 
-use std::iter::{repeat, repeat_with};
-use std::{mem, sync::Arc};
+use std::{
+    iter::{repeat, repeat_with},
+    mem,
+    sync::Arc,
+};
 
 use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
 use hir_def::{
@@ -15,7 +18,8 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef, consteval,
+    autoderef::{self, Autoderef},
+    consteval,
     infer::coerce::CoerceMany,
     lower::lower_to_chalk_mutability,
     mapping::from_chalk,
@@ -314,7 +318,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let canonicalized = self.canonicalize(callee_ty.clone());
-                let mut derefs = autoderef(
+                let mut derefs = Autoderef::new(
                     self.db,
                     self.resolver.krate(),
                     InEnvironment {
@@ -322,14 +326,19 @@ impl<'a> InferenceContext<'a> {
                         environment: self.table.trait_env.env.clone(),
                     },
                 );
-                let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs
-                    .find_map(|callee_deref_ty| {
-                        self.callable_sig(
-                            &canonicalized.decanonicalize_ty(callee_deref_ty.value),
-                            args.len(),
-                        )
-                    })
-                    .unwrap_or((Vec::new(), self.err_ty()));
+                let res = derefs.by_ref().find_map(|(callee_deref_ty, _)| {
+                    self.callable_sig(
+                        &canonicalized.decanonicalize_ty(callee_deref_ty.value),
+                        args.len(),
+                    )
+                });
+                let (param_tys, ret_ty): (Vec<Ty>, Ty) = match res {
+                    Some(res) => {
+                        self.write_expr_adj(*callee, self.auto_deref_adjust_steps(&derefs));
+                        res
+                    }
+                    None => (Vec::new(), self.err_ty()),
+                };
                 self.register_obligations_for_call(&callee_ty);
                 self.check_call_arguments(args, &param_tys);
                 self.normalize_associated_types_in(ret_ty)
@@ -467,15 +476,16 @@ impl<'a> InferenceContext<'a> {
             Expr::Field { expr, name } => {
                 let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let canonicalized = self.canonicalize(receiver_ty);
-                let ty = autoderef::autoderef(
+
+                let mut autoderef = Autoderef::new(
                     self.db,
                     self.resolver.krate(),
                     InEnvironment {
                         goal: canonicalized.value.clone(),
                         environment: self.trait_env.env.clone(),
                     },
-                )
-                .find_map(|derefed_ty| {
+                );
+                let ty = autoderef.by_ref().find_map(|(derefed_ty, _)| {
                     let def_db = self.db.upcast();
                     let module = self.resolver.module();
                     let is_visible = |field_id: &FieldId| {
@@ -524,8 +534,14 @@ impl<'a> InferenceContext<'a> {
                         }
                         _ => None,
                     }
-                })
-                .unwrap_or_else(|| self.err_ty());
+                });
+                let ty = match ty {
+                    Some(ty) => {
+                        self.write_expr_adj(*expr, self.auto_deref_adjust_steps(&autoderef));
+                        ty
+                    }
+                    None => self.err_ty(),
+                };
                 let ty = self.insert_type_vars(ty);
                 self.normalize_associated_types_in(ty)
             }
