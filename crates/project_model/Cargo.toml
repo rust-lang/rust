@@ -11,11 +11,10 @@ doctest = false
 [dependencies]
 log = "0.4.8"
 rustc-hash = "1.1.0"
-cargo_metadata = "0.13"
+cargo_metadata = "0.14"
 serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
 anyhow = "1.0.26"
-itertools = "0.10.0"
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 
 cfg = { path = "../cfg", version = "0.0.0" }
