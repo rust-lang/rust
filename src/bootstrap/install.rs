@@ -32,7 +32,7 @@ fn install_sh(
     builder.info(&format!("Install {} stage{} ({:?})", package, stage, host));
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
-    let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
+    let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "etc"));
     let datadir = prefix.join(default_path(&builder.config.datadir, "share"));
     let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc/rust"));
     let mandir = prefix.join(default_path(&builder.config.mandir, "share/man"));
