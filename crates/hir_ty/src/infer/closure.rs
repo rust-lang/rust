@@ -1,7 +1,7 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
 use chalk_ir::{cast::Cast, AliasTy, FnSubst, WhereClause};
-use hir_def::HasModule;
+use hir_def::{expr::ExprId, HasModule};
 use smallvec::SmallVec;
 
 use crate::{
@@ -14,6 +14,7 @@ use super::{Expectation, InferenceContext};
 impl InferenceContext<'_> {
     pub(super) fn deduce_closure_type_from_expectations(
         &mut self,
+        closure_expr: ExprId,
         closure_ty: &Ty,
         sig_ty: &Ty,
         expectation: &Expectation,
@@ -24,7 +25,7 @@ impl InferenceContext<'_> {
         };
 
         // Deduction from where-clauses in scope, as well as fn-pointer coercion are handled here.
-        self.coerce(closure_ty, &expected_ty);
+        let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
 
         // Deduction based on the expected `dyn Fn` is done separately.
         if let TyKind::Dyn(dyn_ty) = expected_ty.kind(&Interner) {

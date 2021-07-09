@@ -51,7 +51,9 @@ fn let_stmt_coerce() {
 //- minicore: coerce_unsized
 fn test() {
     let x: &[isize] = &[1];
+                   // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
     let x: *const [isize] = &[1];
+                         // ^^^^ adjustments: Deref(None), Borrow(RawPtr(Not)), Pointer(Unsize)
 }
 ",
     );
@@ -96,6 +98,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
+         // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -130,6 +133,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
+              // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -144,6 +148,7 @@ fn match_second_coerce() {
         r#"
 //- minicore: coerce_unsized
 fn foo<T>(x: &[T]) -> &[T] { loop {} }
+                          // ^^^^^^^ adjustments: NeverToAny
 fn test(i: i32) {
     let x = match i {
         1 => &[1],
@@ -168,9 +173,12 @@ fn test() {
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &i32
         _ => t as *const i32,
+          // ^^^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
+
     };
     x;
   //^ type: *const i32
+
 }
         ",
     );
@@ -255,6 +263,9 @@ fn coerce_fn_item_to_fn_ptr() {
 fn foo(x: u32) -> isize { 1 }
 fn test() {
     let f: fn(u32) -> isize = foo;
+                           // ^^^ adjustments: Pointer(ReifyFnPointer)
+    let f: unsafe fn(u32) -> isize = foo;
+                                  // ^^^ adjustments: Pointer(ReifyFnPointer)
 }",
     );
 }

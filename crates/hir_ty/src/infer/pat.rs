@@ -12,8 +12,9 @@ use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext, TypeMismatch};
 use crate::{
-    lower::lower_to_chalk_mutability, static_lifetime, Interner, Substitution, Ty, TyBuilder,
-    TyExt, TyKind,
+    infer::{Adjust, Adjustment, AutoBorrow},
+    lower::lower_to_chalk_mutability,
+    static_lifetime, Interner, Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -103,7 +104,10 @@ impl<'a> InferenceContext<'a> {
         if is_non_ref_pat(&body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
-                pat_adjustments.push(expected.clone());
+                pat_adjustments.push(Adjustment {
+                    target: expected.clone(),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(mutability)),
+                });
                 expected = self.resolve_ty_shallow(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),

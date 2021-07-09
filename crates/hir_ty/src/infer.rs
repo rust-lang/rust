@@ -16,7 +16,7 @@
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, DebruijnIndex, Mutability};
+use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -34,10 +34,10 @@ use rustc_hash::FxHashMap;
 use stdx::impl_from;
 use syntax::SmolStr;
 
-use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
 use crate::{
-    db::HirDatabase, fold_tys, lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy,
-    Goal, Interner, Substitution, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
+    to_assoc_type_id, AliasEq, AliasTy, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
+    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -103,12 +103,20 @@ impl Default for BindingMode {
 }
 
 #[derive(Debug)]
-pub(crate) struct InferOk {
+pub(crate) struct InferOk<T> {
+    value: T,
     goals: Vec<InEnvironment<Goal>>,
 }
+
+impl<T> InferOk<T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> InferOk<U> {
+        InferOk { value: f(self.value), goals: self.goals }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct TypeError;
-pub(crate) type InferResult = Result<InferOk, TypeError>;
+pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InferenceDiagnostic {
@@ -133,6 +141,108 @@ impl Default for InternedStandardTypes {
         InternedStandardTypes { unknown: TyKind::Error.intern(&Interner) }
     }
 }
+/// Represents coercing a value to a different type of value.
+///
+/// We transform values by following a number of `Adjust` steps in order.
+/// See the documentation on variants of `Adjust` for more details.
+///
+/// Here are some common scenarios:
+///
+/// 1. The simplest cases are where a pointer is not adjusted fat vs thin.
+///    Here the pointer will be dereferenced N times (where a dereference can
+///    happen to raw or borrowed pointers or any smart pointer which implements
+///    Deref, including Box<_>). The types of dereferences is given by
+///    `autoderefs`. It can then be auto-referenced zero or one times, indicated
+///    by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
+///    `false`.
+///
+/// 2. A thin-to-fat coercion involves unsizing the underlying data. We start
+///    with a thin pointer, deref a number of times, unsize the underlying data,
+///    then autoref. The 'unsize' phase may change a fixed length array to a
+///    dynamically sized one, a concrete object to a trait object, or statically
+///    sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
+///    represented by:
+///
+///    ```
+///    Deref(None) -> [i32; 4],
+///    Borrow(AutoBorrow::Ref) -> &[i32; 4],
+///    Unsize -> &[i32],
+///    ```
+///
+///    Note that for a struct, the 'deep' unsizing of the struct is not recorded.
+///    E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
+///    The autoderef and -ref are the same as in the above example, but the type
+///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
+///    the underlying conversions from `[i32; 4]` to `[i32]`.
+///
+/// 3. Coercing a `Box<T>` to `Box<dyn Trait>` is an interesting special case. In
+///    that case, we have the pointer we need coming in, so there are no
+///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
+///    At some point, of course, `Box` should move out of the compiler, in which
+///    case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
+///    Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Adjustment {
+    pub kind: Adjust,
+    pub target: Ty,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Adjust {
+    /// Go from ! to any type.
+    NeverToAny,
+    /// Dereference once, producing a place.
+    Deref(Option<OverloadedDeref>),
+    /// Take the address and produce either a `&` or `*` pointer.
+    Borrow(AutoBorrow),
+    Pointer(PointerCast),
+}
+
+/// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`
+/// call, with the signature `&'a T -> &'a U` or `&'a mut T -> &'a mut U`.
+/// The target type is `U` in both cases, with the region and mutability
+/// being those shared by both the receiver and the returned reference.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct OverloadedDeref(Mutability);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AutoBorrow {
+    /// Converts from T to &T.
+    Ref(Mutability),
+    /// Converts from T to *T.
+    RawPtr(Mutability),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PointerCast {
+    /// Go from a fn-item type to a fn-pointer type.
+    ReifyFnPointer,
+
+    /// Go from a safe fn pointer to an unsafe fn pointer.
+    UnsafeFnPointer,
+
+    /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
+    /// It cannot convert a closure that requires unsafe.
+    ClosureFnPointer(Safety),
+
+    /// Go from a mut raw pointer to a const raw pointer.
+    MutToConstPointer,
+
+    /// Go from `*const [T; N]` to `*const T`
+    ArrayToPointer,
+
+    /// Unsize a pointer/reference value, e.g., `&[T; n]` to
+    /// `&[T]`. Note that the source could be a thin or fat pointer.
+    /// This will do things like convert thin pointers to fat
+    /// pointers, or convert structs containing thin pointers to
+    /// structs containing fat pointers, or convert between fat
+    /// pointers. We don't store the details of how the transform is
+    /// done (in fact, we don't know that, because it might depend on
+    /// the precise type parameters). We just store the target
+    /// type. Codegen backends and miri figure out what has to be done
+    /// based on the precise source/target type at hand.
+    Unsize,
+}
 
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
@@ -156,7 +266,8 @@ pub struct InferenceResult {
     /// Interned Unknown to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
-    pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
+    pub pat_adjustments: FxHashMap<PatId, Vec<Adjustment>>,
+    pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
 }
 
 impl InferenceResult {
@@ -238,7 +349,7 @@ struct InferenceContext<'a> {
 #[derive(Clone, Debug)]
 struct BreakableContext {
     may_break: bool,
-    break_ty: Ty,
+    coerce: CoerceMany,
     label: Option<name::Name>,
 }
 
@@ -301,6 +412,10 @@ impl<'a> InferenceContext<'a> {
 
     fn write_expr_ty(&mut self, expr: ExprId, ty: Ty) {
         self.result.type_of_expr.insert(expr, ty);
+    }
+
+    fn write_expr_adj(&mut self, expr: ExprId, adjustments: Vec<Adjustment>) {
+        self.result.expr_adjustments.insert(expr, adjustments);
     }
 
     fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {

@@ -109,7 +109,7 @@ impl<'a> PatCtxt<'a> {
         self.infer.pat_adjustments.get(&pat).map(|it| &**it).unwrap_or_default().iter().rev().fold(
             unadjusted_pat,
             |subpattern, ref_ty| Pat {
-                ty: ref_ty.clone(),
+                ty: ref_ty.target.clone(),
                 kind: Box::new(PatKind::Deref { subpattern }),
             },
         )

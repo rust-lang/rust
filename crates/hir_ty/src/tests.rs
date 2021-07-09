@@ -33,7 +33,11 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 use tracing_tree::HierarchicalLayer;
 
 use crate::{
-    db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,
+    db::HirDatabase,
+    display::HirDisplay,
+    infer::{Adjustment, TypeMismatch},
+    test_db::TestDB,
+    InferenceResult, Ty,
 };
 
 // These tests compare the inference results for all expressions in a file
@@ -79,6 +83,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     let mut had_annotations = false;
     let mut mismatches = HashMap::new();
     let mut types = HashMap::new();
+    let mut adjustments = HashMap::<_, Vec<_>>::new();
     for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let file_range = FileRange { file_id, range };
@@ -88,6 +93,15 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 types.insert(file_range, expected.trim_start_matches("type: ").to_string());
             } else if expected.starts_with("expected") {
                 mismatches.insert(file_range, expected);
+            } else if expected.starts_with("adjustments: ") {
+                adjustments.insert(
+                    file_range,
+                    expected
+                        .trim_start_matches("adjustments: ")
+                        .split(',')
+                        .map(|it| it.trim().to_string())
+                        .collect(),
+                );
             } else {
                 panic!("unexpected annotation: {}", expected);
             }
@@ -155,6 +169,19 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 };
                 assert_eq!(actual, expected);
             }
+            if let Some(expected) = adjustments.remove(&range) {
+                if let Some(adjustments) = inference_result.expr_adjustments.get(&expr) {
+                    assert_eq!(
+                        expected,
+                        adjustments
+                            .iter()
+                            .map(|Adjustment { kind, .. }| format!("{:?}", kind))
+                            .collect::<Vec<_>>()
+                    );
+                } else {
+                    panic!("expected {:?} adjustments, found none", expected);
+                }
+            }
         }
 
         for (pat, mismatch) in inference_result.pat_type_mismatches() {
@@ -210,6 +237,12 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
         format_to!(buf, "Unchecked type annotations:\n");
         for t in types {
             format_to!(buf, "{:?}: type {}\n", t.0.range, t.1);
+        }
+    }
+    if !adjustments.is_empty() {
+        format_to!(buf, "Unchecked adjustments annotations:\n");
+        for t in adjustments {
+            format_to!(buf, "{:?}: type {:?}\n", t.0.range, t.1);
         }
     }
     assert!(buf.is_empty(), "{}", buf);
