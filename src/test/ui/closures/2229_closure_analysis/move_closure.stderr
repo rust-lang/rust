@@ -44,7 +44,7 @@ LL |     let mut c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/move_closure.rs:118:13
+  --> $DIR/move_closure.rs:117:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL |     let c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/move_closure.rs:135:13
+  --> $DIR/move_closure.rs:133:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +62,7 @@ LL |     let c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/move_closure.rs:152:13
+  --> $DIR/move_closure.rs:150:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0),(0, 0)] -> ByValue
+note: Capturing t[(0, 0),(0, 0)] -> MutBorrow
   --> $DIR/move_closure.rs:18:9
    |
 LL |         t.0.0 = "new S".into();
@@ -221,17 +221,12 @@ LL | /     move || {
 LL | |
 LL | |
 LL | |         let _t = t.0.0;
-...  |
+LL | |
 LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0),Deref] -> ImmBorrow
-  --> $DIR/move_closure.rs:102:18
-   |
-LL |         let _t = t.0.0;
-   |                  ^^^^^
-note: Capturing t[(0, 0)] -> ByValue
+note: Capturing t[(0, 0),Deref] -> ByValue
   --> $DIR/move_closure.rs:102:18
    |
 LL |         let _t = t.0.0;
@@ -244,7 +239,7 @@ LL | /     move || {
 LL | |
 LL | |
 LL | |         let _t = t.0.0;
-...  |
+LL | |
 LL | |
 LL | |     };
    | |_____^
@@ -256,48 +251,43 @@ LL |         let _t = t.0.0;
    |                  ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/move_closure.rs:121:5
+  --> $DIR/move_closure.rs:120:5
    |
 LL | /     move || {
 LL | |
 LL | |
 LL | |         let _t = b.0;
-...  |
+LL | |
 LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing b[Deref,(0, 0)] -> ByValue
-  --> $DIR/move_closure.rs:124:18
-   |
-LL |         let _t = b.0;
-   |                  ^^^
-note: Capturing b[] -> ByValue
-  --> $DIR/move_closure.rs:124:18
+note: Capturing b[Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/move_closure.rs:123:18
    |
 LL |         let _t = b.0;
    |                  ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/move_closure.rs:121:5
+  --> $DIR/move_closure.rs:120:5
    |
 LL | /     move || {
 LL | |
 LL | |
 LL | |         let _t = b.0;
-...  |
+LL | |
 LL | |
 LL | |     };
    | |_____^
    |
 note: Min Capture b[] -> ByValue
-  --> $DIR/move_closure.rs:124:18
+  --> $DIR/move_closure.rs:123:18
    |
 LL |         let _t = b.0;
    |                  ^^^
 
 error: First Pass analysis includes:
-  --> $DIR/move_closure.rs:138:5
+  --> $DIR/move_closure.rs:136:5
    |
 LL | /     move || {
 LL | |
@@ -308,14 +298,14 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing b[Deref,(0, 0)] -> ByValue
-  --> $DIR/move_closure.rs:141:24
+note: Capturing b[Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/move_closure.rs:139:24
    |
 LL |         println!("{}", b.0);
    |                        ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/move_closure.rs:138:5
+  --> $DIR/move_closure.rs:136:5
    |
 LL | /     move || {
 LL | |
@@ -327,13 +317,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture b[] -> ByValue
-  --> $DIR/move_closure.rs:141:24
+  --> $DIR/move_closure.rs:139:24
    |
 LL |         println!("{}", b.0);
    |                        ^^^
 
 error: First Pass analysis includes:
-  --> $DIR/move_closure.rs:155:5
+  --> $DIR/move_closure.rs:153:5
    |
 LL | /     move || {
 LL | |
@@ -344,14 +334,14 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
-  --> $DIR/move_closure.rs:158:24
+note: Capturing t[(1, 0),Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/move_closure.rs:156:24
    |
 LL |         println!("{}", t.1.0);
    |                        ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/move_closure.rs:155:5
+  --> $DIR/move_closure.rs:153:5
    |
 LL | /     move || {
 LL | |
@@ -363,7 +353,7 @@ LL | |     };
    | |_____^
    |
 note: Min Capture t[(1, 0)] -> ByValue
-  --> $DIR/move_closure.rs:158:24
+  --> $DIR/move_closure.rs:156:24
    |
 LL |         println!("{}", t.1.0);
    |                        ^^^^^

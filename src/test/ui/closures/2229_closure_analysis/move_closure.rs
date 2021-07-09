@@ -16,7 +16,7 @@ fn simple_move_closure() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         t.0.0 = "new S".into();
-        //~^ NOTE: Capturing t[(0, 0),(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0),(0, 0)] -> MutBorrow
         //~| NOTE: Min Capture t[(0, 0),(0, 0)] -> ByValue
     };
     c();
@@ -100,8 +100,7 @@ fn struct_contains_ref_to_another_struct_3() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref] -> ImmBorrow
-        //~| NOTE: Capturing t[(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0),Deref] -> ByValue
         //~| NOTE: Min Capture t[(0, 0)] -> ByValue
     };
 
@@ -122,8 +121,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = b.0;
-        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ByValue
-        //~| NOTE: Capturing b[] -> ByValue
+        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture b[] -> ByValue
     };
 
@@ -139,7 +137,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", b.0);
-        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ByValue
+        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture b[] -> ByValue
     };
 
@@ -156,7 +154,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", t.1.0);
-        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture t[(1, 0)] -> ByValue
     };
 }

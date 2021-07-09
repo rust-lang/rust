@@ -149,8 +149,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             closure_def_id,
             closure_span: span,
             capture_clause,
-            current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
-            current_origin: None,
+            _current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
+            _current_origin: None,
             capture_information: Default::default(),
             fake_reads: Default::default(),
         };
@@ -167,9 +167,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "For closure={:?}, capture_information={:#?}",
             closure_def_id, delegate.capture_information
         );
+
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
-        self.compute_min_captures(closure_def_id, capture_clause, delegate.capture_information);
+        let (capture_information, closure_kind, origin) = self
+            .process_collected_capture_information(capture_clause, delegate.capture_information);
+
+        self.compute_min_captures(closure_def_id, capture_information);
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
 
@@ -204,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // This will update the min captures based on this new fake information.
-            self.compute_min_captures(closure_def_id, capture_clause, capture_information);
+            self.compute_min_captures(closure_def_id, capture_information);
         }
 
         let before_feature_tys = self.final_upvar_tys(closure_def_id);
@@ -212,14 +216,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
             // substs with the kind we inferred.
-            let inferred_kind = delegate.current_closure_kind;
             let closure_kind_ty = closure_substs.as_closure().kind_ty();
-            self.demand_eqtype(span, inferred_kind.to_ty(self.tcx), closure_kind_ty);
+            self.demand_eqtype(span, closure_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
-            if let Some(origin) = delegate.current_origin.clone() {
+            if let Some(origin) = origin {
                 let origin = if enable_precise_capture(self.tcx, span) {
-                    (origin.0, restrict_capture_precision(capture_clause, origin.1))
+                    (origin.0, origin.1)
                 } else {
                     (origin.0, Place { projections: vec![], ..origin.1 })
                 };
@@ -306,6 +309,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
+    fn process_collected_capture_information(
+        &self,
+        capture_clause: hir::CaptureBy,
+        capture_information: InferredCaptureInformation<'tcx>,
+    ) -> (InferredCaptureInformation<'tcx>, ty::ClosureKind, Option<(Span, Place<'tcx>)>) {
+        let mut processed: InferredCaptureInformation<'tcx> = Default::default();
+
+        let mut closure_kind = ty::ClosureKind::LATTICE_BOTTOM;
+        let mut origin: Option<(Span, Place<'tcx>)> = None;
+
+        for (place, mut capture_info) in capture_information.into_iter() {
+            let place = restrict_capture_precision(capture_clause, place);
+            let usage_span = if let Some(usage_expr) = capture_info.path_expr_id {
+                self.tcx.hir().span(usage_expr)
+            } else {
+                unreachable!()
+            };
+
+            let updated = match capture_info.capture_kind {
+                ty::UpvarCapture::ByValue(..) => match closure_kind {
+                    ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                        (ty::ClosureKind::FnOnce, Some((usage_span, place.clone())))
+                    }
+                    // If closure is already FnOnce, don't update
+                    ty::ClosureKind::FnOnce => (closure_kind, origin),
+                },
+
+                ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                    kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
+                    ..
+                }) => {
+                    match closure_kind {
+                        ty::ClosureKind::Fn => {
+                            (ty::ClosureKind::FnMut, Some((usage_span, place.clone())))
+                        }
+                        // Don't update the origin
+                        ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce => (closure_kind, origin),
+                    }
+                }
+
+                _ => (closure_kind, origin),
+            };
+
+            closure_kind = updated.0;
+            origin = updated.1;
+
+            let (place, capture_kind) = match capture_clause {
+                hir::CaptureBy::Value => process_for_move(place, capture_info.capture_kind),
+                hir::CaptureBy::Ref => process_for_ref(place, capture_info.capture_kind),
+            };
+
+            capture_info.capture_kind = capture_kind;
+            processed.insert(place, capture_info);
+        }
+
+        (processed, closure_kind, origin)
+    }
+
     /// Analyzes the information collected by `InferBorrowKind` to compute the min number of
     /// Places (and corresponding capture kind) that we need to keep track of to support all
     /// the required captured paths.
@@ -378,7 +439,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn compute_min_captures(
         &self,
         closure_def_id: DefId,
-        capture_clause: hir::CaptureBy,
         capture_information: InferredCaptureInformation<'tcx>,
     ) {
         if capture_information.is_empty() {
@@ -395,8 +455,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
             };
-
-            let place = restrict_capture_precision(capture_clause, place);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
@@ -1336,11 +1394,11 @@ struct InferBorrowKind<'a, 'tcx> {
     // we've taken the closure kind from the expectations instead, and
     // for generators we don't even implement the closure traits
     // really).
-    current_closure_kind: ty::ClosureKind,
+    _current_closure_kind: ty::ClosureKind,
 
     // If we modified `current_closure_kind`, this field contains a `Some()` with the
     // variable access that caused us to do so.
-    current_origin: Option<(Span, Place<'tcx>)>,
+    _current_origin: Option<(Span, Place<'tcx>)>,
 
     /// For each Place that is captured by the closure, we track the minimal kind of
     /// access we need (ref, ref mut, move, etc) and the expression that resulted in such access.
@@ -1384,26 +1442,11 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, mode
         );
 
-        match (self.capture_clause, mode) {
-            // In non-move closures, we only care about moves
-            (hir::CaptureBy::Ref, euv::Copy) => return,
-
-            // We want to capture Copy types that read through a ref via a reborrow
-            (hir::CaptureBy::Value, euv::Copy)
-                if place_with_id.place.deref_tys().any(ty::TyS::is_ref) =>
-            {
-                return;
-            }
-
-            (hir::CaptureBy::Ref, euv::Move) | (hir::CaptureBy::Value, euv::Move | euv::Copy) => {}
+        // AMAN: Don't upgrade copy types to ByValue
+        match mode {
+            euv::ConsumeMode::Copy => return,
+            euv::ConsumeMode::Move => {}
         };
-
-        let place = truncate_capture_for_move(place_with_id.place.clone());
-        let place_with_id = PlaceWithHirId { place: place.clone(), hir_id: place_with_id.hir_id };
-
-        if !self.capture_information.contains_key(&place) {
-            self.init_capture_info_for_place(&place_with_id, diag_expr_id);
-        }
 
         let tcx = self.fcx.tcx;
         let upvar_id = if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
@@ -1415,16 +1458,6 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         debug!("adjust_upvar_borrow_kind_for_consume: upvar={:?}", upvar_id);
 
         let usage_span = tcx.hir().span(diag_expr_id);
-
-        if matches!(mode, euv::Move) {
-            // To move out of an upvar, this must be a FnOnce closure
-            self.adjust_closure_kind(
-                upvar_id.closure_expr_id,
-                ty::ClosureKind::FnOnce,
-                usage_span,
-                place.clone(),
-            );
-        }
 
         let capture_info = ty::CaptureInfo {
             capture_kind_expr_id: Some(diag_expr_id),
@@ -1503,22 +1536,13 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             ty::ImmBorrow => false,
         });
 
-        let tcx = self.fcx.tcx;
+        // let tcx = self.fcx.tcx;
 
         // if this is an implicit deref of an
         // upvar, then we need to modify the
         // borrow_kind of the upvar to make sure it
         // is inferred to mutable if necessary
         self.adjust_upvar_borrow_kind(place_with_id, diag_expr_id, borrow_kind);
-
-        if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
-            self.adjust_closure_kind(
-                upvar_id.closure_expr_id,
-                ty::ClosureKind::FnMut,
-                tcx.hir().span(diag_expr_id),
-                place_with_id.place.clone(),
-            );
-        }
     }
 
     /// We infer the borrow_kind with which to borrow upvars in a stack closure.
@@ -1557,48 +1581,6 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         };
     }
 
-    fn adjust_closure_kind(
-        &mut self,
-        closure_id: LocalDefId,
-        new_kind: ty::ClosureKind,
-        upvar_span: Span,
-        place: Place<'tcx>,
-    ) {
-        debug!(
-            "adjust_closure_kind(closure_id={:?}, new_kind={:?}, upvar_span={:?}, place={:?})",
-            closure_id, new_kind, upvar_span, place
-        );
-
-        // Is this the closure whose kind is currently being inferred?
-        if closure_id.to_def_id() != self.closure_def_id {
-            debug!("adjust_closure_kind: not current closure");
-            return;
-        }
-
-        // closures start out as `Fn`.
-        let existing_kind = self.current_closure_kind;
-
-        debug!(
-            "adjust_closure_kind: closure_id={:?}, existing_kind={:?}, new_kind={:?}",
-            closure_id, existing_kind, new_kind
-        );
-
-        match (existing_kind, new_kind) {
-            (ty::ClosureKind::Fn, ty::ClosureKind::Fn)
-            | (ty::ClosureKind::FnMut, ty::ClosureKind::Fn | ty::ClosureKind::FnMut)
-            | (ty::ClosureKind::FnOnce, _) => {
-                // no change needed
-            }
-
-            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce)
-            | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-                // new kind is stronger than the old kind
-                self.current_closure_kind = new_kind;
-                self.current_origin = Some((upvar_span, place));
-            }
-        }
-    }
-
     fn init_capture_info_for_place(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -1607,12 +1589,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             assert_eq!(self.closure_def_id.expect_local(), upvar_id.closure_expr_id);
 
-            let capture_kind = self.fcx.init_capture_kind_for_place(
-                &place_with_id.place,
-                self.capture_clause,
-                upvar_id,
-                self.closure_span,
-            );
+            // AMAN: Always initialize to ImmBorrow
+            // We will increase the CaptureKind in process_collected_capture_information.
+            let origin = UpvarRegion(upvar_id, self.closure_span);
+            let upvar_region = self.fcx.next_region_var(origin);
+            let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow, region: upvar_region };
+            let capture_kind = ty::UpvarCapture::ByRef(upvar_borrow);
 
             let expr_id = Some(diag_expr_id);
             let capture_info = ty::CaptureInfo {
@@ -1711,44 +1693,12 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     }
 }
 
-/// Deref of a box isn't captured in move clousres. This is motivated by:
-///   1. We only want to capture data that is on the stack
-///   2. One motivation for the user to use a box might be to reduce the amount of data that gets
-///      moved (if size of pointer < size of data). We want to make sure that this optimization that
-///      the user made is respected.
-fn restrict_precision_for_box<'tcx>(
-    capture_clause: hir::CaptureBy,
-    mut place: Place<'tcx>,
-) -> Place<'tcx> {
-    match capture_clause {
-        hir::CaptureBy::Ref => {}
-        hir::CaptureBy::Value => {
-            if ty::TyS::is_box(place.base_ty) {
-                place.projections.truncate(0);
-            } else {
-                // Either the box is the last access or there is a deref applied on the box
-                // In either case we want to stop at the box.
-                let pos = place.projections.iter().position(|proj| ty::TyS::is_box(proj.ty));
-                match pos {
-                    None => {}
-                    Some(idx) => {
-                        place.projections.truncate(idx + 1);
-                    }
-                }
-            }
-        }
-    }
-
-    place
-}
-
 /// Truncate projections so that following rules are obeyed by the captured `place`:
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
 /// - No Index projections are captured, since arrays are captured completely.
-/// - Deref of a box isn't captured in move clousres.
 fn restrict_capture_precision<'tcx>(
-    capture_clause: hir::CaptureBy,
+    _capture_clause: hir::CaptureBy,
     mut place: Place<'tcx>,
 ) -> Place<'tcx> {
     if place.projections.is_empty() {
@@ -1785,19 +1735,63 @@ fn restrict_capture_precision<'tcx>(
 
     place.projections.truncate(length);
 
-    // Dont't capture projections on top of a box in move closures.
-    restrict_precision_for_box(capture_clause, place)
+    place
 }
 
-/// Truncates a place so that the resultant capture doesn't move data out of a reference
-fn truncate_capture_for_move(mut place: Place<'tcx>) -> Place<'tcx> {
-    if let Some(i) = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref) {
-        // We only drop Derefs in case of move closures
-        // There might be an index projection or raw ptr ahead, so we don't stop here.
-        place.projections.truncate(i);
-    }
+fn process_for_move<'tcx>(
+    mut place: Place<'tcx>,
+    kind: ty::UpvarCapture<'tcx>,
+) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
+    let contains_deref_of_ref = place.deref_tys().any(|ty| ty.is_ref());
+    match kind {
+        ty::UpvarCapture::ByRef(..) if contains_deref_of_ref => (place, kind),
 
-    place
+        // If there's any Deref and the data needs to be moved into the closure body,
+        // or it's a Deref of a Box, truncate the path to the first deref
+        _ if place.deref_tys().next().is_some() => {
+            let first_deref =
+                place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
+            let place = match first_deref {
+                Some(idx) => {
+                    place.projections.truncate(idx);
+                    place
+                }
+                None => place,
+            };
+
+            // AMAN: I think we don't need the span inside the ByValue anymore
+            //       we have more detailed span in CaptureInfo
+            (place, ty::UpvarCapture::ByValue(None))
+        }
+
+        _ => (place, ty::UpvarCapture::ByValue(None)),
+    }
+}
+
+fn process_for_ref<'tcx>(
+    mut place: Place<'tcx>,
+    kind: ty::UpvarCapture<'tcx>,
+) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
+    let contains_deref =
+        place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
+
+    match kind {
+        ty::UpvarCapture::ByValue(..) if contains_deref.is_some() => {
+            let place = match contains_deref {
+                Some(idx) => {
+                    place.projections.truncate(idx);
+                    place
+                }
+                // Because of the if guard on the match on `kind`, we should never get here.
+                None => unreachable!(),
+            };
+
+            (place, kind)
+        }
+
+        ty::UpvarCapture::ByValue(..) => (place, kind),
+        ty::UpvarCapture::ByRef(..) => (place, kind),
+    }
 }
 
 fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
