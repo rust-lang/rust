@@ -9,7 +9,6 @@ use std::{
 use anyhow::Result;
 use cargo_metadata::camino::Utf8Path;
 use cargo_metadata::{BuildScript, Message};
-use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
@@ -304,9 +303,7 @@ fn inject_cargo_env(package: &cargo_metadata::Package, build_data: &mut PackageB
     env.push(("CARGO_PKG_VERSION_MAJOR".into(), package.version.major.to_string()));
     env.push(("CARGO_PKG_VERSION_MINOR".into(), package.version.minor.to_string()));
     env.push(("CARGO_PKG_VERSION_PATCH".into(), package.version.patch.to_string()));
-
-    let pre = package.version.pre.iter().map(|id| id.to_string()).format(".");
-    env.push(("CARGO_PKG_VERSION_PRE".into(), pre.to_string()));
+    env.push(("CARGO_PKG_VERSION_PRE".into(), package.version.pre.to_string()));
 
     let authors = package.authors.join(";");
     env.push(("CARGO_PKG_AUTHORS".into(), authors));
