@@ -8,9 +8,13 @@ error[E0620]: cast to unsized type: `u32` as `Option<_>`
   --> $DIR/issue-73886.rs:4:13
    |
 LL |     let _ = 7u32 as Option<_>;
-   |             ^^^^^^^^^^^^^^^^^ help: consider using the `From` trait instead: `Option<_>::from(7u32)`
+   |             ^^^^^^^^^^^^^^^^^
    |
-   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+help: consider using a box or reference as appropriate
+  --> $DIR/issue-73886.rs:4:13
+   |
+LL |     let _ = 7u32 as Option<_>;
+   |             ^^^^
 
 error: aborting due to 2 previous errors
 
