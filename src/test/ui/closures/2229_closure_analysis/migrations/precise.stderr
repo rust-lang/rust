@@ -44,8 +44,8 @@ LL |         let _x = u.1.0;
 LL | }
    | -
    | |
-   | in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.0.1` would be dropped here alongside the closure
    | in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.0.0` would be dropped here alongside the closure
+   | in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.0.1` would be dropped here alongside the closure
    | in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.1.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>

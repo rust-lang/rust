@@ -96,7 +96,7 @@ type MigrationNeededForCapture = (Option<hir::HirId>, String, String);
 
 /// Intermediate format to store the hir id of the root variable and a HashSet containing
 /// information on why the root variable should be fully captured
-type MigrationDiagnosticInfo = (hir::HirId, FxHashSet<MigrationNeededForCapture>);
+type MigrationDiagnosticInfo = (hir::HirId, Vec<MigrationNeededForCapture>);
 
 struct InferBorrowKindVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -861,7 +861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Perform auto-trait analysis
         for (&var_hir_id, _) in upvars.iter() {
-            let mut responsible_captured_hir_ids = FxHashSet::default();
+            let mut responsible_captured_hir_ids = Vec::new();
 
             let auto_trait_diagnostic = if let Some(diagnostics_info) =
                 self.compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
@@ -891,6 +891,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 capture_diagnostic.insert(key.clone());
             }
 
+            let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
+            capture_diagnostic.sort();
             for captured_info in capture_diagnostic.iter() {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =
@@ -907,7 +909,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // auto trait implementation issues
                 auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
 
-                responsible_captured_hir_ids.insert((
+                responsible_captured_hir_ids.push((
                     captured_info.0,
                     captured_info.1.clone(),
                     self.compute_2229_migrations_reasons(
