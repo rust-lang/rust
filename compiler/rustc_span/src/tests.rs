@@ -2,18 +2,21 @@ use super::*;
 
 #[test]
 fn test_lookup_line() {
-    let lines = &[BytePos(3), BytePos(17), BytePos(28)];
+    let source = "abcdefghijklm\nabcdefghij\n...".to_owned();
+    let sf =
+        SourceFile::new(FileName::Anon(0), source, BytePos(3), SourceFileHashAlgorithm::Sha256);
+    assert_eq!(sf.lines.as_slice(), &[BytePos(3), BytePos(17), BytePos(28)]);
 
-    assert_eq!(lookup_line(lines, BytePos(0)), -1);
-    assert_eq!(lookup_line(lines, BytePos(3)), 0);
-    assert_eq!(lookup_line(lines, BytePos(4)), 0);
+    assert_eq!(sf.lookup_line(BytePos(0)), None);
+    assert_eq!(sf.lookup_line(BytePos(3)), Some(0));
+    assert_eq!(sf.lookup_line(BytePos(4)), Some(0));
 
-    assert_eq!(lookup_line(lines, BytePos(16)), 0);
-    assert_eq!(lookup_line(lines, BytePos(17)), 1);
-    assert_eq!(lookup_line(lines, BytePos(18)), 1);
+    assert_eq!(sf.lookup_line(BytePos(16)), Some(0));
+    assert_eq!(sf.lookup_line(BytePos(17)), Some(1));
+    assert_eq!(sf.lookup_line(BytePos(18)), Some(1));
 
-    assert_eq!(lookup_line(lines, BytePos(28)), 2);
-    assert_eq!(lookup_line(lines, BytePos(29)), 2);
+    assert_eq!(sf.lookup_line(BytePos(28)), Some(2));
+    assert_eq!(sf.lookup_line(BytePos(29)), Some(2));
 }
 
 #[test]
