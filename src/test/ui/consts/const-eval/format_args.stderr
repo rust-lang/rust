@@ -1,0 +1,32 @@
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/format_args.rs:5:32
+   |
+LL | const B: std::fmt::Arguments = format_args!("{}", 123);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/format_args.rs:5:32
+   |
+LL | const B: std::fmt::Arguments = format_args!("{}", 123);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format_args.rs:5:32
+   |
+LL | const B: std::fmt::Arguments = format_args!("{}", 123);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^-
+   |                                |                     |
+   |                                |                     temporary value is freed at the end of this statement
+   |                                creates a temporary which is freed while still in use
+   |                                using this value as a constant requires that borrow lasts for `'static`
+   |
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0716.
+For more information about an error, try `rustc --explain E0015`.

@@ -761,6 +761,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
+        let is_literal = self.str_pieces.len() == 1 && self.args.is_empty();
         let mut locals =
             Vec::with_capacity((0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum());
         let mut counts = Vec::with_capacity(self.count_args.len());
@@ -846,7 +847,9 @@ impl<'a, 'b> Context<'a, 'b> {
         let args_slice = self.ecx.expr_addr_of(self.macsp, result);
 
         // Now create the fmt::Arguments struct with all our locals we created.
-        let (fn_name, fn_args) = if self.all_pieces_simple {
+        let (fn_name, fn_args) = if is_literal {
+            ("new_literal", vec![pieces])
+        } else if self.all_pieces_simple {
             ("new_v1", vec![pieces, args_slice])
         } else {
             // Build up the static array which will store our precompiled

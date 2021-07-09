@@ -333,6 +333,15 @@ enum FlagV1 {
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
+    /// Arguments structure in case it's just a single string literal.
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    pub const fn new_literal(pieces: &'a [&'static str; 1]) -> Arguments<'a> {
+        Arguments { pieces, fmt: None, args: &[] }
+    }
+
+    /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[doc(hidden)]
     #[inline]
