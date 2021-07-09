@@ -306,7 +306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    /// Adjusts the closure capture information to ensure that the operations aren't unasfe,
+    /// Adjusts the closure capture information to ensure that the operations aren't unsafe,
     /// and that the path can be captured with required capture kind (depending on use in closure,
     /// move closure etc.)
     ///
@@ -319,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// for generators we don't even implement the closure traits
     /// really).
     ///
-    /// If we inferred that the closure needs to be FnMut/FnOnce, last element of the returned tuplle
+    /// If we inferred that the closure needs to be FnMut/FnOnce, last element of the returned tuple
     /// contains a `Some()` with the `Place` that caused us to do so.
     fn process_collected_capture_information(
         &self,
@@ -331,7 +331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut closure_kind = ty::ClosureKind::LATTICE_BOTTOM;
         let mut origin: Option<(Span, Place<'tcx>)> = None;
 
-        for (place, mut capture_info) in capture_information.into_iter() {
+        for (place, mut capture_info) in capture_information {
             // Apply rules for safety before inferring closure kind
             let place = restrict_capture_precision(place);
 
@@ -1540,8 +1540,6 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             // imm borrows never require adjusting any kinds, so we don't wind up here
             ty::ImmBorrow => false,
         });
-
-        // let tcx = self.fcx.tcx;
 
         // if this is an implicit deref of an
         // upvar, then we need to modify the
