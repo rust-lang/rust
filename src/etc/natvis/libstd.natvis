@@ -77,6 +77,7 @@
     <DisplayString>{(char*)inner.data_ptr}</DisplayString>
     <Expand>
       <Synthetic Name="[chars]">
+        <DisplayString>{(char*)inner.data_ptr}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>inner.length</Size>
@@ -106,6 +107,7 @@
     <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer,[inner.inner.bytes.len]}</DisplayString>
     <Expand>
       <Synthetic Name="[chars]">
+        <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer,[inner.inner.bytes.len]}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>inner.inner.bytes.len</Size>

@@ -113,7 +113,7 @@
 // cdb-command: dx os_string
 // cdb-check:os_string        : "IAMA OS string 😃" [Type: std::ffi::os_str::OsString]
 // cdb-check:    [<Raw View>]     [Type: std::ffi::os_str::OsString]
-// cdb-check:    [chars]
+// cdb-check:    [chars]          : "IAMA OS string 😃"
 
 // cdb-command: dx some
 // cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]

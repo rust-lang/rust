@@ -48,6 +48,7 @@
       <Item Name="[len]" ExcludeView="simple">vec.len</Item>
       <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
       <Synthetic Name="[chars]">
+        <DisplayString>{(char*)vec.buf.ptr.pointer,[vec.len]s8}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>vec.len</Size>

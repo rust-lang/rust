@@ -8,8 +8,8 @@
 // cdb-command: dx duration
 // cdb-check:duration         : 5s 12ns [Type: core::time::Duration]
 // cdb-check:    [<Raw View>]     [Type: core::time::Duration]
-// cdb-check:    seconds          : 0x5 [Type: unsigned __int64]
-// cdb-check:    nanoseconds      : 0xc [Type: unsigned int]
+// cdb-check:    seconds          : 5 [Type: unsigned __int64]
+// cdb-check:    nanoseconds      : 12 [Type: unsigned int]
 
 use std::time::Duration;
 

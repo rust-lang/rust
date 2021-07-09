@@ -8,7 +8,7 @@
 // cdb-command: dx nonnull
 // cdb-check:nonnull          : NonNull(0x[...]: 0xc) [Type: core::ptr::non_null::NonNull<u32>]
 // cdb-check:    [<Raw View>]     [Type: core::ptr::non_null::NonNull<u32>]
-// cdb-checK:    0xc [Type: unsigned int]
+// cdb-check:    0xc [Type: unsigned int]
 
 // cdb-command: dx manuallydrop
 // cdb-check:manuallydrop     : 12345 [Type: core::mem::manually_drop::ManuallyDrop<i32>]
@@ -19,7 +19,7 @@
 // cdb-check:    [<Raw View>]     [Type: core::pin::Pin<ref_mut$<alloc::string::String> >]
 // cdb-check:    [len]            : 0x4 [Type: unsigned __int64]
 // cdb-check:    [capacity]       : 0x4 [Type: unsigned __int64]
-// cdb-check:    [chars]
+// cdb-check:    [chars]          : "this"
 
 use std::mem::ManuallyDrop;
 use std::pin::Pin;
