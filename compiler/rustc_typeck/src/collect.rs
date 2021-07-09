@@ -2217,6 +2217,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             predicates.extend(bounds.predicates(tcx, ty));
                         }
 
+                        hir::GenericBound::Unsized(_) => {}
+
                         hir::GenericBound::Outlives(lifetime) => {
                             let region =
                                 <dyn AstConv<'_>>::ast_region_to_region(&icx, lifetime, None);
@@ -2459,6 +2461,7 @@ fn predicates_from_bound<'tcx>(
             );
             bounds.predicates(astconv.tcx(), param_ty)
         }
+        hir::GenericBound::Unsized(_) => vec![],
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(param_ty, region))

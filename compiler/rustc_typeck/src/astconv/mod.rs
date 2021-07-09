@@ -897,7 +897,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false,
                     );
                 }
-                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+                hir::GenericBound::Unsized(_)
+                | hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,

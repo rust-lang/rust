@@ -162,55 +162,54 @@ pub fn suggest_constraining_type_param(
                         }) if segment.ident.as_str() == param_name => {
                             for (pos, bound) in bounds.iter().enumerate() {
                                 match bound {
+                                    hir::GenericBound::Unsized(_) => {}
                                     hir::GenericBound::Trait(
                                         poly,
                                         hir::TraitBoundModifier::Maybe,
-                                    ) if poly.trait_ref.trait_def_id() == def_id => {
-                                        let sp = match (
-                                            bounds.len(),
-                                            pos,
-                                            generics.where_clause.predicates.len(),
-                                            where_pos,
-                                        ) {
-                                            // where T: ?Sized
-                                            // ^^^^^^^^^^^^^^^
-                                            (1, _, 1, _) => generics.where_clause.span,
-                                            // where Foo: Bar, T: ?Sized,
-                                            //               ^^^^^^^^^^^
-                                            (1, _, len, pos) if pos == len - 1 => {
-                                                generics.where_clause.predicates[pos - 1]
-                                                    .span()
-                                                    .shrink_to_hi()
-                                                    .to(*span)
-                                            }
-                                            // where T: ?Sized, Foo: Bar,
-                                            //       ^^^^^^^^^^^
-                                            (1, _, _, pos) => span.until(
-                                                generics.where_clause.predicates[pos + 1].span(),
-                                            ),
-                                            // where T: ?Sized + Bar, Foo: Bar,
-                                            //          ^^^^^^^^^
-                                            (_, 0, _, _) => {
-                                                bound.span().to(bounds[1].span().shrink_to_lo())
-                                            }
-                                            // where T: Bar + ?Sized, Foo: Bar,
-                                            //             ^^^^^^^^^
-                                            (_, pos, _, _) => bounds[pos - 1]
-                                                .span()
-                                                .shrink_to_hi()
-                                                .to(bound.span()),
-                                        };
-                                        where_unsized_bounds.insert(bound.span());
-                                        err.span_suggestion_verbose(
-                                            sp,
-                                            "consider removing the `?Sized` bound to make the \
-                                             type parameter `Sized`",
-                                            String::new(),
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                    }
-                                    _ => {}
+                                    ) if poly.trait_ref.trait_def_id() == def_id => {}
+                                    _ => continue,
                                 }
+                                let sp = match (
+                                    bounds.len(),
+                                    pos,
+                                    generics.where_clause.predicates.len(),
+                                    where_pos,
+                                ) {
+                                    // where T: ?Sized
+                                    // ^^^^^^^^^^^^^^^
+                                    (1, _, 1, _) => generics.where_clause.span,
+                                    // where Foo: Bar, T: ?Sized,
+                                    //               ^^^^^^^^^^^
+                                    (1, _, len, pos) if pos == len - 1 => {
+                                        generics.where_clause.predicates[pos - 1]
+                                            .span()
+                                            .shrink_to_hi()
+                                            .to(*span)
+                                    }
+                                    // where T: ?Sized, Foo: Bar,
+                                    //       ^^^^^^^^^^^
+                                    (1, _, _, pos) => {
+                                        span.until(generics.where_clause.predicates[pos + 1].span())
+                                    }
+                                    // where T: ?Sized + Bar, Foo: Bar,
+                                    //          ^^^^^^^^^
+                                    (_, 0, _, _) => {
+                                        bound.span().to(bounds[1].span().shrink_to_lo())
+                                    }
+                                    // where T: Bar + ?Sized, Foo: Bar,
+                                    //             ^^^^^^^^^
+                                    (_, pos, _, _) => {
+                                        bounds[pos - 1].span().shrink_to_hi().to(bound.span())
+                                    }
+                                };
+                                where_unsized_bounds.insert(bound.span());
+                                err.span_suggestion_verbose(
+                                    sp,
+                                    "consider removing the `?Sized` bound to make the \
+                                        type parameter `Sized`",
+                                    String::new(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             }
                         }
                         _ => {}

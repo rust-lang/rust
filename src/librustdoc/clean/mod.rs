@@ -128,6 +128,15 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::Unsized(_) => {
+                let def_id = cx.tcx.lang_items().sized_trait().unwrap();
+                let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
+
+                GenericBound::TraitBound(
+                    PolyTrait { trait_: (trait_ref, &[][..]).clean(cx), generic_params: vec![] },
+                    hir::TraitBoundModifier::Maybe,
+                )
+            }
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 

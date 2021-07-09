@@ -401,6 +401,7 @@ pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
     LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
+    Unsized(Span),
     Outlives(Lifetime),
 }
 
@@ -417,6 +418,7 @@ impl GenericBound<'_> {
             GenericBound::Trait(t, ..) => t.span,
             GenericBound::LangItemTrait(_, span, ..) => *span,
             GenericBound::Outlives(l) => l.span,
+            GenericBound::Unsized(span) => *span,
         }
     }
 }

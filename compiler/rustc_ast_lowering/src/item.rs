@@ -1477,13 +1477,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::disallowed(),
                         ),
                         bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
-                        bounds: this.arena.alloc_from_iter(bounds.iter().map(|bound| {
-                            // We used to ignore `?Trait` bounds, as they were copied into type
-                            // parameters already, but we need to keep them around only for
-                            // diagnostics when we suggest removal of `?Sized` bounds. See
-                            // `suggest_constraining_type_param`.
-                            this.lower_param_bound(bound, ImplTraitContext::disallowed())
-                        })),
+                        bounds: this.arena.alloc_from_iter(bounds.iter().map(
+                            |bound| match bound {
+                                // We used to ignore `?Trait` bounds, as they were copied into type
+                                // parameters already, but we need to keep them around only for
+                                // diagnostics when we suggest removal of `?Sized` bounds. See
+                                // `suggest_constraining_type_param`. This will need to change if
+                                // we ever allow something *other* than `?Sized`.
+                                GenericBound::Trait(p, TraitBoundModifier::Maybe) => {
+                                    hir::GenericBound::Unsized(p.span)
+                                }
+                                _ => this.lower_param_bound(bound, ImplTraitContext::disallowed()),
+                            },
+                        )),
                         span,
                     })
                 })
