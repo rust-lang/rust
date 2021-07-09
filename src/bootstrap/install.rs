@@ -165,10 +165,15 @@ install!((self, builder, _config),
         }
     };
     RustAnalyzer, "rust-analyzer", Self::should_build(_config), only_hosts: true, {
-        let tarball = builder
-            .ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
-            .expect("missing rust-analyzer");
-        install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) =
+            builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
+        {
+            install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install rust-analyzer stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
         let tarball = builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
