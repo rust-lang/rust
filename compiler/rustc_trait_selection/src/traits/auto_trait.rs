@@ -650,15 +650,12 @@ impl AutoTraitFinder<'tcx> {
 
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(p, _) => {
+                ty::PredicateKind::Trait(p, _) | ty::PredicateKind::ImplicitSizedTrait(p) => {
                     // Add this to `predicates` so that we end up calling `select`
                     // with it. If this predicate ends up being unimplemented,
                     // then `evaluate_predicates` will handle adding it the `ParamEnv`
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
-                }
-                ty::PredicateKind::ImplicitSizedTrait(_) => {
-                    // ?
                 }
                 ty::PredicateKind::Projection(p) => {
                     let p = bound_predicate.rebind(p);
