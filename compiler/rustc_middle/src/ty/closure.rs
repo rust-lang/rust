@@ -162,7 +162,7 @@ impl CapturedPlace<'tcx> {
     }
 
     /// Returns a symbol of the captured upvar, which looks like `name__field1__field2`.
-    pub fn to_symbol(&self, tcx: TyCtxt<'tcx>) -> Symbol {
+    fn to_symbol(&self, tcx: TyCtxt<'tcx>) -> Symbol {
         let hir_id = match self.place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             base => bug!("Expected an upvar, found {:?}", base),
@@ -246,6 +246,15 @@ impl CapturedPlace<'tcx> {
                 .span
         }
     }
+}
+
+fn symbols_for_closure_captures<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: (LocalDefId, DefId),
+) -> Vec<Symbol> {
+    let typeck_results = tcx.typeck(def_id.0);
+    let captures = typeck_results.closure_min_captures_flattened(def_id.1);
+    captures.into_iter().map(|captured_place| captured_place.to_symbol(tcx)).collect()
 }
 
 /// Return true if the `proj_possible_ancestor` represents an ancestor path
@@ -431,4 +440,8 @@ impl BorrowKind {
             UniqueImmBorrow => hir::Mutability::Mut,
         }
     }
+}
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers { symbols_for_closure_captures, ..*providers }
 }

@@ -959,13 +959,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
+            let def_id = self.def_id.as_local().unwrap();
+            let capture_syms = tcx.symbols_for_closure_captures((def_id, fn_def_id));
             let capture_tys = upvar_substs.upvar_tys();
-            let captures_with_tys =
-                hir_typeck_results.closure_min_captures_flattened(fn_def_id).zip(capture_tys);
+            let captures_with_tys = hir_typeck_results
+                .closure_min_captures_flattened(fn_def_id)
+                .zip(capture_tys.zip(capture_syms));
 
             self.upvar_mutbls = captures_with_tys
                 .enumerate()
-                .map(|(i, (captured_place, ty))| {
+                .map(|(i, (captured_place, (ty, sym)))| {
                     let capture = captured_place.info.capture_kind;
                     let var_id = match captured_place.place.base {
                         HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
@@ -973,8 +976,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     };
 
                     let mutability = captured_place.mutability;
-
-                    let name = captured_place.to_symbol(tcx);
 
                     let mut projs = closure_env_projs.clone();
                     projs.push(ProjectionElem::Field(Field::new(i), ty));
@@ -986,7 +987,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     };
 
                     self.var_debug_info.push(VarDebugInfo {
-                        name,
+                        name: sym,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         value: VarDebugInfoContents::Place(Place {
                             local: ty::CAPTURE_STRUCT_LOCAL,
