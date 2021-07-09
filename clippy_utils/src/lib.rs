@@ -1173,7 +1173,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
 /// Returns `true` if the lint is allowed in the current context
 ///
 /// Useful for skipping long running code when it's unnecessary
-pub fn is_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
+pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
