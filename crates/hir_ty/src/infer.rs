@@ -35,9 +35,9 @@ use stdx::impl_from;
 use syntax::SmolStr;
 
 use crate::{
-    db::HirDatabase, fold_tys, lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy,
-    DomainGoal, Goal, InEnvironment, Interner, ProjectionTy, Substitution, TraitEnvironment,
-    TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
+    to_assoc_type_id, AliasEq, AliasTy, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
+    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -349,7 +349,7 @@ struct InferenceContext<'a> {
 #[derive(Clone, Debug)]
 struct BreakableContext {
     may_break: bool,
-    break_ty: Ty,
+    coerce: CoerceMany,
     label: Option<name::Name>,
 }
 

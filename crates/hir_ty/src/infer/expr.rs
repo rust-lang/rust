@@ -163,7 +163,7 @@ impl<'a> InferenceContext<'a> {
                         let break_ty = self.table.new_type_var();
                         self.breakables.push(BreakableContext {
                             may_break: false,
-                            break_ty: break_ty.clone(),
+                            coerce: CoerceMany::new(break_ty.clone()),
                             label: label.map(|label| self.body[label].name.clone()),
                         });
                         let ty = self.infer_block(
@@ -174,7 +174,7 @@ impl<'a> InferenceContext<'a> {
                         );
                         let ctxt = self.breakables.pop().expect("breakable stack broken");
                         if ctxt.may_break {
-                            ctxt.break_ty
+                            ctxt.coerce.complete()
                         } else {
                             ty
                         }
@@ -202,18 +202,16 @@ impl<'a> InferenceContext<'a> {
             Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {
                     may_break: false,
-                    break_ty: self.table.new_type_var(),
+                    coerce: CoerceMany::new(self.table.new_type_var()),
                     label: label.map(|label| self.body[label].name.clone()),
                 });
                 self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
 
                 let ctxt = self.breakables.pop().expect("breakable stack broken");
-                if ctxt.may_break {
-                    self.diverges = Diverges::Maybe;
-                }
 
                 if ctxt.may_break {
-                    ctxt.break_ty
+                    self.diverges = Diverges::Maybe;
+                    ctxt.coerce.complete()
                 } else {
                     TyKind::Never.intern(&Interner)
                 }
@@ -221,8 +219,7 @@ impl<'a> InferenceContext<'a> {
             Expr::While { condition, body, label } => {
                 self.breakables.push(BreakableContext {
                     may_break: false,
-                    break_ty: self.err_ty(),
-
+                    coerce: CoerceMany::new(self.err_ty()),
                     label: label.map(|label| self.body[label].name.clone()),
                 });
                 // while let is desugared to a match loop, so this is always simple while
@@ -241,7 +238,7 @@ impl<'a> InferenceContext<'a> {
 
                 self.breakables.push(BreakableContext {
                     may_break: false,
-                    break_ty: self.err_ty(),
+                    coerce: CoerceMany::new(self.err_ty()),
                     label: label.map(|label| self.body[label].name.clone()),
                 });
                 let pat_ty =
@@ -383,31 +380,35 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Continue { .. } => TyKind::Never.intern(&Interner),
             Expr::Break { expr, label } => {
-                let expr = *expr;
-                let last_ty =
-                    if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
-                        ctxt.break_ty.clone()
-                    } else {
-                        self.err_ty()
-                    };
+                let mut coerce = match find_breakable(&mut self.breakables, label.as_ref()) {
+                    Some(ctxt) => {
+                        // avoiding the borrowck
+                        mem::replace(
+                            &mut ctxt.coerce,
+                            CoerceMany::new(self.result.standard_types.unknown.clone()),
+                        )
+                    }
+                    None => CoerceMany::new(self.result.standard_types.unknown.clone()),
+                };
 
-                let val_ty = if let Some(expr) = expr {
+                let val_ty = if let Some(expr) = *expr {
                     self.infer_expr(expr, &Expectation::none())
                 } else {
                     TyBuilder::unit()
                 };
 
                 // FIXME: create a synthetic `()` during lowering so we have something to refer to here?
-                let merged_type = CoerceMany::once(self, last_ty, expr, &val_ty);
+                coerce.coerce(self, *expr, &val_ty);
 
                 if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
-                    ctxt.break_ty = merged_type;
+                    ctxt.coerce = coerce;
                     ctxt.may_break = true;
                 } else {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                     });
-                }
+                };
+
                 TyKind::Never.intern(&Interner)
             }
             Expr::Return { expr } => {

@@ -48,17 +48,6 @@ impl CoerceMany {
         CoerceMany { expected_ty: expected }
     }
 
-    pub(super) fn once(
-        ctx: &mut InferenceContext<'_>,
-        expected: Ty,
-        expr: Option<ExprId>,
-        expr_ty: &Ty,
-    ) -> Ty {
-        let mut this = CoerceMany::new(expected);
-        this.coerce(ctx, expr, expr_ty);
-        this.complete()
-    }
-
     /// Merge two types from different branches, with possible coercion.
     ///
     /// Mostly this means trying to coerce one to the other, but
