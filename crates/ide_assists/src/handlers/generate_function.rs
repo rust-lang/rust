@@ -44,8 +44,8 @@ use crate::{
 pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
-    let path = path_expr.path()?;
 
+    let path = path_expr.path()?;
     if ctx.sema.resolve_path(&path).is_some() {
         // The function call already resolves, no need to add a function
         return None;
@@ -60,8 +60,8 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
     };
 
     let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module)?;
-
     let target = call.syntax().text_range();
+
     acc.add(
         AssistId("generate_function", AssistKind::Generate),
         format!("Generate `{}` function", function_builder.fn_name),
@@ -109,6 +109,7 @@ struct FunctionBuilder {
     should_render_snippet: bool,
     file: FileId,
     needs_pub: bool,
+    is_async: bool,
 }
 
 impl FunctionBuilder {
@@ -134,6 +135,9 @@ impl FunctionBuilder {
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = fn_name(path)?;
         let (type_params, params) = fn_args(ctx, target_module, call)?;
+
+        let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
+        let is_async = await_expr.is_some();
 
         // should_render_snippet intends to express a rough level of confidence about
         // the correctness of the return type.
@@ -171,6 +175,7 @@ impl FunctionBuilder {
             should_render_snippet,
             file,
             needs_pub,
+            is_async,
         })
     }
 
@@ -185,6 +190,7 @@ impl FunctionBuilder {
             self.params,
             fn_body,
             Some(self.ret_type),
+            self.is_async,
         );
         let leading_ws;
         let trailing_ws;
@@ -1157,6 +1163,27 @@ impl Foo {
     }
 }
         "#,
+        )
+    }
+
+    #[test]
+    fn create_function_with_async() {
+        check_assist(
+            generate_function,
+            r"
+fn foo() {
+    $0bar(42).await();
+}
+",
+            r"
+fn foo() {
+    bar(42).await();
+}
+
+async fn bar(arg: i32) ${0:-> ()} {
+    todo!()
+}
+",
         )
     }
 }

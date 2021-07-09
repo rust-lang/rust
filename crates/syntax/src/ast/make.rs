@@ -587,6 +587,7 @@ pub fn fn_(
     params: ast::ParamList,
     body: ast::BlockExpr,
     ret_type: Option<ast::RetType>,
+    is_async: bool,
 ) -> ast::Fn {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
@@ -596,9 +597,11 @@ pub fn fn_(
         Some(it) => format!("{} ", it),
     };
 
+    let async_literal = if is_async { "async " } else { "" };
+
     ast_from_text(&format!(
-        "{}fn {}{}{} {}{}",
-        visibility, fn_name, type_params, params, ret_type, body
+        "{}{}fn {}{}{} {}{}",
+        visibility, async_literal, fn_name, type_params, params, ret_type, body
     ))
 }
 
