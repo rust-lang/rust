@@ -1,3 +1,6 @@
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
+
 use std::rc::Rc;
 
 union U<T: Copy> {

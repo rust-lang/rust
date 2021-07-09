@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0`)
-  --> $DIR/union-borrow-move-parent-sibling.rs:53:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:56:13
    |
 LL |     let a = &mut u.x.0;
    |             ---------- mutable borrow occurs here (via `u.x.0`)
@@ -11,7 +11,7 @@ LL |     use_borrow(a);
    = note: `u.y` is a field of the union `U`, so it overlaps the field `u.x.0`
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/union-borrow-move-parent-sibling.rs:60:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:63:13
    |
 LL |     let u = U { x: ((MockVec::new(), MockVec::new()), MockVec::new()) };
    |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
@@ -21,7 +21,7 @@ LL |     let b = u.y;
    |             ^^^ value used here after move
 
 error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0.0`)
-  --> $DIR/union-borrow-move-parent-sibling.rs:66:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:69:13
    |
 LL |     let a = &mut (u.x.0).0;
    |             -------------- mutable borrow occurs here (via `u.x.0.0`)
@@ -33,7 +33,7 @@ LL |     use_borrow(a);
    = note: `u.y` is a field of the union `U`, so it overlaps the field `u.x.0.0`
 
 error[E0382]: use of moved value: `u`
-  --> $DIR/union-borrow-move-parent-sibling.rs:73:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:76:13
    |
 LL |     let u = U { x: ((MockVec::new(), MockVec::new()), MockVec::new()) };
    |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
@@ -43,7 +43,7 @@ LL |     let b = u.y;
    |             ^^^ value used here after move
 
 error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `u.y`)
-  --> $DIR/union-borrow-move-parent-sibling.rs:79:13
+  --> $DIR/union-borrow-move-parent-sibling.rs:82:13
    |
 LL |     let a = &mut *u.y;
    |                   --- mutable borrow occurs here (via `u.y`)
