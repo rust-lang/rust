@@ -3632,7 +3632,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                   });
               if (failed)
                 break;
-              IRBuilder<> nv(ctx->getTerminator());
+              IRBuilder<> nv(nctx->getTerminator());
               Value *nlim = unwrapM(lim, nv,
                                     /*available*/ ValueToValueMapTy(),
                                     UnwrapMode::AttemptFullUnwrapWithLookup);

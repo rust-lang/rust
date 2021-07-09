@@ -52,7 +52,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %8 = tail call i8* @malloc(i64 %7)
 ; CHECK-NEXT:   call void @"__enzyme_mpi_sumFloat@doubleinitializer"()
 ; CHECK-NEXT:   %9 = load i8*, i8** @"__enzyme_mpi_sumFloat@double"
-; CHECK-NEXT:   %10 = call i32 (...) @MPI_Reduce(i8* %"'ipc", i8* %8, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i8* %9, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+; CHECK-NEXT:   %10 = call i32 @MPI_Reduce(i8* %"'ipc", i8* %8, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i8* %9, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %11 = call i32 @MPI_Comm_rank(%struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), i32* %1)
 ; CHECK-NEXT:   %12 = load i32, i32* %1
 ; CHECK-NEXT:   %13 = icmp eq i32 %12, 0

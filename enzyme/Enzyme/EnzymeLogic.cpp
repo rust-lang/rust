@@ -1687,6 +1687,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
                                      llvm::Attribute::NoAlias);
   }
+#if LLVM_VERSION_MAJOR >= 11
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
+                                    llvm::Attribute::NoUndef)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
+                                     llvm::Attribute::NoUndef);
+  }
+#endif
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
                                     llvm::Attribute::NonNull)) {
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
@@ -2005,6 +2012,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     NewF->removeAttribute(llvm::AttributeList::ReturnIndex,
                           llvm::Attribute::NoAlias);
   }
+#if LLVM_VERSION_MAJOR >= 11
+  if (NewF->hasAttribute(llvm::AttributeList::ReturnIndex,
+                         llvm::Attribute::NoUndef)) {
+    NewF->removeAttribute(llvm::AttributeList::ReturnIndex,
+                          llvm::Attribute::NoUndef);
+  }
+#endif
   if (NewF->hasAttribute(llvm::AttributeList::ReturnIndex,
                          llvm::Attribute::ZExt)) {
     NewF->removeAttribute(llvm::AttributeList::ReturnIndex,
@@ -3168,6 +3182,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
                                      llvm::Attribute::NoAlias);
   }
+#if LLVM_VERSION_MAJOR >= 11
+  if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
+                                    llvm::Attribute::NoUndef)) {
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
+                                     llvm::Attribute::NoUndef);
+  }
+#endif
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex,
                                     llvm::Attribute::NonNull)) {
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,

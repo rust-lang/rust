@@ -560,6 +560,8 @@ public:
     if (FT) {
       //! Only need to update the reverse function
       switch (Mode) {
+      case DerivativeMode::ReverseModePrimal:
+        break;
       case DerivativeMode::ReverseModeGradient:
       case DerivativeMode::ReverseModeCombined: {
         IRBuilder<> Builder2(SI.getParent());
@@ -2750,9 +2752,9 @@ public:
 
     // llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>
     // sub_index_map;
-    Optional<int> tapeIdx;
-    Optional<int> returnIdx;
-    Optional<int> differetIdx;
+    // Optional<int> tapeIdx;
+    // Optional<int> returnIdx;
+    // Optional<int> differetIdx;
 
     const AugmentedReturn *subdata = nullptr;
     if (Mode == DerivativeMode::ReverseModeGradient) {
@@ -3469,7 +3471,7 @@ public:
           for (int i = 0; i < 7; i++)
             types[i] = args[i]->getType();
 
-          FunctionType *FT = FunctionType::get(root->getType(), types);
+          FunctionType *FT = FunctionType::get(root->getType(), types, false);
           Builder2.CreateCall(
               called->getParent()->getOrInsertFunction("MPI_Reduce", FT), args);
         }
