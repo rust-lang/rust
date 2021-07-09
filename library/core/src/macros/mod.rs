@@ -837,6 +837,16 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    /// Same as `format_args`, but can be used in some const contexts.
+    #[unstable(feature = "const_format_args", issue = "none")]
+    #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! const_format_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
     /// Same as `format_args`, but adds a newline in the end.
     #[unstable(
         feature = "format_args_nl",

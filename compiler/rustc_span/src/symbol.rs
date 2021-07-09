@@ -410,6 +410,7 @@ symbols! {
         const_fn_transmute,
         const_fn_union,
         const_fn_unsize,
+        const_format_args,
         const_generic_defaults,
         const_generics,
         const_generics_defaults,
