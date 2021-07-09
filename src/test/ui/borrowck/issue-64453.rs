@@ -3,7 +3,6 @@ struct Value;
 
 static settings_dir: String = format!("");
 //~^ ERROR calls in statics are limited to constant functions
-//~| ERROR calls in statics are limited to constant functions
 
 fn from_string(_: String) -> Value {
     Value
