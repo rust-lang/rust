@@ -42,7 +42,9 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarSubsts};
+use rustc_middle::ty::{
+    self, ClosureSizeProfileData, Ty, TyCtxt, TypeckResults, UpvarCapture, UpvarSubsts,
+};
 use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span, Symbol};
@@ -299,13 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     captured_place.place, upvar_ty, capture, captured_place.mutability,
                 );
 
-                match capture {
-                    ty::UpvarCapture::ByValue(_) => upvar_ty,
-                    ty::UpvarCapture::ByRef(borrow) => self.tcx.mk_ref(
-                        borrow.region,
-                        ty::TypeAndMut { ty: upvar_ty, mutbl: borrow.kind.to_mutbl_lossy() },
-                    ),
-                }
+                apply_capture_kind_on_capture_ty(self.tcx, upvar_ty, capture)
             })
             .collect()
     }
@@ -582,6 +578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: hir::HirId,
         check_trait: Option<DefId>,
+        closure_clause: hir::CaptureBy,
     ) -> bool {
         let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
             min_captures.and_then(|m| m.get(&var_hir_id))
@@ -592,6 +589,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+
+        let ty = match closure_clause {
+            hir::CaptureBy::Value => ty, // For move closure the capture kind should be by value
+            hir::CaptureBy::Ref => {
+                // For non move closure the capture kind is the max capture kind of all captures
+                // according to the ordering ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
+                let mut max_capture_info = root_var_min_capture_list.first().unwrap().info;
+                for capture in root_var_min_capture_list.iter() {
+                    max_capture_info = determine_capture_info(max_capture_info, capture.info);
+                }
+
+                apply_capture_kind_on_capture_ty(self.tcx, ty, max_capture_info.capture_kind)
+            }
+        };
 
         let obligation_should_hold = check_trait
             .map(|check_trait| {
@@ -606,10 +617,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .unwrap_or(false);
 
-        // Check whether catpured fields also implement the trait
-
+        // Check whether captured fields also implement the trait
         for capture in root_var_min_capture_list.iter() {
-            let ty = capture.place.ty();
+            let ty = apply_capture_kind_on_capture_ty(
+                self.tcx,
+                capture.place.ty(),
+                capture.info.capture_kind,
+            );
 
             let obligation_holds_for_capture = check_trait
                 .map(|check_trait| {
@@ -645,6 +659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         var_hir_id: hir::HirId,
+        closure_clause: hir::CaptureBy,
     ) -> Option<FxHashSet<&str>> {
         let tcx = self.infcx.tcx;
 
@@ -655,6 +670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             min_captures,
             var_hir_id,
             tcx.lang_items().clone_trait(),
+            closure_clause,
         ) {
             auto_trait_reasons.insert("`Clone`");
         }
@@ -663,6 +679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             min_captures,
             var_hir_id,
             tcx.lang_items().sync_trait(),
+            closure_clause,
         ) {
             auto_trait_reasons.insert("`Sync`");
         }
@@ -671,6 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             min_captures,
             var_hir_id,
             tcx.get_diagnostic_item(sym::send_trait),
+            closure_clause,
         ) {
             auto_trait_reasons.insert("`Send`");
         }
@@ -679,6 +697,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             min_captures,
             var_hir_id,
             tcx.lang_items().unpin_trait(),
+            closure_clause,
         ) {
             auto_trait_reasons.insert("`Unpin`");
         }
@@ -687,6 +706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             min_captures,
             var_hir_id,
             tcx.get_diagnostic_item(sym::unwind_safe_trait),
+            closure_clause,
         ) {
             auto_trait_reasons.insert("`UnwindSafe`");
         }
@@ -695,6 +715,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             min_captures,
             var_hir_id,
             tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
+            closure_clause,
         ) {
             auto_trait_reasons.insert("`RefUnwindSafe`");
         }
@@ -814,7 +835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (&var_hir_id, _) in upvars.iter() {
             let mut need_migration = false;
             if let Some(trait_migration_cause) =
-                self.compute_2229_migrations_for_trait(min_captures, var_hir_id)
+                self.compute_2229_migrations_for_trait(min_captures, var_hir_id, closure_clause)
             {
                 need_migration = true;
                 auto_trait_reasons.extend(trait_migration_cause);
@@ -1284,6 +1305,19 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
     }
 
     place
+}
+
+/// Returns a Ty that applies the specified capture kind on the provided capture Ty
+fn apply_capture_kind_on_capture_ty(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    capture_kind: UpvarCapture<'tcx>,
+) -> Ty<'tcx> {
+    match capture_kind {
+        ty::UpvarCapture::ByValue(_) => ty,
+        ty::UpvarCapture::ByRef(borrow) => tcx
+            .mk_ref(borrow.region, ty::TypeAndMut { ty: ty, mutbl: borrow.kind.to_mutbl_lossy() }),
+    }
 }
 
 struct InferBorrowKind<'a, 'tcx> {
