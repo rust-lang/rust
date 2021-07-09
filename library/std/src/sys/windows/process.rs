@@ -327,9 +327,13 @@ impl Command {
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.program)?;
+        self.program.fmt(f)?;
         for arg in &self.args {
-            write!(f, " {:?}", arg)?;
+            f.write_str(" ")?;
+            match arg {
+                Arg::Regular(s) => s.fmt(f),
+                Arg::Raw(s) => f.write_str(&s.to_string_lossy()),
+            }?;
         }
         Ok(())
     }
