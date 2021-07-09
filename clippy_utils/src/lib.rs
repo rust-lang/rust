@@ -1541,25 +1541,6 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
     }
 }
 
-/// This function checks if any of the lints in the slice is enabled for the provided `HirId`.
-/// A lint counts as enabled with any of the levels: `Level::Forbid` | `Level::Deny` | `Level::Warn`
-///
-/// ```ignore
-/// #[deny(clippy::YOUR_AWESOME_LINT)]
-/// println!("Hello, World!"); // <- Clippy code: lints_enabled(cx, &[YOUR_AWESOME_LINT], id) == true
-///
-/// #[allow(clippy::YOUR_AWESOME_LINT)]
-/// println!("See you soon!"); // <- Clippy code: lints_enabled(cx, &[YOUR_AWESOME_LINT], id) == false
-/// ```
-pub fn lints_enabled(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
-    lints.iter().any(|lint| {
-        matches!(
-            cx.tcx.lint_level_at_node(lint, id),
-            (Level::Forbid | Level::Deny | Level::Warn, _)
-        )
-    })
-}
-
 /// Returns Option<String> where String is a textual representation of the type encapsulated in the
 /// slice iff the given expression is a slice of primitives (as defined in the
 /// `is_recursively_primitive_type` function) and None otherwise.
