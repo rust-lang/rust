@@ -685,7 +685,7 @@ declare_features! (
     (incomplete, unnamed_fields, "1.53.0", Some(49804), None),
 
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
-    (active, more_qualified_paths, "1.54.0", Some(80080), None),
+    (active, more_qualified_paths, "1.54.0", Some(86935), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
