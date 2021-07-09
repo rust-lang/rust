@@ -109,6 +109,68 @@ fn test_from_str_socket_addr() {
 }
 
 #[test]
+fn test_from_str_ipv4_prefix() {
+    assert_eq!(
+        Ok(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(127, 0, 0, 1), 16)),
+        "127.0.0.1/16".parse()
+    );
+    assert_eq!(
+        Ok(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(255, 255, 255, 255), 32)),
+        "255.255.255.255/32".parse()
+    );
+    assert_eq!(
+        Ok(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(0, 0, 0, 0), 0)),
+        "0.0.0.0/0".parse()
+    );
+
+    // no prefix
+    let none: Option<Ipv4AddrPrefix> = "255.0.0.1".parse().ok();
+    assert_eq!(None, none);
+    // wrong prefix separator
+    let none: Option<Ipv4AddrPrefix> = "255.0.0.1:16".parse().ok();
+    assert_eq!(None, none);
+    // prefix can not be longer than 32 bits
+    let none: Option<Ipv4AddrPrefix> = "255.0.0.1/35".parse().ok();
+    assert_eq!(None, none);
+}
+
+#[test]
+fn test_from_str_ipv6_prefix() {
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 0)),
+        "0:0:0:0:0:0:0:0/0".parse()
+    );
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 128)),
+        "0:0:0:0:0:0:0:1/128".parse()
+    );
+
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 128)),
+        "::1/128".parse()
+    );
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 0)),
+        "::/0".parse()
+    );
+
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11), 32)),
+        "2a02:6b8::11:11/32".parse()
+    );
+
+    // no prefix
+    let none: Option<Ipv6AddrPrefix> = "1:2:3:4::5:6:7:8".parse().ok();
+    assert_eq!(None, none);
+    // wrong prefix separator
+    let none: Option<Ipv6AddrPrefix> = "1:2:3:4::5:6:7:8:16".parse().ok();
+    assert_eq!(None, none);
+    // prefix can not be longer than 128 bits
+    let none: Option<Ipv6AddrPrefix> = "1:2:3:4::5:6:7:8/130".parse().ok();
+    assert_eq!(None, none);
+}
+
+#[test]
 fn ipv4_addr_to_string() {
     assert_eq!(Ipv4Addr::new(127, 0, 0, 1).to_string(), "127.0.0.1");
     // Short address
@@ -169,6 +231,19 @@ fn ipv6_addr_to_string() {
 
     // don't prefix `0x` to each segment in `dbg!`.
     assert_eq!("1::4:5:0:0:8", &format!("{:#?}", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8)));
+}
+
+#[test]
+fn ip_prefix_to_string() {
+    assert_eq!(
+        Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(127, 0, 0, 1), 24).to_string(),
+        "127.0.0.0/24"
+    );
+    assert_eq!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7F00, 1), 96)
+            .to_string(),
+        "::ffff:0.0.0.0/96"
+    );
 }
 
 #[test]
