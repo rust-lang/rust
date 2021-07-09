@@ -1618,11 +1618,17 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             "consume(place_with_id={:?}, diag_expr_id={:?}, mode={:?})",
             place_with_id, diag_expr_id, mode
         );
+
+        let place_with_id = PlaceWithHirId {
+            place: truncate_capture_for_optimization(&place_with_id.place),
+            ..*place_with_id
+        };
+
         if !self.capture_information.contains_key(&place_with_id.place) {
-            self.init_capture_info_for_place(place_with_id, diag_expr_id);
+            self.init_capture_info_for_place(&place_with_id, diag_expr_id);
         }
 
-        self.adjust_upvar_borrow_kind_for_consume(place_with_id, diag_expr_id, mode);
+        self.adjust_upvar_borrow_kind_for_consume(&place_with_id, diag_expr_id, mode);
     }
 
     fn borrow(
@@ -1644,6 +1650,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             self.fcx.param_env,
             &place_with_id.place,
         );
+
+        let place = truncate_capture_for_optimization(&place);
 
         let place_with_id = PlaceWithHirId { place, ..*place_with_id };
 
@@ -1977,6 +1985,48 @@ fn determine_place_ancestry_relation(
         }
     } else {
         PlaceAncestryRelation::Divergent
+    }
+}
+
+/// Reduces the precision of the captured place when the precision doesn't yeild any benefit from
+/// borrow checking prespective, allowing us to save us on the size of the capture.
+///
+///
+/// Fields that are read through a shared reference will always be read via a shared ref or a copy,
+/// and therefore capturing precise paths yields no benefit. This optimization truncates the
+/// rightmost deref of the capture if the deref is applied to a shared ref.
+///
+/// Reason we only drop the last deref is because of the following edge case:
+///
+/// ```rust
+/// struct MyStruct<'a> {
+///    a: &'static A,
+///    b: B,
+///    c: C<'a>,
+/// }
+///
+/// fn foo<'a, 'b>(m: &'a MyStruct<'b>) -> impl FnMut() + 'static {
+///     let c = || drop(&*m.a.field_of_a);
+///     // Here we really do want to capture `*m.a` because that outlives `'static`
+///
+///     // If we capture `m`, then the closure no longer outlives `'static'
+///     // it is constrained to `'a`
+/// }
+/// ```
+fn truncate_capture_for_optimization<'tcx>(place: &Place<'tcx>) -> Place<'tcx> {
+    let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
+
+    // Find the right-most deref (if any). All the projections that come after this
+    // are fields or other "in-place pointer adjustments"; these refer therefore to
+    // data owned by whatever pointer is being dereferenced here.
+    let idx = place.projections.iter().rposition(|proj| ProjectionKind::Deref == proj.kind);
+
+    match idx {
+        // If that pointer is a shared reference, then we don't need those fields.
+        Some(idx) if is_shared_ref(place.ty_before_projection(idx)) => {
+            Place { projections: place.projections[0..=idx].to_vec(), ..place.clone() }
+        }
+        None | Some(_) => place.clone(),
     }
 }
 
