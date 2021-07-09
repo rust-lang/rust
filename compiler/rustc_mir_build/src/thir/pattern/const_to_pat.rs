@@ -272,12 +272,14 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         let kind = match cv.ty.kind() {
             ty::Float(_) => {
-                tcx.struct_span_lint_hir(
-                    lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                    id,
-                    span,
-                    |lint| lint.build("floating-point types cannot be used in patterns").emit(),
-                );
+                if self.include_lint_checks {
+                    tcx.struct_span_lint_hir(
+                        lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+                        id,
+                        span,
+                        |lint| lint.build("floating-point types cannot be used in patterns").emit(),
+                    );
+                }
                 PatKind::Constant { value: cv }
             }
             ty::Adt(adt_def, _) if adt_def.is_union() => {
