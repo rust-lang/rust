@@ -1552,13 +1552,11 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        if self.lines.is_empty() {
-            return None;
+        match self.lines.binary_search(&pos) {
+            Ok(idx) => Some(idx),
+            Err(0) => None,
+            Err(idx) => Some(idx - 1),
         }
-
-        let line_index = lookup_line(&self.lines[..], pos);
-        assert!(line_index < self.lines.len() as isize);
-        if line_index >= 0 { Some(line_index as usize) } else { None }
     }
 
     pub fn line_bounds(&self, line_index: usize) -> Range<BytePos> {
@@ -1954,16 +1952,6 @@ pub struct InnerSpan {
 impl InnerSpan {
     pub fn new(start: usize, end: usize) -> InnerSpan {
         InnerSpan { start, end }
-    }
-}
-
-// Given a slice of line start positions and a position, returns the index of
-// the line the position is on. Returns -1 if the position is located before
-// the first line.
-fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
-    match lines.binary_search(&pos) {
-        Ok(line) => line as isize,
-        Err(line) => line as isize - 1,
     }
 }
 
