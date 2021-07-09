@@ -310,7 +310,10 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
         };
 
-        let mut name = String::new();
+        use std::cell::Cell;
+        thread_local!(static ALLOCATION_CACHE: Cell<String> = Cell::new(String::new()));
+
+        let mut name = ALLOCATION_CACHE.with(|cached| cached.take());
         type_names::push_item_name(self.tcx(), def_id, false, &mut name);
 
         // Find the enclosing function, in case this is a closure.
@@ -347,6 +350,16 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 spflags |= DISPFlags::SPFlagMainSubprogram;
             }
         }
+
+        ALLOCATION_CACHE.with(|cached| {
+            let mut cache_entry = cached.take();
+            if cache_entry.capacity() < name.capacity() {
+                let cloned = name.clone();
+                cache_entry = std::mem::replace(&mut name, cloned);
+                cache_entry.clear();
+            }
+            cached.set(cache_entry);
+        });
 
         unsafe {
             return llvm::LLVMRustDIBuilderCreateFunction(
