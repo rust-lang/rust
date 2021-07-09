@@ -2,7 +2,9 @@
 
 macro_rules! pass_nonterminal {
     ($n:expr) => {
-        #[repr(align($n))] //~ ERROR expected unsuffixed literal or identifier, found `n!()`
+        #[repr(align($n))]
+        //~^ ERROR expected unsuffixed literal or identifier, found `n!()`
+        //~| ERROR incorrect `repr(align)` attribute format
         struct S;
     };
 }
