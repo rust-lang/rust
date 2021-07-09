@@ -347,7 +347,7 @@ pub enum BorrowKind {
     /// an `&mut` borrow:
     ///
     /// ```
-    /// struct Env { x: & &mut isize }
+    /// struct Env { x: &mut &mut isize }
     /// let x: &mut isize = ...;
     /// let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
     /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
