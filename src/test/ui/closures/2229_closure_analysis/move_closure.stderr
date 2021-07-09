@@ -190,7 +190,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0),Deref] -> ImmBorrow
+note: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
   --> $DIR/move_closure.rs:80:18
    |
 LL |         let _t = t.0.0;
@@ -226,7 +226,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0),Deref] -> ByValue
+note: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
   --> $DIR/move_closure.rs:102:18
    |
 LL |         let _t = t.0.0;

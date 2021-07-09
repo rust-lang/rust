@@ -13,7 +13,7 @@ error: First Pass analysis includes:
 LL |     let c = #[rustc_capture_analysis] || drop(&m.a.0);
    |                                       ^^^^^^^^^^^^^^^
    |
-note: Capturing m[Deref,(0, 0),Deref] -> ImmBorrow
+note: Capturing m[Deref,(0, 0),Deref,(0, 0)] -> ImmBorrow
   --> $DIR/edge_case.rs:20:48
    |
 LL |     let c = #[rustc_capture_analysis] || drop(&m.a.0);

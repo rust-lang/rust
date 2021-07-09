@@ -78,7 +78,7 @@ fn struct_contains_ref_to_another_struct_2() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref] -> ImmBorrow
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture t[(0, 0),Deref] -> ImmBorrow
     };
 
@@ -100,7 +100,7 @@ fn struct_contains_ref_to_another_struct_3() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
         //~| NOTE: Min Capture t[(0, 0)] -> ByValue
     };
 

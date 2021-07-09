@@ -335,6 +335,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Apply rules for safety before inferring closure kind
             let place = restrict_capture_precision(place);
 
+            let place = truncate_capture_for_optimization(&place);
+
             let usage_span = if let Some(usage_expr) = capture_info.path_expr_id {
                 self.tcx.hir().span(usage_expr)
             } else {
@@ -1638,11 +1640,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, mode
         );
 
-        let place_with_id = PlaceWithHirId {
-            place: truncate_capture_for_optimization(&place_with_id.place),
-            ..*place_with_id
-        };
-
         if !self.capture_information.contains_key(&place_with_id.place) {
             self.init_capture_info_for_place(&place_with_id, diag_expr_id);
         }
@@ -1669,8 +1666,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             self.fcx.param_env,
             &place_with_id.place,
         );
-
-        let place = truncate_capture_for_optimization(&place);
 
         let place_with_id = PlaceWithHirId { place, ..*place_with_id };
 

@@ -22,7 +22,7 @@ fn foo<'a, 'b>(m: &'a MyStruct<'b>) -> impl FnMut() + 'static {
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
-    //~| NOTE: Capturing m[Deref,(0, 0),Deref] -> ImmBorrow
+    //~| NOTE: Capturing m[Deref,(0, 0),Deref,(0, 0)] -> ImmBorrow
     //~| NOTE: Min Capture m[Deref,(0, 0),Deref] -> ImmBorrow
     c
 }
