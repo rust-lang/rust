@@ -22,7 +22,9 @@ use crate::io::{self, Error, ErrorKind};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+pub use self::ip::{
+    IpAddr, Ipv4Addr, Ipv4AddrPrefix, Ipv6Addr, Ipv6AddrPrefix, Ipv6MulticastScope,
+};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::parser::AddrParseError;
 #[stable(feature = "rust1", since = "1.0.0")]

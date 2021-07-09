@@ -10,6 +10,9 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
+mod network;
+pub use self::network::{Ipv4AddrPrefix, Ipv6AddrPrefix};
+
 /// An IP address, either IPv4 or IPv6.
 ///
 /// This enum can contain either an [`Ipv4Addr`] or an [`Ipv6Addr`], see their
@@ -312,6 +315,12 @@ impl Ipv4Addr {
         // `s_addr` is stored as BE on all machine and the array is in BE order.
         // So the native endian conversion method is used so that it's never swapped.
         Ipv4Addr { inner: c::in_addr { s_addr: u32::from_ne_bytes([a, b, c, d]) } }
+    }
+
+    // Private constructor to simplify const code.
+    // FIXME: remove when From<u32> becomes usable in const contexts.
+    const fn from_u32(address: u32) -> Ipv4Addr {
+        Ipv4Addr { inner: c::in_addr { s_addr: address.to_be() } }
     }
 
     /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
@@ -1111,6 +1120,13 @@ impl Ipv6Addr {
                 s6_addr: unsafe { transmute::<_, [u8; 16]>(addr16) },
             },
         }
+    }
+
+    // Private constructor to simplify const code.
+    // FIXME: remove when From<u128> becomes usable in const contexts.
+    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    const fn from_u128(address: u128) -> Ipv6Addr {
+        Ipv6Addr { inner: c::in6_addr { s6_addr: address.to_be_bytes() } }
     }
 
     /// An IPv6 address representing localhost: `::1`.
