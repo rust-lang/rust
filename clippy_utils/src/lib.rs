@@ -1546,12 +1546,12 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
 ///
 /// ```ignore
 /// #[deny(clippy::YOUR_AWESOME_LINT)]
-/// println!("Hello, World!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == true
+/// println!("Hello, World!"); // <- Clippy code: lints_enabled(cx, &[YOUR_AWESOME_LINT], id) == true
 ///
 /// #[allow(clippy::YOUR_AWESOME_LINT)]
-/// println!("See you soon!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == false
+/// println!("See you soon!"); // <- Clippy code: lints_enabled(cx, &[YOUR_AWESOME_LINT], id) == false
 /// ```
-pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
+pub fn lints_enabled(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
     lints.iter().any(|lint| {
         matches!(
             cx.tcx.lint_level_at_node(lint, id),

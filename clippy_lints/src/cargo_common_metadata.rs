@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::run_lints;
+use clippy_utils::lints_enabled;
 use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -85,7 +85,7 @@ fn is_empty_vec(value: &[String]) -> bool {
 
 impl LateLintPass<'_> for CargoCommonMetadata {
     fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
-        if !run_lints(cx, &[CARGO_COMMON_METADATA], CRATE_HIR_ID) {
+        if !lints_enabled(cx, &[CARGO_COMMON_METADATA], CRATE_HIR_ID) {
             return;
         }
 

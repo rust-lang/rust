@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
 use clippy_utils::{
     both, count_eq, eq_expr_value, get_enclosing_block, get_parent_expr, if_sequence, in_macro, is_else_clause,
-    run_lints, search_same, ContainsName, SpanlessEq, SpanlessHash,
+    lints_enabled, search_same, ContainsName, SpanlessEq, SpanlessHash,
 };
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -337,8 +337,8 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
             if block_expr_eq;
             if l_stmts.len() == r_stmts.len();
             if l_stmts.len() == current_start_eq;
-            if run_lints(cx, &[IF_SAME_THEN_ELSE], win[0].hir_id);
-            if run_lints(cx, &[IF_SAME_THEN_ELSE], win[1].hir_id);
+            if lints_enabled(cx, &[IF_SAME_THEN_ELSE], win[0].hir_id);
+            if lints_enabled(cx, &[IF_SAME_THEN_ELSE], win[1].hir_id);
             then {
                 span_lint_and_note(
                     cx,

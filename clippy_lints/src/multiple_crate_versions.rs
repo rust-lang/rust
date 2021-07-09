@@ -1,7 +1,7 @@
 //! lint on multiple versions of a crate being used
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::run_lints;
+use clippy_utils::lints_enabled;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{Crate, CRATE_HIR_ID};
 use rustc_lint::{LateContext, LateLintPass};
@@ -39,7 +39,7 @@ declare_lint_pass!(MultipleCrateVersions => [MULTIPLE_CRATE_VERSIONS]);
 
 impl LateLintPass<'_> for MultipleCrateVersions {
     fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
-        if !run_lints(cx, &[MULTIPLE_CRATE_VERSIONS], CRATE_HIR_ID) {
+        if !lints_enabled(cx, &[MULTIPLE_CRATE_VERSIONS], CRATE_HIR_ID) {
             return;
         }
 
