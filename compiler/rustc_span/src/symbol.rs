@@ -934,6 +934,7 @@ symbols! {
         quote,
         range_inclusive_new,
         raw_dylib,
+        raw_eq,
         raw_identifiers,
         raw_ref_op,
         re_rebalance_coherence,
