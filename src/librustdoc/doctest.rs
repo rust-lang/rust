@@ -460,16 +460,22 @@ fn run_test(
         cmd.current_dir(run_directory);
     }
 
-    match cmd.output() {
+    let result = if options.nocapture {
+        cmd.status().map(|status| process::Output {
+            status,
+            stdout: Vec::new(),
+            stderr: Vec::new(),
+        })
+    } else {
+        cmd.output()
+    };
+    match result {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
             if should_panic && out.status.success() {
                 return Err(TestFailure::UnexpectedRunPass);
             } else if !should_panic && !out.status.success() {
                 return Err(TestFailure::ExecutionFailure(out));
-            } else if options.nocapture {
-                io::stdout().write_all(&out.stdout).expect("failed to write stdout");
-                io::stderr().write_all(&out.stderr).expect("failed to write stderr");
             }
         }
     }
