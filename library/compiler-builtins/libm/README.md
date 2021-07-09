@@ -2,7 +2,7 @@
 
 A port of [MUSL]'s libm to Rust.
 
-[MUSL]: https://www.musl-libc.org/
+[MUSL]: https://musl.libc.org/
 
 ## Goals
 
