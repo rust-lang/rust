@@ -201,14 +201,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     AscribeUserType { .. } |
                     // creating a union literal
                     Constant { .. } => {},
-                    Variant { .. } | Leaf { .. } | Or { .. } => {
+                    Leaf { .. } | Or { .. } => {
                         // pattern matching with a union and not doing something like v = Union { bar: 5 }
                         self.in_union_destructure = true;
                         visit::walk_pat(self, pat);
                         self.in_union_destructure = false;
                         return; // don't walk pattern
                     }
-                    Deref { .. } | Range { .. } | Slice { .. } | Array { .. } =>
+                    Variant { .. } | Deref { .. } | Range { .. } | Slice { .. } | Array { .. } =>
                         unreachable!("impossible union destructuring type"),
                 }
             }
