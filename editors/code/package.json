@@ -53,7 +53,7 @@
         "glob": "^7.1.6",
         "mocha": "^9.0.2",
         "rollup": "^2.51.1",
-        "tslib": "^2.0.3",
+        "tslib": "^2.3.0",
         "typescript": "^4.3.5",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.93.0",
