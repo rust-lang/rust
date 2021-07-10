@@ -85,11 +85,12 @@ pub(crate) fn inline_(
                 make::name("this"),
             )
             .into(),
+            None,
             assoc_fn_params.next()?,
         ));
     }
     for param in param_list.params() {
-        params.push((param.pat()?, assoc_fn_params.next()?));
+        params.push((param.pat()?, param.ty(), assoc_fn_params.next()?));
     }
 
     if arg_list.len() != params.len() {
@@ -123,7 +124,7 @@ pub(crate) fn inline_(
             // has a pattern that does not allow inlining
             let param_use_nodes: Vec<Vec<_>> = params
                 .iter()
-                .map(|(pat, param)| {
+                .map(|(pat, _, param)| {
                     if !matches!(pat, ast::Pat::IdentPat(pat) if pat.is_simple_ident()) {
                         return Vec::new();
                     }
@@ -145,7 +146,7 @@ pub(crate) fn inline_(
             // Rewrite `self` to `this`
             if param_list.self_param().is_some() {
                 let this = || make::name_ref("this").syntax().clone_for_update();
-                usages_for_locals(params[0].1.as_local(ctx.sema.db))
+                usages_for_locals(params[0].2.as_local(ctx.sema.db))
                     .flat_map(|FileReference { name, range, .. }| match name {
                         ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                         _ => None,
@@ -156,7 +157,8 @@ pub(crate) fn inline_(
             }
 
             // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
-            for ((pat, _), usages, expr) in izip!(params, param_use_nodes, arg_list).rev() {
+            for ((pat, param_ty, _), usages, expr) in izip!(params, param_use_nodes, arg_list).rev()
+            {
                 let expr_is_name_ref = matches!(&expr,
                     ast::Expr::PathExpr(expr)
                         if expr.path().and_then(|path| path.as_single_name_ref()).is_some()
@@ -184,8 +186,17 @@ pub(crate) fn inline_(
                         });
                     }
                     // cant inline, emit a let statement
-                    // FIXME: emit type ascriptions when a coercion happens?
-                    _ => body.push_front(make::let_stmt(pat, Some(expr)).clone_for_update().into()),
+                    _ => {
+                        let ty = ctx
+                            .sema
+                            .type_of_expr_with_coercion(&expr)
+                            .map_or(false, |(_, coerced)| coerced.is_some())
+                            .then(|| param_ty)
+                            .flatten();
+                        body.push_front(
+                            make::let_stmt(pat, ty, Some(expr)).clone_for_update().into(),
+                        )
+                    }
                 }
             }
 
@@ -605,6 +616,34 @@ fn foo(x: u32) -> u32{
 
 fn main() {
     222;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_emits_type_for_coercion() {
+        check_assist(
+            inline_call,
+            r#"
+fn foo(x: *const u32) -> u32 {
+    x as u32
+}
+
+fn main() {
+    foo$0(&222);
+}
+"#,
+            r#"
+fn foo(x: *const u32) -> u32 {
+    x as u32
+}
+
+fn main() {
+    {
+        let x: *const u32 = &222;
+        x as u32
+    };
 }
 "#,
         );

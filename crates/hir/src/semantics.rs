@@ -576,7 +576,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax()).type_of_pat(self.db, pat)
     }
 
-    fn type_of_pat_with_coercion(&self, pat: &ast::Pat)-> Option<(Type, Option<Type>)> {
+    fn type_of_pat_with_coercion(&self, pat: &ast::Pat) -> Option<(Type, Option<Type>)> {
         self.analyze(pat.syntax()).type_of_pat_with_coercion(self.db, pat)
     }
 

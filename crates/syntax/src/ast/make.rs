@@ -492,10 +492,19 @@ pub fn where_clause(preds: impl IntoIterator<Item = ast::WherePred>) -> ast::Whe
     }
 }
 
-pub fn let_stmt(pattern: ast::Pat, initializer: Option<ast::Expr>) -> ast::LetStmt {
-    let text = match initializer {
-        Some(it) => format!("let {} = {};", pattern, it),
-        None => format!("let {};", pattern),
+pub fn let_stmt(
+    pattern: ast::Pat,
+    ty: Option<ast::Type>,
+    initializer: Option<ast::Expr>,
+) -> ast::LetStmt {
+    let mut text = String::new();
+    format_to!(text, "let {}", pattern);
+    if let Some(ty) = ty {
+        format_to!(text, ": {}", ty);
+    }
+    match initializer {
+        Some(it) => format_to!(text, " = {};", it),
+        None => format_to!(text, ";"),
     };
     ast_from_text(&format!("fn f() {{ {} }}", text))
 }
