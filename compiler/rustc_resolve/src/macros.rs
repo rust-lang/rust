@@ -319,11 +319,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                         let expn_data = expn_id.expn_data();
                         match expn_data.kind {
                             ExpnKind::Root
-                            | ExpnKind::Macro {
-                                name: _,
-                                kind: MacroKind::Bang | MacroKind::Derive,
-                                proc_macro: _,
-                            } => {
+                            | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
                                 break;
                             }
                             _ => expn_id = expn_data.parent,

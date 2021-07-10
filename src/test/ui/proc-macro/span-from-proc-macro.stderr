@@ -2,7 +2,7 @@ error[E0412]: cannot find type `MissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:37:20
    |
 LL | pub fn error_from_attribute(_args: TokenStream, _input: TokenStream) -> TokenStream {
-   | ----------------------------------------------------------------------------------- in this expansion of procedural macro `#[error_from_attribute]`
+   | ----------------------------------------------------------------------------------- in this expansion of `#[error_from_attribute]`
 ...
 LL |             field: MissingType
    |                    ^^^^^^^^^^^ not found in this scope
@@ -16,7 +16,7 @@ error[E0412]: cannot find type `OtherMissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:46:21
    |
 LL | pub fn error_from_derive(_input: TokenStream) -> TokenStream {
-   | ------------------------------------------------------------ in this expansion of procedural macro `#[derive(ErrorFromDerive)]`
+   | ------------------------------------------------------------ in this expansion of `#[derive(ErrorFromDerive)]`
 ...
 LL |             Variant(OtherMissingType)
    |                     ^^^^^^^^^^^^^^^^ not found in this scope
@@ -30,7 +30,7 @@ error[E0425]: cannot find value `my_ident` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:29:9
    |
 LL | pub fn other_error_from_bang(_input: TokenStream) -> TokenStream {
-   | ---------------------------------------------------------------- in this expansion of procedural macro `other_error_from_bang!`
+   | ---------------------------------------------------------------- in this expansion of `other_error_from_bang!`
 LL |     custom_quote::custom_quote! {
 LL |         my_ident
    |         ^^^^^^^^ not found in this scope
@@ -49,7 +49,7 @@ LL |             let bang_error: bool = 25;
    |                             expected due to this
 ...
 LL | pub fn error_from_bang(_input: TokenStream) -> TokenStream {
-   | ---------------------------------------------------------- in this expansion of procedural macro `error_from_bang!`
+   | ---------------------------------------------------------- in this expansion of `error_from_bang!`
    | 
   ::: $DIR/span-from-proc-macro.rs:15:5
    |

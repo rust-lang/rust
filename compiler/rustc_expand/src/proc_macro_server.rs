@@ -812,7 +812,7 @@ fn ident_name_compatibility_hack(
     rustc: &mut Rustc<'_>,
 ) -> Option<(rustc_span::symbol::Ident, bool)> {
     if let NtIdent(ident, is_raw) = nt {
-        if let ExpnKind::Macro { name: macro_name, .. } = orig_span.ctxt().outer_expn_data().kind {
+        if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
             let source_map = rustc.sess.source_map();
             let filename = source_map.span_to_filename(orig_span);
             if let FileName::Real(RealFileName::LocalPath(path)) = filename {
