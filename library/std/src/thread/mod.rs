@@ -999,12 +999,12 @@ impl ThreadId {
         static mut COUNTER: u64 = 1;
 
         unsafe {
-            let _guard = GUARD.lock();
+            let guard = GUARD.lock();
 
             // If we somehow use up all our bits, panic so that we're not
             // covering up subtle bugs of IDs being reused.
             if COUNTER == u64::MAX {
-                drop(_guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
+                drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
                 panic!("failed to generate unique thread ID: bitspace exhausted");
             }
 
