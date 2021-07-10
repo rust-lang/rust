@@ -407,6 +407,12 @@ impl<'a> InferenceContext<'a> {
         for (_, subst) in result.method_resolutions.values_mut() {
             *subst = self.table.resolve_completely(subst.clone());
         }
+        for adjustment in result.expr_adjustments.values_mut().flatten() {
+            adjustment.target = self.table.resolve_completely(adjustment.target.clone());
+        }
+        for adjustment in result.pat_adjustments.values_mut().flatten() {
+            adjustment.target = self.table.resolve_completely(adjustment.target.clone());
+        }
         result
     }
 

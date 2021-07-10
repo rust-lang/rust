@@ -46,7 +46,7 @@ fn test2() {
 
 #[test]
 fn let_stmt_coerce() {
-    check_no_mismatches(
+    check(
         r"
 //- minicore: coerce_unsized
 fn test() {
