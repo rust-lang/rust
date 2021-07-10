@@ -14,7 +14,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_let_with_if_let
 //
-// Replaces `let` with an `if-let`.
+// Replaces `let` with an `if let`.
 //
 // ```
 // # enum Option<T> { Some(T), None }
@@ -45,7 +45,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
     let target = let_kw.text_range();
     acc.add(
         AssistId("replace_let_with_if_let", AssistKind::RefactorRewrite),
-        "Replace with if-let",
+        "Replace let with if let",
         target,
         |edit| {
             let ty = ctx.sema.type_of_expr(&init);

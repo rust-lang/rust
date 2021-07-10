@@ -82,7 +82,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
     let target = if_expr.syntax().text_range();
     acc.add(
         AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
-        "Replace with match",
+        "Replace if let with match",
         target,
         move |edit| {
             let match_expr = {
@@ -195,7 +195,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext) 
     let target = match_expr.syntax().text_range();
     acc.add(
         AssistId("replace_match_with_if_let", AssistKind::RefactorRewrite),
-        "Replace with if let",
+        "Replace match with if let",
         target,
         move |edit| {
             let condition = make::condition(scrutinee, Some(if_let_pat));
