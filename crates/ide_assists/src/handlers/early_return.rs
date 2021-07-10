@@ -146,7 +146,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
                     };
 
-                    let let_stmt = make::let_stmt(bound_ident, Some(match_expr));
+                    let let_stmt = make::let_stmt(bound_ident, None, Some(match_expr));
                     let let_stmt = let_stmt.indent(if_indent_level);
                     replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
                 }
