@@ -17,9 +17,9 @@ ena = "0.14.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
-chalk-solve = { version = "0.68", default-features = false }
-chalk-ir = "0.68"
-chalk-recursive = { version = "0.68", default-features = false }
+chalk-solve = { version = "0.69", default-features = false }
+chalk-ir = "0.69"
+chalk-recursive = { version = "0.69", default-features = false }
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 once_cell = { version = "1.5.0" }
 
@@ -34,6 +34,9 @@ syntax = { path = "../syntax", version = "0.0.0" }
 test_utils = { path = "../test_utils" }
 expect-test = "1.1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
+tracing-subscriber = { version = "0.2", default-features = false, features = [
+    "env-filter",
+    "registry",
+] }
 tracing-tree = { version = "0.1.4" }
 once_cell = { version = "1.5.0", features = ["unstable"] }

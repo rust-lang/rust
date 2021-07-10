@@ -37,9 +37,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.41"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15af2628f6890fe2609a3b91bef4c83450512802e59489f9c1cb1fa5df064a61"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
 
 [[package]]
 name = "anymap"
@@ -162,9 +162,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.68.0"
+version = "0.69.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea1552e7666a857f5417e6051ce705ea6856ab2cda39be7605e5b626fa47416b"
+checksum = "ef492c0897139b578c495149fda9153ef074f91d07361603d70531b68e2a5c02"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -174,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.68.0"
+version = "0.69.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19d7d5f1448dbac493541e97221f7f4c32326c4c76c6ecf543daf72a1dd93e66"
+checksum = "95066fe8bd77ad2dd53981b87a0b72385695e5caab56d69151873cb5df415b42"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -185,9 +185,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.68.0"
+version = "0.69.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0df406d2927321021b48acd193459dd33c913732155c93442d03f5ae8275385"
+checksum = "ede3f73bba6510660b5c4fdab5a60a81396ecb0f38f9165fcdf80d62ba017800"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -198,9 +198,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.68.0"
+version = "0.69.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cbfcd5daa5ab8b1c9e5e10e83b0ac26271480f6ae5b5f35e5b19e1f6a0e6e37"
+checksum = "c9539e84bb8ac8960762794ae88e108d6c3e4b2f60d4241d461ddcf2ba8645e1"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -1337,9 +1337,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "721.0.0"
+version = "725.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ba1f60e2942dc7dc5ea64edeaae01cfba2303871b14936e1af0f54d5420b3d1"
+checksum = "f950742ef8a203aa7661aad3ab880438ddeb7f95d4b837c30d65db1a2c5df68e"
 dependencies = [
  "unicode-xid",
 ]
