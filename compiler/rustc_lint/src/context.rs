@@ -750,6 +750,11 @@ pub trait LintContext: Sized {
                         db.note(&format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
                     }
                 }
+                BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
+                    if let Ok(code) = sess.source_map().span_to_snippet(span) {
+                        db.span_suggestion(span, "wrap this expression in parentheses", format!("({})", &code), Applicability::MachineApplicable);
+                    }
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
