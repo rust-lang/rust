@@ -21,7 +21,7 @@
         "Programming Languages"
     ],
     "engines": {
-        "vscode": "^1.53.0"
+        "vscode": "^1.57.0"
     },
     "enableProposedApi": true,
     "scripts": {
@@ -46,7 +46,7 @@
         "@types/mocha": "^8.2.3",
         "@types/node": "~14.17.5",
         "@types/node-fetch": "^2.5.11",
-        "@types/vscode": "^1.53.0",
+        "@types/vscode": "^1.57.0",
         "@typescript-eslint/eslint-plugin": "^4.26.1",
         "@typescript-eslint/parser": "^4.26.1",
         "eslint": "^7.28.0",
