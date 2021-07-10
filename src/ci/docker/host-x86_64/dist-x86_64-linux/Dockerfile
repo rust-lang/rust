@@ -69,8 +69,6 @@ COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
-# Build Python 2.7 needed for Clang 10.
-RUN ./build-python.sh 2.7.12
 # Build Python 3 needed for LLVM 12.
 RUN ./build-python.sh 3.9.1
 
@@ -102,7 +100,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set rust.jemalloc
-ENV SCRIPT ../src/ci/pgo.sh python2.7 ../x.py dist \
+ENV SCRIPT ../src/ci/pgo.sh python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     src/tools/build-manifest
