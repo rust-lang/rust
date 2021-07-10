@@ -92,7 +92,7 @@ impl TryFrom<RustCInfo> for ProcMacroABI {
     type Error = LoadProcMacroDylibError;
 
     fn try_from(info: RustCInfo) -> Result<Self, Self::Error> {
-        if info.version.0 < 1 {
+        if info.version.0 != 1 {
             Err(LoadProcMacroDylibError::UnsupportedABI)
         } else if info.version.1 < 47 {
             Err(LoadProcMacroDylibError::UnsupportedABI)
