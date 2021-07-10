@@ -1137,7 +1137,7 @@ rustc_queries! {
     }
 
     query impl_constness(def_id: DefId) -> hir::Constness {
-        desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
+        desc { |tcx| "looking up whether `{}` is a const impl", tcx.def_path_str(def_id) }
     }
 
     query check_item_well_formed(key: LocalDefId) -> () {

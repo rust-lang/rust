@@ -1,0 +1,32 @@
+error: attribute should be applied to a trait method with body
+  --> $DIR/attr-misuse.rs:4:1
+   |
+LL |   #[default_method_body_is_const]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / trait A {
+LL | |     #[default_method_body_is_const]
+LL | |     fn no_body(self);
+LL | |
+LL | |     #[default_method_body_is_const]
+LL | |     fn correct_use(&self) {}
+LL | | }
+   | |_- not a trait method or missing a body
+
+error: attribute should be applied to a trait method with body
+  --> $DIR/attr-misuse.rs:13:1
+   |
+LL | #[default_method_body_is_const]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn main() {}
+   | ------------ not a trait method or missing a body
+
+error: attribute should be applied to a trait method with body
+  --> $DIR/attr-misuse.rs:6:5
+   |
+LL |     #[default_method_body_is_const]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn no_body(self);
+   |     ----------------- not a trait method or missing a body
+
+error: aborting due to 3 previous errors
+
