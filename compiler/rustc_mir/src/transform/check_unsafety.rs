@@ -7,7 +7,6 @@ use rustc_hir::intravisit;
 use rustc_hir::Node;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
@@ -18,7 +17,6 @@ use std::ops::Bound;
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     body_did: LocalDefId,
-    const_context: bool,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
     tcx: TyCtxt<'tcx>,
@@ -30,7 +28,6 @@ pub struct UnsafetyChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(
-        const_context: bool,
         body: &'a Body<'tcx>,
         body_did: LocalDefId,
         tcx: TyCtxt<'tcx>,
@@ -39,7 +36,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         Self {
             body,
             body_did,
-            const_context,
             violations: vec![],
             source_info: SourceInfo::outermost(body.span),
             tcx,
@@ -136,25 +132,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.register_violations(&violations, &unsafe_blocks);
                 }
             },
-            // casting pointers to ints is unsafe in const fn because the const evaluator cannot
-            // possibly know what the result of various operations like `address / 2` would be
-            // pointers during const evaluation have no integral address, only an abstract one
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty)
-                if self.const_context && self.tcx.features().const_raw_ptr_to_usize_cast =>
-            {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                match (cast_in, cast_out) {
-                    (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                        self.require_unsafe(
-                            UnsafetyViolationKind::General,
-                            UnsafetyViolationDetails::CastOfPointerToInt,
-                        );
-                    }
-                    _ => {}
-                }
-            }
             _ => {}
         }
         self.super_rvalue(rvalue, location);
@@ -469,13 +446,7 @@ fn unsafety_check_result<'tcx>(
 
     let param_env = tcx.param_env(def.did);
 
-    let id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let const_context = match tcx.hir().body_owner_kind(id) {
-        hir::BodyOwnerKind::Closure => false,
-        hir::BodyOwnerKind::Fn => tcx.is_const_fn_raw(def.did.to_def_id()),
-        hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => true,
-    };
-    let mut checker = UnsafetyChecker::new(const_context, body, def.did, tcx, param_env);
+    let mut checker = UnsafetyChecker::new(body, def.did, tcx, param_env);
     checker.visit_body(&body);
 
     check_unused_unsafe(tcx, def.did, &checker.used_unsafe, &mut checker.inherited_blocks);
