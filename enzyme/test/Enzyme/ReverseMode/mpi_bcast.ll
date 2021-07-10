@@ -34,8 +34,8 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal { double } @diffempi_bcast_test(double %b, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca i32
-; CHECK-NEXT:   %1 = alloca i32
+; CHECK-NEXT:   %0 = alloca i32, align 4
+; CHECK-NEXT:   %1 = alloca i32, align 4
 ; CHECK-NEXT:   %"b.addr'ipa" = alloca double, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"b.addr'ipa", align 8
 ; CHECK-NEXT:   %b.addr = alloca double, align 8
@@ -46,44 +46,38 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %3 = load double, double* %"b.addr'ipa", align 8
 ; CHECK-NEXT:   %4 = fadd fast double %3, %differeturn
 ; CHECK-NEXT:   store double %4, double* %"b.addr'ipa", align 8
-; CHECK-NEXT:   %5 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to i8*), i32* %0)
+; CHECK-NEXT:   %5 = call i32 @MPI_Comm_rank(%struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), i32* %0)
 ; CHECK-NEXT:   %6 = load i32, i32* %0
-; CHECK-NEXT:   %7 = zext i32 %6 to i64
-; CHECK-NEXT:   %8 = tail call i8* @malloc(i64 %7)
-; CHECK-NEXT:   call void @"__enzyme_mpi_sumFloat@doubleinitializer"()
-; CHECK-NEXT:   %9 = load i8*, i8** @"__enzyme_mpi_sumFloat@double"
-; CHECK-NEXT:   %10 = call i32 @MPI_Reduce(i8* %"'ipc", i8* %8, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i8* %9, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
-; CHECK-NEXT:   %11 = call i32 @MPI_Comm_rank(%struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), i32* %1)
-; CHECK-NEXT:   %12 = load i32, i32* %1
-; CHECK-NEXT:   %13 = icmp eq i32 %12, 0
-; CHECK-NEXT:   br i1 %13, label %invertentry_root, label %invertentry_nonroot
+; CHECK-NEXT:   %7 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to i8*), i32* %1)
+; CHECK-NEXT:   %8 = load i32, i32* %1
+; CHECK-NEXT:   %9 = zext i32 %8 to i64
+; CHECK-NEXT:   %10 = icmp eq i32 %6, 0
+; CHECK-NEXT:   br i1 %10, label %invertentry_root, label %invertentry_post
 
 ; CHECK: invertentry_root:                                 ; preds = %entry
-; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %"'ipc", i8* %8, i64 %7, i1 false)
+; CHECK-NEXT:   %11 = tail call i8* @malloc(i64 %9)
 ; CHECK-NEXT:   br label %invertentry_post
 
-; CHECK: invertentry_nonroot:                              ; preds = %entry
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"'ipc", i8 0, i64 %7, i1 false)
-; CHECK-NEXT:   br label %invertentry_post
+; CHECK: invertentry_post:                                 ; preds = %invertentry_root, %entry
+; CHECK-NEXT:   %12 = phi i8* [ %11, %invertentry_root ], [ undef, %entry ]
+; CHECK-NEXT:   call void @"__enzyme_mpi_sumFloat@doubleinitializer"()
+; CHECK-NEXT:   %13 = load i8*, i8** @"__enzyme_mpi_sumFloat@double", align 8
+; CHECK-NEXT:   %14 = call i32 @MPI_Reduce(i8* %"'ipc", i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i8* %13, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+; CHECK-NEXT:   %15 = icmp eq i32 %6, 0
+; CHECK-NEXT:   br i1 %15, label %invertentry_post_root, label %invertentry_post_nonroot
 
-; CHECK: invertentry_post:                                 ; preds = %invertentry_nonroot, %invertentry_root
-; CHECK-NEXT:   tail call void @free(i8* nonnull %8)
-; CHECK-NEXT:   %14 = load double, double* %"b.addr'ipa", align 8
+; CHECK: invertentry_post_root:                            ; preds = %invertentry_post
+; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %"'ipc", i8* %12, i64 %9, i1 false)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %12)
+; CHECK-NEXT:   br label %invertentry_post_post
+
+; CHECK: invertentry_post_nonroot:                         ; preds = %invertentry_post
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"'ipc", i8 0, i64 %9, i1 false)
+; CHECK-NEXT:   br label %invertentry_post_post
+
+; CHECK: invertentry_post_post:                            ; preds = %invertentry_post_nonroot, %invertentry_post_root
+; CHECK-NEXT:   %16 = load double, double* %"b.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"b.addr'ipa", align 8
-; CHECK-NEXT:   %15 = insertvalue { double } undef, double %14, 0
-; CHECK-NEXT:   ret { double } %15
-; CHECK-NEXT: }
-
-; CHECK: define internal void @"__enzyme_mpi_sumFloat@doubleinitializer"()
-; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = load i1, i1* @"__enzyme_mpi_sumFloat@double_initd"
-; CHECK-NEXT:   br i1 %0, label %end, label %run
-
-; CHECK: run:                                              ; preds = %entry
-; CHECK-NEXT:   %1 = call i32 @MPI_Op_create(i8* bitcast (void (double*, double*, i32*, i8**)* @"__enzyme_mpi_sumFloat@double_run" to i8*), i32 1, i8** @"__enzyme_mpi_sumFloat@double")
-; CHECK-NEXT:   store i1 true, i1* @"__enzyme_mpi_sumFloat@double_initd"
-; CHECK-NEXT:   br label %end
-
-; CHECK: end:                                              ; preds = %run, %entry
-; CHECK-NEXT:   ret void
+; CHECK-NEXT:   %17 = insertvalue { double } undef, double %16, 0
+; CHECK-NEXT:   ret { double } %17
 ; CHECK-NEXT: }

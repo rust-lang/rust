@@ -3823,9 +3823,9 @@ public:
 
     // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root,
     //           MPI_Comm comm )
-    // 1. malloc intermediate buffer
+    // 1. if root, malloc intermediate buffer
     // 2. reduce sum diff(buffer) into intermediate
-    // 3. if root, set shadow(buffer) = intermediate [memcpy]
+    // 3. if root, set shadow(buffer) = intermediate [memcpy] then free
     // 3-e. else, set shadow(buffer) = 0 [memset]
     if (funcName == "MPI_Bcast") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
@@ -3859,16 +3859,38 @@ public:
                                    tysize, Type::getInt64Ty(call.getContext())),
                                "", true, true);
 
-        // 1. malloc intermediate buffer
-        Value *buf = CallInst::CreateMalloc(
-            Builder2.GetInsertBlock(), len_arg->getType(),
-            Type::getInt8Ty(call.getContext()),
-            ConstantInt::get(Type::getInt64Ty(len_arg->getContext()), 1),
-            len_arg, nullptr, "mpireduce_malloccache");
-        if (cast<Instruction>(buf)->getParent() == nullptr) {
-          Builder2.Insert(cast<Instruction>(buf));
+        // 1. if root, malloc intermediate buffer, else undef
+        PHINode *buf;
+
+        {
+          BasicBlock *currentBlock = Builder2.GetInsertBlock();
+          BasicBlock *rootBlock = gutils->addReverseBlock(
+              currentBlock, currentBlock->getName() + "_root", gutils->newFunc);
+          BasicBlock *mergeBlock = gutils->addReverseBlock(
+              rootBlock, currentBlock->getName() + "_post", gutils->newFunc);
+
+          Builder2.CreateCondBr(Builder2.CreateICmpEQ(rank, root), rootBlock,
+                                mergeBlock);
+
+          Builder2.SetInsertPoint(rootBlock);
+
+          Value *rootbuf = CallInst::CreateMalloc(
+              Builder2.GetInsertBlock(), len_arg->getType(),
+              Type::getInt8Ty(call.getContext()),
+              ConstantInt::get(Type::getInt64Ty(len_arg->getContext()), 1),
+              len_arg, nullptr, "mpireduce_malloccache");
+          if (cast<Instruction>(rootbuf)->getParent() == nullptr) {
+            Builder2.Insert(cast<Instruction>(rootbuf));
+          }
+          Builder2.SetInsertPoint(rootBlock);
+          Builder2.CreateBr(mergeBlock);
+
+          Builder2.SetInsertPoint(mergeBlock);
+
+          buf = Builder2.CreatePHI(rootbuf->getType(), 2);
+          buf->addIncoming(rootbuf, rootBlock);
+          buf->addIncoming(UndefValue::get(buf->getType()), currentBlock);
         }
-        Builder2.SetInsertPoint(Builder2.GetInsertBlock());
 
         // 2. reduce sum diff(buffer) into intermediate
         {
@@ -3921,6 +3943,14 @@ public:
 
           auto mem = cast<CallInst>(Builder2.CreateCall(memcpyF, nargs));
           mem->setCallingConv(memcpyF->getCallingConv());
+
+          // Free up the memory of the buffer
+          auto ci = cast<CallInst>(
+              CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
+          ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          if (ci->getParent() == nullptr) {
+            Builder2.Insert(ci);
+          }
         }
 
         Builder2.CreateBr(mergeBlock);
@@ -3940,14 +3970,6 @@ public:
         Builder2.CreateBr(mergeBlock);
 
         Builder2.SetInsertPoint(mergeBlock);
-
-        // Free up the memory of the buffer
-        auto ci = cast<CallInst>(
-            CallInst::CreateFree(buf, Builder2.GetInsertBlock()));
-        ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-        if (ci->getParent() == nullptr) {
-          Builder2.Insert(ci);
-        }
       }
       return;
     }
@@ -4400,7 +4422,7 @@ public:
     }
 
     // Approximate algo (for sum):  -> if statement yet to be
-    // 1. if root, malloc intermediate buffer, else null
+    // 1. if root, malloc intermediate buffer, else undef
     // 2. Gather diff(recvbuffer) to intermediate buffer
     // 3. Zero diff(recvbuffer) [memset to 0]
     // 4. if root, diff(sendbuffer) += intermediate buffer (diffmemcopy)
@@ -4453,7 +4475,7 @@ public:
                                    tysize, Type::getInt64Ty(call.getContext())),
                                "", true, true);
 
-        // 1. if root, malloc intermediate buffer, else null
+        // 1. if root, malloc intermediate buffer, else undef
         PHINode *buf;
         PHINode *sendlen_phi;
 
