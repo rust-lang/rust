@@ -364,9 +364,12 @@ impl<'sess> OnDiskCache<'sess> {
                     Ok(())
                 },
                 |encoder, index, expn_data, hash| -> FileEncodeResult {
-                    let pos = AbsoluteBytePos::new(encoder.position());
-                    encoder.encode_tagged(TAG_EXPN_DATA, &(expn_data, hash))?;
-                    expn_ids.insert(index, pos);
+                    if index.krate == LOCAL_CRATE {
+                        let pos = AbsoluteBytePos::new(encoder.position());
+                        encoder.encode_tagged(TAG_EXPN_DATA, &(expn_data, hash))?;
+                        expn_ids.insert(index.local_id.as_u32(), pos);
+                    }
+                    // TODO Handle foreign expansions.
                     Ok(())
                 },
             )?;
@@ -806,6 +809,9 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
                     let data: (ExpnData, ExpnHash) = decode_tagged(decoder, TAG_EXPN_DATA)?;
                     Ok(data)
                 })
+            },
+            |this, expn_id| {
+                Ok(this.tcx.untracked_resolutions.cstore.decode_expn_data(this.tcx.sess, expn_id))
             },
         )
     }

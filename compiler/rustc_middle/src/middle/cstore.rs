@@ -6,12 +6,13 @@ use crate::ty::TyCtxt;
 
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, MetadataRef};
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
-use rustc_session::StableCrateId;
+use rustc_session::Session;
+use rustc_span::hygiene::{ExpnData, ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::Target;
@@ -187,6 +188,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// during resolve)
 pub trait CrateStore: std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
+    fn decode_expn_data(&self, sess: &Session, expn_id: ExpnId) -> (ExpnData, ExpnHash);
 
     // Foreign definitions.
     // This information is safe to access, since it's hashed as part of the DefPathHash, which incr.

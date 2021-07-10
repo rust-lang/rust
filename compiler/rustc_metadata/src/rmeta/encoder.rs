@@ -31,7 +31,7 @@ use rustc_session::config::CrateType;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_span::{
-    hygiene::{HygieneEncodeContext, MacroKind},
+    hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind},
     RealFileName,
 };
 use rustc_target::abi::VariantIdx;
@@ -163,6 +163,12 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for CrateNum {
 }
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefIndex {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        s.emit_u32(self.as_u32())
+    }
+}
+
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         s.emit_u32(self.as_u32())
     }
@@ -1588,8 +1594,10 @@ impl EncodeContext<'a, 'tcx> {
                 Ok(())
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
-                expn_data_table.set(index, this.lazy(expn_data));
-                expn_hash_table.set(index, this.lazy(hash));
+                if let Some(index) = index.as_local() {
+                    expn_data_table.set(index.as_raw(), this.lazy(expn_data));
+                    expn_hash_table.set(index.as_raw(), this.lazy(hash));
+                }
                 Ok(())
             },
         );

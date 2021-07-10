@@ -18,11 +18,11 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
+use rustc_span::hygiene::{ExpnData, ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
 use rustc_data_structures::sync::Lrc;
-use rustc_span::ExpnId;
 use smallvec::SmallVec;
 use std::any::Any;
 
@@ -493,6 +493,23 @@ impl CStore {
 impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+    fn decode_expn_data(&self, sess: &Session, expn_id: ExpnId) -> (ExpnData, ExpnHash) {
+        let crate_data = self.get_crate_data(expn_id.krate);
+        (
+            crate_data
+                .root
+                .expn_data
+                .get(&crate_data, expn_id.local_id)
+                .unwrap()
+                .decode((&crate_data, sess)),
+            crate_data
+                .root
+                .expn_hashes
+                .get(&crate_data, expn_id.local_id)
+                .unwrap()
+                .decode((&crate_data, sess)),
+        )
     }
 
     fn crate_name(&self, cnum: CrateNum) -> Symbol {

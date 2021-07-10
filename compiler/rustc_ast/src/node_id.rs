@@ -1,4 +1,4 @@
-use rustc_span::ExpnId;
+use rustc_span::{ExpnId, LocalExpnId};
 use std::fmt;
 
 rustc_index::newtype_index! {
@@ -25,11 +25,11 @@ pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
 impl NodeId {
     pub fn placeholder_from_expn_id(expn_id: ExpnId) -> Self {
-        NodeId::from_u32(expn_id.as_u32())
+        NodeId::from_u32(expn_id.expect_local().as_u32())
     }
 
     pub fn placeholder_to_expn_id(self) -> ExpnId {
-        ExpnId::from_u32(self.as_u32())
+        LocalExpnId::from_u32(self.as_u32()).to_expn_id()
     }
 }
 

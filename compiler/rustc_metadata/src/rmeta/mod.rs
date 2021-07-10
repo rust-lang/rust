@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
@@ -170,8 +170,8 @@ macro_rules! Lazy {
 }
 
 type SyntaxContextTable = Lazy<Table<u32, Lazy<SyntaxContextData>>>;
-type ExpnDataTable = Lazy<Table<u32, Lazy<ExpnData>>>;
-type ExpnHashTable = Lazy<Table<u32, Lazy<ExpnHash>>>;
+type ExpnDataTable = Lazy<Table<ExpnIndex, Lazy<ExpnData>>>;
+type ExpnHashTable = Lazy<Table<ExpnIndex, Lazy<ExpnHash>>>;
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 crate struct ProcMacroData {
