@@ -89,6 +89,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolutionExpander.h" 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 
 add_subdirectory(Enzyme)
+add_subdirectory(BCLoad)
 add_subdirectory(test)
 
 # The benchmarks data are not in git-exported source archives to minimize size.
