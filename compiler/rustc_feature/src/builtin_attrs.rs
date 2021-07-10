@@ -448,7 +448,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word, NameValueStr: "name"), IMPL_DETAIL),
+    rustc_attr!(
+        rustc_builtin_macro, AssumedUsed,
+        template!(Word, List: "name, /*opt*/ attributes(name1, name2, ...)"),
+        IMPL_DETAIL,
+    ),
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
         rustc_macro_transparency, AssumedUsed,
