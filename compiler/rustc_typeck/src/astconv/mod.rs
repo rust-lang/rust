@@ -13,6 +13,7 @@ use crate::errors::{
 };
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
+use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, ErrorReported, FatalError};
 use rustc_hir as hir;
@@ -24,7 +25,8 @@ use rustc_hir::{GenericArg, GenericArgs};
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
-use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
+use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -2289,13 +2291,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
-        self.ast_ty_to_ty_inner(ast_ty, false)
+        self.ast_ty_to_ty_inner(ast_ty, false, false)
+    }
+
+    /// Parses the programmer's textual representation of a type into our
+    /// internal notion of a type.  This is meant to be used within a path.
+    pub fn ast_ty_to_ty_in_path(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
+        self.ast_ty_to_ty_inner(ast_ty, false, true)
     }
 
     /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
     /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
     #[tracing::instrument(level = "debug", skip(self))]
-    fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool) -> Ty<'tcx> {
+    fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         let result_ty = match ast_ty.kind {
@@ -2306,7 +2314,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Rptr(ref region, ref mt) => {
                 let r = self.ast_region_to_region(region, None);
                 debug!(?r);
-                let t = self.ast_ty_to_ty_inner(mt.ty, true);
+                let t = self.ast_ty_to_ty_inner(mt.ty, true, false);
                 tcx.mk_ref(r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
             }
             hir::TyKind::Never => tcx.types.never,
@@ -2325,6 +2333,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ))
             }
             hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
+                self.maybe_lint_bare_trait(ast_ty, in_path);
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
@@ -2345,7 +2354,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!(?qself, ?segment);
-                let ty = self.ast_ty_to_ty(qself);
+                let ty = self.ast_ty_to_ty_inner(qself, false, true);
 
                 let res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = qself.kind {
                     path.res
@@ -2601,5 +2610,50 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             tcx.sess.emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
+    }
+
+    fn maybe_lint_bare_trait(&self, self_ty: &hir::Ty<'_>, in_path: bool) {
+        let tcx = self.tcx();
+        if let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
+            self_ty.kind
+        {
+            let (mut sugg, app) = match tcx.sess.source_map().span_to_snippet(self_ty.span) {
+                Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
+                    (format!("dyn ({})", s), Applicability::MachineApplicable)
+                }
+                Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
+            };
+            if in_path {
+                let has_bracket = tcx
+                    .sess
+                    .source_map()
+                    .span_to_prev_source(self_ty.span)
+                    .ok()
+                    .map_or(false, |s| s.trim_end().ends_with('<'));
+                if !has_bracket {
+                    sugg = format!("<{}>", sugg);
+                }
+            }
+            if tcx.sess.edition() >= Edition::Edition2021 {
+                let msg = "trait objects must include the `dyn` keyword";
+                let label = "add `dyn` keyword before this trait";
+                let mut err =
+                    rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
+                err.span_suggestion_verbose(self_ty.span, label, sugg, app).emit();
+            } else {
+                let msg = "trait objects without an explicit `dyn` are deprecated";
+                tcx.struct_span_lint_hir(
+                    BARE_TRAIT_OBJECTS,
+                    self_ty.hir_id,
+                    self_ty.span,
+                    |lint| {
+                        let mut db = lint.build(msg);
+                        db.span_suggestion(self_ty.span, "use `dyn`", sugg, app);
+                        db.emit()
+                    },
+                );
+            }
+        }
     }
 }

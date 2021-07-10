@@ -21,4 +21,6 @@ fn main() {
     //~^ WARN trait objects without an explicit `dyn` are deprecated
     //~| WARN this is accepted in the current edition
     let _: Dyn::Ty; //~ ERROR ambiguous associated type
+    //~^ WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
 }

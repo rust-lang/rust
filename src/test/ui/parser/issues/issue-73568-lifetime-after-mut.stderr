@@ -22,29 +22,10 @@ LL | mac!('a);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: expected value, found trait `Send`
-  --> $DIR/issue-73568-lifetime-after-mut.rs:19:28
+  --> $DIR/issue-73568-lifetime-after-mut.rs:17:28
    |
 LL |     let z = y as &mut 'a + Send;
    |                            ^^^^ not a value
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-73568-lifetime-after-mut.rs:14:18
-   |
-LL | fn y<'a>(y: &mut 'a + Send) {
-   |                  ^^ help: use `dyn`: `dyn 'a`
-   |
-   = note: `#[warn(bare_trait_objects)]` on by default
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-73568-lifetime-after-mut.rs:19:23
-   |
-LL |     let z = y as &mut 'a + Send;
-   |                       ^^ help: use `dyn`: `dyn 'a`
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/issue-73568-lifetime-after-mut.rs:14:18
@@ -52,7 +33,7 @@ error[E0224]: at least one trait is required for an object type
 LL | fn y<'a>(y: &mut 'a + Send) {
    |                  ^^
 
-error: aborting due to 5 previous errors; 2 warnings emitted
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0178, E0224, E0423.
 For more information about an error, try `rustc --explain E0178`.

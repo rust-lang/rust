@@ -285,7 +285,6 @@ pub enum ExternDepSpec {
 #[derive(PartialEq, Debug)]
 pub enum BuiltinLintDiagnostics {
     Normal,
-    BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
