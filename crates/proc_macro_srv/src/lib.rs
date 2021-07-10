@@ -15,8 +15,15 @@
 #[doc(hidden)]
 mod proc_macro;
 
+#[allow(dead_code)]
+#[doc(hidden)]
+mod proc_macro_nightly;
+
 #[doc(hidden)]
 mod rustc_server;
+
+#[doc(hidden)]
+mod rustc_server_nightly;
 
 mod dylib;
 

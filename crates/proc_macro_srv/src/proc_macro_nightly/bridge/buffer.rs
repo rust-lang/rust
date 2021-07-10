@@ -91,7 +91,7 @@ impl<T: Copy> Buffer<T> {
             self.len += xs.len();
         }
     }
-    
+
     pub(super) fn push(&mut self, v: T) {
         // The code here is taken from Vec::push, and we know that reserve()
         // will panic if we're exceeding isize::MAX bytes and so there's no need
@@ -145,7 +145,7 @@ impl<T: Copy> From<Vec<T>> for Buffer<T> {
             }
         }
 
-         extern "C" fn reserve<T: Copy>(b: Buffer<T>, additional: usize) -> Buffer<T> {
+        extern "C" fn reserve<T: Copy>(b: Buffer<T>, additional: usize) -> Buffer<T> {
             let mut v = to_vec(b);
             v.reserve(additional);
             Buffer::from(v)
