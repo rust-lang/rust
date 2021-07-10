@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
 /// A `query` provider for retrieving coverage information injected into MIR.
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     providers.coverageinfo = |tcx, def_id| coverageinfo(tcx, def_id);
     providers.covered_file_name = |tcx, def_id| covered_file_name(tcx, def_id);
     providers.covered_code_regions = |tcx, def_id| covered_code_regions(tcx, def_id);

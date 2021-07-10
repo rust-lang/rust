@@ -236,7 +236,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,

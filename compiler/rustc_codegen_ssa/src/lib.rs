@@ -5,6 +5,8 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
@@ -161,13 +163,13 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide(providers);
     crate::target_features::provide(providers);
 }
 
-pub fn provide_extern(providers: &mut Providers) {
+pub const fn provide_extern(providers: &mut Providers) {
     crate::back::symbol_export::provide_extern(providers);
 }
 

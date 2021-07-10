@@ -218,7 +218,7 @@ fn adt_significant_drop_tys(
     adt_drop_tys_helper(tcx, def_id, adt_has_dtor)
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
+pub(crate) const fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         needs_drop_raw,
         has_significant_drop_raw,

@@ -19,7 +19,7 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     );
 }
 
-crate fn provide(providers: &mut Providers) {
+crate const fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_naked_functions, ..*providers };
 }
 

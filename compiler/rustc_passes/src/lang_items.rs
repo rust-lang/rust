@@ -324,6 +324,6 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     items
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.get_lang_items = get_lang_items;
 }

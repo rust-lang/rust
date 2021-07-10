@@ -49,6 +49,8 @@
 #![feature(iter_zip)]
 #![feature(thread_local_const_init)]
 #![feature(try_reserve)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "512"]
 
 #[macro_use]

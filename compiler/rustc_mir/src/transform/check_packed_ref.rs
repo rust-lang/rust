@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 use crate::transform::MirPass;
 use crate::util;
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     *providers = Providers { unsafe_derive_on_repr_packed, ..*providers };
 }
 

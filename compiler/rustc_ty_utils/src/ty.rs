@@ -521,7 +521,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub const fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
         associated_item,

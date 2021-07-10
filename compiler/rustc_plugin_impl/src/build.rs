@@ -52,6 +52,6 @@ fn plugin_registrar_fn(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     Some(def_id)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers { plugin_registrar_fn, ..*providers };
 }

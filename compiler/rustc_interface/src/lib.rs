@@ -1,5 +1,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![feature(internal_output_capture)]
 #![feature(nll)]
 #![feature(once_cell)]

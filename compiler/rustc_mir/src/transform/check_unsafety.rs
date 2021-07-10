@@ -372,7 +372,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     *providers = Providers {
         unsafety_check_result: |tcx, def_id| {
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {

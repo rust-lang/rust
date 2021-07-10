@@ -1599,7 +1599,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>, (): ()) -> &[DefId] {
     tcx.arena.alloc_from_iter(traits)
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub const fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = compute_all_traits;
 }
 

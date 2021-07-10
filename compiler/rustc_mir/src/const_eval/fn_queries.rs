@@ -102,7 +102,7 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers {
         is_const_fn_raw,
         is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, def_id.expect_local()),

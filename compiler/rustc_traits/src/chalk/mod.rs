@@ -28,7 +28,7 @@ use crate::chalk::lowering::{
 
 use chalk_solve::Solution;
 
-crate fn provide(p: &mut Providers) {
+crate const fn provide(p: &mut Providers) {
     *p = Providers { evaluate_goal, ..*p };
 }
 

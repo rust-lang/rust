@@ -91,6 +91,8 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -123,7 +125,7 @@ pub fn symbol_name_for_instance_in_crate(
     compute_symbol_name(tcx, instance, || instantiating_crate)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
 }
 

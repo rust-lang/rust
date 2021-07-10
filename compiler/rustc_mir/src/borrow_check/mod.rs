@@ -82,7 +82,7 @@ crate struct Upvar<'tcx> {
 
 const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers {
         mir_borrowck: |tcx, did| {
             if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {

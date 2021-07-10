@@ -11,6 +11,8 @@
 #![feature(nll)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -40,7 +42,7 @@ pub mod stability;
 mod upvars;
 mod weak_lang_items;
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     check_attr::provide(providers);
     check_const::provide(providers);
     diagnostic_items::provide(providers);

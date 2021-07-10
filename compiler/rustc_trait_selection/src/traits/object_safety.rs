@@ -879,6 +879,6 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
         .is_break()
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub const fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { object_safety_violations, ..*providers };
 }
