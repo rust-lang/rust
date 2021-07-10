@@ -25,9 +25,12 @@ use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
+use crate::sys::to_u16s;
 use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::AsInner;
+
+use super::path;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
@@ -256,14 +259,16 @@ impl Command {
             }
             None
         });
+        let program = program.as_ref().unwrap_or(&self.program);
+
+        let mut args = make_command_line(program, &self.args, self.force_quotes_enabled)?;
+        args.push(0);
+
+        let application_name = CommandApp::new(program)?;
 
         let mut si = zeroed_startupinfo();
         si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
         si.dwFlags = c::STARTF_USESTDHANDLES;
-
-        let program = program.as_ref().unwrap_or(&self.program);
-        let mut cmd_str = make_command_line(program, &self.args, self.force_quotes_enabled)?;
-        cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
         let mut flags = self.flags | c::CREATE_UNICODE_ENVIRONMENT;
@@ -303,8 +308,8 @@ impl Command {
 
         unsafe {
             cvt(c::CreateProcessW(
-                ptr::null(),
-                cmd_str.as_mut_ptr(),
+                application_name.as_ptr(),
+                args.as_mut_ptr(),
                 ptr::null_mut(),
                 ptr::null_mut(),
                 c::TRUE,
@@ -549,6 +554,77 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
         hThread: ptr::null_mut(),
         dwProcessId: 0,
         dwThreadId: 0,
+    }
+}
+
+// Finds the application name that should be passed to `c::CreateProcessW`.
+struct CommandApp {
+    application: Option<Vec<u16>>,
+}
+impl CommandApp {
+    fn new(program: &OsStr) -> io::Result<Self> {
+        let filename = match path::parse_filename(program) {
+            Some(name) => name,
+            None => {
+                return Err(io::Error::new_const(
+                    io::ErrorKind::InvalidInput,
+                    &"the program name cannot be empty",
+                ));
+            }
+        };
+
+        if filename.len() == program.len() {
+            // If the path is a plain file name then let the OS search for it.
+            Ok(Self { application: None })
+        } else {
+            // Otherwise use the path, appending `.exe` if necessary.
+            let mut utf16 = to_u16s(program)?;
+
+            // Possibly append `.exe` to the file name.
+            //
+            // The rules for doing so are fairly complex and are here to maintain
+            // the previous behaviour. It should hopefully be simplified in the
+            // future, once the preferred semantics are decided.
+            //
+            // Basically there are two different cases where `.exe` is added:
+            //
+            // If the path is absolute or starts with `.\` or `..\` then it will
+            // first try the exact path given. If that path is not found then
+            // `.exe` is appended and it's retried.
+            //
+            // Otherwise if the path is a plain file name or in a form such as
+            // `directory\file` then `.exe` is always appended unless the file
+            // name contains a `.` somewhere (i.e. it already has an extension).
+            let has_root = match program.bytes() {
+                // Drive paths such as `C:\`, `D:\`, etc.
+                // This also includes relative drive paths like `C:`
+                [_, b':', ..] => true,
+                // Starts with: `\`, `.\` or `..\`
+                [sep, ..] | [b'.', sep, ..] | [b'.', b'.', sep, ..] if path::is_sep_byte(*sep) => {
+                    true
+                }
+                // All other paths. For example:
+                // `cmd`, `dir\cmd`, `dir\..\cmd`, etc.
+                _ => false,
+            };
+            let has_extension = filename.bytes().contains(&b'.');
+
+            // If `try_exists` fails then treat it as existing and let
+            // `c:CreateProcessW` try instead.
+            if (has_root && !fs::try_exists(program).unwrap_or(true))
+                || (!has_root && !has_extension)
+            {
+                // remove null and add the `.exe` extension.
+                utf16.pop();
+                utf16.extend(env::consts::EXE_SUFFIX.encode_utf16());
+                utf16.push(0);
+            }
+
+            Ok(Self { application: Some(utf16) })
+        }
+    }
+    fn as_ptr(&self) -> *const u16 {
+        if let Some(app) = &self.application { app.as_ptr() } else { ptr::null() }
     }
 }
 
