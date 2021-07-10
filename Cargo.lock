@@ -487,6 +487,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "la-arena",
+ "limit",
  "log",
  "mbe",
  "once_cell",
@@ -508,6 +509,7 @@ dependencies = [
  "either",
  "expect-test",
  "la-arena",
+ "limit",
  "log",
  "mbe",
  "parser",
@@ -534,6 +536,7 @@ dependencies = [
  "hir_expand",
  "itertools",
  "la-arena",
+ "limit",
  "log",
  "once_cell",
  "profile",
@@ -640,6 +643,7 @@ dependencies = [
  "fst",
  "hir",
  "itertools",
+ "limit",
  "log",
  "once_cell",
  "profile",
@@ -791,6 +795,10 @@ checksum = "1d1b8479c593dba88c2741fc50b92e13dbabbbe0bd504d979f244ccc1a5b1c01"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "limit"
+version = "0.0.0"
 
 [[package]]
 name = "lock_api"

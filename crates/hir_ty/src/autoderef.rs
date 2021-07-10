@@ -9,6 +9,7 @@ use base_db::CrateId;
 use chalk_ir::{cast::Cast, fold::Fold, interner::HasInterner, VariableKind};
 use hir_def::lang_item::LangItemTarget;
 use hir_expand::name::name;
+use limit::Limit;
 use log::{info, warn};
 
 use crate::{
@@ -16,6 +17,8 @@ use crate::{
     DebruijnIndex, Environment, InEnvironment, Interner, ProjectionTyExt, Solution, Substitution,
     Ty, TyBuilder, TyKind,
 };
+
+const AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
 
 pub(crate) enum AutoderefKind {
     Builtin,
@@ -63,7 +66,7 @@ impl Iterator for Autoderef<'_> {
             return Some((self.ty.clone(), 0));
         }
 
-        if self.steps.len() >= AUTODEREF_RECURSION_LIMIT {
+        if AUTODEREF_RECURSION_LIMIT.check(self.steps.len() + 1).is_err() {
             return None;
         }
 
@@ -87,8 +90,6 @@ impl Iterator for Autoderef<'_> {
     }
 }
 
-const AUTODEREF_RECURSION_LIMIT: usize = 10;
-
 // FIXME: replace uses of this with Autoderef above
 pub fn autoderef<'a>(
     db: &'a dyn HirDatabase,
@@ -99,7 +100,7 @@ pub fn autoderef<'a>(
     successors(Some(ty), move |ty| {
         deref(db, krate?, InEnvironment { goal: ty, environment: environment.clone() })
     })
-    .take(AUTODEREF_RECURSION_LIMIT)
+    .take(AUTODEREF_RECURSION_LIMIT.inner())
 }
 
 pub(crate) fn deref(

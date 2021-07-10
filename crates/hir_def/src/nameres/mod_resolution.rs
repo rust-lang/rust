@@ -1,11 +1,12 @@
 //! This module resolves `mod foo;` declaration to file.
 use base_db::{AnchoredPath, FileId};
 use hir_expand::name::Name;
+use limit::Limit;
 use syntax::SmolStr;
 
 use crate::{db::DefDatabase, HirFileId};
 
-const MOD_DEPTH_LIMIT: u32 = 32;
+const MOD_DEPTH_LIMIT: Limit = Limit::new(32);
 
 #[derive(Clone, Debug)]
 pub(super) struct ModDir {
@@ -25,7 +26,7 @@ impl ModDir {
     }
     fn child(&self, dir_path: DirPath, root_non_dir_owner: bool) -> Option<ModDir> {
         let depth = self.depth + 1;
-        if depth > MOD_DEPTH_LIMIT {
+        if MOD_DEPTH_LIMIT.check(depth as usize).is_err() {
             log::error!("MOD_DEPTH_LIMIT exceeded");
             cov_mark::hit!(circular_mods);
             return None;

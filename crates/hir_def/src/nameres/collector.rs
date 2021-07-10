@@ -19,6 +19,7 @@ use hir_expand::{
 use hir_expand::{InFile, MacroCallLoc};
 use itertools::Itertools;
 use la_arena::Idx;
+use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 
@@ -49,9 +50,9 @@ use crate::{
     UnresolvedMacro,
 };
 
-const GLOB_RECURSION_LIMIT: usize = 100;
-const EXPANSION_DEPTH_LIMIT: usize = 128;
-const FIXED_POINT_LIMIT: usize = 8192;
+const GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
+const EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
+const FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 
 pub(super) fn collect_defs(
     db: &dyn DefDatabase,
@@ -357,7 +358,7 @@ impl DefCollector<'_> {
                 }
 
                 i += 1;
-                if i == FIXED_POINT_LIMIT {
+                if FIXED_POINT_LIMIT.check(i).is_err() {
                     log::error!("name resolution is stuck");
                     break 'outer;
                 }
@@ -924,7 +925,7 @@ impl DefCollector<'_> {
         import_type: ImportType,
         depth: usize,
     ) {
-        if depth > GLOB_RECURSION_LIMIT {
+        if GLOB_RECURSION_LIMIT.check(depth).is_err() {
             // prevent stack overflows (but this shouldn't be possible)
             panic!("infinite recursion in glob imports!");
         }
@@ -1157,7 +1158,7 @@ impl DefCollector<'_> {
         macro_call_id: MacroCallId,
         depth: usize,
     ) {
-        if depth > EXPANSION_DEPTH_LIMIT {
+        if EXPANSION_DEPTH_LIMIT.check(depth).is_err() {
             cov_mark::hit!(macro_expansion_overflow);
             log::warn!("macro expansion is too deep");
             return;
