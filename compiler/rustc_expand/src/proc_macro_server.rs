@@ -368,7 +368,7 @@ pub(crate) struct Rustc<'a> {
 }
 
 impl<'a> Rustc<'a> {
-    pub fn new(cx: &'a ExtCtxt<'_>, krate: CrateNum) -> Self {
+    pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         let expn_data = cx.current_expansion.id.expn_data();
         let def_site = cx.with_def_site_ctxt(expn_data.def_site);
         let call_site = cx.with_call_site_ctxt(expn_data.call_site);
@@ -381,7 +381,7 @@ impl<'a> Rustc<'a> {
             call_site,
             mixed_site,
             span_debug: cx.ecfg.span_debug,
-            krate,
+            krate: expn_data.macro_def_id.unwrap().krate,
             expn_id: cx.current_expansion.id,
             rebased_spans: FxHashMap::default(),
         }

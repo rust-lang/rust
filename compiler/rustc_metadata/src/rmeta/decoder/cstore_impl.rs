@@ -411,7 +411,7 @@ impl CStore {
 
         let data = self.get_crate_data(id.krate);
         if data.root.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.load_proc_macro(id, sess));
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 
         let span = data.get_span(id.index, sess);
