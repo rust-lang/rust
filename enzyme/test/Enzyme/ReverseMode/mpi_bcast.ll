@@ -61,7 +61,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK: invertentry_post:                                 ; preds = %invertentry_root, %entry
 ; CHECK-NEXT:   %12 = phi i8* [ %11, %invertentry_root ], [ undef, %entry ]
 ; CHECK-NEXT:   call void @"__enzyme_mpi_sumFloat@doubleinitializer"()
-; CHECK-NEXT:   %13 = load i8*, i8** @"__enzyme_mpi_sumFloat@double", align 8
+; CHECK-NEXT:   %13 = load i8*, i8** @"__enzyme_mpi_sumFloat@double"
 ; CHECK-NEXT:   %14 = call i32 @MPI_Reduce(i8* %"'ipc", i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i8* %13, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %15 = icmp eq i32 %6, 0
 ; CHECK-NEXT:   br i1 %15, label %invertentry_post_root, label %invertentry_post_nonroot
