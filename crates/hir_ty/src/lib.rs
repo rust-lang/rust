@@ -112,6 +112,7 @@ pub type Canonical<T> = chalk_ir::Canonical<T>;
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
 pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
+pub type Environment = chalk_ir::Environment<Interner>;
 pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
 pub type Goal = chalk_ir::Goal<Interner>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;

@@ -5,14 +5,17 @@
 //! See <https://doc.rust-lang.org/nomicon/coercions.html> and
 //! `librustc_typeck/check/coercion.rs`.
 
+use std::iter;
+
 use chalk_ir::{cast::Cast, Goal, Mutability, TyVariableKind};
 use hir_def::{expr::ExprId, lang_item::LangItemTarget};
+use stdx::always;
 
 use crate::{
-    autoderef,
+    autoderef::{Autoderef, AutoderefKind},
     infer::{
-        Adjust, Adjustment, AutoBorrow, InferOk, InferResult, InferenceContext, PointerCast,
-        TypeError, TypeMismatch,
+        Adjust, Adjustment, AutoBorrow, InferOk, InferResult, InferenceContext, OverloadedDeref,
+        PointerCast, TypeError, TypeMismatch,
     },
     static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, InEnvironment, Interner, Solution,
     Substitution, Ty, TyBuilder, TyExt, TyKind,
@@ -241,9 +244,10 @@ impl<'a> InferenceContext<'a> {
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
     fn coerce_ref(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> CoerceResult {
-        match from_ty.kind(&Interner) {
-            TyKind::Ref(mt, _, _) => {
-                coerce_mutabilities(*mt, to_mt)?;
+        let from_mt = match from_ty.kind(&Interner) {
+            &TyKind::Ref(mt, _, _) => {
+                coerce_mutabilities(mt, to_mt)?;
+                mt
             }
             _ => return self.unify_and(&from_ty, to_ty, identity),
         };
@@ -254,8 +258,8 @@ impl<'a> InferenceContext<'a> {
         // details of coercion errors though, so I think it's useful to leave
         // the structure like it is.
 
-        let canonicalized = self.canonicalize(from_ty);
-        let autoderef = autoderef::autoderef(
+        let canonicalized = self.canonicalize(from_ty.clone());
+        let mut autoderef = Autoderef::new(
             self.db,
             self.resolver.krate(),
             InEnvironment {
@@ -266,7 +270,7 @@ impl<'a> InferenceContext<'a> {
         let mut first_error = None;
         let mut found = None;
 
-        for (autoderefs, referent_ty) in autoderef.enumerate() {
+        for (referent_ty, autoderefs) in autoderef.by_ref() {
             if autoderefs == 0 {
                 // Don't let this pass, otherwise it would cause
                 // &T to autoref to &&T.
@@ -324,12 +328,43 @@ impl<'a> InferenceContext<'a> {
                 return Err(err);
             }
         };
-        // FIXME: record overloaded deref adjustments
-        success(
-            vec![Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(to_mt)), target: ty.clone() }],
-            ty,
-            goals,
-        )
+        if ty == from_ty && from_mt == Mutability::Not && autoderef.step_count() == 1 {
+            // As a special case, if we would produce `&'a *x`, that's
+            // a total no-op. We end up with the type `&'a T` just as
+            // we started with.  In that case, just skip it
+            // altogether. This is just an optimization.
+            //
+            // Note that for `&mut`, we DO want to reborrow --
+            // otherwise, this would be a move, which might be an
+            // error. For example `foo(self.x)` where `self` and
+            // `self.x` both have `&mut `type would be a move of
+            // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
+            // which is a borrow.
+            always!(to_mt == Mutability::Not); // can only coerce &T -> &U
+            return success(vec![], ty, goals);
+        }
+
+        let mut adjustments = self.auto_deref_adjust_steps(&autoderef);
+        adjustments
+            .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(to_mt)), target: ty.clone() });
+
+        success(adjustments, ty, goals)
+    }
+
+    pub(super) fn auto_deref_adjust_steps(&self, autoderef: &Autoderef<'_>) -> Vec<Adjustment> {
+        let steps = autoderef.steps();
+        let targets =
+            steps.iter().skip(1).map(|(_, ty)| ty.clone()).chain(iter::once(autoderef.final_ty()));
+        steps
+            .iter()
+            .map(|(kind, _source)| match kind {
+                // We do not know what kind of deref we require at this point yet
+                AutoderefKind::Overloaded => Some(OverloadedDeref(Mutability::Not)),
+                AutoderefKind::Builtin => None,
+            })
+            .zip(targets)
+            .map(|(autoderef, target)| Adjustment { kind: Adjust::Deref(autoderef), target })
+            .collect()
     }
 
     /// Attempts to coerce from the type of a Rust function item into a function pointer.

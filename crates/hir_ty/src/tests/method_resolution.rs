@@ -1,5 +1,7 @@
 use expect_test::expect;
 
+use crate::tests::check;
+
 use super::{check_infer, check_types};
 
 #[test]
@@ -1137,7 +1139,7 @@ fn main() {
 
 #[test]
 fn autoderef_visibility_field() {
-    check_infer(
+    check(
         r#"
 //- minicore: deref
 mod a {
@@ -1158,33 +1160,18 @@ mod a {
 mod b {
     fn foo() {
         let x = super::a::Bar::new().0;
+             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not)))
+             // ^^^^^^^^^^^^^^^^^^^^^^ type: char
     }
 }
-        "#,
-        expect![[r#"
-            107..138 '{     ...     }': Bar
-            121..125 'Self': Bar(i32) -> Bar
-            121..128 'Self(0)': Bar
-            126..127 '0': i32
-            226..230 'self': &Bar
-            240..273 '{     ...     }': &Foo
-            254..263 '&Foo('z')': &Foo
-            255..258 'Foo': Foo(char) -> Foo
-            255..263 'Foo('z')': Foo
-            259..262 ''z'': char
-            303..350 '{     ...     }': ()
-            317..318 'x': char
-            321..339 'super:...r::new': fn new() -> Bar
-            321..341 'super:...:new()': Bar
-            321..343 'super:...ew().0': char
-        "#]],
+"#,
     )
 }
 
 #[test]
 fn autoderef_visibility_method() {
     cov_mark::check!(autoderef_candidate_not_visible);
-    check_infer(
+    check(
         r#"
 //- minicore: deref
 mod a {
@@ -1213,34 +1200,10 @@ mod a {
 mod b {
     fn foo() {
         let x = super::a::Bar::new().mango();
+             // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: char
     }
 }
-        "#,
-        expect![[r#"
-            75..79 'self': &Foo
-            89..119 '{     ...     }': char
-            103..107 'self': &Foo
-            103..109 'self.0': char
-            195..226 '{     ...     }': Bar
-            209..213 'Self': Bar(i32) -> Bar
-            209..216 'Self(0)': Bar
-            214..215 '0': i32
-            245..249 'self': &Bar
-            258..288 '{     ...     }': i32
-            272..276 'self': &Bar
-            272..278 'self.0': i32
-            376..380 'self': &Bar
-            390..423 '{     ...     }': &Foo
-            404..413 '&Foo('z')': &Foo
-            405..408 'Foo': Foo(char) -> Foo
-            405..413 'Foo('z')': Foo
-            409..412 ''z'': char
-            453..506 '{     ...     }': ()
-            467..468 'x': char
-            471..489 'super:...r::new': fn new() -> Bar
-            471..491 'super:...:new()': Bar
-            471..499 'super:...ango()': char
-        "#]],
+"#,
     )
 }
 
