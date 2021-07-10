@@ -454,11 +454,13 @@ impl DroplessArena {
     #[inline]
     unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
         &self,
+        initial: T,
         mut iter: I,
         len: usize,
         mem: *mut T,
     ) -> &mut [T] {
-        let mut i = 0;
+        ptr::write(mem, initial);
+        let mut i = 1;
         // Use a manual loop since LLVM manages to optimize it better for
         // slice iterators
         loop {
@@ -475,37 +477,37 @@ impl DroplessArena {
 
     #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        let iter = iter.into_iter();
+        let mut iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
         assert!(!mem::needs_drop::<T>());
+
+        let initial = match iter.next() {
+            None => return &mut [],
+            Some(val) => val
+        };
 
         let size_hint = iter.size_hint();
 
         match size_hint {
             (min, Some(max)) if min == max => {
                 // We know the exact number of elements the iterator will produce here
-                let len = min;
-
-                if len == 0 {
-                    return &mut [];
-                }
+                let len = min + 1;
 
                 let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
-                unsafe { self.write_from_iter(iter, len, mem) }
+                unsafe { self.write_from_iter(initial, iter, len, mem) }
             }
             (_, _) => {
                 cold_path(move || -> &mut [T] {
                     let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
+
                     // Move the content to the arena by copying it and then forgetting
                     // the content of the SmallVec
                     unsafe {
-                        let len = vec.len();
+                        let len = vec.len() + 1;
                         let start_ptr =
-                            self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+                            self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
+                        ptr::write(start_ptr, initial);
+                        vec.as_ptr().copy_to_nonoverlapping(start_ptr.add(1), vec.len());
                         vec.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
                     }
