@@ -916,6 +916,10 @@ rustc_queries! {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
     }
 
+    query should_inherit_track_caller(def_id: DefId) -> bool {
+        desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
+    }
+
     query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
         desc { |tcx| "checking whether `{}` is deprecated", tcx.def_path_str(def_id) }
     }
