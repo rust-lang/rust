@@ -426,10 +426,10 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// impl Clone for i32 { ... }                   // Impl_3
 ///
 /// fn foo<T: Clone>(concrete: Option<Box<i32>>, param: T, mixed: Option<T>) {
-///     // Case A: Vtable points at a specific impl. Only possible when
+///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded
-///     // type parameters, Vtable will carry resolutions for those as well:
-///     concrete.clone(); // Vtable(Impl_1, [Vtable(Impl_2, [Vtable(Impl_3)])])
+///     // type parameters, ImplSource will carry resolutions for those as well:
+///     concrete.clone(); // ImpleSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded

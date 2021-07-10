@@ -284,7 +284,7 @@ impl Inliner<'tcx> {
         &self,
         callsite: &CallSite<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-    ) -> Result<(), &'satic str> {
+    ) -> Result<(), &'static str> {
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
         }
