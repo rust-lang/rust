@@ -100,8 +100,8 @@ pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
         panic_str(msg);
     } else {
-        // SAFETY: This is only evaluated at compile time, which handles this
-        // fine (in case it turns out this branch turns out to be reachable
+        // SAFETY: This is only evaluated at compile time, which reliably
+        // handles this UB (in case this branch turns out to be reachable
         // somehow).
         unsafe { crate::hint::unreachable_unchecked() };
     }

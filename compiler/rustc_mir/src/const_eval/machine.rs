@@ -31,6 +31,8 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+        // The list of functions we handle here must be in sync with
+        // `is_lang_panic_fn` in `transform/check_consts/mod.rs`.
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn()
             || Some(def_id) == self.tcx.lang_items().panic_str()
