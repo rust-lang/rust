@@ -19,6 +19,7 @@ pub struct ByKey<F> {
 }
 
 impl<F> ByKey<F> {
+    #[inline]
     pub(crate) fn new(key: F) -> Self {
         Self { key }
     }
@@ -31,7 +32,7 @@ where
     K: PartialEq,
 {
     type Output = bool;
-
+    #[inline]
     extern "rust-call" fn call_once(mut self, args: (&T, &T)) -> Self::Output {
         (self.key)(args.0) == (self.key)(args.1)
     }
@@ -43,6 +44,7 @@ where
     F: FnMut(&T) -> K,
     K: PartialEq,
 {
+    #[inline]
     extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
         (self.key)(args.0) == (self.key)(args.1)
     }
@@ -62,6 +64,7 @@ where
 pub struct ByPartialEq;
 
 impl ByPartialEq {
+    #[inline]
     pub(crate) fn new() -> Self {
         Self
     }
@@ -70,7 +73,7 @@ impl ByPartialEq {
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<T: PartialEq> FnOnce<(&T, &T)> for ByPartialEq {
     type Output = bool;
-
+    #[inline]
     extern "rust-call" fn call_once(self, args: (&T, &T)) -> Self::Output {
         args.0 == args.1
     }
@@ -78,6 +81,7 @@ impl<T: PartialEq> FnOnce<(&T, &T)> for ByPartialEq {
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
+    #[inline]
     extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
         args.0 == args.1
     }
@@ -93,23 +97,23 @@ impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
 /// [`Iterator::dedup_by`]: Iterator::dedup_by
 /// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Dedup<I, F>
 where
     I: Iterator,
 {
     inner: I,
     same_bucket: F,
-    last: Option<I::Item>,
+    last: Option<Option<I::Item>>,
 }
 
 impl<I, F> Dedup<I, F>
 where
     I: Iterator,
 {
+    #[inline]
     pub(crate) fn new(inner: I, same_bucket: F) -> Self {
-        let mut inner = inner;
-        Self { last: inner.next(), inner, same_bucket }
+        Self { inner, same_bucket, last: None }
     }
 }
 
@@ -121,8 +125,15 @@ where
 {
     type Item = I::Item;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let last_item = self.last.as_ref()?;
+        if self.last.is_none() {
+            self.last = Some(self.inner.next())
+        }
+
+        let last = self.last.as_mut().unwrap();
+        let last_item = last.as_ref()?;
+
         let mut next = loop {
             let curr = self.inner.next();
             if let Some(curr_item) = &curr {
@@ -134,10 +145,11 @@ where
             }
         };
 
-        swap(&mut self.last, &mut next);
+        swap(last, &mut next);
         next
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let min = self.last.as_ref().map(|_| 1).unwrap_or(0);
         let max = self.inner.size_hint().1;
@@ -153,6 +165,7 @@ where
 {
     type Source = S;
 
+    #[inline]
     unsafe fn as_inner(&mut self) -> &mut Self::Source {
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.inner) }
