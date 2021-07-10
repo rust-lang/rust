@@ -582,9 +582,9 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("test-builder", |o| {
             o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
         }),
-        unstable("check", |o| o.optflag("", "check", "Run rustdoc checks")),
+        unstable("check", |o| o.optflagmulti("", "check", "Run rustdoc checks")),
         unstable("generate-redirect-map", |o| {
-            o.optflag(
+            o.optflagmulti(
                 "",
                 "generate-redirect-map",
                 "Generate JSON file at the top level instead of generating HTML redirection files",
@@ -598,9 +598,11 @@ fn opts() -> Vec<RustcOptGroup> {
                 "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
             )
         }),
-        unstable("no-run", |o| o.optflag("", "no-run", "Compile doctests without running them")),
+        unstable("no-run", |o| {
+            o.optflagmulti("", "no-run", "Compile doctests without running them")
+        }),
         unstable("show-type-layout", |o| {
-            o.optflag("", "show-type-layout", "Include the memory layout of types in the docs")
+            o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
         }),
     ]
 }
