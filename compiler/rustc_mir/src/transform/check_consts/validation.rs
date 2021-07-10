@@ -885,14 +885,32 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
-                let caller_has_attr = tcx.has_attr(caller, sym::default_method_body_is_const);
-                let in_same_trait = match (tcx.trait_of_item(caller), tcx.trait_of_item(callee)) {
-                    (Some(t1), Some(t2)) => t1 == t2,
-                    _ => false
-                };
+                if !tcx.is_const_fn_raw(callee) {
+                    let mut permitted = false;
 
-                if !(caller_has_attr && in_same_trait) {
-                    if !tcx.is_const_fn_raw(callee) {
+                    let callee_trait = tcx.trait_of_item(callee);
+                    if let Some(trait_id) = callee_trait {
+                        if tcx.has_attr(caller, sym::default_method_body_is_const) {
+                            // permit call to non-const fn when caller has default_method_body_is_const..
+                            if tcx.trait_of_item(caller) == callee_trait {
+                                // ..and caller and callee are in the same trait.
+                                permitted = true;
+                            }
+                        }
+                        let mut const_impls = true;
+                        tcx.for_each_relevant_impl(trait_id, substs.type_at(0), |imp| {
+                            if const_impls {
+                                if let hir::Constness::NotConst = tcx.impl_constness(imp) {
+                                    const_impls = false;
+                                }
+                            }
+                        });
+                        if const_impls {
+                            permitted = true;
+                        }
+                    }
+
+                    if !permitted {
                         self.check_op(ops::FnCallNonConst);
                         return;
                     }
