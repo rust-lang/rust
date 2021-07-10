@@ -60,9 +60,6 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             return true;
         }
 
-        if tcx.has_attr(def_id, sym::default_method_body_is_const) {
-            return true;
-        }
         // If the function itself is not annotated with `const`, it may still be a `const fn`
         // if it resides in a const trait impl.
         is_parent_const_impl_raw(tcx, hir_id)
