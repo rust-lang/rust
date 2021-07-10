@@ -31,3 +31,5 @@ impl Trait for Foo {
     type X = u32;
     const Y: u32 = 0;
 }
+
+impl implementors::Whatever for Foo {}
