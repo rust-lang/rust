@@ -627,12 +627,22 @@ pub unsafe fn zeroed<T>() -> T {
     }
 }
 
-/// Bypasses Rust's normal memory-initialization checks by pretending to
-/// produce a value of type `T`, while doing nothing at all.
+/// **This function is deprecated with extreme prejudice.**
+/// It is replaced by [`MaybeUninit<T>`], which must be used instead of this function.
 ///
-/// **This function is deprecated.** Use [`MaybeUninit<T>`] instead.
+/// This function produces a value of type `T` that may be of any imaginable
+/// bit representation in memory.
+/// The exact value that is produced by this function is subject to no
+/// guarantees whatsoever, and cannot be relied upon.
+/// The value returned by this function may differ between implementations,
+/// between different versions of the same implementation,
+/// between different compilations of the exact same code with the exact same compiler,
+/// between different executions of the same program,
+/// between different invocations within a single program,
+/// between different *uses* of the same returned value,
+/// or for any other reason whatsoever, with no warning.
 ///
-/// The reason for deprecation is that the function basically cannot be used
+/// The reason this function is deprecated is that it basically cannot be used
 /// correctly: it has the same effect as [`MaybeUninit::uninit().assume_init()`][uninit].
 /// As the [`assume_init` documentation][assume_init] explains,
 /// [the Rust compiler assumes][inv] that values are properly initialized.
@@ -645,20 +655,39 @@ pub unsafe fn zeroed<T>() -> T {
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
 ///
+/// Note: because of the aforementioned lack of guarantee about the values returned
+/// by this function, and because of the aforementioned inherent unsafety of this API,
+/// it is legal for an implementation of Rust to return initialized memory from
+/// this function if it so chooses, as a last-ditch safety net.
+/// To emphatically reiterate, neither this behavior nor the exact value of any
+/// initialized memory may be relied upon.
+/// If truly uninitialized memory is desired, then `MaybeUninit` must be used.
+///
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant
 #[inline(always)]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated_in_future)]
-#[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
+    // Under sanitizers we actually return uninitialized memory,
+    // as they should be able to check for improper use.
+    #[cfg(any(miri, sanitize = "memory"))]
     // SAFETY: the caller must guarantee that an unitialized value is valid for `T`.
     unsafe {
         intrinsics::assert_uninit_valid::<T>();
         MaybeUninit::uninit().assume_init()
+    }
+
+    // When not being sanitized we paper over the problems with this API by returning
+    // initialized memory, so that legacy code isn't broken
+    // and has an actual chance to be safe.
+    #[cfg(not(any(miri, sanitize = "memory")))]
+    // SAFETY: Because an uninitialized value does not guarantee any specific bit
+    // representation, it is therefore no less safe to return a zeroed value.
+    unsafe {
+        zeroed::<T>()
     }
 }
 
