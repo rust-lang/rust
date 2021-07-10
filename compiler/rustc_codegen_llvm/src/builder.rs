@@ -410,17 +410,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn load(&mut self, ptr: &'ll Value, align: Align) -> &'ll Value {
+    fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
-            let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, UNNAMED);
+            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
         }
     }
 
-    fn volatile_load(&mut self, ptr: &'ll Value) -> &'ll Value {
+    fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
         unsafe {
-            let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, UNNAMED);
+            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             llvm::LLVMSetVolatile(load, llvm::True);
             load
         }
@@ -428,6 +428,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn atomic_load(
         &mut self,
+        ty: &'ll Type,
         ptr: &'ll Value,
         order: rustc_codegen_ssa::common::AtomicOrdering,
         size: Size,
@@ -435,6 +436,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let load = llvm::LLVMRustBuildAtomicLoad(
                 self.llbuilder,
+                ty,
                 ptr,
                 UNNAMED,
                 AtomicOrdering::from_generic(order),
@@ -486,7 +488,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
             let llval = const_llval.unwrap_or_else(|| {
-                let load = self.load(place.llval, place.align);
+                let load = self.load(place.layout.llvm_type(self), place.llval, place.align);
                 if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar);
                 }
@@ -498,7 +500,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             let mut load = |i, scalar: &abi::Scalar, align| {
                 let llptr = self.struct_gep(place.llval, i as u64);
-                let load = self.load(llptr, align);
+                let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
+                let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar);
                 self.to_immediate_scalar(load, scalar)
             };
@@ -815,13 +818,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: &'ll Value,
         flags: MemFlags,
     ) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-            let val = self.load(src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
@@ -848,13 +845,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: &'ll Value,
         flags: MemFlags,
     ) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
