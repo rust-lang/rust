@@ -1,6 +1,3 @@
-// check-pass
-// TODO remove this^
-
 #![feature(const_trait_impl)]
 #![feature(const_fn_trait_bound)] // FIXME is this needed?
 #![allow(incomplete_features)]
@@ -27,7 +24,7 @@ impl const ConstDefaultFn for ConstImpl {
 
 const fn test() {
     NonConstImpl.a();
-    // TODO ~^ ERROR calls in constant functions are limited to constant functions, tuple structs and tuple variants
+    //~^ ERROR calls in constant functions are limited to constant functions, tuple structs and tuple variants
     ConstImpl.a();
 }
 
