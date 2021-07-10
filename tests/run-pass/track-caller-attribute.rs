@@ -38,23 +38,31 @@ fn test_fn_ptr() {
 fn test_trait_obj() {
     trait Tracked {
         #[track_caller]
-        fn handle(&self) { // `fn` here is what the `location` should point at.
-            let location = std::panic::Location::caller();
-            assert_eq!(location.file(), file!());
-            // we only call this via trait object, so the def site should *always* be returned
-            assert_eq!(location.line(), line!() - 4);
-            assert_eq!(location.column(), 9);
+        fn handle(&self) -> &'static Location<'static> {
+            std::panic::Location::caller()
         }
     }
 
     impl Tracked for () {}
     impl Tracked for u8 {}
 
+    // Test that we get the correct location
+    // even with a call through a trait object
+
     let tracked: &dyn Tracked = &5u8;
-    tracked.handle();
+    let location = tracked.handle();
+    let expected_line = line!() - 1;
+    assert_eq!(location.file(), file!());
+    assert_eq!(location.line(), expected_line);
+    assert_eq!(location.column(), 28);
 
     const TRACKED: &dyn Tracked = &();
-    TRACKED.handle();
+    let location = TRACKED.handle();
+    let expected_line = line!() - 1;
+    assert_eq!(location.file(), file!());
+    assert_eq!(location.line(), expected_line);
+    assert_eq!(location.column(), 28);
+
 }
 
 fn main() {
