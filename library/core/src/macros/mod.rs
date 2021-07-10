@@ -838,6 +838,10 @@ pub(crate) mod builtin {
     }
 
     /// Same as `format_args`, but can be used in some const contexts.
+    ///
+    /// This macro is used by the panic macros for the `const_panic` feature.
+    ///
+    /// This macro will be removed once `format_args` is allowed in const contexts.
     #[cfg(not(bootstrap))]
     #[unstable(feature = "const_format_args", issue = "none")]
     #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
