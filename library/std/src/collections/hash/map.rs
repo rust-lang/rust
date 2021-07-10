@@ -1164,17 +1164,9 @@ where
 /// let iter = map.iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone)]
 pub struct Iter<'a, K: 'a, V: 'a> {
     base: base::Iter<'a, K, V>,
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V> Clone for Iter<'_, K, V> {
-    #[inline]
-    fn clone(&self) -> Self {
-        Iter { base: self.base.clone() }
-    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
