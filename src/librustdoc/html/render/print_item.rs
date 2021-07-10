@@ -13,7 +13,7 @@ use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{Layout, Variants};
+use rustc_target::abi::{Layout, Primitive, Variants};
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
@@ -1606,11 +1606,11 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
-    fn write_size_of_layout(w: &mut Buffer, layout: &Layout) {
+    fn write_size_of_layout(w: &mut Buffer, layout: &Layout, tag_size: u64) {
         if layout.abi.is_unsized() {
             write!(w, "(unsized)");
         } else {
-            let bytes = layout.size.bytes();
+            let bytes = layout.size.bytes() - tag_size;
             write!(w, "{size} byte{pl}", size = bytes, pl = if bytes == 1 { "" } else { "s" },);
         }
     }
@@ -1637,9 +1637,9 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                  chapter for details on type layout guarantees.</p></div>"
             );
             w.write_str("<p><strong>Size:</strong> ");
-            write_size_of_layout(w, ty_layout.layout);
+            write_size_of_layout(w, ty_layout.layout, 0);
             writeln!(w, "</p>");
-            if let Variants::Multiple { variants, .. } = &ty_layout.layout.variants {
+            if let Variants::Multiple { variants, tag, .. } = &ty_layout.layout.variants {
                 if !variants.is_empty() {
                     w.write_str(
                         "<p>\
@@ -1653,10 +1653,16 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
 
+                    let tag_size = if let Primitive::Int(i, _) = tag.value {
+                        i.size().bytes()
+                    } else {
+                        span_bug!(tcx.def_span(ty_def_id), "tag is not int")
+                    };
+
                     for (index, layout) in variants.iter_enumerated() {
                         let ident = adt.variants[index].ident;
-                        write!(w, "<li><code>{name}</code> ", name = ident);
-                        write_size_of_layout(w, layout);
+                        write!(w, "<li><code>{name}</code>: ", name = ident);
+                        write_size_of_layout(w, layout, tag_size);
                         writeln!(w, "</li>");
                     }
                     w.write_str("</ul></p>");
