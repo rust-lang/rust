@@ -371,8 +371,9 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
   assert(CT.isFloat());
   auto FlT = CT.isFloat();
 
-  if (auto Glob = M.getGlobalVariable(name))
-    return Glob;
+  if (auto Glob = M.getGlobalVariable(name)) {
+    return B2.CreateLoad(Glob);
+  }
 
   std::vector<llvm::Type *> types = {PointerType::getUnqual(FlT),
                                      PointerType::getUnqual(FlT),
@@ -508,7 +509,7 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
   }
 
   B2.CreateCall(M.getFunction(name + "initializer"));
-  return GV;
+  return B2.CreateLoad(GV);
 }
 
 Function *getOrInsertExponentialAllocator(Module &M) {

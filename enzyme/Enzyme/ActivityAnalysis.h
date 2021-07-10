@@ -50,6 +50,10 @@ extern llvm::cl::opt<bool> EnzymeNonmarkedGlobalsInactive;
 
 class PreProcessCache;
 
+// A map of MPI comm allocators (otherwise inactive) to the
+// argument of the Comm* they allocate into.
+extern const std::map<std::string, size_t> MPIInactiveCommAllocators;
+
 /// Helper class to analyze the differential activity
 class ActivityAnalyzer {
   PreProcessCache &PPC;
