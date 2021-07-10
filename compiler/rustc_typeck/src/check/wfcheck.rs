@@ -738,15 +738,19 @@ fn check_where_clauses<'tcx, 'fcx>(
                 }
             }
             GenericParamDefKind::Const { .. } => {
-                // FIXME(const_generics_defaults): Figure out if this
-                // is the behavior we want, see the comment further below.
                 if is_our_default(&param) {
+                    // FIXME(const_generics_defaults): This
+                    // is incorrect when dealing with unused substs, for example
+                    // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
+                    // we should eagerly error.
                     let default_ct = tcx.const_param_default(param.def_id);
-                    fcx.register_wf_obligation(
-                        default_ct.into(),
-                        tcx.def_span(param.def_id),
-                        ObligationCauseCode::MiscObligation,
-                    );
+                    if !default_ct.needs_subst() {
+                        fcx.register_wf_obligation(
+                            default_ct.into(),
+                            tcx.def_span(param.def_id),
+                            ObligationCauseCode::MiscObligation,
+                        );
+                    }
                 }
             }
             // Doesn't have defaults.
@@ -783,14 +787,6 @@ fn check_where_clauses<'tcx, 'fcx>(
                 tcx.mk_param_from_def(param)
             }
             GenericParamDefKind::Const { .. } => {
-                // FIXME(const_generics_defaults): I(@lcnr) feel like always
-                // using the const parameter is the right choice here, even
-                // if it needs substs.
-                //
-                // Before stabilizing this we probably want to get some tests
-                // where this makes a difference and figure out what's the exact
-                // behavior we want here.
-
                 // If the param has a default, ...
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id);
