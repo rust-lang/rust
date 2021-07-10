@@ -390,6 +390,7 @@ struct TraitData {
 #[derive(TyEncodable, TyDecodable)]
 struct ImplData {
     polarity: ty::ImplPolarity,
+    constness: hir::Constness,
     defaultness: hir::Defaultness,
     parent_impl: Option<DefId>,
 

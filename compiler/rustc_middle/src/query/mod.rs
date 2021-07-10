@@ -1136,6 +1136,10 @@ rustc_queries! {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
     }
 
+    query impl_constness(def_id: DefId) -> hir::Constness {
+        desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
+    }
+
     query check_item_well_formed(key: LocalDefId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
