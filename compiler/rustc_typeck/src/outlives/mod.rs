@@ -20,6 +20,22 @@ pub fn provide(providers: &mut Providers) {
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, Span)] {
     let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
 
+    if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
+    {
+        // Provide inferred outlive preds of parent item of cg defaults manually
+        // as generics_of doesn't return a parent for the generics
+        if let Node::GenericParam(hir::GenericParam {
+            hir_id: param_id,
+            kind: hir::GenericParamKind::Const { .. },
+            ..
+        }) = tcx.hir().get(tcx.hir().get_parent_node(id))
+        {
+            let item_id = tcx.hir().get_parent_node(*param_id);
+            let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
+            return tcx.inferred_outlives_of(item_def_id);
+        }
+    }
+
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
