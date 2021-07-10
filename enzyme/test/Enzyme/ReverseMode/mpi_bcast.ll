@@ -34,8 +34,8 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal { double } @diffempi_bcast_test(double %b, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca i32, align 4
-; CHECK-NEXT:   %1 = alloca i32, align 4
+; CHECK-NEXT:   %0 = alloca i32
+; CHECK-NEXT:   %1 = alloca i32
 ; CHECK-NEXT:   %"b.addr'ipa" = alloca double, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"b.addr'ipa", align 8
 ; CHECK-NEXT:   %b.addr = alloca double, align 8
