@@ -216,6 +216,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.type_of_expr(expr)
     }
 
+    pub fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<Type> {
+        self.imp.type_of_expr_with_coercion(expr)
+    }
+
     pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
         self.imp.type_of_pat(pat)
     }
@@ -558,6 +562,10 @@ impl<'db> SemanticsImpl<'db> {
 
     fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
         self.analyze(expr.syntax()).type_of_expr(self.db, expr)
+    }
+
+    fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<Type> {
+        self.analyze(expr.syntax()).type_of_expr_with_coercion(self.db, expr)
     }
 
     fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
