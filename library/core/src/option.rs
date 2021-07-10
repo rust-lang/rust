@@ -1049,6 +1049,47 @@ impl<T> Option<T> {
     {
         Some(f(self?, other?))
     }
+
+    /// Zips `self` and another `Option` with function `f`, or returns `self.or(other)`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// Otherwise, if `self` is `Some`, `self` is returned.
+    /// Otherwise, `other` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_or_zip_with)]
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct Point {
+    ///     x: f64,
+    ///     y: f64,
+    /// }
+    ///
+    /// impl Point {
+    ///     fn new(x: f64, y: f64) -> Self {
+    ///         Self { x, y }
+    ///     }
+    /// }
+    ///
+    /// let x = Some(17.5);
+    /// let y = Some(42.7);
+    ///
+    /// assert_eq!(Some(2).or_zip_with(Some(3), |a, b| a + b), Some(5));
+    /// assert_eq!(Some(2).or_zip_with(None, |a, b| a + b), Some(2));
+    /// assert_eq!(None.or_zip_with(Some(3), |a, b| a + b), Some(3));
+    /// ```
+    #[unstable(feature = "option_or_zip_with", issue = "70086")]
+    pub fn or_zip_with<F>(self, other: Option<T>, f: F) -> Option<T>
+    where
+        F: FnOnce(T, T) -> T,
+    {
+        match (self, other) {
+            (Some(a), Some(b)) => Some(f(a, b)),
+            (a, b) => a.or(b),
+        }
+    }
 }
 
 impl<T: Copy> Option<&T> {
