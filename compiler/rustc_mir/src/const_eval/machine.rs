@@ -238,7 +238,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        mut instance: ty::Instance<'tcx>,
+        instance: ty::Instance<'tcx>,
         _abi: Abi,
         args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
@@ -258,7 +258,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     // that for const fn!
                     if let Some(new_instance) = ecx.hook_panic_fn(instance, args)? {
                         // We call another const fn instead.
-                        instance = new_instance;
+                        return Self::find_mir_or_eval_fn(
+                            ecx,
+                            new_instance,
+                            _abi,
+                            args,
+                            _ret,
+                            _unwind,
+                        );
                     } else {
                         // We certainly do *not* want to actually call the fn
                         // though, so be sure we return here.
