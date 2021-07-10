@@ -3,7 +3,10 @@ use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };
-use syntax::{ast, match_ast, ted, AstNode, SyntaxNode};
+use syntax::{
+    ast::{self, make},
+    match_ast, ted, AstNode, SyntaxNode,
+};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -38,20 +41,26 @@ pub(crate) fn replace_qualified_name_with_use(
         return None;
     }
 
-    let res = ctx.sema.resolve_path(&path)?;
-    let def: hir::ItemInNs = match res {
-        hir::PathResolution::Def(def) if def.as_assoc_item(ctx.sema.db).is_none() => def.into(),
-        hir::PathResolution::Macro(mac) => mac.into(),
+    // only offer replacement for non assoc items
+    match ctx.sema.resolve_path(&path)? {
+        hir::PathResolution::Def(def) if def.as_assoc_item(ctx.sema.db).is_none() => (),
+        hir::PathResolution::Macro(_) => (),
+        _ => return None,
+    }
+    // then search for an import for the first path segment of what we want to replace
+    // that way it is less likely that we import the item from a different location due re-exports
+    let module = match ctx.sema.resolve_path(&path.first_qualifier_or_self())? {
+        hir::PathResolution::Def(module @ hir::ModuleDef::Module(_)) => module,
         _ => return None,
     };
 
-    let target = path.syntax().text_range();
     let scope = ImportScope::find_insert_use_container_with_macros(path.syntax(), &ctx.sema)?;
-    let mod_path = ctx.sema.scope(path.syntax()).module()?.find_use_path_prefixed(
+    let path_to_qualifier = ctx.sema.scope(path.syntax()).module()?.find_use_path_prefixed(
         ctx.sema.db,
-        def,
+        module,
         ctx.config.insert_use.prefix_kind,
     )?;
+    let target = path.syntax().text_range();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
@@ -64,7 +73,11 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                 ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
             };
-            let path = mod_path_to_ast(&mod_path);
+            // stick the found import in front of the to be replaced path
+            let path = match mod_path_to_ast(&path_to_qualifier).qualifier() {
+                Some(qualifier) => make::path_concat(qualifier, path),
+                None => path,
+            };
             shorten_paths(scope.as_syntax_node(), &path.clone_for_update());
             insert_use(&scope, path, &ctx.config.insert_use);
         },
@@ -299,6 +312,41 @@ impl Foo {
 
 fn main() {
     Foo::foo$0();
+}
+",
+        );
+    }
+
+    #[test]
+    fn replace_reuses_path_qualifier() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+pub mod foo {
+    struct Foo;
+}
+
+mod bar {
+    pub use super::foo::Foo as Bar;
+}
+
+fn main() {
+    foo::Foo$0;
+}
+",
+            r"
+use foo::Foo;
+
+pub mod foo {
+    struct Foo;
+}
+
+mod bar {
+    pub use super::foo::Foo as Bar;
+}
+
+fn main() {
+    Foo;
 }
 ",
         );
