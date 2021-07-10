@@ -289,13 +289,6 @@ window.initSearch = function(rawSearchIndex) {
             };
         }
 
-        function getObjectNameFromId(id) {
-            if (typeof id === "number") {
-                return searchIndex[id].name;
-            }
-            return id;
-        }
-
         function checkGenerics(obj, val) {
             // The names match, but we need to be sure that all generics kinda
             // match as well.
@@ -306,10 +299,10 @@ window.initSearch = function(rawSearchIndex) {
                     var elems = Object.create(null);
                     var elength = obj[GENERICS_DATA].length;
                     for (var x = 0; x < elength; ++x) {
-                        if (!elems[getObjectNameFromId(obj[GENERICS_DATA][x])]) {
-                            elems[getObjectNameFromId(obj[GENERICS_DATA][x])] = 0;
+                        if (!elems[obj[GENERICS_DATA][x]]) {
+                            elems[obj[GENERICS_DATA][x]] = 0;
                         }
-                        elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
+                        elems[obj[GENERICS_DATA][x]] += 1;
                     }
                     var total = 0;
                     var done = 0;
@@ -318,7 +311,7 @@ window.initSearch = function(rawSearchIndex) {
                     var vlength = val.generics.length;
                     for (x = 0; x < vlength; ++x) {
                         var lev = MAX_LEV_DISTANCE + 1;
-                        var firstGeneric = getObjectNameFromId(val.generics[x]);
+                        var firstGeneric = val.generics[x];
                         var match = null;
                         if (elems[firstGeneric]) {
                             match = firstGeneric;
@@ -361,16 +354,16 @@ window.initSearch = function(rawSearchIndex) {
                             var elems = Object.create(null);
                             len = obj[GENERICS_DATA].length;
                             for (x = 0; x < len; ++x) {
-                                if (!elems[getObjectNameFromId(obj[GENERICS_DATA][x])]) {
-                                    elems[getObjectNameFromId(obj[GENERICS_DATA][x])] = 0;
+                                if (!elems[obj[GENERICS_DATA][x]]) {
+                                    elems[obj[GENERICS_DATA][x]] = 0;
                                 }
-                                elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
+                                elems[obj[GENERICS_DATA][x]] += 1;
                             }
 
                             var allFound = true;
                             len = val.generics.length;
                             for (x = 0; x < len; ++x) {
-                                firstGeneric = getObjectNameFromId(val.generics[x]);
+                                firstGeneric = val.generics[x];
                                 if (elems[firstGeneric]) {
                                     elems[firstGeneric] -= 1;
                                 } else {
