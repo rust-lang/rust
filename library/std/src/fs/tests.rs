@@ -19,6 +19,10 @@ use crate::os::unix::fs::symlink as symlink_junction;
 use crate::os::windows::fs::{symlink_dir, symlink_file};
 #[cfg(windows)]
 use crate::sys::fs::symlink_junction;
+#[cfg(target_os = "macos")]
+use crate::sys::weak::weak;
+#[cfg(target_os = "macos")]
+use libc::{c_char, c_int};
 
 macro_rules! check {
     ($e:expr) => {
@@ -77,6 +81,17 @@ pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
         Err(ref err) if err.raw_os_error() == Some(1314) => false,
         Ok(_) | Err(_) => true,
     }
+}
+
+#[cfg(target_os = "macos")]
+fn able_to_not_follow_symlinks_while_hard_linking() -> bool {
+    weak!(fn linkat(c_int, *const c_char, c_int, *const c_char, c_int) -> c_int);
+    linkat.get().is_some()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn able_to_not_follow_symlinks_while_hard_linking() -> bool {
+    return true;
 }
 
 #[test]
@@ -1347,6 +1362,9 @@ fn symlink_hard_link() {
     if !got_symlink_permission(&tmpdir) {
         return;
     };
+    if !able_to_not_follow_symlinks_while_hard_linking() {
+        return;
+    }
 
     // Create "file", a file.
     check!(fs::File::create(tmpdir.join("file")));

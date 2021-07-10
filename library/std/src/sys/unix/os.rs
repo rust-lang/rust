@@ -23,6 +23,9 @@ use crate::sys::memchr;
 use crate::sys_common::rwlock::{StaticRWLock, StaticRWLockReadGuard};
 use crate::vec;
 
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
+use crate::sys::weak::weak;
+
 use libc::{c_char, c_int, c_void};
 
 const TMPBUF_SZ: usize = 128;
