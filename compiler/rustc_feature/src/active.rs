@@ -416,9 +416,6 @@ declare_features! (
     /// Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 
-    /// Allows casting raw pointers to `usize` during const eval.
-    (active, const_raw_ptr_to_usize_cast, "1.27.0", Some(51910), None),
-
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 

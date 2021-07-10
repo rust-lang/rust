@@ -1,4 +1,4 @@
 fn main() {
     [();  { &loop { break } as *const _ as usize } ];
-    //~^ ERROR casting pointers to integers in constants is unstable
+    //~^ ERROR pointers cannot be cast to integers during const eval
 }

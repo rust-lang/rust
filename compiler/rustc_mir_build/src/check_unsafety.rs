@@ -25,7 +25,6 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// The `#[target_feature]` attributes of the body. Used for checking
     /// calls to functions with `#[target_feature]` (RFC 2396).
     body_target_features: &'tcx Vec<Symbol>,
-    is_const: bool,
     in_possible_lhs_union_assign: bool,
     in_union_destructure: bool,
 }
@@ -315,16 +314,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 (Bound::Unbounded, Bound::Unbounded) => {}
                 _ => self.requires_unsafe(expr.span, InitializingTypeWith),
             },
-            ExprKind::Cast { source } => {
-                let source = &self.thir[source];
-                if self.tcx.features().const_raw_ptr_to_usize_cast
-                    && self.is_const
-                    && (source.ty.is_unsafe_ptr() || source.ty.is_fn_ptr())
-                    && expr.ty.is_integral()
-                {
-                    self.requires_unsafe(expr.span, CastOfPointerToInt);
-                }
-            }
             ExprKind::Closure {
                 closure_id,
                 substs: _,
@@ -413,7 +402,6 @@ enum UnsafeOpKind {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
     InitializingTypeWith,
-    CastOfPointerToInt,
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
@@ -446,9 +434,6 @@ impl UnsafeOpKind {
                 "initializing a layout restricted type's field with a value outside the valid \
                  range is undefined behavior",
             ),
-            CastOfPointerToInt => {
-                ("cast of pointer to int", "casting pointers to integers in constants")
-            }
             UseOfMutableStatic => (
                 "use of mutable static",
                 "mutable statics can be mutated by multiple threads: aliasing violations or data \
@@ -526,11 +511,6 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
     let body_target_features = &tcx.codegen_fn_attrs(def.did).target_features;
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
-    let is_const = match tcx.hir().body_owner_kind(hir_id) {
-        hir::BodyOwnerKind::Closure => false,
-        hir::BodyOwnerKind::Fn => tcx.is_const_fn_raw(def.did.to_def_id()),
-        hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => true,
-    };
     let mut visitor = UnsafetyVisitor {
         tcx,
         thir,
@@ -538,7 +518,6 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         hir_context: hir_id,
         body_unsafety,
         body_target_features,
-        is_const,
         in_possible_lhs_union_assign: false,
         in_union_destructure: false,
     };
