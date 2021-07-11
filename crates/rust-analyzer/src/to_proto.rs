@@ -993,7 +993,7 @@ pub(crate) fn code_lens(
     annotation: Annotation,
 ) -> Result<()> {
     match annotation.kind {
-        AnnotationKind::Runnable { debug, runnable: run } => {
+        AnnotationKind::Runnable { runnable: run } => {
             let line_index = snap.file_line_index(run.nav.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
 
