@@ -131,6 +131,13 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 [unstable-masked]: ../unstable-book/language-features/doc-masked.html
 [issue-masked]: https://github.com/rust-lang/rust/issues/44027
 
+
+## Document primitives
+
+Since primitive types are defined in the compiler, there's no place to attach documentation
+attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way to generate
+documentation for primitive types, and requires `#![feature(doc_primitive)]` to enable.
+
 ## Unstable command-line arguments
 
 These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are

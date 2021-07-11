@@ -263,6 +263,7 @@
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
+#![cfg_attr(not(bootstrap), feature(doc_primitive))]
 #![feature(dropck_eyepatch)]
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]

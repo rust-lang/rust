@@ -223,9 +223,3 @@ not eagerly inline it as a module unless you add `#[doc(inline)]`.
 
 Any item annotated with `#[doc(hidden)]` will not appear in the documentation, unless
 the `strip-hidden` pass is removed.
-
-## `#[doc(primitive)]`
-
-Since primitive types are defined in the compiler, there's no place to attach documentation
-attributes. This attribute is used by the standard library to provide a way to generate
-documentation for primitive types.
