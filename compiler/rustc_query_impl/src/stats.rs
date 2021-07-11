@@ -108,7 +108,7 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
         queries.iter().filter(|q| q.local_def_id_keys.is_some()).collect();
     def_id_density.sort_by_key(|q| q.local_def_id_keys.unwrap());
     eprintln!("\nLocal DefId density:");
-    let total = tcx.hir().definitions().def_index_count() as f64;
+    let total = tcx.resolutions(()).definitions.def_index_count() as f64;
     for q in def_id_density.iter().rev() {
         let local = q.local_def_id_keys.unwrap();
         eprintln!("   {} - {} = ({}%)", q.name, local, (local as f64 * 100.0) / total);

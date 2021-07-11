@@ -14,6 +14,12 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
+    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
+        eval_always
+        no_hash
+        desc { "get the resolver outputs" }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
     /// we will have to assume that any change means that you need to be recompiled.
@@ -207,7 +213,6 @@ rustc_queries! {
     }
 
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
-        eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
     }
 
@@ -1133,7 +1138,6 @@ rustc_queries! {
 
     query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export<LocalDefId>]> {
         desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
-        eval_always
     }
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
@@ -1323,7 +1327,6 @@ rustc_queries! {
     }
 
     query visibility(def_id: DefId) -> ty::Visibility {
-        eval_always
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1348,8 +1351,6 @@ rustc_queries! {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
-        // This depends on untracked global state (`tcx.extern_crate_map`)
-        eval_always
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1426,16 +1427,12 @@ rustc_queries! {
         eval_always
     }
     query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
-        eval_always
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
-        eval_always
         desc { "looking up all possibly unused extern crates" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId)
-        -> &'tcx FxHashSet<Symbol> {
-        eval_always
+    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1445,7 +1442,6 @@ rustc_queries! {
         desc { "calculating the stability index for the local crate" }
     }
     query crates(_: ()) -> &'tcx [CrateNum] {
-        eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
 

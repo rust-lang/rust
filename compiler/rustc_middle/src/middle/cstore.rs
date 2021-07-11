@@ -187,7 +187,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// that it's *not* tracked for dependency information throughout compilation
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
-pub trait CrateStore {
+pub trait CrateStore: std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
 
     // resolve
