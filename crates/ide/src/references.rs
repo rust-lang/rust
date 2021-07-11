@@ -116,14 +116,12 @@ pub(crate) fn find_def(
     offset: TextSize,
 ) -> Option<Definition> {
     let def = match sema.find_node_at_offset_with_descend(syntax, offset)? {
-        ast::NameLike::NameRef(name_ref) => {
-            NameRefClass::classify(sema, &name_ref)?.referenced(sema.db)
-        }
+        ast::NameLike::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref)?.referenced(),
         ast::NameLike::Name(name) => {
             NameClass::classify(sema, &name)?.referenced_or_defined(sema.db)
         }
         ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
-            .map(|class| class.referenced(sema.db))
+            .map(|class| class.referenced())
             .or_else(|| {
                 NameClass::classify_lifetime(sema, &lifetime)
                     .map(|class| class.referenced_or_defined(sema.db))

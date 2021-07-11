@@ -638,7 +638,7 @@ fn vars_used_in_body(ctx: &AssistContext, body: &FunctionBody) -> Vec<Local> {
     body.descendants()
         .filter_map(ast::NameRef::cast)
         .filter_map(|name_ref| NameRefClass::classify(&ctx.sema, &name_ref))
-        .map(|name_kind| name_kind.referenced(ctx.db()))
+        .map(|name_kind| name_kind.referenced())
         .filter_map(|definition| match definition {
             Definition::Local(local) => Some(local),
             _ => None,

@@ -32,7 +32,7 @@ pub(crate) fn goto_implementation(
             NameClass::classify(&sema, name).map(|class| class.referenced_or_defined(sema.db))
         }
         ast::NameLike::NameRef(name_ref) => {
-            NameRefClass::classify(&sema, name_ref).map(|class| class.referenced(sema.db))
+            NameRefClass::classify(&sema, name_ref).map(|class| class.referenced())
         }
         ast::NameLike::Lifetime(_) => None,
     }?;

@@ -101,10 +101,10 @@ pub(crate) fn hover(
                 def => def.defined(db),
             }),
             ast::NameRef(name_ref) => {
-                NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(db))
+                NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced())
             },
             ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
-                || NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced(db)),
+                || NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced()),
                 |d| d.defined(db),
             ),
 

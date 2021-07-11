@@ -140,7 +140,7 @@ pub(crate) fn reference_definition(
         |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
         |name_ref| NameRefClass::classify(sema, name_ref),
     )?;
-    let def = name_kind.referenced(sema.db);
+    let def = name_kind.referenced();
     def.try_to_nav(sema.db)
 }
 

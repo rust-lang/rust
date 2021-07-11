@@ -186,7 +186,7 @@ impl NameClass {
                             })
                             .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
 
-                        Some(NameClass::Definition(name_ref_class.referenced(sema.db)))
+                        Some(NameClass::Definition(name_ref_class.referenced()))
                     } else {
                         let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
                         let resolved = sema.resolve_extern_crate(&extern_crate)?;
@@ -309,7 +309,7 @@ pub enum NameRefClass {
 
 impl NameRefClass {
     /// `Definition`, which this name refers to.
-    pub fn referenced(self, _db: &dyn HirDatabase) -> Definition {
+    pub fn referenced(self) -> Definition {
         match self {
             NameRefClass::Definition(def) => def,
             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
