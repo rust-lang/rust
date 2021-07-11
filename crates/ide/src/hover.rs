@@ -2463,6 +2463,7 @@ fn foo_$0test() {}
                     ),
                     Runnable(
                         Runnable {
+                            use_name_in_title: false,
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -2501,6 +2502,7 @@ mod tests$0 {
                 [
                     Runnable(
                         Runnable {
+                            use_name_in_title: false,
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
