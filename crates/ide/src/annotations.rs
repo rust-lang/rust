@@ -59,20 +59,10 @@ pub(crate) fn annotations(
 
             let range = runnable.nav.focus_or_full_range();
 
-            // dbg_runnable should go after the run annotation, to prevent a clone we do it this way
-            let dbg_runnable = (runnable.debugee() && config.debug).then(|| Annotation {
+            annotations.push(Annotation {
                 range,
-                kind: AnnotationKind::Runnable { debug: true, runnable: runnable.clone() },
+                kind: AnnotationKind::Runnable { debug: false, runnable },
             });
-
-            if config.run {
-                annotations.push(Annotation {
-                    range,
-                    kind: AnnotationKind::Runnable { debug: false, runnable },
-                });
-            }
-
-            annotations.extend(dbg_runnable);
         }
     }
 

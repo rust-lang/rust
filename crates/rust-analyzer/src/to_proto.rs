@@ -998,16 +998,26 @@ pub(crate) fn code_lens(
             let annotation_range = range(&line_index, annotation.range);
 
             let title = run.title();
+            let can_debug = run.debugee();
             let r = runnable(snap, run)?;
 
-            let command =
-                if debug { command::debug_single(&r) } else { command::run_single(&r, &title) };
-
-            acc.push(lsp_types::CodeLens {
-                range: annotation_range,
-                command: Some(command),
-                data: None,
-            })
+            let lens_config = snap.config.lens();
+            if lens_config.run {
+                let command = command::run_single(&r, &title);
+                acc.push(lsp_types::CodeLens {
+                    range: annotation_range,
+                    command: Some(command),
+                    data: None,
+                })
+            }
+            if lens_config.debug && can_debug {
+                let command = command::debug_single(&r);
+                acc.push(lsp_types::CodeLens {
+                    range: annotation_range,
+                    command: Some(command),
+                    data: None,
+                })
+            }
         }
         AnnotationKind::HasImpls { position: file_position, data } => {
             let line_index = snap.file_line_index(file_position.file_id)?;
