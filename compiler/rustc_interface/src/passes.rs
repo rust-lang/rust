@@ -736,7 +736,7 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub const DEFAULT_QUERY_PROVIDERS: Providers = {
+pub static DEFAULT_QUERY_PROVIDERS: Providers = {
     let mut providers = Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(&mut providers);
@@ -759,7 +759,7 @@ pub const DEFAULT_QUERY_PROVIDERS: Providers = {
     providers
 };
 
-pub const DEFAULT_EXTERN_QUERY_PROVIDERS: Providers = {
+pub static DEFAULT_EXTERN_QUERY_PROVIDERS: Providers = {
     let mut extern_providers = DEFAULT_QUERY_PROVIDERS;
     rustc_metadata::provide_extern(&mut extern_providers);
     rustc_codegen_ssa::provide_extern(&mut extern_providers);
