@@ -313,4 +313,34 @@ fn bar() {
 "#,
         )
     }
+
+    #[test]
+    fn remove_method_param() {
+        // FIXME: This is completely wrong:
+        //  * method call expressions are not handled
+        //  * assoc function syntax removes the wrong argument.
+        check_assist(
+            remove_unused_param,
+            r#"
+struct S;
+impl S { fn f(&self, $0_unused: i32) {} }
+fn main() {
+    S.f(92);
+    S.f();
+    S.f(92, 92);
+    S::f(&S, 92);
+}
+"#,
+            r#"
+struct S;
+impl S { fn f(&self) {} }
+fn main() {
+    S.f(92);
+    S.f();
+    S.f(92, 92);
+    S::f(92);
+}
+"#,
+        )
+    }
 }
