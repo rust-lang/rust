@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `*item` which is behind a `&` reference
+error[E0594]: cannot assign to `*item`, which is behind a `&` reference
   --> $DIR/issue-69789-iterator-mut-suggestion.rs:7:9
    |
 LL |     for item in &mut std::iter::empty::<&'static ()>() {

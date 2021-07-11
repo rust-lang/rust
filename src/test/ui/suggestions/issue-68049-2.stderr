@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `*input` which is behind a `&` reference
+error[E0594]: cannot assign to `*input`, which is behind a `&` reference
   --> $DIR/issue-68049-2.rs:9:7
    |
 LL |   fn example(&self, input: &i32); // should suggest here
@@ -7,7 +7,7 @@ LL |   fn example(&self, input: &i32); // should suggest here
 LL |       *input = self.0;
    |       ^^^^^^^^^^^^^^^ `input` is a `&` reference, so the data it refers to cannot be written
 
-error[E0594]: cannot assign to `self.0` which is behind a `&` reference
+error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
   --> $DIR/issue-68049-2.rs:17:5
    |
 LL |   fn example(&self, input: &i32); // should suggest here

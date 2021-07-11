@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `**t1` which is behind a `&` reference
+error[E0594]: cannot assign to `**t1`, which is behind a `&` reference
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:9:5
    |
 LL |     let t1 = t0;
