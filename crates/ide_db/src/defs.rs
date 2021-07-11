@@ -97,13 +97,25 @@ impl Definition {
     }
 }
 
+/// On a first blush, a single `ast::Name` defines a single definition at some
+/// scope. That is, that, by just looking at the syntactical category, we can
+/// unambiguously define the semantic category.
+///
+/// Sadly, that's not 100% true, there are special cases. To make sure that call
+/// the code handles all the special cases correctly via exhaustive matching, we
+/// add a [`NameClass`] enum which lists all of them!
+///
+/// A model special case is `None` constant in pattern.
 #[derive(Debug)]
 pub enum NameClass {
     ExternCrate(Crate),
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`.
+    /// Syntactically, it is a name, but semantically it is a reference.
     ConstReference(Definition),
-    /// `field` in `if let Foo { field } = foo`.
+    /// `field` in `if let Foo { field } = foo`. Here, `ast::Name` both Here the
+    /// name both introduces a definition into a local scope, and refers to an
+    /// existing definition.
     PatFieldShorthand {
         local_def: Local,
         field_ref: Definition,
@@ -283,6 +295,12 @@ impl NameClass {
     }
 }
 
+/// This is similar to [`NameClass`], but works for [`ast::NameRef`] rather than
+/// for [`ast::Name`]. Similarly, what looks like a reference in syntax is a
+/// reference most of the time, but there are a couple of annoying exceptions.
+///
+/// A model special case is field shorthand syntax, which uses a single
+/// reference to point to two different defs.
 #[derive(Debug)]
 pub enum NameRefClass {
     ExternCrate(Crate),
