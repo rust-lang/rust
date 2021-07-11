@@ -546,6 +546,7 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
         | LifetimeName::Static
         | LifetimeName::Error
         | LifetimeName::Implicit
+        | LifetimeName::ImplicitMissing
         | LifetimeName::ImplicitObjectLifetimeDefault
         | LifetimeName::Underscore => {}
     }

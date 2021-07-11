@@ -1950,6 +1950,41 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         }
     }
 
+    crate fn report_elided_lifetime_in_ty(&self, lifetime_refs: &[&hir::Lifetime]) {
+        let missing_lifetimes = lifetime_refs
+            .iter()
+            .filter(|a| matches!(a, hir::Lifetime { name: hir::LifetimeName::ImplicitMissing, .. }))
+            .count();
+
+        if missing_lifetimes > 0 {
+            let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
+            spans.sort();
+            let mut spans_dedup = spans.clone();
+            spans_dedup.dedup();
+            let spans_with_counts: Vec<_> = spans_dedup
+                .into_iter()
+                .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
+                .collect();
+
+            self.tcx.struct_span_lint_hir(
+                rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+                hir::CRATE_HIR_ID,
+                spans,
+                |lint| {
+                    let mut db = lint.build("hidden lifetime parameters in types are deprecated");
+                    self.add_missing_lifetime_specifiers_label(
+                        &mut db,
+                        spans_with_counts,
+                        &FxHashSet::from_iter([kw::UnderscoreLifetime]),
+                        Vec::new(),
+                        &[],
+                    );
+                    db.emit()
+                },
+            );
+        }
+    }
+
     // FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
     // generics. We are disallowing this until we can decide on how we want to handle non-'static
     // lifetimes in const generics. See issue #74052 for discussion.
@@ -2376,7 +2411,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         let is_allowed_lifetime = matches!(
             lifetime_ref.name,
-            hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
+            hir::LifetimeName::Implicit
+                | hir::LifetimeName::ImplicitMissing
+                | hir::LifetimeName::Static
+                | hir::LifetimeName::Underscore
         );
 
         if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {
