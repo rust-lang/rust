@@ -99,6 +99,10 @@ pub(crate) fn update_llvm_submodule(build: &Build) {
         t!(std::fs::read_dir(dir)).next().is_none()
     }
 
+    if !build.config.submodules {
+        return;
+    }
+
     // NOTE: The check for the empty directory is here because when running x.py
     // the first time, the llvm submodule won't be checked out. Check it out
     // now so we can build it.
