@@ -29,7 +29,7 @@ pub struct Annotation {
 
 #[derive(Debug)]
 pub enum AnnotationKind {
-    Runnable { runnable: Runnable },
+    Runnable(Runnable),
     HasImpls { position: FilePosition, data: Option<Vec<NavigationTarget>> },
     HasReferences { position: FilePosition, data: Option<Vec<FileRange>> },
 }
@@ -59,7 +59,7 @@ pub(crate) fn annotations(
 
             let range = runnable.nav.focus_or_full_range();
 
-            annotations.push(Annotation { range, kind: AnnotationKind::Runnable { runnable } });
+            annotations.push(Annotation { range, kind: AnnotationKind::Runnable(runnable) });
         }
     }
 
