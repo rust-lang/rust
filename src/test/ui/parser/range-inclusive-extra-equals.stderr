@@ -1,0 +1,10 @@
+error: unexpected `=` after inclusive range
+  --> $DIR/range-inclusive-extra-equals.rs:7:13
+   |
+LL |     if let 1..==3 = 1 {}
+   |             ^^^^ help: use `..=` instead
+   |
+   = note: inclusive ranges end with a single equals sign (`..=`)
+
+error: aborting due to previous error
+
