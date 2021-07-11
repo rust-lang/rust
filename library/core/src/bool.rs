@@ -12,7 +12,7 @@ impl bool {
     /// assert_eq!(false.then_some(0), None);
     /// assert_eq!(true.then_some(0), Some(0));
     /// ```
-    #[unstable(feature = "bool_to_option", issue = "64260")]
+    #[unstable(feature = "bool_to_option", issue = "80967")]
     #[inline]
     pub fn then_some<T>(self, t: T) -> Option<T> {
         if self { Some(t) } else { None }
