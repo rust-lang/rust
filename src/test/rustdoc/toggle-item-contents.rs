@@ -9,7 +9,7 @@ pub struct PubStruct {
 
 // @has 'toggle_item_contents/struct.BigPubStruct.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show fields'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 13 fields'
 pub struct BigPubStruct {
     pub a: usize,
     pub b: usize,
@@ -28,7 +28,7 @@ pub struct BigPubStruct {
 
 // @has 'toggle_item_contents/union.BigUnion.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show fields'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 13 fields'
 pub union BigUnion {
     pub a: usize,
     pub b: usize,
@@ -63,7 +63,7 @@ pub struct PrivStruct {
 
 // @has 'toggle_item_contents/enum.Enum.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show fields'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 2 fields'
 pub enum Enum {
     A, B, C,
     D {
@@ -72,9 +72,19 @@ pub enum Enum {
     }
 }
 
+// @has 'toggle_item_contents/enum.EnumStructVariant.html'
+// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 1 field'
+pub enum EnumStructVariant {
+    A, B, C,
+    D {
+        a: u8,
+    }
+}
+
 // @has 'toggle_item_contents/enum.LargeEnum.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show variants'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 13 variants'
 pub enum LargeEnum {
     A, B, C, D, E, F(u8), G, H, I, J, K, L, M
 }
@@ -90,7 +100,7 @@ pub trait Trait {
 
 // @has 'toggle_item_contents/trait.GinormousTrait.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show associated items'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 16 associated items'
 pub trait GinormousTrait {
     type A;
     type B;
@@ -113,7 +123,7 @@ pub trait GinormousTrait {
 
 // @has 'toggle_item_contents/trait.HugeTrait.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show associated constants and methods'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 12 associated constants and 2 methods'
 pub trait HugeTrait {
     type A;
     const M: usize = 1;
@@ -133,9 +143,30 @@ pub trait HugeTrait {
     fn bar();
 }
 
+// @has 'toggle_item_contents/trait.GiganticTrait.html'
+// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 1 associated constant and 1 method'
+pub trait GiganticTrait {
+    type A;
+    type B;
+    type C;
+    type D;
+    type E;
+    type F;
+    type G;
+    type H;
+    type I;
+    type J;
+    type K;
+    type L;
+    const M: usize = 1;
+    #[must_use]
+    fn foo();
+}
+
 // @has 'toggle_item_contents/trait.BigTrait.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show methods'
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 14 methods'
 pub trait BigTrait {
     type A;
     #[must_use]
