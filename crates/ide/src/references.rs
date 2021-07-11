@@ -58,7 +58,7 @@ pub(crate) fn find_all_refs(
 
     let (def, is_literal_search) =
         if let Some(name) = get_name_of_item_declaration(&syntax, position) {
-            (NameClass::classify(sema, &name)?.referenced_or_defined(), true)
+            (NameClass::classify(sema, &name)?.defined_or_referenced_field(), true)
         } else {
             (find_def(sema, &syntax, position.offset)?, false)
         };
@@ -116,13 +116,17 @@ pub(crate) fn find_def(
     offset: TextSize,
 ) -> Option<Definition> {
     let def = match sema.find_node_at_offset_with_descend(syntax, offset)? {
-        ast::NameLike::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref)?.referenced(),
-        ast::NameLike::Name(name) => NameClass::classify(sema, &name)?.referenced_or_defined(),
+        ast::NameLike::NameRef(name_ref) => {
+            NameRefClass::classify(sema, &name_ref)?.referenced_local()
+        }
+        ast::NameLike::Name(name) => {
+            NameClass::classify(sema, &name)?.defined_or_referenced_local()
+        }
         ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
-            .map(|class| class.referenced())
+            .map(|class| class.referenced_local())
             .or_else(|| {
                 NameClass::classify_lifetime(sema, &lifetime)
-                    .map(|class| class.referenced_or_defined())
+                    .map(|class| class.defined_or_referenced_local())
             })?,
     };
     Some(def)

@@ -112,12 +112,11 @@ pub enum NameClass {
     /// `None` in `if let None = Some(82) {}`.
     /// Syntactically, it is a name, but semantically it is a reference.
     ConstReference(Definition),
-    /// `field` in `if let Foo { field } = foo`. Here, `ast::Name` both Here the
-    /// name both introduces a definition into a local scope, and refers to an
-    /// existing definition.
+    /// `field` in `if let Foo { field } = foo`. Here, `ast::Name` both introduces
+    /// a definition into a local scope, and refers to an existing definition.
     PatFieldShorthand {
         local_def: Local,
-        field_ref: Definition,
+        field_ref: Field,
     },
 }
 
@@ -134,11 +133,23 @@ impl NameClass {
         Some(res)
     }
 
-    /// `Definition` referenced or defined by this name.
-    pub fn referenced_or_defined(self) -> Definition {
+    /// `Definition` referenced or defined by this name, in case of a shorthand this will yield the field reference.
+    pub fn defined_or_referenced_field(self) -> Definition {
         match self {
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::PatFieldShorthand { local_def: _, field_ref } => field_ref,
+            NameClass::PatFieldShorthand { local_def: _, field_ref } => {
+                Definition::Field(field_ref)
+            }
+        }
+    }
+
+    /// `Definition` referenced or defined by this name, in case of a shorthand this will yield the local definition.
+    pub fn defined_or_referenced_local(self) -> Definition {
+        match self {
+            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                Definition::Local(local_def)
+            }
         }
     }
 
@@ -183,7 +194,7 @@ impl NameClass {
                             })
                             .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
 
-                        Some(NameClass::Definition(name_ref_class.referenced()))
+                        Some(NameClass::Definition(name_ref_class.referenced_field()))
                     } else {
                         let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
                         let krate = sema.resolve_extern_crate(&extern_crate)?;
@@ -197,7 +208,6 @@ impl NameClass {
                     if let Some(record_pat_field) = it.syntax().parent().and_then(ast::RecordPatField::cast) {
                         if record_pat_field.name_ref().is_none() {
                             if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
-                                let field = Definition::Field(field);
                                 return Some(NameClass::PatFieldShorthand { local_def: local, field_ref: field });
                             }
                         }
@@ -302,17 +312,25 @@ impl NameClass {
 #[derive(Debug)]
 pub enum NameRefClass {
     Definition(Definition),
-    FieldShorthand { local_ref: Local, field_ref: Definition },
+    FieldShorthand { local_ref: Local, field_ref: Field },
 }
 
 impl NameRefClass {
-    /// `Definition`, which this name refers to.
-    pub fn referenced(self) -> Definition {
+    /// `Definition`, which this name refers to with a preference for the field reference in case of a field shorthand.
+    pub fn referenced_field(self) -> Definition {
+        match self {
+            NameRefClass::Definition(def) => def,
+            NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                Definition::Field(field_ref)
+            }
+        }
+    }
+
+    /// `Definition`, which this name refers to with a preference for the local reference in case of a field shorthand.
+    pub fn referenced_local(self) -> Definition {
         match self {
             NameRefClass::Definition(def) => def,
             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                // FIXME: this is inherently ambiguous -- this name refers to
-                // two different defs....
                 Definition::Local(local_ref)
             }
         }
@@ -342,9 +360,8 @@ impl NameRefClass {
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
             if let Some((field, local, _)) = sema.resolve_record_field(&record_field) {
-                let field = Definition::Field(field);
                 let res = match local {
-                    None => NameRefClass::Definition(field),
+                    None => NameRefClass::Definition(Definition::Field(field)),
                     Some(local) => {
                         NameRefClass::FieldShorthand { field_ref: field, local_ref: local }
                     }

@@ -112,8 +112,8 @@ pub(crate) fn external_docs(
     let node = token.parent()?;
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced())?,
-            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined())?,
+            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced_field())?,
+            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.defined_or_referenced_field())?,
             _ => return None,
         }
     };
