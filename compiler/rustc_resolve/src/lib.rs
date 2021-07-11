@@ -1775,11 +1775,9 @@ impl<'a> Resolver<'a> {
                     let expn_data = expn_id.expn_data();
                     match expn_data.kind {
                         ExpnKind::Root
-                        | ExpnKind::Macro {
-                            kind: MacroKind::Bang | MacroKind::Derive,
-                            name: _,
-                            proc_macro: _,
-                        } => Scope::DeriveHelpersCompat,
+                        | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
+                            Scope::DeriveHelpersCompat
+                        }
                         _ => Scope::DeriveHelpers(expn_data.parent),
                     }
                 }

@@ -144,10 +144,7 @@ impl ExpnId {
             let expn_data = self.expn_data();
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
-                || matches!(
-                    expn_data.kind,
-                    ExpnKind::Macro { kind: MacroKind::Bang, name: sym::include, proc_macro: _ }
-                )
+                || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
             {
                 break;
             }
@@ -712,6 +709,31 @@ pub struct ExpnData {
     /// call_site span would have its own ExpnData, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
+    /// The crate that originally created this `ExpnData`. During
+    /// metadata serialization, we only encode `ExpnData`s that were
+    /// created locally - when our serialized metadata is decoded,
+    /// foreign `ExpnId`s will have their `ExpnData` looked up
+    /// from the crate specified by `Crate
+    krate: CrateNum,
+    /// The raw that this `ExpnData` had in its original crate.
+    /// An `ExpnData` can be created before being assigned an `ExpnId`,
+    /// so this might be `None` until `set_expn_data` is called
+    // This is used only for serialization/deserialization purposes:
+    // two `ExpnData`s that differ only in their `orig_id` should
+    // be considered equivalent.
+    #[stable_hasher(ignore)]
+    orig_id: Option<u32>,
+    /// Used to force two `ExpnData`s to have different `Fingerprint`s.
+    /// Due to macro expansion, it's possible to end up with two `ExpnId`s
+    /// that have identical `ExpnData`s. This violates the contract of `HashStable`
+    /// - the two `ExpnId`s are not equal, but their `Fingerprint`s are equal
+    /// (since the numerical `ExpnId` value is not considered by the `HashStable`
+    /// implementation).
+    ///
+    /// The `disambiguator` field is set by `update_disambiguator` when two distinct
+    /// `ExpnId`s would end up with the same `Fingerprint`. Since `ExpnData` includes
+    /// a `krate` field, this value only needs to be unique within a single crate.
+    disambiguator: u32,
 
     // --- The part specific to the macro/desugaring definition.
     // --- It may be reasonable to share this part between expansions with the same definition,
@@ -737,32 +759,6 @@ pub struct ExpnData {
     pub macro_def_id: Option<DefId>,
     /// The normal module (`mod`) in which the expanded macro was defined.
     pub parent_module: Option<DefId>,
-    /// The crate that originally created this `ExpnData`. During
-    /// metadata serialization, we only encode `ExpnData`s that were
-    /// created locally - when our serialized metadata is decoded,
-    /// foreign `ExpnId`s will have their `ExpnData` looked up
-    /// from the crate specified by `Crate
-    krate: CrateNum,
-    /// The raw that this `ExpnData` had in its original crate.
-    /// An `ExpnData` can be created before being assigned an `ExpnId`,
-    /// so this might be `None` until `set_expn_data` is called
-    // This is used only for serialization/deserialization purposes:
-    // two `ExpnData`s that differ only in their `orig_id` should
-    // be considered equivalent.
-    #[stable_hasher(ignore)]
-    orig_id: Option<u32>,
-
-    /// Used to force two `ExpnData`s to have different `Fingerprint`s.
-    /// Due to macro expansion, it's possible to end up with two `ExpnId`s
-    /// that have identical `ExpnData`s. This violates the contract of `HashStable`
-    /// - the two `ExpnId`s are not equal, but their `Fingerprint`s are equal
-    /// (since the numerical `ExpnId` value is not considered by the `HashStable`
-    /// implementation).
-    ///
-    /// The `disambiguator` field is set by `update_disambiguator` when two distinct
-    /// `ExpnId`s would end up with the same `Fingerprint`. Since `ExpnData` includes
-    /// a `krate` field, this value only needs to be unique within a single crate.
-    disambiguator: u32,
 }
 
 // These would require special handling of `orig_id`.
@@ -850,13 +846,7 @@ pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
     /// Expansion produced by a macro.
-    Macro {
-        kind: MacroKind,
-        name: Symbol,
-        /// If `true`, this macro is a procedural macro. This
-        /// flag is only used for diagnostic purposes
-        proc_macro: bool,
-    },
+    Macro(MacroKind, Symbol),
     /// Transform done by the compiler on the AST.
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
@@ -869,7 +859,7 @@ impl ExpnKind {
     pub fn descr(&self) -> String {
         match *self {
             ExpnKind::Root => kw::PathRoot.to_string(),
-            ExpnKind::Macro { kind, name, proc_macro: _ } => match kind {
+            ExpnKind::Macro(macro_kind, name) => match macro_kind {
                 MacroKind::Bang => format!("{}!", name),
                 MacroKind::Attr => format!("#[{}]", name),
                 MacroKind::Derive => format!("#[derive({})]", name),

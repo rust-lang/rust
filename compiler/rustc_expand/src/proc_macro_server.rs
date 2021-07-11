@@ -14,7 +14,6 @@ use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::hygiene::ExpnKind;
 use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
@@ -363,26 +362,20 @@ pub(crate) struct Rustc<'a> {
     mixed_site: Span,
     span_debug: bool,
     krate: CrateNum,
-    expn_id: ExpnId,
     rebased_spans: FxHashMap<usize, Span>,
 }
 
 impl<'a> Rustc<'a> {
-    pub fn new(cx: &'a ExtCtxt<'_>, krate: CrateNum) -> Self {
+    pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         let expn_data = cx.current_expansion.id.expn_data();
-        let def_site = cx.with_def_site_ctxt(expn_data.def_site);
-        let call_site = cx.with_call_site_ctxt(expn_data.call_site);
-        let mixed_site = cx.with_mixed_site_ctxt(expn_data.call_site);
-        let sess = cx.parse_sess();
         Rustc {
             resolver: cx.resolver,
-            sess,
-            def_site,
-            call_site,
-            mixed_site,
+            sess: cx.parse_sess(),
+            def_site: cx.with_def_site_ctxt(expn_data.def_site),
+            call_site: cx.with_call_site_ctxt(expn_data.call_site),
+            mixed_site: cx.with_mixed_site_ctxt(expn_data.call_site),
             span_debug: cx.ecfg.span_debug,
-            krate,
-            expn_id: cx.current_expansion.id,
+            krate: expn_data.macro_def_id.unwrap().krate,
             rebased_spans: FxHashMap::default(),
         }
     }
@@ -782,25 +775,15 @@ impl server::Span for Rustc<'_> {
     /// span from the metadata of `my_proc_macro` (which we have access to,
     /// since we've loaded `my_proc_macro` from disk in order to execute it).
     /// In this way, we have obtained a span pointing into `my_proc_macro`
-    fn save_span(&mut self, mut span: Self::Span) -> usize {
-        // Throw away the `SyntaxContext`, since we currently
-        // skip serializing `SyntaxContext`s for proc-macro crates
-        span = span.with_ctxt(rustc_span::SyntaxContext::root());
+    fn save_span(&mut self, span: Self::Span) -> usize {
         self.sess.save_proc_macro_span(span)
     }
     fn recover_proc_macro_span(&mut self, id: usize) -> Self::Span {
-        let resolver = self.resolver;
-        let krate = self.krate;
-        let expn_id = self.expn_id;
+        let (resolver, krate, def_site) = (self.resolver, self.krate, self.def_site);
         *self.rebased_spans.entry(id).or_insert_with(|| {
-            let raw_span = resolver.get_proc_macro_quoted_span(krate, id);
-            // Ignore the deserialized `SyntaxContext` entirely.
-            // FIXME: Preserve the macro backtrace from the serialized span
-            // For example, if a proc-macro crate has code like
-            // `macro_one!() -> macro_two!() -> quote!()`, we might
-            // want to 'concatenate' this backtrace with the backtrace from
-            // our current call site.
-            raw_span.with_def_site_ctxt(expn_id)
+            // FIXME: `SyntaxContext` for spans from proc macro crates is lost during encoding,
+            // replace it with a def-site context until we are encoding it properly.
+            resolver.get_proc_macro_quoted_span(krate, id).with_ctxt(def_site.ctxt())
         })
     }
 }
@@ -812,7 +795,7 @@ fn ident_name_compatibility_hack(
     rustc: &mut Rustc<'_>,
 ) -> Option<(rustc_span::symbol::Ident, bool)> {
     if let NtIdent(ident, is_raw) = nt {
-        if let ExpnKind::Macro { name: macro_name, .. } = orig_span.ctxt().outer_expn_data().kind {
+        if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
             let source_map = rustc.sess.source_map();
             let filename = source_map.span_to_filename(orig_span);
             if let FileName::Real(RealFileName::LocalPath(path)) = filename {
