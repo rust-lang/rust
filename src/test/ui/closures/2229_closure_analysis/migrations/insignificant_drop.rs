@@ -18,12 +18,18 @@ fn test1_all_need_migration() {
         //~| HELP: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
 
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
         let _t1 = t1.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t1`, but in Rust 2021, it only captures `t1.0`
         let _t2 = t2.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t2`, but in Rust 2021, it only captures `t2.0`
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
+//~| in Rust 2018, `t1` would be dropped here, but in Rust 2021, only `t1.0` would be dropped here alongside the closure
+//~| in Rust 2018, `t2` would be dropped here, but in Rust 2021, only `t2.0` would be dropped here alongside the closure
 
 // String implements drop and therefore should be migrated.
 // But in this test cases, `t2` is completely captured and when it is dropped won't be affected
@@ -37,12 +43,16 @@ fn test2_only_precise_paths_need_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t`, `t1` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
         let _t1 = t1.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t1`, but in Rust 2021, it only captures `t1.0`
         let _t2 = t2;
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
+//~| in Rust 2018, `t1` would be dropped here, but in Rust 2021, only `t1.0` would be dropped here alongside the closure
 
 // If a variable would've not been captured by value then it would've not been
 // dropped with the closure and therefore doesn't need migration.
@@ -54,11 +64,13 @@ fn test3_only_by_value_need_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
         println!("{}", t1.1);
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 // Copy types get copied into the closure instead of move. Therefore we don't need to
 // migrate then as their drop order isn't tied to the closure.
@@ -73,11 +85,13 @@ fn test4_only_non_copy_types_need_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
         let _t1 = t1.0;
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 fn test5_only_drop_types_need_migration() {
     struct S(i32, i32);
@@ -92,11 +106,13 @@ fn test5_only_drop_types_need_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
         let _s = s.0;
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 // Since we are using a move closure here, both `t` and `t1` get moved
 // even though they are being used by ref inside the closure.
@@ -108,10 +124,14 @@ fn test6_move_closures_non_copy_types_might_need_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t1`, `t` to be fully captured
         println!("{} {}", t1.1, t.1);
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.1`
+        //~| NOTE: in Rust 2018, closure captures all of `t1`, but in Rust 2021, it only captures `t1.1`
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.1` would be dropped here alongside the closure
+//~| in Rust 2018, `t1` would be dropped here, but in Rust 2021, only `t1.1` would be dropped here alongside the closure
 
 // Test migration analysis in case of Drop + Non Drop aggregates.
 // Note we need migration here only because the non-copy (because Drop type) is captured,
@@ -124,10 +144,12 @@ fn test7_drop_non_drop_aggregate_need_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
     };
 
     c();
 }
+//~^ in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 fn main() {
     test1_all_need_migration();

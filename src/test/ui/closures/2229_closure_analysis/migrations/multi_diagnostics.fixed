@@ -1,0 +1,138 @@
+// run-rustfix
+#![deny(rust_2021_incompatible_closure_captures)]
+//~^ NOTE: the lint level is defined here
+
+use std::thread;
+
+struct S(String);
+
+#[derive(Clone)]
+struct T(i32);
+
+struct U(S, T);
+
+impl Clone for U {
+    fn clone(&self) -> Self {
+        U(S(String::from("Hello World")), T(0))
+    }
+}
+
+fn test_multi_issues() {
+    let f1 = U(S(String::from("foo")), T(0));
+    let f2 = U(S(String::from("bar")), T(0));
+    let c = || { let _ = (&f1, &f2); 
+        //~^ ERROR: `Clone` trait implementation for closure and drop order
+        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~| NOTE: for more information, see
+        //~| HELP: add a dummy let to cause `f1`, `f2` to be fully captured
+        let _f_1 = f1.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+        let _f_2 = f2.1;
+        //~^ NOTE: in Rust 2018, closure captures all of `f2`, but in Rust 2021, it only captures `f2.1`
+    };
+
+    let c_clone = c.clone();
+
+    c_clone();
+}
+//~^ NOTE: in Rust 2018, `f2` would be dropped here, but in Rust 2021, only `f2.1` would be dropped here alongside the closure
+
+fn test_capturing_all_disjoint_fields_individually() {
+    let f1 = U(S(String::from("foo")), T(0));
+    let c = || { let _ = &f1; 
+        //~^ ERROR: `Clone` trait implementation for closure
+        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~| NOTE: for more information, see
+        //~| HELP: add a dummy let to cause `f1` to be fully captured
+        let _f_1 = f1.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+        let _f_2 = f1.1;
+    };
+
+    let c_clone = c.clone();
+
+    c_clone();
+}
+
+struct U1(S, T, S);
+
+impl Clone for U1 {
+    fn clone(&self) -> Self {
+        U1(S(String::from("foo")), T(0), S(String::from("bar")))
+    }
+}
+
+fn test_capturing_several_disjoint_fields_individually_1() {
+    let f1 = U1(S(String::from("foo")), T(0), S(String::from("bar")));
+    let c = || { let _ = &f1; 
+        //~^ ERROR: `Clone` trait implementation for closure
+        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.2` does not implement `Clone`
+        //~| NOTE: for more information, see
+        //~| HELP: add a dummy let to cause `f1` to be fully captured
+        let _f_0 = f1.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+        let _f_2 = f1.2;
+        //~^ NOTE: in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.2`
+    };
+
+    let c_clone = c.clone();
+
+    c_clone();
+}
+
+fn test_capturing_several_disjoint_fields_individually_2() {
+    let f1 = U1(S(String::from("foo")), T(0), S(String::from("bar")));
+    let c = || { let _ = &f1; 
+        //~^ ERROR: `Clone` trait implementation for closure and drop order
+        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+        //~| NOTE: for more information, see
+        //~| HELP: add a dummy let to cause `f1` to be fully captured
+        let _f_0 = f1.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+        let _f_1 = f1.1;
+        //~^ NOTE: in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.1`
+    };
+
+    let c_clone = c.clone();
+
+    c_clone();
+}
+//~^ NOTE: in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.1` would be dropped here alongside the closure
+//~| NOTE: in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.0` would be dropped here alongside the closure
+
+struct SendPointer(*mut i32);
+unsafe impl Send for SendPointer {}
+
+struct CustomInt(*mut i32);
+struct SyncPointer(CustomInt);
+unsafe impl Sync for SyncPointer {}
+unsafe impl Send for CustomInt {}
+
+fn test_multi_traits_issues() {
+    let mut f1 = 10;
+    let f1 = CustomInt(&mut f1 as *mut i32);
+    let fptr1 = SyncPointer(f1);
+
+    let mut f2 = 10;
+    let fptr2 = SendPointer(&mut f2 as *mut i32);
+    thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
+        //~^ ERROR: `Sync`, `Send` trait implementation for closure
+        //~| NOTE: in Rust 2018, this closure would implement `Sync`, `Send` as `fptr1` implements `Sync`, `Send`, but in Rust 2021, this closure would no longer implement `Sync`, `Send` as `fptr1.0.0` does not implement `Sync`, `Send`
+        //~| NOTE: in Rust 2018, this closure would implement `Send` as `fptr2` implements `Send`, but in Rust 2021, this closure would no longer implement `Send` as `fptr2.0` does not implement `Send`
+        //~| NOTE: for more information, see
+        //~| HELP: add a dummy let to cause `fptr1`, `fptr2` to be fully captured
+        *fptr1.0.0 = 20;
+        //~^ NOTE: in Rust 2018, closure captures all of `fptr1`, but in Rust 2021, it only captures `fptr1.0.0`
+        *fptr2.0 = 20;
+        //~^ NOTE: in Rust 2018, closure captures all of `fptr2`, but in Rust 2021, it only captures `fptr2.0`
+    } });
+}
+
+fn main() {
+    test_multi_issues();
+    test_capturing_all_disjoint_fields_individually();
+    test_capturing_several_disjoint_fields_individually_1();
+    test_capturing_several_disjoint_fields_individually_2();
+    test_multi_traits_issues();
+}
