@@ -75,13 +75,13 @@ impl Runnable {
     }
 
     pub fn can_debug(&self) -> bool {
-        matches!(
-            &self.kind,
+        match self.kind {
+            RunnableKind::DocTest { .. } => false,
             RunnableKind::TestMod { .. }
-                | RunnableKind::Test { .. }
-                | RunnableKind::Bench { .. }
-                | RunnableKind::Bin
-        )
+            | RunnableKind::Test { .. }
+            | RunnableKind::Bench { .. }
+            | RunnableKind::Bin => true,
+        }
     }
 
     pub fn title(&self) -> String {
