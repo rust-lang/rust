@@ -1456,11 +1456,15 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                // If the block is from an external macro, then do not suggest
-                // adding a semicolon, because there's nowhere to put it.
-                // See issue #81943.
+                // If the block is from an external macro or try (`?`) desugaring, then
+                // do not suggest adding a semicolon, because there's nowhere to put it.
+                // See issues #81943 and #87051.
                 if cond_expr.span.desugaring_kind().is_none()
                     && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                    && !matches!(
+                        cond_expr.kind,
+                        hir::ExprKind::Match(.., hir::MatchSource::TryDesugar)
+                    )
                 {
                     err.span_label(cond_expr.span, "expected this to be `()`");
                     if expr.can_have_side_effects() {
