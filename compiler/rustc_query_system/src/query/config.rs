@@ -24,6 +24,7 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
 
+    pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
     pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_>) -> V,
     pub cache_on_disk: fn(CTX, &K, Option<&V>) -> bool,
@@ -36,6 +37,10 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     {
         DepNode::construct(tcx, self.dep_kind, key)
+    }
+
+    pub(crate) fn compute(&self, tcx: CTX::DepContext, key: K) -> V {
+        (self.compute)(tcx, key)
     }
 
     pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K, value: Option<&V>) -> bool {
@@ -87,7 +92,7 @@ pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
 }
 
 pub(crate) trait QueryVtableExt<CTX: QueryContext, K, V> {
-    const VTABLE: QueryVtable<CTX, K, V>;
+    fn make_vtable(tcx: CTX, key: &K) -> QueryVtable<CTX, K, V>;
 }
 
 impl<CTX, Q> QueryVtableExt<CTX, Q::Key, Q::Value> for Q
@@ -95,13 +100,16 @@ where
     CTX: QueryContext,
     Q: QueryDescription<CTX>,
 {
-    const VTABLE: QueryVtable<CTX, Q::Key, Q::Value> = QueryVtable {
-        anon: Q::ANON,
-        dep_kind: Q::DEP_KIND,
-        eval_always: Q::EVAL_ALWAYS,
-        hash_result: Q::HASH_RESULT,
-        handle_cycle_error: Q::handle_cycle_error,
-        cache_on_disk: Q::cache_on_disk,
-        try_load_from_disk: Q::try_load_from_disk,
-    };
+    fn make_vtable(tcx: CTX, key: &Q::Key) -> QueryVtable<CTX, Q::Key, Q::Value> {
+        QueryVtable {
+            anon: Q::ANON,
+            dep_kind: Q::DEP_KIND,
+            eval_always: Q::EVAL_ALWAYS,
+            hash_result: Q::HASH_RESULT,
+            compute: Q::compute_fn(tcx, key),
+            handle_cycle_error: Q::handle_cycle_error,
+            cache_on_disk: Q::cache_on_disk,
+            try_load_from_disk: Q::try_load_from_disk,
+        }
+    }
 }
