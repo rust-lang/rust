@@ -5,6 +5,7 @@ pub mod patch;
 pub mod storage;
 
 mod alignment;
+mod borrowed;
 pub mod collect_writes;
 mod find_self_call;
 mod generic_graph;
@@ -15,6 +16,7 @@ pub(crate) mod spanview;
 
 pub use self::aggregate::expand_aggregate;
 pub use self::alignment::is_disaligned;
+pub use self::borrowed::ever_borrowed_locals;
 pub use self::find_self_call::find_self_call;
 pub use self::generic_graph::graphviz_safe_def_name;
 pub use self::graphviz::write_mir_graphviz;
