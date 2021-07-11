@@ -26,7 +26,7 @@ use lsp_types::{
 };
 use project_model::TargetKind;
 use serde_json::json;
-use stdx::format_to;
+use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
 use crate::{
@@ -1133,41 +1133,51 @@ pub(crate) fn handle_code_lens(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let cargo_target_spec = CargoTargetSpec::for_file(&snap, file_id)?;
 
-    let lenses = snap
-        .analysis
-        .annotations(
-            &AnnotationConfig {
-                binary_target: cargo_target_spec
-                    .map(|spec| {
-                        matches!(
-                            spec.target_kind,
-                            TargetKind::Bin | TargetKind::Example | TargetKind::Test
-                        )
-                    })
-                    .unwrap_or(false),
-                annotate_runnables: lens_config.runnable(),
-                annotate_impls: lens_config.implementations,
-                annotate_references: lens_config.refs,
-                annotate_method_references: lens_config.method_refs,
-                run: lens_config.run,
-                debug: lens_config.debug,
-            },
-            file_id,
-        )?
-        .into_iter()
-        .map(|annotation| to_proto::code_lens(&snap, annotation).unwrap())
-        .collect();
+    let annotations = snap.analysis.annotations(
+        &AnnotationConfig {
+            binary_target: cargo_target_spec
+                .map(|spec| {
+                    matches!(
+                        spec.target_kind,
+                        TargetKind::Bin | TargetKind::Example | TargetKind::Test
+                    )
+                })
+                .unwrap_or(false),
+            annotate_runnables: lens_config.runnable(),
+            annotate_impls: lens_config.implementations,
+            annotate_references: lens_config.refs,
+            annotate_method_references: lens_config.method_refs,
+        },
+        file_id,
+    )?;
 
-    Ok(Some(lenses))
+    let mut res = Vec::new();
+    for a in annotations {
+        to_proto::code_lens(&mut res, &snap, a)?;
+    }
+
+    Ok(Some(res))
 }
 
 pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> Result<CodeLens> {
-    let annotation = from_proto::annotation(&snap, code_lens)?;
+    let annotation = from_proto::annotation(&snap, code_lens.clone())?;
+    let annotation = snap.analysis.resolve_annotation(annotation)?;
 
-    to_proto::code_lens(&snap, snap.analysis.resolve_annotation(annotation)?)
+    let mut acc = Vec::new();
+    to_proto::code_lens(&mut acc, &snap, annotation)?;
+
+    let res = match acc.pop() {
+        Some(it) if acc.is_empty() => it,
+        _ => {
+            never!();
+            code_lens
+        }
+    };
+
+    Ok(res)
 }
 
 pub(crate) fn handle_document_highlight(
