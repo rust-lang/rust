@@ -998,7 +998,13 @@ pub(crate) fn code_lens(
             let annotation_range = range(&line_index, annotation.range);
 
             let title = run.title();
-            let can_debug = run.can_debug();
+            let can_debug = match run.kind {
+                ide::RunnableKind::DocTest { .. } => false,
+                ide::RunnableKind::TestMod { .. }
+                | ide::RunnableKind::Test { .. }
+                | ide::RunnableKind::Bench { .. }
+                | ide::RunnableKind::Bin => true,
+            };
             let r = runnable(snap, run)?;
 
             let lens_config = snap.config.lens();

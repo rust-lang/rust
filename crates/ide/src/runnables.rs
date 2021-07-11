@@ -74,16 +74,6 @@ impl Runnable {
         }
     }
 
-    pub fn can_debug(&self) -> bool {
-        match self.kind {
-            RunnableKind::DocTest { .. } => false,
-            RunnableKind::TestMod { .. }
-            | RunnableKind::Test { .. }
-            | RunnableKind::Bench { .. }
-            | RunnableKind::Bin => true,
-        }
-    }
-
     pub fn title(&self) -> String {
         let mut s = String::from("▶\u{fe0e} Run ");
         if self.use_name_in_title {
