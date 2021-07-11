@@ -157,6 +157,7 @@ const std::set<std::string> KnownInactiveFunctions = {
     "MPI_Comm_call_errhandler",
     "MPI_Comm_create_errhandler",
     "MPI_Comm_disconnect",
+    "MPI_Wtime",
     "_msize",
     "ftnio_fmt_write64",
     "f90_strcmp_klen",

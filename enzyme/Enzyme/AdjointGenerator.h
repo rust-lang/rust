@@ -3690,6 +3690,74 @@ public:
       }
       return;
     }
+    
+    if (funcName == "MPI_Waitall") {
+      if (Mode == DerivativeMode::ReverseModeGradient ||
+          Mode == DerivativeMode::ReverseModeCombined) {
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+
+        Value *count = lookup(gutils->getNewFromOriginal(call.getOperand(0)), Builder2);
+        Value *d_req_orig = gutils->invertPointerM(call.getOperand(1), Builder2);
+          
+        BasicBlock *currentBlock = Builder2.GetInsertBlock();
+          BasicBlock *loopBlock = gutils->addReverseBlock(
+              currentBlock, currentBlock->getName() + "_loop", gutils->newFunc);
+          BasicBlock *endBlock = gutils->addReverseBlock(
+              loopBlock, currentBlock->getName() + "_end", gutils->newFunc);
+
+          Builder2.CreateCondBr(Builder2.CreateICmpNE(count, ConstantInt::get(count->getType(), 0, false)), loopBlock,
+                                endBlock);
+
+          Builder2.SetInsertPoint(loopBlock);
+          auto idx = Builder2.CreatePHI(count->getType(), 2);
+          idx->addIncoming(ConstantInt::get(count->getType(), 0, false), currentBlock);
+          Value* inc = Builder2.CreateAdd(idx, ConstantInt::get(count->getType(), 0, false), "", true, true);
+          idx->addIncoming(inc, currentBlock);
+
+          Value* idxs[] = {idx};
+          Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
+
+        auto i64 = Type::getInt64Ty(call.getContext());
+        Type *types[] = {
+            /*0 */ Type::getInt8PtrTy(call.getContext()),
+            /*1 */ i64,
+            /*2 */ Type::getInt8PtrTy(call.getContext()),
+            /*3 */ i64,
+            /*4 */ i64,
+            /*5 */ Type::getInt8PtrTy(call.getContext()),
+            /*6 */ Type::getInt8Ty(call.getContext()),
+        };
+        auto impi = StructType::get(call.getContext(), types, false);
+
+        Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
+            d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
+        Value *cache = Builder2.CreateLoad(d_reqp);
+        CallInst *freecall = cast<CallInst>(
+            CallInst::CreateFree(d_reqp, Builder2.GetInsertBlock()));
+        freecall->addAttribute(AttributeList::FirstArgIndex,
+                               Attribute::NonNull);
+        if (freecall->getParent() == nullptr) {
+          Builder2.Insert(freecall);
+        }
+
+        Function *dwait = getOrInsertDifferentialMPI_Wait(
+            *called->getParent(), types, d_req->getType());
+        Value *args[] = {Builder2.CreateExtractValue(cache, 0),
+                         Builder2.CreateExtractValue(cache, 1),
+                         Builder2.CreateExtractValue(cache, 2),
+                         Builder2.CreateExtractValue(cache, 3),
+                         Builder2.CreateExtractValue(cache, 4),
+                         Builder2.CreateExtractValue(cache, 5),
+                         Builder2.CreateExtractValue(cache, 6),
+                         d_req};
+        auto cal = Builder2.CreateCall(dwait, args);
+        cal->setCallingConv(dwait->getCallingConv());
+        Builder2.CreateCondBr(Builder2.CreateICmpEQ(inc, count), endBlock, loopBlock);
+        Builder2.SetInsertPoint(endBlock);
+      }
+      return;
+    }
 
     if (funcName == "MPI_Send" || funcName == "MPI_Ssend") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
@@ -3774,7 +3842,7 @@ public:
       return;
     }
 
-    if (funcName == "MPI_Recv") {
+    if (funcName == "MPI_Recv" || funcName == "PMPI_Recv") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
@@ -3847,6 +3915,8 @@ public:
         getReverseBuilder(Builder2);
 
         Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
+        if (shadow->getType()->isIntegerTy())
+            shadow = Builder2.CreateIntToPtr(shadow, Type::getInt8PtrTy(call.getContext()));
 
         ConcreteType CT = TR.firstPointer(1, call.getOperand(0));
         Type *MPI_OP_Ptr_type =
@@ -3999,7 +4069,7 @@ public:
     // MPI_Datatype datatype,
     //                      MPI_Op op, int root, MPI_Comm comm)
 
-    if (funcName == "MPI_Reduce") {
+    if (funcName == "MPI_Reduce" || funcName == "PMPI_Reduce") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         // TODO insert a check for sum
@@ -4026,17 +4096,27 @@ public:
               isSum = true;
             }
           }
+          // MPICH
+          if (ConstantInt *CI = dyn_cast<ConstantInt>(C)) {
+            if (CI->getValue() == 1476395011) {
+              isSum = true;
+            }
+          }
         }
         if (!isSum) {
           llvm::errs() << *gutils->oldFunc << "\n";
           llvm::errs() << *gutils->newFunc << "\n";
           llvm::errs() << " call: " << call << "\n";
-          llvm::errs() << " unhandled mpi_allreduce op: " << orig_op << "\n";
+          llvm::errs() << " unhandled mpi_allreduce op: " << *orig_op << "\n";
           report_fatal_error("unhandled mpi_allreduce op");
         }
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (shadow_recvbuf->getType()->isIntegerTy())
+            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (shadow_sendbuf->getType()->isIntegerTy())
+            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *count = lookup(gutils->getNewFromOriginal(orig_count), Builder2);
         Value *datatype =
@@ -4199,17 +4279,27 @@ public:
               isSum = true;
             }
           }
+          // MPICH
+          if (ConstantInt *CI = dyn_cast<ConstantInt>(C)) {
+            if (CI->getValue() == 1476395011) {
+              isSum = true;
+            }
+          }
         }
         if (!isSum) {
           llvm::errs() << *gutils->oldFunc << "\n";
           llvm::errs() << *gutils->newFunc << "\n";
           llvm::errs() << " call: " << call << "\n";
-          llvm::errs() << " unhandled mpi_allreduce op: " << orig_op << "\n";
+          llvm::errs() << " unhandled mpi_allreduce op: " << *orig_op << "\n";
           report_fatal_error("unhandled mpi_allreduce op");
         }
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (shadow_recvbuf->getType()->isIntegerTy())
+            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (shadow_sendbuf->getType()->isIntegerTy())
+            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *count = lookup(gutils->getNewFromOriginal(orig_count), Builder2);
         Value *datatype =
@@ -4314,7 +4404,11 @@ public:
         Value *orig_comm = call.getOperand(7);
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (shadow_recvbuf->getType()->isIntegerTy())
+            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (shadow_sendbuf->getType()->isIntegerTy())
+            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *recvcount =
             lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
@@ -4461,7 +4555,11 @@ public:
         Value *orig_comm = call.getOperand(7);
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (shadow_recvbuf->getType()->isIntegerTy())
+            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (shadow_sendbuf->getType()->isIntegerTy())
+            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *recvcount =
             lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
@@ -4641,7 +4739,11 @@ public:
         Value *orig_comm = call.getOperand(6);
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (shadow_recvbuf->getType()->isIntegerTy())
+            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (shadow_sendbuf->getType()->isIntegerTy())
+            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *recvcount =
             lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
@@ -4797,6 +4899,8 @@ public:
       return;
     }
 
+    llvm::errs() << *gutils->oldFunc->getParent() << "\n";
+    llvm::errs() << *gutils->oldFunc << "\n";
     llvm::errs() << call << "\n";
     llvm::errs() << called << "\n";
     llvm_unreachable("Unhandled MPI FUNCTION");
@@ -4999,9 +5103,7 @@ public:
       }
     }
 
-    if (funcName.startswith("PMPI_"))
-        funcName = funcName.substr(1);
-    if (funcName.startswith("MPI_") &&
+    if ((funcName.startswith("MPI_") || funcName.startswith("PMPI_")) &&
         (!gutils->isConstantInstruction(&call) || funcName == "MPI_Barrier" ||
          funcName == "MPI_Comm_free" || funcName == "MPI_Comm_disconnect" ||
          MPIInactiveCommAllocators.find(funcName.str()) !=
