@@ -98,14 +98,14 @@ pub(crate) fn hover(
             // field pattern shorthands to their definition
             ast::Name(name) => NameClass::classify(&sema, &name).and_then(|class| match class {
                 NameClass::ConstReference(def) => Some(def),
-                def => def.defined(db),
+                def => def.defined(),
             }),
             ast::NameRef(name_ref) => {
                 NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced())
             },
             ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
                 || NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced()),
-                |d| d.defined(db),
+                |d| d.defined(),
             ),
 
             _ => {

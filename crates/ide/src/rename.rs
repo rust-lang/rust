@@ -108,7 +108,7 @@ fn find_definition(
             bail!("Renaming aliases is currently unsupported")
         }
         ast::NameLike::Name(name) => {
-            NameClass::classify(sema, &name).map(|class| class.referenced_or_defined(sema.db))
+            NameClass::classify(sema, &name).map(|class| class.referenced_or_defined())
         }
         ast::NameLike::NameRef(name_ref) => {
             if let Some(def) =
@@ -126,8 +126,7 @@ fn find_definition(
         ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
             .map(|class| class.referenced())
             .or_else(|| {
-                NameClass::classify_lifetime(sema, &lifetime)
-                    .map(|it| it.referenced_or_defined(sema.db))
+                NameClass::classify_lifetime(sema, &lifetime).map(|it| it.referenced_or_defined())
             }),
     }
     .ok_or_else(|| format_err!("No references found at position"))?;

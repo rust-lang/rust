@@ -28,7 +28,7 @@ pub(crate) fn goto_declaration(
                 name_kind.referenced()
             },
             ast::Name(name) => {
-                NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db)
+                NameClass::classify(&sema, &name)?.referenced_or_defined()
             },
             _ => return None,
         }

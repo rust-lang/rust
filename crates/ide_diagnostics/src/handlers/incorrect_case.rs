@@ -29,7 +29,7 @@ pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCas
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Assist>> {
     let root = ctx.sema.db.parse_or_expand(d.file)?;
     let name_node = d.ident.to_node(&root);
-    let def = NameClass::classify(&ctx.sema, &name_node)?.defined(ctx.sema.db)?;
+    let def = NameClass::classify(&ctx.sema, &name_node)?.defined()?;
 
     let name_node = InFile::new(d.file, name_node.syntax());
     let frange = name_node.original_file_range(ctx.sema.db);

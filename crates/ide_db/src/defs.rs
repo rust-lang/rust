@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, GenericParam, HasVisibility, Impl, Label, Local, MacroDef,
-    Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
+    Field, GenericParam, HasVisibility, Impl, Label, Local, MacroDef, Module, ModuleDef, Name,
+    PathResolution, Semantics, Visibility,
 };
 use syntax::{
     ast::{self, AstNode, PathSegmentKind},
@@ -108,7 +108,6 @@ impl Definition {
 /// A model special case is `None` constant in pattern.
 #[derive(Debug)]
 pub enum NameClass {
-    ExternCrate(Crate),
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`.
     /// Syntactically, it is a name, but semantically it is a reference.
@@ -124,9 +123,8 @@ pub enum NameClass {
 
 impl NameClass {
     /// `Definition` defined by this name.
-    pub fn defined(self, db: &dyn HirDatabase) -> Option<Definition> {
+    pub fn defined(self) -> Option<Definition> {
         let res = match self {
-            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) => it,
             NameClass::ConstReference(_) => return None,
             NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
@@ -137,9 +135,8 @@ impl NameClass {
     }
 
     /// `Definition` referenced or defined by this name.
-    pub fn referenced_or_defined(self, db: &dyn HirDatabase) -> Definition {
+    pub fn referenced_or_defined(self) -> Definition {
         match self {
-            NameClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameClass::Definition(it) | NameClass::ConstReference(it) => it,
             NameClass::PatFieldShorthand { local_def: _, field_ref } => field_ref,
         }
@@ -189,8 +186,9 @@ impl NameClass {
                         Some(NameClass::Definition(name_ref_class.referenced()))
                     } else {
                         let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
-                        let resolved = sema.resolve_extern_crate(&extern_crate)?;
-                        Some(NameClass::ExternCrate(resolved))
+                        let krate = sema.resolve_extern_crate(&extern_crate)?;
+                        let root_module = krate.root_module(sema.db);
+                        Some(NameClass::Definition(Definition::ModuleDef(root_module.into())))
                     }
                 },
                 ast::IdentPat(it) => {

@@ -46,7 +46,6 @@ pub(super) fn element(
             };
 
             match name_kind {
-                Some(NameClass::ExternCrate(_)) => SymbolKind::Module.into(),
                 Some(NameClass::Definition(def)) => {
                     let mut h = highlight_def(db, krate, def) | HlMod::Definition;
                     if let Definition::ModuleDef(hir::ModuleDef::Trait(trait_)) = &def {

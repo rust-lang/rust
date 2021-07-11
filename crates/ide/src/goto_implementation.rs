@@ -29,7 +29,7 @@ pub(crate) fn goto_implementation(
     let node = sema.find_node_at_offset_with_descend(&syntax, position.offset)?;
     let def = match &node {
         ast::NameLike::Name(name) => {
-            NameClass::classify(&sema, name).map(|class| class.referenced_or_defined(sema.db))
+            NameClass::classify(&sema, name).map(|class| class.referenced_or_defined())
         }
         ast::NameLike::NameRef(name_ref) => {
             NameRefClass::classify(&sema, name_ref).map(|class| class.referenced())
