@@ -915,6 +915,7 @@ fn render_assoc_item(
             unsafety = unsafety,
             defaultness = defaultness,
             abi = abi,
+            // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
             href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
             name = name,
             generics = g.print(cx),
