@@ -12,7 +12,7 @@ use crate::fmt;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use crate::str::FromStr;
 
-trait ReadNumberHelper: crate::marker::Sized + crate::cmp::PartialEq {
+trait ReadNumberHelper: crate::marker::Sized {
     const ZERO: Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;
@@ -131,10 +131,7 @@ impl<'a> Parser<'a> {
 
             if digit_count == 0 {
                 None
-            } else if !allow_zero_prefix
-                && has_leading_zero
-                && (result != T::ZERO || result == T::ZERO && digit_count > 1)
-            {
+            } else if !allow_zero_prefix && has_leading_zero && digit_count > 1 {
                 None
             } else {
                 Some(result)
