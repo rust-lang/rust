@@ -528,9 +528,10 @@ fn phase_cargo_miri(mut args: env::Args) {
         Some("run") => MiriCommand::Run,
         Some("setup") => MiriCommand::Setup,
         // Invalid command.
-        _ => show_error(format!(
-            "`cargo miri` supports the following subcommands: `run`, `test`, and `setup`."
-        )),
+        _ =>
+            show_error(format!(
+                "`cargo miri` supports the following subcommands: `run`, `test`, and `setup`."
+            )),
     };
     let verbose = has_arg_flag("-v");
 
@@ -1086,8 +1087,9 @@ fn main() {
                 ));
             }
         }
-        _ => show_error(format!(
-            "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
-        )),
+        _ =>
+            show_error(format!(
+                "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
+            )),
     }
 }
