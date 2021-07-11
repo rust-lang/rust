@@ -1406,7 +1406,7 @@ fn normalize(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
 
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
-        debug!("cleaning type: {:?}", self);
+        trace!("cleaning type: {:?}", self);
         let ty = normalize(cx, self).unwrap_or(self);
         match *ty.kind() {
             ty::Never => Never,

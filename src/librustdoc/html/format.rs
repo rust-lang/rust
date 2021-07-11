@@ -742,7 +742,7 @@ fn fmt_type<'cx>(
     use_absolute: bool,
     cx: &'cx Context<'_>,
 ) -> fmt::Result {
-    debug!("fmt_type(t = {:?})", t);
+    trace!("fmt_type(t = {:?})", t);
 
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
