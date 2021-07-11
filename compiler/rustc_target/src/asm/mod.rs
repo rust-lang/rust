@@ -533,6 +533,12 @@ impl InlineAsmRegClass {
             Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
+
+    /// Returns whether registers in this class can only be used as clobbers
+    /// and not as inputs/outputs.
+    pub fn is_clobber_only(self, arch: InlineAsmArch) -> bool {
+        self.supported_types(arch).is_empty()
+    }
 }
 
 #[derive(

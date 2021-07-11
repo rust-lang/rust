@@ -76,32 +76,56 @@ error: invalid register `ip`: the instruction pointer cannot be used as an opera
 LL |         asm!("", in("ip") foo);
    |                  ^^^^^^^^^^^^
 
-error: invalid register `st(2)`: x87 registers are not currently supported as operands for inline asm
-  --> $DIR/bad-reg.rs:34:18
-   |
-LL |         asm!("", in("st(2)") foo);
-   |                  ^^^^^^^^^^^^^^^
-
-error: invalid register `mm0`: MMX registers are not currently supported as operands for inline asm
-  --> $DIR/bad-reg.rs:36:18
-   |
-LL |         asm!("", in("mm0") foo);
-   |                  ^^^^^^^^^^^^^
-
 error: invalid register `k0`: the k0 AVX mask register cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:38:18
+  --> $DIR/bad-reg.rs:34:18
    |
 LL |         asm!("", in("k0") foo);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `ah`: high byte registers cannot be used as an operand on x86_64
-  --> $DIR/bad-reg.rs:40:18
+  --> $DIR/bad-reg.rs:36:18
    |
 LL |         asm!("", in("ah") foo);
    |                  ^^^^^^^^^^^^
 
+error: register class `x87_reg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:39:18
+   |
+LL |         asm!("", in("st(2)") foo);
+   |                  ^^^^^^^^^^^^^^^
+
+error: register class `mmx_reg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:41:18
+   |
+LL |         asm!("", in("mm0") foo);
+   |                  ^^^^^^^^^^^^^
+
+error: register class `x87_reg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:45:20
+   |
+LL |         asm!("{}", in(x87_reg) foo);
+   |                    ^^^^^^^^^^^^^^^
+
+error: register class `mmx_reg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:47:20
+   |
+LL |         asm!("{}", in(mmx_reg) foo);
+   |                    ^^^^^^^^^^^^^^^
+
+error: register class `x87_reg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:49:20
+   |
+LL |         asm!("{}", out(x87_reg) _);
+   |                    ^^^^^^^^^^^^^^
+
+error: register class `mmx_reg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:51:20
+   |
+LL |         asm!("{}", out(mmx_reg) _);
+   |                    ^^^^^^^^^^^^^^
+
 error: register `al` conflicts with register `ax`
-  --> $DIR/bad-reg.rs:46:33
+  --> $DIR/bad-reg.rs:57:33
    |
 LL |         asm!("", in("eax") foo, in("al") bar);
    |                  -------------  ^^^^^^^^^^^^ register `al`
@@ -109,7 +133,7 @@ LL |         asm!("", in("eax") foo, in("al") bar);
    |                  register `ax`
 
 error: register `ax` conflicts with register `ax`
-  --> $DIR/bad-reg.rs:48:33
+  --> $DIR/bad-reg.rs:59:33
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  -------------  ^^^^^^^^^^^^^^ register `ax`
@@ -117,13 +141,13 @@ LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  register `ax`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:48:18
+  --> $DIR/bad-reg.rs:59:18
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  ^^^^^^^^^^^^^
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:51:34
+  --> $DIR/bad-reg.rs:62:34
    |
 LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^ register `ymm0`
@@ -131,7 +155,7 @@ LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  register `xmm0`
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:53:34
+  --> $DIR/bad-reg.rs:64:34
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^^ register `ymm0`
@@ -139,10 +163,10 @@ LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  register `xmm0`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:53:18
+  --> $DIR/bad-reg.rs:64:18
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  ^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 23 previous errors
 
