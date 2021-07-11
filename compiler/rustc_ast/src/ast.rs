@@ -677,7 +677,9 @@ pub enum BindingMode {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum RangeEnd {
+    /// `..=` or `...`
     Included(RangeSyntax),
+    /// `..`
     Excluded,
 }
 
@@ -689,6 +691,7 @@ pub enum RangeSyntax {
     DotDotEq,
 }
 
+/// All the different flavors of pattern that Rust recognizes.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum PatKind {
     /// Represents a wildcard pattern (`_`).
@@ -729,7 +732,7 @@ pub enum PatKind {
     /// A literal.
     Lit(P<Expr>),
 
-    /// A range pattern (e.g., `1...2`, `1..=2` or `1..2`).
+    /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
