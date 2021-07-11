@@ -133,26 +133,6 @@ impl NameClass {
         Some(res)
     }
 
-    /// `Definition` referenced or defined by this name, in case of a shorthand this will yield the field reference.
-    pub fn defined_or_referenced_field(self) -> Definition {
-        match self {
-            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::PatFieldShorthand { local_def: _, field_ref } => {
-                Definition::Field(field_ref)
-            }
-        }
-    }
-
-    /// `Definition` referenced or defined by this name, in case of a shorthand this will yield the local definition.
-    pub fn defined_or_referenced_local(self) -> Definition {
-        match self {
-            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
-                Definition::Local(local_def)
-            }
-        }
-    }
-
     pub fn classify(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
         let _p = profile::span("classify_name");
 
@@ -194,7 +174,12 @@ impl NameClass {
                             })
                             .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
 
-                        Some(NameClass::Definition(name_ref_class.referenced_field()))
+                        Some(NameClass::Definition(match name_ref_class {
+                            NameRefClass::Definition(def) => def,
+                            NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                                Definition::Field(field_ref)
+                            }
+                        }))
                     } else {
                         let extern_crate = it.syntax().parent().and_then(ast::ExternCrate::cast)?;
                         let krate = sema.resolve_extern_crate(&extern_crate)?;
@@ -316,26 +301,6 @@ pub enum NameRefClass {
 }
 
 impl NameRefClass {
-    /// `Definition`, which this name refers to with a preference for the field reference in case of a field shorthand.
-    pub fn referenced_field(self) -> Definition {
-        match self {
-            NameRefClass::Definition(def) => def,
-            NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
-                Definition::Field(field_ref)
-            }
-        }
-    }
-
-    /// `Definition`, which this name refers to with a preference for the local reference in case of a field shorthand.
-    pub fn referenced_local(self) -> Definition {
-        match self {
-            NameRefClass::Definition(def) => def,
-            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                Definition::Local(local_ref)
-            }
-        }
-    }
-
     // Note: we don't have unit-tests for this rather important function.
     // It is primarily exercised via goto definition tests in `ide`.
     pub fn classify(

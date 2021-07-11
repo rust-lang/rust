@@ -23,12 +23,15 @@ pub(crate) fn goto_declaration(
     let parent = token.parent()?;
     let def = match_ast! {
         match parent {
-            ast::NameRef(name_ref) => {
-                let name_kind = NameRefClass::classify(&sema, &name_ref)?;
-                name_kind.referenced_local()
+            ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
+                NameRefClass::Definition(def) => def,
+                NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                    Definition::Local(local_ref)
+                }
             },
-            ast::Name(name) => {
-                NameClass::classify(&sema, &name)?.defined_or_referenced_local()
+            ast::Name(name) => match NameClass::classify(&sema, &name)? {
+                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
             },
             _ => return None,
         }

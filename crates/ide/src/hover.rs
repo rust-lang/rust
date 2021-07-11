@@ -96,12 +96,21 @@ pub(crate) fn hover(
         match node {
             // we don't use NameClass::referenced_or_defined here as we do not want to resolve
             // field pattern shorthands to their definition
-            ast::Name(name) => NameClass::classify(&sema, &name).map(|class| class.defined_or_referenced_local()),
-            ast::NameRef(name_ref) => {
-                NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced_field())
-            },
+            ast::Name(name) => NameClass::classify(&sema, &name).map(|class| match class {
+                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
+            }),
+            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|class| match class {
+                NameRefClass::Definition(def) => def,
+                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                    Definition::Field(field_ref)
+                }
+            }),
             ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
-                || NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced_local()),
+                || NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
+                    NameRefClass::Definition(it) => Some(it),
+                    _ => None,
+                }),
                 |d| d.defined(),
             ),
             _ => {

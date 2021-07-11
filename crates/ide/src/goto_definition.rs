@@ -60,11 +60,17 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, Either::Right(&name_ref))
             },
             ast::Name(name) => {
-                let def = NameClass::classify(&sema, &name)?.defined_or_referenced_local();
+                let def = match NameClass::classify(&sema, &name)? {
+                    NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                    NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
+                };
                 try_find_trait_item_definition(sema.db, &def).or_else(|| def.try_to_nav(sema.db))
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
-                let def = name_class.defined_or_referenced_local();
+                let def = match name_class {
+                    NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                    NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
+                };
                 def.try_to_nav(sema.db)
             } else {
                 reference_definition(&sema, Either::Left(&lt))
@@ -139,7 +145,10 @@ pub(crate) fn reference_definition(
         |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
         |name_ref| NameRefClass::classify(sema, name_ref),
     )?;
-    let def = name_kind.referenced_local();
+    let def = match name_kind {
+        NameRefClass::Definition(def) => def,
+        NameRefClass::FieldShorthand { local_ref, field_ref: _ } => Definition::Local(local_ref),
+    };
     def.try_to_nav(sema.db)
 }
 

@@ -107,13 +107,19 @@ fn find_definition(
         {
             bail!("Renaming aliases is currently unsupported")
         }
-        ast::NameLike::Name(name) => {
-            NameClass::classify(sema, &name).map(|class| class.defined_or_referenced_local())
-        }
+        ast::NameLike::Name(name) => NameClass::classify(sema, &name).map(|class| match class {
+            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                Definition::Local(local_def)
+            }
+        }),
         ast::NameLike::NameRef(name_ref) => {
-            if let Some(def) =
-                NameRefClass::classify(sema, &name_ref).map(|class| class.referenced_local())
-            {
+            if let Some(def) = NameRefClass::classify(sema, &name_ref).map(|class| match class {
+                NameRefClass::Definition(def) => def,
+                NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                    Definition::Local(local_ref)
+                }
+            }) {
                 // if the name differs from the definitions name it has to be an alias
                 if def.name(sema.db).map_or(false, |it| it.to_string() != name_ref.text()) {
                     bail!("Renaming aliases is currently unsupported");
@@ -124,10 +130,15 @@ fn find_definition(
             }
         }
         ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
-            .map(|class| class.referenced_local())
+            .and_then(|class| match class {
+                NameRefClass::Definition(def) => Some(def),
+                _ => None,
+            })
             .or_else(|| {
-                NameClass::classify_lifetime(sema, &lifetime)
-                    .map(|it| it.defined_or_referenced_field())
+                NameClass::classify_lifetime(sema, &lifetime).and_then(|it| match it {
+                    NameClass::Definition(it) => Some(it),
+                    _ => None,
+                })
             }),
     }
     .ok_or_else(|| format_err!("No references found at position"))?;
