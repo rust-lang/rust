@@ -23,7 +23,6 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
-use rustc_lint_defs::FutureBreakage;
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_serialize::json::Json;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -790,7 +789,7 @@ impl Handler {
         self.inner.borrow_mut().emit_artifact_notification(path, artifact_type)
     }
 
-    pub fn emit_future_breakage_report(&self, diags: Vec<(FutureBreakage, Diagnostic)>) {
+    pub fn emit_future_breakage_report(&self, diags: Vec<Diagnostic>) {
         self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
     }
 

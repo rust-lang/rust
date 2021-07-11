@@ -152,10 +152,6 @@ pub struct FutureIncompatibleInfo {
     /// Set to false for lints that already include a more detailed
     /// explanation.
     pub explain_reason: bool,
-    /// Information about a future breakage, which will
-    /// be emitted in JSON messages to be displayed by Cargo
-    /// for upstream deps
-    pub future_breakage: Option<FutureBreakage>,
 }
 
 /// The reason for future incompatibility
@@ -164,6 +160,9 @@ pub enum FutureIncompatibilityReason {
     /// This will be an error in a future release
     /// for all editions
     FutureReleaseError,
+    /// This will be an error in a future release, and
+    /// Cargo should create a report even for dependencies
+    FutureReleaseErrorReportNow,
     /// Previously accepted code that will become an
     /// error in the provided edition
     EditionError(Edition),
@@ -182,18 +181,12 @@ impl FutureIncompatibilityReason {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct FutureBreakage {
-    pub date: Option<&'static str>,
-}
-
 impl FutureIncompatibleInfo {
     pub const fn default_fields_for_macro() -> Self {
         FutureIncompatibleInfo {
             reference: "",
             reason: FutureIncompatibilityReason::FutureReleaseError,
             explain_reason: true,
-            future_breakage: None,
         }
     }
 }
