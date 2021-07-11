@@ -111,7 +111,6 @@ pub(super) fn element(
                     }
                 };
                 let h = match name_class {
-                    NameRefClass::ExternCrate(_) => SymbolKind::Module.into(),
                     NameRefClass::Definition(def) => {
                         if let Definition::Local(local) = &def {
                             if let Some(name) = local.name(db) {

@@ -303,16 +303,14 @@ impl NameClass {
 /// reference to point to two different defs.
 #[derive(Debug)]
 pub enum NameRefClass {
-    ExternCrate(Crate),
     Definition(Definition),
     FieldShorthand { local_ref: Local, field_ref: Definition },
 }
 
 impl NameRefClass {
     /// `Definition`, which this name refers to.
-    pub fn referenced(self, db: &dyn HirDatabase) -> Definition {
+    pub fn referenced(self, _db: &dyn HirDatabase) -> Definition {
         match self {
-            NameRefClass::ExternCrate(krate) => Definition::ModuleDef(krate.root_module(db).into()),
             NameRefClass::Definition(def) => def,
             NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
                 // FIXME: this is inherently ambiguous -- this name refers to
@@ -428,8 +426,9 @@ impl NameRefClass {
         }
 
         let extern_crate = ast::ExternCrate::cast(parent)?;
-        let resolved = sema.resolve_extern_crate(&extern_crate)?;
-        Some(NameRefClass::ExternCrate(resolved))
+        let krate = sema.resolve_extern_crate(&extern_crate)?;
+        let root_module = krate.root_module(sema.db);
+        Some(NameRefClass::Definition(Definition::ModuleDef(root_module.into())))
     }
 
     pub fn classify_lifetime(
