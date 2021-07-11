@@ -94,6 +94,9 @@ pub enum LifetimeName {
     /// User wrote nothing (e.g., the lifetime in `&u32`).
     Implicit,
 
+    /// User wrote nothing and should have.
+    ImplicitMissing,
+
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
     /// lifetime that they default to must appear elsewhere within the
@@ -123,6 +126,7 @@ impl LifetimeName {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault
             | LifetimeName::Implicit
+            | LifetimeName::ImplicitMissing
             | LifetimeName::Error => Ident::empty(),
             LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
@@ -134,6 +138,7 @@ impl LifetimeName {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault
             | LifetimeName::Implicit
+            | LifetimeName::ImplicitMissing
             | LifetimeName::Underscore => true,
 
             // It might seem surprising that `Fresh(_)` counts as

@@ -7,8 +7,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
-use rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
-use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::symbol::Ident;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
@@ -275,7 +273,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
             let elided_lifetime_span = if generic_args.span.is_empty() {
                 // If there are no brackets, use the identifier span.
-                segment.ident.span
+                path_span
             } else if generic_args.is_empty() {
                 // If there are brackets, but not generic arguments, then use the opening bracket
                 generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
@@ -284,7 +282,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
             };
             generic_args.args = self
-                .elided_path_lifetimes(elided_lifetime_span, expected_lifetimes)
+                .elided_path_lifetimes(elided_lifetime_span, expected_lifetimes, param_mode)
                 .map(GenericArg::Lifetime)
                 .chain(generic_args.args.into_iter())
                 .collect();
@@ -329,21 +327,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         err.note("assuming a `'static` lifetime...");
                         err.emit();
                     }
-                    AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {
-                        self.resolver.lint_buffer().buffer_lint_with_diagnostic(
-                            ELIDED_LIFETIMES_IN_PATHS,
-                            CRATE_NODE_ID,
-                            path_span,
-                            "hidden lifetime parameters in types are deprecated",
-                            BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                                expected_lifetimes,
-                                path_span,
-                                incl_angl_brckt,
-                                insertion_sp,
-                                suggestion,
-                            ),
-                        );
-                    }
+                    AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {}
                 }
             }
         }

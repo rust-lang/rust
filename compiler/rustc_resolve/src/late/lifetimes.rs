@@ -923,7 +923,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                 });
                 match lifetime.name {
-                    LifetimeName::Implicit => {
+                    LifetimeName::Implicit | hir::LifetimeName::ImplicitMissing => {
                         // For types like `dyn Foo`, we should
                         // generate a special form of elided.
                         span_bug!(ty.span, "object-lifetime-default expected, not implicit",);
@@ -3057,9 +3057,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let error = loop {
             match *scope {
                 // Do not assign any resolution, it will be inferred.
-                Scope::Body { .. } => return,
+                Scope::Body { .. } => break Ok(()),
 
-                Scope::Root => break None,
+                Scope::Root => break Err(None),
 
                 Scope::Binder { s, ref lifetimes, scope_type, .. } => {
                     // collect named lifetimes for suggestions
@@ -3086,7 +3086,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                         self.insert_lifetime(lifetime_ref, lifetime);
                     }
-                    return;
+                    break Ok(());
                 }
 
                 Scope::Elision { elide: Elide::Exact(l), .. } => {
@@ -3094,7 +3094,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     for lifetime_ref in lifetime_refs {
                         self.insert_lifetime(lifetime_ref, lifetime);
                     }
-                    return;
+                    break Ok(());
                 }
 
                 Scope::Elision { elide: Elide::Error(ref e), ref s, .. } => {
@@ -3119,10 +3119,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             _ => break,
                         }
                     }
-                    break Some(&e[..]);
+                    break Err(Some(&e[..]));
                 }
 
-                Scope::Elision { elide: Elide::Forbid, .. } => break None,
+                Scope::Elision { elide: Elide::Forbid, .. } => break Err(None),
 
                 Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
@@ -3130,6 +3130,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     scope = s;
                 }
             }
+        };
+
+        let error = match error {
+            Ok(()) => {
+                self.report_elided_lifetime_in_ty(lifetime_refs);
+                return;
+            }
+            Err(error) => error,
         };
 
         // If we specifically need the `scope_for_path` map, then we're in the
@@ -3274,7 +3282,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 ))
                                 .emit();
                         }
-                        hir::LifetimeName::Param(_) | hir::LifetimeName::Implicit => {
+                        hir::LifetimeName::Param(_)
+                        | hir::LifetimeName::Implicit
+                        | hir::LifetimeName::ImplicitMissing => {
                             self.resolve_lifetime_ref(lt);
                         }
                         hir::LifetimeName::ImplicitObjectLifetimeDefault => {
