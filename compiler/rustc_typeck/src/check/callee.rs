@@ -588,10 +588,17 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 fcx.write_method_call(self.call_expr.hir_id, method_callee);
             }
             None => {
-                span_bug!(
+                // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
+                // lang items are not defined (issue #86238).
+                let mut err = fcx.inh.tcx.sess.struct_span_err(
                     self.call_expr.span,
-                    "failed to find an overloaded call trait for closure call"
+                    "failed to find an overloaded call trait for closure call",
                 );
+                err.help(
+                    "make sure the `fn`/`fn_mut`/`fn_once` lang items are defined \
+                     and have associated `call`/`call_mut`/`call_once` functions",
+                );
+                err.emit();
             }
         }
     }
