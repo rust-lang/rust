@@ -1873,6 +1873,47 @@ mod pattern {
         "* \t",
         [Reject(0, 1), Reject(1, 2), Reject(2, 3),]
     );
+
+    // See #85462
+    #[test]
+    fn str_searcher_empty_needle_after_done() {
+        // Empty needle and haystack
+        {
+            let mut searcher = "".into_searcher("");
+
+            assert_eq!(searcher.next(), SearchStep::Match(0, 0));
+            assert_eq!(searcher.next(), SearchStep::Done);
+            assert_eq!(searcher.next(), SearchStep::Done);
+            assert_eq!(searcher.next(), SearchStep::Done);
+
+            let mut searcher = "".into_searcher("");
+
+            assert_eq!(searcher.next_back(), SearchStep::Match(0, 0));
+            assert_eq!(searcher.next_back(), SearchStep::Done);
+            assert_eq!(searcher.next_back(), SearchStep::Done);
+            assert_eq!(searcher.next_back(), SearchStep::Done);
+        }
+        // Empty needle and non-empty haystack
+        {
+            let mut searcher = "".into_searcher("a");
+
+            assert_eq!(searcher.next(), SearchStep::Match(0, 0));
+            assert_eq!(searcher.next(), SearchStep::Reject(0, 1));
+            assert_eq!(searcher.next(), SearchStep::Match(1, 1));
+            assert_eq!(searcher.next(), SearchStep::Done);
+            assert_eq!(searcher.next(), SearchStep::Done);
+            assert_eq!(searcher.next(), SearchStep::Done);
+
+            let mut searcher = "".into_searcher("a");
+
+            assert_eq!(searcher.next_back(), SearchStep::Match(1, 1));
+            assert_eq!(searcher.next_back(), SearchStep::Reject(0, 1));
+            assert_eq!(searcher.next_back(), SearchStep::Match(0, 0));
+            assert_eq!(searcher.next_back(), SearchStep::Done);
+            assert_eq!(searcher.next_back(), SearchStep::Done);
+            assert_eq!(searcher.next_back(), SearchStep::Done);
+        }
+    }
 }
 
 macro_rules! generate_iterator_test {
