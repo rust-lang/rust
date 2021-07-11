@@ -144,7 +144,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("delegate_consume(place_with_id={:?})", place_with_id);
 
         let mode = copy_or_move(&self.mc, place_with_id);
-        self.delegate.consume(place_with_id, diag_expr_id, mode);
+
+        match mode {
+            ConsumeMode::Move => self.delegate.consume(place_with_id, diag_expr_id, mode),
+            ConsumeMode::Copy => {
+                self.delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+            }
+        }
     }
 
     fn consume_exprs(&mut self, exprs: &[hir::Expr<'_>]) {
@@ -653,9 +659,18 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             delegate.borrow(place, discr_place.hir_id, bk);
                         }
                         ty::BindByValue(..) => {
-                            let mode = copy_or_move(mc, &place);
                             debug!("walk_pat binding consuming pat");
-                            delegate.consume(place, discr_place.hir_id, mode);
+                            let mode = copy_or_move(mc, &place);
+                            match mode {
+                                ConsumeMode::Move => {
+                                    delegate.consume(place, discr_place.hir_id, mode)
+                                }
+                                ConsumeMode::Copy => delegate.borrow(
+                                    place,
+                                    discr_place.hir_id,
+                                    ty::BorrowKind::ImmBorrow,
+                                ),
+                            }
                         }
                     }
                 }
@@ -773,8 +788,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
                     match capture_info.capture_kind {
                         ty::UpvarCapture::ByValue(_) => {
-                            let mode = copy_or_move(&self.mc, &place_with_id);
-                            self.delegate.consume(&place_with_id, place_with_id.hir_id, mode);
+                            self.delegate_consume(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow(

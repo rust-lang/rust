@@ -1535,10 +1535,9 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, mode
         );
 
-        // Copy type being used as ByValue are equivalent to ImmBorrow and don't require any
-        // escalation.
+        // Copy types in ByValue scenarios need should be treated as ImmBorrows
         match mode {
-            euv::ConsumeMode::Copy => return,
+            euv::ConsumeMode::Copy => unreachable!(),
             euv::ConsumeMode::Move => {}
         };
 
