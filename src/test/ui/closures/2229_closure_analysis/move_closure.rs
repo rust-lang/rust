@@ -16,7 +16,7 @@ fn simple_move_closure() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         t.0.0 = "new S".into();
-        //~^ NOTE: Capturing t[(0, 0),(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0),(0, 0)] -> MutBorrow
         //~| NOTE: Min Capture t[(0, 0),(0, 0)] -> ByValue
     };
     c();
@@ -78,7 +78,7 @@ fn struct_contains_ref_to_another_struct_2() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref] -> ImmBorrow
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture t[(0, 0),Deref] -> ImmBorrow
     };
 
@@ -100,8 +100,7 @@ fn struct_contains_ref_to_another_struct_3() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = t.0.0;
-        //~^ NOTE: Capturing t[(0, 0),Deref] -> ImmBorrow
-        //~| NOTE: Capturing t[(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
         //~| NOTE: Min Capture t[(0, 0)] -> ByValue
     };
 
@@ -122,8 +121,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let _t = b.0;
-        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ByValue
-        //~| NOTE: Capturing b[] -> ByValue
+        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture b[] -> ByValue
     };
 
@@ -139,7 +137,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", b.0);
-        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ByValue
+        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture b[] -> ByValue
     };
 
@@ -156,9 +154,45 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", t.1.0);
-        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> ImmBorrow
         //~| NOTE: Min Capture t[(1, 0)] -> ByValue
     };
+}
+
+struct Foo { x: i32 }
+
+// Ensure that even in move closures, if the data is not owned by the root variable
+// then we don't truncate the derefs or a ByValue capture, rather do a reborrow
+fn box_mut_1() {
+    let mut foo = Foo { x: 0 } ;
+
+    let p_foo = &mut foo;
+    let box_p_foo = Box::new(p_foo);
+
+    let c = #[rustc_capture_analysis] move || box_p_foo.x += 10;
+    //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| First Pass analysis includes:
+    //~| NOTE: Capturing box_p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+    //~| Min Capture analysis includes:
+    //~| NOTE: Min Capture box_p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+}
+
+// Ensure that even in move closures, if the data is not owned by the root variable
+// then we don't truncate the derefs or a ByValue capture, rather do a reborrow
+fn box_mut_2() {
+    let foo = Foo { x: 0 } ;
+
+    let mut box_foo = Box::new(foo);
+    let p_foo = &mut box_foo;
+
+    let c = #[rustc_capture_analysis] move || p_foo.x += 10;
+    //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| First Pass analysis includes:
+    //~| NOTE: Capturing p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
+    //~| Min Capture analysis includes:
+    //~| NOTE: Min Capture p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
 }
 
 fn main() {
@@ -168,4 +202,6 @@ fn main() {
     struct_contains_ref_to_another_struct_2();
     struct_contains_ref_to_another_struct_3();
     truncate_box_derefs();
+    box_mut_2();
+    box_mut_1();
 }
