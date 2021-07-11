@@ -1,6 +1,5 @@
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Instance, TyCtxt};
-use std::fs::OpenOptions;
-use std::io::prelude::*;
 
 /// For a given closure, writes out the data for the profiling the impact of RFC 2229 on
 /// closure size into a CSV.
@@ -8,19 +7,10 @@ use std::io::prelude::*;
 /// During the same compile all closures dump the information in the same file
 /// "closure_profile_XXXXX.csv", which is created in the directory where the compiler is invoked.
 crate fn dump_closure_profile(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx>) {
-    let mut file = if let Ok(file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&format!("closure_profile_{}.csv", std::process::id()))
-    {
-        file
-    } else {
-        eprintln!("Cound't open file for writing closure profile");
-        return;
-    };
-
     let closure_def_id = closure_instance.def_id();
     let typeck_results = tcx.typeck(closure_def_id.expect_local());
+
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
 
     if typeck_results.closure_size_eval.contains_key(&closure_def_id) {
         let param_env = ty::ParamEnv::reveal_all();
@@ -59,15 +49,13 @@ crate fn dump_closure_profile(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx
             .map(|l| format!("{:?} {:?}", l.lines.first(), l.lines.last()))
             .unwrap_or_else(|e| format!("{:?}", e));
 
-        if let Err(e) = writeln!(
-            file,
-            "{}, {}, {}, {:?}",
+        eprintln!(
+            "SG_CRATER_E239478slkdjf: {}, {}, {}, {}, {:?}",
+            crate_name,
             old_size,
             new_size,
             src_file.prefer_local(),
             line_nos
-        ) {
-            eprintln!("Error writting to file {}", e.to_string())
-        }
+        );
     }
 }
