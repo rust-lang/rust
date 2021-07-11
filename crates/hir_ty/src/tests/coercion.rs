@@ -500,7 +500,7 @@ fn main() {
 }
 
 #[test]
-fn coerce_unsize_expected_type() {
+fn coerce_unsize_expected_type_1() {
     check_no_mismatches(
         r#"
 //- minicore: coerce_unsized
@@ -515,6 +515,32 @@ fn main() {
     } else {
         &[1, 2, 3]
     };
+}
+        "#,
+    );
+}
+
+#[test]
+fn coerce_unsize_expected_type_2() {
+    // FIXME: this is wrong, #9560
+    check(
+        r#"
+//- minicore: coerce_unsized
+struct InFile<T>;
+impl<T> InFile<T> {
+    fn with_value<U>(self, value: U) -> InFile<U> { InFile }
+}
+struct RecordField;
+trait AstNode {}
+impl AstNode for RecordField {}
+
+fn takes_dyn(it: InFile<&dyn AstNode>) {}
+
+fn test() {
+    let x: InFile<()> = InFile;
+    let n = &RecordField;
+    takes_dyn(x.with_value(n));
+           // ^^^^^^^^^^^^^^^ expected InFile<&dyn AstNode>, got InFile<&RecordField>
 }
         "#,
     );
