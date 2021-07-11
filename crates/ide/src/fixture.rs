@@ -51,11 +51,3 @@ pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(Fil
         .collect();
     (host.analysis(), FilePosition { file_id, offset }, annotations)
 }
-
-pub(crate) fn nav_target_annotation(ra_fixture: &str) -> (Analysis, FilePosition, FileRange) {
-    let (analysis, position, mut annotations) = annotations(ra_fixture);
-    let (expected, data) = annotations.pop().unwrap();
-    assert!(annotations.is_empty());
-    assert_eq!(data, "");
-    (analysis, position, expected)
-}

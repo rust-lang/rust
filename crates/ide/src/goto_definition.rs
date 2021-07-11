@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, iter};
 
 use either::Either;
 use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
@@ -11,7 +11,7 @@ use ide_db::{
 use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{
-    display::TryToNav,
+    display::{ToNav, TryToNav},
     doc_links::{doc_attributes, extract_definitions_from_markdown, resolve_doc_path_for_def},
     FilePosition, NavigationTarget, RangeInfo,
 };
@@ -54,33 +54,36 @@ pub(crate) fn goto_definition(
         let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
-    let nav = match_ast! {
+
+    let navs = match_ast! {
         match parent {
             ast::NameRef(name_ref) => {
                 reference_definition(&sema, Either::Right(&name_ref))
             },
             ast::Name(name) => {
-                let def = match NameClass::classify(&sema, &name)? {
-                    NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                    NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
-                };
-                try_find_trait_item_definition(sema.db, &def).or_else(|| def.try_to_nav(sema.db))
+                match NameClass::classify(&sema, &name)? {
+                    NameClass::Definition(def) | NameClass::ConstReference(def) => {
+                        try_find_trait_item_definition(sema.db, &def).unwrap_or_else(|| def_to_nav(sema.db, def))
+                    }
+                    NameClass::PatFieldShorthand { local_def, field_ref } => {
+                        local_and_field_to_nav(sema.db, local_def, field_ref)
+                    },
+                }
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
-                let def = match name_class {
-                    NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                    NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
-                };
-                def.try_to_nav(sema.db)
+                match name_class {
+                    NameClass::Definition(def) => def_to_nav(sema.db, def),
+                    _ => return None,
+                }
             } else {
                 reference_definition(&sema, Either::Left(&lt))
             },
-            ast::TokenTree(tt) => try_lookup_include_path(sema.db, tt, token, position.file_id),
+            ast::TokenTree(tt) => try_lookup_include_path(sema.db, tt, token, position.file_id)?,
             _ => return None,
         }
     };
 
-    Some(RangeInfo::new(original_token.text_range(), nav.into_iter().collect()))
+    Some(RangeInfo::new(original_token.text_range(), navs))
 }
 
 fn try_lookup_include_path(
@@ -88,7 +91,7 @@ fn try_lookup_include_path(
     tt: ast::TokenTree,
     token: SyntaxToken,
     file_id: FileId,
-) -> Option<NavigationTarget> {
+) -> Option<Vec<NavigationTarget>> {
     let path = ast::String::cast(token)?.value()?.into_owned();
     let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
     let name = macro_call.path()?.segment()?.name_ref()?;
@@ -97,7 +100,7 @@ fn try_lookup_include_path(
     }
     let file_id = db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = db.file_text(file_id).len().try_into().ok()?;
-    Some(NavigationTarget {
+    Some(vec![NavigationTarget {
         file_id,
         full_range: TextRange::new(0.into(), size),
         name: path.into(),
@@ -106,7 +109,7 @@ fn try_lookup_include_path(
         container_name: None,
         description: None,
         docs: None,
-    })
+    }])
 }
 
 /// finds the trait definition of an impl'd item
@@ -116,7 +119,10 @@ fn try_lookup_include_path(
 /// struct S;
 /// impl A for S { fn a(); } // <-- on this function, will get the location of a() in the trait
 /// ```
-fn try_find_trait_item_definition(db: &RootDatabase, def: &Definition) -> Option<NavigationTarget> {
+fn try_find_trait_item_definition(
+    db: &RootDatabase,
+    def: &Definition,
+) -> Option<Vec<NavigationTarget>> {
     let name = def.name(db)?;
     let assoc = match def {
         Definition::ModuleDef(ModuleDef::Function(f)) => f.as_assoc_item(db),
@@ -135,40 +141,66 @@ fn try_find_trait_item_definition(db: &RootDatabase, def: &Definition) -> Option
         .items(db)
         .iter()
         .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
+        .map(|it| vec![it])
 }
 
 pub(crate) fn reference_definition(
     sema: &Semantics<RootDatabase>,
     name_ref: Either<&ast::Lifetime, &ast::NameRef>,
-) -> Option<NavigationTarget> {
-    let name_kind = name_ref.either(
+) -> Vec<NavigationTarget> {
+    let name_kind = match name_ref.either(
         |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
         |name_ref| NameRefClass::classify(sema, name_ref),
-    )?;
-    let def = match name_kind {
-        NameRefClass::Definition(def) => def,
-        NameRefClass::FieldShorthand { local_ref, field_ref: _ } => Definition::Local(local_ref),
+    ) {
+        Some(class) => class,
+        None => return Vec::new(),
     };
-    def.try_to_nav(sema.db)
+    match name_kind {
+        NameRefClass::Definition(def) => def_to_nav(sema.db, def),
+        NameRefClass::FieldShorthand { local_ref, field_ref } => {
+            local_and_field_to_nav(sema.db, local_ref, field_ref)
+        }
+    }
+}
+
+fn def_to_nav(db: &RootDatabase, def: Definition) -> Vec<NavigationTarget> {
+    def.try_to_nav(db).map(|it| vec![it]).unwrap_or_default()
+}
+
+fn local_and_field_to_nav(
+    db: &RootDatabase,
+    local: hir::Local,
+    field: hir::Field,
+) -> Vec<NavigationTarget> {
+    iter::once(local.to_nav(db)).chain(field.try_to_nav(db)).collect()
 }
 
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::FileRange;
+    use itertools::Itertools;
 
     use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, expected) = fixture::nav_target_annotation(ra_fixture);
-        let mut navs =
-            analysis.goto_definition(position).unwrap().expect("no definition found").info;
+        let (analysis, position, expected) = fixture::annotations(ra_fixture);
+        let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
         if navs.len() == 0 {
             panic!("unresolved reference")
         }
-        assert_eq!(navs.len(), 1);
 
-        let nav = navs.pop().unwrap();
-        assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
+        let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
+        let navs = navs
+            .into_iter()
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        let expected = expected
+            .into_iter()
+            .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        assert_eq!(expected, navs);
     }
 
     fn check_unresolved(ra_fixture: &str) {
@@ -871,6 +903,7 @@ fn bar() {
         check(
             r#"
 struct Foo { x: i32 }
+           //^
 fn main() {
     let x = 92;
       //^
@@ -886,6 +919,7 @@ fn main() {
             r#"
 enum Foo {
     Bar { x: i32 }
+        //^
 }
 fn baz(foo: Foo) {
     match foo {
@@ -1135,13 +1169,15 @@ fn foo<'foobar>(_: &'foobar ()) {
     fn goto_lifetime_hrtb() {
         // FIXME: requires the HIR to somehow track these hrtb lifetimes
         check_unresolved(
-            r#"trait Foo<T> {}
+            r#"
+trait Foo<T> {}
 fn foo<T>() where for<'a> T: Foo<&'a$0 (u8, u16)>, {}
                     //^^
 "#,
         );
         check_unresolved(
-            r#"trait Foo<T> {}
+            r#"
+trait Foo<T> {}
 fn foo<T>() where for<'a$0> T: Foo<&'a (u8, u16)>, {}
                     //^^
 "#,
