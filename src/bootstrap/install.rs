@@ -139,11 +139,15 @@ macro_rules! install {
 
 install!((self, builder, _config),
     Docs, "src/doc", _config.docs, only_hosts: false, {
+        // `expect` should be safe, only None when config.docs is false,
+        // which is guarded in `should_run`
         let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
         install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
     };
     Std, "library/std", true, only_hosts: false, {
         for target in &builder.targets {
+            // `expect` should be safe, only None when host != build, but this
+            // only runs when host == build
             let tarball = builder.ensure(dist::Std {
                 compiler: self.compiler,
                 target: *target
@@ -217,6 +221,8 @@ install!((self, builder, _config),
         }
     };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
+        // `expect` should be safe, only None with host != build, but this
+        // only uses the `build` compiler
         let tarball = builder.ensure(dist::Analysis {
             // Find the actual compiler (handling the full bootstrap option) which
             // produced the save-analysis data because that data isn't copied
