@@ -58,7 +58,15 @@ pub(crate) fn find_all_refs(
 
     let (def, is_literal_search) =
         if let Some(name) = get_name_of_item_declaration(&syntax, position) {
-            (NameClass::classify(sema, &name)?.referenced_or_defined(), true)
+            (
+                match NameClass::classify(sema, &name)? {
+                    NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                    NameClass::PatFieldShorthand { local_def: _, field_ref } => {
+                        Definition::Field(field_ref)
+                    }
+                },
+                true,
+            )
         } else {
             (find_def(sema, &syntax, position.offset)?, false)
         };
@@ -116,13 +124,28 @@ pub(crate) fn find_def(
     offset: TextSize,
 ) -> Option<Definition> {
     let def = match sema.find_node_at_offset_with_descend(syntax, offset)? {
-        ast::NameLike::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref)?.referenced(),
-        ast::NameLike::Name(name) => NameClass::classify(sema, &name)?.referenced_or_defined(),
+        ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
+            NameRefClass::Definition(def) => def,
+            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                Definition::Local(local_ref)
+            }
+        },
+        ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
+            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                Definition::Local(local_def)
+            }
+        },
         ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
-            .map(|class| class.referenced())
+            .and_then(|class| match class {
+                NameRefClass::Definition(it) => Some(it),
+                _ => None,
+            })
             .or_else(|| {
-                NameClass::classify_lifetime(sema, &lifetime)
-                    .map(|class| class.referenced_or_defined())
+                NameClass::classify_lifetime(sema, &lifetime).and_then(|class| match class {
+                    NameClass::Definition(it) => Some(it),
+                    _ => None,
+                })
             })?,
     };
     Some(def)

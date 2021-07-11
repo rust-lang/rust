@@ -28,11 +28,19 @@ pub(crate) fn goto_implementation(
 
     let node = sema.find_node_at_offset_with_descend(&syntax, position.offset)?;
     let def = match &node {
-        ast::NameLike::Name(name) => {
-            NameClass::classify(&sema, name).map(|class| class.referenced_or_defined())
-        }
+        ast::NameLike::Name(name) => NameClass::classify(&sema, name).map(|class| match class {
+            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                Definition::Local(local_def)
+            }
+        }),
         ast::NameLike::NameRef(name_ref) => {
-            NameRefClass::classify(&sema, name_ref).map(|class| class.referenced())
+            NameRefClass::classify(&sema, name_ref).map(|class| match class {
+                NameRefClass::Definition(def) => def,
+                NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                    Definition::Local(local_ref)
+                }
+            })
         }
         ast::NameLike::Lifetime(_) => None,
     }?;

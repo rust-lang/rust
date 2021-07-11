@@ -23,34 +23,36 @@ pub(crate) fn goto_declaration(
     let parent = token.parent()?;
     let def = match_ast! {
         match parent {
-            ast::NameRef(name_ref) => {
-                let name_kind = NameRefClass::classify(&sema, &name_ref)?;
-                name_kind.referenced()
+            ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
+                NameRefClass::Definition(it) => Some(it),
+                _ => None
             },
-            ast::Name(name) => {
-                NameClass::classify(&sema, &name)?.referenced_or_defined()
+            ast::Name(name) => match NameClass::classify(&sema, &name)? {
+                NameClass::Definition(it) => Some(it),
+                _ => None
             },
-            _ => return None,
+            _ => None,
         }
     };
-    match def {
+    match def? {
         Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(RangeInfo::new(
             original_token.text_range(),
             vec![NavigationTarget::from_module_to_decl(db, module)],
         )),
-        _ => return None,
+        _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::FileRange;
+    use itertools::Itertools;
 
     use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, expected) = fixture::nav_target_annotation(ra_fixture);
-        let mut navs = analysis
+        let (analysis, position, expected) = fixture::annotations(ra_fixture);
+        let navs = analysis
             .goto_declaration(position)
             .unwrap()
             .expect("no declaration or definition found")
@@ -58,10 +60,19 @@ mod tests {
         if navs.len() == 0 {
             panic!("unresolved reference")
         }
-        assert_eq!(navs.len(), 1);
 
-        let nav = navs.pop().unwrap();
-        assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
+        let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
+        let navs = navs
+            .into_iter()
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        let expected = expected
+            .into_iter()
+            .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        assert_eq!(expected, navs);
     }
 
     #[test]

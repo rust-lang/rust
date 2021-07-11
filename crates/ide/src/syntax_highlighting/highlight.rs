@@ -58,10 +58,8 @@ pub(super) fn element(
                 Some(NameClass::ConstReference(def)) => highlight_def(db, krate, def),
                 Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
                     let mut h = HlTag::Symbol(SymbolKind::Field).into();
-                    if let Definition::Field(field) = field_ref {
-                        if let hir::VariantDef::Union(_) = field.parent_def(db) {
-                            h |= HlMod::Unsafe;
-                        }
+                    if let hir::VariantDef::Union(_) = field_ref.parent_def(db) {
+                        h |= HlMod::Unsafe;
                     }
                     h
                 }

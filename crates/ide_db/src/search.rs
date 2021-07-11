@@ -550,6 +550,7 @@ impl<'a> FindUsages<'a> {
                 }
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
+                let field = Definition::Field(field);
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let access = match self.def {
                     Definition::Field(_) if field == self.def => reference_access(&field, name_ref),
@@ -574,7 +575,7 @@ impl<'a> FindUsages<'a> {
         match NameClass::classify(self.sema, name) {
             Some(NameClass::PatFieldShorthand { local_def: _, field_ref })
                 if matches!(
-                    self.def, Definition::Field(_) if field_ref == self.def
+                    self.def, Definition::Field(_) if Definition::Field(field_ref) == self.def
                 ) =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name.syntax());
