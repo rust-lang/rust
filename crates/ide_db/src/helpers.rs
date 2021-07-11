@@ -134,6 +134,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:iter:traits:iterator:Iterator")
     }
 
+    pub fn core_iter_IntoIterator(&self) -> Option<Trait> {
+        self.find_trait("core:iter:traits:collect:IntoIterator")
+    }
+
     pub fn core_iter(&self) -> Option<Module> {
         self.find_module("core:iter")
     }
