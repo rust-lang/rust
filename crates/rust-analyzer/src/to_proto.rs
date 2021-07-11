@@ -998,7 +998,7 @@ pub(crate) fn code_lens(
             let annotation_range = range(&line_index, annotation.range);
 
             let title = run.title();
-            let can_debug = run.debugee();
+            let can_debug = run.can_debug();
             let r = runnable(snap, run)?;
 
             let lens_config = snap.config.lens();

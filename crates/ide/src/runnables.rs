@@ -74,7 +74,7 @@ impl Runnable {
         }
     }
 
-    pub fn debugee(&self) -> bool {
+    pub fn can_debug(&self) -> bool {
         matches!(
             &self.kind,
             RunnableKind::TestMod { .. }
