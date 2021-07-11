@@ -295,10 +295,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.float_to_int_unchecked(val.to_scalar()?.to_f32()?, dest.layout.ty)?,
                     ty::Float(FloatTy::F64) =>
                         this.float_to_int_unchecked(val.to_scalar()?.to_f64()?, dest.layout.ty)?,
-                    _ => bug!(
-                        "`float_to_int_unchecked` called with non-float input type {:?}",
-                        val.layout.ty
-                    ),
+                    _ =>
+                        bug!(
+                            "`float_to_int_unchecked` called with non-float input type {:?}",
+                            val.layout.ty
+                        ),
                 };
 
                 this.write_scalar(res, dest)?;

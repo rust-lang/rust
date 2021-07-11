@@ -203,9 +203,12 @@ fn compile_time_sysroot() -> Option<String> {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     Some(match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => option_env!("RUST_SYSROOT")
-            .expect("To build Miri without rustup, set the `RUST_SYSROOT` env var at build time")
-            .to_owned(),
+        _ =>
+            option_env!("RUST_SYSROOT")
+                .expect(
+                    "To build Miri without rustup, set the `RUST_SYSROOT` env var at build time",
+                )
+                .to_owned(),
     })
 }
 
@@ -336,9 +339,10 @@ fn main() {
                         "warn" => miri::IsolatedOp::Reject(miri::RejectOpWith::Warning),
                         "warn-nobacktrace" =>
                             miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
-                        _ => panic!(
-                            "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
-                        ),
+                        _ =>
+                            panic!(
+                                "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
+                            ),
                     };
                 }
                 "-Zmiri-ignore-leaks" => {
@@ -383,10 +387,11 @@ fn main() {
                     let id: u64 =
                         match arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap().parse() {
                             Ok(id) => id,
-                            Err(err) => panic!(
-                                "-Zmiri-track-pointer-tag requires a valid `u64` argument: {}",
-                                err
-                            ),
+                            Err(err) =>
+                                panic!(
+                                    "-Zmiri-track-pointer-tag requires a valid `u64` argument: {}",
+                                    err
+                                ),
                         };
                     if let Some(id) = miri::PtrId::new(id) {
                         miri_config.tracked_pointer_tag = Some(id);
@@ -422,13 +427,15 @@ fn main() {
                         .parse::<f64>()
                     {
                         Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
-                        Ok(_) => panic!(
-                            "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
-                        ),
-                        Err(err) => panic!(
-                            "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
-                            err
-                        ),
+                        Ok(_) =>
+                            panic!(
+                                "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
+                            ),
+                        Err(err) =>
+                            panic!(
+                                "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
+                                err
+                            ),
                     };
                     miri_config.cmpxchg_weak_failure_rate = rate;
                 }

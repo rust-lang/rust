@@ -498,10 +498,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 match err_kind {
                     NotFound => "ERROR_FILE_NOT_FOUND",
                     PermissionDenied => "ERROR_ACCESS_DENIED",
-                    _ => throw_unsup_format!(
-                        "io error {:?} cannot be translated into a raw os error",
-                        err_kind
-                    ),
+                    _ =>
+                        throw_unsup_format!(
+                            "io error {:?} cannot be translated into a raw os error",
+                            err_kind
+                        ),
                 },
             )?
         } else {

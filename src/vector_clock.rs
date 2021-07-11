@@ -186,16 +186,18 @@ impl PartialOrd for VClock {
             Ordering::Equal => Some(order),
             // Right has at least 1 element > than the implicit 0,
             // so the only valid values are Ordering::Less or None.
-            Ordering::Less => match order {
-                Ordering::Less | Ordering::Equal => Some(Ordering::Less),
-                Ordering::Greater => None,
-            },
+            Ordering::Less =>
+                match order {
+                    Ordering::Less | Ordering::Equal => Some(Ordering::Less),
+                    Ordering::Greater => None,
+                },
             // Left has at least 1 element > than the implicit 0,
             // so the only valid values are Ordering::Greater or None.
-            Ordering::Greater => match order {
-                Ordering::Greater | Ordering::Equal => Some(Ordering::Greater),
-                Ordering::Less => None,
-            },
+            Ordering::Greater =>
+                match order {
+                    Ordering::Greater | Ordering::Equal => Some(Ordering::Greater),
+                    Ordering::Less => None,
+                },
         }
     }
 

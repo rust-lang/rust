@@ -699,10 +699,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
             match ty.kind() {
                 // References are simple.
-                ty::Ref(_, _, Mutability::Mut) => Some((
-                    RefKind::Unique { two_phase: kind == RetagKind::TwoPhase },
-                    kind == RetagKind::FnEntry,
-                )),
+                ty::Ref(_, _, Mutability::Mut) =>
+                    Some((
+                        RefKind::Unique { two_phase: kind == RetagKind::TwoPhase },
+                        kind == RetagKind::FnEntry,
+                    )),
                 ty::Ref(_, _, Mutability::Not) =>
                     Some((RefKind::Shared, kind == RetagKind::FnEntry)),
                 // Raw pointers need to be enabled.

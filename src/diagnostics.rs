@@ -43,11 +43,12 @@ impl fmt::Display for TerminationInfo {
             Deadlock => write!(f, "the evaluated program deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{}`", link_name),
-            SymbolShimClashing { link_name, .. } => write!(
-                f,
-                "found `{}` symbol definition that clashes with a built-in shim",
-                link_name
-            ),
+            SymbolShimClashing { link_name, .. } =>
+                write!(
+                    f,
+                    "found `{}` symbol definition that clashes with a built-in shim",
+                    link_name
+                ),
         }
     }
 }
