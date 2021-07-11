@@ -60,12 +60,12 @@ pub(crate) fn goto_definition(
                 reference_definition(&sema, Either::Right(&name_ref))
             },
             ast::Name(name) => {
-                let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
+                let def = NameClass::classify(&sema, &name)?.referenced_or_defined();
                 try_find_trait_item_definition(sema.db, &def)
                     .or_else(|| def.try_to_nav(sema.db))
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
-                let def = name_class.referenced_or_defined(sema.db);
+                let def = name_class.referenced_or_defined();
                 def.try_to_nav(sema.db)
             } else {
                 reference_definition(&sema, Either::Left(&lt))
@@ -140,7 +140,7 @@ pub(crate) fn reference_definition(
         |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
         |name_ref| NameRefClass::classify(sema, name_ref),
     )?;
-    let def = name_kind.referenced(sema.db);
+    let def = name_kind.referenced();
     def.try_to_nav(sema.db)
 }
 

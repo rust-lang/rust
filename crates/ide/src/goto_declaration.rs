@@ -25,10 +25,10 @@ pub(crate) fn goto_declaration(
         match parent {
             ast::NameRef(name_ref) => {
                 let name_kind = NameRefClass::classify(&sema, &name_ref)?;
-                name_kind.referenced(sema.db)
+                name_kind.referenced()
             },
             ast::Name(name) => {
-                NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db)
+                NameClass::classify(&sema, &name)?.referenced_or_defined()
             },
             _ => return None,
         }

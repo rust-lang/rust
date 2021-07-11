@@ -2,7 +2,10 @@
 
 mod format_like;
 
-use ide_db::{helpers::SnippetCap, ty_filter::TryEnum};
+use ide_db::{
+    helpers::{FamousDefs, SnippetCap},
+    ty_filter::TryEnum,
+};
 use syntax::{
     ast::{self, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT},
@@ -110,6 +113,18 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         .add_to(acc);
         postfix_snippet(ctx, cap, dot_receiver, "not", "!expr", &format!("!{}", receiver_text))
             .add_to(acc);
+    } else if let Some(trait_) = FamousDefs(&ctx.sema, ctx.krate).core_iter_IntoIterator() {
+        if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
+            postfix_snippet(
+                ctx,
+                cap,
+                dot_receiver,
+                "for",
+                "for ele in expr {}",
+                &format!("for ele in {} {{\n    $0\n}}", receiver_text),
+            )
+            .add_to(acc);
+        }
     }
 
     postfix_snippet(ctx, cap, dot_receiver, "ref", "&expr", &format!("&{}", receiver_text))

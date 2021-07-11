@@ -142,7 +142,7 @@ fn get_name_definition(
         candidate_node
     };
     let name = ast::Name::cast(candidate_name_node)?;
-    NameClass::classify(sema, &name)?.defined(sema.db)
+    NameClass::classify(sema, &name)?.defined()
 }
 
 fn is_assoc_item(item: ItemInNs, db: &RootDatabase) -> bool {
