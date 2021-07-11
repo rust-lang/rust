@@ -101,8 +101,8 @@ impl Definition {
 /// scope. That is, that, by just looking at the syntactical category, we can
 /// unambiguously define the semantic category.
 ///
-/// Sadly, that's not 100% true, there are special cases. To make sure that call
-/// the code handles all the special cases correctly via exhaustive matching, we
+/// Sadly, that's not 100% true, there are special cases. To make sure that
+/// callers handle all the special cases correctly via exhaustive matching, we
 /// add a [`NameClass`] enum which lists all of them!
 ///
 /// A model special case is `None` constant in pattern.
