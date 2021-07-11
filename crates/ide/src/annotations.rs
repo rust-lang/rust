@@ -40,8 +40,6 @@ pub struct AnnotationConfig {
     pub annotate_impls: bool,
     pub annotate_references: bool,
     pub annotate_method_references: bool,
-    pub run: bool,
-    pub debug: bool,
 }
 
 pub(crate) fn annotations(

@@ -1147,8 +1147,6 @@ pub(crate) fn handle_code_lens(
             annotate_impls: lens_config.implementations,
             annotate_references: lens_config.refs,
             annotate_method_references: lens_config.method_refs,
-            run: lens_config.run,
-            debug: lens_config.debug,
         },
         file_id,
     )?;
