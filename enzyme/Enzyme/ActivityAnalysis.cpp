@@ -237,6 +237,12 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
     return val != CI->getOperand(0);
   }
 
+  // only the recv buffer is inactive for mpi send/recv
+  if (Name == "MPI_Recv" || Name == "PMPI_Recv" ||
+      Name == "MPI_Send" || Name == "PMPI_Send") {
+    return val != CI->getOperand(0);
+  }
+
   // TODO interprocedural detection
   // Before potential introprocedural detection, any function without definition
   // may to be assumed to have an active use
