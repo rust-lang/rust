@@ -216,7 +216,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.type_of_expr(expr)
     }
 
-    pub fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<(Type, Option<Type>)> {
+    /// Returns true in case a coercion happened.
+    pub fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<(Type, bool)> {
         self.imp.type_of_expr_with_coercion(expr)
     }
 
@@ -224,7 +225,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.type_of_pat(pat)
     }
 
-    pub fn type_of_pat_with_coercion(&self, expr: &ast::Pat) -> Option<(Type, Option<Type>)> {
+    pub fn type_of_pat_with_coercion(&self, expr: &ast::Pat) -> Option<Type> {
         self.imp.type_of_pat_with_coercion(expr)
     }
 
@@ -568,7 +569,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(expr.syntax()).type_of_expr(self.db, expr)
     }
 
-    fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<(Type, Option<Type>)> {
+    fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<(Type, bool)> {
         self.analyze(expr.syntax()).type_of_expr_with_coercion(self.db, expr)
     }
 
@@ -576,7 +577,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax()).type_of_pat(self.db, pat)
     }
 
-    fn type_of_pat_with_coercion(&self, pat: &ast::Pat) -> Option<(Type, Option<Type>)> {
+    fn type_of_pat_with_coercion(&self, pat: &ast::Pat) -> Option<Type> {
         self.analyze(pat.syntax()).type_of_pat_with_coercion(self.db, pat)
     }
 

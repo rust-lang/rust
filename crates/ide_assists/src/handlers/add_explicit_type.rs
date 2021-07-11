@@ -55,8 +55,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     }
 
     // Infer type
-    let (ty, coerced) = ctx.sema.type_of_expr_with_coercion(&expr)?;
-    let ty = coerced.unwrap_or(ty);
+    let (ty, _) = ctx.sema.type_of_expr_with_coercion(&expr)?;
     if ty.contains_unknown() || ty.is_closure() {
         cov_mark::hit!(add_explicit_type_not_applicable_if_ty_not_inferred);
         return None;

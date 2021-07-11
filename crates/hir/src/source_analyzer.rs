@@ -21,7 +21,7 @@ use hir_def::{
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
-    InferenceResult, Interner, Substitution, Ty, TyExt, TyLoweringContext,
+    InferenceResult, Interner, Substitution, TyExt, TyLoweringContext,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -126,15 +126,15 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         expr: &ast::Expr,
-    ) -> Option<(Type, Option<Type>)> {
+    ) -> Option<(Type, bool)> {
         let expr_id = self.expr_id(db, expr)?;
         let infer = self.infer.as_ref()?;
-        let coerced = infer
+        let (ty, coerced) = infer
             .expr_adjustments
             .get(&expr_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| &adjust.target));
-        let mk_ty = |ty: &Ty| Type::new_with_resolver(db, &self.resolver, ty.clone());
-        mk_ty(&infer[expr_id]).map(|ty| (ty, coerced.and_then(mk_ty)))
+            .and_then(|adjusts| adjusts.last().map(|adjust| (&adjust.target, true)))
+            .unwrap_or_else(|| (&infer[expr_id], false));
+        Type::new_with_resolver(db, &self.resolver, ty.clone()).zip(Some(coerced))
     }
 
     pub(crate) fn type_of_pat(&self, db: &dyn HirDatabase, pat: &ast::Pat) -> Option<Type> {
@@ -147,15 +147,15 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<(Type, Option<Type>)> {
+    ) -> Option<Type> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let coerced = infer
+        let ty = infer
             .pat_adjustments
             .get(&pat_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| &adjust.target));
-        let mk_ty = |ty: &Ty| Type::new_with_resolver(db, &self.resolver, ty.clone());
-        mk_ty(&infer[pat_id]).map(|ty| (ty, coerced.and_then(mk_ty)))
+            .and_then(|adjusts| adjusts.last().map(|adjust| &adjust.target))
+            .unwrap_or_else(|| &infer[pat_id]);
+        Type::new_with_resolver(db, &self.resolver, ty.clone())
     }
 
     pub(crate) fn type_of_self(

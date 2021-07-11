@@ -190,7 +190,7 @@ pub(crate) fn inline_(
                         let ty = ctx
                             .sema
                             .type_of_expr_with_coercion(&expr)
-                            .map_or(false, |(_, coerced)| coerced.is_some())
+                            .map_or(false, |(_, coerced)| coerced)
                             .then(|| param_ty)
                             .flatten();
                         body.push_front(
