@@ -324,18 +324,20 @@ impl f64 {
 
     /// Returns the square root of a number.
     ///
-    /// Returns NaN if `self` is a negative number.
+    /// Returns NaN if `self` is a negative number other than `-0.0`.
     ///
     /// # Examples
     ///
     /// ```
     /// let positive = 4.0_f64;
     /// let negative = -4.0_f64;
+    /// let negative_zero = -0.0_f64;
     ///
     /// let abs_difference = (positive.sqrt() - 2.0).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// assert!(negative.sqrt().is_nan());
+    /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
