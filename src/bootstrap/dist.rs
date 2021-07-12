@@ -1955,8 +1955,16 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         cmd.arg("--libfiles");
         builder.verbose(&format!("running {:?}", cmd));
         let files = output(&mut cmd);
+        let build_llvm_out = &builder.llvm_out(builder.config.build);
+        let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {
-            builder.install(Path::new(file), dst_libdir, 0o644);
+            // If we're not using a custom LLVM, make sure we package for the target.
+            let file = if let Ok(relative_path) = Path::new(file).strip_prefix(build_llvm_out) {
+                target_llvm_out.join(relative_path)
+            } else {
+                PathBuf::from(file)
+            };
+            builder.install(&file, dst_libdir, 0o644);
         }
         !builder.config.dry_run
     } else {
