@@ -31,29 +31,37 @@
 // cdb-check:r,d              : 42 [Type: alloc::rc::Rc<i32>]
 // cdb-check:    [<Raw View>]     [Type: alloc::rc::Rc<i32>]
 // cdb-check:    [Reference count] : 2 [Type: core::cell::Cell<usize>]
+// cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx r1,d
 // cdb-check:r1,d             : 42 [Type: alloc::rc::Rc<i32>]
 // cdb-check:    [<Raw View>]     [Type: alloc::rc::Rc<i32>]
 // cdb-check:    [Reference count] : 2 [Type: core::cell::Cell<usize>]
+// cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx w1,d
 // cdb-check:w1,d             : 42 [Type: alloc::rc::Weak<i32>]
 // cdb-check:    [<Raw View>]     [Type: alloc::rc::Weak<i32>]
+// cdb-check:    [Reference count] : 2 [Type: core::cell::Cell<usize>]
+// cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx a,d
 // cdb-check:a,d              : 42 [Type: alloc::sync::Arc<i32>]
 // cdb-check:    [<Raw View>]     [Type: alloc::sync::Arc<i32>]
 // cdb-check:    [Reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
+// cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx a1,d
 // cdb-check:a1,d             : 42 [Type: alloc::sync::Arc<i32>]
 // cdb-check:    [<Raw View>]     [Type: alloc::sync::Arc<i32>]
 // cdb-check:    [Reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
+// cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx w2,d
 // cdb-check:w2,d             : 42 [Type: alloc::sync::Weak<i32>]
 // cdb-check:    [<Raw View>]     [Type: alloc::sync::Weak<i32>]
+// cdb-check:    [Reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
+// cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 use std::rc::Rc;
 use std::sync::Arc;

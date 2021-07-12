@@ -21,9 +21,17 @@
 // cdb-check:    [capacity]       : 0x4 [Type: unsigned __int64]
 // cdb-check:    [chars]          : "this"
 
+// cdb-command: dx unique
+// cdb-check:unique           : Unique(0x[...]: (0x2a, 4321)) [Type: core::ptr::unique::Unique<tuple$<u64,i32> >]
+// cdb-check:    [<Raw View>]     [Type: core::ptr::unique::Unique<tuple$<u64,i32> >]
+// cdb-check:    [0]              : 0x2a [Type: unsigned __int64]
+// cdb-check:    [1]              : 4321 [Type: int]
+
+#![feature(ptr_internals)]
+
 use std::mem::ManuallyDrop;
 use std::pin::Pin;
-use std::ptr::NonNull;
+use std::ptr::{NonNull, Unique};
 
 fn main() {
     let nonnull: NonNull<_> = (&12u32).into();
@@ -32,6 +40,8 @@ fn main() {
 
     let mut s = "this".to_string();
     let pin = Pin::new(&mut s);
+
+    let unique: Unique<_> = (&mut (42u64, 4321i32)).into();
 
     zzz(); // #break
 }
