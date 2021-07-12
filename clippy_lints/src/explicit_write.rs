@@ -67,62 +67,39 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 // We need to remove the last trailing newline from the string because the
                 // underlying `fmt::write` function doesn't know whether `println!` or `print!` was
                 // used.
+                let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
+                    (
+                        format!("{}!({}(), ...)", macro_name, dest_name),
+                        macro_name.replace("write", "print"),
+                    )
+                } else {
+                    (
+                        format!("{}().write_fmt(...)", dest_name),
+                        "print".into(),
+                    )
+                };
+                let msg = format!("use of `{}.unwrap()`", used);
                 if let [write_output] = *format_args.format_string_symbols {
                     let mut write_output = write_output.to_string();
                     if write_output.ends_with('\n') {
                         write_output.pop();
                     }
 
-                    if let Some(macro_name) = calling_macro {
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!(
-                                "use of `{}!({}(), ...).unwrap()`",
-                                macro_name,
-                                dest_name
-                            ),
-                            "try this",
-                            format!("{}{}!(\"{}\")", prefix, macro_name.replace("write", "print"), write_output.escape_default()),
-                            Applicability::MachineApplicable
-                        );
-                    } else {
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!("use of `{}().write_fmt(...).unwrap()`", dest_name),
-                            "try this",
-                            format!("{}print!(\"{}\")", prefix, write_output.escape_default()),
-                            Applicability::MachineApplicable
-                        );
-                    }
+                    let sugg = format!("{}{}!(\"{}\")", prefix, sugg_mac, write_output.escape_default());
+                    span_lint_and_sugg(
+                        cx,
+                        EXPLICIT_WRITE,
+                        expr.span,
+                        &msg,
+                        "try this",
+                        sugg,
+                        Applicability::MachineApplicable
+                    );
                 } else {
                     // We don't have a proper suggestion
-                    if let Some(macro_name) = calling_macro {
-                        span_lint(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!(
-                                "use of `{}!({}(), ...).unwrap()`. Consider using `{}{}!` instead",
-                                macro_name,
-                                dest_name,
-                                prefix,
-                                macro_name.replace("write", "print")
-                            )
-                        );
-                    } else {
-                        span_lint(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!("use of `{}().write_fmt(...).unwrap()`. Consider using `{}print!` instead", dest_name, prefix),
-                        );
-                    }
+                    let msg = format!("{}. Consider using `{}{}!` instead", msg, prefix, sugg_mac);
+                    span_lint(cx, EXPLICIT_WRITE, expr.span, &msg);
                 }
-
             }
         }
     }
