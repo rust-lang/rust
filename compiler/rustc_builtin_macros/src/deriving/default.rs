@@ -132,18 +132,52 @@ fn extract_default_variant<'a>(
     let variant = match default_variants.as_slice() {
         [variant] => variant,
         [] => {
-            cx.struct_span_err(trait_span, "no default declared")
-                .help("make a unit variant default by placing `#[default]` above it")
-                .emit();
+            let possible_defaults = enum_def
+                .variants
+                .iter()
+                .filter(|variant| matches!(variant.data, VariantData::Unit(..)))
+                .filter(|variant| !cx.sess.contains_name(&variant.attrs, sym::non_exhaustive));
+
+            let mut diag = cx.struct_span_err(trait_span, "no default declared");
+            diag.help("make a unit variant default by placing `#[default]` above it");
+            for variant in possible_defaults {
+                // Suggest making each unit variant default.
+                diag.tool_only_span_suggestion(
+                    variant.span,
+                    &format!("make `{}` default", variant.ident),
+                    format!("#[default] {}", variant.ident),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            diag.emit();
 
             return Err(());
         }
         [first, rest @ ..] => {
-            cx.struct_span_err(trait_span, "multiple declared defaults")
-                .span_label(first.span, "first default")
-                .span_labels(rest.iter().map(|variant| variant.span), "additional default")
-                .note("only one variant can be default")
-                .emit();
+            let mut diag = cx.struct_span_err(trait_span, "multiple declared defaults");
+            diag.span_label(first.span, "first default");
+            diag.span_labels(rest.iter().map(|variant| variant.span), "additional default");
+            diag.note("only one variant can be default");
+            for variant in &default_variants {
+                // Suggest making each variant already tagged default.
+                let suggestion = default_variants
+                    .iter()
+                    .filter_map(|v| {
+                        if v.ident == variant.ident {
+                            None
+                        } else {
+                            Some((cx.sess.find_by_name(&v.attrs, kw::Default)?.span, String::new()))
+                        }
+                    })
+                    .collect();
+
+                diag.tool_only_multipart_suggestion(
+                    &format!("make `{}` default", variant.ident),
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            diag.emit();
 
             return Err(());
         }
