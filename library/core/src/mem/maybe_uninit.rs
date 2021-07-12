@@ -79,7 +79,7 @@ use crate::ptr;
 /// // a `MaybeUninit<T>` may be invalid, and hence this is not UB:
 /// let mut x = MaybeUninit::<&i32>::uninit();
 /// // Set it to a valid value.
-/// unsafe { x.as_mut_ptr().write(&0); }
+/// x.write(&0);
 /// // Extract the initialized data -- this is only allowed *after* properly
 /// // initializing `x`!
 /// let x = unsafe { x.assume_init() };
@@ -135,7 +135,7 @@ use crate::ptr;
 ///     // this loop, we have a memory leak, but there is no memory safety
 ///     // issue.
 ///     for elem in &mut data[..] {
-///         *elem = MaybeUninit::new(vec![42]);
+///         elem.write(vec![42]);
 ///     }
 ///
 ///     // Everything is initialized. Transmute the array to the
@@ -161,7 +161,7 @@ use crate::ptr;
 /// let mut data_len: usize = 0;
 ///
 /// for elem in &mut data[0..500] {
-///     *elem = MaybeUninit::new(String::from("hello"));
+///     elem.write(String::from("hello"));
 ///     data_len += 1;
 /// }
 ///
@@ -543,7 +543,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
-    /// unsafe { x.as_mut_ptr().write(vec![0, 1, 2]); }
+    /// x.write(vec![0, 1, 2]);
     /// // Create a reference into the `MaybeUninit<Vec<u32>>`.
     /// // This is okay because we initialized it.
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
@@ -602,7 +602,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<bool>::uninit();
-    /// unsafe { x.as_mut_ptr().write(true); }
+    /// x.write(true);
     /// let x_init = unsafe { x.assume_init() };
     /// assert_eq!(x_init, true);
     /// ```
@@ -751,7 +751,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// // Initialize `x`:
-    /// unsafe { x.as_mut_ptr().write(vec![1, 2, 3]); }
+    /// x.write(vec![1, 2, 3]);
     /// // Now that our `MaybeUninit<_>` is known to be initialized, it is okay to
     /// // create a shared reference to it:
     /// let x: &Vec<u32> = unsafe {
