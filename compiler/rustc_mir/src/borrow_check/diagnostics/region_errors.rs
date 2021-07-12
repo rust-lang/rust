@@ -213,7 +213,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     placeholder,
                     error_element,
                 } => {
-                    let error_vid = self.regioncx.region_from_element(longer_fr, error_element);
+                    let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
 
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
                     let (_, span) = self.regioncx.find_outlives_blame_span(
