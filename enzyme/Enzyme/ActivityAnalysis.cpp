@@ -82,6 +82,15 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io", "$ss5print",
     "_ZNSt7__cxx1112basic_string"};
 
+const std::set<std::string> InactiveGlobals = {
+    "ompi_request_null",
+    "ompi_mpi_double",
+    "ompi_mpi_comm_world",
+    "stderr",
+    "stdout",
+    "stdin",
+};
+
 const std::map<std::string, size_t> MPIInactiveCommAllocators = {
     {"MPI_Graph_create", 5},
     {"MPI_Comm_split", 2},
@@ -105,6 +114,7 @@ const std::set<std::string> KnownInactiveFunctions = {
     "__cxa_guard_abort",
     "printf",
     "putchar",
+    "fprintf",
     "vprintf",
     "puts",
     "fflush",
@@ -145,6 +155,7 @@ const std::set<std::string> KnownInactiveFunctions = {
     "MPI_Test",
     "MPI_Probe", // double check potential syncronization
     "MPI_Barrier",
+    "MPI_Abort",
     "MPI_Get_count",
     "MPI_Comm_free",
     "MPI_Comm_get_parent",
@@ -240,7 +251,8 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
 
   // only the recv buffer is inactive for mpi send/recv
   if (Name == "MPI_Recv" || Name == "PMPI_Recv" ||
-      Name == "MPI_Send" || Name == "PMPI_Send") {
+      Name == "MPI_Send" || Name == "PMPI_Send" ||
+      Name == "MPI_Irecv" || Name == "MPI_Isend") {
     return val != CI->getOperand(0);
   }
 
@@ -732,7 +744,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       return true;
     }
 
-    if (GI->getName().contains("enzyme_const")) {
+    if (GI->getName().contains("enzyme_const") || InactiveGlobals.count(GI->getName().str())) {
       InsertConstantValue(TR, Val);
       return true;
     }
