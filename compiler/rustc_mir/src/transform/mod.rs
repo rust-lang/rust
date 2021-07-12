@@ -24,6 +24,7 @@ pub mod cleanup_post_borrowck;
 pub mod const_debuginfo;
 pub mod const_goto;
 pub mod const_prop;
+pub mod copy_propagation;
 pub mod coverage;
 pub mod deaggregator;
 pub mod deduplicate_blocks;
@@ -513,6 +514,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &const_debuginfo::ConstDebugInfo,
+        &copy_propagation::CopyPropagation,
         &simplify::SimplifyLocals,
         &multiple_return_terminators::MultipleReturnTerminators,
         &deduplicate_blocks::DeduplicateBlocks,
