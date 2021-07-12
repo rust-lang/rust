@@ -3582,7 +3582,7 @@ public:
         assert(waitFunc);
         auto statusArg = waitFunc->arg_end();
         statusArg--;
-        Value *d_req = gutils->invertPointerM(call.getOperand(6), BuilderZ);
+        Value *d_req = gutils->invertPointerM(call.getOperand(6), Builder2);
         Value *args[] = {
             /*req*/ d_req,
             /*status*/ IRBuilder<>(gutils->inversionAllocs)
