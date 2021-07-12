@@ -11,7 +11,14 @@ static CMP: () = {
     //~| "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 };
 
-static INT_PTR_ARITH: () = unsafe {
+static PTR_INT_CAST: () = {
+    let x = &0 as *const _ as usize;
+    //~^ ERROR could not evaluate static initializer
+    //~| unable to turn pointer into raw bytes
+    let _v = x == x;
+};
+
+static PTR_INT_TRANSMUTE: () = unsafe {
     let x: usize = std::mem::transmute(&0);
     let _v = x + 0;
     //~^ ERROR could not evaluate static initializer
