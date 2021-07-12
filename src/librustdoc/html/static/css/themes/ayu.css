@@ -161,7 +161,7 @@ pre, .rustdoc.source .example-wrap {
 .search-results a {
 	color: #0096cf;
 }
-.search-results a span.desc {
+.search-results a div.desc {
 	color: #c5c5c5;
 }
 
