@@ -2,13 +2,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/copy-intrinsic.rs:27:5
    |
 LL |     copy_nonoverlapping(0x100 as *const i32, dangle, 0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds at offset 40, but is outside bounds of alloc4 which has size 4
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds for 0 bytes at offset 40, but alloc5 has size 4
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/copy-intrinsic.rs:33:5
    |
 LL |     copy_nonoverlapping(dangle, 0x100 as *mut i32, 0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds at offset 40, but is outside bounds of alloc6 which has size 4
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds for 0 bytes at offset 40, but alloc7 has size 4
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/copy-intrinsic.rs:40:5

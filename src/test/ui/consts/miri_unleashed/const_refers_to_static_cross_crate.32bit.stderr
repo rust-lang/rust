@@ -9,7 +9,7 @@ LL | | };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc0──╼                                     │ ╾──╼
+               ╾─alloc1──╼                                     │ ╾──╼
            }
 
 error: could not evaluate constant pattern
@@ -29,7 +29,7 @@ LL | | };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc0──╼                                     │ ╾──╼
+               ╾─alloc1──╼                                     │ ╾──╼
            }
 
 error: could not evaluate constant pattern

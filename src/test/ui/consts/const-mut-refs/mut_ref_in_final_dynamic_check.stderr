@@ -1,19 +1,14 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/mut_ref_in_final_dynamic_check.rs:14:10
    |
 LL |     Some(&mut *(42 as *mut i32))
    |          ^^^^^^^^^^^^^^^^^^^^^^
    |          |
-   |          unable to turn bytes into a pointer
+   |          0x2a is not a valid pointer
    |          inside `helper` at $DIR/mut_ref_in_final_dynamic_check.rs:14:10
-   |          inside `A` at $DIR/mut_ref_in_final_dynamic_check.rs:19:29
 ...
 LL | const A: Option<&mut i32> = helper();
-   | -------------------------------------
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   |                             -------- inside `A` at $DIR/mut_ref_in_final_dynamic_check.rs:19:29
 
 error: encountered dangling pointer in final constant
   --> $DIR/mut_ref_in_final_dynamic_check.rs:26:1
@@ -23,3 +18,4 @@ LL | const B: Option<&mut i32> = helper2();
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0080`.

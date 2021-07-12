@@ -8,7 +8,7 @@ LL | | };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc2──╼                                     │ ╾──╼
+               ╾─alloc3──╼                                     │ ╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -19,7 +19,7 @@ LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─alloc6──╼ ╾─alloc8──╼                         │ ╾──╼╾──╼
+               ╾─alloc7──╼ ╾─alloc9──╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -30,7 +30,7 @@ LL | const BLUNT: &mut i32 = &mut 42;
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc10─╼                                     │ ╾──╼
+               ╾─alloc11─╼                                     │ ╾──╼
            }
 
 warning: skipping const checks

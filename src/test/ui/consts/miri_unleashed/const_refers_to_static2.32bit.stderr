@@ -10,7 +10,7 @@ LL | | };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc0──╼                                     │ ╾──╼
+               ╾─alloc1──╼                                     │ ╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -25,7 +25,7 @@ LL | | };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc1──╼                                     │ ╾──╼
+               ╾─alloc2──╼                                     │ ╾──╼
            }
 
 warning: skipping const checks

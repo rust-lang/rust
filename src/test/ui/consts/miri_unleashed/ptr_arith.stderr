@@ -8,7 +8,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/ptr_arith.rs:16:14
    |
 LL |     let _v = x + 0;
-   |              ^^^^^ cannot cast pointer to integer because it was not created by cast from integer
+   |              ^^^^^ unable to turn pointer into raw bytes
 
 warning: skipping const checks
    |

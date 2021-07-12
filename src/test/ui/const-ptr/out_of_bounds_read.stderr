@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |     unsafe { copy_nonoverlapping(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
+   |              memory access failed: pointer must be in-bounds for 4 bytes at offset 4, but alloc7 has size 4
    |              inside `copy_nonoverlapping::<u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    | 
   ::: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -23,7 +23,7 @@ error[E0080]: evaluation of constant value failed
 LL |     unsafe { copy_nonoverlapping(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
+   |              memory access failed: pointer must be in-bounds for 4 bytes at offset 4, but alloc7 has size 4
    |              inside `copy_nonoverlapping::<u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    | 
   ::: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -47,7 +47,7 @@ error[E0080]: evaluation of constant value failed
 LL |     unsafe { copy_nonoverlapping(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
+   |              memory access failed: pointer must be in-bounds for 4 bytes at offset 4, but alloc7 has size 4
    |              inside `copy_nonoverlapping::<u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    | 
   ::: $SRC_DIR/core/src/ptr/mod.rs:LL:COL

@@ -1,6 +1,6 @@
 // compile-flags: --crate-type=lib
-// normalize-stderr-32bit: "offset 8" -> "offset $$TWO_WORDS"
-// normalize-stderr-64bit: "offset 16" -> "offset $$TWO_WORDS"
+// normalize-stderr-32bit: "8 bytes" -> "$$TWO_WORDS bytes"
+// normalize-stderr-64bit: "16 bytes" -> "$$TWO_WORDS bytes"
 // normalize-stderr-32bit: "size 4" -> "size $$WORD"
 // normalize-stderr-64bit: "size 8" -> "size $$WORD"
 
@@ -67,10 +67,10 @@ const _: *const u8 =
 
 const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
 //~^ ERROR any use of this value will cause an error
-//~| cannot cast pointer to integer
+//~| unable to turn pointer into raw bytes
 //~| WARN this was previously accepted by the compiler but is being phased out
 
 const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
 //~^ ERROR any use of this value will cause an error
-//~| cannot cast pointer to integer
+//~| unable to turn pointer into raw bytes
 //~| WARN this was previously accepted by the compiler but is being phased out
