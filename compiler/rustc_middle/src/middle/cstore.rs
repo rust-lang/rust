@@ -66,7 +66,7 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+#[derive(Debug, Encodable, Decodable, HashStable)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,
@@ -77,7 +77,7 @@ pub struct NativeLib {
     pub dll_imports: Vec<DllImport>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Encodable, Decodable, Hash, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct DllImport {
     pub name: Symbol,
     pub ordinal: Option<u16>,
@@ -94,7 +94,7 @@ pub struct DllImport {
 ///
 /// The usize value, where present, indicates the size of the function's argument list
 /// in bytes.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Encodable, Decodable, Hash, HashStable)]
+#[derive(Clone, PartialEq, Debug, Encodable, Decodable, HashStable)]
 pub enum DllCallingConvention {
     C,
     Stdcall(usize),

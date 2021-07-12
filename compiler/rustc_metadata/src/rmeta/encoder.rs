@@ -1569,7 +1569,7 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
         empty_proc_macro!(self);
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
-        self.lazy(used_libraries.iter().cloned())
+        self.lazy(used_libraries.iter())
     }
 
     fn encode_foreign_modules(&mut self) -> Lazy<[ForeignModule]> {
