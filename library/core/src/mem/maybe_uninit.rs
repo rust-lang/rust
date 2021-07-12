@@ -79,7 +79,7 @@ use crate::ptr;
 /// // a `MaybeUninit<T>` may be invalid, and hence this is not UB:
 /// let mut x = MaybeUninit::<&i32>::uninit();
 /// // Set it to a valid value.
-/// unsafe { x.as_mut_ptr().write(&0); }
+/// x.write(&0);
 /// // Extract the initialized data -- this is only allowed *after* properly
 /// // initializing `x`!
 /// let x = unsafe { x.assume_init() };
@@ -135,7 +135,7 @@ use crate::ptr;
 ///     // this loop, we have a memory leak, but there is no memory safety
 ///     // issue.
 ///     for elem in &mut data[..] {
-///         *elem = MaybeUninit::new(vec![42]);
+///         elem.write(vec![42]);
 ///     }
 ///
 ///     // Everything is initialized. Transmute the array to the
@@ -161,7 +161,7 @@ use crate::ptr;
 /// let mut data_len: usize = 0;
 ///
 /// for elem in &mut data[0..500] {
-///     *elem = MaybeUninit::new(String::from("hello"));
+///     elem.write(String::from("hello"));
 ///     data_len += 1;
 /// }
 ///
@@ -410,7 +410,7 @@ impl<T> MaybeUninit<T> {
     /// (now safely initialized) contents of `self`.
     ///
     /// As the content is stored inside a `MaybeUninit`, the destructor is not
-    /// ran for the inner data if the MaybeUninit leaves scope without a call to
+    /// run for the inner data if the MaybeUninit leaves scope without a call to
     /// [`assume_init`], [`assume_init_drop`], or similar. Code that receives
     /// the mutable reference returned by this function needs to keep this in
     /// mind. The safety model of Rust regards leaks as safe, but they are
@@ -426,7 +426,6 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_extra)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u8>>::uninit();
@@ -445,7 +444,6 @@ impl<T> MaybeUninit<T> {
     /// This usage of the method causes a leak:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_extra)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<String>::uninit();
@@ -456,8 +454,38 @@ impl<T> MaybeUninit<T> {
     /// // x is initialized now:
     /// let s = unsafe { x.assume_init() };
     /// ```
-    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
-    #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    ///
+    /// This method can be used to avoid unsafe in some cases. The example below
+    /// shows a part of an implementation of a fixed sized arena that lends out
+    /// pinned references.
+    /// With `write`, we can avoid the need to write through a raw pointer:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit_extra)]
+    /// use core::pin::Pin;
+    /// use core::mem::MaybeUninit;
+    ///
+    /// struct PinArena<T> {
+    ///     memory: Box<[MaybeUninit<T>]>,
+    ///     len: usize,
+    /// }
+    ///
+    /// impl <T> PinArena<T> {
+    ///     pub fn capacity(&self) -> usize {
+    ///         self.memory.len()
+    ///     }
+    ///     pub fn push(&mut self, val: T) -> Pin<&mut T> {
+    ///         if self.len >= self.capacity() {
+    ///             panic!("Attempted to push to a full pin arena!");
+    ///         }
+    ///         let ref_ = self.memory[self.len].write(val);
+    ///         self.len += 1;
+    ///         unsafe { Pin::new_unchecked(ref_) }
+    ///     }
+    /// }
+    /// ```
+    #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_write", issue = "63567")]
     #[inline(always)]
     pub const fn write(&mut self, val: T) -> &mut T {
         *self = MaybeUninit::new(val);
@@ -478,7 +506,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
-    /// unsafe { x.as_mut_ptr().write(vec![0, 1, 2]); }
+    /// x.write(vec![0, 1, 2]);
     /// // Create a reference into the `MaybeUninit<T>`. This is okay because we initialized it.
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// assert_eq!(x_vec.len(), 3);
@@ -515,7 +543,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
-    /// unsafe { x.as_mut_ptr().write(vec![0, 1, 2]); }
+    /// x.write(vec![0, 1, 2]);
     /// // Create a reference into the `MaybeUninit<Vec<u32>>`.
     /// // This is okay because we initialized it.
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
@@ -574,7 +602,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<bool>::uninit();
-    /// unsafe { x.as_mut_ptr().write(true); }
+    /// x.write(true);
     /// let x_init = unsafe { x.assume_init() };
     /// assert_eq!(x_init, true);
     /// ```
@@ -723,7 +751,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// // Initialize `x`:
-    /// unsafe { x.as_mut_ptr().write(vec![1, 2, 3]); }
+    /// x.write(vec![1, 2, 3]);
     /// // Now that our `MaybeUninit<_>` is known to be initialized, it is okay to
     /// // create a shared reference to it:
     /// let x: &Vec<u32> = unsafe {
@@ -897,9 +925,9 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut array: [MaybeUninit<i32>; 3] = MaybeUninit::uninit_array();
-    /// array[0] = MaybeUninit::new(0);
-    /// array[1] = MaybeUninit::new(1);
-    /// array[2] = MaybeUninit::new(2);
+    /// array[0].write(0);
+    /// array[1].write(1);
+    /// array[2].write(2);
     ///
     /// // SAFETY: Now safe as we initialised all elements
     /// let array = unsafe {
