@@ -45,11 +45,7 @@ impl Definition {
         match self {
             Definition::Field(sf) => Some(sf.visibility(db)),
             Definition::ModuleDef(def) => match def {
-                ModuleDef::Module(it) => {
-                    // FIXME: should work like other cases here.
-                    let parent = it.parent(db)?;
-                    parent.visibility_of(db, def)
-                }
+                ModuleDef::Module(it) => Some(it.visibility(db)),
                 ModuleDef::Function(it) => Some(it.visibility(db)),
                 ModuleDef::Adt(it) => Some(it.visibility(db)),
                 ModuleDef::Const(it) => Some(it.visibility(db)),
