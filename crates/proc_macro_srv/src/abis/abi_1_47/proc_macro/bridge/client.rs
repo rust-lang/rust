@@ -3,6 +3,7 @@
 //! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/client.rs>
 //! augmented with removing unstable features
 
+use super::super::TokenStream as CrateTokenStream;
 use super::*;
 
 macro_rules! define_handles {
@@ -401,26 +402,26 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     b
 }
 
-impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
-    pub fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
+impl Client<fn(CrateTokenStream) -> CrateTokenStream> {
+    pub fn expand1(f: fn(CrateTokenStream) -> CrateTokenStream) -> Self {
         extern "C" fn run(
             bridge: Bridge<'_>,
-            f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
+            f: impl FnOnce(CrateTokenStream) -> CrateTokenStream,
         ) -> Buffer<u8> {
-            run_client(bridge, |input| f(crate::TokenStream(input)).0)
+            run_client(bridge, |input| f(CrateTokenStream(input)).0)
         }
         Client { get_handle_counters: HandleCounters::get, run, f }
     }
 }
 
-impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
-    pub fn expand2(f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream) -> Self {
+impl Client<fn(CrateTokenStream, CrateTokenStream) -> CrateTokenStream> {
+    pub fn expand2(f: fn(CrateTokenStream, CrateTokenStream) -> CrateTokenStream) -> Self {
         extern "C" fn run(
             bridge: Bridge<'_>,
-            f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
+            f: impl FnOnce(CrateTokenStream, CrateTokenStream) -> CrateTokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |(input, input2)| {
-                f(crate::TokenStream(input), crate::TokenStream(input2)).0
+                f(CrateTokenStream(input), CrateTokenStream(input2)).0
             })
         }
         Client { get_handle_counters: HandleCounters::get, run, f }
@@ -433,17 +434,17 @@ pub enum ProcMacro {
     CustomDerive {
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        client: Client<fn(crate::TokenStream) -> crate::TokenStream>,
+        client: Client<fn(CrateTokenStream) -> CrateTokenStream>,
     },
 
     Attr {
         name: &'static str,
-        client: Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream>,
+        client: Client<fn(CrateTokenStream, CrateTokenStream) -> CrateTokenStream>,
     },
 
     Bang {
         name: &'static str,
-        client: Client<fn(crate::TokenStream) -> crate::TokenStream>,
+        client: Client<fn(CrateTokenStream) -> CrateTokenStream>,
     },
 }
 
@@ -465,19 +466,19 @@ impl ProcMacro {
     pub fn custom_derive(
         trait_name: &'static str,
         attributes: &'static [&'static str],
-        expand: fn(crate::TokenStream) -> crate::TokenStream,
+        expand: fn(CrateTokenStream) -> CrateTokenStream,
     ) -> Self {
         ProcMacro::CustomDerive { trait_name, attributes, client: Client::expand1(expand) }
     }
 
     pub fn attr(
         name: &'static str,
-        expand: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
+        expand: fn(CrateTokenStream, CrateTokenStream) -> CrateTokenStream,
     ) -> Self {
         ProcMacro::Attr { name, client: Client::expand2(expand) }
     }
 
-    pub fn bang(name: &'static str, expand: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
+    pub fn bang(name: &'static str, expand: fn(CrateTokenStream) -> CrateTokenStream) -> Self {
         ProcMacro::Bang { name, client: Client::expand1(expand) }
     }
 }

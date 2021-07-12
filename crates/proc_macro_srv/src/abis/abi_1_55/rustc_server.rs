@@ -8,7 +8,7 @@
 //!
 //! FIXME: No span and source file information is implemented yet
 
-use crate::proc_macro::bridge::{self, server};
+use super::proc_macro::bridge::{self, server};
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -97,9 +97,9 @@ impl Extend<TokenStream> for TokenStream {
     }
 }
 
-type Level = crate::proc_macro::Level;
-type LineColumn = crate::proc_macro::LineColumn;
-type SourceFile = crate::proc_macro::SourceFile;
+type Level = super::proc_macro::Level;
+type LineColumn = super::proc_macro::LineColumn;
+type SourceFile = super::proc_macro::SourceFile;
 
 /// A structure representing a diagnostic message and associated children
 /// messages.
@@ -526,6 +526,9 @@ impl server::Literal for Rustc {
         // They must still be present to be ABI-compatible and work with upstream proc_macro.
         "".to_owned()
     }
+    fn from_str(&mut self, _s: &str) -> Result<Self::Literal, ()> {
+        unimplemented!()
+    }
     fn symbol(&mut self, literal: &Self::Literal) -> String {
         literal.text.to_string()
     }
@@ -734,8 +737,8 @@ impl server::MultiSpan for Rustc {
 
 #[cfg(test)]
 mod tests {
+    use super::super::proc_macro::bridge::server::Literal;
     use super::*;
-    use crate::proc_macro::bridge::server::Literal;
 
     #[test]
     fn test_rustc_server_literals() {

@@ -13,7 +13,7 @@
 
 #![deny(unsafe_code)]
 
-pub use crate::proc_macro::{Delimiter, Level, LineColumn, Spacing};
+pub use super::{Delimiter, Level, LineColumn, Spacing};
 use std::fmt;
 use std::hash::Hash;
 use std::marker;

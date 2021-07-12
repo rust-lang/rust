@@ -133,7 +133,7 @@ impl Extend<TokenStream> for TokenStream {
 
 /// Public implementation details for the `TokenStream` type, such as iterators.
 pub mod token_stream {
-    use crate::proc_macro::{bridge, Group, Ident, Literal, Punct, TokenStream, TokenTree};
+    use super::{bridge, Group, Ident, Literal, Punct, TokenStream, TokenTree};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
