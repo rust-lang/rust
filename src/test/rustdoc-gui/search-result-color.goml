@@ -13,6 +13,9 @@ wait-for: "#titles"
 assert-css: ("//*[@class='desc']//*[text()='Just a normal struct.']", {"color": "rgb(197, 197, 197)"})
 assert-css: ("//*[@class='result-name']/*[text()='test_docs::']", {"color": "rgb(0, 150, 207)"})
 
+// Checking the color for "keyword".
+assert-css: ("//*[@class='result-name']//*[text()='(keyword)']", {"color": "rgb(120, 135, 151)"})
+
 // Dark theme
 local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
 reload:
@@ -22,6 +25,9 @@ wait-for: "#titles"
 assert-css: ("//*[@class='desc']//*[text()='Just a normal struct.']", {"color": "rgb(221, 221, 221)"})
 assert-css: ("//*[@class='result-name']/*[text()='test_docs::']", {"color": "rgb(221, 221, 221)"})
 
+// Checking the color for "keyword".
+assert-css: ("//*[@class='result-name']//*[text()='(keyword)']", {"color": "rgb(221, 221, 221)"})
+
 // Light theme
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
@@ -30,3 +36,6 @@ reload:
 wait-for: "#titles"
 assert-css: ("//*[@class='desc']//*[text()='Just a normal struct.']", {"color": "rgb(0, 0, 0)"})
 assert-css: ("//*[@class='result-name']/*[text()='test_docs::']", {"color": "rgb(0, 0, 0)"})
+
+// Checking the color for "keyword".
+assert-css: ("//*[@class='result-name']//*[text()='(keyword)']", {"color": "rgb(0, 0, 0)"})
