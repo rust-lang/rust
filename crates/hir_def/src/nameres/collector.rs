@@ -272,7 +272,6 @@ impl DefCollector<'_> {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         if attrs.cfg().map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false)) {
@@ -323,7 +322,6 @@ impl DefCollector<'_> {
     fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
         let item_tree = self.db.file_item_tree(block.file_id);
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].origin = ModuleOrigin::BlockExpr { block };
         if item_tree
             .top_level_attrs(self.db, self.def_map.krate)
             .cfg()
@@ -2005,11 +2003,12 @@ mod tests {
     }
 
     fn do_resolve(not_ra_fixture: &str) -> DefMap {
-        let (db, _file_id) = TestDB::with_single_file(not_ra_fixture);
+        let (db, file_id) = TestDB::with_single_file(not_ra_fixture);
         let krate = db.test_crate();
 
         let edition = db.crate_graph()[krate].edition;
-        let def_map = DefMap::empty(krate, edition);
+        let module_origin = ModuleOrigin::CrateRoot { definition: file_id };
+        let def_map = DefMap::empty(krate, edition, module_origin);
         do_collect_defs(&db, def_map)
     }
 

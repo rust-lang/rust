@@ -312,7 +312,7 @@ Even when generality is not required, consistency is important.
 
 ## Constructors
 
-Prefer `Default` to zero-argument `new` function
+Prefer `Default` to zero-argument `new` function.
 
 ```rust
 // GOOD
@@ -340,6 +340,10 @@ Prefer `Default` even it has to be implemented manually.
 Use `Vec::new` rather than `vec![]`.
 
 **Rationale:** uniformity, strength reduction.
+
+Avoid using "dummy" states to implement a `Default`.
+If a type doesn't have a sensible default, empty value, don't hide it.
+Let the caller explicitly decide what's the right initial state is.
 
 ## Functions Over Objects
 
