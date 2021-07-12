@@ -3,10 +3,12 @@ use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
     Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
+    Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
+use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -576,4 +578,38 @@ pub(super) fn render_macro_arms<'a>(
 /// as part of an item declaration.
 pub(super) fn render_macro_matcher(matcher: &TokenTree) -> String {
     rustc_ast_pretty::pprust::tt_to_string(matcher)
+}
+
+pub(super) fn display_macro_source(
+    cx: &mut DocContext<'_>,
+    name: Symbol,
+    def: &ast::MacroDef,
+    def_id: DefId,
+    vis: impl Clean<Visibility>,
+) -> String {
+    let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
+    // Extract the spans of all matchers. They represent the "interface" of the macro.
+    let matchers = tts.chunks(4).map(|arm| &arm[0]);
+
+    if def.macro_rules {
+        format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(matchers, ";"))
+    } else {
+        let vis = vis.clean(cx);
+
+        if matchers.len() <= 1 {
+            format!(
+                "{}macro {}{} {{\n    ...\n}}",
+                vis.to_src_with_space(cx.tcx, def_id),
+                name,
+                matchers.map(render_macro_matcher).collect::<String>(),
+            )
+        } else {
+            format!(
+                "{}macro {} {{\n{}}}",
+                vis.to_src_with_space(cx.tcx, def_id),
+                name,
+                render_macro_arms(matchers, ","),
+            )
+        }
+    }
 }

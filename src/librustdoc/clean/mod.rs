@@ -1997,6 +1997,7 @@ fn clean_extern_crate(
         if let Some(items) = inline::try_inline(
             cx,
             cx.tcx.parent_module(krate.hir_id()).to_def_id(),
+            Some(krate.def_id.to_def_id()),
             res,
             name,
             Some(attrs),
@@ -2052,7 +2053,8 @@ fn clean_use_statement(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = !import.vis.node.is_pub()
+    let mut denied = !(import.vis.node.is_pub()
+        || (cx.render_options.document_private && import.vis.node.is_pub_restricted()))
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)
@@ -2088,17 +2090,19 @@ fn clean_use_statement(
         }
         if !denied {
             let mut visited = FxHashSet::default();
+            let import_def_id = import.def_id.to_def_id();
 
             if let Some(mut items) = inline::try_inline(
                 cx,
                 cx.tcx.parent_module(import.hir_id()).to_def_id(),
+                Some(import_def_id),
                 path.res,
                 name,
                 Some(attrs),
                 &mut visited,
             ) {
                 items.push(Item::from_def_id_and_parts(
-                    import.def_id.to_def_id(),
+                    import_def_id,
                     None,
                     ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
                     cx,
@@ -2157,37 +2161,15 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let (item, renamed) = self;
         let name = renamed.unwrap_or(item.ident.name);
-        let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
-        // Extract the macro's matchers. They represent the "interface" of the macro.
-        let matchers = tts.chunks(4).map(|arm| &arm[0]);
-
-        let source = if item.ast.macro_rules {
-            format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(matchers, ";"))
-        } else {
-            let vis = item.vis.clean(cx);
-            let def_id = item.def_id.to_def_id();
-
-            if matchers.len() <= 1 {
-                format!(
-                    "{}macro {}{} {{\n    ...\n}}",
-                    vis.to_src_with_space(cx.tcx, def_id),
-                    name,
-                    matchers.map(render_macro_matcher).collect::<String>(),
-                )
-            } else {
-                format!(
-                    "{}macro {} {{\n{}}}",
-                    vis.to_src_with_space(cx.tcx, def_id),
-                    name,
-                    render_macro_arms(matchers, ","),
-                )
-            }
-        };
+        let def_id = item.def_id.to_def_id();
 
         Item::from_hir_id_and_parts(
             item.hir_id(),
             Some(name),
-            MacroItem(Macro { source, imported_from: None }),
+            MacroItem(Macro {
+                source: display_macro_source(cx, name, &item.ast, def_id, &item.vis),
+                imported_from: None,
+            }),
             cx,
         )
     }
