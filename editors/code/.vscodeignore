@@ -1,6 +1,8 @@
 **
 !language-configuration.json
-!out/src/main.js
+!out
+out/**
+!out/src
 !package.json
 !package-lock.json
 !ra_syntax_tree.tmGrammar.json
