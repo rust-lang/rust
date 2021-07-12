@@ -276,17 +276,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(new_ptr)
     }
 
-    /// Deallocate a local, or do nothing if that local has been made into a global.
-    pub fn deallocate_local(&mut self, ptr: Pointer<M::PointerTag>) -> InterpResult<'tcx> {
-        // The allocation might be already removed by global interning.
-        // This can only really happen in the CTFE instance, not in miri.
-        if self.alloc_map.contains_key(&ptr.alloc_id) {
-            self.deallocate(ptr, None, MemoryKind::Stack)
-        } else {
-            Ok(())
-        }
-    }
-
     pub fn deallocate(
         &mut self,
         ptr: Pointer<M::PointerTag>,
@@ -1110,7 +1099,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // now fill in all the "init" data
-        dest_alloc.mark_compressed_init_range(&compressed, alloc_range(dest.offset, size), num_copies);
+        dest_alloc.mark_compressed_init_range(
+            &compressed,
+            alloc_range(dest.offset, size),
+            num_copies,
+        );
         // copy the relocations to the destination
         dest_alloc.mark_relocation_range(relocations);
 
