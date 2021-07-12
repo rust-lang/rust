@@ -20,8 +20,7 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
-use rustc_lint_defs::FutureBreakage;
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
@@ -317,23 +316,7 @@ impl Session {
         if diags.is_empty() {
             return;
         }
-        // If any future-breakage lints were registered, this lint store
-        // should be available
-        let lint_store = self.lint_store.get().expect("`lint_store` not initialized!");
-        let diags_and_breakage: Vec<(FutureBreakage, Diagnostic)> = diags
-            .into_iter()
-            .map(|diag| {
-                let lint_name = match &diag.code {
-                    Some(DiagnosticId::Lint { name, has_future_breakage: true, .. }) => name,
-                    _ => panic!("Unexpected code in diagnostic {:?}", diag),
-                };
-                let lint = lint_store.name_to_lint(&lint_name);
-                let future_breakage =
-                    lint.lint.future_incompatible.unwrap().future_breakage.unwrap();
-                (future_breakage, diag)
-            })
-            .collect();
-        self.parse_sess.span_diagnostic.emit_future_breakage_report(diags_and_breakage);
+        self.parse_sess.span_diagnostic.emit_future_breakage_report(diags);
     }
 
     pub fn local_stable_crate_id(&self) -> StableCrateId {
