@@ -1,0 +1,16 @@
+// The goal of this test is to check that the external trait implementors, generated with JS,
+// have the same display than the "local" ones.
+goto: file://|DOC_PATH|/implementors/trait.Whatever.html
+assert: "#implementors-list"
+// There are supposed to be two implementors listed.
+assert-count: ("#implementors-list > .impl", 2)
+// Now we check that both implementors have an anchor, an ID and a similar DOM.
+assert: ("#implementors-list > .impl:nth-child(1) > a.anchor")
+assert-attribute: ("#implementors-list > .impl:nth-child(1)", {"id": "impl-Whatever"})
+assert-attribute: ("#implementors-list > .impl:nth-child(1) > a.anchor", {"href": "#impl-Whatever"})
+assert: "#implementors-list > .impl:nth-child(1) > code.in-band"
+
+assert: ("#implementors-list > .impl:nth-child(2) > a.anchor")
+assert-attribute: ("#implementors-list > .impl:nth-child(2)", {"id": "impl-Whatever-1"})
+assert-attribute: ("#implementors-list > .impl:nth-child(2) > a.anchor", {"href": "#impl-Whatever-1"})
+assert: "#implementors-list > .impl:nth-child(2) > code.in-band"

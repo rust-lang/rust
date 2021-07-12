@@ -683,6 +683,9 @@ function hideThemeButtonState() {
             });
         }
 
+        var currentNbImpls = implementors.getElementsByClassName("impl").length;
+        var traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
+        var baseIdName = "impl-" + traitName + "-";
         var libs = Object.getOwnPropertyNames(imp);
         for (var i = 0, llength = libs.length; i < llength; ++i) {
             if (libs[i] === window.currentCrate) { continue; }
@@ -705,6 +708,7 @@ function hideThemeButtonState() {
 
                 var code = document.createElement("code");
                 code.innerHTML = struct.text;
+                addClass(code, "in-band");
 
                 onEachLazy(code.getElementsByTagName("a"), function(elem) {
                     var href = elem.getAttribute("href");
@@ -714,12 +718,18 @@ function hideThemeButtonState() {
                     }
                 });
 
-                var display = document.createElement("h3");
+                var currentId = baseIdName + currentNbImpls;
+                var anchor = document.createElement("a");
+                anchor.href = "#" + currentId;
+                addClass(anchor, "anchor");
+
+                var display = document.createElement("div");
+                display.id = currentId;
                 addClass(display, "impl");
-                display.innerHTML = "<span class=\"in-band\"><table class=\"table-display\">" +
-                    "<tbody><tr><td><code>" + code.outerHTML + "</code></td><td></td></tr>" +
-                    "</tbody></table></span>";
+                display.appendChild(anchor);
+                display.appendChild(code);
                 list.appendChild(display);
+                currentNbImpls += 1;
             }
         }
     };

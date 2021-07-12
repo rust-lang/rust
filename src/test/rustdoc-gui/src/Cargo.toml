@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "test_docs",
+    "lib2",
+    "implementors",
+]
