@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::higher::FormatArgsExpn;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
@@ -97,8 +97,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                     );
                 } else {
                     // We don't have a proper suggestion
-                    let msg = format!("{}. Consider using `{}{}!` instead", msg, prefix, sugg_mac);
-                    span_lint(cx, EXPLICIT_WRITE, expr.span, &msg);
+                    let help = format!("consider using `{}{}!` instead", prefix, sugg_mac);
+                    span_lint_and_help(cx, EXPLICIT_WRITE, expr.span, &msg, None, &help);
                 }
             }
         }
