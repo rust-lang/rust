@@ -272,7 +272,6 @@ impl DefCollector<'_> {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
         let item_tree = self.db.file_item_tree(file_id.into());
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         if attrs.cfg().map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false)) {
@@ -323,7 +322,6 @@ impl DefCollector<'_> {
     fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
         let item_tree = self.db.file_item_tree(block.file_id);
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].origin = ModuleOrigin::BlockExpr { block };
         if item_tree
             .top_level_attrs(self.db, self.def_map.krate)
             .cfg()
@@ -1625,14 +1623,14 @@ impl ModCollector<'_, '_> {
             .resolve_visibility(self.def_collector.db, self.module_id, visibility)
             .unwrap_or(Visibility::Public);
         let modules = &mut self.def_collector.def_map.modules;
-        let res = modules.alloc(ModuleData::default());
-        modules[res].parent = Some(self.module_id);
-        modules[res].origin = match definition {
+        let origin = match definition {
             None => ModuleOrigin::Inline { definition: declaration },
             Some((definition, is_mod_rs)) => {
                 ModuleOrigin::File { declaration, definition, is_mod_rs }
             }
         };
+        let res = modules.alloc(ModuleData::new(origin));
+        modules[res].parent = Some(self.module_id);
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
             modules[res].scope.define_legacy_macro(name, mac)
         }
@@ -2005,11 +2003,12 @@ mod tests {
     }
 
     fn do_resolve(not_ra_fixture: &str) -> DefMap {
-        let (db, _file_id) = TestDB::with_single_file(not_ra_fixture);
+        let (db, file_id) = TestDB::with_single_file(not_ra_fixture);
         let krate = db.test_crate();
 
         let edition = db.crate_graph()[krate].edition;
-        let def_map = DefMap::empty(krate, edition);
+        let module_origin = ModuleOrigin::CrateRoot { definition: file_id };
+        let def_map = DefMap::empty(krate, edition, module_origin);
         do_collect_defs(&db, def_map)
     }
 

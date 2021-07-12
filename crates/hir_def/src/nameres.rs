@@ -145,12 +145,6 @@ pub enum ModuleOrigin {
     },
 }
 
-impl Default for ModuleOrigin {
-    fn default() -> Self {
-        ModuleOrigin::CrateRoot { definition: FileId(0) }
-    }
-}
-
 impl ModuleOrigin {
     fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
@@ -196,7 +190,7 @@ impl ModuleOrigin {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ModuleData {
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
@@ -211,9 +205,14 @@ impl DefMap {
         let _p = profile::span("crate_def_map_query").detail(|| {
             db.crate_graph()[krate].display_name.as_deref().unwrap_or_default().to_string()
         });
-        let edition = db.crate_graph()[krate].edition;
-        let def_map = DefMap::empty(krate, edition);
+
+        let crate_graph = db.crate_graph();
+
+        let edition = crate_graph[krate].edition;
+        let origin = ModuleOrigin::CrateRoot { definition: crate_graph[krate].root_file_id };
+        let def_map = DefMap::empty(krate, edition, origin);
         let def_map = collector::collect_defs(db, def_map, None);
+
         Arc::new(def_map)
     }
 
@@ -231,16 +230,20 @@ impl DefMap {
         let block_info = BlockInfo { block: block_id, parent: block.module };
 
         let parent_map = block.module.def_map(db);
-        let mut def_map = DefMap::empty(block.module.krate, parent_map.edition);
+        let mut def_map = DefMap::empty(
+            block.module.krate,
+            parent_map.edition,
+            ModuleOrigin::BlockExpr { block: block.ast_id },
+        );
         def_map.block = Some(block_info);
 
         let def_map = collector::collect_defs(db, def_map, Some(block.ast_id));
         Some(Arc::new(def_map))
     }
 
-    fn empty(krate: CrateId, edition: Edition) -> DefMap {
+    fn empty(krate: CrateId, edition: Edition, root_module_origin: ModuleOrigin) -> DefMap {
         let mut modules: Arena<ModuleData> = Arena::default();
-        let root = modules.alloc(ModuleData::default());
+        let root = modules.alloc(ModuleData::new(root_module_origin));
         DefMap {
             _c: Count::new(),
             block: None,
@@ -445,6 +448,15 @@ impl DefMap {
 }
 
 impl ModuleData {
+    pub(crate) fn new(origin: ModuleOrigin) -> Self {
+        ModuleData {
+            parent: None,
+            children: FxHashMap::default(),
+            scope: ItemScope::default(),
+            origin,
+        }
+    }
+
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         self.origin.definition_source(db)
