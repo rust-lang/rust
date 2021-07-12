@@ -12,12 +12,15 @@
 // * `"` is treated as the start of a string.
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_middle::ich::NodeIdHashingMode;
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_target::abi::{TagEncoding, Variants};
+use rustc_target::abi::{Integer, TagEncoding, Variants};
 
 use std::fmt::Write;
 
@@ -47,7 +50,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 ) {
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
-    let cpp_like_names = tcx.sess.target.is_like_msvc;
+    let cpp_like_names = cpp_like_names(tcx);
 
     match *t.kind() {
         ty::Bool => output.push_str("bool"),
@@ -424,8 +427,6 @@ fn push_unqualified_item_name(
     disambiguated_data: DisambiguatedDefPathData,
     output: &mut String,
 ) {
-    let cpp_like_names = tcx.sess.target.is_like_msvc;
-
     match disambiguated_data.data {
         DefPathData::CrateRoot => {
             output.push_str(&tcx.crate_name(def_id.krate).as_str());
@@ -433,7 +434,7 @@ fn push_unqualified_item_name(
         DefPathData::ClosureExpr if tcx.generator_kind(def_id).is_some() => {
             // Generators look like closures, but we want to treat them differently
             // in the debug info.
-            if cpp_like_names {
+            if cpp_like_names(tcx) {
                 write!(output, "generator${}", disambiguated_data.disambiguator).unwrap();
             } else {
                 write!(output, "{{generator#{}}}", disambiguated_data.disambiguator).unwrap();
@@ -444,7 +445,7 @@ fn push_unqualified_item_name(
                 output.push_str(&name.as_str());
             }
             DefPathDataName::Anon { namespace } => {
-                if cpp_like_names {
+                if cpp_like_names(tcx) {
                     write!(output, "{}${}", namespace, disambiguated_data.disambiguator).unwrap();
                 } else {
                     write!(output, "{{{}#{}}}", namespace, disambiguated_data.disambiguator)
@@ -478,25 +479,65 @@ fn push_generic_params_internal<'tcx>(
         match type_parameter {
             GenericArgKind::Type(type_parameter) => {
                 push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
-                output.push_str(", ");
             }
-            GenericArgKind::Const(const_parameter) => match const_parameter.val {
-                ty::ConstKind::Param(param) => write!(output, "{}, ", param.name).unwrap(),
-                _ => write!(
-                    output,
-                    "0x{:x}, ",
-                    const_parameter.eval_bits(tcx, ty::ParamEnv::reveal_all(), const_parameter.ty)
-                )
-                .unwrap(),
-            },
+            GenericArgKind::Const(ct) => {
+                push_const_param(tcx, ct, output);
+            }
             other => bug!("Unexpected non-erasable generic: {:?}", other),
         }
+
+        output.push_str(", ");
     }
 
     output.pop();
     output.pop();
 
     push_close_angle_bracket(tcx, output);
+}
+
+fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: &mut String) {
+    match ct.val {
+        ty::ConstKind::Param(param) => {
+            write!(output, "{}", param.name)
+        }
+        _ => match ct.ty.kind() {
+            ty::Int(ity) => {
+                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty);
+                let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                write!(output, "{}", val)
+            }
+            ty::Uint(_) => {
+                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty);
+                write!(output, "{}", val)
+            }
+            ty::Bool => {
+                let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                write!(output, "{}", val)
+            }
+            _ => {
+                // If we cannot evaluate the constant to a known type, we fall back
+                // to emitting a stable hash value of the constant. This isn't very pretty
+                // but we get a deterministic, virtually unique value for the constant.
+                let hcx = &mut tcx.create_stable_hashing_context();
+                let mut hasher = StableHasher::new();
+                hcx.while_hashing_spans(false, |hcx| {
+                    hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+                        ct.val.hash_stable(hcx, &mut hasher);
+                    });
+                });
+                // Let's only emit 64 bits of the hash value. That should be plenty for
+                // avoiding collisions and will make the emitted type names shorter.
+                let hash: u64 = hasher.finish();
+
+                if cpp_like_names(tcx) {
+                    write!(output, "CONST${:x}", hash)
+                } else {
+                    write!(output, "{{CONST#{:x}}}", hash)
+                }
+            }
+        },
+    }
+    .unwrap();
 }
 
 pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, output: &mut String) {
@@ -507,9 +548,13 @@ pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, out
 fn push_close_angle_bracket<'tcx>(tcx: TyCtxt<'tcx>, output: &mut String) {
     // MSVC debugger always treats `>>` as a shift, even when parsing templates,
     // so add a space to avoid confusion.
-    if tcx.sess.target.is_like_msvc && output.ends_with('>') {
+    if cpp_like_names(tcx) && output.ends_with('>') {
         output.push(' ')
     };
 
     output.push('>');
+}
+
+fn cpp_like_names(tcx: TyCtxt<'_>) -> bool {
+    tcx.sess.target.is_like_msvc
 }
