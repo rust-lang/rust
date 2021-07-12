@@ -111,6 +111,7 @@ pub fn defer<F: FnOnce()>(f: F) -> impl Drop {
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), repr(transparent))]
+#[derive(Debug)]
 pub struct JodChild(pub std::process::Child);
 
 impl ops::Deref for JodChild {
