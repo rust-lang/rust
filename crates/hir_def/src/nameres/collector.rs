@@ -1625,14 +1625,14 @@ impl ModCollector<'_, '_> {
             .resolve_visibility(self.def_collector.db, self.module_id, visibility)
             .unwrap_or(Visibility::Public);
         let modules = &mut self.def_collector.def_map.modules;
-        let res = modules.alloc(ModuleData::default());
-        modules[res].parent = Some(self.module_id);
-        modules[res].origin = match definition {
+        let origin = match definition {
             None => ModuleOrigin::Inline { definition: declaration },
             Some((definition, is_mod_rs)) => {
                 ModuleOrigin::File { declaration, definition, is_mod_rs }
             }
         };
+        let res = modules.alloc(ModuleData::new(origin));
+        modules[res].parent = Some(self.module_id);
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
             modules[res].scope.define_legacy_macro(name, mac)
         }
