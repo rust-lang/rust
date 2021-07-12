@@ -571,12 +571,12 @@ impl Step for Rustc {
             panic!("Cannot use and generate PGO profiles at the same time");
         }
 
-        let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+        let is_collecting = if let Some(_path) = &builder.config.rust_profile_generate {
             if compiler.stage == 1 {
-                cargo.rustflag(&format!("-Cprofile-generate={}", path));
+                cargo.rustflag("-Zinstrument-coverage");
                 // Apparently necessary to avoid overflowing the counters during
                 // a Cargo build profile
-                cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+                //cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
                 true
             } else {
                 false

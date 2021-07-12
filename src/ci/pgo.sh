@@ -18,7 +18,7 @@ function pgo_perf_benchmark {
     local edition=$2
     curl -o /tmp/$name.rs $github_prefix/collector/benchmarks/$name/src/lib.rs
 
-    RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=$edition \
+    LLVM_PROFILE_FILE="/tmp/rustc-pgo/%m.profraw" RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=$edition \
         --crate-type=lib /tmp/$name.rs
 }
 
@@ -44,6 +44,7 @@ cp -p ../Cargo.lock /tmp/cargo
 
 # Build cargo (with some flags)
 function pgo_cargo {
+    LLVM_PROFILE_FILE="/tmp/rustc-pgo/%m.profraw" \
     RUSTC=./build/$PGO_HOST/stage2/bin/rustc \
         ./build/$PGO_HOST/stage0/bin/cargo $@ \
         --manifest-path /tmp/cargo/Cargo.toml
