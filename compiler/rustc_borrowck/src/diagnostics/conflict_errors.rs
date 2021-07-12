@@ -218,7 +218,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             );
                             if self.fn_self_span_reported.insert(fn_span) {
                                 err.span_note(
-                                    self_arg.span,
+                                    // Check whether the source is accessible
+                                    if self
+                                        .infcx
+                                        .tcx
+                                        .sess
+                                        .source_map()
+                                        .span_to_snippet(self_arg.span)
+                                        .is_ok()
+                                    {
+                                        self_arg.span
+                                    } else {
+                                        fn_call_span
+                                    },
                                     "calling this operator moves the left-hand side",
                                 );
                             }
@@ -429,7 +441,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     deref_target_ty
                 ));
 
-                err.span_note(deref_target, "deref defined here");
+                // Check first whether the source is accessible (issue #87060)
+                if self.infcx.tcx.sess.source_map().span_to_snippet(deref_target).is_ok() {
+                    err.span_note(deref_target, "deref defined here");
+                }
             }
 
             if let Some((_, mut old_err)) =
