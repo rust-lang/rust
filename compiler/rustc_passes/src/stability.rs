@@ -875,7 +875,8 @@ impl Visitor<'tcx> for Checker<'tcx> {
 
     fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
-            self.tcx.check_stability(def_id, Some(id), path.span, None)
+            let method_span = path.segments.last().map(|s| s.ident.span);
+            self.tcx.check_stability(def_id, Some(id), path.span, method_span)
         }
         intravisit::walk_path(self, path)
     }

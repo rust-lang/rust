@@ -34,7 +34,7 @@ warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:83:12
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:88:12
@@ -46,7 +46,7 @@ warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:89:12
    |
 LL |     let _: Struct4<usize> = STRUCT4;
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:90:29
@@ -58,7 +58,7 @@ warning: use of deprecated struct `unstable_generic_param::Struct4`: test
   --> $DIR/generics-default-stability.rs:90:12
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:96:29
@@ -70,7 +70,7 @@ warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:96:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:101:12
@@ -82,7 +82,7 @@ warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:102:12
    |
 LL |     let _: Struct5<usize> = STRUCT5;
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:104:29
@@ -94,7 +94,7 @@ warning: use of deprecated struct `unstable_generic_param::Struct5`: test
   --> $DIR/generics-default-stability.rs:104:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:159:28
@@ -106,7 +106,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:159:12
    |
 LL |     let _: Alias4<isize> = Alias4::Some(1);
-   |            ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:163:12
@@ -118,7 +118,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:164:12
    |
 LL |     let _: Alias4<usize> = ALIAS4;
-   |            ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:165:28
@@ -130,7 +130,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:165:12
    |
 LL |     let _: Alias4<isize> = Alias4::Some(0);
-   |            ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:170:28
@@ -142,7 +142,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:170:12
    |
 LL |     let _: Alias5<isize> = Alias5::Some(1);
-   |            ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:174:12
@@ -154,7 +154,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:175:12
    |
 LL |     let _: Alias5<usize> = ALIAS5;
-   |            ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:177:28
@@ -166,19 +166,19 @@ warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:177:12
    |
 LL |     let _: Alias5<isize> = Alias5::Some(0);
-   |            ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum4::Some`: test
-  --> $DIR/generics-default-stability.rs:231:27
+  --> $DIR/generics-default-stability.rs:231:34
    |
 LL |     let _: Enum4<isize> = Enum4::Some(1);
-   |                           ^^^^^^^^^^^
+   |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
   --> $DIR/generics-default-stability.rs:231:12
    |
 LL |     let _: Enum4<isize> = Enum4::Some(1);
-   |            ^^^^^^^^^^^^
+   |            ^^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
   --> $DIR/generics-default-stability.rs:235:12
@@ -190,31 +190,31 @@ warning: use of deprecated enum `unstable_generic_param::Enum4`: test
   --> $DIR/generics-default-stability.rs:236:12
    |
 LL |     let _: Enum4<usize> = ENUM4;
-   |            ^^^^^^^^^^^^
+   |            ^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum4::Some`: test
-  --> $DIR/generics-default-stability.rs:237:27
+  --> $DIR/generics-default-stability.rs:237:34
    |
 LL |     let _: Enum4<isize> = Enum4::Some(0);
-   |                           ^^^^^^^^^^^
+   |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
   --> $DIR/generics-default-stability.rs:237:12
    |
 LL |     let _: Enum4<isize> = Enum4::Some(0);
-   |            ^^^^^^^^^^^^
+   |            ^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum5::Some`: test
-  --> $DIR/generics-default-stability.rs:242:27
+  --> $DIR/generics-default-stability.rs:242:34
    |
 LL |     let _: Enum5<isize> = Enum5::Some(1);
-   |                           ^^^^^^^^^^^
+   |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
   --> $DIR/generics-default-stability.rs:242:12
    |
 LL |     let _: Enum5<isize> = Enum5::Some(1);
-   |            ^^^^^^^^^^^^
+   |            ^^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
   --> $DIR/generics-default-stability.rs:246:12
@@ -226,19 +226,19 @@ warning: use of deprecated enum `unstable_generic_param::Enum5`: test
   --> $DIR/generics-default-stability.rs:247:12
    |
 LL |     let _: Enum5<usize> = ENUM5;
-   |            ^^^^^^^^^^^^
+   |            ^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum5::Some`: test
-  --> $DIR/generics-default-stability.rs:249:27
+  --> $DIR/generics-default-stability.rs:249:34
    |
 LL |     let _: Enum5<isize> = Enum5::Some(0);
-   |                           ^^^^^^^^^^^
+   |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
   --> $DIR/generics-default-stability.rs:249:12
    |
 LL |     let _: Enum5<isize> = Enum5::Some(0);
-   |            ^^^^^^^^^^^^
+   |            ^^^^^
 
 error[E0658]: use of unstable library feature 'unstable_default'
   --> $DIR/generics-default-stability.rs:35:20
