@@ -139,10 +139,12 @@ macro_rules! install {
 
 install!((self, builder, _config),
     Docs, "src/doc", _config.docs, only_hosts: false, {
-        // `expect` should be safe, only None when config.docs is false,
-        // which is guarded in `should_run`
-        let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
-        install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) = builder.ensure(dist::Docs { host: self.target }) {
+            install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            panic!("docs are not available to install, \
+                check that `build.docs` is true in `config.toml`");
+        }
     };
     Std, "library/std", true, only_hosts: false, {
         for target in &builder.targets {
