@@ -328,10 +328,8 @@ impl<K: DepKind> DepGraph<K> {
 
         let dcx = cx.dep_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
-        let current_fingerprint = hash_result.map(|f| {
-            let mut hcx = dcx.create_stable_hashing_context();
-            f(&mut hcx, &result)
-        });
+        let current_fingerprint =
+            hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
 
         let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 

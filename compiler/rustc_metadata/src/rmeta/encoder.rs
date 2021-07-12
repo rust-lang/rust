@@ -423,7 +423,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.definitions_untracked().def_path_table();
+        let table = self.tcx.def_path_table();
         if self.is_proc_macro {
             for def_index in std::iter::once(CRATE_DEF_INDEX)
                 .chain(self.tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index))
@@ -443,9 +443,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_hash_map(&mut self) -> LazyValue<DefPathHashMapRef<'static>> {
-        self.lazy(DefPathHashMapRef::BorrowedFromTcx(
-            self.tcx.definitions_untracked().def_path_hash_to_def_index_map(),
-        ))
+        self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
     }
 
     fn encode_source_map(&mut self) -> LazyArray<rustc_span::SourceFile> {
@@ -614,7 +612,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let interpret_alloc_index_bytes = self.position() - i;
 
         // Encode the proc macro data. This affects 'tables',
-        // so we need to do this before we encode the tables
+        // so we need to do this before we encode the tables.
+        // This overwrites def_keys, so it must happen after encode_def_path_table.
         i = self.position();
         let proc_macro_data = self.encode_proc_macros();
         let proc_macro_data_bytes = self.position() - i;
@@ -992,8 +991,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             return;
         }
         let tcx = self.tcx;
-        let hir = tcx.hir();
-        for local_id in hir.iter_local_def_id() {
+        for local_id in tcx.iter_local_def_id() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
@@ -1854,12 +1852,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut ctx = tcx.create_stable_hashing_context();
         let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
-        all_impls.sort_by_cached_key(|&(&simp, _)| {
-            let mut hasher = StableHasher::new();
-            simp.hash_stable(&mut ctx, &mut hasher);
-            hasher.finish::<Fingerprint>();
+        tcx.with_stable_hashing_context(|mut ctx| {
+            all_impls.sort_by_cached_key(|&(&simp, _)| {
+                let mut hasher = StableHasher::new();
+                simp.hash_stable(&mut ctx, &mut hasher);
+                hasher.finish::<Fingerprint>()
+            })
         });
         let all_impls: Vec<_> = all_impls
             .into_iter()

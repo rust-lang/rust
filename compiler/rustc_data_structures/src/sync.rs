@@ -539,6 +539,33 @@ impl<T> RwLock<T> {
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
     }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
+        ReadGuard::clone(rg)
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
+        ReadGuard::rwlock(&rg).read()
+    }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        ReadGuard::leak(self.read())
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        let guard = self.read();
+        let ret = unsafe { &*(&*guard as *const T) };
+        std::mem::forget(guard);
+        ret
+    }
 }
 
 // FIXME: Probably a bad idea

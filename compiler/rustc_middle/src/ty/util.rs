@@ -142,16 +142,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = StableHasher::new();
-        let mut hcx = self.create_stable_hashing_context();
-
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
         let ty = self.erase_regions(ty);
 
-        hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
-        hasher.finish()
+        self.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
+            hasher.finish()
+        })
     }
 
     pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {

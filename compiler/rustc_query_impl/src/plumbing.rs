@@ -291,11 +291,12 @@ macro_rules! define_queries {
                         .and_then(|def_id| tcx.opt_def_kind(def_id))
                 };
                 let hash = || {
-                    let mut hcx = tcx.create_stable_hashing_context();
-                    let mut hasher = StableHasher::new();
-                    std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
-                    key.hash_stable(&mut hcx, &mut hasher);
-                    hasher.finish::<u64>()
+                    tcx.with_stable_hashing_context(|mut hcx|{
+                        let mut hasher = StableHasher::new();
+                        std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
+                        key.hash_stable(&mut hcx, &mut hasher);
+                        hasher.finish::<u64>()
+                    })
                 };
 
                 QueryStackFrame::new(name, description, span, def_kind, hash)
