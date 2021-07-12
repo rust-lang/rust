@@ -223,54 +223,56 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // First: functions that diverge.
         let (dest, ret) = match ret {
-            None => match &*link_name.as_str() {
-                "miri_start_panic" => {
-                    // `check_shim` happens inside `handle_miri_start_panic`.
-                    this.handle_miri_start_panic(abi, link_name, args, unwind)?;
-                    return Ok(None);
-                }
-                // This matches calls to the foreign item `panic_impl`.
-                // The implementation is provided by the function with the `#[panic_handler]` attribute.
-                "panic_impl" => {
-                    // We don't use `check_shim` here because we are just forwarding to the lang
-                    // item. Argument count checking will be performed when the returned `Body` is
-                    // called.
-                    this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
-                    let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
-                    let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                    return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
-                }
-                #[rustfmt::skip]
-                | "exit"
-                | "ExitProcess"
-                => {
-                    let exp_abi = if link_name.as_str() == "exit" {
-                        Abi::C { unwind: false }
-                    } else {
-                        Abi::System { unwind: false }
-                    };
-                    let &[ref code] = this.check_shim(abi, exp_abi, link_name, args)?;
-                    // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
-                    let code = this.read_scalar(code)?.to_i32()?;
-                    throw_machine_stop!(TerminationInfo::Exit(code.into()));
-                }
-                "abort" => {
-                    let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                    throw_machine_stop!(TerminationInfo::Abort(
-                        "the program aborted execution".to_owned()
-                    ))
-                }
-                _ => {
-                    if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                        return Ok(Some(body));
+            None =>
+                match &*link_name.as_str() {
+                    "miri_start_panic" => {
+                        // `check_shim` happens inside `handle_miri_start_panic`.
+                        this.handle_miri_start_panic(abi, link_name, args, unwind)?;
+                        return Ok(None);
                     }
-                    this.handle_unsupported(format!(
-                        "can't call (diverging) foreign function: {}",
-                        link_name
-                    ))?;
-                    return Ok(None);
-                }
-            },
+                    // This matches calls to the foreign item `panic_impl`.
+                    // The implementation is provided by the function with the `#[panic_handler]` attribute.
+                    "panic_impl" => {
+                        // We don't use `check_shim` here because we are just forwarding to the lang
+                        // item. Argument count checking will be performed when the returned `Body` is
+                        // called.
+                        this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
+                        let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
+                        let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
+                        return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
+                    }
+                    #[rustfmt::skip]
+                    | "exit"
+                    | "ExitProcess"
+                    => {
+                        let exp_abi = if link_name.as_str() == "exit" {
+                            Abi::C { unwind: false }
+                        } else {
+                            Abi::System { unwind: false }
+                        };
+                        let &[ref code] = this.check_shim(abi, exp_abi, link_name, args)?;
+                        // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
+                        let code = this.read_scalar(code)?.to_i32()?;
+                        throw_machine_stop!(TerminationInfo::Exit(code.into()));
+                    }
+                    "abort" => {
+                        let &[] =
+                            this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                        throw_machine_stop!(TerminationInfo::Abort(
+                            "the program aborted execution".to_owned()
+                        ))
+                    }
+                    _ => {
+                        if let Some(body) = this.lookup_exported_symbol(link_name)? {
+                            return Ok(Some(body));
+                        }
+                        this.handle_unsupported(format!(
+                            "can't call (diverging) foreign function: {}",
+                            link_name
+                        ))?;
+                        return Ok(None);
+                    }
+                },
             Some(p) => p,
         };
 

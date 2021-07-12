@@ -434,10 +434,11 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
             Err(e) =>
                 return match e.raw_os_error() {
                     Some(error) => Ok(error),
-                    None => throw_unsup_format!(
-                        "the error {} couldn't be converted to a return value",
-                        e
-                    ),
+                    None =>
+                        throw_unsup_format!(
+                            "the error {} couldn't be converted to a return value",
+                            e
+                        ),
                 },
         }
     }
@@ -1203,13 +1204,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(&this.deref_operand(result_op)?.into())?;
                 Ok(0)
             }
-            Some(Err(e)) => match e.raw_os_error() {
-                // return positive error number on error
-                Some(error) => Ok(error),
-                None => {
-                    throw_unsup_format!("the error {} couldn't be converted to a return value", e)
-                }
-            },
+            Some(Err(e)) =>
+                match e.raw_os_error() {
+                    // return positive error number on error
+                    Some(error) => Ok(error),
+                    None => {
+                        throw_unsup_format!(
+                            "the error {} couldn't be converted to a return value",
+                            e
+                        )
+                    }
+                },
         }
     }
 
@@ -1294,13 +1299,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(&this.deref_operand(result_op)?.into())?;
                 Ok(0)
             }
-            Some(Err(e)) => match e.raw_os_error() {
-                // return positive error number on error
-                Some(error) => Ok(error),
-                None => {
-                    throw_unsup_format!("the error {} couldn't be converted to a return value", e)
-                }
-            },
+            Some(Err(e)) =>
+                match e.raw_os_error() {
+                    // return positive error number on error
+                    Some(error) => Ok(error),
+                    None => {
+                        throw_unsup_format!(
+                            "the error {} couldn't be converted to a return value",
+                            e
+                        )
+                    }
+                },
         }
     }
 

@@ -40,9 +40,10 @@ fn find_sysroot() -> String {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => option_env!("RUST_SYSROOT")
-            .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
-            .to_owned(),
+        _ =>
+            option_env!("RUST_SYSROOT")
+                .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
+                .to_owned(),
     }
 }
 
