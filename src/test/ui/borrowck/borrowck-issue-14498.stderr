@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `***p` which is behind a `&` reference
+error[E0594]: cannot assign to `***p`, which is behind a `&` reference
   --> $DIR/borrowck-issue-14498.rs:16:5
    |
 LL |     let p = &y;

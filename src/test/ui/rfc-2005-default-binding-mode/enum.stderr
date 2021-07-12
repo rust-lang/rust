@@ -1,16 +1,16 @@
-error[E0594]: cannot assign to `*x` which is behind a `&` reference
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/enum.rs:9:5
    |
 LL |     *x += 1;
    |     ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
 
-error[E0594]: cannot assign to `*x` which is behind a `&` reference
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/enum.rs:13:9
    |
 LL |         *x += 1;
    |         ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
 
-error[E0594]: cannot assign to `*x` which is behind a `&` reference
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/enum.rs:19:9
    |
 LL |         *x += 1;
