@@ -6,7 +6,6 @@ use std::{
     io::{self, BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
-    sync::Mutex,
 };
 
 use stdx::JodChild;
@@ -18,8 +17,9 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct ProcMacroProcessSrv {
-    process: Mutex<Process>,
-    stdio: Mutex<(ChildStdin, BufReader<ChildStdout>)>,
+    process: Process,
+    stdin: ChildStdin,
+    stdout: BufReader<ChildStdout>,
 }
 
 impl ProcMacroProcessSrv {
@@ -30,16 +30,13 @@ impl ProcMacroProcessSrv {
         let mut process = Process::run(process_path, args)?;
         let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
-        let srv = ProcMacroProcessSrv {
-            process: Mutex::new(process),
-            stdio: Mutex::new((stdin, stdout)),
-        };
+        let srv = ProcMacroProcessSrv { process, stdin, stdout };
 
         Ok(srv)
     }
 
     pub(crate) fn find_proc_macros(
-        &self,
+        &mut self,
         dylib_path: &Path,
     ) -> Result<Vec<(String, ProcMacroKind)>, tt::ExpansionError> {
         let task = ListMacrosTask { lib: dylib_path.to_path_buf() };
@@ -48,22 +45,18 @@ impl ProcMacroProcessSrv {
         Ok(result.macros)
     }
 
-    pub(crate) fn send_task<R>(&self, req: Request) -> Result<R, tt::ExpansionError>
+    pub(crate) fn send_task<R>(&mut self, req: Request) -> Result<R, tt::ExpansionError>
     where
         R: TryFrom<Response, Error = &'static str>,
     {
-        let mut guard = self.stdio.lock().unwrap_or_else(|e| e.into_inner());
-        let stdio = &mut *guard;
-        let (stdin, stdout) = (&mut stdio.0, &mut stdio.1);
-
         let mut buf = String::new();
-        let res = match send_request(stdin, stdout, req, &mut buf) {
+        let res = match send_request(&mut self.stdin, &mut self.stdout, req, &mut buf) {
             Ok(res) => res,
             Err(err) => {
-                let mut process = self.process.lock().unwrap_or_else(|e| e.into_inner());
+                let result = self.process.child.try_wait();
                 log::error!(
                     "proc macro server crashed, server process state: {:?}, server request error: {:?}",
-                    process.child.try_wait(),
+                    result,
                     err
                 );
                 let res = Response::Error(ResponseError {
