@@ -3589,6 +3589,7 @@ public:
                 .CreateAlloca(
                     cast<PointerType>(statusArg->getType())->getElementType())};
         auto fcall = Builder2.CreateCall(waitFunc, args);
+        fcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
         fcall->setCallingConv(waitFunc->getCallingConv());
 
         auto len_arg = Builder2.CreateZExtOrTrunc(
@@ -3625,9 +3626,11 @@ public:
           Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
           if (Mode == DerivativeMode::ReverseModeCombined)
             firstallocation = lookup(firstallocation, Builder2);
-          else
+          else {
+            firstallocation = Builder2.CreatePHI(Type::getInt8PtrTy(call.getContext()), 0);
             firstallocation = gutils->cacheForReverse(
                 Builder2, firstallocation, getIndex(&call, CacheType::Tape));
+          }
 
           DifferentiableMemCopyFloats(call, call.getOperand(0), firstallocation,
                                       shadow, len_arg, Builder2);
@@ -3712,8 +3715,8 @@ public:
           Builder2.SetInsertPoint(loopBlock);
           auto idx = Builder2.CreatePHI(count->getType(), 2);
           idx->addIncoming(ConstantInt::get(count->getType(), 0, false), currentBlock);
-          Value* inc = Builder2.CreateAdd(idx, ConstantInt::get(count->getType(), 0, false), "", true, true);
-          idx->addIncoming(inc, currentBlock);
+          Value* inc = Builder2.CreateAdd(idx, ConstantInt::get(count->getType(), 1, false), "", true, true);
+          idx->addIncoming(inc, loopBlock);
 
           Value* idxs[] = {idx};
           Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);

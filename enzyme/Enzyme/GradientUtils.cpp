@@ -3979,6 +3979,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
             }
           }
 
+
           if (ctx && lim && start && offset) {
             Value *firstLim = lim;
             Value *firstStart = start;
@@ -4149,6 +4150,12 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   auto found = findInMap(scopeMap, (Value *)inst);
   Value *result = lookupValueFromCache(/*isForwardPass*/ false, BuilderM,
                                        found->second, found->first, isi1);
+  if (result->getType() != inst->getType()) {
+      llvm::errs() << "newFunc: " << *newFunc << "\n";
+      llvm::errs() << "result: " << *result << "\n";
+      llvm::errs() << "inst: " << *inst << "\n";
+      llvm::errs() <<  "val: " << *val << "\n";
+  }
   assert(result->getType() == inst->getType());
   lookup_cache[BuilderM.GetInsertBlock()][val] = result;
   assert(result);
