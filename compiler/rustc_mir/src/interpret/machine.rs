@@ -13,8 +13,8 @@ use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, Allocation, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult, LocalValue,
-    MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar, StackPopUnwind,
+    AllocId, Allocation, Frame, ImmTy, InterpCx, InterpResult, LocalValue, MemPlace, Memory,
+    MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -84,12 +84,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKind: Debug + std::fmt::Display + MayLeak + Eq + 'static;
 
-    /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
-    /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
-    /// The `default()` is used for pointers to consts, statics, vtables and functions.
-    /// The `Debug` formatting is used for displaying pointers; we cannot use `Display`
-    /// as `()` does not implement that, but it should be "nice" output.
-    type PointerTag: Debug + Copy + Eq + Hash + 'static;
+    /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
+    type PointerTag: Provenance + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
     /// For example, Miri uses this to return a function pointer from `dlsym`
@@ -287,7 +283,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// this will return an unusable tag (i.e., accesses will be UB)!
     ///
     /// Called on the id returned by `thread_local_static_alloc_id` and `extern_static_alloc_id`, if needed.
-    fn tag_global_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
+    fn tag_global_base_pointer(
+        memory_extra: &Self::MemoryExtra,
+        ptr: Pointer,
+    ) -> Pointer<Self::PointerTag>;
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
     /// it contains (in relocations) tagged.  The way we construct allocations is
@@ -400,31 +399,24 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(StackPopJump::Normal)
     }
 
-    fn int_to_ptr(
-        _mem: &Memory<'mir, 'tcx, Self>,
-        int: u64,
-    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
-        Err((if int == 0 {
-            // This is UB, seriously.
-            // (`DanglingIntPointer` with these exact arguments has special printing code.)
-            err_ub!(DanglingIntPointer(0, CheckInAllocMsg::InboundsTest))
-        } else {
-            // This is just something we cannot support during const-eval.
-            err_unsup!(ReadBytesAsPointer)
-        })
-        .into())
-    }
+    /// "Int-to-pointer cast"
+    fn ptr_from_addr(
+        mem: &Memory<'mir, 'tcx, Self>,
+        addr: u64,
+    ) -> Pointer<Option<Self::PointerTag>>;
 
-    fn ptr_to_int(
-        _mem: &Memory<'mir, 'tcx, Self>,
-        _ptr: Pointer<Self::PointerTag>,
-    ) -> InterpResult<'tcx, u64>;
+    /// Convert a pointer with provenance into an allocation-offset pair,
+    /// or a `None` with an absolute address if that conversion is not possible.
+    fn ptr_get_alloc(
+        mem: &Memory<'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+    ) -> (Option<AllocId>, Size);
 }
 
 // A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
 // (CTFE and ConstProp) use the same instance.  Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
-    type PointerTag = ();
+    type PointerTag = AllocId;
     type ExtraFnVal = !;
 
     type MemoryMap =
@@ -467,19 +459,33 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     #[inline(always)]
     fn init_allocation_extra<'b>(
         _memory_extra: &Self::MemoryExtra,
-        _id: AllocId,
+        id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
         // We do not use a tag so we can just cheaply forward the allocation
-        (alloc, ())
+        (alloc, id)
     }
 
     #[inline(always)]
     fn tag_global_base_pointer(
         _memory_extra: &Self::MemoryExtra,
-        _id: AllocId,
-    ) -> Self::PointerTag {
-        ()
+        ptr: Pointer<AllocId>,
+    ) -> Pointer<AllocId> {
+        ptr
+    }
+
+    #[inline(always)]
+    fn ptr_from_addr(_mem: &Memory<$mir, $tcx, Self>, addr: u64) -> Pointer<Option<AllocId>> {
+        Pointer::new(None, Size::from_bytes(addr))
+    }
+
+    #[inline(always)]
+    fn ptr_get_alloc(
+        _mem: &Memory<$mir, $tcx, Self>,
+        ptr: Pointer<AllocId>,
+    ) -> (Option<AllocId>, Size) {
+        let (alloc_id, offset) = ptr.into_parts();
+        (Some(alloc_id), offset)
     }
 }

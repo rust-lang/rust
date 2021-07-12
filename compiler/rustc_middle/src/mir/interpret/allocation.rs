@@ -25,7 +25,7 @@ use crate::ty;
 /// module provides higher-level access.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
-pub struct Allocation<Tag = (), Extra = ()> {
+pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
     bytes: Vec<u8>,
@@ -154,25 +154,17 @@ impl<Tag> Allocation<Tag> {
     }
 }
 
-impl Allocation<()> {
-    /// Add Tag and Extra fields
-    pub fn with_tags_and_extra<T, E>(
+impl Allocation {
+    /// Convert Tag and add Extra fields
+    pub fn with_prov_and_extra<Tag, Extra>(
         self,
-        mut tagger: impl FnMut(AllocId) -> T,
-        extra: E,
-    ) -> Allocation<T, E> {
+        mut tagger: impl FnMut(AllocId) -> Tag,
+        extra: Extra,
+    ) -> Allocation<Tag, Extra> {
         Allocation {
             bytes: self.bytes,
             relocations: Relocations::from_presorted(
-                self.relocations
-                    .iter()
-                    // The allocations in the relocations (pointers stored *inside* this allocation)
-                    // all get the base pointer tag.
-                    .map(|&(offset, ((), alloc))| {
-                        let tag = tagger(alloc);
-                        (offset, (tag, alloc))
-                    })
-                    .collect(),
+                self.relocations.iter().map(|&(offset, tag)| (offset, tagger(tag))).collect(),
             ),
             init_mask: self.init_mask,
             align: self.align,
@@ -339,8 +331,8 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             self.check_relocations(cx, range)?;
         } else {
             // Maybe a pointer.
-            if let Some(&(tag, alloc_id)) = self.relocations.get(&range.start) {
-                let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits), tag);
+            if let Some(&prov) = self.relocations.get(&range.start) {
+                let ptr = Pointer::new(prov, Size::from_bytes(bits));
                 return Ok(ScalarMaybeUninit::Scalar(ptr.into()));
             }
         }
@@ -371,9 +363,12 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             }
         };
 
-        let bytes = match val.to_bits_or_ptr(range.size, cx) {
-            Err(val) => u128::from(val.offset.bytes()),
-            Ok(data) => data,
+        let (bytes, provenance) = match val.to_bits_or_ptr(range.size, cx) {
+            Err(val) => {
+                let (provenance, offset) = val.into_parts();
+                (u128::from(offset.bytes()), Some(provenance))
+            }
+            Ok(data) => (data, None),
         };
 
         let endian = cx.data_layout().endian;
@@ -381,8 +376,8 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation.
-        if let Scalar::Ptr(val) = val {
-            self.relocations.insert(range.start, (val.tag, val.alloc_id));
+        if let Some(provenance) = provenance {
+            self.relocations.insert(range.start, provenance);
         }
 
         Ok(())
@@ -392,11 +387,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
 /// Relocations.
 impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Returns all relocations overlapping with the given pointer-offset pair.
-    pub fn get_relocations(
-        &self,
-        cx: &impl HasDataLayout,
-        range: AllocRange,
-    ) -> &[(Size, (Tag, AllocId))] {
+    pub fn get_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Tag)] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = range.start.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
@@ -582,24 +573,24 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
-/// Relocations.
+/// "Relocations" stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-pub struct Relocations<Tag = (), Id = AllocId>(SortedMap<Size, (Tag, Id)>);
+pub struct Relocations<Tag = AllocId>(SortedMap<Size, Tag>);
 
-impl<Tag, Id> Relocations<Tag, Id> {
+impl<Tag> Relocations<Tag> {
     pub fn new() -> Self {
         Relocations(SortedMap::new())
     }
 
     // The caller must guarantee that the given relocations are already sorted
     // by address and contain no duplicates.
-    pub fn from_presorted(r: Vec<(Size, (Tag, Id))>) -> Self {
+    pub fn from_presorted(r: Vec<(Size, Tag)>) -> Self {
         Relocations(SortedMap::from_presorted_elements(r))
     }
 }
 
 impl<Tag> Deref for Relocations<Tag> {
-    type Target = SortedMap<Size, (Tag, AllocId)>;
+    type Target = SortedMap<Size, Tag>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -614,7 +605,7 @@ impl<Tag> DerefMut for Relocations<Tag> {
 
 /// A partial, owned list of relocations to transfer into another allocation.
 pub struct AllocationRelocations<Tag> {
-    relative_relocations: Vec<(Size, (Tag, AllocId))>,
+    relative_relocations: Vec<(Size, Tag)>,
 }
 
 impl<Tag: Copy, Extra> Allocation<Tag, Extra> {

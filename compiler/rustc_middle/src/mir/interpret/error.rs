@@ -238,7 +238,9 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     PointerUseAfterFree(AllocId),
     /// Used a pointer outside the bounds it is valid for.
     PointerOutOfBounds {
-        ptr: Pointer,
+        alloc_id: AllocId,
+        offset: Size,
+        size: Size,
         msg: CheckInAllocMsg,
         allocation_size: Size,
     },
@@ -307,19 +309,19 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidVtableAlignment(msg) => write!(f, "invalid vtable: alignment {}", msg),
             UnterminatedCString(p) => write!(
                 f,
-                "reading a null-terminated string starting at {} with no null found before end of allocation",
+                "reading a null-terminated string starting at {:?} with no null found before end of allocation",
                 p,
             ),
             PointerUseAfterFree(a) => {
                 write!(f, "pointer to {} was dereferenced after this allocation got freed", a)
             }
-            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
+            PointerOutOfBounds { alloc_id, offset, size, msg, allocation_size } => write!(
                 f,
-                "{}pointer must be in-bounds at offset {}, \
-                           but is outside bounds of {} which has size {}",
+                "{}pointer must be in-bounds for {} bytes at offset {}, but {} has size {}",
                 msg,
-                ptr.offset.bytes(),
-                ptr.alloc_id,
+                size.bytes(),
+                offset.bytes(),
+                alloc_id,
                 allocation_size.bytes()
             ),
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
@@ -348,13 +350,13 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             InvalidTag(val) => write!(f, "enum value has invalid tag: {}", val),
             InvalidFunctionPointer(p) => {
-                write!(f, "using {} as function pointer but it does not point to a function", p)
+                write!(f, "using {:?} as function pointer but it does not point to a function", p)
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
             InvalidUninitBytes(Some((alloc, access))) => write!(
                 f,
-                "reading {} byte{} of memory starting at {}, \
-                 but {} byte{} {} uninitialized starting at {}, \
+                "reading {} byte{} of memory starting at {:?}, \
+                 but {} byte{} {} uninitialized starting at {:?}, \
                  and this operation requires initialized memory",
                 access.access_size.bytes(),
                 pluralize!(access.access_size.bytes()),

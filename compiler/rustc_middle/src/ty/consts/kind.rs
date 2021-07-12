@@ -1,7 +1,6 @@
 use std::convert::TryInto;
 
-use crate::mir::interpret::ConstValue;
-use crate::mir::interpret::Scalar;
+use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::mir::Promoted;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
@@ -59,7 +58,7 @@ impl<'tcx> ConstKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_scalar(self) -> Option<Scalar> {
+    pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
         self.try_to_value()?.try_to_scalar()
     }
 

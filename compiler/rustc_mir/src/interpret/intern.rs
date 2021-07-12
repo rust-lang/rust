@@ -20,18 +20,17 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
-use rustc_target::abi::Size;
 
 use rustc_ast::Mutability;
 
-use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar, ValueVisitor};
+use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, ValueVisitor};
 use crate::const_eval;
 
 pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
     'mir,
     'tcx,
     MemoryKind = T,
-    PointerTag = (),
+    PointerTag = AllocId,
     ExtraFnVal = !,
     FrameExtra = (),
     AllocExtra = (),
@@ -136,7 +135,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     };
     // link the alloc id to the actual allocation
     let alloc = tcx.intern_const_alloc(alloc);
-    leftover_allocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
+    leftover_allocations.extend(alloc.relocations().iter().map(|&(_, alloc_id)| alloc_id));
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
 }
@@ -203,10 +202,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             if let ty::Dynamic(..) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                if let Scalar::Ptr(vtable) = mplace.meta.unwrap_meta() {
+                let ptr = self.ecx.scalar_to_ptr(mplace.meta.unwrap_meta());
+                if let Some(alloc_id) = ptr.provenance {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
-                    self.intern_shallow(vtable.alloc_id, InternMode::Const, None);
+                    self.intern_shallow(alloc_id, InternMode::Const, None);
                 } else {
                     // Validation will error (with a better message) on an invalid vtable pointer.
                     // Let validation show the error message, but make sure it *does* error.
@@ -216,7 +216,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             }
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
-            if let Scalar::Ptr(ptr) = mplace.ptr {
+            if let Some(alloc_id) = mplace.ptr.provenance {
                 // Compute the mode with which we intern this. Our goal here is to make as many
                 // statics as we can immutable so they can be placed in read-only memory by LLVM.
                 let ref_mode = match self.mode {
@@ -259,7 +259,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                         InternMode::Const
                     }
                 };
-                match self.intern_shallow(ptr.alloc_id, ref_mode, Some(referenced_ty)) {
+                match self.intern_shallow(alloc_id, ref_mode, Some(referenced_ty)) {
                     // No need to recurse, these are interned already and statics may have
                     // cycles, so we don't want to recurse there
                     Some(IsStaticOrFn) => {}
@@ -321,7 +321,7 @@ where
         leftover_allocations,
         // The outermost allocation must exist, because we allocated it with
         // `Memory::allocate`.
-        ret.ptr.assert_ptr().alloc_id,
+        ret.ptr.provenance.unwrap(),
         base_intern_mode,
         Some(ret.layout.ty),
     );
@@ -395,9 +395,9 @@ where
             }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.set_alloc_id_memory(alloc_id, alloc);
-            for &(_, ((), reloc)) in alloc.relocations().iter() {
-                if leftover_allocations.insert(reloc) {
-                    todo.push(reloc);
+            for &(_, alloc_id) in alloc.relocations().iter() {
+                if leftover_allocations.insert(alloc_id) {
+                    todo.push(alloc_id);
                 }
             }
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
@@ -430,9 +430,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
     ) -> InterpResult<'tcx, &'tcx Allocation> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest)?;
-        let ptr = dest.ptr.assert_ptr();
-        assert_eq!(ptr.offset, Size::ZERO);
-        let mut alloc = self.memory.alloc_map.remove(&ptr.alloc_id).unwrap().1;
+        let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
         Ok(self.tcx.intern_const_alloc(alloc))
     }

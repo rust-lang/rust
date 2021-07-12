@@ -8,7 +8,7 @@
 
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fmt;
 use std::ptr;
 
@@ -19,7 +19,8 @@ use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
     alloc_range, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg, GlobalAlloc,
-    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar, ScalarMaybeUninit,
+    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
+    ScalarMaybeUninit,
 };
 use crate::util::pretty;
 
@@ -162,25 +163,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     #[inline]
     pub fn global_base_pointer(
         &self,
-        mut ptr: Pointer,
+        ptr: Pointer<AllocId>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+        let (alloc_id, offset) = ptr.into_parts();
         // We need to handle `extern static`.
-        let ptr = match self.tcx.get_global_alloc(ptr.alloc_id) {
+        let alloc_id = match self.tcx.get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
                 bug!("global memory cannot point to thread-local static")
             }
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_foreign_item(def_id) => {
-                ptr.alloc_id = M::extern_static_alloc_id(self, def_id)?;
-                ptr
+                M::extern_static_alloc_id(self, def_id)?
             }
             _ => {
                 // No need to change the `AllocId`.
-                ptr
+                alloc_id
             }
         };
         // And we need to get the tag.
-        let tag = M::tag_global_base_pointer(&self.extra, ptr.alloc_id);
-        Ok(ptr.with_tag(tag))
+        Ok(M::tag_global_base_pointer(&self.extra, Pointer::new(alloc_id, offset)))
     }
 
     pub fn create_fn_alloc(
@@ -237,18 +237,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // This is a new allocation, not a new global one, so no `global_base_ptr`.
         let (alloc, tag) = M::init_allocation_extra(&self.extra, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
-        Pointer::from(id).with_tag(tag)
+        Pointer::new(tag, Size::ZERO)
     }
 
     pub fn reallocate(
         &mut self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         old_size_and_align: Option<(Size, Align)>,
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        if ptr.offset.bytes() != 0 {
+        let (alloc_id, offset, ptr) = self.ptr_force_alloc(ptr)?;
+        if offset.bytes() != 0 {
             throw_ub_format!(
                 "reallocating {:?} which does not point to the beginning of an object",
                 ptr
@@ -260,7 +261,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let new_ptr = self.allocate(new_size, new_align, kind)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
-            None => self.get_raw(ptr.alloc_id)?.size(),
+            None => self.get_raw(alloc_id)?.size(),
         };
         // This will also call the access hooks.
         self.copy(
@@ -271,50 +272,51 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             old_size.min(new_size),
             /*nonoverlapping*/ true,
         )?;
-        self.deallocate(ptr, old_size_and_align, kind)?;
+        self.deallocate(ptr.into(), old_size_and_align, kind)?;
 
         Ok(new_ptr)
     }
 
     pub fn deallocate(
         &mut self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         old_size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx> {
-        trace!("deallocating: {}", ptr.alloc_id);
+        let (alloc_id, offset, ptr) = self.ptr_force_alloc(ptr)?;
+        trace!("deallocating: {}", alloc_id);
 
-        if ptr.offset.bytes() != 0 {
+        if offset.bytes() != 0 {
             throw_ub_format!(
                 "deallocating {:?} which does not point to the beginning of an object",
                 ptr
             );
         }
 
-        let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
+        let (alloc_kind, mut alloc) = match self.alloc_map.remove(&alloc_id) {
             Some(alloc) => alloc,
             None => {
                 // Deallocating global memory -- always an error
-                return Err(match self.tcx.get_global_alloc(ptr.alloc_id) {
+                return Err(match self.tcx.get_global_alloc(alloc_id) {
                     Some(GlobalAlloc::Function(..)) => {
-                        err_ub_format!("deallocating {}, which is a function", ptr.alloc_id)
+                        err_ub_format!("deallocating {}, which is a function", alloc_id)
                     }
                     Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
-                        err_ub_format!("deallocating {}, which is static memory", ptr.alloc_id)
+                        err_ub_format!("deallocating {}, which is static memory", alloc_id)
                     }
-                    None => err_ub!(PointerUseAfterFree(ptr.alloc_id)),
+                    None => err_ub!(PointerUseAfterFree(alloc_id)),
                 }
                 .into());
             }
         };
 
         if alloc.mutability == Mutability::Not {
-            throw_ub_format!("deallocating immutable allocation {}", ptr.alloc_id);
+            throw_ub_format!("deallocating immutable allocation {}", alloc_id);
         }
         if alloc_kind != kind {
             throw_ub_format!(
                 "deallocating {}, which is {} memory, using {} deallocation operation",
-                ptr.alloc_id,
+                alloc_id,
                 alloc_kind,
                 kind
             );
@@ -323,7 +325,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             if size != alloc.size() || align != alloc.align {
                 throw_ub_format!(
                     "incorrect layout on deallocation: {} has size {} and alignment {}, but gave size {} and alignment {}",
-                    ptr.alloc_id,
+                    alloc_id,
                     alloc.size().bytes(),
                     alloc.align.bytes(),
                     size.bytes(),
@@ -337,7 +339,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         M::memory_deallocated(&mut self.extra, &mut alloc.extra, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
-        let old = self.dead_alloc_map.insert(ptr.alloc_id, (size, alloc.align));
+        let old = self.dead_alloc_map.insert(alloc_id, (size, alloc.align));
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
         }
@@ -345,52 +347,61 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Internal helper function for APIs that offer memory access based on `Scalar` pointers.
+    /// Internal helper function to determine the allocation and offset of a pointer (if any).
     #[inline(always)]
-    pub(super) fn check_ptr_access(
+    fn get_ptr_access(
         &self,
-        sptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Option<(AllocId, Size, Pointer<M::PointerTag>)>> {
         let align = M::enforce_alignment(&self.extra).then_some(align);
-        self.check_and_deref_ptr(sptr, size, align, CheckInAllocMsg::MemoryAccessTest, |ptr| {
-            let (size, align) =
-                self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferenceable)?;
-            Ok((size, align, ptr))
-        })
+        self.check_and_deref_ptr(
+            ptr,
+            size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+            |alloc_id, offset, ptr| {
+                let (size, align) =
+                    self.get_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
+                Ok((size, align, (alloc_id, offset, ptr)))
+            },
+        )
     }
 
-    /// Check if the given scalar is allowed to do a memory access of given `size` and `align`
+    /// Check if the given pointer is allowed to do a memory access of given `size` and `align`
     /// (ignoring `M::enforce_alignment`). The caller can control the error message for the
     /// out-of-bounds case.
     #[inline(always)]
     pub fn check_ptr_access_align(
         &self,
-        sptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Align,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
-        self.check_and_deref_ptr(sptr, size, Some(align), msg, |ptr| {
-            let (size, align) =
-                self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferenceable)?;
+        self.check_and_deref_ptr(ptr, size, Some(align), msg, |alloc_id, _, _| {
+            let (size, align) = self.get_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
             Ok((size, align, ()))
         })?;
         Ok(())
     }
 
     /// Low-level helper function to check if a ptr is in-bounds and potentially return a reference
-    /// to the allocation it points to. Supports both shared and mutable references, to the actual
+    /// to the allocation it points to. Supports both shared and mutable references, as the actual
     /// checking is offloaded to a helper closure. `align` defines whether and which alignment check
     /// is done. Returns `None` for size 0, and otherwise `Some` of what `alloc_size` returned.
     fn check_and_deref_ptr<T>(
         &self,
-        sptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Option<Align>,
         msg: CheckInAllocMsg,
-        alloc_size: impl FnOnce(Pointer<M::PointerTag>) -> InterpResult<'tcx, (Size, Align, T)>,
+        alloc_size: impl FnOnce(
+            AllocId,
+            Size,
+            Pointer<M::PointerTag>,
+        ) -> InterpResult<'tcx, (Size, Align, T)>,
     ) -> InterpResult<'tcx, Option<T>> {
         fn check_offset_align(offset: u64, align: Align) -> InterpResult<'static> {
             if offset % align.bytes() == 0 {
@@ -405,53 +416,50 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        // Normalize to a `Pointer` if we definitely need one.
-        let normalized = if size.bytes() == 0 {
-            // Can be an integer, just take what we got.  We do NOT `force_bits` here;
-            // if this is already a `Pointer` we want to do the bounds checks!
-            sptr
+        // Extract from the pointer an `Option<AllocId>` and an offset, which is relative to the
+        // allocation or (if that is `None`) an absolute address.
+        let ptr_or_addr = if size.bytes() == 0 {
+            // Let's see what we can do, but don't throw errors if there's nothing there.
+            self.ptr_try_get_alloc(ptr)
         } else {
-            // A "real" access, we must get a pointer to be able to check the bounds.
-            Scalar::from(self.force_ptr(sptr)?)
+            // A "real" access, we insist on getting an `AllocId`.
+            Ok(self.ptr_force_alloc(ptr)?)
         };
-        Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
-            Ok(bits) => {
-                let bits = u64::try_from(bits).unwrap(); // it's ptr-sized
-                assert!(size.bytes() == 0);
+        Ok(match ptr_or_addr {
+            Err(addr) => {
+                // No memory is actually being accessed.
+                debug_assert!(size.bytes() == 0);
                 // Must be non-null.
-                if bits == 0 {
+                if addr == 0 {
                     throw_ub!(DanglingIntPointer(0, msg))
                 }
                 // Must be aligned.
                 if let Some(align) = align {
-                    check_offset_align(bits, align)?;
+                    check_offset_align(addr, align)?;
                 }
                 None
             }
-            Err(ptr) => {
-                let (allocation_size, alloc_align, ret_val) = alloc_size(ptr)?;
+            Ok((alloc_id, offset, ptr)) => {
+                let (allocation_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, ptr)?;
                 // Test bounds. This also ensures non-null.
-                // It is sufficient to check this for the end pointer. The addition
-                // checks for overflow.
-                let end_ptr = ptr.offset(size, self)?;
-                if end_ptr.offset > allocation_size {
-                    // equal is okay!
-                    throw_ub!(PointerOutOfBounds { ptr: end_ptr.erase_tag(), msg, allocation_size })
+                // It is sufficient to check this for the end pointer. Also check for overflow!
+                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > allocation_size) {
+                    throw_ub!(PointerOutOfBounds { alloc_id, offset, size, allocation_size, msg })
                 }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
                     if M::force_int_for_alignment_check(&self.extra) {
-                        let bits = self
-                            .force_bits(ptr.into(), self.pointer_size())
+                        let addr = Scalar::from(ptr)
+                            .to_machine_usize(&self.tcx)
                             .expect("ptr-to-int cast for align check should never fail");
-                        check_offset_align(bits.try_into().unwrap(), align)?;
+                        check_offset_align(addr, align)?;
                     } else {
                         // Check allocation alignment and offset alignment.
                         if alloc_align.bytes() < align.bytes() {
                             throw_ub!(AlignmentCheckFailed { has: alloc_align, required: align });
                         }
-                        check_offset_align(ptr.offset.bytes(), align)?;
+                        check_offset_align(offset.bytes(), align)?;
                     }
                 }
 
@@ -463,13 +471,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Test if the pointer might be null.
-    pub fn ptr_may_be_null(&self, ptr: Pointer<M::PointerTag>) -> bool {
-        let (size, _align) = self
-            .get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
-            .expect("alloc info with MaybeDead cannot fail");
-        // If the pointer is out-of-bounds, it may be null.
-        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-        ptr.offset > size
+    pub fn ptr_may_be_null(&self, ptr: Pointer<Option<M::PointerTag>>) -> bool {
+        match self.ptr_try_get_alloc(ptr) {
+            Ok((alloc_id, offset, _)) => {
+                let (size, _align) = self
+                    .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
+                    .expect("alloc info with MaybeDead cannot fail");
+                // If the pointer is out-of-bounds, it may be null.
+                // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+                offset > size
+            }
+            Err(offset) => offset == 0,
+        }
     }
 }
 
@@ -522,8 +535,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             alloc,
             M::GLOBAL_KIND.map(MemoryKind::Machine),
         );
-        // Sanity check that this is the same pointer we would have gotten via `global_base_pointer`.
-        debug_assert_eq!(tag, M::tag_global_base_pointer(memory_extra, id));
+        // Sanity check that this is the same tag we would have gotten via `global_base_pointer`.
+        debug_assert!(tag == M::tag_global_base_pointer(memory_extra, id.into()).provenance);
         Ok(alloc)
     }
 
@@ -566,30 +579,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// "Safe" (bounds and align-checked) allocation access.
     pub fn get<'a>(
         &'a self,
-        sptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::PointerTag, M::AllocExtra>>> {
         let align = M::enforce_alignment(&self.extra).then_some(align);
         let ptr_and_alloc = self.check_and_deref_ptr(
-            sptr,
+            ptr,
             size,
             align,
             CheckInAllocMsg::MemoryAccessTest,
-            |ptr| {
-                let alloc = self.get_raw(ptr.alloc_id)?;
-                Ok((alloc.size(), alloc.align, (ptr, alloc)))
+            |alloc_id, offset, ptr| {
+                let alloc = self.get_raw(alloc_id)?;
+                Ok((alloc.size(), alloc.align, (alloc_id, offset, ptr, alloc)))
             },
         )?;
-        if let Some((ptr, alloc)) = ptr_and_alloc {
+        if let Some((alloc_id, offset, ptr, alloc)) = ptr_and_alloc {
             M::memory_read(&self.extra, &alloc.extra, ptr, size)?;
-            let range = alloc_range(ptr.offset, size);
-            Ok(Some(AllocRef { alloc, range, tcx: self.tcx, alloc_id: ptr.alloc_id }))
+            let range = alloc_range(offset, size);
+            Ok(Some(AllocRef { alloc, range, tcx: self.tcx, alloc_id }))
         } else {
             // Even in this branch we have to be sure that we actually access the allocation, in
             // order to ensure that `static FOO: Type = FOO;` causes a cycle error instead of
             // magically pulling *any* ZST value from the ether. However, the `get_raw` above is
-            // always called when `sptr` is truly a `Pointer`, so we are good.
+            // always called when `ptr` has an `AllocId`.
             Ok(None)
         }
     }
@@ -638,19 +651,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// "Safe" (bounds and align-checked) allocation access.
     pub fn get_mut<'a>(
         &'a mut self,
-        sptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::PointerTag, M::AllocExtra>>> {
-        let ptr = self.check_ptr_access(sptr, size, align)?;
-        if let Some(ptr) = ptr {
+        let parts = self.get_ptr_access(ptr, size, align)?;
+        if let Some((alloc_id, offset, ptr)) = parts {
             let tcx = self.tcx;
             // FIXME: can we somehow avoid looking up the allocation twice here?
             // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
-            let (alloc, extra) = self.get_raw_mut(ptr.alloc_id)?;
+            let (alloc, extra) = self.get_raw_mut(alloc_id)?;
             M::memory_written(extra, &mut alloc.extra, ptr, size)?;
-            let range = alloc_range(ptr.offset, size);
-            Ok(Some(AllocRefMut { alloc, range, tcx, alloc_id: ptr.alloc_id }))
+            let range = alloc_range(offset, size);
+            Ok(Some(AllocRefMut { alloc, range, tcx, alloc_id }))
         } else {
             Ok(None)
         }
@@ -740,14 +753,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     pub fn get_fn(
         &self,
-        ptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
-        let ptr = self.force_ptr(ptr)?; // We definitely need a pointer value.
-        if ptr.offset.bytes() != 0 {
-            throw_ub!(InvalidFunctionPointer(ptr.erase_tag()))
+        let (alloc_id, offset, ptr) = self.ptr_force_alloc(ptr)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidFunctionPointer(ptr.erase_for_fmt()))
         }
-        self.get_fn_alloc(ptr.alloc_id)
-            .ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_tag())).into())
+        self.get_fn_alloc(alloc_id)
+            .ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_for_fmt())).into())
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
@@ -786,7 +799,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 if reachable.insert(id) {
                     // This is a new allocation, add its relocations to `todo`.
                     if let Some((_, alloc)) = self.alloc_map.get(id) {
-                        todo.extend(alloc.relocations().values().map(|&(_, target_id)| target_id));
+                        todo.extend(alloc.relocations().values().map(|tag| tag.erase_for_fmt()));
                     }
                 }
             }
@@ -820,14 +833,14 @@ pub struct DumpAllocs<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 'mir, 'tcx, M> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Cannot be a closure because it is generic in `Tag`, `Extra`.
-        fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
+        fn write_allocation_track_relocs<'tcx, Tag: Provenance, Extra>(
             fmt: &mut std::fmt::Formatter<'_>,
             tcx: TyCtxt<'tcx>,
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Tag, Extra>,
         ) -> std::fmt::Result {
-            for &(_, target_id) in alloc.relocations().values() {
-                allocs_to_print.push_back(target_id);
+            for alloc_id in alloc.relocations().values().map(|tag| tag.erase_for_fmt()) {
+                allocs_to_print.push_back(alloc_id);
             }
             write!(fmt, "{}", pretty::display_allocation(tcx, alloc))
         }
@@ -930,8 +943,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// Reads the given number of bytes from memory. Returns them as a slice.
     ///
     /// Performs appropriate bounds checks.
-    pub fn read_bytes(&self, sptr: Scalar<M::PointerTag>, size: Size) -> InterpResult<'tcx, &[u8]> {
-        let alloc_ref = match self.get(sptr, size, Align::ONE)? {
+    pub fn read_bytes(
+        &self,
+        ptr: Pointer<Option<M::PointerTag>>,
+        size: Size,
+    ) -> InterpResult<'tcx, &[u8]> {
+        let alloc_ref = match self.get(ptr, size, Align::ONE)? {
             Some(a) => a,
             None => return Ok(&[]), // zero-sized access
         };
@@ -948,7 +965,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// Performs appropriate bounds checks.
     pub fn write_bytes(
         &mut self,
-        sptr: Scalar<M::PointerTag>,
+        ptr: Pointer<Option<M::PointerTag>>,
         src: impl IntoIterator<Item = u8>,
     ) -> InterpResult<'tcx> {
         let mut src = src.into_iter();
@@ -957,7 +974,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         assert_eq!(lower, len, "can only write iterators with a precise length");
 
         let size = Size::from_bytes(len);
-        let alloc_ref = match self.get_mut(sptr, size, Align::ONE)? {
+        let alloc_ref = match self.get_mut(ptr, size, Align::ONE)? {
             Some(alloc_ref) => alloc_ref,
             None => {
                 // zero-sized access
@@ -984,9 +1001,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     pub fn copy(
         &mut self,
-        src: Scalar<M::PointerTag>,
+        src: Pointer<Option<M::PointerTag>>,
         src_align: Align,
-        dest: Scalar<M::PointerTag>,
+        dest: Pointer<Option<M::PointerTag>>,
         dest_align: Align,
         size: Size,
         nonoverlapping: bool,
@@ -996,9 +1013,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     pub fn copy_repeatedly(
         &mut self,
-        src: Scalar<M::PointerTag>,
+        src: Pointer<Option<M::PointerTag>>,
         src_align: Align,
-        dest: Scalar<M::PointerTag>,
+        dest: Pointer<Option<M::PointerTag>>,
         dest_align: Align,
         size: Size,
         num_copies: u64,
@@ -1006,22 +1023,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let tcx = self.tcx;
         // We need to do our own bounds-checks.
-        let src = self.check_ptr_access(src, size, src_align)?;
-        let dest = self.check_ptr_access(dest, size * num_copies, dest_align)?; // `Size` multiplication
+        let src_parts = self.get_ptr_access(src, size, src_align)?;
+        let dest_parts = self.get_ptr_access(dest, size * num_copies, dest_align)?; // `Size` multiplication
 
         // FIXME: we look up both allocations twice here, once ebfore for the `check_ptr_access`
         // and once below to get the underlying `&[mut] Allocation`.
 
         // Source alloc preparations and access hooks.
-        let src = match src {
+        let (src_alloc_id, src_offset, src) = match src_parts {
             None => return Ok(()), // Zero-sized *source*, that means dst is also zero-sized and we have nothing to do.
             Some(src_ptr) => src_ptr,
         };
-        let src_alloc = self.get_raw(src.alloc_id)?;
+        let src_alloc = self.get_raw(src_alloc_id)?;
         M::memory_read(&self.extra, &src_alloc.extra, src, size)?;
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
-        let dest = match dest {
+        let (dest_alloc_id, dest_offset, dest) = match dest_parts {
             None => return Ok(()), // Zero-sized *destiantion*.
             Some(dest_ptr) => dest_ptr,
         };
@@ -1033,23 +1050,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // relocations overlapping the edges; those would not be handled correctly).
         let relocations = src_alloc.prepare_relocation_copy(
             self,
-            alloc_range(src.offset, size),
-            dest.offset,
+            alloc_range(src_offset, size),
+            dest_offset,
             num_copies,
         );
         // Prepare a copy of the initialization mask.
-        let compressed = src_alloc.compress_uninit_range(alloc_range(src.offset, size));
+        let compressed = src_alloc.compress_uninit_range(alloc_range(src_offset, size));
         // This checks relocation edges on the src.
         let src_bytes = src_alloc
-            .get_bytes_with_uninit_and_ptr(&tcx, alloc_range(src.offset, size))
-            .map_err(|e| e.to_interp_error(src.alloc_id))?
+            .get_bytes_with_uninit_and_ptr(&tcx, alloc_range(src_offset, size))
+            .map_err(|e| e.to_interp_error(src_alloc_id))?
             .as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
 
         // Destination alloc preparations and access hooks.
-        let (dest_alloc, extra) = self.get_raw_mut(dest.alloc_id)?;
+        let (dest_alloc, extra) = self.get_raw_mut(dest_alloc_id)?;
         M::memory_written(extra, &mut dest_alloc.extra, dest, size * num_copies)?;
         let dest_bytes = dest_alloc
-            .get_bytes_mut_ptr(&tcx, alloc_range(dest.offset, size * num_copies))
+            .get_bytes_mut_ptr(&tcx, alloc_range(dest_offset, size * num_copies))
             .as_mut_ptr();
 
         if compressed.no_bytes_init() {
@@ -1059,7 +1076,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
-            dest_alloc.mark_init(alloc_range(dest.offset, size * num_copies), false); // `Size` multiplication
+            dest_alloc.mark_init(alloc_range(dest_offset, size * num_copies), false); // `Size` multiplication
             dest_alloc.mark_relocation_range(relocations);
             return Ok(());
         }
@@ -1070,11 +1087,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // The pointers above remain valid even if the `HashMap` table is moved around because they
         // point into the `Vec` storing the bytes.
         unsafe {
-            if src.alloc_id == dest.alloc_id {
+            if src_alloc_id == dest_alloc_id {
                 if nonoverlapping {
                     // `Size` additions
-                    if (src.offset <= dest.offset && src.offset + size > dest.offset)
-                        || (dest.offset <= src.offset && dest.offset + size > src.offset)
+                    if (src_offset <= dest_offset && src_offset + size > dest_offset)
+                        || (dest_offset <= src_offset && dest_offset + size > src_offset)
                     {
                         throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
                     }
@@ -1101,7 +1118,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // now fill in all the "init" data
         dest_alloc.mark_compressed_init_range(
             &compressed,
-            alloc_range(dest.offset, size),
+            alloc_range(dest_offset, size),
             num_copies,
         );
         // copy the relocations to the destination
@@ -1113,24 +1130,44 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
 /// Machine pointer introspection.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    pub fn force_ptr(
-        &self,
-        scalar: Scalar<M::PointerTag>,
-    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        match scalar {
-            Scalar::Ptr(ptr) => Ok(ptr),
-            _ => M::int_to_ptr(&self, scalar.to_machine_usize(self)?),
+    pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
+        match scalar.to_bits_or_ptr(self.pointer_size(), &self.tcx) {
+            Err(ptr) => ptr.into(),
+            Ok(bits) => {
+                let addr = u64::try_from(bits).unwrap();
+                M::ptr_from_addr(&self, addr)
+            }
         }
     }
 
-    pub fn force_bits(
+    /// Internal helper for turning a "maybe pointer" into a proper pointer (and some information
+    /// about where it points), or an absolute address.
+    pub(super) fn ptr_try_get_alloc(
         &self,
-        scalar: Scalar<M::PointerTag>,
-        size: Size,
-    ) -> InterpResult<'tcx, u128> {
-        match scalar.to_bits_or_ptr(size, self) {
-            Ok(bits) => Ok(bits),
-            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)?.into()),
+        ptr: Pointer<Option<M::PointerTag>>,
+    ) -> Result<(AllocId, Size, Pointer<M::PointerTag>), u64> {
+        match ptr.into_pointer_or_offset() {
+            Ok(ptr) => {
+                let (alloc_id, offset) = M::ptr_get_alloc(self, ptr);
+                if let Some(alloc_id) = alloc_id {
+                    Ok((alloc_id, offset, ptr))
+                } else {
+                    Err(offset.bytes())
+                }
+            }
+            Err(offset) => Err(offset.bytes()),
         }
+    }
+
+    /// Internal helper for turning a "maybe pointer" into a proper pointer (and some information
+    /// about where it points).
+    #[inline(always)]
+    pub(super) fn ptr_force_alloc(
+        &self,
+        ptr: Pointer<Option<M::PointerTag>>,
+    ) -> InterpResult<'tcx, (AllocId, Size, Pointer<M::PointerTag>)> {
+        self.ptr_try_get_alloc(ptr).map_err(|offset| {
+            err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
+        })
     }
 }

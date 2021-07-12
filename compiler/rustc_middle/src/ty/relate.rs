@@ -597,7 +597,7 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
         }
         (ConstValue::Scalar(Scalar::Ptr(a_val)), ConstValue::Scalar(Scalar::Ptr(b_val))) => {
             a_val == b_val
-                || match (tcx.global_alloc(a_val.alloc_id), tcx.global_alloc(b_val.alloc_id)) {
+                || match (tcx.global_alloc(a_val.provenance), tcx.global_alloc(b_val.provenance)) {
                     (GlobalAlloc::Function(a_instance), GlobalAlloc::Function(b_instance)) => {
                         a_instance == b_instance
                     }

@@ -10,7 +10,9 @@ use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
 use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
-use super::{AllocId, AllocRange, Allocation, InterpResult, Pointer, PointerArithmetic};
+use super::{
+    AllocId, AllocRange, Allocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
@@ -47,12 +49,6 @@ pub enum ConstValue<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 32);
 
-impl From<Scalar> for ConstValue<'tcx> {
-    fn from(s: Scalar) -> Self {
-        Self::Scalar(s)
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
     type Lifted = ConstValue<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
@@ -70,7 +66,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
-    pub fn try_to_scalar(&self) -> Option<Scalar> {
+    pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
             ConstValue::ByRef { .. } | ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
@@ -120,9 +116,12 @@ impl<'tcx> ConstValue<'tcx> {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 16 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
+///
+/// These variants would be private if there was a convenient way to achieve that in Rust.
+/// Do *not* match on a `Scalar`! Use the various `to_*` methods instead.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub enum Scalar<Tag = ()> {
+pub enum Scalar<Tag = AllocId> {
     /// The raw bytes of a simple value.
     Int(ScalarInt),
 
@@ -133,11 +132,11 @@ pub enum Scalar<Tag = ()> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Scalar, 24);
+//FIXME static_assert_size!(Scalar, 24);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: fmt::Debug> fmt::Debug for Scalar<Tag> {
+impl<Tag: Provenance> fmt::Debug for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr) => write!(f, "{:?}", ptr),
@@ -146,11 +145,11 @@ impl<Tag: fmt::Debug> fmt::Debug for Scalar<Tag> {
     }
 }
 
-impl<Tag: fmt::Debug> fmt::Display for Scalar<Tag> {
+impl<Tag: Provenance> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr) => write!(f, "pointer to {}", ptr),
-            Scalar::Int { .. } => fmt::Debug::fmt(self, f),
+            Scalar::Ptr(ptr) => write!(f, "pointer to {:?}", ptr),
+            Scalar::Int(int) => write!(f, "{:?}", int),
         }
     }
 }
@@ -169,36 +168,36 @@ impl<Tag> From<Double> for Scalar<Tag> {
     }
 }
 
-impl Scalar<()> {
-    /// Tag this scalar with `new_tag` if it is a pointer, leave it unchanged otherwise.
-    ///
-    /// Used by `MemPlace::replace_tag`.
-    #[inline]
-    pub fn with_tag<Tag>(self, new_tag: Tag) -> Scalar<Tag> {
-        match self {
-            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.with_tag(new_tag)),
-            Scalar::Int(int) => Scalar::Int(int),
-        }
+impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
+    #[inline(always)]
+    fn from(ptr: Pointer<Tag>) -> Self {
+        Scalar::Ptr(ptr)
+    }
+}
+
+impl<Tag> From<ScalarInt> for Scalar<Tag> {
+    #[inline(always)]
+    fn from(ptr: ScalarInt) -> Self {
+        Scalar::Int(ptr)
     }
 }
 
 impl<'tcx, Tag> Scalar<Tag> {
     pub const ZST: Self = Scalar::Int(ScalarInt::ZST);
 
-    /// Erase the tag from the scalar, if any.
-    ///
-    /// Used by error reporting code to avoid having the error type depend on `Tag`.
-    #[inline]
-    pub fn erase_tag(self) -> Scalar {
-        match self {
-            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_tag()),
-            Scalar::Int(int) => Scalar::Int(int),
-        }
-    }
-
     #[inline]
     pub fn null_ptr(cx: &impl HasDataLayout) -> Self {
         Scalar::Int(ScalarInt::null(cx.data_layout().pointer_size))
+    }
+
+    /// Create a Scalar from a pointer with an `Option<_>` tag (where `None` represents a plain integer).
+    pub fn from_maybe_pointer(ptr: Pointer<Option<Tag>>, cx: &impl HasDataLayout) -> Self {
+        match ptr.into_parts() {
+            (Some(tag), offset) => Scalar::Ptr(Pointer::new(tag, offset)),
+            (None, offset) => {
+                Scalar::Int(ScalarInt::try_from_uint(offset.bytes(), cx.pointer_size()).unwrap())
+            }
+        }
     }
 
     #[inline(always)]
@@ -332,10 +331,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         Scalar::Int(f.into())
     }
 
-    /// This is very rarely the method you want!  You should dispatch on the type
-    /// and use `force_bits`/`assert_bits`/`force_ptr`/`assert_ptr`.
+    /// This is almost certainly not the method you want!  You should dispatch on the type
+    /// and use `to_{u8,u16,...}`/`scalar_to_ptr` to perform ptr-to-int / int-to-ptr casts as needed.
+    ///
     /// This method only exists for the benefit of low-level memory operations
-    /// as well as the implementation of the `force_*` methods.
+    /// as well as the implementation of the above methods.
     #[inline]
     pub fn to_bits_or_ptr(
         self,
@@ -352,28 +352,13 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
-    /// This method is intentionally private!
-    /// It is just a helper for other methods in this file.
-    #[inline]
-    fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
-        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        match self {
-            Scalar::Int(int) => int.to_bits(target_size).map_err(|size| {
-                err_ub!(ScalarSizeMismatch {
-                    target_size: target_size.bytes(),
-                    data_size: size.bytes(),
-                })
-                .into()
-            }),
-            Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
-        }
-    }
-
+    /// Do not call this method! It does not do ptr-to-int casts when needed.
     #[inline(always)]
     pub fn assert_bits(self, target_size: Size) -> u128 {
-        self.to_bits(target_size).expect("expected Raw bits but got a Pointer")
+        self.assert_int().assert_bits(target_size)
     }
 
+    /// Do not call this method! It does not do ptr-to-int casts when needed.
     #[inline]
     pub fn assert_int(self) -> ScalarInt {
         match self {
@@ -382,6 +367,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    /// Do not call this method! It does not do int-to-ptr casts when needed.
     #[inline]
     pub fn assert_ptr(self) -> Pointer<Tag> {
         match self {
@@ -400,6 +386,44 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn is_ptr(self) -> bool {
         matches!(self, Scalar::Ptr(_))
+    }
+}
+
+impl<'tcx, Tag: Provenance> Scalar<Tag> {
+    /// Erase the tag from the scalar, if any.
+    ///
+    /// Used by error reporting code to avoid having the error type depend on `Tag`.
+    #[inline]
+    pub fn erase_for_fmt(self) -> Scalar {
+        match self {
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_for_fmt()),
+            Scalar::Int(int) => Scalar::Int(int),
+        }
+    }
+
+    /// Fundamental scalar-to-int (cast) operation. Many convenience wrappers exist below, that you
+    /// likely want to use instead.
+    ///
+    /// Will perform ptr-to-int casts if needed and possible.
+    #[inline]
+    pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
+        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
+        match self {
+            Scalar::Int(int) => int.to_bits(target_size).map_err(|size| {
+                err_ub!(ScalarSizeMismatch {
+                    target_size: target_size.bytes(),
+                    data_size: size.bytes(),
+                })
+                .into()
+            }),
+            Scalar::Ptr(ptr) => {
+                if Tag::OFFSET_IS_ADDR {
+                    Ok(ptr.offset.bytes().into())
+                } else {
+                    throw_unsup!(ReadPointerAsBytes)
+                }
+            }
+        }
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
@@ -507,28 +531,14 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 }
 
-impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
-    #[inline(always)]
-    fn from(ptr: Pointer<Tag>) -> Self {
-        Scalar::Ptr(ptr)
-    }
-}
-
-impl<Tag> From<ScalarInt> for Scalar<Tag> {
-    #[inline(always)]
-    fn from(ptr: ScalarInt) -> Self {
-        Scalar::Int(ptr)
-    }
-}
-
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Hash)]
-pub enum ScalarMaybeUninit<Tag = ()> {
+pub enum ScalarMaybeUninit<Tag = AllocId> {
     Scalar(Scalar<Tag>),
     Uninit,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ScalarMaybeUninit, 24);
+//FIXME static_assert_size!(ScalarMaybeUninit, 24);
 
 impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]
@@ -546,7 +556,7 @@ impl<Tag> From<Pointer<Tag>> for ScalarMaybeUninit<Tag> {
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: fmt::Debug> fmt::Debug for ScalarMaybeUninit<Tag> {
+impl<Tag: Provenance> fmt::Debug for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "<uninitialized>"),
@@ -555,7 +565,7 @@ impl<Tag: fmt::Debug> fmt::Debug for ScalarMaybeUninit<Tag> {
     }
 }
 
-impl<Tag: fmt::Debug> fmt::Display for ScalarMaybeUninit<Tag> {
+impl<Tag: Provenance> fmt::Display for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
@@ -564,23 +574,25 @@ impl<Tag: fmt::Debug> fmt::Display for ScalarMaybeUninit<Tag> {
     }
 }
 
-impl<'tcx, Tag> ScalarMaybeUninit<Tag> {
-    /// Erase the tag from the scalar, if any.
-    ///
-    /// Used by error reporting code to avoid having the error type depend on `Tag`.
-    #[inline]
-    pub fn erase_tag(self) -> ScalarMaybeUninit {
-        match self {
-            ScalarMaybeUninit::Scalar(s) => ScalarMaybeUninit::Scalar(s.erase_tag()),
-            ScalarMaybeUninit::Uninit => ScalarMaybeUninit::Uninit,
-        }
-    }
-
+impl<Tag> ScalarMaybeUninit<Tag> {
     #[inline]
     pub fn check_init(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),
+        }
+    }
+}
+
+impl<'tcx, Tag: Provenance> ScalarMaybeUninit<Tag> {
+    /// Erase the tag from the scalar, if any.
+    ///
+    /// Used by error reporting code to avoid having the error type depend on `Tag`.
+    #[inline]
+    pub fn erase_for_fmt(self) -> ScalarMaybeUninit {
+        match self {
+            ScalarMaybeUninit::Scalar(s) => ScalarMaybeUninit::Scalar(s.erase_for_fmt()),
+            ScalarMaybeUninit::Uninit => ScalarMaybeUninit::Uninit,
         }
     }
 

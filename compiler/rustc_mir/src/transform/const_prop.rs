@@ -31,9 +31,8 @@ use rustc_trait_selection::traits;
 use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy,
-    Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup,
-    StackPopUnwind,
+    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
+    Operand as InterpOperand, PlaceTy, Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
 };
 use crate::transform::MirPass;
 
@@ -157,7 +156,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
 struct ConstPropMachine<'mir, 'tcx> {
     /// The virtual call stack.
-    stack: Vec<Frame<'mir, 'tcx, (), ()>>,
+    stack: Vec<Frame<'mir, 'tcx>>,
     /// `OnlyInsideOwnBlock` locals that were written in the current block get erased at the end.
     written_only_inside_own_block_locals: FxHashSet<Local>,
     /// Locals that need to be cleared after every block terminates.
@@ -221,10 +220,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _unwind: Option<rustc_middle::mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         bug!("panics terminators are not evaluated in ConstProp")
-    }
-
-    fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {
-        throw_unsup!(ReadPointerAsBytes)
     }
 
     fn binary_ptr_op(
@@ -759,8 +754,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         }
                     };
 
-                    let arg_value =
-                        this.ecx.force_bits(const_arg.to_scalar()?, const_arg.layout.size)?;
+                    let arg_value = const_arg.to_scalar()?.to_bits(const_arg.layout.size)?;
                     let dest = this.ecx.eval_place(place)?;
 
                     match op {

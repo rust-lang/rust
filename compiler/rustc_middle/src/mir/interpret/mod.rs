@@ -127,7 +127,7 @@ pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMay
 
 pub use self::allocation::{alloc_range, AllocRange, Allocation, InitMask, Relocations};
 
-pub use self::pointer::{Pointer, PointerArithmetic};
+pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
 
 /// Uniquely identifies one of the following:
 /// - A constant

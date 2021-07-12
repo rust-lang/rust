@@ -175,7 +175,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // (a) cast a raw ptr to usize, or
         // (b) cast from an integer-like (including bool, char, enums).
         // In both cases we want the bits.
-        let bits = self.force_bits(src.to_scalar()?, src.layout.size)?;
+        let bits = src.to_scalar()?.to_bits(src.layout.size)?;
         Ok(self.cast_from_scalar(bits, src.layout, cast_ty).into())
     }
 
