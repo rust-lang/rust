@@ -347,7 +347,7 @@ pub fn stdin() -> Stdin {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "stdio_locked", issue = "none")]
+#[unstable(feature = "stdio_locked", issue = "86845")]
 pub fn stdin_locked() -> StdinLock<'static> {
     stdin().into_locked()
 }
@@ -442,7 +442,7 @@ impl Stdin {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "stdio_locked", issue = "none")]
+    #[unstable(feature = "stdio_locked", issue = "86845")]
     pub fn into_locked(self) -> StdinLock<'static> {
         self.lock_any()
     }
@@ -668,7 +668,7 @@ pub fn stdout() -> Stdout {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "stdio_locked", issue = "none")]
+#[unstable(feature = "stdio_locked", issue = "86845")]
 pub fn stdout_locked() -> StdoutLock<'static> {
     stdout().into_locked()
 }
@@ -745,7 +745,7 @@ impl Stdout {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "stdio_locked", issue = "none")]
+    #[unstable(feature = "stdio_locked", issue = "86845")]
     pub fn into_locked(self) -> StdoutLock<'static> {
         self.lock_any()
     }
@@ -945,7 +945,7 @@ pub fn stderr() -> Stderr {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "stdio_locked", issue = "none")]
+#[unstable(feature = "stdio_locked", issue = "86845")]
 pub fn stderr_locked() -> StderrLock<'static> {
     stderr().into_locked()
 }
@@ -1005,7 +1005,7 @@ impl Stderr {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "stdio_locked", issue = "none")]
+    #[unstable(feature = "stdio_locked", issue = "86845")]
     pub fn into_locked(self) -> StderrLock<'static> {
         self.lock_any()
     }
