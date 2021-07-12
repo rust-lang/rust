@@ -1049,7 +1049,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             num_copies,
         );
         // Prepare a copy of the initialization mask.
-        let compressed = src_alloc.compress_uninit_range(src, size);
+        let compressed = src_alloc.compress_uninit_range(alloc_range(src.offset, size));
         // This checks relocation edges on the src.
         let src_bytes = src_alloc
             .get_bytes_with_uninit_and_ptr(&tcx, alloc_range(src.offset, size))
@@ -1110,7 +1110,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // now fill in all the "init" data
-        dest_alloc.mark_compressed_init_range(&compressed, dest, size, num_copies);
+        dest_alloc.mark_compressed_init_range(&compressed, alloc_range(dest.offset, size), num_copies);
         // copy the relocations to the destination
         dest_alloc.mark_relocation_range(relocations);
 
