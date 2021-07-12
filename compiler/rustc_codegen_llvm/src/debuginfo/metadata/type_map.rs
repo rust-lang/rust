@@ -93,8 +93,9 @@ impl<'tcx> UniqueTypeId<'tcx> {
     /// Right now this takes the form of a hex-encoded opaque hash value.
     pub fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
         let mut hasher = StableHasher::new();
-        let mut hcx = tcx.create_stable_hashing_context();
-        hcx.while_hashing_spans(false, |hcx| self.hash_stable(hcx, &mut hasher));
+        tcx.with_stable_hashing_context(|mut hcx| {
+            hcx.while_hashing_spans(false, |hcx| self.hash_stable(hcx, &mut hasher))
+        });
         hasher.finish::<Fingerprint>().to_hex()
     }
 

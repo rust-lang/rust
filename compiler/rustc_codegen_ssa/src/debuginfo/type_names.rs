@@ -701,12 +701,14 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // If we cannot evaluate the constant to a known type, we fall back
                 // to emitting a stable hash value of the constant. This isn't very pretty
                 // but we get a deterministic, virtually unique value for the constant.
-                let hcx = &mut tcx.create_stable_hashing_context();
-                let mut hasher = StableHasher::new();
-                hcx.while_hashing_spans(false, |hcx| ct.val().hash_stable(hcx, &mut hasher));
+                //
                 // Let's only emit 64 bits of the hash value. That should be plenty for
                 // avoiding collisions and will make the emitted type names shorter.
-                let hash: u64 = hasher.finish();
+                let hash: u64 = tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    hcx.while_hashing_spans(false, |hcx| ct.val().hash_stable(hcx, &mut hasher));
+                    hasher.finish()
+                });
 
                 if cpp_like_debuginfo(tcx) {
                     write!(output, "CONST${:x}", hash)

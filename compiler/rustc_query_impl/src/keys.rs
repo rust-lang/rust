@@ -39,6 +39,17 @@ impl Key for () {
     }
 }
 
+impl Key for ty::RawLocalDefId {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for ty::InstanceDef<'tcx> {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
