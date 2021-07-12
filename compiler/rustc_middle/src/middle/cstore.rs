@@ -5,9 +5,7 @@
 use crate::ty::TyCtxt;
 
 use rustc_ast as ast;
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
@@ -190,26 +188,25 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 pub trait CrateStore: std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
 
-    // resolve
+    // Foreign definitions.
+    // This information is safe to access, since it's hashed as part of the DefPathHash, which incr.
+    // comp. uses to identify a DefId.
     fn def_key(&self, def: DefId) -> DefKey;
-    fn def_kind(&self, def: DefId) -> DefKind;
     fn def_path(&self, def: DefId) -> DefPath;
     fn def_path_hash(&self, def: DefId) -> DefPathHash;
+
+    // This information is safe to access, since it's hashed as part of the StableCrateId, which
+    // incr.  comp. uses to identify a CrateNum.
+    fn crate_name(&self, cnum: CrateNum) -> Symbol;
+    fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId;
+
+    /// Fetch a DefId from a DefPathHash for a foreign crate.
     fn def_path_hash_to_def_id(
         &self,
         cnum: CrateNum,
         index_guess: u32,
         hash: DefPathHash,
     ) -> Option<DefId>;
-
-    // "queries" used in resolve that aren't tracked for incremental compilation
-    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
-    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId;
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-
-    // This is basically a 1-based range of ints, which is a little
-    // silly - I may fix that.
-    fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;

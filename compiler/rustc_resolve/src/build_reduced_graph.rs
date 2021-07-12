@@ -128,7 +128,7 @@ impl<'a> Resolver<'a> {
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
             // This is the crate root
-            (self.cstore().crate_name_untracked(def_id.krate), None)
+            (self.cstore().crate_name(def_id.krate), None)
         } else {
             let def_key = self.cstore().def_key(def_id);
             let name = def_key

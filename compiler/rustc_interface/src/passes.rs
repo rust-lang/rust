@@ -18,7 +18,7 @@ use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
-use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::middle::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -860,11 +860,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                     tcx.ensure().proc_macro_decls_static(())
                 });
 
-                let cstore = tcx
-                    .cstore_as_any()
-                    .downcast_ref::<CStore>()
-                    .expect("`tcx.cstore` is not a `CStore`");
-                cstore.report_unused_deps(tcx);
+                CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {

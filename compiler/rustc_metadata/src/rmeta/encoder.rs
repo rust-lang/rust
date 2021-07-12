@@ -1061,10 +1061,7 @@ impl EncodeContext<'a, 'tcx> {
             Lazy::empty()
         };
 
-        let data = ModData {
-            reexports,
-            expansion: tcx.resolutions(()).definitions.expansion_that_defined(local_def_id),
-        };
+        let data = ModData { reexports, expansion: tcx.expn_that_defined(local_def_id) };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
         if self.is_proc_macro {

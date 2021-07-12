@@ -1,7 +1,6 @@
 use self::collector::NodeCollector;
 
 use crate::hir::{AttributeMap, IndexedHir};
-use crate::middle::cstore::CrateStore;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -991,7 +990,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         },
     );
 
-    let upstream_crates = upstream_crates(&*tcx.untracked_resolutions.cstore);
+    let upstream_crates = upstream_crates(tcx);
 
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.
@@ -1021,13 +1020,13 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     Svh::new(crate_hash.to_smaller_hash())
 }
 
-fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(StableCrateId, Svh)> {
-    let mut upstream_crates: Vec<_> = cstore
-        .crates_untracked()
+fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
+    let mut upstream_crates: Vec<_> = tcx
+        .crates(())
         .iter()
         .map(|&cnum| {
-            let stable_crate_id = cstore.stable_crate_id_untracked(cnum);
-            let hash = cstore.crate_hash_untracked(cnum);
+            let stable_crate_id = tcx.resolutions(()).cstore.stable_crate_id(cnum);
+            let hash = tcx.crate_hash(cnum);
             (stable_crate_id, hash)
         })
         .collect();
