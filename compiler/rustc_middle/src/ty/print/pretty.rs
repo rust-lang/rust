@@ -974,7 +974,7 @@ pub trait PrettyPrinter<'tcx>:
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         match scalar {
-            Scalar::Ptr(ptr) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
+            Scalar::Ptr(ptr, _size) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
             Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, print_ty),
         }
     }

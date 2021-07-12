@@ -243,7 +243,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     self.const_bitcast(llval, llty)
                 }
             }
-            Scalar::Ptr(ptr) => {
+            Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
                 let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {

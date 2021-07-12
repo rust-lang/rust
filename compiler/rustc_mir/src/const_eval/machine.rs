@@ -168,11 +168,11 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // Comparisons between integers are always known.
             (Scalar::Int { .. }, Scalar::Int { .. }) => a == b,
             // Equality with integers can never be known for sure.
-            (Scalar::Int { .. }, Scalar::Ptr(_)) | (Scalar::Ptr(_), Scalar::Int { .. }) => false,
+            (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => false,
             // FIXME: return `true` for when both sides are the same pointer, *except* that
             // some things (like functions and vtables) do not have stable addresses
             // so we need to be careful around them (see e.g. #73722).
-            (Scalar::Ptr(_), Scalar::Ptr(_)) => false,
+            (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
         }
     }
 
@@ -183,13 +183,13 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // Comparisons of abstract pointers with null pointers are known if the pointer
             // is in bounds, because if they are in bounds, the pointer can't be null.
             // Inequality with integers other than null can never be known for sure.
-            (Scalar::Int(int), Scalar::Ptr(ptr)) | (Scalar::Ptr(ptr), Scalar::Int(int)) => {
+            (Scalar::Int(int), Scalar::Ptr(ptr, _)) | (Scalar::Ptr(ptr, _), Scalar::Int(int)) => {
                 int.is_null() && !self.memory.ptr_may_be_null(ptr.into())
             }
             // FIXME: return `true` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.
             // Examples include comparison of addresses in different static items.
-            (Scalar::Ptr(_), Scalar::Ptr(_)) => false,
+            (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
         }
     }
 }
@@ -312,7 +312,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
                 )?;
-                ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
+                ecx.write_scalar(Scalar::from_pointer(ptr, &*ecx.tcx), dest)?;
             }
             _ => {
                 return Err(ConstEvalErrKind::NeedsRfc(format!(

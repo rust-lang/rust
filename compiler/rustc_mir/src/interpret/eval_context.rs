@@ -993,16 +993,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(fmt, " {:?}", val)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val {
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val {
                             allocs.push(ptr.provenance.erase_for_fmt());
                         }
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(fmt, " ({:?}, {:?})", val1, val2)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val1 {
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val1 {
                             allocs.push(ptr.provenance.erase_for_fmt());
                         }
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val2 {
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val2 {
                             allocs.push(ptr.provenance.erase_for_fmt());
                         }
                     }

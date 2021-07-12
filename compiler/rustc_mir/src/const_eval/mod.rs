@@ -35,7 +35,7 @@ pub(crate) fn const_caller_location(
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }
-    ConstValue::Scalar(Scalar::Ptr(loc_place.ptr.into_pointer_or_offset().unwrap()))
+    ConstValue::Scalar(Scalar::from_pointer(loc_place.ptr.into_pointer_or_offset().unwrap(), &tcx))
 }
 
 /// Convert an evaluated constant to a type level constant

@@ -123,7 +123,7 @@ impl IntRange {
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
                     // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr(target_size, &tcx) {
+                    if let Ok(bits) = scalar.to_bits_or_ptr(target_size) {
                         return Some(bits);
                     }
                 }

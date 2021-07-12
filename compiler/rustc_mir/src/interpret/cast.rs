@@ -57,7 +57,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .ok_or_else(|| err_inval!(TooGeneric))?;
 
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                        self.write_scalar(fn_ptr, dest)?;
+                        self.write_scalar(Scalar::from_pointer(fn_ptr, &*self.tcx), dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
                 }
@@ -88,7 +88,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             ty::ClosureKind::FnOnce,
                         );
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                        self.write_scalar(fn_ptr, dest)?;
+                        self.write_scalar(Scalar::from_pointer(fn_ptr, &*self.tcx), dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
                 }
@@ -280,7 +280,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable(src_pointee_ty, data.principal())?;
                 let ptr = self.read_immediate(src)?.to_scalar()?;
-                let val = Immediate::new_dyn_trait(ptr, vtable);
+                let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
                 self.write_immediate(val, dest)
             }
 

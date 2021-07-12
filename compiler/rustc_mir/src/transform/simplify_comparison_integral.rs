@@ -46,7 +46,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                         .expect("if we have an evaluated constant we must know the layout");
                     int.assert_bits(layout.size)
                 }
-                Scalar::Ptr(_) => continue,
+                Scalar::Ptr(..) => continue,
             };
             const FALSE: u128 = 0;
 

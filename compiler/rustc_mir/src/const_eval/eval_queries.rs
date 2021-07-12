@@ -139,6 +139,7 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace()
     };
 
+    // We know `offset` is relative to the allocation, so we can use `into_parts`.
     let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr.into_parts() {
         (Some(alloc_id), offset) => {
             let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
@@ -164,6 +165,7 @@ pub(super) fn op_to_const<'tcx>(
                 ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
             },
             Immediate::ScalarPair(a, b) => {
+                // We know `offset` is relative to the allocation, so we can use `into_parts`.
                 let (data, start) = match ecx.scalar_to_ptr(a.check_init().unwrap()).into_parts() {
                     (Some(alloc_id), offset) => {
                         (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())

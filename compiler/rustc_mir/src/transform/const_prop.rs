@@ -582,8 +582,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().ok();
-            // This is basically `force_bits`.
-            let r_bits = r_bits.and_then(|r| r.to_bits_or_ptr(right_size, &self.tcx).ok());
+            let r_bits = r_bits.and_then(|r| r.to_bits(right_size).ok());
             if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", source_info);
                 self.report_assert_as_lint(
@@ -922,12 +921,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         match **op {
             interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUninit::Scalar(s))) => {
-                s.is_bits()
+                s.try_to_int().is_some()
             }
             interpret::Operand::Immediate(Immediate::ScalarPair(
                 ScalarMaybeUninit::Scalar(l),
                 ScalarMaybeUninit::Scalar(r),
-            )) => l.is_bits() && r.is_bits(),
+            )) => l.try_to_int().is_some() && r.try_to_int().is_some(),
             _ => false,
         }
     }

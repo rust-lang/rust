@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
+use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, ScalarMaybeUninit};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, DefId, SubstsRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
@@ -74,7 +74,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
                     let fn_alloc_id = tcx.create_fn_alloc(instance);
                     let fn_ptr = Pointer::from(fn_alloc_id);
-                    fn_ptr.into()
+                    ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
                 }
                 VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size).into(),
                 VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size).into(),
@@ -90,7 +90,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             .polymorphize(tcx);
                     let fn_alloc_id = tcx.create_fn_alloc(instance);
                     let fn_ptr = Pointer::from(fn_alloc_id);
-                    fn_ptr.into()
+                    ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
                 }
             };
             vtable

@@ -87,7 +87,7 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// mostly opaque; the `Machine` trait extends it with some more operations that also have access to
 /// some global state.
 pub trait Provenance: Copy {
-    /// Says whether the `offset` field of `Pointer` is the actual physical address.
+    /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
     /// If `true, ptr-to-int casts work by simply discarding the provenance.
     /// If `false`, ptr-to-int casts are not supported.
     const OFFSET_IS_ADDR: bool;

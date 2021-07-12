@@ -752,7 +752,7 @@ where
             // This is a very common path, avoid some checks in release mode
             assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
             match src {
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Ptr(_))) => assert_eq!(
+                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Ptr(..))) => assert_eq!(
                     self.pointer_size(),
                     dest.layout.size,
                     "Size mismatch when writing pointer"

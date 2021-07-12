@@ -333,7 +333,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             // Maybe a pointer.
             if let Some(&prov) = self.relocations.get(&range.start) {
                 let ptr = Pointer::new(prov, Size::from_bytes(bits));
-                return Ok(ScalarMaybeUninit::Scalar(ptr.into()));
+                return Ok(ScalarMaybeUninit::from_pointer(ptr, cx));
             }
         }
         // We don't. Just return the bits.
@@ -363,7 +363,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             }
         };
 
-        let (bytes, provenance) = match val.to_bits_or_ptr(range.size, cx) {
+        let (bytes, provenance) = match val.to_bits_or_ptr(range.size) {
             Err(val) => {
                 let (provenance, offset) = val.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))
