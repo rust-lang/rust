@@ -142,6 +142,19 @@ public:
   llvm::Value *MPI_TYPE_SIZE(llvm::Value *DT, IRBuilder<> &B, Type *intType) {
     if (DT->getType()->isIntegerTy())
         DT = B.CreateIntToPtr(DT, Type::getInt8PtrTy(DT->getContext()));
+      
+    if (Constant *C = dyn_cast<Constant>(DT)) {
+        while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
+          C = CE->getOperand(0);
+        }
+        if (auto GV = dyn_cast<GlobalVariable>(C)) {
+          if (GV->getName() == "ompi_mpi_double") {
+            return ConstantInt::get(intType, 8, false);
+          } else if (GV->getName() == "ompi_mpi_float") {
+            return ConstantInt::get(intType, 4, false);
+          }
+        }
+      }
     Type *pargs[] = {Type::getInt8PtrTy(DT->getContext()),
                      PointerType::getUnqual(intType)};
     auto FT = FunctionType::get(intType, pargs, false);
@@ -3690,6 +3703,7 @@ public:
                          d_req};
         auto cal = Builder2.CreateCall(dwait, args);
         cal->setCallingConv(dwait->getCallingConv());
+        cal->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
       }
       return;
     }
@@ -3756,6 +3770,7 @@ public:
                          d_req};
         auto cal = Builder2.CreateCall(dwait, args);
         cal->setCallingConv(dwait->getCallingConv());
+        cal->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
         Builder2.CreateCondBr(Builder2.CreateICmpEQ(inc, count), endBlock, loopBlock);
         Builder2.SetInsertPoint(endBlock);
       }

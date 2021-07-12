@@ -5,7 +5,7 @@
 %struct.ompi_datatype_t = type opaque
 %struct.ompi_communicator_t = type opaque
 
-@ompi_mpi_double = external dso_local global %struct.ompi_predefined_datatype_t, align 1
+@random_datatype = external dso_local global %struct.ompi_predefined_datatype_t, align 1
 @ompi_mpi_comm_world = external dso_local global %struct.ompi_predefined_communicator_t, align 1
 
 define double @mpi_bcast_test(double %b) {
@@ -13,7 +13,7 @@ entry:
   %b.addr = alloca double, align 8
   store double %b, double* %b.addr, align 8
   %0 = bitcast double* %b.addr to i8*
-  %call = call i32 @MPI_Bcast(i8* nonnull %0, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+  %call = call i32 @MPI_Bcast(i8* nonnull %0, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
   %1 = load double, double* %b.addr, align 8
   ret double %1
 }
@@ -42,13 +42,13 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   store double %b, double* %b.addr, align 8
 ; CHECK-NEXT:   %"'ipc" = bitcast double* %"b.addr'ipa" to i8*
 ; CHECK-NEXT:   %2 = bitcast double* %b.addr to i8*
-; CHECK-NEXT:   %call = call i32 @MPI_Bcast(i8* nonnull %2, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+; CHECK-NEXT:   %call = call i32 @MPI_Bcast(i8* nonnull %2, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %3 = load double, double* %"b.addr'ipa", align 8
 ; CHECK-NEXT:   %4 = fadd fast double %3, %differeturn
 ; CHECK-NEXT:   store double %4, double* %"b.addr'ipa", align 8
 ; CHECK-NEXT:   %5 = call i32 @MPI_Comm_rank(%struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), i32* %0)
 ; CHECK-NEXT:   %6 = load i32, i32* %0
-; CHECK-NEXT:   %7 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to i8*), i32* %1)
+; CHECK-NEXT:   %7 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to i8*), i32* %1)
 ; CHECK-NEXT:   %8 = load i32, i32* %1
 ; CHECK-NEXT:   %9 = zext i32 %8 to i64
 ; CHECK-NEXT:   %10 = icmp eq i32 %6, 0
@@ -62,7 +62,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %12 = phi i8* [ %11, %invertentry_root ], [ undef, %entry ]
 ; CHECK-NEXT:   call void @"__enzyme_mpi_sumFloat@doubleinitializer"()
 ; CHECK-NEXT:   %13 = load i8*, i8** @"__enzyme_mpi_sumFloat@double"
-; CHECK-NEXT:   %14 = call i32 @MPI_Reduce(i8* %"'ipc", i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_double to %struct.ompi_datatype_t*), i8* %13, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+; CHECK-NEXT:   %14 = call i32 @MPI_Reduce(i8* %"'ipc", i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i8* %13, i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %15 = icmp eq i32 %6, 0
 ; CHECK-NEXT:   br i1 %15, label %invertentry_post_root, label %invertentry_post_nonroot
 
