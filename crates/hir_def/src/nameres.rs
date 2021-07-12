@@ -202,12 +202,7 @@ pub struct ModuleData {
 
 impl Default for ModuleData {
     fn default() -> Self {
-        ModuleData {
-            parent: None,
-            children: FxHashMap::default(),
-            scope: ItemScope::default(),
-            origin: ModuleOrigin::CrateRoot { definition: FileId(!0) },
-        }
+        ModuleData::new(ModuleOrigin::CrateRoot { definition: FileId(!0) })
     }
 }
 
@@ -450,6 +445,15 @@ impl DefMap {
 }
 
 impl ModuleData {
+    pub(crate) fn new(origin: ModuleOrigin) -> Self {
+        ModuleData {
+            parent: None,
+            children: FxHashMap::default(),
+            scope: ItemScope::default(),
+            origin,
+        }
+    }
+
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         self.origin.definition_source(db)
