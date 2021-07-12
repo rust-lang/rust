@@ -184,6 +184,8 @@ fn overlap_within_probe(
 
     debug!("overlap: unification check succeeded");
 
+    let negate_obligation = |obligation| todo!("yaahc");
+
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
     let opt_failing_obligation = a_impl_header
@@ -199,7 +201,17 @@ fn overlap_within_probe(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| !selcx.predicate_may_hold_fatal(o));
+        .find(|o| {
+            if let Some(o_neg) = negate_obligation(o) {
+                // given o = `T: Trait` this produces `T: !Trait`
+                if selcx.predicate_must_hold(o_neg) {
+                    // we can prove `T: !Trait` is true based on the impls we see
+                    return true;
+                }
+            }
+
+            !selcx.predicate_may_hold_fatal(o)
+        });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
