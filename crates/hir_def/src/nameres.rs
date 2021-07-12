@@ -72,6 +72,7 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
+    visibility::Visibility,
     AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId,
 };
 
@@ -192,12 +193,14 @@ impl ModuleOrigin {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ModuleData {
+    /// Where does this module come from?
+    pub origin: ModuleOrigin,
+    /// Declared visibility of this module.
+    pub visibility: Visibility,
+
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
     pub scope: ItemScope,
-
-    /// Where does this module come from?
-    pub origin: ModuleOrigin,
 }
 
 impl DefMap {
@@ -243,7 +246,15 @@ impl DefMap {
 
     fn empty(krate: CrateId, edition: Edition, root_module_origin: ModuleOrigin) -> DefMap {
         let mut modules: Arena<ModuleData> = Arena::default();
-        let root = modules.alloc(ModuleData::new(root_module_origin));
+
+        let local_id = LocalModuleId::from_raw(la_arena::RawIdx::from(0));
+        // NB: we use `None` as block here, which would be wrong for implicit
+        // modules declared by blocks with items. At the moment, we don't use
+        // this visibility for anything outside IDE, so that's probably OK.
+        let visibility = Visibility::Module(ModuleId { krate, local_id, block: None });
+        let root = modules.alloc(ModuleData::new(root_module_origin, visibility));
+        assert_eq!(local_id, root);
+
         DefMap {
             _c: Count::new(),
             block: None,
@@ -448,12 +459,13 @@ impl DefMap {
 }
 
 impl ModuleData {
-    pub(crate) fn new(origin: ModuleOrigin) -> Self {
+    pub(crate) fn new(origin: ModuleOrigin, visibility: Visibility) -> Self {
         ModuleData {
+            origin,
+            visibility,
             parent: None,
             children: FxHashMap::default(),
             scope: ItemScope::default(),
-            origin,
         }
     }
 

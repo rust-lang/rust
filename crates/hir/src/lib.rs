@@ -430,8 +430,16 @@ impl Module {
             .collect()
     }
 
+    pub fn visibility(self, db: &dyn HirDatabase) -> Visibility {
+        let def_map = self.id.def_map(db.upcast());
+        let module_data = &def_map[self.id.local_id];
+        module_data.visibility
+    }
+
     pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
-        self.id.def_map(db.upcast())[self.id.local_id].scope.visibility_of((*def).into())
+        let def_map = self.id.def_map(db.upcast());
+        let module_data = &def_map[self.id.local_id];
+        module_data.scope.visibility_of((*def).into())
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {

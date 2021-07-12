@@ -1629,7 +1629,7 @@ impl ModCollector<'_, '_> {
                 ModuleOrigin::File { declaration, definition, is_mod_rs }
             }
         };
-        let res = modules.alloc(ModuleData::new(origin));
+        let res = modules.alloc(ModuleData::new(origin, vis));
         modules[res].parent = Some(self.module_id);
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
             modules[res].scope.define_legacy_macro(name, mac)
