@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::Result;
+use base_db::CrateName;
 use cargo_metadata::camino::Utf8Path;
 use cargo_metadata::{BuildScript, Message};
 use paths::{AbsPath, AbsPathBuf};
@@ -290,7 +291,7 @@ fn inject_cargo_env(package: &cargo_metadata::Package, build_data: &mut PackageB
     let env = &mut build_data.envs;
 
     // FIXME: Missing variables:
-    // CARGO_PKG_HOMEPAGE, CARGO_CRATE_NAME, CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
+    // CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
 
     let mut manifest_dir = package.manifest_path.clone();
     manifest_dir.pop();
@@ -309,8 +310,11 @@ fn inject_cargo_env(package: &cargo_metadata::Package, build_data: &mut PackageB
     env.push(("CARGO_PKG_AUTHORS".into(), authors));
 
     env.push(("CARGO_PKG_NAME".into(), package.name.clone()));
+    // FIXME: This isn't really correct (a package can have many crates with different names), but
+    // it's better than leaving the variable unset.
+    env.push(("CARGO_CRATE_NAME".into(), CrateName::normalize_dashes(&package.name).to_string()));
     env.push(("CARGO_PKG_DESCRIPTION".into(), package.description.clone().unwrap_or_default()));
-    //env.push(("CARGO_PKG_HOMEPAGE".into(), package.homepage.clone().unwrap_or_default()));
+    env.push(("CARGO_PKG_HOMEPAGE".into(), package.homepage.clone().unwrap_or_default()));
     env.push(("CARGO_PKG_REPOSITORY".into(), package.repository.clone().unwrap_or_default()));
     env.push(("CARGO_PKG_LICENSE".into(), package.license.clone().unwrap_or_default()));
 
