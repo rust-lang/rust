@@ -114,6 +114,17 @@ where
         }
         self.iter.fold(init, fold)
     }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        if self.n >= n {
+            self.n -= n;
+            return Ok(());
+        }
+        let rem = n - self.n;
+        self.n = 0;
+        self.iter.advance_by(rem)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -173,6 +184,16 @@ where
         }
 
         self.try_rfold(init, ok(fold)).unwrap()
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let min = crate::cmp::min(self.len(), n);
+        return match self.iter.advance_back_by(min) {
+            ret @ Ok(_) if n <= min => ret,
+            Ok(_) => Err(min),
+            _ => panic!("ExactSizeIterator contract violation"),
+        };
     }
 }
 

@@ -18,6 +18,7 @@
 #![feature(binary_heap_retain)]
 #![feature(binary_heap_as_slice)]
 #![feature(inplace_iteration)]
+#![feature(iter_advance_by)]
 #![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
 #![feature(vec_spare_capacity)]
