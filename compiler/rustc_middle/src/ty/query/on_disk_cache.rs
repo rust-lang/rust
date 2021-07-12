@@ -372,7 +372,7 @@ impl<'sess> OnDiskCache<'sess> {
                 |encoder, expn_id, data, hash| -> FileEncodeResult {
                     if expn_id.krate == LOCAL_CRATE {
                         let pos = AbsoluteBytePos::new(encoder.position());
-                        encoder.encode_tagged(TAG_EXPN_DATA, &data)?;
+                        encoder.encode_tagged(TAG_EXPN_DATA, data)?;
                         expn_data.insert(hash, pos);
                     } else {
                         foreign_expn_data.insert(hash, expn_id.local_id.as_u32());

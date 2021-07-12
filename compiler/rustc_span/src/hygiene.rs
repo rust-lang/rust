@@ -1142,7 +1142,7 @@ impl HygieneEncodeContext {
         &self,
         encoder: &mut T,
         mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData) -> Result<(), R>,
-        mut encode_expn: impl FnMut(&mut T, ExpnId, ExpnData, ExpnHash) -> Result<(), R>,
+        mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash) -> Result<(), R>,
     ) -> Result<(), R> {
         // When we serialize a `SyntaxContextData`, we may end up serializing
         // a `SyntaxContext` that we haven't seen before
@@ -1344,7 +1344,7 @@ fn for_all_ctxts_in<E, F: FnMut(u32, SyntaxContext, &SyntaxContextData) -> Resul
 
 fn for_all_expns_in<E>(
     expns: impl Iterator<Item = ExpnId>,
-    mut f: impl FnMut(ExpnId, ExpnData, ExpnHash) -> Result<(), E>,
+    mut f: impl FnMut(ExpnId, &ExpnData, ExpnHash) -> Result<(), E>,
 ) -> Result<(), E> {
     let all_data: Vec<_> = HygieneData::with(|data| {
         expns
@@ -1352,7 +1352,7 @@ fn for_all_expns_in<E>(
             .collect()
     });
     for (expn, data, hash) in all_data.into_iter() {
-        f(expn, data, hash)?;
+        f(expn, &data, hash)?;
     }
     Ok(())
 }
