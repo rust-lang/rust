@@ -145,12 +145,6 @@ pub enum ModuleOrigin {
     },
 }
 
-impl Default for ModuleOrigin {
-    fn default() -> Self {
-        ModuleOrigin::CrateRoot { definition: FileId(0) }
-    }
-}
-
 impl ModuleOrigin {
     fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
@@ -196,7 +190,7 @@ impl ModuleOrigin {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ModuleData {
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
@@ -204,6 +198,17 @@ pub struct ModuleData {
 
     /// Where does this module come from?
     pub origin: ModuleOrigin,
+}
+
+impl Default for ModuleData {
+    fn default() -> Self {
+        ModuleData {
+            parent: None,
+            children: FxHashMap::default(),
+            scope: ItemScope::default(),
+            origin: ModuleOrigin::CrateRoot { definition: FileId(!0) },
+        }
+    }
 }
 
 impl DefMap {
