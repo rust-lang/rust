@@ -92,6 +92,7 @@ export async function download(opts: DownloadOpts) {
     // This also avoids overwriting running executables
     const randomHex = crypto.randomBytes(5).toString("hex");
     const rawDest = path.parse(opts.dest.fsPath);
+    const oldServerPath = vscode.Uri.joinPath(vscode.Uri.file(rawDest.dir), `${rawDest.name}-stale-${randomHex}${rawDest.ext}`);
     const tempFilePath = vscode.Uri.joinPath(vscode.Uri.file(rawDest.dir), `${rawDest.name}${randomHex}`);
 
     await vscode.window.withProgress(
@@ -116,7 +117,46 @@ export async function download(opts: DownloadOpts) {
         }
     );
 
-    await vscode.workspace.fs.rename(tempFilePath, opts.dest, { overwrite: true });
+    // Try to rename a running server to avoid EPERM on Windows
+    // NB: this can lead to issues if a running Code instance tries to restart the server.
+    try {
+        await vscode.workspace.fs.rename(opts.dest, oldServerPath, { overwrite: true });
+        log.info(`Renamed old server binary ${opts.dest.fsPath} to ${oldServerPath.fsPath}`);
+    } catch (err) {
+        const fsErr = err as vscode.FileSystemError;
+        // This is supposed to return `FileNotFound`, alas...
+        if (!fsErr.code || fsErr.code !== "FileNotFound" && fsErr.code !== "EntryNotFound") {
+            log.error(`Cannot rename existing server instance: ${err}`);
+        }
+    }
+    try {
+        await vscode.workspace.fs.rename(tempFilePath, opts.dest, { overwrite: true });
+    } catch (err) {
+        log.error(`Cannot update server binary: ${err}`);
+    }
+
+    // Now try to remove any stale server binaries
+    const serverDir = vscode.Uri.file(rawDest.dir);
+    try {
+        const entries = await vscode.workspace.fs.readDirectory(serverDir);
+        for (const [entry, _] of entries) {
+            try {
+                if (entry.includes(`${rawDest.name}-stale-`)) {
+                    const uri = vscode.Uri.joinPath(serverDir, entry);
+                    try {
+                        await vscode.workspace.fs.delete(uri);
+                        log.info(`Removed old server binary ${uri.fsPath}`);
+                    } catch (err) {
+                        log.error(`Unable to remove old server binary ${uri.fsPath}`);
+                    }
+                }
+            } catch (err) {
+                log.error(`Unable to parse ${entry}`);
+            }
+        }
+    } catch (err) {
+        log.error(`Unable to enumerate contents of ${serverDir.fsPath}`);
+    }
 }
 
 async function downloadFile(
