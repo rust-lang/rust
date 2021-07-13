@@ -839,7 +839,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None, None);
         expn_data.def_site = self.body_span;
         // Make sure that all spans track the fact that they were inlined.
-        *span = self.callsite_span.fresh_expansion(expn_data);
+        *span =
+            self.callsite_span.fresh_expansion(expn_data, self.tcx.create_stable_hashing_context());
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {

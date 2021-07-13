@@ -218,14 +218,17 @@ impl<'a> ResolverExpand for Resolver<'a> {
         parent_module_id: Option<NodeId>,
     ) -> ExpnId {
         let parent_module = parent_module_id.map(|module_id| self.local_def_id(module_id));
-        let expn_id = ExpnId::fresh(Some(ExpnData::allow_unstable(
-            ExpnKind::AstPass(pass),
-            call_site,
-            self.session.edition(),
-            features.into(),
-            None,
-            parent_module.map(LocalDefId::to_def_id),
-        )));
+        let expn_id = ExpnId::fresh(
+            ExpnData::allow_unstable(
+                ExpnKind::AstPass(pass),
+                call_site,
+                self.session.edition(),
+                features.into(),
+                None,
+                parent_module.map(LocalDefId::to_def_id),
+            ),
+            self.create_stable_hashing_context(),
+        );
 
         let parent_scope = parent_module
             .map_or(self.empty_module, |parent_def_id| self.module_map[&parent_def_id]);
@@ -287,15 +290,18 @@ impl<'a> ResolverExpand for Resolver<'a> {
         )?;
 
         let span = invoc.span();
-        invoc_id.set_expn_data(ext.expn_data(
-            parent_scope.expansion,
-            span,
-            fast_print_path(path),
-            res.opt_def_id(),
-            res.opt_def_id().map(|macro_def_id| {
-                self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod
-            }),
-        ));
+        invoc_id.set_expn_data(
+            ext.expn_data(
+                parent_scope.expansion,
+                span,
+                fast_print_path(path),
+                res.opt_def_id(),
+                res.opt_def_id().map(|macro_def_id| {
+                    self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod
+                }),
+            ),
+            self.create_stable_hashing_context(),
+        );
 
         if let Res::Def(_, _) = res {
             // Gate macro attributes in `#[derive]` output.

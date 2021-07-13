@@ -653,7 +653,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Therefore, we need to encode the hygiene data last to ensure that we encode
         // any `SyntaxContext`s that might be used.
         i = self.position();
-        let (syntax_contexts, expn_data) = self.encode_hygiene();
+        let (syntax_contexts, expn_data, expn_hashes) = self.encode_hygiene();
         let hygiene_bytes = self.position() - i;
 
         // Encode source_map. This needs to be done last,
@@ -701,6 +701,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             tables,
             syntax_contexts,
             expn_data,
+            expn_hashes,
         });
 
         let total_bytes = self.position();
@@ -1583,23 +1584,29 @@ impl EncodeContext<'a, 'tcx> {
         self.lazy(foreign_modules.iter().map(|(_, m)| m).cloned())
     }
 
-    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable) {
+    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
         let mut syntax_contexts: TableBuilder<_, _> = Default::default();
         let mut expn_data_table: TableBuilder<_, _> = Default::default();
+        let mut expn_hash_table: TableBuilder<_, _> = Default::default();
 
         let _: Result<(), !> = self.hygiene_ctxt.encode(
-            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table),
-            |(this, syntax_contexts, _), index, ctxt_data| {
+            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
+            |(this, syntax_contexts, _, _), index, ctxt_data| {
                 syntax_contexts.set(index, this.lazy(ctxt_data));
                 Ok(())
             },
-            |(this, _, expn_data_table), index, expn_data| {
+            |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
                 expn_data_table.set(index, this.lazy(expn_data));
+                expn_hash_table.set(index, this.lazy(hash));
                 Ok(())
             },
         );
 
-        (syntax_contexts.encode(&mut self.opaque), expn_data_table.encode(&mut self.opaque))
+        (
+            syntax_contexts.encode(&mut self.opaque),
+            expn_data_table.encode(&mut self.opaque),
+            expn_hash_table.encode(&mut self.opaque),
+        )
     }
 
     fn encode_proc_macros(&mut self) -> Option<ProcMacroData> {

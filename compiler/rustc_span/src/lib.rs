@@ -36,9 +36,9 @@ use source_map::SourceMap;
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
-pub use hygiene::SyntaxContext;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
+pub use hygiene::{DesugaringKind, ExpnKind, ForLoopLoc, MacroKind};
+pub use hygiene::{ExpnData, ExpnHash, ExpnId, SyntaxContext};
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LOCAL_CRATE};
 pub mod lev_distance;
@@ -51,19 +51,16 @@ pub use symbol::{sym, Symbol};
 mod analyze_source_file;
 pub mod fatal_error;
 
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::thread::LocalKey;
 
 use md5::Md5;
 use sha1::Digest;
@@ -1958,11 +1955,6 @@ impl InnerSpan {
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-    /// Obtains a cache for storing the `Fingerprint` of an `ExpnId`.
-    /// This method allows us to have multiple `HashStableContext` implementations
-    /// that hash things in a different way, without the results of one polluting
-    /// the cache of the other.
-    fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
     fn hash_spans(&self) -> bool;
     fn span_data_to_lines_and_cols(
         &mut self,
@@ -2034,62 +2026,5 @@ where
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
-    }
-}
-
-impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        const TAG_EXPANSION: u8 = 0;
-        const TAG_NO_EXPANSION: u8 = 1;
-
-        if *self == SyntaxContext::root() {
-            TAG_NO_EXPANSION.hash_stable(ctx, hasher);
-        } else {
-            TAG_EXPANSION.hash_stable(ctx, hasher);
-            let (expn_id, transparency) = self.outer_mark();
-            expn_id.hash_stable(ctx, hasher);
-            transparency.hash_stable(ctx, hasher);
-        }
-    }
-}
-
-pub type ExpnIdCache = RefCell<Vec<Option<Fingerprint>>>;
-
-impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        const TAG_ROOT: u8 = 0;
-        const TAG_NOT_ROOT: u8 = 1;
-
-        if *self == ExpnId::root() {
-            TAG_ROOT.hash_stable(ctx, hasher);
-            return;
-        }
-
-        // Since the same expansion context is usually referenced many
-        // times, we cache a stable hash of it and hash that instead of
-        // recursing every time.
-        let index = self.as_u32() as usize;
-        let res = CTX::expn_id_cache().with(|cache| cache.borrow().get(index).copied().flatten());
-
-        if let Some(res) = res {
-            res.hash_stable(ctx, hasher);
-        } else {
-            let new_len = index + 1;
-
-            let mut sub_hasher = StableHasher::new();
-            TAG_NOT_ROOT.hash_stable(ctx, &mut sub_hasher);
-            self.expn_data().hash_stable(ctx, &mut sub_hasher);
-            let sub_hash: Fingerprint = sub_hasher.finish();
-
-            CTX::expn_id_cache().with(|cache| {
-                let mut cache = cache.borrow_mut();
-                if cache.len() < new_len {
-                    cache.resize(new_len, None);
-                }
-                let prev = cache[index].replace(sub_hash);
-                assert_eq!(prev, None, "Cache slot was filled");
-            });
-            sub_hash.hash_stable(ctx, hasher);
-        }
     }
 }
