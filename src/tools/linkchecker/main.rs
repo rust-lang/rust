@@ -30,6 +30,7 @@ use regex::Regex;
 // If at all possible you should use intra-doc links to avoid linkcheck issues. These
 // are cases where that does not work
 // [(generated_documentation_page, &[broken_links])]
+#[rustfmt::skip]
 const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // These try to link to std::collections, but are defined in alloc
     // https://github.com/rust-lang/rust/issues/74481
@@ -37,6 +38,19 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("std/collections/btree_set/struct.BTreeSet.html", &["#insert-and-complex-keys"]),
     ("alloc/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
     ("alloc/collections/btree_set/struct.BTreeSet.html", &["#insert-and-complex-keys"]),
+
+    // These try to link to various things in std, but are defined in core.
+    // The docs in std::primitive use proper intra-doc links, so these seem fine to special-case.
+    // Most these are broken because liballoc uses `#[lang_item]` magic to define things on
+    // primitives that aren't available in core.
+    ("alloc/slice/trait.Join.html", &["#method.join"]),
+    ("alloc/slice/trait.Concat.html", &["#method.concat"]),
+    ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
+    ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
+    ("core/primitive.str.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase"]),
+    ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
+                                    "core/slice::sort_by_key", "core\\slice::sort_by_key",
+                                    "#method.sort_by_cached_key"]),
 ];
 
 #[rustfmt::skip]
@@ -376,6 +390,10 @@ impl Checker {
 
     /// Load a file from disk, or from the cache if available.
     fn load_file(&mut self, file: &Path, report: &mut Report) -> (String, &FileEntry) {
+        // https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
+        #[cfg(windows)]
+        const ERROR_INVALID_NAME: i32 = 123;
+
         let pretty_path =
             file.strip_prefix(&self.root).unwrap_or(&file).to_str().unwrap().to_string();
 
@@ -392,6 +410,14 @@ impl Checker {
                 }
                 Err(e) if e.kind() == ErrorKind::NotFound => FileEntry::Missing,
                 Err(e) => {
+                    // If a broken intra-doc link contains `::`, on windows, it will cause `ERROR_INVALID_NAME` rather than `NotFound`.
+                    // Explicitly check for that so that the broken link can be allowed in `LINKCHECK_EXCEPTIONS`.
+                    #[cfg(windows)]
+                    if e.raw_os_error() == Some(ERROR_INVALID_NAME)
+                        && file.as_os_str().to_str().map_or(false, |s| s.contains("::"))
+                    {
+                        return FileEntry::Missing;
+                    }
                     panic!("unexpected read error for {}: {}", file.display(), e);
                 }
             });

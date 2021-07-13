@@ -2257,9 +2257,9 @@ impl<T> [T] {
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     // Lint rustdoc::broken_intra_doc_links is allowed as `slice::sort_by_key` is
-    // in crate `alloc`, and as such doesn't exists yet when building `core`.
-    // links to downstream crate: #74481. Since primitives are only documented in
-    // libstd (#73423), this never leads to broken links in practice.
+    // in crate `alloc`, and as such doesn't exists yet when building `core`: #74481.
+    // This breaks links when slice is displayed in core, but changing it to use relative links
+    // would break when the item is re-exported. So allow the core links to be broken for now.
     #[allow(rustdoc::broken_intra_doc_links)]
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
