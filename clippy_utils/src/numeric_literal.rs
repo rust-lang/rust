@@ -162,6 +162,9 @@ impl<'a> NumericLiteral<'a> {
         }
 
         if let Some(suffix) = self.suffix {
+            if output.ends_with('.') {
+                output.push('0');
+            }
             output.push('_');
             output.push_str(suffix);
         }
