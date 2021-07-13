@@ -1,5 +1,5 @@
 error[E0133]: borrow of layout constrained field with interior mutability is unsafe and requires unsafe function or block
-  --> $DIR/ranged_ints3.rs:10:13
+  --> $DIR/ranged_ints3.rs:13:13
    |
 LL |     let y = &x.0;
    |             ^^^^ borrow of layout constrained field with interior mutability
