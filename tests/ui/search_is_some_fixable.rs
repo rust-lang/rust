@@ -66,3 +66,38 @@ fn is_none() {
     let _ = s1[2..].find(&s2).is_none();
     let _ = s1[2..].find(&s2[2..]).is_none();
 }
+
+#[allow(clippy::clone_on_copy, clippy::map_clone)]
+mod issue7392 {
+    struct Player {
+        hand: Vec<usize>,
+    }
+    fn filter() {
+        let p = Player {
+            hand: vec![1, 2, 3, 4, 5],
+        };
+        let filter_hand = vec![5];
+        let _ = p
+            .hand
+            .iter()
+            .filter(|c| filter_hand.iter().find(|cc| c == cc).is_none())
+            .map(|c| c.clone())
+            .collect::<Vec<_>>();
+    }
+
+    struct PlayerTuple {
+        hand: Vec<(usize, char)>,
+    }
+    fn filter_tuple() {
+        let p = PlayerTuple {
+            hand: vec![(1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e')],
+        };
+        let filter_hand = vec![5];
+        let _ = p
+            .hand
+            .iter()
+            .filter(|(c, _)| filter_hand.iter().find(|cc| c == *cc).is_none())
+            .map(|c| c.clone())
+            .collect::<Vec<_>>();
+    }
+}

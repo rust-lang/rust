@@ -45,9 +45,27 @@ pub(super) fn check<'tcx>(
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
-                    } else if let PatKind::Binding(_, _, ident, _) = strip_pat_refs(closure_arg.pat).kind {
+                    } else if let PatKind::Binding(annotation, _, ident, _) = strip_pat_refs(closure_arg.pat).kind {
                         let name = &*ident.name.as_str();
-                        Some(search_snippet.replace(&format!("*{}", name), name))
+                        let old_search_snippet = search_snippet.clone();
+                        let search_snippet = search_snippet.replace(&format!("*{}", name), name);
+
+                        if_chain! {
+                            // if there is no dereferencing used in closure body
+                            if old_search_snippet == search_snippet;
+                            if annotation == hir::BindingAnnotation::Unannotated;
+                            if let ty::Ref(_, inner_ty, _) = cx.typeck_results().node_type(closure_arg.hir_id).kind();
+                            if let ty::Ref(..) = inner_ty.kind();
+                            // put an `&` in the closure body, but skip closure params
+                            if let Some((start, end)) = old_search_snippet.split_once(&name);
+
+                            then {
+                                let end = end.replace(name, &format!("&{}", name));
+                                Some(format!("{}{}{}", start, name, end))
+                            } else {
+                                Some(search_snippet)
+                            }
+                        }
                     } else {
                         None
                     }

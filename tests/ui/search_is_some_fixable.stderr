@@ -180,5 +180,17 @@ error: called `is_none()` after calling `find()` on a string
 LL |     let _ = s1[2..].find(&s2[2..]).is_none();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1[2..].contains(&s2[2..])`
 
-error: aborting due to 30 previous errors
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable.rs:83:25
+   |
+LL |             .filter(|c| filter_hand.iter().find(|cc| c == cc).is_none())
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!filter_hand.iter().any(|cc| c == &cc)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable.rs:99:30
+   |
+LL |             .filter(|(c, _)| filter_hand.iter().find(|cc| c == *cc).is_none())
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!filter_hand.iter().any(|cc| c == cc)`
+
+error: aborting due to 32 previous errors
 
