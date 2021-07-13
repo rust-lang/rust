@@ -1,6 +1,5 @@
-use ide_db::base_db::Upcast;
-use ide_db::helpers::pick_best_token;
-use ide_db::RootDatabase;
+use ide_db::{base_db::Upcast, helpers::pick_best_token, RootDatabase};
+use rustc_hash::FxHashSet;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
@@ -39,7 +38,6 @@ pub(crate) fn goto_type_definition(
                 ast::SelfParam(it) => sema.type_of_self(&it)?,
                 ast::Type(it) => sema.resolve_type(&it)?,
                 ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
-                ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
                 // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
                 ast::NameRef(it) => {
                     if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
@@ -56,27 +54,46 @@ pub(crate) fn goto_type_definition(
 
         Some((ty, node))
     })?;
-    let adt_def = ty.autoderef(db).filter_map(|ty| ty.as_adt()).last()?;
 
-    let nav = adt_def.try_to_nav(db)?;
-    Some(RangeInfo::new(node.text_range(), vec![nav]))
+    let mut res = FxHashSet::default();
+    let mut workload = vec![ty.strip_references()];
+    while let Some(ty) = workload.pop() {
+        if let Some(adt) = ty.as_adt() {
+            res.insert(adt);
+        }
+        workload.extend(ty.strip_references().type_arguments());
+    }
+
+    Some(RangeInfo::new(
+        node.text_range(),
+        res.into_iter().flat_map(|adt| adt.try_to_nav(db)).collect(),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::FileRange;
+    use itertools::Itertools;
 
     use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, mut annotations) = fixture::annotations(ra_fixture);
-        let (expected, data) = annotations.pop().unwrap();
-        assert!(data.is_empty());
+        let (analysis, position, expected) = fixture::annotations(ra_fixture);
+        let navs = analysis.goto_type_definition(position).unwrap().unwrap().info;
+        assert_ne!(navs.len(), 0);
 
-        let mut navs = analysis.goto_type_definition(position).unwrap().unwrap().info;
-        assert_eq!(navs.len(), 1);
-        let nav = navs.pop().unwrap();
-        assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
+        let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
+        let navs = navs
+            .into_iter()
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        let expected = expected
+            .into_iter()
+            .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
+            .sorted_by_key(cmp)
+            .collect::<Vec<_>>();
+        assert_eq!(expected, navs);
     }
 
     #[test]
@@ -243,6 +260,22 @@ enum Foo {
         bar$0: Bar
     },
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_considers_generics() {
+        check(
+            r#"
+struct Foo;
+     //^^^
+struct Bar<T, U>(T, U);
+     //^^^
+struct Baz<T>(T);
+     //^^^
+
+fn foo(x$0: Bar<Baz<Foo>, Baz<usize>) {}
 "#,
         );
     }
