@@ -127,13 +127,15 @@ impl<K, V> IntoIterator for VecMap<K, V> {
     }
 }
 
-impl<K, V> Extend<(K, V)> for VecMap<K, V> {
+impl<K: PartialEq, V> Extend<(K, V)> for VecMap<K, V> {
     fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
-        self.0.extend(iter);
+        for (k, v) in iter {
+            self.insert(k, v);
+        }
     }
 
-    fn extend_one(&mut self, item: (K, V)) {
-        self.0.extend_one(item);
+    fn extend_one(&mut self, (k, v): (K, V)) {
+        self.insert(k, v);
     }
 
     fn extend_reserve(&mut self, additional: usize) {
