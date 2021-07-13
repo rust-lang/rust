@@ -11,16 +11,10 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 #![allow(unreachable_pub)]
 
-#[allow(dead_code)]
-#[doc(hidden)]
-mod proc_macro;
-
-#[doc(hidden)]
-mod rustc_server;
-
 mod dylib;
 
-use proc_macro::bridge::client::TokenStream;
+mod abis;
+
 use proc_macro_api::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -55,10 +49,7 @@ impl ProcMacroSrv {
 
         match result {
             Ok(expansion) => Ok(ExpansionResult { expansion }),
-            Err(msg) => {
-                let msg = msg.as_str().unwrap_or("<unknown error>");
-                Err(format!("proc-macro panicked: {}", msg))
-            }
+            Err(msg) => Err(format!("proc-macro panicked: {}", msg)),
         }
     }
 

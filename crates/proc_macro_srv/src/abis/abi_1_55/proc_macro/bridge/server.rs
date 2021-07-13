@@ -3,6 +3,7 @@
 //! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/server.rs>
 //! augmented with removing unstable features
 
+use super::super::TokenStream as CrateTokenStream;
 use super::*;
 
 // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
@@ -181,24 +182,21 @@ impl ExecutionStrategy for CrossThread1 {
         let (req_tx, req_rx) = channel();
         let (res_tx, res_rx) = channel();
 
-        let join_handle = thread::Builder::new()
-            .name("Dispatch".to_owned())
-            .spawn(move || {
-                let mut dispatch = |b| {
-                    req_tx.send(b).unwrap();
-                    res_rx.recv().unwrap()
-                };
+        let join_handle = thread::spawn(move || {
+            let mut dispatch = |b| {
+                req_tx.send(b).unwrap();
+                res_rx.recv().unwrap()
+            };
 
-                run_client(
-                    Bridge {
-                        cached_buffer: input,
-                        dispatch: (&mut dispatch).into(),
-                        force_show_panics,
-                    },
-                    client_data,
-                )
-            })
-            .expect("failed to spawn thread");
+            run_client(
+                Bridge {
+                    cached_buffer: input,
+                    dispatch: (&mut dispatch).into(),
+                    force_show_panics,
+                },
+                client_data,
+            )
+        });
 
         for b in req_rx {
             res_tx.send(dispatcher.dispatch(b)).unwrap();
@@ -230,36 +228,33 @@ impl ExecutionStrategy for CrossThread2 {
 
         let server_thread = thread::current();
         let state2 = state.clone();
-        let join_handle = thread::Builder::new()
-            .name("ProcMacroServer".to_owned())
-            .spawn(move || {
-                let mut dispatch = |b| {
-                    *state2.lock().unwrap() = State::Req(b);
-                    server_thread.unpark();
-                    loop {
-                        thread::park();
-                        if let State::Res(b) = &mut *state2.lock().unwrap() {
-                            break b.take();
-                        }
-                    }
-                };
-
-                let r = run_client(
-                    Bridge {
-                        cached_buffer: input,
-                        dispatch: (&mut dispatch).into(),
-                        force_show_panics,
-                    },
-                    client_data,
-                );
-
-                // Wake up the server so it can exit the dispatch loop.
-                drop(state2);
+        let join_handle = thread::spawn(move || {
+            let mut dispatch = |b| {
+                *state2.lock().unwrap() = State::Req(b);
                 server_thread.unpark();
+                loop {
+                    thread::park();
+                    if let State::Res(b) = &mut *state2.lock().unwrap() {
+                        break b.take();
+                    }
+                }
+            };
 
-                r
-            })
-            .expect("failed to spawn thread");
+            let r = run_client(
+                Bridge {
+                    cached_buffer: input,
+                    dispatch: (&mut dispatch).into(),
+                    force_show_panics,
+                },
+                client_data,
+            );
+
+            // Wake up the server so it can exit the dispatch loop.
+            drop(state2);
+            server_thread.unpark();
+
+            r
+        });
 
         // Check whether `state2` was dropped, to know when to stop.
         while Arc::get_mut(&mut state).is_none() {
@@ -308,7 +303,7 @@ fn run_server<
     Result::decode(&mut &b[..], &mut dispatcher.handle_store)
 }
 
-impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
+impl client::Client<fn(CrateTokenStream) -> CrateTokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,
@@ -330,7 +325,7 @@ impl client::Client<fn(crate::TokenStream) -> crate::TokenStream> {
     }
 }
 
-impl client::Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
+impl client::Client<fn(CrateTokenStream, CrateTokenStream) -> CrateTokenStream> {
     pub fn run<S: Server>(
         &self,
         strategy: &impl ExecutionStrategy,

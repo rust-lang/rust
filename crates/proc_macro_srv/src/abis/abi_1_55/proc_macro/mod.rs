@@ -36,6 +36,11 @@ pub struct TokenStream(bridge::client::TokenStream);
 pub struct LexError {
     _inner: (),
 }
+impl LexError {
+    fn new() -> Self {
+        LexError { _inner: () }
+    }
+}
 
 impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
@@ -133,7 +138,7 @@ impl Extend<TokenStream> for TokenStream {
 
 /// Public implementation details for the `TokenStream` type, such as iterators.
 pub mod token_stream {
-    use crate::proc_macro::{bridge, Group, Ident, Literal, Punct, TokenStream, TokenTree};
+    use super::{bridge, Group, Ident, Literal, Punct, TokenStream, TokenTree};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
@@ -922,6 +927,17 @@ impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
         self.0.fmt(f)
+    }
+}
+
+impl FromStr for Literal {
+    type Err = LexError;
+
+    fn from_str(src: &str) -> Result<Self, LexError> {
+        match bridge::client::Literal::from_str(src) {
+            Ok(literal) => Ok(Literal(literal)),
+            Err(()) => Err(LexError::new()),
+        }
     }
 }
 

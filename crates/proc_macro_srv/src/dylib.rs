@@ -1,6 +1,7 @@
 //! Handles dynamic library loading for proc macro
 
 use std::{
+    fmt,
     fs::File,
     io,
     path::{Path, PathBuf},
@@ -9,9 +10,9 @@ use std::{
 use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
-use proc_macro_api::ProcMacroKind;
+use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
-use crate::{proc_macro::bridge, rustc_server::TokenStream};
+use super::abis::Abi;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
@@ -74,26 +75,52 @@ fn load_library(file: &Path) -> Result<Library, libloading::Error> {
     unsafe { UnixLibrary::open(Some(file), RTLD_NOW | RTLD_DEEPBIND).map(|lib| lib.into()) }
 }
 
+#[derive(Debug)]
+pub enum LoadProcMacroDylibError {
+    Io(io::Error),
+    LibLoading(libloading::Error),
+    UnsupportedABI,
+}
+
+impl fmt::Display for LoadProcMacroDylibError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(e) => e.fmt(f),
+            Self::UnsupportedABI => write!(f, "unsupported ABI version"),
+            Self::LibLoading(e) => e.fmt(f),
+        }
+    }
+}
+
+impl From<io::Error> for LoadProcMacroDylibError {
+    fn from(e: io::Error) -> Self {
+        LoadProcMacroDylibError::Io(e)
+    }
+}
+
+impl From<libloading::Error> for LoadProcMacroDylibError {
+    fn from(e: libloading::Error) -> Self {
+        LoadProcMacroDylibError::LibLoading(e)
+    }
+}
+
 struct ProcMacroLibraryLibloading {
-    // Hold the dylib to prevent it from unloading
+    // Hold on to the library so it doesn't unload
     _lib: Library,
-    exported_macros: Vec<bridge::client::ProcMacro>,
+    abi: Abi,
 }
 
 impl ProcMacroLibraryLibloading {
-    fn open(file: &Path) -> io::Result<Self> {
+    fn open(file: &Path) -> Result<Self, LoadProcMacroDylibError> {
         let symbol_name = find_registrar_symbol(file)?.ok_or_else(|| {
             invalid_data_err(format!("Cannot find registrar symbol in file {}", file.display()))
         })?;
 
-        let lib = load_library(file).map_err(invalid_data_err)?;
-        let exported_macros = {
-            let macros: libloading::Symbol<&&[bridge::client::ProcMacro]> =
-                unsafe { lib.get(symbol_name.as_bytes()) }.map_err(invalid_data_err)?;
-            macros.to_vec()
-        };
+        let version_info = read_dylib_info(file)?;
 
-        Ok(ProcMacroLibraryLibloading { _lib: lib, exported_macros })
+        let lib = load_library(file).map_err(invalid_data_err)?;
+        let abi = Abi::from_lib(&lib, symbol_name, version_info)?;
+        Ok(ProcMacroLibraryLibloading { _lib: lib, abi })
     }
 }
 
@@ -102,7 +129,7 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new(lib: &Path) -> io::Result<Expander> {
+    pub fn new(lib: &Path) -> Result<Expander, LoadProcMacroDylibError> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
         let lib = lib.canonicalize()?;
@@ -119,69 +146,13 @@ impl Expander {
         macro_name: &str,
         macro_body: &tt::Subtree,
         attributes: Option<&tt::Subtree>,
-    ) -> Result<tt::Subtree, bridge::PanicMessage> {
-        let parsed_body = TokenStream::with_subtree(macro_body.clone());
-
-        let parsed_attributes = attributes
-            .map_or(crate::rustc_server::TokenStream::new(), |attr| {
-                TokenStream::with_subtree(attr.clone())
-            });
-
-        for proc_macro in &self.inner.exported_macros {
-            match proc_macro {
-                bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
-                    if *trait_name == macro_name =>
-                {
-                    let res = client.run(
-                        &crate::proc_macro::bridge::server::SameThread,
-                        crate::rustc_server::Rustc::default(),
-                        parsed_body,
-                        false,
-                    );
-                    return res.map(|it| it.into_subtree());
-                }
-                bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
-                    let res = client.run(
-                        &crate::proc_macro::bridge::server::SameThread,
-                        crate::rustc_server::Rustc::default(),
-                        parsed_body,
-                        false,
-                    );
-                    return res.map(|it| it.into_subtree());
-                }
-                bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
-                    let res = client.run(
-                        &crate::proc_macro::bridge::server::SameThread,
-                        crate::rustc_server::Rustc::default(),
-                        parsed_attributes,
-                        parsed_body,
-                        false,
-                    );
-                    return res.map(|it| it.into_subtree());
-                }
-                _ => continue,
-            }
-        }
-
-        Err(bridge::PanicMessage::String("Nothing to expand".to_string()))
+    ) -> Result<tt::Subtree, String> {
+        let result = self.inner.abi.expand(macro_name, macro_body, attributes);
+        result.map_err(|e| e.as_str().unwrap_or_else(|| "<unknown error>".to_string()))
     }
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.inner
-            .exported_macros
-            .iter()
-            .map(|proc_macro| match proc_macro {
-                bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
-                    (trait_name.to_string(), ProcMacroKind::CustomDerive)
-                }
-                bridge::client::ProcMacro::Bang { name, .. } => {
-                    (name.to_string(), ProcMacroKind::FuncLike)
-                }
-                bridge::client::ProcMacro::Attr { name, .. } => {
-                    (name.to_string(), ProcMacroKind::Attr)
-                }
-            })
-            .collect()
+        self.inner.abi.list_macros()
     }
 }
 

@@ -3,7 +3,7 @@
 //! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/diagnostic.rs>
 //! augmented with removing unstable features
 
-use crate::proc_macro::Span;
+use super::Span;
 
 /// An enum representing a diagnostic level.
 #[derive(Copy, Clone, Debug)]
@@ -146,15 +146,15 @@ impl Diagnostic {
 
     /// Emit the diagnostic.
     pub fn emit(self) {
-        fn to_internal(spans: Vec<Span>) -> crate::proc_macro::bridge::client::MultiSpan {
-            let mut multi_span = crate::proc_macro::bridge::client::MultiSpan::new();
+        fn to_internal(spans: Vec<Span>) -> super::bridge::client::MultiSpan {
+            let mut multi_span = super::bridge::client::MultiSpan::new();
             for span in spans {
                 multi_span.push(span.0);
             }
             multi_span
         }
 
-        let mut diag = crate::proc_macro::bridge::client::Diagnostic::new(
+        let mut diag = super::bridge::client::Diagnostic::new(
             self.level,
             &self.message[..],
             to_internal(self.spans),
