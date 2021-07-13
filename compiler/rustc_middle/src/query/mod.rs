@@ -31,6 +31,7 @@ rustc_queries! {
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside
     /// of rustc_middle::hir::source_map.
     query source_span(key: LocalDefId) -> Span {
+        eval_always
         desc { "get the source span" }
     }
 

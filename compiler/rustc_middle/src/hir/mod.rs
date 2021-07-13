@@ -7,7 +7,7 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;
-use crate::ty::{ImplSubject, TyCtxt};
+use crate::ty::{DefIdTree, ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -105,22 +105,19 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the def_key is ok since its value is hashed as part of `id`'s DefPathHash.
-        let parent = tcx.untracked_resolutions.definitions.def_key(id).parent;
-        let parent = parent.map_or(CRATE_HIR_ID, |local_def_index| {
-            let def_id = LocalDefId { local_def_index };
-            let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        tcx.local_parent(id).map_or(CRATE_HIR_ID, |parent| {
+            let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
             if let Some(local_id) =
                 tcx.hir_crate(()).owners[parent_hir_id.owner].unwrap().parenting.get(&id)
             {
                 parent_hir_id.local_id = *local_id;
             }
             parent_hir_id
-        });
-        parent
+        })
     };
     providers.hir_attrs =
         |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
-    providers.source_span = |tcx, def_id| tcx.resolutions(()).definitions.def_span(def_id);
+    providers.source_span = |tcx, def_id| tcx.definitions_untracked().def_span(def_id);
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();
@@ -141,7 +138,7 @@ pub fn provide(providers: &mut Providers) {
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined = |tcx, id| {
         let id = id.expect_local();
-        tcx.resolutions(()).definitions.expansion_that_defined(id)
+        tcx.definitions_untracked().expansion_that_defined(id)
     };
     providers.in_scope_traits_map =
         |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map(|owner_info| &owner_info.trait_map);
