@@ -235,6 +235,12 @@ impl<'a> Classifier<'a> {
         }
     }
 
+    /// Convenient wrapper around [`LightSpan::new_in_file`] to prevent passing the `file_span_lo`
+    /// argument every time.
+    fn new_light_span(&self, lo: u32, hi: u32) -> LightSpan {
+        LightSpan::new_in_file(self.file_span_lo, lo, hi)
+    }
+
     /// Concatenate colons and idents as one when possible.
     fn get_full_ident_path(&mut self) -> Vec<(TokenKind, usize, usize)> {
         let start = self.byte_pos as usize;
@@ -313,14 +319,12 @@ impl<'a> Classifier<'a> {
                 .unwrap_or(false)
             {
                 let tokens = self.get_full_ident_path();
-                // We need this variable because `tokens` is consumed in the loop.
-                let skip = !tokens.is_empty();
-                for (token, start, end) in tokens {
-                    let text = &self.src[start..end];
-                    self.advance(token, text, sink, start as u32);
+                for (token, start, end) in &tokens {
+                    let text = &self.src[*start..*end];
+                    self.advance(*token, text, sink, *start as u32);
                     self.byte_pos += text.len() as u32;
                 }
-                if skip {
+                if !tokens.is_empty() {
                     continue;
                 }
             }
@@ -483,24 +487,16 @@ impl<'a> Classifier<'a> {
                         self.in_macro_nonterminal = false;
                         Class::MacroNonTerminal
                     }
-                    "self" | "Self" => Class::Self_(LightSpan::new_in_file(
-                        self.file_span_lo,
-                        before,
-                        before + text.len() as u32,
-                    )),
-                    _ => Class::Ident(LightSpan::new_in_file(
-                        self.file_span_lo,
-                        before,
-                        before + text.len() as u32,
-                    )),
+                    "self" | "Self" => {
+                        Class::Self_(self.new_light_span(before, before + text.len() as u32))
+                    }
+                    _ => Class::Ident(self.new_light_span(before, before + text.len() as u32)),
                 },
                 Some(c) => c,
             },
-            TokenKind::RawIdent | TokenKind::UnknownPrefix => Class::Ident(LightSpan::new_in_file(
-                self.file_span_lo,
-                before,
-                before + text.len() as u32,
-            )),
+            TokenKind::RawIdent | TokenKind::UnknownPrefix => {
+                Class::Ident(self.new_light_span(before, before + text.len() as u32))
+            }
             TokenKind::Lifetime { .. } => Class::Lifetime,
         };
         // Anything that didn't return above is the simple case where we the
@@ -564,7 +560,7 @@ fn string<T: Display>(
                 "self" | "Self" => write!(
                     &mut path,
                     "<span class=\"{}\">{}</span>",
-                    Class::Self_(LightSpan::empty()).as_html(),
+                    Class::Self_(LightSpan::dummy()).as_html(),
                     t
                 ),
                 "crate" | "super" => {

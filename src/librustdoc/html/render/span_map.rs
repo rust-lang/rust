@@ -51,7 +51,7 @@ impl LightSpan {
         Self { lo: lo + file_span_lo, hi: hi + file_span_lo }
     }
 
-    crate fn empty() -> Self {
+    crate fn dummy() -> Self {
         Self { lo: 0, hi: 0 }
     }
 
