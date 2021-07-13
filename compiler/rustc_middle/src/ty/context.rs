@@ -1002,6 +1002,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -1031,8 +1032,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverOutputs,
-
-    pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
+    pub untracked_crate: Steal<Lrc<ast::Crate>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -1169,10 +1169,11 @@ impl<'tcx> TyCtxt<'tcx> {
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
+        hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         definitions: Definitions,
         cstore: Box<CrateStoreDyn>,
         untracked_resolutions: ty::ResolverOutputs,
-        krate: &'tcx hir::Crate<'tcx>,
+        krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
@@ -1192,16 +1193,17 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             lint_store,
             arena,
+            hir_arena,
             interners,
             dep_graph,
             definitions: RwLock::new(definitions),
             cstore,
-            untracked_resolutions,
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
-            untracked_crate: krate,
+            untracked_resolutions,
+            untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),

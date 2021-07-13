@@ -1,7 +1,6 @@
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
-use super::{LoweringContext, ParamMode};
-use crate::{Arena, FnDeclKind};
+use super::{FnDeclKind, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
@@ -12,12 +11,9 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_hir::definitions::Definitions;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::ResolverOutputs;
-use rustc_session::cstore::CrateStoreDyn;
+use rustc_middle::ty::{ResolverOutputs, TyCtxt};
 use rustc_session::utils::NtToTokenstream;
-use rustc_session::Session;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -28,12 +24,9 @@ use tracing::debug;
 use std::iter;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
-    pub(super) sess: &'a Session,
-    pub(super) definitions: &'a mut Definitions,
-    pub(super) cstore: &'a CrateStoreDyn,
-    pub(super) resolver: &'a mut ResolverOutputs,
+    pub(super) tcx: TyCtxt<'hir>,
+    pub(super) resolver: &'hir ResolverOutputs,
     pub(super) nt_to_tokenstream: NtToTokenstream,
-    pub(super) arena: &'hir Arena<'hir>,
     pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
@@ -62,17 +55,16 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
+        f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
     ) {
         let next_node_id = self.resolver.next_node_id;
         let mut lctx = LoweringContext {
             // Pseudo-globals.
-            sess: &self.sess,
-            definitions: self.definitions,
-            cstore: self.cstore,
+            tcx: self.tcx,
+            sess: &self.tcx.sess,
             resolver: self.resolver,
             nt_to_tokenstream: self.nt_to_tokenstream,
-            arena: self.arena,
+            arena: self.tcx.hir_arena,
 
             // HirId handling.
             bodies: Vec::new(),
@@ -145,7 +137,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         let def_id = self.resolver.node_id_to_def_id[&item.id];
 
         let parent_id = {
-            let parent = self.definitions.def_key(def_id).parent;
+            let parent = self.tcx.hir().def_key(def_id).parent;
             let local_def_index = parent.unwrap();
             LocalDefId { local_def_index }
         };
@@ -174,7 +166,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(super) fn lower_mod(&mut self, items: &[P<Item>], spans: &ModSpans) -> hir::Mod<'hir> {
         hir::Mod {
             spans: hir::ModSpans {
@@ -1429,7 +1421,7 @@ pub(super) struct GenericsCtor<'hir> {
 }
 
 impl<'hir> GenericsCtor<'hir> {
-    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> hir::Generics<'hir> {
+    pub(super) fn into_generics(self, arena: &'hir hir::Arena<'hir>) -> hir::Generics<'hir> {
         hir::Generics {
             params: arena.alloc_from_iter(self.params),
             where_clause: self.where_clause,

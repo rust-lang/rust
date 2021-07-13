@@ -47,7 +47,8 @@ rustc_queries! {
     /// This is because the `hir_crate` query gives you access to all other items.
     /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
     /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
+    query hir_crate(key: ()) -> Crate<'tcx> {
+        storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "get the crate HIR" }
     }
@@ -1335,7 +1336,7 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: LocalDefId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Box<[TraitCandidate]>>> {
+        -> Option<&'tcx FxHashMap<ItemLocalId, &'tcx [TraitCandidate]>> {
         desc { "traits in scope at a block" }
     }
 

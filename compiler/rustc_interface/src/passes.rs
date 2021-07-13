@@ -490,24 +490,12 @@ pub fn configure_and_expand(
     Ok(krate)
 }
 
-fn lower_to_hir<'tcx>(
-    sess: &Session,
-    definitions: &mut Definitions,
-    cstore: &CrateStoreDyn,
-    resolver: &mut ResolverOutputs,
-    krate: Rc<ast::Crate>,
-    arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
-) -> &'tcx Crate<'tcx> {
+fn lower_to_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Crate<'tcx> {
+    let sess = tcx.sess;
+    let krate = tcx.untracked_crate.steal();
+
     // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(
-        sess,
-        &krate,
-        definitions,
-        cstore,
-        resolver,
-        rustc_parse::nt_to_tokenstream,
-        arena,
-    );
+    let hir_crate = rustc_ast_lowering::lower_crate(tcx, &krate, rustc_parse::nt_to_tokenstream);
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -784,6 +772,7 @@ pub fn prepare_outputs(
 pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
+    providers.hir_crate = lower_to_hir;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -830,7 +819,7 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: Rc<ast::Crate>,
+    krate: Lrc<ast::Crate>,
     dep_graph: DepGraph,
     resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,
@@ -838,22 +827,16 @@ pub fn create_global_ctxt<'tcx>(
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    hir_arena: &'tcx WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
+    hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let (mut definitions, cstore, mut resolver_outputs) =
-        BoxedResolver::to_resolver_outputs(resolver);
+    let (definitions, cstore, resolver_outputs) = BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
-
-    // Lower AST to HIR.
-    let krate =
-        lower_to_hir(sess, &mut definitions, &*cstore, &mut resolver_outputs, krate, hir_arena);
-
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
@@ -877,6 +860,7 @@ pub fn create_global_ctxt<'tcx>(
                 sess,
                 lint_store,
                 arena,
+                hir_arena,
                 definitions,
                 cstore,
                 resolver_outputs,

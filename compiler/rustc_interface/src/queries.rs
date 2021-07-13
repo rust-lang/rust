@@ -72,13 +72,13 @@ pub struct Queries<'tcx> {
     queries: OnceCell<TcxQueries<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
-    hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
+    hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(Rc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
+    expansion: Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
@@ -92,7 +92,7 @@ impl<'tcx> Queries<'tcx> {
             gcx: OnceCell::new(),
             queries: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
-            hir_arena: WorkerLocal::new(|_| rustc_ast_lowering::Arena::default()),
+            hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
@@ -164,7 +164,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<&Query<(Rc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
+    ) -> Result<&Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
         tracing::trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
@@ -180,7 +180,7 @@ impl<'tcx> Queries<'tcx> {
             let krate = resolver.access(|resolver| {
                 passes::configure_and_expand(sess, &lint_store, krate, &crate_name, resolver)
             })?;
-            Ok((Rc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
+            Ok((Lrc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
         })
     }
 

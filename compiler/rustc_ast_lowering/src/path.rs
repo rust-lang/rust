@@ -15,7 +15,7 @@ use rustc_span::{BytePos, Span, DUMMY_SP};
 use smallvec::smallvec;
 use tracing::debug;
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     crate fn lower_qpath(
         &mut self,
         id: NodeId,

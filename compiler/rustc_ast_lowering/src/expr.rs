@@ -16,7 +16,7 @@ use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
@@ -947,7 +947,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
-        fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
+        fn is_ordinary(lower_ctx: &mut LoweringContext<'_>, lhs: &Expr) -> bool {
             match &lhs.kind {
                 ExprKind::Array(..)
                 | ExprKind::Struct(..)
