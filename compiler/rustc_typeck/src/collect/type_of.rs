@@ -509,10 +509,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     use rustc_hir::{Expr, ImplItem, Item, TraitItem};
-
-    debug!("find_opaque_ty_constraints({:?})", def_id);
 
     struct ConstraintLocator<'tcx> {
         tcx: TyCtxt<'tcx>,
@@ -522,13 +521,11 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     }
 
     impl ConstraintLocator<'_> {
+        #[instrument(skip(self), level = "debug")]
         fn check(&mut self, def_id: LocalDefId) {
             // Don't try to check items that cannot possibly constrain the type.
             if !self.tcx.has_typeck_results(def_id) {
-                debug!(
-                    "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`: no typeck results",
-                    self.def_id, def_id,
-                );
+                debug!("no constraint: no typeck results");
                 return;
             }
             // Calling `mir_borrowck` can lead to cycle errors through
@@ -540,10 +537,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 .get_by(|(key, _)| key.def_id == self.def_id)
                 .is_none()
             {
-                debug!(
-                    "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`",
-                    self.def_id, def_id,
-                );
+                debug!("no constraints in typeck results");
                 return;
             }
             // Use borrowck to get the type with unerased regions.
@@ -603,7 +597,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
 
                 if let Some((prev_span, prev_ty)) = self.found {
                     if *concrete_type != prev_ty {
-                        debug!("find_opaque_ty_constraints: span={:?}", span);
+                        debug!(?span);
                         // Found different concrete types for the opaque type.
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
