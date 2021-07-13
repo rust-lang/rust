@@ -119,13 +119,13 @@ impl<'a> StableHashingContext<'a> {
         &mut self,
         hash_bodies: bool,
         owner: LocalDefId,
-        bodies: &'a SortedMap<hir::ItemLocalId, &'a hir::Body<'a>>,
-        f: impl FnOnce(&mut Self),
+        bodies: &SortedMap<hir::ItemLocalId, &hir::Body<'_>>,
+        f: impl FnOnce(&mut StableHashingContext<'_>),
     ) {
-        let prev = self.body_resolver;
-        self.body_resolver = BodyResolver::Traverse { hash_bodies, owner, bodies };
-        f(self);
-        self.body_resolver = prev;
+        f(&mut StableHashingContext {
+            body_resolver: BodyResolver::Traverse { hash_bodies, owner, bodies },
+            ..self.clone()
+        });
     }
 
     #[inline]

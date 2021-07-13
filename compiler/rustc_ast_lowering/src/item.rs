@@ -1,7 +1,6 @@
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
-use super::{LoweringContext, ParamMode};
-use crate::{Arena, FnDeclKind};
+use super::{FnDeclKind, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
@@ -12,12 +11,9 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_hir::definitions::Definitions;
 use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{ResolverAstLowering, ResolverOutputs};
-use rustc_session::cstore::CrateStoreDyn;
-use rustc_session::Session;
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -27,12 +23,8 @@ use smallvec::{smallvec, SmallVec};
 use std::iter;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
-    pub(super) sess: &'a Session,
-    pub(super) definitions: &'a mut Definitions,
-    pub(super) cstore: &'a CrateStoreDyn,
-    pub(super) resolutions: &'a ResolverOutputs,
+    pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut ResolverAstLowering,
-    pub(super) arena: &'hir Arena<'hir>,
     pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
@@ -65,12 +57,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     ) {
         let mut lctx = LoweringContext {
             // Pseudo-globals.
-            sess: &self.sess,
-            definitions: self.definitions,
-            cstore: self.cstore,
-            resolutions: self.resolutions,
+            tcx: self.tcx,
+            sess: &self.tcx.sess,
             resolver: self.resolver,
-            arena: self.arena,
+            arena: self.tcx.hir_arena,
 
             // HirId handling.
             bodies: Vec::new(),
@@ -145,7 +135,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         let def_id = self.resolver.node_id_to_def_id[&item.id];
 
         let parent_id = {
-            let parent = self.definitions.def_key(def_id).parent;
+            let parent = self.tcx.hir().def_key(def_id).parent;
             let local_def_index = parent.unwrap();
             LocalDefId { local_def_index }
         };

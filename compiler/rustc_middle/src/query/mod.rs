@@ -32,6 +32,12 @@ rustc_queries! {
         desc { "get the resolver outputs" }
     }
 
+    query resolver_for_lowering(_: ()) -> &'tcx Steal<ty::ResolverAstLowering> {
+        eval_always
+        no_hash
+        desc { "get the resolver for lowering" }
+    }
+
     /// Return the span for a definition.
     /// Contrary to `def_span` below, this query returns the full absolute span of the definition.
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside
@@ -46,7 +52,8 @@ rustc_queries! {
     /// This is because the `hir_crate` query gives you access to all other items.
     /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
     /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
+    query hir_crate(key: ()) -> Crate<'tcx> {
+        storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "get the crate HIR" }
     }

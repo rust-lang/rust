@@ -102,7 +102,6 @@ pub fn provide(providers: &mut Providers) {
         let hir = tcx.hir();
         hir.get_module_parent_node(hir.local_def_id_to_hir_id(id))
     };
-    providers.hir_crate = |tcx, ()| tcx.untracked_crate;
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;

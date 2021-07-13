@@ -99,7 +99,7 @@ pub use builtin::SoftLints;
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
 pub use early::{check_ast_node, EarlyCheckNode};
-pub use late::check_crate;
+pub use late::{check_crate, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};

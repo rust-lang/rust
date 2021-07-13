@@ -53,12 +53,10 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_hir::definitions::{DefPathData, Definitions};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{ResolverAstLowering, ResolverOutputs};
-use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::CrateStoreDyn;
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
@@ -83,19 +81,13 @@ mod item;
 mod pat;
 mod path;
 
-rustc_hir::arena_types!(rustc_arena::declare_arena);
-
-struct LoweringContext<'a, 'hir: 'a> {
-    /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
-    sess: &'a Session,
-
-    definitions: &'a mut Definitions,
-    cstore: &'a CrateStoreDyn,
-    resolutions: &'a ResolverOutputs,
+struct LoweringContext<'a, 'hir> {
+    tcx: TyCtxt<'hir>,
+    sess: &'hir Session,
     resolver: &'a mut ResolverAstLowering,
 
     /// Used to allocate HIR nodes.
-    arena: &'hir Arena<'hir>,
+    arena: &'hir hir::Arena<'hir>,
 
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
@@ -391,61 +383,58 @@ fn index_crate<'a>(
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
 fn compute_hir_hash(
-    sess: &Session,
-    definitions: &Definitions,
-    cstore: &CrateStoreDyn,
-    resolver: &ResolverOutputs,
+    tcx: TyCtxt<'_>,
     owners: &IndexVec<LocalDefId, hir::MaybeOwner<&hir::OwnerInfo<'_>>>,
 ) -> Fingerprint {
     let mut hir_body_nodes: Vec<_> = owners
         .iter_enumerated()
         .filter_map(|(def_id, info)| {
             let info = info.as_owner()?;
-            let def_path_hash = definitions.def_path_hash(def_id);
+            let def_path_hash = tcx.hir().def_path_hash(def_id);
             Some((def_path_hash, info))
         })
         .collect();
     hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
-    let mut stable_hasher = StableHasher::new();
-    let mut hcx = StableHashingContext::new(sess, definitions, cstore, &resolver.source_span);
-    hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-    stable_hasher.finish()
+    tcx.with_stable_hashing_context(|mut hcx| {
+        let mut stable_hasher = StableHasher::new();
+        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
+        stable_hasher.finish()
+    })
 }
 
-pub fn lower_crate<'hir>(
-    sess: &Session,
-    krate: &Crate,
-    definitions: &mut Definitions,
-    cstore: &CrateStoreDyn,
-    resolutions: &ResolverOutputs,
-    mut resolver: ResolverAstLowering,
-    arena: &'hir Arena<'hir>,
-) -> &'hir hir::Crate<'hir> {
-    let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
+pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
+    let sess = tcx.sess;
+    let krate = tcx.untracked_crate.steal();
+    let mut resolver = tcx.resolver_for_lowering(()).steal();
 
-    let ast_index = index_crate(&resolver.node_id_to_def_id, krate);
-
-    let mut owners =
-        IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, definitions.def_index_count());
+    let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
+    let mut owners = IndexVec::from_fn_n(
+        |_| hir::MaybeOwner::Phantom,
+        tcx.definitions_untracked().def_index_count(),
+    );
 
     for def_id in ast_index.indices() {
         item::ItemLowerer {
-            sess,
-            definitions,
-            cstore,
-            resolutions,
+            tcx,
             resolver: &mut resolver,
-            arena,
             ast_index: &ast_index,
             owners: &mut owners,
         }
         .lower_node(def_id);
     }
 
-    let hir_hash = compute_hir_hash(sess, definitions, cstore, resolutions, &owners);
-    let krate = hir::Crate { owners, hir_hash };
-    arena.alloc(krate)
+    // Drop AST to free memory
+    std::mem::drop(ast_index);
+    sess.time("drop_ast", || std::mem::drop(krate));
+
+    // Discard hygiene data, which isn't required after lowering to HIR.
+    if !sess.opts.debugging_opts.keep_hygiene_data {
+        rustc_span::hygiene::clear_syntax_context_map();
+    }
+
+    let hir_hash = compute_hir_hash(tcx, &owners);
+    hir::Crate { owners, hir_hash }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -464,15 +453,6 @@ enum ParenthesizedGenericArgs {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(
-            self.sess,
-            self.definitions,
-            self.cstore,
-            &self.resolutions.source_span,
-        )
-    }
-
     fn create_def(
         &mut self,
         parent: LocalDefId,
@@ -484,10 +464,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
             node_id,
             data,
-            self.definitions.def_key(self.local_def_id(node_id)),
+            self.tcx.hir().def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.definitions.create_def(parent, data);
+        let def_id = self.tcx.create_def(parent, data);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -578,7 +558,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
-        let (nodes, parenting) = index::index_hir(self.sess, self.definitions, node, &bodies);
+        let (nodes, parenting) =
+            index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
         let nodes = hir::OwnerNodes {
             hash_including_bodies,
             hash_without_bodies,
@@ -587,10 +568,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             local_id_to_def_id,
         };
         let attrs = {
-            let mut hcx = self.create_stable_hashing_context();
-            let mut stable_hasher = StableHasher::new();
-            attrs.hash_stable(&mut hcx, &mut stable_hasher);
-            let hash = stable_hasher.finish();
+            let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
+                let mut stable_hasher = StableHasher::new();
+                attrs.hash_stable(&mut hcx, &mut stable_hasher);
+                stable_hasher.finish()
+            });
             hir::AttributeMap { map: attrs, hash }
         };
 
@@ -604,18 +586,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         node: hir::OwnerNode<'hir>,
         bodies: &SortedMap<hir::ItemLocalId, &'hir hir::Body<'hir>>,
     ) -> (Fingerprint, Fingerprint) {
-        let mut hcx = self.create_stable_hashing_context();
-        let mut stable_hasher = StableHasher::new();
-        hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
-            node.hash_stable(hcx, &mut stable_hasher)
-        });
-        let hash_including_bodies = stable_hasher.finish();
-        let mut stable_hasher = StableHasher::new();
-        hcx.with_hir_bodies(false, node.def_id(), bodies, |hcx| {
-            node.hash_stable(hcx, &mut stable_hasher)
-        });
-        let hash_without_bodies = stable_hasher.finish();
-        (hash_including_bodies, hash_without_bodies)
+        self.tcx.with_stable_hashing_context(|mut hcx| {
+            let mut stable_hasher = StableHasher::new();
+            hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
+                node.hash_stable(hcx, &mut stable_hasher)
+            });
+            let hash_including_bodies = stable_hasher.finish();
+            let mut stable_hasher = StableHasher::new();
+            hcx.with_hir_bodies(false, node.def_id(), bodies, |hcx| {
+                node.hash_stable(hcx, &mut stable_hasher)
+            });
+            let hash_without_bodies = stable_hasher.finish();
+            (hash_including_bodies, hash_without_bodies)
+        })
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in
@@ -703,12 +686,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.mark_with_reason(
-            allow_internal_unstable,
-            reason,
-            self.sess.edition(),
-            self.create_stable_hashing_context(),
-        )
+        self.tcx.with_stable_hashing_context(|hcx| {
+            span.mark_with_reason(allow_internal_unstable, reason, self.sess.edition(), hcx)
+        })
     }
 
     /// Intercept all spans entering HIR.
