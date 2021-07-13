@@ -191,5 +191,7 @@ fn normalize_newlines(s: &str) -> String {
 
 pub fn project_root() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
+    let res = PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned();
+    assert!(res.join("bors.toml").exists());
+    res
 }
