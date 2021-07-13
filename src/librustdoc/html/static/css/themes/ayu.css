@@ -161,7 +161,7 @@ pre, .rustdoc.source .example-wrap {
 .search-results a {
 	color: #0096cf;
 }
-.search-results a span.desc {
+.search-results a div.desc {
 	color: #c5c5c5;
 }
 
@@ -286,7 +286,7 @@ details.undocumented > summary::before {
 	color: grey;
 }
 
-tr.result span.primitive::after, tr.result span.keyword::after {
+.result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
 }
 
