@@ -1771,7 +1771,7 @@ impl PrimitiveType {
                 debug!(?crate_num, ?crate_name);
                 for &(def_id, prim) in &e.primitives(tcx) {
                     // HACK: try to link to std instead where possible
-                    if crate_name == sym::core && primitive_locations.get(&prim).is_some() {
+                    if crate_name == sym::core && primitive_locations.contains_key(&prim) {
                         continue;
                     }
                     primitive_locations.insert(prim, def_id);
