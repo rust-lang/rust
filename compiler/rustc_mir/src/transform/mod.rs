@@ -458,6 +458,10 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
+        // This will remove extraneous landing pads which are no longer
+        // necessary as well as well as forcing any call in a non-unwinding
+        // function calling a possibly-unwinding function to abort the process.
+        &abort_unwinding_calls::AbortUnwindingCalls,
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
@@ -528,10 +532,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // Some cleanup necessary at least for LLVM and potentially other codegen backends.
     let pre_codegen_cleanup: &[&dyn MirPass<'tcx>] = &[
-        // This will remove extraneous landing pads which are no longer
-        // necessary as well as well as forcing any call in a non-unwinding
-        // function calling a possibly-unwinding function to abort the process.
-        &abort_unwinding_calls::AbortUnwindingCalls,
         &add_call_guards::CriticalCallEdges,
         // Dump the end result for testing and debugging purposes.
         &dump_mir::Marker("PreCodegen"),

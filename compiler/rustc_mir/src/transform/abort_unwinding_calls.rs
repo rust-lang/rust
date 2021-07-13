@@ -1,4 +1,5 @@
 use crate::transform::MirPass;
+use rustc_hir::def::DefKind;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
@@ -24,6 +25,19 @@ pub struct AbortUnwindingCalls;
 
 impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let def_id = body.source.def_id();
+        let kind = tcx.def_kind(def_id);
+
+        // We don't simplify the MIR of constants at this time because that
+        // namely results in a cyclic query when we call `tcx.type_of` below.
+        let is_function = match kind {
+            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
+            _ => tcx.is_closure(def_id),
+        };
+        if !is_function {
+            return;
+        }
+
         // This pass only runs on functions which themselves cannot unwind,
         // forcibly changing the body of the function to structurally provide
         // this guarantee by aborting on an unwind. If this function can unwind,
@@ -31,8 +45,8 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         //
         // Here we test for this function itself whether its ABI allows
         // unwinding or not.
-        let body_flags = tcx.codegen_fn_attrs(body.source.def_id()).flags;
-        let body_ty = tcx.type_of(body.source.def_id());
+        let body_flags = tcx.codegen_fn_attrs(def_id).flags;
+        let body_ty = tcx.type_of(def_id);
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
             ty::Closure(..) => Abi::RustCall,
@@ -51,22 +65,31 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             if block.is_cleanup {
                 continue;
             }
+            let terminator = match &block.terminator {
+                Some(terminator) => terminator,
+                None => continue,
+            };
+            let span = terminator.source_info.span;
 
-            let (func, source_info) = match &block.terminator {
-                Some(Terminator { kind: TerminatorKind::Call { func, .. }, source_info }) => {
-                    (func, source_info)
+            let call_can_unwind = match &terminator.kind {
+                TerminatorKind::Call { func, .. } => {
+                    let ty = func.ty(body, tcx);
+                    let sig = ty.fn_sig(tcx);
+                    let flags = match ty.kind() {
+                        ty::FnPtr(_) => CodegenFnAttrFlags::empty(),
+                        ty::FnDef(def_id, _) => tcx.codegen_fn_attrs(*def_id).flags,
+                        _ => span_bug!(span, "invalid callee of type {:?}", ty),
+                    };
+                    layout::fn_can_unwind(tcx, flags, sig.abi())
+                }
+                TerminatorKind::Drop { .. }
+                | TerminatorKind::DropAndReplace { .. }
+                | TerminatorKind::Assert { .. }
+                | TerminatorKind::FalseUnwind { .. } => {
+                    layout::fn_can_unwind(tcx, CodegenFnAttrFlags::empty(), Abi::Rust)
                 }
                 _ => continue,
             };
-            let ty = func.ty(body, tcx);
-            let sig = ty.fn_sig(tcx);
-            let flags = match ty.kind() {
-                ty::FnPtr(_) => CodegenFnAttrFlags::empty(),
-                ty::FnDef(def_id, _) => tcx.codegen_fn_attrs(*def_id).flags,
-                _ => span_bug!(source_info.span, "invalid callee of type {:?}", ty),
-            };
-
-            let call_can_unwind = layout::fn_can_unwind(tcx, flags, sig.abi());
 
             // If this function call can't unwind, then there's no need for it
             // to have a landing pad. This means that we can remove any cleanup
@@ -102,23 +125,28 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             let abort_bb = body.basic_blocks_mut().push(bb);
 
             for bb in calls_to_terminate {
-                let cleanup = match &mut body.basic_blocks_mut()[bb].terminator {
-                    Some(Terminator { kind: TerminatorKind::Call { cleanup, .. }, .. }) => cleanup,
-                    _ => unreachable!(),
-                };
+                let cleanup = get_cleanup(body.basic_blocks_mut()[bb].terminator_mut());
                 *cleanup = Some(abort_bb);
             }
         }
 
         for id in cleanups_to_remove {
-            let cleanup = match &mut body.basic_blocks_mut()[id].terminator {
-                Some(Terminator { kind: TerminatorKind::Call { cleanup, .. }, .. }) => cleanup,
-                _ => unreachable!(),
-            };
+            let cleanup = get_cleanup(body.basic_blocks_mut()[id].terminator_mut());
             *cleanup = None;
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.
         super::simplify::remove_dead_blocks(tcx, body);
+    }
+}
+
+fn get_cleanup<'a>(t: &'a mut Terminator<'_>) -> &'a mut Option<BasicBlock> {
+    match &mut t.kind {
+        TerminatorKind::Call { cleanup, .. }
+        | TerminatorKind::Drop { unwind: cleanup, .. }
+        | TerminatorKind::DropAndReplace { unwind: cleanup, .. }
+        | TerminatorKind::Assert { cleanup, .. }
+        | TerminatorKind::FalseUnwind { unwind: cleanup, .. } => cleanup,
+        _ => unreachable!(),
     }
 }
