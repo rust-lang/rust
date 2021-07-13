@@ -1,5 +1,4 @@
 use ide_db::{base_db::Upcast, helpers::pick_best_token, RootDatabase};
-use rustc_hash::FxHashSet;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
@@ -55,19 +54,29 @@ pub(crate) fn goto_type_definition(
         Some((ty, node))
     })?;
 
-    let mut res = FxHashSet::default();
-    let mut workload = vec![ty.strip_references()];
-    while let Some(ty) = workload.pop() {
-        if let Some(adt) = ty.as_adt() {
-            res.insert(adt);
+    let mut res = Vec::new();
+    let mut push = |def: hir::ModuleDef| {
+        if let Some(nav) = def.try_to_nav(db) {
+            if !res.contains(&nav) {
+                res.push(nav);
+            }
         }
-        workload.extend(ty.strip_references().type_arguments());
-    }
+    };
 
-    Some(RangeInfo::new(
-        node.text_range(),
-        res.into_iter().flat_map(|adt| adt.try_to_nav(db)).collect(),
-    ))
+    let ty = ty.strip_references();
+    ty.walk(db, |t| {
+        if let Some(adt) = t.as_adt() {
+            push(adt.into());
+        } else if let Some(trait_) = t.as_dyn_trait() {
+            push(trait_.into());
+        } else if let Some(traits) = t.as_impl_traits(db) {
+            traits.into_iter().for_each(|it| push(it.into()));
+        } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+            push(trait_.into());
+        }
+    });
+
+    Some(RangeInfo::new(node.text_range(), res))
 }
 
 #[cfg(test)]
