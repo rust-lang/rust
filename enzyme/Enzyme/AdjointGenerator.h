@@ -3485,6 +3485,7 @@ public:
       Value *firstallocation = nullptr;
       if (Mode == DerivativeMode::ReverseModePrimal ||
           Mode == DerivativeMode::ReverseModeCombined) {
+        assert(!gutils->isConstantValue(call.getOperand(6)));
         Value *d_req = gutils->invertPointerM(call.getOperand(6), BuilderZ);
 
         auto i64 = Type::getInt64Ty(call.getContext());
@@ -3657,6 +3658,8 @@ public:
         } else
           assert(0 && "illegal mpi");
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -3666,6 +3669,7 @@ public:
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
 
+        assert(!gutils->isConstantValue(call.getOperand(0)));
         Value *d_req = gutils->invertPointerM(call.getOperand(0), Builder2);
 
         auto i64 = Type::getInt64Ty(call.getContext());
@@ -3682,6 +3686,20 @@ public:
 
         Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
+
+        Value *isNull = ConstantInt::getFalse(call.getContext());
+        if (auto GV = gutils->newFunc->getParent()->getNamedValue("ompi_request_null")) {
+            isNull = Builder2.CreateICmpEQ(d_reqp, Builder2.CreateBitCast(GV, d_reqp->getType()));
+        }
+        BasicBlock *currentBlock = Builder2.GetInsertBlock();
+          BasicBlock *nonnullBlock = gutils->addReverseBlock(
+              currentBlock, currentBlock->getName() + "_nonnull", gutils->newFunc);
+          BasicBlock *endBlock = gutils->addReverseBlock(
+              nonnullBlock, currentBlock->getName() + "_end", gutils->newFunc);
+
+          Builder2.CreateCondBr(isNull, endBlock, nonnullBlock);
+        Builder2.SetInsertPoint(nonnullBlock);
+
         Value *cache = Builder2.CreateLoad(d_reqp);
         CallInst *freecall = cast<CallInst>(
             CallInst::CreateFree(d_reqp, Builder2.GetInsertBlock()));
@@ -3704,7 +3722,12 @@ public:
         auto cal = Builder2.CreateCall(dwait, args);
         cal->setCallingConv(dwait->getCallingConv());
         cal->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
+        Builder2.CreateBr(endBlock);
+        
+        Builder2.SetInsertPoint(endBlock);
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
     
@@ -3714,14 +3737,19 @@ public:
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
 
+        assert(!gutils->isConstantValue(call.getOperand(1)));
         Value *count = lookup(gutils->getNewFromOriginal(call.getOperand(0)), Builder2);
         Value *d_req_orig = gutils->invertPointerM(call.getOperand(1), Builder2);
           
         BasicBlock *currentBlock = Builder2.GetInsertBlock();
           BasicBlock *loopBlock = gutils->addReverseBlock(
               currentBlock, currentBlock->getName() + "_loop", gutils->newFunc);
+          BasicBlock *nonnullBlock = gutils->addReverseBlock(
+              loopBlock, currentBlock->getName() + "_nonnull", gutils->newFunc);
+          BasicBlock *eloopBlock = gutils->addReverseBlock(
+              nonnullBlock, currentBlock->getName() + "_eloop", gutils->newFunc);
           BasicBlock *endBlock = gutils->addReverseBlock(
-              loopBlock, currentBlock->getName() + "_end", gutils->newFunc);
+              eloopBlock, currentBlock->getName() + "_end", gutils->newFunc);
 
           Builder2.CreateCondBr(Builder2.CreateICmpNE(count, ConstantInt::get(count->getType(), 0, false)), loopBlock,
                                 endBlock);
@@ -3730,7 +3758,7 @@ public:
           auto idx = Builder2.CreatePHI(count->getType(), 2);
           idx->addIncoming(ConstantInt::get(count->getType(), 0, false), currentBlock);
           Value* inc = Builder2.CreateAdd(idx, ConstantInt::get(count->getType(), 1, false), "", true, true);
-          idx->addIncoming(inc, loopBlock);
+          idx->addIncoming(inc, eloopBlock);
 
           Value* idxs[] = {idx};
           Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
@@ -3749,6 +3777,15 @@ public:
 
         Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
+        
+        Value *isNull = ConstantInt::getFalse(call.getContext());
+        if (auto GV = gutils->newFunc->getParent()->getNamedValue("ompi_request_null")) {
+            isNull = Builder2.CreateICmpEQ(d_reqp, Builder2.CreateBitCast(GV, d_reqp->getType()));
+        }
+
+          Builder2.CreateCondBr(isNull, eloopBlock, nonnullBlock);
+        Builder2.SetInsertPoint(nonnullBlock);
+
         Value *cache = Builder2.CreateLoad(d_reqp);
         CallInst *freecall = cast<CallInst>(
             CallInst::CreateFree(d_reqp, Builder2.GetInsertBlock()));
@@ -3771,9 +3808,14 @@ public:
         auto cal = Builder2.CreateCall(dwait, args);
         cal->setCallingConv(dwait->getCallingConv());
         cal->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
+        Builder2.CreateBr(eloopBlock);
+        
+        Builder2.SetInsertPoint(eloopBlock);
         Builder2.CreateCondBr(Builder2.CreateICmpEQ(inc, count), endBlock, loopBlock);
         Builder2.SetInsertPoint(endBlock);
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -3857,6 +3899,8 @@ public:
           Builder2.Insert(ci);
         }
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -3917,6 +3961,8 @@ public:
             nargs));
         memset->addParamAttr(0, Attribute::NonNull);
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4072,6 +4118,8 @@ public:
 
         Builder2.SetInsertPoint(mergeBlock);
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4258,6 +4306,8 @@ public:
           Builder2.Insert(ci);
         }
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4392,6 +4442,8 @@ public:
           Builder2.Insert(ci);
         }
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4543,6 +4595,8 @@ public:
           Builder2.Insert(ci);
         }
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4727,6 +4781,8 @@ public:
           Builder2.SetInsertPoint(mergeBlock);
         }
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4867,6 +4923,8 @@ public:
           Builder2.Insert(ci);
         }
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4886,6 +4944,8 @@ public:
             lookup(gutils->getNewFromOriginal(call.getOperand(0)), Builder2)};
         Builder2.CreateCall(call.getFunctionType(), callval, args);
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -4914,6 +4974,8 @@ public:
             called->getParent()->getOrInsertFunction("MPI_Comm_free", FT),
             args);
       }
+      if (Mode == DerivativeMode::ReverseModeGradient)
+        eraseIfUnused(call, /*erase*/true, /*check*/false);
       return;
     }
 
@@ -6330,7 +6392,7 @@ public:
       // may load uncacheable data)
       //    Store and reload it
       if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
-          !orig->doesNotAccessMemory()) {
+          (orig->mayWriteToMemory() || !gutils->legalRecompute(orig, ValueToValueMapTy(), nullptr))) {
         if (!gutils->unnecessaryIntermediates.count(orig)) {
           gutils->cacheForReverse(BuilderZ, newCall,
                                   getIndex(orig, CacheType::Self));
