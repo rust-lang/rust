@@ -453,7 +453,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.resolutions(()).definitions.def_path_table();
+        let table = self.tcx.definitions.def_path_table();
         if self.is_proc_macro {
             for def_index in std::iter::once(CRATE_DEF_INDEX)
                 .chain(self.tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index))
@@ -475,7 +475,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_def_path_hash_map(&mut self) -> Lazy<DefPathHashMapRef<'tcx>> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(
-            self.tcx.resolutions(()).definitions.def_path_hash_to_def_index_map(),
+            self.tcx.definitions.def_path_hash_to_def_index_map(),
         ))
     }
 

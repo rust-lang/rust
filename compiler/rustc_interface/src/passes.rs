@@ -13,6 +13,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
@@ -29,7 +30,7 @@ use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_serialize::json;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn};
 use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
@@ -142,7 +143,9 @@ mod boxed_resolver {
             f((&mut *resolver).as_mut().unwrap())
         }
 
-        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
+        pub fn to_resolver_outputs(
+            resolver: Rc<RefCell<BoxedResolver>>,
+        ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
@@ -844,7 +847,7 @@ pub fn create_global_ctxt<'tcx>(
     let krate = resolver
         .borrow_mut()
         .access(|resolver| lower_to_hir(sess, &lint_store, resolver, krate, hir_arena));
-    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
+    let (definitions, cstore, resolver_outputs) = BoxedResolver::to_resolver_outputs(resolver);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -869,6 +872,8 @@ pub fn create_global_ctxt<'tcx>(
                 sess,
                 lint_store,
                 arena,
+                definitions,
+                cstore,
                 resolver_outputs,
                 krate,
                 dep_graph,

@@ -54,7 +54,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -1438,9 +1438,10 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(self) -> ResolverOutputs {
+    pub fn into_outputs(self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
+        let cstore = Box::new(self.crate_loader.into_cstore());
         let visibilities = self.visibilities;
         let extern_crate_map = self.extern_crate_map;
         let export_map = self.export_map;
@@ -1449,9 +1450,7 @@ impl<'a> Resolver<'a> {
         let glob_map = self.glob_map;
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
-        ResolverOutputs {
-            definitions,
-            cstore: Box::new(self.crate_loader.into_cstore()),
+        let resolutions = ResolverOutputs {
             visibilities,
             extern_crate_map,
             export_map,
@@ -1467,14 +1466,15 @@ impl<'a> Resolver<'a> {
             trait_impls: self.trait_impls,
             proc_macros,
             confused_type_with_std_module,
-        }
+        };
+        (definitions, cstore, resolutions)
     }
 
-    pub fn clone_outputs(&self) -> ResolverOutputs {
+    pub fn clone_outputs(&self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        ResolverOutputs {
-            definitions: self.definitions.clone(),
-            cstore: Box::new(self.cstore().clone()),
+        let definitions = self.definitions.clone();
+        let cstore = Box::new(self.cstore().clone());
+        let resolutions = ResolverOutputs {
             visibilities: self.visibilities.clone(),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
@@ -1490,7 +1490,8 @@ impl<'a> Resolver<'a> {
             trait_impls: self.trait_impls.clone(),
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
-        }
+        };
+        (definitions, cstore, resolutions)
     }
 
     pub fn cstore(&self) -> &CStore {
