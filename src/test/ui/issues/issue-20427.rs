@@ -7,7 +7,6 @@
 #![allow(deprecated, deprecated_in_future)]
 
 // aux-build:i8.rs
-// ignore-pretty issue #37201
 
 extern crate i8;
 use std::string as i16;

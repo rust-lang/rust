@@ -1,5 +1,4 @@
 // run-pass
-// ignore-pretty issue #37201
 
 struct X { val: i32 }
 impl std::ops::Deref for X {
