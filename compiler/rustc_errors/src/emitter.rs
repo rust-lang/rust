@@ -9,7 +9,6 @@
 
 use Destination::*;
 
-use rustc_lint_defs::FutureBreakage;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{MultiSpan, SourceFile, Span};
 
@@ -193,7 +192,7 @@ pub trait Emitter {
     /// other formats can, and will, simply ignore it.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
-    fn emit_future_breakage_report(&mut self, _diags: Vec<(FutureBreakage, Diagnostic)>) {}
+    fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
 
     /// Emit list of unused externs
     fn emit_unused_externs(&mut self, _lint_level: &str, _unused_externs: &[&str]) {}

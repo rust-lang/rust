@@ -16,7 +16,7 @@ use crate::registry::Registry;
 use crate::DiagnosticId;
 use crate::ToolMetadata;
 use crate::{CodeSuggestion, SubDiagnostic};
-use rustc_lint_defs::{Applicability, FutureBreakage};
+use rustc_lint_defs::Applicability;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::ExpnData;
@@ -134,17 +134,14 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_future_breakage_report(&mut self, diags: Vec<(FutureBreakage, crate::Diagnostic)>) {
+    fn emit_future_breakage_report(&mut self, diags: Vec<crate::Diagnostic>) {
         let data: Vec<FutureBreakageItem> = diags
             .into_iter()
-            .map(|(breakage, mut diag)| {
+            .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
                     diag.level = crate::Level::Warning;
                 }
-                FutureBreakageItem {
-                    future_breakage_date: breakage.date,
-                    diagnostic: Diagnostic::from_errors_diagnostic(&diag, self),
-                }
+                FutureBreakageItem { diagnostic: Diagnostic::from_errors_diagnostic(&diag, self) }
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
@@ -326,7 +323,6 @@ struct ArtifactNotification<'a> {
 
 #[derive(Encodable)]
 struct FutureBreakageItem {
-    future_breakage_date: Option<&'static str>,
     diagnostic: Diagnostic,
 }
 

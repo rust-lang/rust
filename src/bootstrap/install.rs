@@ -139,11 +139,17 @@ macro_rules! install {
 
 install!((self, builder, _config),
     Docs, "src/doc", _config.docs, only_hosts: false, {
-        let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
-        install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) = builder.ensure(dist::Docs { host: self.target }) {
+            install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            panic!("docs are not available to install, \
+                check that `build.docs` is true in `config.toml`");
+        }
     };
     Std, "library/std", true, only_hosts: false, {
         for target in &builder.targets {
+            // `expect` should be safe, only None when host != build, but this
+            // only runs when host == build
             let tarball = builder.ensure(dist::Std {
                 compiler: self.compiler,
                 target: *target
@@ -165,10 +171,15 @@ install!((self, builder, _config),
         }
     };
     RustAnalyzer, "rust-analyzer", Self::should_build(_config), only_hosts: true, {
-        let tarball = builder
-            .ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
-            .expect("missing rust-analyzer");
-        install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) =
+            builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
+        {
+            install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install rust-analyzer stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
         let tarball = builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
@@ -212,6 +223,8 @@ install!((self, builder, _config),
         }
     };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
+        // `expect` should be safe, only None with host != build, but this
+        // only uses the `build` compiler
         let tarball = builder.ensure(dist::Analysis {
             // Find the actual compiler (handling the full bootstrap option) which
             // produced the save-analysis data because that data isn't copied

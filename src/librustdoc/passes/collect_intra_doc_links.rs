@@ -1610,6 +1610,8 @@ impl Disambiguator {
             return Suggestion::Macro;
         } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
             return Suggestion::Function;
+        } else if kind == DefKind::Field {
+            return Suggestion::RemoveDisambiguator;
         }
 
         let prefix = match kind {
@@ -1674,6 +1676,8 @@ enum Suggestion {
     Function,
     /// `m!`
     Macro,
+    /// `foo` without any disambiguator
+    RemoveDisambiguator,
 }
 
 impl Suggestion {
@@ -1682,6 +1686,7 @@ impl Suggestion {
             Self::Prefix(x) => format!("prefix with `{}@`", x).into(),
             Self::Function => "add parentheses".into(),
             Self::Macro => "add an exclamation mark".into(),
+            Self::RemoveDisambiguator => "remove the disambiguator".into(),
         }
     }
 
@@ -1691,6 +1696,7 @@ impl Suggestion {
             Self::Prefix(prefix) => format!("{}@{}", prefix, path_str),
             Self::Function => format!("{}()", path_str),
             Self::Macro => format!("{}!", path_str),
+            Self::RemoveDisambiguator => path_str.into(),
         }
     }
 }

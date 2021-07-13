@@ -907,27 +907,25 @@ impl Step for RustdocGUI {
         // We remove existing folder to be sure there won't be artifacts remaining.
         let _ = fs::remove_dir_all(&out_dir);
 
-        let mut nb_generated = 0;
+        let src_path = "src/test/rustdoc-gui/src";
         // We generate docs for the libraries present in the rustdoc-gui's src folder.
-        let libs_dir = builder.build.src.join("src/test/rustdoc-gui/src");
-        for entry in libs_dir.read_dir().expect("read_dir call failed") {
-            let entry = entry.expect("invalid entry");
-            let path = entry.path();
-            if path.extension().map(|e| e == "rs").unwrap_or(false) {
-                let mut command = builder.rustdoc_cmd(self.compiler);
-                command.arg(path).arg("-o").arg(&out_dir);
-                builder.run(&mut command);
-                nb_generated += 1;
-            }
-        }
-        assert!(nb_generated > 0, "no documentation was generated...");
+        let mut cargo = Command::new(&builder.initial_cargo);
+        cargo
+            .arg("doc")
+            .arg("--workspace")
+            .arg("--target-dir")
+            .arg(&out_dir)
+            .env("RUSTDOC", builder.rustdoc(self.compiler))
+            .env("RUSTC", builder.rustc(self.compiler))
+            .current_dir(&builder.build.src.join(src_path));
+        builder.run(&mut cargo);
 
         // We now run GUI tests.
         let mut command = Command::new(&nodejs);
         command
             .arg(builder.build.src.join("src/tools/rustdoc-gui/tester.js"))
             .arg("--doc-folder")
-            .arg(out_dir)
+            .arg(out_dir.join("doc"))
             .arg("--tests-folder")
             .arg(builder.build.src.join("src/test/rustdoc-gui"));
         for path in &builder.paths {

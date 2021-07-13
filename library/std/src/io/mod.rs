@@ -277,7 +277,7 @@ pub use self::error::{Error, ErrorKind, Result};
 pub use self::stdio::set_output_capture;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
-#[unstable(feature = "stdio_locked", issue = "none")]
+#[unstable(feature = "stdio_locked", issue = "86845")]
 pub use self::stdio::{stderr_locked, stdin_locked, stdout_locked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};

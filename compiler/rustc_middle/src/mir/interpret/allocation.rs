@@ -512,7 +512,7 @@ impl InitMaskCompressed {
 /// Transferring the initialization mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a run-length encoding of the initialization mask.
-    pub fn compress_uninit_range(&self, src: Pointer<Tag>, size: Size) -> InitMaskCompressed {
+    pub fn compress_uninit_range(&self, range: AllocRange) -> InitMaskCompressed {
         // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
         // a naive initialization mask copying algorithm would repeatedly have to read the initialization mask from
         // the source and write it to the destination. Even if we optimized the memory accesses,
@@ -526,13 +526,13 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         // where each element toggles the state.
 
         let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
-        let initial = self.init_mask.get(src.offset);
+        let initial = self.init_mask.get(range.start);
         let mut cur_len = 1;
         let mut cur = initial;
 
-        for i in 1..size.bytes() {
+        for i in 1..range.size.bytes() {
             // FIXME: optimize to bitshift the current uninitialized block's bits and read the top bit.
-            if self.init_mask.get(src.offset + Size::from_bytes(i)) == cur {
+            if self.init_mask.get(range.start + Size::from_bytes(i)) == cur {
                 cur_len += 1;
             } else {
                 ranges.push(cur_len);
@@ -550,24 +550,23 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn mark_compressed_init_range(
         &mut self,
         defined: &InitMaskCompressed,
-        dest: Pointer<Tag>,
-        size: Size,
+        range: AllocRange,
         repeat: u64,
     ) {
         // An optimization where we can just overwrite an entire range of initialization
         // bits if they are going to be uniformly `1` or `0`.
         if defined.ranges.len() <= 1 {
             self.init_mask.set_range_inbounds(
-                dest.offset,
-                dest.offset + size * repeat, // `Size` operations
+                range.start,
+                range.start + range.size * repeat, // `Size` operations
                 defined.initial,
             );
             return;
         }
 
         for mut j in 0..repeat {
-            j *= size.bytes();
-            j += dest.offset.bytes();
+            j *= range.size.bytes();
+            j += range.start.bytes();
             let mut cur = defined.initial;
             for range in &defined.ranges {
                 let old_j = j;

@@ -8,7 +8,7 @@ use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintId,
+    FutureIncompatibilityReason, FutureIncompatibleInfo, Level, Lint, LintId,
 };
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
@@ -223,8 +223,13 @@ pub fn struct_lint_level<'s, 'd>(
         let lint_id = LintId::of(lint);
         let future_incompatible = lint.future_incompatible;
 
-        let has_future_breakage =
-            future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
+        let has_future_breakage = matches!(
+            future_incompatible,
+            Some(FutureIncompatibleInfo {
+                reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+                ..
+            })
+        );
 
         let mut err = match (level, span) {
             (Level::Allow, span) => {

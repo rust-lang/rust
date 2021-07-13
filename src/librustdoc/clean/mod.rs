@@ -227,20 +227,6 @@ impl<'tcx> Clean<GenericBound> for ty::PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<Option<Vec<GenericBound>>> for InternalSubsts<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Option<Vec<GenericBound>> {
-        let mut v = Vec::new();
-        v.extend(self.regions().filter_map(|r| r.clean(cx)).map(GenericBound::Outlives));
-        v.extend(self.types().map(|t| {
-            GenericBound::TraitBound(
-                PolyTrait { trait_: t.clean(cx), generic_params: Vec::new() },
-                hir::TraitBoundModifier::None,
-            )
-        }));
-        if !v.is_empty() { Some(v) } else { None }
-    }
-}
-
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &mut DocContext<'_>) -> Lifetime {
         let def = cx.tcx.named_region(self.hir_id);
@@ -293,12 +279,6 @@ impl Clean<Constant> for hir::ConstArg {
                 .clean(cx),
             kind: ConstantKind::Anonymous { body: self.value.body },
         }
-    }
-}
-
-impl Clean<Lifetime> for ty::GenericParamDef {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Lifetime {
-        Lifetime(self.name)
     }
 }
 
@@ -1764,12 +1744,6 @@ impl Clean<Variant> for hir::VariantData<'_> {
     }
 }
 
-impl Clean<Span> for rustc_span::Span {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Span {
-        Span::from_rustc_span(*self)
-    }
-}
-
 impl Clean<Path> for hir::Path<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
         Path {
@@ -2190,25 +2164,6 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
             hir::TypeBindingKind::Constraint { ref bounds } => {
                 TypeBindingKind::Constraint { bounds: bounds.iter().map(|b| b.clean(cx)).collect() }
             }
-        }
-    }
-}
-
-enum SimpleBound {
-    TraitBound(Vec<PathSegment>, Vec<SimpleBound>, Vec<GenericParamDef>, hir::TraitBoundModifier),
-    Outlives(Lifetime),
-}
-
-impl From<GenericBound> for SimpleBound {
-    fn from(bound: GenericBound) -> Self {
-        match bound.clone() {
-            GenericBound::Outlives(l) => SimpleBound::Outlives(l),
-            GenericBound::TraitBound(t, mod_) => match t.trait_ {
-                Type::ResolvedPath { path, .. } => {
-                    SimpleBound::TraitBound(path.segments, Vec::new(), t.generic_params, mod_)
-                }
-                _ => panic!("Unexpected bound {:?}", bound),
-            },
         }
     }
 }
