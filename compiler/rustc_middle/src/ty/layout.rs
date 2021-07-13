@@ -2478,9 +2478,10 @@ impl<'tcx> ty::Instance<'tcx> {
                 // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
                 // track of a polymorphization `ParamEnv` to allow normalizing later.
                 let mut sig = match *ty.kind() {
-                    ty::FnDef(def_id, substs) => tcx
+                    ty::FnDef(def_id, substs) if tcx.sess.opts.debugging_opts.polymorphize => tcx
                         .normalize_erasing_regions(tcx.param_env(def_id), tcx.fn_sig(def_id))
                         .subst(tcx, substs),
+                    ty::FnDef(def_id, substs) => tcx.fn_sig(def_id).subst(tcx, substs),
                     _ => unreachable!(),
                 };
 
