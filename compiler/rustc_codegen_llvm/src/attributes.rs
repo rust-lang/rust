@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::OptLevel;
+use rustc_session::config::{BranchProtection, OptLevel, PAuthKey};
 use rustc_session::Session;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
@@ -200,6 +200,58 @@ pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
     // Don't generate calls through PLT if it's not necessary
     if !sess.needs_plt() {
         Attribute::NonLazyBind.apply_llfn(Function, llfn);
+    }
+}
+
+pub fn set_branch_protection(sess: &Session, llfn: &'ll Value) {
+    // Setting PAC/BTI function attributes is only necessary for LLVM 11 and earlier.
+    // For LLVM 12 and greater, module-level metadata attributes are set in
+    // `compiler/rustc_codegen_llvm/src/context.rs`.
+    if llvm_util::get_version() >= (12, 0, 0) {
+        return;
+    }
+
+    let BranchProtection { bti, pac_ret: pac } = sess.opts.cg.branch_protection;
+
+    if bti {
+        llvm::AddFunctionAttrString(
+            llfn,
+            llvm::AttributePlace::Function,
+            cstr!("branch-target-enforcement"),
+        );
+    }
+
+    if let Some(pac_opts) = pac {
+        if pac_opts.leaf {
+            llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                cstr!("sign-return-address"),
+                cstr!("non-leaf"),
+            );
+        } else {
+            llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                cstr!("sign-return-address"),
+                cstr!("all"),
+            );
+        }
+
+        match pac_opts.key {
+            PAuthKey::A => llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                cstr!("sign-return-address-key"),
+                cstr!("a_key"),
+            ),
+            PAuthKey::B => llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                cstr!("sign-return-address-key"),
+                cstr!("b_key"),
+            ),
+        }
     }
 }
 

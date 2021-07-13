@@ -8,10 +8,11 @@ use rustc_session::config::{build_configuration, build_session_options, to_crate
 use rustc_session::config::{
     rustc_optgroups, ErrorOutputType, ExternLocation, LocationDetail, Options, Passes,
 };
-use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{
-    Externs, OutputType, OutputTypes, SymbolManglingVersion, WasiExecModel,
+    BranchProtection, Externs, OutputType, OutputTypes, PAuthKey, PacRet, SymbolManglingVersion,
+    WasiExecModel,
 };
+use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
@@ -566,6 +567,10 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // This list is in alphabetical order.
+    tracked!(
+        branch_protection,
+        BranchProtection { bti: true, pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B }) }
+    );
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));

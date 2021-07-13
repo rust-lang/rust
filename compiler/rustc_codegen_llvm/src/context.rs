@@ -21,7 +21,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::{CFGuard, CrateType, DebugInfo};
+use rustc_session::config::{BranchProtection, CFGuard, CrateType, DebugInfo, PAuthKey};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -239,6 +239,38 @@ pub unsafe fn create_module(
                 // Set `cfguard=2` module flag to emit metadata and checks.
                 llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2)
             }
+        }
+    }
+
+    if sess.target.arch == "aarch64" {
+        let BranchProtection { bti, pac_ret: pac } = sess.opts.cg.branch_protection;
+
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            "branch-target-enforcement\0".as_ptr().cast(),
+            bti.into(),
+        );
+
+        if let Some(pac_opts) = pac {
+            llvm::LLVMRustAddModuleFlag(llmod, "sign-return-address\0".as_ptr().cast(), 1);
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                "sign-return-address-all\0".as_ptr().cast(),
+                pac_opts.leaf.into(),
+            );
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                "sign-return-address-with-bkey\0".as_ptr().cast(),
+                if pac_opts.key == PAuthKey::A { 0 } else { 1 },
+            );
+        } else {
+            llvm::LLVMRustAddModuleFlag(llmod, "sign-return-address\0".as_ptr().cast(), 0);
+            llvm::LLVMRustAddModuleFlag(llmod, "sign-return-address-all\0".as_ptr().cast(), 0);
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                "sign-return-address-with-bkey\0".as_ptr().cast(),
+                0,
+            );
         }
     }
 

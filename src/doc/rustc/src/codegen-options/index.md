@@ -7,6 +7,29 @@ a version of this list for your exact compiler by running `rustc -C help`.
 
 This option is deprecated and does nothing.
 
+## branch-protection
+
+This option lets you enable branch authentication instructions on AArch64.
+This option is ignored for non-AArch64 architectures.
+It takes some combination of the following values, separated by a `+`.
+
+- `pac-ret` - Enable pointer authentication for non-leaf functions.
+- `leaf` - Enable pointer authentication for all functions, including leaf functions.
+- `b-key` - Sign return addresses with key B, instead of the default key A.
+- `bti` - Enable branch target identification.
+
+`leaf` and `b-key` are only valid if `pac-ret` was previously specified.
+For example, `-C branch-protection=bti+pac-ret+leaf` is valid, but
+`-C branch-protection=bti+leaf+pac-ret` is not.
+
+Repeated values are ignored.
+For example, `-C branch-protection=pac-ret+leaf+pac-ret` is equivalent to
+`-C branch-protection=pac-ret+leaf`.
+
+Rust's standard library does not ship with BTI or pointer authentication enabled by default. \
+In Cargo projects the standard library can be recompiled with pointer authentication using the nightly
+[build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature.
+
 ## code-model
 
 This option lets you choose which code model to use. \
