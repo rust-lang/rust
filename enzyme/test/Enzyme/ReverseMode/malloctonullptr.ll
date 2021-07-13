@@ -1185,7 +1185,7 @@ attributes #10 = { noreturn nounwind }
 !49 = distinct !{!49, !50}
 !50 = !{!"llvm.loop.unroll.disable"}
 
-; CHECK: define internal i8* @augmented_subfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'")
+; CHECK: define internal { i8*, i8* } @augmented_subfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(36) dereferenceable_or_null(36) i8* @malloc(i64 36) #7
@@ -1196,17 +1196,22 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   store float* %a0, float** %m_data.i.i, align 8
 ; CHECK-NEXT:   %a4 = load float, float* %K, align 4, !tbaa !{{[0-9]+}}
 ; CHECK-NEXT:   store float %a4, float* %a0, align 4, !tbaa !
-; CHECK-NEXT:   ret i8* %"call'mi"
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i8* } undef, i8* %"call'mi", 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, i8* } %.fca.0.insert, i8* %call, 1
+; CHECK-NEXT:   ret { i8*, i8* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'", i8* %"call'mi")
+; CHECK: define internal void @diffesubfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'", { i8*, i8* } %tapeArg)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %call = extractvalue { i8*, i8* } %tapeArg, 1
+; CHECK-NEXT:   %"call'mi" = extractvalue { i8*, i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[a0ipc:.+]] = bitcast i8* %"call'mi" to float*
 ; CHECK-NEXT:   %0 = load float, float* %[[a0ipc]], align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[a0ipc]], align 4
 ; CHECK-NEXT:   %1 = load float, float* %"K'", align 4
 ; CHECK-NEXT:   %2 = fadd fast float %1, %0
 ; CHECK-NEXT:   store float %2, float* %"K'", align 4
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callpmi:.+]])
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"call'mi")
+; CHECK-NEXT:   tail call void @free(i8* %call)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -973,6 +973,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %15 = fadd fast double %14, %13
 ; CHECK-NEXT:   store double %15, double* %"b'", align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
+; CHECK-NEXT:   tail call void @free(i8* %malloccall)
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body371:                                ; preds = %entry

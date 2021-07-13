@@ -90,6 +90,7 @@ extern std::map<
 
 extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
+extern llvm::cl::opt<bool> EnzymeFreeInternalAllocations;
 }
 
 struct InvertedPointerConfig : ValueMapConfig<const llvm::Value *> {

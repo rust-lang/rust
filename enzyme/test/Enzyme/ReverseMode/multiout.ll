@@ -307,46 +307,50 @@ attributes #10 = { noreturn nounwind }
 !9 = !{!"_ZTSNSt12_Vector_baseIdSaIdEE17_Vector_impl_dataE", !7, i64 0, !7, i64 8, !7, i64 16}
 !10 = !{!9, !7, i64 8}
 
-; CHECK: define internal { { i8*, double* }, double*, double* } @augmented_sub(double** %gep0, double** %"gep0'", i64 %size, double %arg2)
+; CHECK: define internal { { i8*, i8*, double* }, double*, double* } @augmented_sub(double** %gep0, double** %"gep0'", i64 %size, double %arg2)
 ; CHECK-NEXT: bb:
-; CHECK-NEXT:   %0 = alloca { { i8*, double* }, double*, double* }
-; CHECK-NEXT:   %1 = getelementptr inbounds { { i8*, double* }, double*, double* }, { { i8*, double* }, double*, double* }* %0, i32 0, i32 0
+; CHECK-NEXT:   %0 = alloca { { i8*, i8*, double* }, double*, double* }
+; CHECK-NEXT:   %1 = getelementptr inbounds { { i8*, i8*, double* }, double*, double* }, { { i8*, i8*, double* }, double*, double* }* %0, i32 0, i32 0
 ; CHECK-NEXT:   %"ptr0'ipl" = load double*, double** %"gep0'", align 8
-; CHECK-NEXT:   %2 = getelementptr inbounds { i8*, double* }, { i8*, double* }* %1, i32 0, i32 1
+; CHECK-NEXT:   %2 = getelementptr inbounds { i8*, i8*, double* }, { i8*, i8*, double* }* %1, i32 0, i32 2
 ; CHECK-NEXT:   store double* %"ptr0'ipl", double** %2
 ; CHECK-NEXT:   %ptr0 = load double*, double** %gep0, align 8, !tbaa !2
 ; CHECK-NEXT:   %i80 = bitcast double* %ptr0 to i8*
 ; CHECK-NEXT:   %ptrsize = shl i64 %size, 3
 ; CHECK-NEXT:   %nptrsize = add i64 %ptrsize, 8
 ; CHECK-NEXT:   %alloc = tail call i8* @malloc(i64 %nptrsize)
+; CHECK-NEXT:   %3 = getelementptr inbounds { i8*, i8*, double* }, { i8*, i8*, double* }* %1, i32 0, i32 1
+; CHECK-NEXT:   store i8* %alloc, i8** %3
 ; CHECK-NEXT:   %"alloc'mi" = tail call noalias nonnull i8* @malloc(i64 %nptrsize)
-; CHECK-NEXT:   %3 = getelementptr inbounds { i8*, double* }, { i8*, double* }* %1, i32 0, i32 0
-; CHECK-NEXT:   store i8* %"alloc'mi", i8** %3
+; CHECK-NEXT:   %[[i4:.+]] = getelementptr inbounds { i8*, i8*, double* }, { i8*, i8*, double* }* %1, i32 0, i32 0
+; CHECK-NEXT:   store i8* %"alloc'mi", i8** %[[i4]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"alloc'mi", i8 0, i64 %nptrsize, i1 false)
 ; CHECK-NEXT:   %"nptr'ipc" = bitcast i8* %"alloc'mi" to double*
 ; CHECK-NEXT:   %nptr = bitcast i8* %alloc to double*
 ; CHECK-NEXT:   %insertptr = getelementptr inbounds double, double* %nptr, i64 %size
 ; CHECK-NEXT:   store double %arg2, double* %insertptr, align 8, !tbaa !7
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %alloc, i8* align 8 %i80, i64 %ptrsize, i1 false), !tbaa !7
-; CHECK-NEXT:   %4 = getelementptr inbounds { { i8*, double* }, double*, double* }, { { i8*, double* }, double*, double* }* %0, i32 0, i32 1
-; CHECK-NEXT:   store double* %nptr, double** %4
-; CHECK-NEXT:   %5 = getelementptr inbounds { { i8*, double* }, double*, double* }, { { i8*, double* }, double*, double* }* %0, i32 0, i32 2
-; CHECK-NEXT:   store double* %"nptr'ipc", double** %5
-; CHECK-NEXT:   %6 = load { { i8*, double* }, double*, double* }, { { i8*, double* }, double*, double* }* %0
-; CHECK-NEXT:   ret { { i8*, double* }, double*, double* } %6
+; CHECK-NEXT:   %[[i5:.+]] = getelementptr inbounds { { i8*, i8*, double* }, double*, double* }, { { i8*, i8*, double* }, double*, double* }* %0, i32 0, i32 1
+; CHECK-NEXT:   store double* %nptr, double** %[[i5]]
+; CHECK-NEXT:   %[[i6:.+]] = getelementptr inbounds { { i8*, i8*, double* }, double*, double* }, { { i8*, i8*, double* }, double*, double* }* %0, i32 0, i32 2
+; CHECK-NEXT:   store double* %"nptr'ipc", double** %[[i6]]
+; CHECK-NEXT:   %[[i7:.+]] = load { { i8*, i8*, double* }, double*, double* }, { { i8*, i8*, double* }, double*, double* }* %0
+; CHECK-NEXT:   ret { { i8*, i8*, double* }, double*, double* } %[[i7]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffesub(double** %gep0, double** %"gep0'", i64 %size, double %arg2, { i8*, double* } %tapeArg)
+; CHECK: define internal { double } @diffesub(double** %gep0, double** %"gep0'", i64 %size, double %arg2, { i8*, i8*, double* } %tapeArg)
 ; CHECK-NEXT: bb:
-; CHECK-NEXT:   %"ptr0'il_phi" = extractvalue { i8*, double* } %tapeArg, 1
+; CHECK-NEXT:   %"ptr0'il_phi" = extractvalue { i8*, i8*, double* } %tapeArg, 2
 ; CHECK-NEXT:   %ptrsize = shl i64 %size, 3
-; CHECK-NEXT:   %"alloc'mi" = extractvalue { i8*, double* } %tapeArg, 0
+; CHECK-NEXT:   %alloc = extractvalue { i8*, i8*, double* } %tapeArg, 1
+; CHECK-NEXT:   %"alloc'mi" = extractvalue { i8*, i8*, double* } %tapeArg, 0
 ; CHECK-NEXT:   %"nptr'ipc" = bitcast i8* %"alloc'mi" to double*
 ; CHECK-NEXT:   %"insertptr'ipg" = getelementptr inbounds double, double* %"nptr'ipc", i64 %size
 ; CHECK-NEXT:   %0 = udiv i64 %ptrsize, 8
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda8sa8(double* %"nptr'ipc", double* %"ptr0'il_phi", i64 %0)
 ; CHECK-NEXT:   %1 = load double, double* %"insertptr'ipg", align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"alloc'mi")
+; CHECK-NEXT:   tail call void @free(i8* %alloc)
 ; CHECK-NEXT:   %2 = insertvalue { double } undef, double %1, 0
 ; CHECK-NEXT:   ret { double } %2
 ; CHECK-NEXT: }

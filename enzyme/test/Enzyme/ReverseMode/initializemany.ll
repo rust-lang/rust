@@ -109,9 +109,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %2 = shl nuw nsw i64 %0, 3
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 16 )?}}%1, i8 0, i64 %2, {{(i32 16, )?}}i1 false)
 ; CHECK-NEXT:   %vla = alloca double*, i64 %0, align 16
-; CHECK-NEXT:   %[[aug_aas:.+]] = call i8** @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
+; CHECK-NEXT:   %[[aug_aas:.+]] = call { i8**, i8** } @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
 ; CHECK-NEXT:   call void @diffeget(double** nonnull %vla, double** nonnull %"vla'ipa", i32 3, double %differeturn)
-; CHECK-NEXT:   %[[ret:.+]] = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, i8** %[[aug_aas]])
+; CHECK-NEXT:   %[[ret:.+]] = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, { i8**, i8** } %[[aug_aas]])
 ; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
@@ -126,17 +126,22 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}i8** @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}{ i8**, i8** } @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = add i32 %n, 1
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %0 to i64
 ; CHECK-NEXT:   %mallocsize = shl nuw nsw i64 %wide.trip.count, 3
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %"call'mi_malloccache" = bitcast i8* %malloccall to i8**
+; CHECK-NEXT:   %malloccall2 = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; CHECK-NEXT:   %call_malloccache = bitcast i8* %malloccall2 to i8**
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
-; CHECK-NEXT:   ret i8** %"call'mi_malloccache"
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8**, i8** } undef, i8** %"call'mi_malloccache", 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8**, i8** } %.fca.0.insert, i8** %call_malloccache, 1
+; CHECK-NEXT:   ret { i8**, i8** } %.fca.1.insert
+
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]
@@ -151,6 +156,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %[[arrayidxipg]] to i8**
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
+; CHECK-NEXT:   %[[gepprimal:.+]] = getelementptr inbounds i8*, i8** %call_malloccache, i64 %iv
+; CHECK-NEXT:   store i8* %call, i8** %[[gepprimal]], align 8, !invariant.group !8
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2
@@ -161,8 +168,10 @@ attributes #4 = { nounwind }
 
 
 ; CHECK: ; Function Attrs: noinline nounwind uwtable
-; CHECK-NEXT: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, i8** %tapeArg) local_unnamed_addr #0 {
+; CHECK-NEXT: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, { i8**, i8** } %tapeArg) local_unnamed_addr #0 {
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = extractvalue { i8**, i8** } %tapeArg, 0
+; CHECK-NEXT:   %1 = extractvalue { i8**, i8** } %tapeArg, 1
 ; CHECK-NEXT:   %[[n1:.+]] = add i32 %n, 1
 ; CHECK-NEXT:   %wide.trip.count = zext i32 %[[n1]] to i64
 ; CHECK-NEXT:   br label %invertfor.body
@@ -170,21 +179,26 @@ attributes #4 = { nounwind }
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
 ; CHECK-NEXT:   %[[lcssa:.+]] = phi double [ %[[added:.+]], %invertfor.body ]
 ; CHECK-NEXT:   %[[toreturn:.+]] = insertvalue { double } undef, double %[[lcssa]], 0
-; CHECK-NEXT:   %[[tofree:.+]] = bitcast i8** %tapeArg to i8*
+; CHECK-NEXT:   %[[tofree:.+]] = bitcast i8** %0 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
+; CHECK-NEXT:   %[[tofree2:.+]] = bitcast i8** %1 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree2]])
 ; CHECK-NEXT:   ret { double } %[[toreturn]]
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body, %entry
 ; CHECK-NEXT:   %"x'de.0" = phi double [ 0.000000e+00, %entry ], [ %[[added]], %invertfor.body ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %wide.trip.count, %entry ], [ %[[sub:.+]], %invertfor.body ]
 ; CHECK-NEXT:   %[[sub]] = add nsw i64 %[[antivar]], -1
-; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %tapeArg, i64 %[[sub]]
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %0, i64 %[[sub]]
 ; CHECK-NEXT:   %[[metaload:.+]] = load i8*, i8** %[[geper]], align 8
 ; CHECK-NEXT:   %[[bc:.+]] = bitcast i8* %[[metaload]] to double*
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[bc]], align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[bc]], align 8
 ; CHECK-NEXT:   %[[added]] = fadd fast double %"x'de.0", %[[load]]
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[metaload]])
+; CHECK-NEXT:   %_unwrap8 = getelementptr inbounds i8*, i8** %1, i64 %"iv'ac.0"
+; CHECK-NEXT:   %call_unwrap = load i8*, i8** %_unwrap8, align 8, !invariant.group !11
+; CHECK-NEXT:   tail call void @free(i8* %call_unwrap)
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[sub]], 0
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }

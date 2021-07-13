@@ -86,6 +86,10 @@ llvm::cl::opt<bool>
 llvm::cl::opt<bool>
     EnzymeSpeculatePHIs("enzyme-speculate-phis", cl::init(false), cl::Hidden,
                         cl::desc("Speculatively execute phi computations"));
+llvm::cl::opt<bool> EnzymeFreeInternalAllocations(
+    "enzyme-free-internal-allocations", cl::init(true), cl::Hidden,
+    cl::desc("Always free internal allocations (disable if allocation needs "
+             "access outside)"));
 }
 
 bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,

@@ -141,11 +141,11 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %[[ai8:.+]] = bitcast double** %array.i to i8*
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8*{{( nonnull)?}} %[[ai8]])
 ; CHECK-NEXT:   store double* null, double** %"array'ipa.i", align 8
-; CHECK-NEXT:   %[[aug_aas:.+]] = call i8* @augmented_allocateAndSet(double**{{( nonnull)?}} %array.i, double**{{( nonnull)?}} %"array'ipa.i", double %x, i32 %n)
+; CHECK-NEXT:   %[[aug_aas:.+]] = call { i8*, i8* } @augmented_allocateAndSet(double**{{( nonnull)?}} %array.i, double**{{( nonnull)?}} %"array'ipa.i", double %x, i32 %n)
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   %[[primal:.+]] = load double*, double** %array.i, align 8
 ; CHECK-NEXT:   call void @diffeget(double* %[[primal]], double* %"'ipl.i", i32 3, double 1.000000e+00)
-; CHECK-NEXT:   %[[result:.+]] = call { double } @diffeallocateAndSet(double**{{( nonnull)?}} %array.i, double**{{( nonnull)?}} %"array'ipa.i", double %x, i32 %n, double 1.000000e+00, i8* %[[aug_aas]])
+; CHECK-NEXT:   %[[result:.+]] = call { double } @diffeallocateAndSet(double**{{( nonnull)?}} %array.i, double**{{( nonnull)?}} %"array'ipa.i", double %x, i32 %n, double 1.000000e+00, { i8*, i8* } %[[aug_aas]])
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %[[api8]])
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %[[ai8]])
 ; CHECK-NEXT:   %[[ext:.+]] = extractvalue { double } %[[result]], 0
@@ -162,7 +162,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}{ i8*, i8* } @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = zext i32 %n to i64
 ; CHECK-NEXT:   %mul = shl nuw nsw i64 %conv, 3
@@ -176,16 +176,21 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds i8, i8* %call, i64 24
 ; CHECK-NEXT:   %1 = bitcast i8* %arrayidx to double*
 ; CHECK-NEXT:   store double %x, double* %1, align 8, !tbaa !6
-; CHECK-NEXT:   ret i8* %"call'mi"
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i8* } undef, i8* %"call'mi", 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, i8* } %.fca.0.insert, i8* %call, 1
+; CHECK-NEXT:   ret { i8*, i8* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, double %differeturn, i8* %[[callp:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, double %differeturn, { i8*, i8* } %tapeArg)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %call = extractvalue { i8*, i8* } %tapeArg, 1
+; CHECK-NEXT:   %[[callp:.+]] = extractvalue { i8*, i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[callp]], i64 24
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[arrayidx]] to double*
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[ipc]], align 8
 ; CHECK-NEXT:   %[[result:.+]] = fadd fast double %differeturn, %[[loaded]]
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callp]])
+; CHECK-NEXT:   tail call void @free(i8* %call)
 ; CHECK-NEXT:   %[[ins:.+]] = insertvalue { double } undef, double %[[result]], 0
 ; CHECK-NEXT:   ret { double } %[[ins]]
 ; CHECK-NEXT: }

@@ -64,40 +64,50 @@ attributes #6 = { nounwind }
 ; CHECK: define internal { double } @diffefoo(double %inp, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = bitcast double %inp to i64
-; CHECK-NEXT:   %call_augmented = call { i8*, i64* } @augmented_substore(i64 %conv, i64 3)
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { i8*, i64* } %call_augmented, 0
-; CHECK-NEXT:   %"call'ac" = extractvalue { i8*, i64* } %call_augmented, 1
+; CHECK-NEXT:   %call_augmented = call { { i8*, i8* }, i64* } @augmented_substore(i64 %conv, i64 3)
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { i8*, i8* }, i64* } %call_augmented, 0
+; CHECK-NEXT:   %"call'ac" = extractvalue { { i8*, i8* }, i64* } %call_augmented, 1
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast i64* %"call'ac" to double*
 ; CHECK-NEXT:   %[[ldi1:.+]] = load double, double* %[[ipc]], align 8
 ; CHECK-NEXT:   %[[addf1:.+]] = fadd fast double %[[ldi1]], %differeturn
 ; CHECK-NEXT:   store double %[[addf1]], double* %[[ipc]], align 8
-; CHECK-NEXT:   %[[substore:.+]] = call { i64 } @diffesubstore(i64 %conv, i64 3, i8* %[[tape]])
+; CHECK-NEXT:   %[[substore:.+]] = call { i64 } @diffesubstore(i64 %conv, i64 3, { i8*, i8* } %[[tape]])
 ; CHECK-NEXT:   %[[ev0:.+]] = extractvalue { i64 } %[[substore]], 0
 ; CHECK-NEXT:   %[[bc0:.+]] = bitcast i64 %[[ev0]] to double
 ; CHECK-NEXT:   %[[ret:.+]] = insertvalue { double } undef, double %[[bc0]], 0
 ; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i8*, i64* } @augmented_substore(i64 %flt, i64 %integral)
+; CHECK: define internal { { i8*, i8* }, i64* } @augmented_substore(i64 %flt, i64 %integral)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #6
+; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 dereferenceable(16) dereferenceable_or_null(16) %"call'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %[[ipc1:.+]] = bitcast i8* %"call'mi" to i64*
+; CHECK-NEXT:   %0 = bitcast i8* %call to i64*
+; CHECK-NEXT:   store i64 %flt, i64* %0, align 8
 ; CHECK-NEXT:   %"arrayidx1'ipg" = getelementptr inbounds i8, i8* %"call'mi", i64 8
+; CHECK-NEXT:   %arrayidx1 = getelementptr inbounds i8, i8* %call, i64 8
 ; CHECK-NEXT:   %[[ipc2:.+]] = bitcast i8* %"arrayidx1'ipg" to i64*
+; CHECK-NEXT:   %1 = bitcast i8* %arrayidx1 to i64*
 ; CHECK-NEXT:   store i64 %integral, i64* %[[ipc2]], align 8
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8*, i64* } undef, i8* %"call'mi", 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { i8*, i64* } %.fca.0.insert, i64* %[[ipc1]], 1
-; CHECK-NEXT:   ret { i8*, i64* } %.fca.1.insert
+; CHECK-NEXT:   store i64 %integral, i64* %1, align 8
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i8*, i8* }, i64* } undef, i8* %"call'mi", 0, 0
+; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i8*, i8* }, i64* } %.fca.0.0.insert, i8* %call, 0, 1
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i8*, i8* }, i64* } %.fca.0.1.insert, i64* %"'ipc1", 1
+; CHECK-NEXT:   ret { { i8*, i8* }, i64* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @diffesubstore(i64 %flt, i64 %integral, i8* %[[tapeArg:.+]])
+; CHECK: define internal { i64 } @diffesubstore(i64 %flt, i64 %integral, { i8*, i8* } %[[tapeArg:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %[[tapeArg]] to i64*
-; CHECK-NEXT:   %0 = bitcast i8* %[[tapeArg]] to i64*
+; CHECK-NEXT:   %call = extractvalue { i8*, i8* } %[[tapeArg]], 1
+; CHECK-NEXT:   %"call'mi" = extractvalue { i8*, i8* } %[[tapeArg]], 0
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast i8* %"call'mi" to i64*
+; CHECK-NEXT:   %0 = bitcast i8* %"call'mi" to i64*
 ; CHECK-NEXT:   %1 = load i64, i64* %0, align 8
 ; CHECK-NEXT:   store i64 0, i64* %[[ipc]], align 8
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tapeArg]])
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"call'mi")
+; CHECK-NEXT:   tail call void @free(i8* %call)
 ; CHECK-NEXT:   %2 = insertvalue { i64 } undef, i64 %1, 0
 ; CHECK-NEXT:   ret { i64 } %2
 ; CHECK-NEXT: }
