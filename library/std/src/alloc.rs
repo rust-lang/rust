@@ -285,7 +285,7 @@ unsafe impl Allocator for System {
     }
 }
 
-static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
+static HOOK: AtomicPtr<()> = AtomicPtr::new(default_alloc_error_hook as *mut ());
 
 /// Registers a custom allocation error hook, replacing any that was previously registered.
 ///
@@ -310,8 +310,8 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 /// If no custom hook is registered, the default hook will be returned.
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn take_alloc_error_hook() -> fn(Layout) {
-    let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
-    if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } }
+    let hook = HOOK.swap(default_alloc_error_hook as *mut (), Ordering::SeqCst);
+    unsafe { mem::transmute(hook) }
 }
 
 fn default_alloc_error_hook(layout: Layout) {
@@ -324,8 +324,7 @@ fn default_alloc_error_hook(layout: Layout) {
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub fn rust_oom(layout: Layout) -> ! {
     let hook = HOOK.load(Ordering::SeqCst);
-    let hook: fn(Layout) =
-        if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
+    let hook: fn(Layout) = unsafe { mem::transmute(hook) };
     hook(layout);
     crate::process::abort()
 }
