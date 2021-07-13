@@ -39,7 +39,6 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{Align, VariantIdx};
@@ -133,8 +132,6 @@ pub type RegisteredTools = FxHashSet<Ident>;
 
 #[derive(Debug)]
 pub struct ResolverOutputs {
-    pub definitions: rustc_hir::definitions::Definitions,
-    pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,

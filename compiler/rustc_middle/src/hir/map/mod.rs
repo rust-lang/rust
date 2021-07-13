@@ -170,7 +170,7 @@ impl<'hir> Map<'hir> {
 
     pub fn def_key(self, def_id: LocalDefId) -> DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
-        self.tcx.untracked_resolutions.definitions.def_key(def_id)
+        self.tcx.definitions_untracked().def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(self, id: HirId) -> Option<DefPath> {
@@ -179,13 +179,13 @@ impl<'hir> Map<'hir> {
 
     pub fn def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
-        self.tcx.untracked_resolutions.definitions.def_path(def_id)
+        self.tcx.definitions_untracked().def_path(def_id)
     }
 
     #[inline]
     pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
-        self.tcx.untracked_resolutions.definitions.def_path_hash(def_id)
+        self.tcx.definitions_untracked().def_path_hash(def_id)
     }
 
     #[inline]
@@ -222,7 +222,7 @@ impl<'hir> Map<'hir> {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.tcx.ensure().hir_crate(());
-        self.tcx.untracked_resolutions.definitions.iter_local_def_id()
+        self.tcx.definitions_untracked().iter_local_def_id()
     }
 
     pub fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
@@ -1100,7 +1100,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
     if tcx.sess.opts.debugging_opts.incremental_relative_spans {
-        let definitions = &tcx.untracked_resolutions.definitions;
+        let definitions = &tcx.definitions_untracked();
         let mut owner_spans: Vec<_> = krate
             .owners
             .iter_enumerated()
@@ -1131,7 +1131,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
         .crates(())
         .iter()
         .map(|&cnum| {
-            let stable_crate_id = tcx.resolutions(()).cstore.stable_crate_id(cnum);
+            let stable_crate_id = tcx.stable_crate_id(cnum);
             let hash = tcx.crate_hash(cnum);
             (stable_crate_id, hash)
         })

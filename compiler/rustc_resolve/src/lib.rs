@@ -47,7 +47,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -1439,9 +1439,10 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(self) -> ResolverOutputs {
+    pub fn into_outputs(self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
+        let cstore = Box::new(self.crate_loader.into_cstore());
         let visibilities = self.visibilities;
         let has_pub_restricted = self.has_pub_restricted;
         let extern_crate_map = self.extern_crate_map;
@@ -1452,9 +1453,7 @@ impl<'a> Resolver<'a> {
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let access_levels = self.access_levels;
-        ResolverOutputs {
-            definitions,
-            cstore: Box::new(self.crate_loader.into_cstore()),
+        let resolutions = ResolverOutputs {
             visibilities,
             has_pub_restricted,
             access_levels,
@@ -1473,15 +1472,15 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
-        }
+        };
+        (definitions, cstore, resolutions)
     }
 
-    pub fn clone_outputs(&self) -> ResolverOutputs {
+    pub fn clone_outputs(&self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        ResolverOutputs {
-            definitions: self.definitions.clone(),
-            access_levels: self.access_levels.clone(),
-            cstore: Box::new(self.cstore().clone()),
+        let definitions = self.definitions.clone();
+        let cstore = Box::new(self.cstore().clone());
+        let resolutions = ResolverOutputs {
             visibilities: self.visibilities.clone(),
             has_pub_restricted: self.has_pub_restricted,
             extern_crate_map: self.extern_crate_map.clone(),
@@ -1499,7 +1498,9 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
-        }
+            access_levels: self.access_levels.clone(),
+        };
+        (definitions, cstore, resolutions)
     }
 
     pub fn cstore(&self) -> &CStore {
