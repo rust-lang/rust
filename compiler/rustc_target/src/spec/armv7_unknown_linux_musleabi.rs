@@ -16,6 +16,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
+            abi: "eabi".to_string(),
             features: "+v7,+thumb2,+soft-float,-neon".to_string(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".to_string(),

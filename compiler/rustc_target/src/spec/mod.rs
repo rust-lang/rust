@@ -1025,6 +1025,9 @@ pub struct TargetOptions {
     pub os: String,
     /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
     pub env: String,
+    /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
+    /// or `"eabihf"`. Defaults to "".
+    pub abi: String,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: String,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
@@ -1342,6 +1345,7 @@ impl Default for TargetOptions {
             c_int_width: "32".to_string(),
             os: "none".to_string(),
             env: String::new(),
+            abi: String::new(),
             vendor: "unknown".to_string(),
             linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
@@ -1919,6 +1923,7 @@ impl Target {
         key!(c_int_width = "target-c-int-width");
         key!(os);
         key!(env);
+        key!(abi);
         key!(vendor);
         key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
@@ -2152,6 +2157,7 @@ impl ToJson for Target {
         target_option_val!(c_int_width, "target-c-int-width");
         target_option_val!(os);
         target_option_val!(env);
+        target_option_val!(abi);
         target_option_val!(vendor);
         target_option_val!(linker_flavor);
         target_option_val!(linker);

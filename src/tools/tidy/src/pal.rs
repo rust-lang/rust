@@ -122,6 +122,7 @@ fn check_cfgs(
 
         let contains_platform_specific_cfg = cfg.contains("target_os")
             || cfg.contains("target_env")
+            || cfg.contains("target_abi")
             || cfg.contains("target_vendor")
             || cfg.contains("unix")
             || cfg.contains("windows");

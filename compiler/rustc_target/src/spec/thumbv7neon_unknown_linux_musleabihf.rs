@@ -19,6 +19,7 @@ pub fn target() -> Target {
         // Most of these settings are copied from the thumbv7neon_unknown_linux_gnueabihf
         // target.
         options: TargetOptions {
+            abi: "eabihf".to_string(),
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".to_string(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".to_string(),

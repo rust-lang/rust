@@ -6,6 +6,8 @@ all: default
 	$(RUSTC) --target i686-pc-windows-msvc --print cfg | $(CGREP) msvc
 	$(RUSTC) --target i686-apple-darwin --print cfg | $(CGREP) macos
 	$(RUSTC) --target i686-unknown-linux-gnu --print cfg | $(CGREP) gnu
+	$(RUSTC) --target arm-unknown-linux-gnueabihf --print cfg | $(CGREP) target_abi=
+	$(RUSTC) --target arm-unknown-linux-gnueabihf --print cfg | $(CGREP) eabihf
 
 ifdef IS_WINDOWS
 default:
