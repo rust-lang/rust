@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet;
+use clippy_utils::numeric_literal;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -80,14 +81,23 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));
                 if !ty_bound.is_numeric();
                 then {
-                    let suffix = match lit_ty.kind() {
-                        ty::Int(IntTy::I32) => "i32",
-                        ty::Float(FloatTy::F64) => "f64",
+                    let (suffix, is_float) = match lit_ty.kind() {
+                        ty::Int(IntTy::I32) => ("i32", false),
+                        ty::Float(FloatTy::F64) => ("f64", true),
                         // Default numeric fallback never results in other types.
                         _ => return,
                     };
 
-                    let sugg = format!("{}_{}", snippet(self.cx, lit.span, ""), suffix);
+                    let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
+                        src
+                    } else {
+                        match lit.node {
+                            LitKind::Int(src, _) => format!("{}", src),
+                            LitKind::Float(src, _) => format!("{}", src),
+                            _ => return,
+                        }
+                    };
+                    let sugg = numeric_literal::format(&src, Some(suffix), is_float);
                     span_lint_and_sugg(
                         self.cx,
                         DEFAULT_NUMERIC_FALLBACK,

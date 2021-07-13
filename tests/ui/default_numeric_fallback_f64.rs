@@ -1,3 +1,4 @@
+// run-rustfix
 // aux-build:macro_rules.rs
 
 #![warn(clippy::default_numeric_fallback)]
@@ -5,7 +6,6 @@
 #![allow(clippy::never_loop)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::unnecessary_operation)]
-#![allow(clippy::branches_sharing_code)]
 #![allow(clippy::branches_sharing_code)]
 #![allow(clippy::match_single_binding)]
 
