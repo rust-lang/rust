@@ -1335,7 +1335,8 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             } else {
                 Res::Err
             };
-            let trait_path = hir::Path { span, res, segments: &[] }.clean(cx);
+            let trait_path =
+                hir::Path { intermediate_res: None, span, res, segments: &[] }.clean(cx);
             Type::QPath {
                 name: segment.ident.name,
                 self_def_id: res.opt_def_id(),

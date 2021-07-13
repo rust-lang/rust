@@ -1800,6 +1800,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
+                intermediate_res: None,
                 span,
                 res: Res::Local(binding),
                 segments: arena_vec![self; hir::PathSegment::from_ident(ident)],

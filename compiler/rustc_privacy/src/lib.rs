@@ -419,7 +419,7 @@ struct EmbargoVisitor<'tcx> {
     macro_reachable: FxHashSet<(hir::HirId, DefId)>,
     /// Previous accessibility level; `None` means unreachable.
     prev_level: Option<AccessLevel>,
-    /// Has something changed in the level map?
+    /// has something changed in the level map?
     changed: bool,
 }
 
@@ -663,6 +663,14 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
         };
+
+        tracing::trace!(
+            "item: {:#?}\ninherited_item_level: {:#?}\nprev_level: {:#?}\naccess_levels: {:#?}",
+            item,
+            inherited_item_level,
+            self.prev_level,
+            self.access_levels
+        );
 
         // Update level of the item itself.
         let item_level = self.update(item.hir_id(), inherited_item_level);

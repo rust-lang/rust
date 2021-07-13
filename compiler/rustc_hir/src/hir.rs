@@ -186,8 +186,10 @@ impl Lifetime {
 #[derive(Debug, HashStable_Generic)]
 pub struct Path<'hir> {
     pub span: Span,
-    /// The resolution for the path.
+    /// The full resolution for the path.
     pub res: Res,
+    /// Intermediate resolution of the path (when we reexport another export)
+    pub intermediate_res: Option<Res>,
     /// The segments in the path: the things separated by `::`.
     pub segments: &'hir [PathSegment<'hir>],
 }

@@ -1319,6 +1319,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TyKind::Path(hir::QPath::Resolved(
                     None,
                     self.arena.alloc(hir::Path {
+                        intermediate_res: None,
                         res,
                         segments: arena_vec![self; hir::PathSegment::from_ident(
                             Ident::with_dummy_span(kw::SelfUpper)
@@ -1418,6 +1419,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::TyKind::Path(hir::QPath::Resolved(
                             None,
                             self.arena.alloc(hir::Path {
+                                intermediate_res: None,
                                 span,
                                 res: Res::Def(DefKind::TyParam, def_id.to_def_id()),
                                 segments: arena_vec![self; hir::PathSegment::from_ident(ident)],

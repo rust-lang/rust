@@ -34,6 +34,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let path_span_lo = p.span.shrink_to_lo();
         let proj_start = p.segments.len() - partial_res.unresolved_segments();
         let path = self.arena.alloc(hir::Path {
+            intermediate_res: None,
             res: self.lower_res(partial_res.base_res()),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
@@ -186,6 +187,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         explicit_owner: Option<NodeId>,
     ) -> &'hir hir::Path<'hir> {
         self.arena.alloc(hir::Path {
+            intermediate_res: None,
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
