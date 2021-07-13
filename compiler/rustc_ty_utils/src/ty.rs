@@ -168,6 +168,16 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
     }
 }
 
+fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let item = tcx.hir().expect_item(hir_id);
+    if let hir::ItemKind::Impl(impl_) = &item.kind {
+        impl_.constness
+    } else {
+        bug!("`impl_constness` called on {:?}", item);
+    }
+}
+
 /// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
@@ -535,6 +545,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        impl_constness,
         conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers
     };

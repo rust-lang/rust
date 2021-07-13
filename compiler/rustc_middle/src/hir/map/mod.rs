@@ -18,7 +18,7 @@ use rustc_index::vec::Idx;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -465,6 +465,9 @@ impl<'hir> Map<'hir> {
     /// Returns the `ConstContext` of the body associated with this `LocalDefId`.
     ///
     /// Panics if `LocalDefId` does not have an associated body.
+    ///
+    /// This should only be used for determining the context of a body, a return
+    /// value of `Some` does not always suggest that the owner of the body is `const`.
     pub fn body_const_context(&self, did: LocalDefId) -> Option<ConstContext> {
         let hir_id = self.local_def_id_to_hir_id(did);
         let ccx = match self.body_owner_kind(hir_id) {
@@ -473,6 +476,11 @@ impl<'hir> Map<'hir> {
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(did.to_def_id()) => return None,
             BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(did.to_def_id()) => ConstContext::ConstFn,
+            BodyOwnerKind::Fn
+                if self.tcx.has_attr(did.to_def_id(), sym::default_method_body_is_const) =>
+            {
+                ConstContext::ConstFn
+            }
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
         };
 

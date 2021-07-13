@@ -1412,7 +1412,7 @@ impl EncodeContext<'a, 'tcx> {
                     adt_def.repr,
                 )
             }
-            hir::ItemKind::Impl(hir::Impl { defaultness, .. }) => {
+            hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 let polarity = self.tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
@@ -1437,8 +1437,13 @@ impl EncodeContext<'a, 'tcx> {
                     }
                 });
 
-                let data =
-                    ImplData { polarity, defaultness, parent_impl: parent, coerce_unsized_info };
+                let data = ImplData {
+                    polarity,
+                    defaultness,
+                    constness,
+                    parent_impl: parent,
+                    coerce_unsized_info,
+                };
 
                 EntryKind::Impl(self.lazy(data))
             }

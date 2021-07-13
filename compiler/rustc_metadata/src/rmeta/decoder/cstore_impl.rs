@@ -168,6 +168,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_no_builtins => { cdata.root.no_builtins }
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
+    impl_constness => { cdata.get_impl_constness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
             .exported_symbols(cdata.cnum)

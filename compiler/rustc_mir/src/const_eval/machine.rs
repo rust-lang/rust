@@ -235,12 +235,15 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def.did) {
-                // Some functions we support even if they are non-const -- but avoid testing
-                // that for const fn!
-                ecx.hook_panic_fn(instance, args)?;
-                // We certainly do *not* want to actually call the fn
-                // though, so be sure we return here.
-                throw_unsup_format!("calling non-const function `{}`", instance)
+                // allow calling functions marked with #[default_method_body_is_const].
+                if !ecx.tcx.has_attr(def.did, sym::default_method_body_is_const) {
+                    // Some functions we support even if they are non-const -- but avoid testing
+                    // that for const fn!
+                    ecx.hook_panic_fn(instance, args)?;
+                    // We certainly do *not* want to actually call the fn
+                    // though, so be sure we return here.
+                    throw_unsup_format!("calling non-const function `{}`", instance)
+                }
             }
         }
         // This is a const fn. Call it.

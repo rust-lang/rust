@@ -349,6 +349,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(cmse_nonsecure_entry, AssumedUsed, template!(Word), experimental!(cmse_nonsecure_entry)),
+    // RFC 2632
+    gated!(
+        default_method_body_is_const, AssumedUsed, template!(Word), const_trait_impl,
+        "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
+        as `const`, which may be removed or renamed in the future."
+    ),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:

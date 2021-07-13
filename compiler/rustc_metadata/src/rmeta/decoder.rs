@@ -952,6 +952,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.get_impl_data(id).defaultness
     }
 
+    fn get_impl_constness(&self, id: DefIndex) -> hir::Constness {
+        self.get_impl_data(id).constness
+    }
+
     fn get_coerce_unsized_info(&self, id: DefIndex) -> Option<ty::adjustment::CoerceUnsizedInfo> {
         self.get_impl_data(id).coerce_unsized_info
     }
