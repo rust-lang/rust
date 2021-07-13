@@ -14,7 +14,7 @@ cd python-build
 # than that fairly normal.
 CFLAGS='-I /rustroot/include' LDFLAGS='-L /rustroot/lib -L /rustroot/lib64' \
     hide_output ../Python-$VERSION/configure --prefix=/rustroot
-hide_output make -j10
+hide_output make -j$(nproc)
 hide_output make install
 
 cd ..

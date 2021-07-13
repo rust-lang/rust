@@ -14,7 +14,7 @@ curl $URL | tar xzf -
 
 cd openssl-$VERSION
 hide_output ./config --prefix=/rustroot shared -fPIC
-hide_output make -j10
+hide_output make -j$(nproc)
 hide_output make install
 cd ..
 rm -rf openssl-$VERSION

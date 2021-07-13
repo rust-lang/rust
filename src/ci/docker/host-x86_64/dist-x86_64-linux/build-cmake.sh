@@ -9,7 +9,7 @@ curl -L https://github.com/Kitware/CMake/releases/download/v$CMAKE/cmake-$CMAKE.
 mkdir cmake-build
 cd cmake-build
 hide_output ../cmake-$CMAKE/configure --prefix=/rustroot
-hide_output make -j10
+hide_output make -j$(nproc)
 hide_output make install
 
 cd ..
