@@ -115,8 +115,8 @@ where
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let min = crate::cmp::min(self.n, n);
-        return match self.iter.advance_by(min) {
+        let min = self.n.min(n);
+        match self.iter.advance_by(min) {
             Ok(_) => {
                 self.n -= min;
                 if min < n { Err(min) } else { Ok(()) }
@@ -125,7 +125,7 @@ where
                 self.n -= advanced;
                 ret
             }
-        };
+        }
     }
 }
 
