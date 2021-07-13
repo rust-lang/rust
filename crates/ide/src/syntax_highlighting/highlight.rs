@@ -31,40 +31,10 @@ pub(super) fn element(
             bindings_shadow_count.clear();
             return None;
         }
-
         // Highlight definitions depending on the "type" of the definition.
         NAME => {
             let name = element.into_node().and_then(ast::Name::cast).unwrap();
-            let name_kind = NameClass::classify(sema, &name);
-
-            if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
-                if let Some(name) = local.name(db) {
-                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                    *shadow_count += 1;
-                    binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                }
-            };
-
-            match name_kind {
-                Some(NameClass::Definition(def)) => {
-                    let mut h = highlight_def(db, krate, def) | HlMod::Definition;
-                    if let Definition::ModuleDef(hir::ModuleDef::Trait(trait_)) = &def {
-                        if trait_.is_unsafe(db) {
-                            h |= HlMod::Unsafe;
-                        }
-                    }
-                    h
-                }
-                Some(NameClass::ConstReference(def)) => highlight_def(db, krate, def),
-                Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
-                    let mut h = HlTag::Symbol(SymbolKind::Field).into();
-                    if let hir::VariantDef::Union(_) = field_ref.parent_def(db) {
-                        h |= HlMod::Unsafe;
-                    }
-                    h
-                }
-                None => highlight_name_by_syntax(name) | HlMod::Definition,
-            }
+            highlight_name(sema, bindings_shadow_count, &mut binding_hash, krate, name)
         }
         // Highlight references like the definitions they resolve to
         NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => {
@@ -72,88 +42,18 @@ pub(super) fn element(
             // currently not knowing about tool attributes and rustc builtin attributes as
             // we do not want to resolve those to functions that may be defined in scope.
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
-            match NameRefClass::classify(sema, &name_ref) {
-                Some(name_class) => match name_class {
-                    NameRefClass::Definition(Definition::ModuleDef(hir::ModuleDef::Module(_)))
-                        if name_ref
-                            .syntax()
-                            .ancestors()
-                            .find_map(ast::Path::cast)
-                            .map_or(false, |it| it.parent_path().is_some()) =>
-                    {
-                        HlTag::Symbol(SymbolKind::Module)
-                    }
-                    NameRefClass::Definition(Definition::Macro(m))
-                        if m.kind() == hir::MacroKind::Attr =>
-                    {
-                        HlTag::Symbol(SymbolKind::Macro)
-                    }
-                    _ => HlTag::BuiltinAttr,
-                },
-                None => HlTag::BuiltinAttr,
-            }
-            .into()
+            highlight_name_ref_in_attr(sema, name_ref)
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
-            highlight_method_call_by_name_ref(sema, krate, &name_ref).unwrap_or_else(|| {
-                let name_class = match NameRefClass::classify(sema, &name_ref) {
-                    Some(name_kind) => name_kind,
-                    None => {
-                        return if syntactic_name_ref_highlighting {
-                            highlight_name_ref_by_syntax(name_ref, sema, krate)
-                        } else {
-                            HlTag::UnresolvedReference.into()
-                        }
-                    }
-                };
-                let h = match name_class {
-                    NameRefClass::Definition(def) => {
-                        if let Definition::Local(local) = &def {
-                            if let Some(name) = local.name(db) {
-                                let shadow_count =
-                                    bindings_shadow_count.entry(name.clone()).or_default();
-                                binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                            }
-                        };
-
-                        let mut h = highlight_def(db, krate, def);
-
-                        match def {
-                            Definition::Local(local)
-                                if is_consumed_lvalue(name_ref.syntax(), &local, db) =>
-                            {
-                                h |= HlMod::Consuming;
-                            }
-                            Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
-                                if trait_.is_unsafe(db) =>
-                            {
-                                if ast::Impl::for_trait_name_ref(&name_ref).is_some() {
-                                    h |= HlMod::Unsafe;
-                                }
-                            }
-                            Definition::Field(field) => {
-                                if let Some(parent) = name_ref.syntax().parent() {
-                                    if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
-                                        if let hir::VariantDef::Union(_) = field.parent_def(db) {
-                                            h |= HlMod::Unsafe;
-                                        }
-                                    }
-                                }
-                            }
-                            _ => (),
-                        }
-
-                        h
-                    }
-                    NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
-                };
-                if h.tag == HlTag::Symbol(SymbolKind::Module) && name_ref.self_token().is_some() {
-                    SymbolKind::SelfParam.into()
-                } else {
-                    h
-                }
-            })
+            highlight_name_ref(
+                sema,
+                krate,
+                bindings_shadow_count,
+                &mut binding_hash,
+                syntactic_name_ref_highlighting,
+                name_ref,
+            )
         }
 
         // Simple token-based highlighting
@@ -309,19 +209,148 @@ pub(super) fn element(
     };
 
     return Some((highlight, binding_hash));
+}
 
-    fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
-        fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
-            use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+fn highlight_name_ref_in_attr(sema: &Semantics<RootDatabase>, name_ref: ast::NameRef) -> Highlight {
+    match NameRefClass::classify(sema, &name_ref) {
+        Some(name_class) => match name_class {
+            NameRefClass::Definition(Definition::ModuleDef(hir::ModuleDef::Module(_)))
+                if name_ref
+                    .syntax()
+                    .ancestors()
+                    .find_map(ast::Path::cast)
+                    .map_or(false, |it| it.parent_path().is_some()) =>
+            {
+                HlTag::Symbol(SymbolKind::Module)
+            }
+            NameRefClass::Definition(Definition::Macro(m)) if m.kind() == hir::MacroKind::Attr => {
+                HlTag::Symbol(SymbolKind::Macro)
+            }
+            _ => HlTag::BuiltinAttr,
+        },
+        None => HlTag::BuiltinAttr,
+    }
+    .into()
+}
 
-            let mut hasher = DefaultHasher::new();
-            x.hash(&mut hasher);
-            hasher.finish()
+fn highlight_name_ref(
+    sema: &Semantics<RootDatabase>,
+    krate: Option<hir::Crate>,
+    bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
+    binding_hash: &mut Option<u64>,
+    syntactic_name_ref_highlighting: bool,
+    name_ref: ast::NameRef,
+) -> Highlight {
+    let db = sema.db;
+    highlight_method_call_by_name_ref(sema, krate, &name_ref).unwrap_or_else(|| {
+        let name_class = match NameRefClass::classify(sema, &name_ref) {
+            Some(name_kind) => name_kind,
+            None => {
+                return if syntactic_name_ref_highlighting {
+                    highlight_name_ref_by_syntax(name_ref, sema, krate)
+                } else {
+                    HlTag::UnresolvedReference.into()
+                }
+            }
+        };
+        let h = match name_class {
+            NameRefClass::Definition(def) => {
+                if let Definition::Local(local) = &def {
+                    if let Some(name) = local.name(db) {
+                        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                        *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                    }
+                };
+
+                let mut h = highlight_def(db, krate, def);
+
+                match def {
+                    Definition::Local(local)
+                        if is_consumed_lvalue(name_ref.syntax(), &local, db) =>
+                    {
+                        h |= HlMod::Consuming;
+                    }
+                    Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
+                        if trait_.is_unsafe(db) =>
+                    {
+                        if ast::Impl::for_trait_name_ref(&name_ref).is_some() {
+                            h |= HlMod::Unsafe;
+                        }
+                    }
+                    Definition::Field(field) => {
+                        if let Some(parent) = name_ref.syntax().parent() {
+                            if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
+                                if let hir::VariantDef::Union(_) = field.parent_def(db) {
+                                    h |= HlMod::Unsafe;
+                                }
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+
+                h
+            }
+            NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
+        };
+        if h.tag == HlTag::Symbol(SymbolKind::Module) && name_ref.self_token().is_some() {
+            SymbolKind::SelfParam.into()
+        } else {
+            h
         }
+    })
+}
 
-        hash((name, shadow_count))
+fn highlight_name(
+    sema: &Semantics<RootDatabase>,
+    bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
+    binding_hash: &mut Option<u64>,
+    krate: Option<hir::Crate>,
+    name: ast::Name,
+) -> Highlight {
+    let db = sema.db;
+    let name_kind = NameClass::classify(sema, &name);
+    if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
+        if let Some(name) = local.name(db) {
+            let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+            *shadow_count += 1;
+            *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+        }
+    };
+    match name_kind {
+        Some(NameClass::Definition(def)) => {
+            let mut h = highlight_def(db, krate, def) | HlMod::Definition;
+            if let Definition::ModuleDef(hir::ModuleDef::Trait(trait_)) = &def {
+                if trait_.is_unsafe(db) {
+                    h |= HlMod::Unsafe;
+                }
+            }
+            h
+        }
+        Some(NameClass::ConstReference(def)) => highlight_def(db, krate, def),
+        Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
+            let mut h = HlTag::Symbol(SymbolKind::Field).into();
+            if let hir::VariantDef::Union(_) = field_ref.parent_def(db) {
+                h |= HlMod::Unsafe;
+            }
+            h
+        }
+        None => highlight_name_by_syntax(name) | HlMod::Definition,
     }
 }
+
+fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
+    fn hash<T: std::hash::Hash + std::fmt::Debug>(x: T) -> u64 {
+        use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        x.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    hash((name, shadow_count))
+}
+
 fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) -> Highlight {
     let mut h = match def {
         Definition::Macro(_) => Highlight::new(HlTag::Symbol(SymbolKind::Macro)),
