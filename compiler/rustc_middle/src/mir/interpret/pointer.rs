@@ -135,7 +135,7 @@ pub struct Pointer<Tag = AllocId> {
     pub provenance: Tag,
 }
 
-//FIXME static_assert_size!(Pointer, 16);
+static_assert_size!(Pointer, 16);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.

@@ -136,7 +136,7 @@ pub enum Scalar<Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME static_assert_size!(Scalar, 24);
+static_assert_size!(Scalar, 24);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
@@ -522,7 +522,7 @@ pub enum ScalarMaybeUninit<Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME static_assert_size!(ScalarMaybeUninit, 24);
+static_assert_size!(ScalarMaybeUninit, 24);
 
 impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]

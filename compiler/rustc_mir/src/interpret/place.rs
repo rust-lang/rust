@@ -34,7 +34,7 @@ pub enum MemPlaceMeta<Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
+rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
 
 impl<Tag: Provenance> std::fmt::Debug for MemPlaceMeta<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -87,7 +87,7 @@ pub struct MemPlace<Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(MemPlace, 56);
+rustc_data_structures::static_assert_size!(MemPlace, 48);
 
 impl<Tag: Provenance> std::fmt::Debug for MemPlace<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -111,7 +111,7 @@ pub enum Place<Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(Place, 64);
+rustc_data_structures::static_assert_size!(Place, 56);
 
 impl<Tag: Provenance> std::fmt::Debug for Place<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -132,7 +132,7 @@ pub struct PlaceTy<'tcx, Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(PlaceTy<'_>, 80);
+rustc_data_structures::static_assert_size!(PlaceTy<'_>, 72);
 
 impl<'tcx, Tag: Provenance> std::fmt::Debug for PlaceTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -157,7 +157,7 @@ pub struct MPlaceTy<'tcx, Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 72);
+rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
 
 impl<'tcx, Tag: Provenance> std::fmt::Debug for MPlaceTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

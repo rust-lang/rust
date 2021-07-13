@@ -34,7 +34,7 @@ pub enum Immediate<Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(Immediate, 56);
+rustc_data_structures::static_assert_size!(Immediate, 56);
 
 impl<Tag: Provenance> std::fmt::Debug for Immediate<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -100,7 +100,7 @@ pub struct ImmTy<'tcx, Tag = AllocId> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-//FIXME rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
+rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
 
 impl<'tcx, Tag: Provenance> std::fmt::Debug for ImmTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
