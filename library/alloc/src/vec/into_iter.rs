@@ -164,18 +164,19 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         let step_size = self.len().min(n);
+        let to_drop = ptr::slice_from_raw_parts_mut(self.ptr as *mut T, step_size);
         if mem::size_of::<T>() == 0 {
             // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
             // effectively results in unsigned pointers representing positions 0..usize::MAX,
             // which is valid for ZSTs.
             self.ptr = unsafe { arith_offset(self.ptr as *const i8, step_size as isize) as *mut T }
         } else {
-            let to_drop = ptr::slice_from_raw_parts_mut(self.ptr as *mut T, step_size);
             // SAFETY: the min() above ensures that step_size is in bounds
-            unsafe {
-                self.ptr = self.ptr.add(step_size);
-                ptr::drop_in_place(to_drop);
-            }
+            self.ptr = unsafe { self.ptr.add(step_size) };
+        }
+        // SAFETY: the min() above ensures that step_size is in bounds
+        unsafe {
+            ptr::drop_in_place(to_drop);
         }
         if step_size < n {
             return Err(step_size);
@@ -237,11 +238,11 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
         } else {
             // SAFETY: same as for advance_by()
             self.end = unsafe { self.end.offset(step_size.wrapping_neg() as isize) };
-            let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
-            // SAFETY: same as for advance_by()
-            unsafe {
-                ptr::drop_in_place(to_drop);
-            }
+        }
+        let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
+        // SAFETY: same as for advance_by()
+        unsafe {
+            ptr::drop_in_place(to_drop);
         }
         if step_size < n {
             return Err(step_size);

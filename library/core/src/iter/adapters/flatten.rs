@@ -412,8 +412,9 @@ where
         self.frontiter = None;
 
         if let Some(ref mut back) = self.backiter {
-            if let Err(advanced) = back.advance_by(rem) {
-                rem -= advanced
+            match back.advance_by(rem) {
+                ret @ Ok(_) => return ret,
+                Err(advanced) => rem -= advanced,
             }
         }
 

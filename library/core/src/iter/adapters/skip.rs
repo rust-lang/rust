@@ -116,14 +116,35 @@ where
     }
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        if self.n >= n {
-            self.n -= n;
-            return Ok(());
+        let mut rem = n;
+
+        let step_one = self.n.saturating_add(rem);
+        match self.iter.advance_by(step_one) {
+            Ok(_) => {
+                rem -= step_one - self.n;
+                self.n = 0;
+            }
+            Err(advanced) => {
+                let advanced_without_skip = advanced.saturating_sub(self.n);
+                self.n = self.n.saturating_sub(advanced);
+                return Err(advanced_without_skip);
+            }
         }
-        let rem = n - self.n;
-        self.n = 0;
-        self.iter.advance_by(rem)
+
+        // step_one calculation may have saturated
+        if unlikely(rem > 0) {
+            return match self.iter.advance_by(rem) {
+                ret @ Ok(_) => ret,
+                Err(advanced) => {
+                    rem -= advanced;
+                    Err(n - rem)
+                }
+            };
+        }
+
+        Ok(())
     }
 }
 
