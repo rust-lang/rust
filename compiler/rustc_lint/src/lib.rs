@@ -475,10 +475,10 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
 }
 
 fn register_internals(store: &mut LintStore) {
-    store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_early_pass(|| box DefaultHashTypes::new());
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| box LintPassImpl);
+    store.register_lints(&DefaultHashTypes::get_lints());
+    store.register_late_pass(|| box DefaultHashTypes);
     store.register_lints(&ExistingDocKeyword::get_lints());
     store.register_late_pass(|| box ExistingDocKeyword);
     store.register_lints(&TyTyKind::get_lints());
