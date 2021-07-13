@@ -168,6 +168,7 @@ fn main() {
     noop!(noop!(1));
 
     let mut x = 42;
+    x += 1;
     let y = &mut x;
     let z = &y;
 

@@ -55,7 +55,6 @@ pub(super) fn element(
                 name_ref,
             )
         }
-
         // Simple token-based highlighting
         COMMENT => {
             let comment = element.into_token().and_then(ast::Comment::cast)?;
@@ -132,15 +131,17 @@ pub(super) fn element(
                 .into()
             }
             _ if parent_matches::<ast::PrefixExpr>(&element) => HlOperator::Other.into(),
-            T![+] | T![-] | T![*] | T![/] | T![+=] | T![-=] | T![*=] | T![/=]
-                if parent_matches::<ast::BinExpr>(&element) =>
-            {
+            T![+] | T![-] | T![*] | T![/] if parent_matches::<ast::BinExpr>(&element) => {
                 HlOperator::Arithmetic.into()
             }
-            T![|] | T![&] | T![!] | T![^] | T![|=] | T![&=] | T![^=]
-                if parent_matches::<ast::BinExpr>(&element) =>
-            {
+            T![+=] | T![-=] | T![*=] | T![/=] if parent_matches::<ast::BinExpr>(&element) => {
+                Highlight::from(HlOperator::Arithmetic) | HlMod::Mutable
+            }
+            T![|] | T![&] | T![!] | T![^] if parent_matches::<ast::BinExpr>(&element) => {
                 HlOperator::Bitwise.into()
+            }
+            T![|=] | T![&=] | T![^=] if parent_matches::<ast::BinExpr>(&element) => {
+                Highlight::from(HlOperator::Bitwise) | HlMod::Mutable
             }
             T![&&] | T![||] if parent_matches::<ast::BinExpr>(&element) => {
                 HlOperator::Logical.into()
