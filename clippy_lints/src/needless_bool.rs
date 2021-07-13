@@ -71,6 +71,9 @@ declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use self::Expression::{Bool, RetBool};
+        if e.span.from_expansion() {
+            return;
+        }
         if let ExprKind::If(pred, then_block, Some(else_expr)) = e.kind {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
