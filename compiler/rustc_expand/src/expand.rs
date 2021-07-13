@@ -22,7 +22,9 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
-use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, Parser, RecoverComma};
+use rustc_parse::parser::{
+    AttemptLocalParseRecovery, ForceCollect, Parser, RecoverColon, RecoverComma,
+};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -930,9 +932,11 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => {
-            AstFragment::Pat(this.parse_pat_allow_top_alt(None, RecoverComma::No)?)
-        }
+        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_alt(
+            None,
+            RecoverComma::No,
+            RecoverColon::Yes,
+        )?),
         AstFragmentKind::Arms
         | AstFragmentKind::Fields
         | AstFragmentKind::FieldPats
