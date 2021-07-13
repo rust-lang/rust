@@ -101,6 +101,7 @@ pub enum AnEnum {
 }
 
 #[doc(keyword = "CookieMonster")]
+/// Some keyword.
 pub mod keyword {}
 
 /// Just some type alias.
