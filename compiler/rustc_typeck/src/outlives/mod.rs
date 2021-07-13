@@ -22,15 +22,10 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
 
     if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
     {
-        // Provide inferred outlive preds of parent item of cg defaults manually
-        // as generics_of doesn't return a parent for the generics
-        if let Node::GenericParam(hir::GenericParam {
-            hir_id: param_id,
-            kind: hir::GenericParamKind::Const { .. },
-            ..
-        }) = tcx.hir().get(tcx.hir().get_parent_node(id))
-        {
-            let item_id = tcx.hir().get_parent_node(*param_id);
+        // Provide predicates of parent item of cg defaults manually as `generics_of`
+        // doesn't set the parent item as the parent for the generics (#86580)
+        if let Some(_) = tcx.hir().opt_const_param_default_param_hir_id(id) {
+            let item_id = tcx.hir().get_parent_item(id);
             let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
             return tcx.inferred_outlives_of(item_def_id);
         }

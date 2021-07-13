@@ -1441,17 +1441,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.lazy_normalization() {
-                // Only provide backwards declared generics to cg defaults (#83938)
-                if let Node::GenericParam(GenericParam {
-                    hir_id: param_id,
-                    kind: GenericParamKind::Const { .. },
-                    ..
-                }) = tcx.hir().get(tcx.hir().get_parent_node(hir_id))
-                {
-                    let item_id = tcx.hir().get_parent_node(*param_id);
-                    let item_def_id = tcx.hir().local_def_id(item_id);
-                    let generics = tcx.generics_of(item_def_id.to_def_id());
-                    let param_def = tcx.hir().local_def_id(*param_id).to_def_id();
+                // Only provide backwards declared generics to cg defaults (#86580)
+                if let Some(param_id) = tcx.hir().opt_const_param_default_param_hir_id(hir_id) {
+                    let generics = tcx.generics_of(parent_def_id.to_def_id());
+                    let param_def = tcx.hir().local_def_id(param_id).to_def_id();
                     let param_def_idx = generics.param_def_id_to_index[&param_def];
                     let params = generics.params[..param_def_idx as usize].to_owned();
                     let param_def_id_to_index =
@@ -2432,16 +2425,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }
     } else {
         if matches!(def_kind, DefKind::AnonConst) && tcx.lazy_normalization() {
-            // Provide predicates of parent item of cg defaults manually
-            // as generics_of doesn't return a parent for the generics
+            // Provide predicates of parent item of cg defaults manually as `generics_of`
+            // doesn't set the parent item as the parent for the generics (#86580)
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-            if let Node::GenericParam(hir::GenericParam {
-                hir_id: param_id,
-                kind: hir::GenericParamKind::Const { .. },
-                ..
-            }) = tcx.hir().get(tcx.hir().get_parent_node(hir_id))
-            {
-                let item_id = tcx.hir().get_parent_node(*param_id);
+            if let Some(_) = tcx.hir().opt_const_param_default_param_hir_id(hir_id) {
+                let item_id = tcx.hir().get_parent_item(hir_id);
                 let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
                 return tcx.explicit_predicates_of(item_def_id);
             }
