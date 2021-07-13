@@ -12,6 +12,7 @@ trait Output<'a> {}
 impl<'a> Output<'a> for &'a str {}
 
 fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
+    //~^ ERROR: concrete type differs from previous defining opaque type use
     let out: OpaqueOutputImpl<'a> = arg;
     arg
 }

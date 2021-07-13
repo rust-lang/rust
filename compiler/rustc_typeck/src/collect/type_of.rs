@@ -542,13 +542,14 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
-            if let Some((opaque_type_key, concrete_type)) =
-                concrete_opaque_types.iter().find(|(key, _)| key.def_id == self.def_id)
-            {
-                debug!(
-                    "find_opaque_ty_constraints: found constraint for `{:?}` at `{:?}`: {:?}",
-                    self.def_id, def_id, concrete_type,
-                );
+            debug!(?concrete_opaque_types);
+            for (opaque_type_key, concrete_type) in concrete_opaque_types {
+                if opaque_type_key.def_id != self.def_id {
+                    // Ignore constraints for other opaque types.
+                    continue;
+                }
+
+                debug!(?concrete_type, ?opaque_type_key.substs, "found constraint");
 
                 // FIXME(oli-obk): trace the actual span from inference to improve errors.
                 let span = self.tcx.def_span(def_id);
@@ -613,11 +614,6 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 } else {
                     self.found = Some((span, concrete_type));
                 }
-            } else {
-                debug!(
-                    "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`",
-                    self.def_id, def_id,
-                );
             }
         }
     }
