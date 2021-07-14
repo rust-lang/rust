@@ -145,6 +145,7 @@ pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "re_bytes", "Regex", "new"];
 pub const REGEX_BYTES_SET_NEW: [&str; 5] = ["regex", "re_set", "bytes", "RegexSet", "new"];
 pub const REGEX_NEW: [&str; 4] = ["regex", "re_unicode", "Regex", "new"];
 pub const REGEX_SET_NEW: [&str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
+/// Preferably use the diagnostic item `sym::result_type` where possible
 pub const RESULT: [&str; 3] = ["core", "result", "Result"];
 pub const RESULT_ERR: [&str; 4] = ["core", "result", "Result", "Err"];
 pub const RESULT_OK: [&str; 4] = ["core", "result", "Result", "Ok"];
@@ -180,9 +181,8 @@ pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
-pub const TRANSMUTE: [&str; 4] = ["core", "intrinsics", "", "transmute"];
 pub const TRY_FROM: [&str; 4] = ["core", "convert", "TryFrom", "try_from"];
-pub const TRY_INTO_TRAIT: [&str; 3] = ["core", "convert", "TryInto"];
+
 pub const VEC: [&str; 3] = ["alloc", "vec", "Vec"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];
 pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];

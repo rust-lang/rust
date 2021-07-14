@@ -12,11 +12,12 @@ mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
-use clippy_utils::{in_constant, match_def_path, paths};
+use clippy_utils::in_constant;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for transmutes that can't ever be correct on any
@@ -328,7 +329,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             if let ExprKind::Call(path_expr, args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
-            if match_def_path(cx, def_id, &paths::TRANSMUTE);
+            if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
             then {
                 // Avoid suggesting from/to bits and dereferencing raw pointers in const contexts.
                 // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.
