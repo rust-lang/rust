@@ -19,8 +19,9 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
+use smallvec::SmallVec;
 
 use std::fmt::Write;
 
@@ -188,63 +189,86 @@ pub fn push_debuginfo_type_name<'tcx>(
             }
         }
         ty::Dynamic(ref trait_data, ..) => {
-            if cpp_like_names {
+            let auto_traits: SmallVec<[DefId; 4]> = trait_data.auto_traits().collect();
+
+            let has_enclosing_parens = if cpp_like_names {
                 output.push_str("dyn$<");
+                false
             } else {
-                output.push_str("dyn ");
-            }
+                if trait_data.len() > 1 && auto_traits.len() != 0 {
+                    // We need enclosing parens
+                    output.push_str("(dyn ");
+                    true
+                } else {
+                    output.push_str("dyn ");
+                    false
+                }
+            };
 
             if let Some(principal) = trait_data.principal() {
                 let principal =
                     tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, qualified, output);
                 push_generic_params_internal(tcx, principal.substs, output, visited);
-            } else {
-                // The auto traits come ordered by `DefPathHash`, which guarantees stability if the
-                // environment is stable (e.g., incremental builds) but not otherwise (e.g.,
-                // updated compiler version, different target).
-                //
-                // To avoid that causing instabilities in test output, sort the auto-traits
-                // alphabetically.
-                let mut auto_traits: Vec<_> = trait_data
-                    .iter()
-                    .filter_map(|predicate| {
-                        match tcx.normalize_erasing_late_bound_regions(
-                            ty::ParamEnv::reveal_all(),
-                            predicate,
-                        ) {
-                            ty::ExistentialPredicate::AutoTrait(def_id) => {
-                                let mut name = String::new();
-                                push_item_name(tcx, def_id, true, &mut name);
-                                Some(name)
-                            }
-                            _ => None,
-                        }
+
+                let projection_bounds: SmallVec<[_; 4]> = trait_data
+                    .projection_bounds()
+                    .map(|bound| {
+                        let ExistentialProjection { item_def_id, ty, .. } = bound.skip_binder();
+                        (item_def_id, ty)
                     })
                     .collect();
-                auto_traits.sort();
 
-                for name in auto_traits {
-                    output.push_str(&name);
+                if projection_bounds.len() != 0 {
+                    pop_close_angle_bracket(output);
 
-                    if cpp_like_names {
+                    for (item_def_id, ty) in projection_bounds {
                         output.push_str(", ");
-                    } else {
-                        output.push_str(" + ");
+
+                        if cpp_like_names {
+                            output.push_str("assoc$<");
+                            push_item_name(tcx, item_def_id, false, output);
+                            output.push_str(", ");
+                            push_debuginfo_type_name(tcx, ty, true, output, visited);
+                            push_close_angle_bracket(tcx, output);
+                        } else {
+                            push_item_name(tcx, item_def_id, false, output);
+                            output.push('=');
+                            push_debuginfo_type_name(tcx, ty, true, output, visited);
+                        }
                     }
+
+                    push_close_angle_bracket(tcx, output);
                 }
 
-                // Remove the trailing joining characters. For cpp_like_names
-                // this is `, ` otherwise ` + `.
-                output.pop();
-                output.pop();
-                if !cpp_like_names {
-                    output.pop();
+                if auto_traits.len() != 0 {
+                    push_auto_trait_separator(cpp_like_names, output);
                 }
+            }
+
+            if auto_traits.len() != 0 {
+                let mut auto_traits: SmallVec<[String; 4]> = auto_traits
+                    .into_iter()
+                    .map(|def_id| {
+                        let mut name = String::with_capacity(20);
+                        push_item_name(tcx, def_id, true, &mut name);
+                        name
+                    })
+                    .collect();
+                auto_traits.sort_unstable();
+
+                for auto_trait in auto_traits {
+                    output.push_str(&auto_trait);
+                    push_auto_trait_separator(cpp_like_names, output);
+                }
+
+                pop_auto_trait_separator(cpp_like_names, output);
             }
 
             if cpp_like_names {
                 push_close_angle_bracket(tcx, output);
+            } else if has_enclosing_parens {
+                output.push(')');
             }
         }
         ty::FnDef(..) | ty::FnPtr(_) => {
@@ -407,6 +431,20 @@ pub fn push_debuginfo_type_name<'tcx>(
         }
         push_close_angle_bracket(tcx, output);
     }
+
+    fn auto_trait_separator(cpp_like_names: bool) -> &'static str {
+        if cpp_like_names { ", " } else { " + " }
+    }
+
+    fn push_auto_trait_separator(cpp_like_names: bool, output: &mut String) {
+        output.push_str(auto_trait_separator(cpp_like_names));
+    }
+
+    fn pop_auto_trait_separator(cpp_like_names: bool, output: &mut String) {
+        let sep = auto_trait_separator(cpp_like_names);
+        assert!(output.ends_with(sep));
+        output.truncate(output.len() - sep.len());
+    }
 }
 
 pub fn push_item_name(tcx: TyCtxt<'tcx>, def_id: DefId, qualified: bool, output: &mut String) {
@@ -553,6 +591,14 @@ fn push_close_angle_bracket<'tcx>(tcx: TyCtxt<'tcx>, output: &mut String) {
     };
 
     output.push('>');
+}
+
+fn pop_close_angle_bracket(output: &mut String) {
+    assert!(output.ends_with('>'));
+    output.pop();
+    if output.ends_with(' ') {
+        output.pop();
+    }
 }
 
 fn cpp_like_names(tcx: TyCtxt<'_>) -> bool {

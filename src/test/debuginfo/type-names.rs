@@ -117,7 +117,11 @@
 // gdb-check:type = &mut dyn type_names::Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
 
 // gdb-command:whatis no_principal_trait
-// gdb-check:type = alloc::boxed::Box<dyn core::marker::Send + core::marker::Sync, alloc::alloc::Global>
+// gdb-check:type = alloc::boxed::Box<(dyn core::marker::Send + core::marker::Sync), alloc::alloc::Global>
+
+// gdb-command:whatis has_associated_type_trait
+// gdb-check:type = &(dyn type_names::Trait3<u32, AssocType=isize> + core::marker::Send)
+
 
 // BARE FUNCTIONS
 // gdb-command:whatis rust_fn
@@ -224,7 +228,7 @@
 // cdb-check:struct ref$<dyn$<type_names::Trait1> > ref_trait = [...]
 // cdb-check:struct ref_mut$<dyn$<type_names::Trait1> > mut_ref_trait = [...]
 // cdb-check:struct alloc::boxed::Box<dyn$<core::marker::Send, core::marker::Sync>, alloc::alloc::Global> no_principal_trait = [...]
-// cdb-check:struct ref$<dyn$<type_names::Trait3> > has_associated_type_trait = struct ref$<dyn$<type_names::Trait3> >
+// cdb-check:struct ref$<dyn$<type_names::Trait3<u32, assoc$<AssocType, isize> >, core::marker::Send> > has_associated_type_trait = struct ref$<dyn$<type_names::Trait3<u32, assoc$<AssocType, isize> >, core::marker::Send> >
 
 // BARE FUNCTIONS
 // cdb-command:dv /t *_fn*
@@ -306,14 +310,14 @@ trait Trait1 {
 trait Trait2<T1, T2> {
     fn dummy(&self, _: T1, _: T2) {}
 }
-trait Trait3 {
+trait Trait3<T> {
     type AssocType;
-    fn dummy(&self) {}
+    fn dummy(&self) -> T { panic!() }
 }
 
 impl Trait1 for isize {}
 impl<T1, T2> Trait2<T1, T2> for isize {}
-impl Trait3 for isize {
+impl<T> Trait3<T> for isize {
     type AssocType = isize;
 }
 
@@ -404,8 +408,8 @@ fn main() {
     let ref_trait = &0_isize as &dyn Trait1;
     let mut mut_int1 = 0_isize;
     let mut_ref_trait = (&mut mut_int1) as &mut dyn Trait1;
-    let no_principal_trait = (box 0_isize) as Box<dyn Send + Sync>;
-    let has_associated_type_trait = &0_isize as &dyn Trait3<AssocType = isize>;
+    let no_principal_trait = (box 0_isize) as Box<(dyn Send + Sync)>;
+    let has_associated_type_trait = &0_isize as &(dyn Trait3<u32, AssocType = isize> + Send);
 
     let generic_box_trait = (box 0_isize) as Box<dyn Trait2<i32, mod1::Struct2>>;
     let generic_ref_trait = (&0_isize) as &dyn Trait2<Struct1, Struct1>;
