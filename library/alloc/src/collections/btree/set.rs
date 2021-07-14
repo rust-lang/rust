@@ -903,8 +903,8 @@ impl<T> BTreeSet<T> {
         self.map.append(&mut other.map);
     }
 
-    /// Splits the collection into two at the given key. Returns everything after the given key,
-    /// including the key.
+    /// Splits the collection into two at the given value. Returns everything after the given value,
+    /// including the value.
     ///
     /// # Examples
     ///
@@ -933,11 +933,11 @@ impl<T> BTreeSet<T> {
     /// assert!(b.contains(&41));
     /// ```
     #[stable(feature = "btree_split_off", since = "1.11.0")]
-    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, value: &Q) -> Self
     where
         T: Borrow<Q> + Ord,
     {
-        BTreeSet { map: self.map.split_off(key) }
+        BTreeSet { map: self.map.split_off(value) }
     }
 
     /// Creates an iterator that visits all values in ascending order and uses a closure
