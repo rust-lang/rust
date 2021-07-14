@@ -335,8 +335,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     ),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(PointerUseAfterFree(..)) |
-                    err_unsup!(ReadBytesAsPointer) =>
+                    err_ub!(PointerUseAfterFree(..)) =>
                         { "dangling vtable pointer in wide pointer" },
                     err_ub!(AlignmentCheckFailed { .. }) =>
                         { "unaligned vtable pointer in wide pointer" },
@@ -347,8 +346,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.ecx.read_drop_type_from_vtable(vtable),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(InvalidFunctionPointer(..)) |
-                    err_unsup!(ReadBytesAsPointer) =>
+                    err_ub!(InvalidFunctionPointer(..)) =>
                         { "invalid drop function pointer in vtable (not pointing to a function)" },
                     err_ub!(InvalidVtableDropFn(..)) =>
                         { "invalid drop function pointer in vtable (function has incompatible signature)" },
@@ -437,8 +435,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 { "a dangling {} (address 0x{:x} is unallocated)", kind, i },
             err_ub!(PointerOutOfBounds { .. }) =>
                 { "a dangling {} (going beyond the bounds of its allocation)", kind },
-            err_unsup!(ReadBytesAsPointer) =>
-                { "a dangling {} (created from integer)", kind },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
             err_ub!(PointerUseAfterFree(..)) =>
@@ -598,8 +594,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
-                    err_ub!(InvalidUninitBytes(None)) |
-                    err_unsup!(ReadBytesAsPointer) =>
+                    err_ub!(InvalidUninitBytes(None)) =>
                         { "{}", value } expected { "a function pointer" },
                 );
                 // FIXME: Check if the signature matches

@@ -397,8 +397,6 @@ pub enum UnsupportedOpInfo {
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
-    /// Encountered raw bytes where we needed a pointer.
-    ReadBytesAsPointer,
     /// Accessing thread local statics
     ThreadLocalStatic(DefId),
     /// Accessing an unsupported extern static.
@@ -413,7 +411,6 @@ impl fmt::Display for UnsupportedOpInfo {
             ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
             NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
-            ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({:?})", did),
         }
     }
