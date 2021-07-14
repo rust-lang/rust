@@ -21,17 +21,11 @@ pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub(super) const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 pub(super) const BEGIN_PANIC_FMT: [&str; 3] = ["std", "panicking", "begin_panic_fmt"];
-/// Preferably use the diagnostic item `sym::BinaryHeap` where possible
-pub const BINARY_HEAP: [&str; 4] = ["alloc", "collections", "binary_heap", "BinaryHeap"];
 /// Preferably use the diagnostic item `sym::Borrow` where possible
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
-/// Preferably use the diagnostic item `sym::BTreeMap` where possible
-pub const BTREEMAP: [&str; 5] = ["alloc", "collections", "btree", "map", "BTreeMap"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
-/// Preferably use the diagnostic item `sym::BTreeSet` where possible
-pub const BTREESET: [&str; 5] = ["alloc", "collections", "btree", "set", "BTreeSet"];
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const CMP_MAX: [&str; 3] = ["core", "cmp", "max"];
 pub const CMP_MIN: [&str; 3] = ["core", "cmp", "min"];
@@ -59,13 +53,9 @@ pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect"
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
 pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
-/// Preferably use the diagnostic item `sym::hashmap_type` where possible
-pub const HASHMAP: [&str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
-/// Preferably use the diagnostic item `sym::hashset_type` where possible
-pub const HASHSET: [&str; 5] = ["std", "collections", "hash", "set", "HashSet"];
 #[cfg(feature = "internal-lints")]
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 #[cfg(feature = "internal-lints")]
@@ -83,8 +73,6 @@ pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LIBC_STRLEN: [&str; 2] = ["libc", "strlen"];
-/// Preferably use the diagnostic item `sym::LinkedList` where possible
-pub const LINKED_LIST: [&str; 4] = ["alloc", "collections", "linked_list", "LinkedList"];
 #[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
@@ -182,14 +170,10 @@ pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"]
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
 pub const TRY_FROM: [&str; 4] = ["core", "convert", "TryFrom", "try_from"];
-
-pub const VEC: [&str; 3] = ["alloc", "vec", "Vec"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];
 pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];
-pub const VEC_DEQUE: [&str; 4] = ["alloc", "collections", "vec_deque", "VecDeque"];
 pub const VEC_FROM_ELEM: [&str; 3] = ["alloc", "vec", "from_elem"];
 pub const VEC_NEW: [&str; 4] = ["alloc", "vec", "Vec", "new"];
 pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const WEAK_ARC: [&str; 3] = ["alloc", "sync", "Weak"];
 pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
-pub const WRITE_BYTES: [&str; 3] = ["core", "intrinsics", "write_bytes"];

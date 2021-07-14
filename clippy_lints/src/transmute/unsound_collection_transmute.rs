@@ -1,20 +1,21 @@
 use super::utils::is_layout_incompatible;
 use super::UNSOUND_COLLECTION_TRANSMUTE;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{match_def_path, paths};
+use clippy_utils::match_any_diagnostic_items;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::symbol::{sym, Symbol};
 
 // used to check for UNSOUND_COLLECTION_TRANSMUTE
-static COLLECTIONS: &[&[&str]] = &[
-    &paths::VEC,
-    &paths::VEC_DEQUE,
-    &paths::BINARY_HEAP,
-    &paths::BTREESET,
-    &paths::BTREEMAP,
-    &paths::HASHSET,
-    &paths::HASHMAP,
+static COLLECTIONS: &[Symbol] = &[
+    sym::vec_type,
+    sym::vecdeque_type,
+    sym::BinaryHeap,
+    sym::BTreeSet,
+    sym::BTreeMap,
+    sym::hashset_type,
+    sym::hashmap_type,
 ];
 
 /// Checks for `unsound_collection_transmute` lint.
@@ -22,7 +23,7 @@ static COLLECTIONS: &[&[&str]] = &[
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Adt(from_adt, from_substs), ty::Adt(to_adt, to_substs)) => {
-            if from_adt.did != to_adt.did || !COLLECTIONS.iter().any(|path| match_def_path(cx, to_adt.did, path)) {
+            if from_adt.did != to_adt.did || match_any_diagnostic_items(cx, to_adt.did, COLLECTIONS).is_none() {
                 return false;
             }
             if from_substs

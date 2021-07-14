@@ -67,7 +67,7 @@ fn get_pointee_ty_and_count_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -
     const FUNCTIONS: [&[&str]; 8] = [
         &paths::PTR_COPY_NONOVERLAPPING,
         &paths::PTR_COPY,
-        &paths::WRITE_BYTES,
+        &paths::PTR_WRITE_BYTES,
         &paths::PTR_SWAP_NONOVERLAPPING,
         &paths::PTR_SLICE_FROM_RAW_PARTS,
         &paths::PTR_SLICE_FROM_RAW_PARTS_MUT,
