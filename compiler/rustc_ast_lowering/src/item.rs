@@ -484,17 +484,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         body: Option<&Expr>,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let mut capturable_lifetimes;
-        let itctx = if self.sess.features_untracked().impl_trait_in_bindings {
-            capturable_lifetimes = FxHashSet::default();
-            ImplTraitContext::TypeAliasesOpaqueTy {
-                capturable_lifetimes: &mut capturable_lifetimes,
-                origin: hir::OpaqueTyOrigin::Misc,
-            }
-        } else {
-            ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-        };
-        let ty = self.lower_ty(ty, itctx);
+        let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Binding));
         (ty, self.lower_const_body(span, body))
     }
 

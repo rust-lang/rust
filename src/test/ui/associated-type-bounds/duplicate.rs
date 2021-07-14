@@ -70,19 +70,6 @@ fn FAPIT2(_: impl Iterator<Item: Copy, Item: Copy>) {}
 fn FAPIT3(_: impl Iterator<Item: 'static, Item: 'static>) {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 
-const CIT1: impl Iterator<Item: Copy, Item: Send> = iter::empty();
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-const CIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-const CIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-static SIT1: impl Iterator<Item: Copy, Item: Send> = iter::empty();
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-static SIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-static SIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-
 type TAI1<T: Iterator<Item: Copy, Item: Send>> = T;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 type TAI2<T: Iterator<Item: Copy, Item: Copy>> = T;
