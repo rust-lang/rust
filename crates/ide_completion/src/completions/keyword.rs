@@ -105,6 +105,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("if", "if $1 {\n    $0\n}");
         add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
         add_keyword("for", "for $1 in $2 {\n    $0\n}");
+        add_keyword("true", "true");
+        add_keyword("false", "false");
     }
 
     if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || has_block_expr_parent {
