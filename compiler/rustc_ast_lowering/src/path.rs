@@ -90,15 +90,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => ParenthesizedGenericArgs::Err,
                     };
 
-                    let num_lifetimes = type_def_id.map_or(0, |def_id| {
-                        if let Some(&n) = self.type_def_lifetime_params.get(&def_id) {
-                            return n;
-                        }
-                        assert!(!def_id.is_local());
-                        let n = self.resolver.item_generics_num_lifetimes(def_id, self.sess);
-                        self.type_def_lifetime_params.insert(def_id, n);
-                        n
-                    });
+                    let num_lifetimes = type_def_id
+                        .map_or(0, |def_id| self.resolver.item_generics_num_lifetimes(def_id));
                     self.lower_path_segment(
                         p.span,
                         segment,

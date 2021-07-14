@@ -1026,6 +1026,8 @@ pub struct Resolver<'a> {
     trait_impl_items: FxHashSet<LocalDefId>,
 
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
+    /// Amount of lifetime parameters for each item in the crate.
+    item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
 
     main_def: Option<MainDefinition>,
 }
@@ -1105,8 +1107,12 @@ impl ResolverAstLowering for Resolver<'_> {
         }
     }
 
-    fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
-        self.cstore().item_generics_num_lifetimes(def_id, sess)
+    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
+        if let Some(def_id) = def_id.as_local() {
+            self.item_generics_num_lifetimes[&def_id]
+        } else {
+            self.cstore().item_generics_num_lifetimes(def_id, self.session)
+        }
     }
 
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
@@ -1388,6 +1394,7 @@ impl<'a> Resolver<'a> {
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
+            item_generics_num_lifetimes: Default::default(),
             main_def: Default::default(),
         };
 
