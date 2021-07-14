@@ -475,7 +475,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let mut resolutions = self.expect_full_res_from_use(id);
+                let mut resolutions = self.expect_full_res_from_use(id).fuse();
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
                 let ret_res = self.lower_res(resolutions.next().unwrap_or(Res::Err));
@@ -485,7 +485,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // won't be dealing with macros in the rest of the compiler.
                 // Essentially a single `use` which imports two names is desugared into
                 // two imports.
-                for (res, &new_node_id) in iter::zip(resolutions, &[id1, id2]) {
+                for new_node_id in [id1, id2] {
+                    // Associate an HirId to both ids even if there is no resolution.
+                    let new_id = self.allocate_hir_id_counter(new_node_id);
+
+                    let res = if let Some(res) = resolutions.next() { res } else { continue };
                     let ident = *ident;
                     let mut path = path.clone();
                     for seg in &mut path.segments {
@@ -494,17 +498,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let span = path.span;
 
                     self.with_hir_id_owner(new_node_id, |this| {
-                        let new_id = this.lower_node_id(new_node_id);
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(new_id, attrs);
+                            this.attrs.insert(hir::HirId::make_owner(new_id), attrs);
                         }
 
                         this.insert_item(hir::Item {
-                            def_id: new_id.expect_owner(),
+                            def_id: new_id,
                             ident: this.lower_ident(ident),
                             kind,
                             vis,
@@ -553,7 +556,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let new_hir_id = self.lower_node_id(id);
+                    let new_hir_id = self.allocate_hir_id_counter(id);
 
                     let mut prefix = prefix.clone();
 
@@ -574,11 +577,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(new_hir_id, attrs);
+                            this.attrs.insert(hir::HirId::make_owner(new_hir_id), attrs);
                         }
 
                         this.insert_item(hir::Item {
-                            def_id: new_hir_id.expect_owner(),
+                            def_id: new_hir_id,
                             ident: this.lower_ident(ident),
                             kind,
                             vis,

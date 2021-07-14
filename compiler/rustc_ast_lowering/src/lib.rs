@@ -38,7 +38,7 @@
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
-use rustc_ast::visit::{self, Visitor};
+use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
@@ -418,48 +418,9 @@ enum AnonymousLifetimeMode {
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> &'hir hir::Crate<'hir> {
-        /// Full-crate AST visitor that inserts into a fresh
-        /// `LoweringContext` any information that may be
-        /// needed from arbitrary locations in the crate,
-        /// e.g., the number of lifetime generic parameters
-        /// declared for every type and trait definition.
-        struct MiscCollector<'tcx, 'lowering, 'hir> {
-            lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
-        }
-
-        impl MiscCollector<'_, '_, '_> {
-            fn allocate_use_tree_hir_id_counters(&mut self, tree: &UseTree) {
-                match tree.kind {
-                    UseTreeKind::Simple(_, id1, id2) => {
-                        for id in [id1, id2] {
-                            self.lctx.allocate_hir_id_counter(id);
-                        }
-                    }
-                    UseTreeKind::Glob => (),
-                    UseTreeKind::Nested(ref trees) => {
-                        for &(ref use_tree, id) in trees {
-                            self.lctx.allocate_hir_id_counter(id);
-                            self.allocate_use_tree_hir_id_counters(use_tree);
-                        }
-                    }
-                }
-            }
-        }
-
-        impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
-            fn visit_item(&mut self, item: &'tcx Item) {
-                if let ItemKind::Use(ref use_tree) = item.kind {
-                    self.allocate_use_tree_hir_id_counters(use_tree);
-                }
-
-                visit::walk_item(self, item);
-            }
-        }
-
         self.lower_node_id(CRATE_NODE_ID);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
-        visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.arena.alloc(self.lower_mod(&c.items, c.span));
