@@ -455,7 +455,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                 ecx.parse_sess().buffer_lint(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
-                    ecx.resolver.lint_node_id(ecx.current_expansion.id),
+                    ecx.current_expansion.lint_node_id,
                     "avoid using `.intel_syntax`, Intel syntax is the default",
                 );
             }
@@ -463,7 +463,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                 ecx.parse_sess().buffer_lint(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
-                    ecx.resolver.lint_node_id(ecx.current_expansion.id),
+                    ecx.current_expansion.lint_node_id,
                     "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
                 );
             }
