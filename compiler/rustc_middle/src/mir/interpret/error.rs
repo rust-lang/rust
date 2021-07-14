@@ -170,6 +170,8 @@ impl fmt::Display for InvalidProgramInfo<'_> {
 /// Details of why a pointer had to be in-bounds.
 #[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum CheckInAllocMsg {
+    /// We are dereferencing a pointer (i.e., creating a place).
+    DerefTest,
     /// We are access memory.
     MemoryAccessTest,
     /// We are doing pointer arithmetic.
@@ -186,6 +188,7 @@ impl fmt::Display for CheckInAllocMsg {
             f,
             "{}",
             match *self {
+                CheckInAllocMsg::DerefTest => "dereferencing pointer failed: ",
                 CheckInAllocMsg::MemoryAccessTest => "memory access failed: ",
                 CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic failed: ",
                 CheckInAllocMsg::InboundsTest => "",

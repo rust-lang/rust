@@ -428,7 +428,11 @@ crate struct AllocMap<'tcx> {
 
 impl<'tcx> AllocMap<'tcx> {
     crate fn new() -> Self {
-        AllocMap { alloc_map: Default::default(), dedup: Default::default(), next_id: AllocId(NonZeroU64::new(1).unwrap()) }
+        AllocMap {
+            alloc_map: Default::default(),
+            dedup: Default::default(),
+            next_id: AllocId(NonZeroU64::new(1).unwrap()),
+        }
     }
     fn reserve(&mut self) -> AllocId {
         let next = self.next_id;

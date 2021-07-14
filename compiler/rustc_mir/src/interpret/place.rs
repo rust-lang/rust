@@ -373,7 +373,7 @@ where
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace_access(mplace)?;
+        self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
         Ok(mplace)
     }
 
@@ -400,18 +400,17 @@ where
     }
 
     /// Check if this mplace is dereferencable and sufficiently aligned.
-    pub fn check_mplace_access(&self, mplace: MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+    fn check_mplace_access(
+        &self,
+        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        msg: CheckInAllocMsg,
+    ) -> InterpResult<'tcx> {
         let (size, align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         assert!(mplace.mplace.align <= align, "dynamic alignment less strict than static one?");
         let align = M::enforce_alignment(&self.memory.extra).then_some(align);
-        self.memory.check_ptr_access_align(
-            mplace.ptr,
-            size,
-            align.unwrap_or(Align::ONE),
-            CheckInAllocMsg::MemoryAccessTest, // FIXME sth more specific?
-        )?;
+        self.memory.check_ptr_access_align(mplace.ptr, size, align.unwrap_or(Align::ONE), msg)?;
         Ok(())
     }
 
