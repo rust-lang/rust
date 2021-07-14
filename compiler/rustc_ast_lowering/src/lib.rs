@@ -280,7 +280,7 @@ enum ImplTraitContext<'b, 'a> {
         // FIXME(impl_trait): but `required_region_bounds` will ICE later
         // anyway.
         capturable_lifetimes: &'b mut FxHashSet<hir::LifetimeName>,
-        /// Origin: Either OpaqueTyOrigin::Misc or OpaqueTyOrigin::Binding,
+        /// Origin: Either OpaqueTyOrigin::TyAlias or OpaqueTyOrigin::Misc,
         origin: hir::OpaqueTyOrigin,
     },
     /// `impl Trait` is not accepted in this position.
