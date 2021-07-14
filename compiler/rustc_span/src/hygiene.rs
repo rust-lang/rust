@@ -670,7 +670,7 @@ impl SyntaxContext {
     }
 
     pub fn edition(self) -> Edition {
-        self.outer_expn_data().edition
+        HygieneData::with(|data| data.expn_data(data.outer_expn(self)).edition)
     }
 }
 
