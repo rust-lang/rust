@@ -23,7 +23,7 @@ use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 
 use rustc_ast::Mutability;
 
-use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, ValueVisitor};
+use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, ValueVisitor};
 use crate::const_eval;
 
 pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
@@ -425,11 +425,11 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(
             &mut InterpCx<'mir, 'tcx, M>,
-            &MPlaceTy<'tcx, M::PointerTag>,
+            &PlaceTy<'tcx, M::PointerTag>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, &'tcx Allocation> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
-        f(self, &dest)?;
+        f(self, &dest.into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;
         alloc.mutability = Mutability::Not;
         Ok(self.tcx.intern_const_alloc(alloc))

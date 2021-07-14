@@ -869,7 +869,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                     let alloc = this
                                         .ecx
                                         .intern_with_temp_alloc(value.layout, |ecx, dest| {
-                                            ecx.write_immediate_to_mplace(*imm, dest)
+                                            ecx.write_immediate(*imm, dest)
                                         })
                                         .unwrap();
                                     Ok(Some(alloc))

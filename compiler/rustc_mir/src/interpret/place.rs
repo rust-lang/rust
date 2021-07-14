@@ -199,6 +199,11 @@ impl<Tag> MemPlace<Tag> {
         MemPlace { ptr, align, meta: MemPlaceMeta::None }
     }
 
+    /// Adjust the provenance of the main pointer (metadata is unaffected).
+    pub fn map_provenance(self, f: impl FnOnce(Option<Tag>) -> Option<Tag>) -> Self {
+        MemPlace { ptr: self.ptr.map_provenance(f), ..self }
+    }
+
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
@@ -252,7 +257,7 @@ impl<'tcx, Tag: Copy> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    fn from_aligned_ptr(ptr: Pointer<Option<Tag>>, layout: TyAndLayout<'tcx>) -> Self {
+    pub fn from_aligned_ptr(ptr: Pointer<Option<Tag>>, layout: TyAndLayout<'tcx>) -> Self {
         MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
     }
 
@@ -695,16 +700,6 @@ where
         Ok(place_ty)
     }
 
-    /// Write a scalar to a place
-    #[inline(always)]
-    pub fn write_scalar(
-        &mut self,
-        val: impl Into<ScalarMaybeUninit<M::PointerTag>>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        self.write_immediate(Immediate::Scalar(val.into()), dest)
-    }
-
     /// Write an immediate to a place
     #[inline(always)]
     pub fn write_immediate(
@@ -722,21 +717,24 @@ where
         Ok(())
     }
 
-    /// Write an `Immediate` to memory.
+    /// Write a scalar to a place
     #[inline(always)]
-    pub fn write_immediate_to_mplace(
+    pub fn write_scalar(
         &mut self,
-        src: Immediate<M::PointerTag>,
-        dest: &MPlaceTy<'tcx, M::PointerTag>,
+        val: impl Into<ScalarMaybeUninit<M::PointerTag>>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        self.write_immediate_to_mplace_no_validate(src, dest)?;
+        self.write_immediate(Immediate::Scalar(val.into()), dest)
+    }
 
-        if M::enforce_validity(self) {
-            // Data got changed, better make sure it matches the type!
-            self.validate_operand(&dest.into())?;
-        }
-
-        Ok(())
+    /// Write a pointer to a place
+    #[inline(always)]
+    pub fn write_pointer(
+        &mut self,
+        ptr: impl Into<Pointer<Option<M::PointerTag>>>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        self.write_scalar(Scalar::from_maybe_pointer(ptr.into(), self), dest)
     }
 
     /// Write an immediate to a place.

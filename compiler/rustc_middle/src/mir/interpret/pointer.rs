@@ -171,7 +171,7 @@ impl<Tag> From<Pointer<Tag>> for Pointer<Option<Tag>> {
 }
 
 impl<Tag> Pointer<Option<Tag>> {
-    pub fn into_pointer_or_offset(self) -> Result<Pointer<Tag>, Size> {
+    pub fn into_pointer_or_addr(self) -> Result<Pointer<Tag>, Size> {
         match self.provenance {
             Some(tag) => Ok(Pointer::new(tag, self.offset)),
             None => Err(self.offset),
@@ -184,6 +184,13 @@ impl<Tag> Pointer<Option<Tag>> {
         Tag: Provenance,
     {
         Pointer { offset: self.offset, provenance: self.provenance.map(Provenance::erase_for_fmt) }
+    }
+}
+
+impl<Tag> Pointer<Option<Tag>> {
+    #[inline(always)]
+    pub fn null() -> Self {
+        Pointer { provenance: None, offset: Size::ZERO }
     }
 }
 
@@ -206,7 +213,12 @@ impl<'tcx, Tag> Pointer<Tag> {
     where
         Tag: Provenance,
     {
+        // FIXME: This is wrong! `self.offset` might be an absolute address.
         Pointer { offset: self.offset, provenance: self.provenance.erase_for_fmt() }
+    }
+
+    pub fn map_provenance(self, f: impl FnOnce(Tag) -> Tag) -> Self {
+        Pointer { provenance: f(self.provenance), ..self }
     }
 
     #[inline]

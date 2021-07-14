@@ -337,17 +337,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let pointee_ty = substs.type_at(0);
 
                 let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
-                self.write_scalar(Scalar::from_maybe_pointer(offset_ptr, self), dest)?;
+                self.write_pointer(offset_ptr, dest)?;
             }
             sym::arith_offset => {
-                let ptr = self.read_scalar(&args[0])?.check_init()?;
+                let ptr = self.read_pointer(&args[0])?;
                 let offset_count = self.read_scalar(&args[1])?.to_machine_isize(self)?;
                 let pointee_ty = substs.type_at(0);
 
                 let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
                 let offset_bytes = offset_count.wrapping_mul(pointee_size);
-                let offset_ptr = ptr.ptr_wrapping_signed_offset(offset_bytes, self);
-                self.write_scalar(offset_ptr, dest)?;
+                let offset_ptr = ptr.wrapping_signed_offset(offset_bytes, self);
+                self.write_pointer(offset_ptr, dest)?;
             }
             sym::ptr_offset_from => {
                 let a = self.read_immediate(&args[0])?.to_scalar()?;
@@ -379,8 +379,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // General case: we need two pointers.
                     let a = self.scalar_to_ptr(a);
                     let b = self.scalar_to_ptr(b);
-                    let (a_alloc_id, a_offset, _) = self.memory.ptr_force_alloc(a)?;
-                    let (b_alloc_id, b_offset, _) = self.memory.ptr_force_alloc(b)?;
+                    let (a_alloc_id, a_offset, _) = self.memory.ptr_get_alloc(a)?;
+                    let (b_alloc_id, b_offset, _) = self.memory.ptr_get_alloc(b)?;
                     if a_alloc_id != b_alloc_id {
                         throw_ub_format!(
                             "ptr_offset_from cannot compute offset of pointers into different \

@@ -6,7 +6,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_macros::HashStable;
-use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
@@ -179,7 +179,7 @@ impl<Tag> From<ScalarInt> for Scalar<Tag> {
     }
 }
 
-impl<'tcx, Tag> Scalar<Tag> {
+impl<Tag> Scalar<Tag> {
     pub const ZST: Self = Scalar::Int(ScalarInt::ZST);
 
     #[inline(always)]
@@ -200,56 +200,6 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn null_ptr(cx: &impl HasDataLayout) -> Self {
         Scalar::Int(ScalarInt::null(cx.pointer_size()))
-    }
-
-    #[inline(always)]
-    fn ptr_op(
-        self,
-        dl: &TargetDataLayout,
-        f_int: impl FnOnce(u64) -> InterpResult<'tcx, u64>,
-        f_ptr: impl FnOnce(Pointer<Tag>) -> InterpResult<'tcx, Pointer<Tag>>,
-    ) -> InterpResult<'tcx, Self> {
-        match self {
-            Scalar::Int(int) => Ok(Scalar::Int(int.ptr_sized_op(dl, f_int)?)),
-            Scalar::Ptr(ptr, sz) => {
-                debug_assert_eq!(u64::from(sz), dl.pointer_size().bytes());
-                Ok(Scalar::Ptr(f_ptr(ptr)?, sz))
-            }
-        }
-    }
-
-    #[inline]
-    pub fn ptr_offset(self, i: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        let dl = cx.data_layout();
-        self.ptr_op(dl, |int| dl.offset(int, i.bytes()), |ptr| ptr.offset(i, dl))
-    }
-
-    #[inline]
-    pub fn ptr_wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
-        let dl = cx.data_layout();
-        self.ptr_op(
-            dl,
-            |int| Ok(dl.overflowing_offset(int, i.bytes()).0),
-            |ptr| Ok(ptr.wrapping_offset(i, dl)),
-        )
-        .unwrap()
-    }
-
-    #[inline]
-    pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        let dl = cx.data_layout();
-        self.ptr_op(dl, |int| dl.signed_offset(int, i), |ptr| ptr.signed_offset(i, dl))
-    }
-
-    #[inline]
-    pub fn ptr_wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
-        let dl = cx.data_layout();
-        self.ptr_op(
-            dl,
-            |int| Ok(dl.overflowing_signed_offset(int, i).0),
-            |ptr| Ok(ptr.wrapping_signed_offset(i, dl)),
-        )
-        .unwrap()
     }
 
     #[inline]

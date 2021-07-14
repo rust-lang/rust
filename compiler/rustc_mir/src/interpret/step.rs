@@ -162,9 +162,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             ThreadLocalRef(did) => {
-                let id = M::thread_local_static_alloc_id(self, did)?;
-                let val = self.global_base_pointer(id.into())?;
-                self.write_scalar(Scalar::from_pointer(val, &*self.tcx), &dest)?;
+                let ptr = M::thread_local_static_base_pointer(self, did)?;
+                self.write_pointer(ptr, &dest)?;
             }
 
             Use(ref operand) => {

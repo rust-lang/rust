@@ -312,7 +312,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
                 )?;
-                ecx.write_scalar(Scalar::from_pointer(ptr, &*ecx.tcx), dest)?;
+                ecx.write_pointer(ptr, dest)?;
             }
             _ => {
                 return Err(ConstEvalErrKind::NeedsRfc(format!(
