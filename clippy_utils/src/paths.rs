@@ -21,21 +21,25 @@ pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub(super) const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 pub(super) const BEGIN_PANIC_FMT: [&str; 3] = ["std", "panicking", "begin_panic_fmt"];
+/// Preferably use the diagnostic item `sym::BinaryHeap` where possible
 pub const BINARY_HEAP: [&str; 4] = ["alloc", "collections", "binary_heap", "BinaryHeap"];
+/// Preferably use the diagnostic item `sym::Borrow` where possible
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
+/// Preferably use the diagnostic item `sym::BTreeMap` where possible
 pub const BTREEMAP: [&str; 5] = ["alloc", "collections", "btree", "map", "BTreeMap"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
+/// Preferably use the diagnostic item `sym::BTreeSet` where possible
 pub const BTREESET: [&str; 5] = ["alloc", "collections", "btree", "set", "BTreeSet"];
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const CMP_MAX: [&str; 3] = ["core", "cmp", "max"];
 pub const CMP_MIN: [&str; 3] = ["core", "cmp", "min"];
 pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["std", "ffi", "c_str", "CString", "as_c_str"];
-pub const DEFAULT_TRAIT: [&str; 3] = ["core", "default", "Default"];
 pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
 pub const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
+/// Preferably use the diagnostic item `sym::deref_method` where possible
 pub const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
 pub const DIR_BUILDER: [&str; 3] = ["std", "fs", "DirBuilder"];
 pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
@@ -55,10 +59,12 @@ pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect"
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
 pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
+/// Preferably use the diagnostic item `sym::hashmap_type` where possible
 pub const HASHMAP: [&str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
+/// Preferably use the diagnostic item `sym::hashset_type` where possible
 pub const HASHSET: [&str; 5] = ["std", "collections", "hash", "set", "HashSet"];
 #[cfg(feature = "internal-lints")]
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];

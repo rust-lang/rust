@@ -1,8 +1,8 @@
 use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
-use clippy_utils::{get_parent_expr, paths};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
     } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::hashmap_type) {
         needs_ref = true;
         "HashMap"
-    } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
+    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::BTreeMap) {
         needs_ref = true;
         "BTreeMap"
     } else {

@@ -59,9 +59,9 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     is_type_diagnostic_item(cx, ty, sym::hashmap_type) ||
     is_type_diagnostic_item(cx, ty, sym::hashset_type) ||
     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
-    match_type(cx, ty, &paths::BINARY_HEAP) ||
-    match_type(cx, ty, &paths::BTREEMAP) ||
-    match_type(cx, ty, &paths::BTREESET)
+    is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
+    is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
+    is_type_diagnostic_item(cx, ty, sym::BTreeSet)
 }
 
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {

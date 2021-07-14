@@ -22,13 +22,13 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
         "HashSet"
     } else if is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
         "HashMap"
-    } else if match_type(cx, ty, &paths::BTREEMAP) {
+    } else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) {
         "BTreeMap"
-    } else if match_type(cx, ty, &paths::BTREESET) {
+    } else if is_type_diagnostic_item(cx, ty, sym::BTreeSet) {
         "BTreeSet"
     } else if match_type(cx, ty, &paths::LINKED_LIST) {
         "LinkedList"
-    } else if match_type(cx, ty, &paths::BINARY_HEAP) {
+    } else if is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
         "BinaryHeap"
     } else {
         return;
