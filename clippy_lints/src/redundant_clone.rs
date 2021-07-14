@@ -88,8 +88,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
         let mir = cx.tcx.optimized_mir(def_id.to_def_id());
 
-        let possible_borrowed = {
-            let mut vis = PossibleBorrowedVisitor::new(mir);
+        let possible_origin = {
+            let mut vis = PossibleOriginVisitor::new(mir);
             vis.visit_body(mir);
             vis.into_map(cx)
         };
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             .iterate_to_fixpoint()
             .into_results_cursor(mir);
         let mut possible_borrower = {
-            let mut vis = PossibleBorrowerVisitor::new(cx, mir, possible_borrowed);
+            let mut vis = PossibleBorrowerVisitor::new(cx, mir, possible_origin);
             vis.visit_body(mir);
             vis.into_map(cx, maybe_storage_live_result)
         };
@@ -515,20 +515,20 @@ struct PossibleBorrowerVisitor<'a, 'tcx> {
     possible_borrower: TransitiveRelation<mir::Local>,
     body: &'a mir::Body<'tcx>,
     cx: &'a LateContext<'tcx>,
-    possible_borrowed: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
+    possible_origin: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
 }
 
 impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
     fn new(
         cx: &'a LateContext<'tcx>,
         body: &'a mir::Body<'tcx>,
-        possible_borrowed: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
+        possible_origin: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
     ) -> Self {
         Self {
             possible_borrower: TransitiveRelation::default(),
             cx,
             body,
-            possible_borrowed,
+            possible_origin,
         }
     }
 
@@ -620,8 +620,8 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 
             let mut mutable_variables: Vec<mir::Local> = mutable_borrowers
                 .iter()
-                .filter_map(|r| self.possible_borrowed.get(r))
-                .flat_map(|r| r.iter())
+                .filter_map(|r| self.possible_origin.get(r))
+                .flat_map(HybridBitSet::iter)
                 .collect();
 
             if ContainsRegion.visit_ty(self.body.local_decls[*dest].ty).is_break() {
@@ -643,15 +643,15 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 /// Collect possible borrowed for every `&mut` local.
 /// For exampel, `_1 = &mut _2` generate _1: {_2,...}
 /// Known Problems: not sure all borrowed are tracked
-struct PossibleBorrowedVisitor<'a, 'tcx> {
-    possible_borrowed: TransitiveRelation<mir::Local>,
+struct PossibleOriginVisitor<'a, 'tcx> {
+    possible_origin: TransitiveRelation<mir::Local>,
     body: &'a mir::Body<'tcx>,
 }
 
-impl<'a, 'tcx> PossibleBorrowedVisitor<'a, 'tcx> {
+impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
     fn new(body: &'a mir::Body<'tcx>) -> Self {
         Self {
-            possible_borrowed: TransitiveRelation::default(),
+            possible_origin: TransitiveRelation::default(),
             body,
         }
     }
@@ -663,7 +663,7 @@ impl<'a, 'tcx> PossibleBorrowedVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_borrowed.reachable_from(&row);
+            let borrowers = self.possible_origin.reachable_from(&row);
             if !borrowers.is_empty() {
                 let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
                 for &c in borrowers {
@@ -681,22 +681,19 @@ impl<'a, 'tcx> PossibleBorrowedVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowedVisitor<'a, 'tcx> {
+impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleOriginVisitor<'a, 'tcx> {
     fn visit_assign(&mut self, place: &mir::Place<'tcx>, rvalue: &mir::Rvalue<'_>, _location: mir::Location) {
         let lhs = place.local;
         match rvalue {
             // Only consider `&mut`, which can modify origin place
-            mir::Rvalue::Ref(_, rustc_middle::mir::BorrowKind::Mut { .. }, borrowed) => {
-                self.possible_borrowed.add(lhs, borrowed.local);
-            },
+            mir::Rvalue::Ref(_, rustc_middle::mir::BorrowKind::Mut { .. }, borrowed) |
             // _2: &mut _;
             // _3 = move _2
-            mir::Rvalue::Use(mir::Operand::Move(borrowed)) => {
-                self.possible_borrowed.add(lhs, borrowed.local);
-            },
+            mir::Rvalue::Use(mir::Operand::Move(borrowed))  |
             // _3 = move _2 as &mut _;
-            mir::Rvalue::Cast(_, mir::Operand::Move(borrowed), _) => {
-                self.possible_borrowed.add(lhs, borrowed.local);
+            mir::Rvalue::Cast(_, mir::Operand::Move(borrowed), _)
+                => {
+                self.possible_origin.add(lhs, borrowed.local);
             },
             _ => {},
         }
