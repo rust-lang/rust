@@ -17,8 +17,8 @@
 // cdb-command: dx pin
 // cdb-check:pin              : Pin(0x[...]: "this") [Type: core::pin::Pin<ref_mut$<alloc::string::String> >]
 // cdb-check:    [<Raw View>]     [Type: core::pin::Pin<ref_mut$<alloc::string::String> >]
-// cdb-check:    [len]            : 0x4 [Type: unsigned __int64]
-// cdb-check:    [capacity]       : 0x4 [Type: unsigned __int64]
+// cdb-check:    [len]            : 0x4 [Type: unsigned [...]]
+// cdb-check:    [capacity]       : 0x4 [Type: unsigned [...]]
 // cdb-check:    [chars]          : "this"
 
 // cdb-command: dx unique
