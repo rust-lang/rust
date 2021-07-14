@@ -83,13 +83,6 @@ static SIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
 static SIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 
-fn lit1() { let _: impl Iterator<Item: Copy, Item: Send> = iter::empty(); }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-fn lit2() { let _: impl Iterator<Item: Copy, Item: Copy> = iter::empty(); }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-fn lit3() { let _: impl Iterator<Item: 'static, Item: 'static> = iter::empty(); }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-
 type TAI1<T: Iterator<Item: Copy, Item: Send>> = T;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 type TAI2<T: Iterator<Item: Copy, Item: Copy>> = T;

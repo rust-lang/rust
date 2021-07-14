@@ -356,9 +356,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_adt(def, substs)
                 }
-                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::Binding, .. }) => {
-                    let_position_impl_trait_type(tcx, def_id)
-                }
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {
                     find_opaque_ty_constraints(tcx, def_id)
                 }
@@ -694,60 +691,6 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             tcx.ty_error()
         }
     }
-}
-
-/// Retrieve the inferred concrete type for let position impl trait.
-///
-/// This is different to other kinds of impl trait because:
-///
-/// 1. We know which function contains the defining use (the function that
-///    contains the let statement)
-/// 2. We do not currently allow (free) lifetimes in the return type. `let`
-///    statements in some statically unreachable code are removed from the MIR
-///    by the time we borrow check, and it's not clear how we should handle
-///    those.
-fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty<'_> {
-    let scope = tcx.hir().get_defining_scope(tcx.hir().local_def_id_to_hir_id(opaque_ty_id));
-    let scope_def_id = tcx.hir().local_def_id(scope);
-
-    let opaque_ty_def_id = opaque_ty_id.to_def_id();
-
-    let owner_typeck_results = tcx.typeck(scope_def_id);
-    let concrete_ty = owner_typeck_results
-        .concrete_opaque_types
-        .get_by(|(key, _)| key.def_id == opaque_ty_def_id)
-        .map(|concrete_ty| *concrete_ty)
-        .unwrap_or_else(|| {
-            tcx.sess.delay_span_bug(
-                DUMMY_SP,
-                &format!(
-                    "owner {:?} has no opaque type for {:?} in its typeck results",
-                    scope_def_id, opaque_ty_id
-                ),
-            );
-            if let Some(ErrorReported) = owner_typeck_results.tainted_by_errors {
-                // Some error in the owner fn prevented us from populating the
-                // `concrete_opaque_types` table.
-                tcx.ty_error()
-            } else {
-                // We failed to resolve the opaque type or it resolves to
-                // itself. Return the non-revealed type, which should result in
-                // E0720.
-                tcx.mk_opaque(
-                    opaque_ty_def_id,
-                    InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
-                )
-            }
-        });
-    debug!("concrete_ty = {:?}", concrete_ty);
-    if concrete_ty.has_erased_regions() {
-        // FIXME(impl_trait_in_bindings) Handle this case.
-        tcx.sess.span_fatal(
-            tcx.hir().span(tcx.hir().local_def_id_to_hir_id(opaque_ty_id)),
-            "lifetimes in impl Trait types in bindings are not currently supported",
-        );
-    }
-    concrete_ty
 }
 
 fn infer_placeholder_type<'a>(

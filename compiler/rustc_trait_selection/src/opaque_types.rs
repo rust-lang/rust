@@ -402,9 +402,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             // These opaque type inherit all lifetime parameters from their
             // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::Binding
-            | hir::OpaqueTyOrigin::TyAlias
-            | hir::OpaqueTyOrigin::Misc => 0,
+            hir::OpaqueTyOrigin::TyAlias | hir::OpaqueTyOrigin::Misc => 0,
         };
 
         let span = tcx.def_span(def_id);

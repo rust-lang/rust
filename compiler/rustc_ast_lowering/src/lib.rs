@@ -264,7 +264,7 @@ enum ImplTraitContext<'b, 'a> {
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
     },
-    /// Impl trait in type aliases, consts and statics.
+    /// Impl trait in type aliases.
     OtherOpaqueTy {
         /// Set of lifetimes that this opaque type can capture, if it uses
         /// them. This includes lifetimes bound since we entered this context.
@@ -1767,21 +1767,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_local(&mut self, l: &Local) -> hir::Local<'hir> {
-        let ty = l.ty.as_ref().map(|t| {
-            let mut capturable_lifetimes;
-            self.lower_ty(
-                t,
-                if self.sess.features_untracked().impl_trait_in_bindings {
-                    capturable_lifetimes = FxHashSet::default();
-                    ImplTraitContext::OtherOpaqueTy {
-                        capturable_lifetimes: &mut capturable_lifetimes,
-                        origin: hir::OpaqueTyOrigin::Binding,
-                    }
-                } else {
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-                },
-            )
-        });
+        let ty = l
+            .ty
+            .as_ref()
+            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Binding)));
         let init = l.init.as_ref().map(|e| self.lower_expr(e));
         let hir_id = self.lower_node_id(l.id);
         self.lower_attrs(hir_id, &l.attrs);
