@@ -39,10 +39,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     if matches!(parent.kind(), SyntaxKind::BLOCK_EXPR | SyntaxKind::EXPR_STMT) {
         return acc.add(assist_id, assist_label, target, |builder| {
-            builder.replace(
-                block.syntax().text_range(),
-                update_expr_string(block.to_string(), &[' ', '{', '\n']),
-            );
+            builder.replace(block.syntax().text_range(), update_expr_string(block.to_string()));
         });
     }
 
@@ -72,7 +69,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                         edit.delete(range_to_del_else_if);
                         edit.replace(
                             target,
-                            update_expr_string(then_branch.to_string(), &[' ', '{']),
+                            update_expr_string_without_newline(then_branch.to_string()),
                         );
                     });
                 }
@@ -84,7 +81,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                     );
 
                     edit.delete(range_to_del);
-                    edit.replace(target, update_expr_string(block.to_string(), &[' ', '{']));
+                    edit.replace(target, update_expr_string_without_newline(block.to_string()));
                 });
             }
         }
@@ -93,20 +90,31 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let unwrapped = unwrap_trivial_block(block);
     acc.add(assist_id, assist_label, target, |builder| {
-        builder.replace(
-            parent.syntax().text_range(),
-            update_expr_string(unwrapped.to_string(), &[' ', '{', '\n']),
-        );
+        builder.replace(parent.syntax().text_range(), update_expr_string(unwrapped.to_string()));
     })
 }
 
-fn update_expr_string(expr_str: String, trim_start_pat: &[char]) -> String {
-    let expr_string = expr_str.trim_start_matches(trim_start_pat);
-    let mut expr_string_lines: Vec<&str> = expr_string.lines().collect();
-    expr_string_lines.pop(); // Delete last line
+fn update_expr_string(expr_string: String) -> String {
+    update_expr_string_with_pat(expr_string, &[' ', '\n'])
+}
 
-    expr_string_lines
-        .into_iter()
+fn update_expr_string_without_newline(expr_string: String) -> String {
+    update_expr_string_with_pat(expr_string, &[' '])
+}
+
+fn update_expr_string_with_pat(expr_str: String, whitespace_pat: &[char]) -> String {
+    // Remove leading whitespace, index [1..] to remove the leading '{',
+    // then continue to remove leading whitespace.
+    let expr_str =
+        expr_str.trim_start_matches(whitespace_pat)[1..].trim_start_matches(whitespace_pat);
+
+    // Remove trailing whitespace, index [..expr_str.len() - 1] to remove the trailing '}',
+    // then continue to remove trailing whitespace.
+    let expr_str = expr_str.trim_end_matches(whitespace_pat);
+    let expr_str = expr_str[..expr_str.len() - 1].trim_end_matches(whitespace_pat);
+
+    expr_str
+        .lines()
         .map(|line| line.replacen("    ", "", 1)) // Delete indentation
         .collect::<Vec<String>>()
         .join("\n")
@@ -575,6 +583,94 @@ fn main() {
             println!("bar");
         }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn simple_single_line() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    {$0 0 }
+}
+"#,
+            r#"
+fn main() {
+    0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn simple_nested_block() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    $0{
+        {
+            3
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    {
+        3
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn nested_single_line() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    {$0 { println!("foo"); } }
+}
+"#,
+            r#"
+fn main() {
+    { println!("foo"); }
+}
+"#,
+        );
+
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    {$0 { 0 } }
+}
+"#,
+            r#"
+fn main() {
+    { 0 }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn simple_if_single_line() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    if true {$0 /* foo */ foo() } else { bar() /* bar */}
+}
+"#,
+            r#"
+fn main() {
+    /* foo */ foo()
 }
 "#,
         );
