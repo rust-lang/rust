@@ -1067,6 +1067,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(self.destructure_assign_mut(lhs, eq_sign_span, assignments))
+    }
+
+    fn destructure_assign_mut(
+        &mut self,
+        lhs: &Expr,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> hir::Pat<'hir> {
         match &lhs.kind {
             // Underscore pattern.
             ExprKind::Underscore => {
@@ -1080,7 +1089,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let (before, after) = pats.split_at(i);
                     hir::PatKind::Slice(
                         before,
-                        Some(self.pat_without_dbm(span, hir::PatKind::Wild)),
+                        Some(self.arena.alloc(self.pat_without_dbm(span, hir::PatKind::Wild))),
                         after,
                     )
                 } else {
@@ -1165,14 +1174,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let tuple_pat = hir::PatKind::Tuple(&[], Some(0));
                     return self.pat_without_dbm(lhs.span, tuple_pat);
                 } else {
-                    return self.destructure_assign(e, eq_sign_span, assignments);
+                    return self.destructure_assign_mut(e, eq_sign_span, assignments);
                 }
             }
             _ => {}
         }
         // Treat all other cases as normal lvalue.
         let ident = Ident::new(sym::lhs, lhs.span);
-        let (pat, binding) = self.pat_ident(lhs.span, ident);
+        let (pat, binding) = self.pat_ident_mut(lhs.span, ident);
         let ident = self.expr_ident(lhs.span, ident, binding);
         let assign = hir::ExprKind::Assign(self.lower_expr(lhs), ident, eq_sign_span);
         let expr = self.expr(lhs.span, assign, ThinVec::new());
@@ -1191,7 +1200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ctx: &str,
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
-    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<(usize, Span)>) {
+    ) -> (&'hir [hir::Pat<'hir>], Option<(usize, Span)>) {
         let mut rest = None;
         let elements =
             self.arena.alloc_from_iter(elements.iter().enumerate().filter_map(|(i, e)| {
@@ -1204,7 +1213,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     None
                 } else {
-                    Some(self.destructure_assign(e, eq_sign_span, assignments))
+                    Some(self.destructure_assign_mut(e, eq_sign_span, assignments))
                 }
             }));
         (elements, rest)

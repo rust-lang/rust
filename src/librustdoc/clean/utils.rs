@@ -260,17 +260,12 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Or(ref pats) => pats
-            .iter()
-            .map(|p| name_from_pat(&**p).to_string())
-            .collect::<Vec<String>>()
-            .join(" | "),
+        PatKind::Or(ref pats) => {
+            pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
+        }
         PatKind::Tuple(ref elts, _) => format!(
             "({})",
-            elts.iter()
-                .map(|p| name_from_pat(&**p).to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
+            elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
         ),
         PatKind::Box(ref p) => return name_from_pat(&**p),
         PatKind::Ref(ref p, _) => return name_from_pat(&**p),
@@ -282,9 +277,9 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         }
         PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(ref begin, ref mid, ref end) => {
-            let begin = begin.iter().map(|p| name_from_pat(&**p).to_string());
+            let begin = begin.iter().map(|p| name_from_pat(p).to_string());
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(&**p).to_string());
+            let end = end.iter().map(|p| name_from_pat(p).to_string());
             format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
         }
     })
