@@ -4,7 +4,7 @@ use crate::Arena;
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -37,6 +37,7 @@ impl ItemLowerer<'_, '_, '_> {
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_item(&mut self, item: &'a Item) {
         let mut item_hir_id = None;
+        self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             lctx.without_in_scope_lifetime_defs(|lctx| {
                 if let Some(hir_item) = lctx.lower_item(item) {
@@ -66,19 +67,8 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'a>, sp: Span, _: NodeId) {
-        match fk {
-            FnKind::Fn(FnCtxt::Foreign, _, sig, _, _) => {
-                self.visit_fn_header(&sig.header);
-                visit::walk_fn_decl(self, &sig.decl);
-                // Don't visit the foreign function body even if it has one, since lowering the
-                // body would have no meaning and will have already been caught as a parse error.
-            }
-            _ => visit::walk_fn(self, fk, sp),
-        }
-    }
-
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
             AssocCtxt::Trait => {
                 let hir_item = lctx.lower_trait_item(item);
@@ -160,11 +150,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(&mut self, items: &[P<Item>], inner: Span) -> hir::Mod<'hir> {
         hir::Mod {
             inner,
-            item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_id(x))),
+            item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_ref(x))),
         }
     }
 
-    pub(super) fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
+    pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
         let node_ids = match i.kind {
             ItemKind::Use(ref use_tree) => {
                 let mut vec = smallvec![i.id];
@@ -177,9 +167,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         node_ids
             .into_iter()
-            .map(|node_id| hir::ItemId {
-                def_id: self.allocate_hir_id_counter(node_id).expect_owner(),
-            })
+            .map(|node_id| hir::ItemId { def_id: self.allocate_hir_id_counter(node_id) })
             .collect()
     }
 
@@ -721,7 +709,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef<'hir> {
         hir::ForeignItemRef {
-            id: hir::ForeignItemId { def_id: self.lower_node_id(i.id).expect_owner() },
+            id: hir::ForeignItemId { def_id: self.allocate_hir_id_counter(i.id) },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
@@ -858,7 +846,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
-        let id = hir::TraitItemId { def_id: self.lower_node_id(i.id).expect_owner() };
+        let id = hir::TraitItemId { def_id: self.allocate_hir_id_counter(i.id) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
         hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
     }
@@ -940,7 +928,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItemRef {
-            id: hir::ImplItemId { def_id: self.lower_node_id(i.id).expect_owner() },
+            id: hir::ImplItemId { def_id: self.allocate_hir_id_counter(i.id) },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
