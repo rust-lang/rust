@@ -332,6 +332,28 @@ impl FnDeclKind {
     }
 }
 
+/// Compute the hash for the HIR of the full crate.
+/// This hash will then be part of the crate_hash which is stored in the metadata.
+fn compute_hir_hash(
+    resolver: &mut dyn ResolverAstLowering,
+    owners: &IndexVec<LocalDefId, hir::MaybeOwner<&hir::OwnerInfo<'_>>>,
+) -> Fingerprint {
+    let mut hir_body_nodes: Vec<_> = owners
+        .iter_enumerated()
+        .filter_map(|(def_id, info)| {
+            let info = info.as_owner()?;
+            let def_path_hash = resolver.definitions().def_path_hash(def_id);
+            Some((def_path_hash, info))
+        })
+        .collect();
+    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
+
+    let mut stable_hasher = StableHasher::new();
+    let mut hcx = resolver.create_stable_hashing_context();
+    hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
+    stable_hasher.finish()
+}
+
 pub fn lower_crate<'a, 'hir>(
     sess: &'a Session,
     krate: &'a Crate,
@@ -343,7 +365,7 @@ pub fn lower_crate<'a, 'hir>(
 
     let owners =
         IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, resolver.definitions().def_index_count());
-    LoweringContext {
+    let mut lctx = LoweringContext {
         sess,
         resolver,
         nt_to_tokenstream,
@@ -371,8 +393,22 @@ pub fn lower_crate<'a, 'hir>(
         allow_try_trait: Some([sym::try_trait_v2][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
         allow_into_future: Some([sym::into_future][..].into()),
-    }
-    .lower_crate(krate)
+    };
+
+    // Lower the root module manually.
+    debug_assert_eq!(lctx.resolver.local_def_id(CRATE_NODE_ID), CRATE_DEF_ID);
+    lctx.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
+        let module = lctx.lower_mod(&krate.items, krate.spans.inner_span);
+        lctx.lower_attrs(hir::CRATE_HIR_ID, &krate.attrs);
+        hir::OwnerNode::Crate(lctx.arena.alloc(module))
+    });
+
+    visit::walk_crate(&mut item::ItemLowerer { lctx: &mut lctx }, krate);
+    let owners = lctx.owners;
+
+    let hir_hash = compute_hir_hash(resolver, &owners);
+    let krate = hir::Crate { owners, hir_hash };
+    arena.alloc(krate)
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -441,44 +477,6 @@ enum AnonymousLifetimeMode {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn lower_crate(mut self, c: &Crate) -> &'hir hir::Crate<'hir> {
-        debug_assert_eq!(self.resolver.local_def_id(CRATE_NODE_ID), CRATE_DEF_ID);
-
-        visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
-
-        self.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
-            let module = lctx.lower_mod(&c.items, c.spans.inner_span);
-            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
-            hir::OwnerNode::Crate(lctx.arena.alloc(module))
-        });
-
-        let hir_hash = self.compute_hir_hash();
-
-        let krate = hir::Crate { owners: self.owners, hir_hash };
-        self.arena.alloc(krate)
-    }
-
-    /// Compute the hash for the HIR of the full crate.
-    /// This hash will then be part of the crate_hash which is stored in the metadata.
-    fn compute_hir_hash(&mut self) -> Fingerprint {
-        let definitions = self.resolver.definitions();
-        let mut hir_body_nodes: Vec<_> = self
-            .owners
-            .iter_enumerated()
-            .filter_map(|(def_id, info)| {
-                let info = info.as_owner()?;
-                let def_path_hash = definitions.def_path_hash(def_id);
-                Some((def_path_hash, info))
-            })
-            .collect();
-        hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
-
-        let mut stable_hasher = StableHasher::new();
-        let mut hcx = self.resolver.create_stable_hashing_context();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-        stable_hasher.finish()
-    }
-
     fn with_hir_id_owner(
         &mut self,
         owner: NodeId,
