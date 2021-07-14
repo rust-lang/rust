@@ -1,8 +1,7 @@
 use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::paths;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -26,7 +25,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
         "BTreeMap"
     } else if is_type_diagnostic_item(cx, ty, sym::BTreeSet) {
         "BTreeSet"
-    } else if match_type(cx, ty, &paths::LINKED_LIST) {
+    } else if is_type_diagnostic_item(cx, ty, sym::LinkedList) {
         "LinkedList"
     } else if is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
         "BinaryHeap"

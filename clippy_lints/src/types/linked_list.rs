@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{match_def_path, paths};
 use rustc_hir::{self as hir, def_id::DefId};
 use rustc_lint::LateContext;
+use rustc_span::symbol::sym;
 
 use super::LINKEDLIST;
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, def_id: DefId) -> bool {
-    if match_def_path(cx, def_id, &paths::LINKED_LIST) {
+    if cx.tcx.is_diagnostic_item(sym::LinkedList, def_id) {
         span_lint_and_help(
             cx,
             LINKEDLIST,

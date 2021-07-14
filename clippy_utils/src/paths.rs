@@ -73,8 +73,6 @@ pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const INDEX: [&str; 3] = ["core", "ops", "Index"];
 pub const INDEX_MUT: [&str; 3] = ["core", "ops", "IndexMut"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
-pub const INTO: [&str; 3] = ["core", "convert", "Into"];
-pub const INTO_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "IntoIterator"];
 pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
 pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
@@ -85,6 +83,7 @@ pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LIBC_STRLEN: [&str; 2] = ["libc", "strlen"];
+/// Preferably use the diagnostic item `sym::LinkedList` where possible
 pub const LINKED_LIST: [&str; 4] = ["alloc", "collections", "linked_list", "LinkedList"];
 #[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
@@ -99,6 +98,7 @@ pub const MEM_SIZE_OF_VAL: [&str; 3] = ["core", "mem", "size_of_val"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
 pub const OPS_MODULE: [&str; 2] = ["core", "ops"];
+/// Preferably use the diagnostic item `sym::option_type` where possible
 pub const OPTION: [&str; 3] = ["core", "option", "Option"];
 pub const OPTION_NONE: [&str; 4] = ["core", "option", "Option", "None"];
 pub const OPTION_SOME: [&str; 4] = ["core", "option", "Option", "Some"];
@@ -122,8 +122,6 @@ pub const POLL_READY: [&str; 5] = ["core", "task", "poll", "Poll", "Ready"];
 pub const PTR_COPY: [&str; 3] = ["core", "intrinsics", "copy"];
 pub const PTR_COPY_NONOVERLAPPING: [&str; 3] = ["core", "intrinsics", "copy_nonoverlapping"];
 pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];
-pub const PTR_NULL: [&str; 3] = ["core", "ptr", "null"];
-pub const PTR_NULL_MUT: [&str; 3] = ["core", "ptr", "null_mut"];
 pub const PTR_SLICE_FROM_RAW_PARTS: [&str; 3] = ["core", "ptr", "slice_from_raw_parts"];
 pub const PTR_SLICE_FROM_RAW_PARTS_MUT: [&str; 3] = ["core", "ptr", "slice_from_raw_parts_mut"];
 pub const PTR_SWAP_NONOVERLAPPING: [&str; 3] = ["core", "ptr", "swap_nonoverlapping"];

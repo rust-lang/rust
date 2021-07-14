@@ -411,10 +411,20 @@ pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, 
 }
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
+///
+/// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     expr_path_res(cx, expr)
         .opt_def_id()
         .map_or(false, |id| match_def_path(cx, id, segments))
+}
+
+/// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
+/// diagnostic item.
+pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
+    expr_path_res(cx, expr)
+        .opt_def_id()
+        .map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -1249,11 +1259,21 @@ pub fn match_function_call<'tcx>(
 
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
 /// any.
+///
+/// Please use `match_any_diagnostic_items` if the targets are all diagnostic items.
 pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) -> Option<usize> {
     let search_path = cx.get_def_path(did);
     paths
         .iter()
         .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().copied()))
+}
+
+/// Checks if the given `DefId` matches any of provided diagnostic items. Returns the index of
+/// matching path, if any.
+pub fn match_any_diagnostic_items(cx: &LateContext<'_>, def_id: DefId, diag_items: &[Symbol]) -> Option<usize> {
+    diag_items
+        .iter()
+        .position(|item| cx.tcx.is_diagnostic_item(*item, def_id))
 }
 
 /// Checks if the given `DefId` matches the path.
