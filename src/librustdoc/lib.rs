@@ -53,11 +53,11 @@ extern crate rustc_parse;
 extern crate rustc_passes;
 extern crate rustc_resolve;
 extern crate rustc_session;
-extern crate rustc_span as rustc_span;
+extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
-extern crate test as testing;
+extern crate test;
 
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys;
