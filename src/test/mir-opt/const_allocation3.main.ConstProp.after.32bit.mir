@@ -8,13 +8,13 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         StorageLive(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-        _2 = const {alloc0: &&Packed};   // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
+        _2 = const {alloc1: &&Packed};   // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
                                          // ty::Const
                                          // + ty: &&Packed
-                                         // + val: Value(Scalar(alloc0))
+                                         // + val: Value(Scalar(alloc1))
                                          // mir::Constant
                                          // + span: $DIR/const_allocation3.rs:5:5: 5:8
-                                         // + literal: Const { ty: &&Packed, val: Value(Scalar(alloc0)) }
+                                         // + literal: Const { ty: &&Packed, val: Value(Scalar(alloc1)) }
         _1 = (*_2);                      // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         StorageDead(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
         StorageDead(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
@@ -23,31 +23,31 @@ fn main() -> () {
     }
 }
 
-alloc0 (static: FOO, size: 4, align: 4) {
-    ╾─alloc10─╼                                     │ ╾──╼
+alloc1 (static: FOO, size: 4, align: 4) {
+    ╾─alloc11─╼                                     │ ╾──╼
 }
 
-alloc10 (size: 168, align: 1) {
+alloc11 (size: 168, align: 1) {
     0x00 │ ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab │ ................
-    0x10 │ ab ab ab ab ab ab ab ab ab ab ab ab ╾─alloc5──╼ │ ............╾──╼
+    0x10 │ ab ab ab ab ab ab ab ab ab ab ab ab ╾─alloc6──╼ │ ............╾──╼
     0x20 │ 01 ef cd ab 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x30 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x40 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x50 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x60 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x70 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
-    0x80 │ 00 00 00 00 00 00 00 00 00 00 ╾─alloc7──╼ 00 00 │ ..........╾──╼..
-    0x90 │ ╾─a8+0x63─╼ 00 00 00 00 00 00 00 00 00 00 00 00 │ ╾──╼............
+    0x80 │ 00 00 00 00 00 00 00 00 00 00 ╾─alloc8──╼ 00 00 │ ..........╾──╼..
+    0x90 │ ╾─a9+0x63─╼ 00 00 00 00 00 00 00 00 00 00 00 00 │ ╾──╼............
     0xa0 │ 00 00 00 00 00 00 00 00                         │ ........
 }
 
-alloc5 (size: 4, align: 4) {
+alloc6 (size: 4, align: 4) {
     2a 00 00 00                                     │ *...
 }
 
-alloc7 (fn: main)
+alloc8 (fn: main)
 
-alloc8 (size: 100, align: 1) {
+alloc9 (size: 100, align: 1) {
     0x00 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x10 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
     0x20 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................

@@ -23,13 +23,13 @@
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:8:5: 10:6
           StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
           StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
-          _4 = const {alloc0: *mut u32};   // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
+          _4 = const {alloc1: *mut u32};   // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
                                            // ty::Const
                                            // + ty: *mut u32
-                                           // + val: Value(Scalar(alloc0))
+                                           // + val: Value(Scalar(alloc1))
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_no_prop.rs:9:13: 9:19
-                                           // + literal: Const { ty: *mut u32, val: Value(Scalar(alloc0)) }
+                                           // + literal: Const { ty: *mut u32, val: Value(Scalar(alloc1)) }
           _3 = (*_4);                      // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
           _1 = move _3;                    // scope 2 at $DIR/mutable_variable_no_prop.rs:9:9: 9:19
           StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:18: 9:19
@@ -45,7 +45,7 @@
       }
   }
   
-  alloc0 (static: STATIC, size: 4, align: 4) {
+  alloc1 (static: STATIC, size: 4, align: 4) {
       2a 00 00 00                                     │ *...
   }
   

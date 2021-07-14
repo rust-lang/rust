@@ -16,10 +16,10 @@ fn main() -> () {
         _1 = const b"foo";               // scope 0 at $DIR/byte_slice.rs:5:13: 5:19
                                          // ty::Const
                                          // + ty: &[u8; 3]
-                                         // + val: Value(Scalar(alloc0))
+                                         // + val: Value(Scalar(alloc1))
                                          // mir::Constant
                                          // + span: $DIR/byte_slice.rs:5:13: 5:19
-                                         // + literal: Const { ty: &[u8; 3], val: Value(Scalar(alloc0)) }
+                                         // + literal: Const { ty: &[u8; 3], val: Value(Scalar(alloc1)) }
         StorageLive(_2);                 // scope 1 at $DIR/byte_slice.rs:6:9: 6:10
         _2 = [const 5_u8, const 120_u8]; // scope 1 at $DIR/byte_slice.rs:6:13: 6:24
         _0 = const ();                   // scope 0 at $DIR/byte_slice.rs:4:11: 7:2
@@ -29,6 +29,6 @@ fn main() -> () {
     }
 }
 
-alloc0 (size: 3, align: 1) {
+alloc1 (size: 3, align: 1) {
     66 6f 6f                                        │ foo
 }
