@@ -84,7 +84,7 @@ fn main() {
 mod c {
     extern crate cc;
 
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, HashSet};
     use std::env;
     use std::path::{Path, PathBuf};
 
@@ -419,22 +419,17 @@ mod c {
                 ("__floatunsitf", "floatunsitf.c"),
                 ("__trunctfdf2", "trunctfdf2.c"),
                 ("__trunctfsf2", "trunctfsf2.c"),
+                ("__addtf3", "addtf3.c"),
+                ("__multf3", "multf3.c"),
+                ("__subtf3", "subtf3.c"),
+                ("__divtf3", "divtf3.c"),
+                ("__powitf2", "powitf2.c"),
+                ("__fe_getround", "fp_mode.c"),
+                ("__fe_raise_inexact", "fp_mode.c"),
             ]);
 
             if target_os != "windows" {
                 sources.extend(&[("__multc3", "multc3.c")]);
-            }
-
-            if target_env == "musl" {
-                sources.extend(&[
-                    ("__addtf3", "addtf3.c"),
-                    ("__multf3", "multf3.c"),
-                    ("__subtf3", "subtf3.c"),
-                    ("__divtf3", "divtf3.c"),
-                    ("__powitf2", "powitf2.c"),
-                    ("__fe_getround", "fp_mode.c"),
-                    ("__fe_raise_inexact", "fp_mode.c"),
-                ]);
             }
         }
 
@@ -505,10 +500,13 @@ mod c {
             sources.extend(&[("__aarch64_have_lse_atomics", "cpu_model.c")]);
         }
 
+        let mut added_sources = HashSet::new();
         for (sym, src) in sources.map.iter() {
             let src = src_dir.join(src);
-            cfg.file(&src);
-            println!("cargo:rerun-if-changed={}", src.display());
+            if added_sources.insert(src.clone()) {
+                cfg.file(&src);
+                println!("cargo:rerun-if-changed={}", src.display());
+            }
             println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
         }
 
