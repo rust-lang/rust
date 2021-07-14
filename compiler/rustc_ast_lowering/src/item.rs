@@ -516,23 +516,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     let span = path.span;
 
+                    let new_id = self.allocate_hir_id_counter(new_node_id);
                     self.with_hir_id_owner(new_node_id, |this| {
-                        let new_id = this.lower_node_id(new_node_id);
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(new_id, attrs);
+                            this.attrs.insert(hir::HirId::make_owner(new_id), attrs);
                         }
 
-                        this.insert_item(hir::Item {
-                            def_id: new_id.expect_owner(),
-                            ident,
-                            kind,
-                            vis,
-                            span,
-                        });
+                        this.insert_item(hir::Item { def_id: new_id, ident, kind, vis, span });
                     });
                 }
 
@@ -576,7 +570,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let new_hir_id = self.lower_node_id(id);
+                    let new_hir_id = self.allocate_hir_id_counter(id);
 
                     let mut prefix = prefix.clone();
 
@@ -597,11 +591,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(new_hir_id, attrs);
+                            this.attrs.insert(hir::HirId::make_owner(new_hir_id), attrs);
                         }
 
                         this.insert_item(hir::Item {
-                            def_id: new_hir_id.expect_owner(),
+                            def_id: new_hir_id,
                             ident,
                             kind,
                             vis,

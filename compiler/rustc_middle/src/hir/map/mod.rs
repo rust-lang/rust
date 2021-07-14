@@ -7,7 +7,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
@@ -204,12 +204,8 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
-        // FIXME(eddyb) support `find` on the crate root.
-        if local_def_id.to_def_id().index == CRATE_DEF_INDEX {
-            return Some(DefKind::Mod);
-        }
-
-        let hir_id = self.local_def_id_to_hir_id(local_def_id);
+        let hir_id =
+            self.tcx.untracked_resolutions.definitions.opt_local_def_id_to_hir_id(local_def_id)?;
         let def_kind = match self.find(hir_id)? {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(..) => DefKind::Static,
