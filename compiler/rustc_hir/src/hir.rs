@@ -2272,8 +2272,6 @@ pub enum OpaqueTyOrigin {
     AsyncFn,
     /// type aliases: `type Foo = impl Trait;`
     TyAlias,
-    /// Impl trait consts, statics, bounds.
-    Misc,
 }
 
 /// The various kinds of types recognized by the compiler.
