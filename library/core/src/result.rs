@@ -224,6 +224,250 @@
 //! [`Ok(T)`]: Ok
 //! [`Err(E)`]: Err
 //! [`io::Error`]: ../../std/io/struct.Error.html
+//!
+//! # Method overview
+//!
+//! In addition to working with pattern matching, [`Result`] provides a
+//! wide variety of different methods.
+//!
+//! ## Querying the variant
+//!
+//! The [`is_ok`] and [`is_err`] methods return [`true`] if the [`Result`]
+//! is [`Ok`] or [`Err`], respectively.
+//!
+//! [`is_err`]: Result::is_err
+//! [`is_ok`]: Result::is_ok
+//!
+//! ## Adapters for working with references
+//!
+//! * [`as_ref`] converts from `&Result<T, E>` to `Result<&T, &E>`
+//! * [`as_mut`] converts from `&mut Result<T, E>` to `Result<&mut T, &mut E>`
+//! * [`as_deref`] converts from `&Result<T, E>` to `Result<&T::Target, &E>`
+//! * [`as_deref_mut`] converts from `&mut Result<T, E>` to
+//!   `Result<&mut T::Target, &mut E>`
+//!
+//! [`as_deref`]: Result::as_deref
+//! [`as_deref_mut`]: Result::as_deref_mut
+//! [`as_mut`]: Result::as_mut
+//! [`as_ref`]: Result::as_ref
+//!
+//! ## Extracting contained values
+//!
+//! These methods extract the contained value in a [`Result<T, E>`] when it
+//! is the [`Ok`] variant. If the [`Result`] is [`Err`]:
+//!
+//! * [`expect`] panics with a provided custom message
+//! * [`unwrap`] panics with a generic message
+//! * [`unwrap_or`] returns the provided default value
+//! * [`unwrap_or_default`] returns the default value of the type `T`
+//!   (which must implement the [`Default`] trait)
+//! * [`unwrap_or_else`] returns the result of evaluating the provided
+//!   function
+//!
+//! The panicking methods [`expect`] and [`unwrap`] require `E` to
+//! implement the [`Debug`] trait.
+//!
+//! [`Debug`]: crate::fmt::Debug
+//! [`expect`]: Result::expect
+//! [`unwrap`]: Result::unwrap
+//! [`unwrap_or`]: Result::unwrap_or
+//! [`unwrap_or_default`]: Result::unwrap_or_default
+//! [`unwrap_or_else`]: Result::unwrap_or_else
+//!
+//! These methods extract the contained value in a [`Result<T, E>`] when it
+//! is the [`Err`] variant. They require `T` to implement the [`Debug`]
+//! trait. If the [`Result`] is [`Ok`]:
+//!
+//! * [`expect_err`] panics with a provided custom message
+//! * [`unwrap_err`] panics with a generic message
+//!
+//! [`Debug`]: crate::fmt::Debug
+//! [`expect_err`]: Result::expect_err
+//! [`unwrap_err`]: Result::unwrap_err
+//!
+//! ## Transforming contained values
+//!
+//! These methods transform [`Result`] to [`Option`]:
+//!
+//! * [`err`][Result::err] transforms [`Result<T, E>`] into [`Option<E>`],
+//!   mapping [`Err(e)`] to [`Some(e)`] and [`Ok(v)`] to [`None`]
+//! * [`ok`][Result::ok] transforms [`Result<T, E>`] into [`Option<T>`],
+//!   mapping [`Ok(v)`] to [`Some(v)`] and [`Err(e)`] to [`None`]
+//! * [`transpose`] transposes a [`Result`] of an [`Option`] into an
+//!   [`Option`] of a [`Result`]
+//!
+// Do NOT add link reference definitions for `err` or `ok`, because they
+// will generate numerous incorrect URLs for `Err` and `Ok` elsewhere, due
+// to case folding.
+//!
+//! [`Err(e)`]: Err
+//! [`Ok(v)`]: Ok
+//! [`Some(e)`]: Option::Some
+//! [`Some(v)`]: Option::Some
+//! [`transpose`]: Result::transpose
+//!
+//! This method transforms the contained value of the [`Ok`] variant:
+//!
+//! * [`map`] transforms [`Result<T, E>`] into [`Result<U, E>`] by applying
+//!   the provided function to the contained value of [`Ok`] and leaving
+//!   [`Err`] values unchanged
+//!
+//! [`map`]: Result::map
+//!
+//! This method transforms the contained value of the [`Err`] variant:
+//!
+//! * [`map_err`] transforms [`Result<T, E>`] into [`Result<T, F>`] by
+//!   applying the provided function to the contained value of [`Err`] and
+//!   leaving [`Ok`] values unchanged
+//!
+//! [`map_err`]: Result::map_err
+//!
+//! These methods transform a [`Result<T, E>`] into a value of a possibly
+//! different type `U`:
+//!
+//! * [`map_or`] applies the provided function to the contained value of
+//!   [`Ok`], or returns the provided default value if the [`Result`] is
+//!   [`Err`]
+//! * [`map_or_else`] applies the provided function to the contained value
+//!   of [`Ok`], or applies the provided fallback function to the contained
+//!   value of [`Err`]
+//!
+//! [`map_or`]: Result::map_or
+//! [`map_or_else`]: Result::map_or_else
+//!
+//! ## Boolean operators
+//!
+//! These methods treat the [`Result`] as a boolean value, where [`Ok`]
+//! acts like [`true`] and [`Err`] acts like [`false`]. There are two
+//! categories of these methods: ones that take a [`Result`] as input, and
+//! ones that take a function as input (to be lazily evaluated).
+//!
+//! The [`and`] and [`or`] methods take another [`Result`] as input, and
+//! produce a [`Result`] as output. The [`and`] method can produce a
+//! [`Result<U, E>`] value having a different inner type `U` than
+//! [`Result<T, E>`]. The [`or`] method can produce a [`Result<T, F>`]
+//! value having a different error type `F` than [`Result<T, E>`].
+//!
+//! | method  | self     | input     | output   |
+//! |---------|----------|-----------|----------|
+//! | [`and`] | `Err(e)` | (ignored) | `Err(e)` |
+//! | [`and`] | `Ok(x)`  | `Err(d)`  | `Err(d)` |
+//! | [`and`] | `Ok(x)`  | `Ok(y)`   | `Ok(y)`  |
+//! | [`or`]  | `Err(e)` | `Err(d)`  | `Err(d)` |
+//! | [`or`]  | `Err(e)` | `Ok(y)`   | `Ok(y)`  |
+//! | [`or`]  | `Ok(x)`  | (ignored) | `Ok(x)`  |
+//!
+//! [`and`]: Result::and
+//! [`or`]: Result::or
+//!
+//! The [`and_then`] and [`or_else`] methods take a function as input, and
+//! only evaluate the function when they need to produce a new value. The
+//! [`and_then`] method can produce a [`Result<U, E>`] value having a
+//! different inner type `U` than [`Result<T, E>`]. The [`or_else`] method
+//! can produce a [`Result<T, F>`] value having a different error type `F`
+//! than [`Result<T, E>`].
+//!
+//! | method       | self     | function input | function result | output   |
+//! |--------------|----------|----------------|-----------------|----------|
+//! | [`and_then`] | `Err(e)` | (not provided) | (not evaluated) | `Err(e)` |
+//! | [`and_then`] | `Ok(x)`  | `x`            | `Err(d)`        | `Err(d)` |
+//! | [`and_then`] | `Ok(x)`  | `x`            | `Ok(y)`         | `Ok(y)`  |
+//! | [`or_else`]  | `Err(e)` | `e`            | `Err(d)`        | `Err(d)` |
+//! | [`or_else`]  | `Err(e)` | `e`            | `Ok(y)`         | `Ok(y)`  |
+//! | [`or_else`]  | `Ok(x)`  | (not provided) | (not evaluated) | `Ok(x)`  |
+//!
+//! [`and_then`]: Result::and_then
+//! [`or_else`]: Result::or_else
+//!
+//! ## Iterating over `Result`
+//!
+//! A [`Result`] can be iterated over. This can be helpful if you need an
+//! iterator that is conditionally empty. The iterator will either produce
+//! a single value (when the [`Result`] is [`Ok`]), or produce no values
+//! (when the [`Result`] is [`Err`]). For example, [`into_iter`] acts like
+//! [`once(v)`] if the [`Result`] is [`Ok(v)`], and like [`empty()`] if the
+//! [`Result`] is [`Err`].
+//!
+//! [`Ok(v)`]: Ok
+//! [`empty()`]: crate::iter::empty
+//! [`once(v)`]: crate::iter::once
+//!
+//! Iterators over [`Result<T, E>`] come in three types:
+//!
+//! * [`into_iter`] consumes the [`Result`] and produces the contained
+//!   value
+//! * [`iter`] produces an immutable reference of type `&T` to the
+//!   contained value
+//! * [`iter_mut`] produces a mutable reference of type `&mut T` to the
+//!   contained value
+//!
+//! See [Iterating over `Option`] for examples of how this can be useful.
+//!
+//! [Iterating over `Option`]: crate::option#iterating-over-option
+//! [`into_iter`]: Result::into_iter
+//! [`iter`]: Result::iter
+//! [`iter_mut`]: Result::iter_mut
+//!
+//! You might want to use an iterator chain to do multiple instances of an
+//! operation that can fail, but would like to ignore failures while
+//! continuing to process the successful results. In this example, we take
+//! advantage of the iterable nature of [`Result`] to select only the
+//! [`Ok`] values using [`flatten`][Iterator::flatten].
+//!
+//! ```
+//! # use std::str::FromStr;
+//! let mut results = vec![];
+//! let mut errs = vec![];
+//! let nums: Vec<_> = vec!["17", "not a number", "99", "-27", "768"]
+//!    .into_iter()
+//!    .map(u8::from_str)
+//!    // Save clones of the raw `Result` values to inspect
+//!    .inspect(|x| results.push(x.clone()))
+//!    // Challenge: explain how this captures only the `Err` values
+//!    .inspect(|x| errs.extend(x.clone().err()))
+//!    .flatten()
+//!    .collect();
+//! assert_eq!(errs.len(), 3);
+//! assert_eq!(nums, [17, 99]);
+//! println!("results {:?}", results);
+//! println!("errs {:?}", errs);
+//! println!("nums {:?}", nums);
+//! ```
+//!
+//! ## Collecting into `Result`
+//!
+//! [`Result`] implements the [`FromIterator`][impl-FromIterator] trait,
+//! which allows an iterator over [`Result`] values to be collected into a
+//! [`Result`] of a collection of each contained value of the original
+//! [`Result`] values, or [`Err`] if any of the elements was [`Err`].
+//!
+//! [impl-FromIterator]: Result#impl-FromIterator%3CResult%3CA%2C%20E%3E%3E
+//!
+//! ```
+//! let v = vec![Ok(2), Ok(4), Err("err!"), Ok(8)];
+//! let res: Result<Vec<_>, &str> = v.into_iter().collect();
+//! assert_eq!(res, Err("err!"));
+//! let v = vec![Ok(2), Ok(4), Ok(8)];
+//! let res: Result<Vec<_>, &str> = v.into_iter().collect();
+//! assert_eq!(res, Ok(vec![2, 4, 8]));
+//! ```
+//!
+//! [`Result`] also implements the [`Product`][impl-Product] and
+//! [`Sum`][impl-Sum] traits, allowing an iterator over [`Result`] values
+//! to provide the [`product`][Iterator::product] and
+//! [`sum`][Iterator::sum] methods.
+//!
+//! [impl-Product]: Result#impl-Product%3CResult%3CU%2C%20E%3E%3E
+//! [impl-Sum]: Result#impl-Sum%3CResult%3CU%2C%20E%3E%3E
+//!
+//! ```
+//! let v = vec![Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
+//! let res: Result<i32, &str> = v.into_iter().sum();
+//! assert_eq!(res, Err("error!"));
+//! let v: Vec<Result<i32, &str>> = vec![Ok(1), Ok(2), Ok(21)];
+//! let res: Result<i32, &str> = v.into_iter().product();
+//! assert_eq!(res, Ok(42));
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
