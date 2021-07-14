@@ -5,7 +5,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
-use crate::parser::pat::RecoverComma;
+use crate::parser::pat::{RecoverColon, RecoverComma};
 use crate::parser::{FollowedByType, ForceCollect, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
                     NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None),
                     NonterminalKind::PatWithOr { .. } => {
-                        this.parse_pat_allow_top_alt(None, RecoverComma::No)
+                        this.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
                     }
                     _ => unreachable!(),
                 })?)

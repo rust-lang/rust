@@ -1,0 +1,68 @@
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:13:12
+   |
+LL |         Foo:Bar => {}
+   |            ^
+   |            |
+   |            expected one of `@` or `|`
+   |            help: maybe write a path separator here: `::`
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `{`, or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:19:17
+   |
+LL |         Foo::Bar:Baz => {}
+   |                 ^
+   |                 |
+   |                 expected one of 8 possible tokens
+   |                 help: maybe write a path separator here: `::`
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:25:12
+   |
+LL |         Foo:Bar::Baz => {}
+   |            ^
+   |            |
+   |            expected one of `@` or `|`
+   |            help: maybe write a path separator here: `::`
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:31:12
+   |
+LL |         Foo: Bar::Baz if true => {}
+   |            ^
+   |            |
+   |            expected one of `@` or `|`
+   |            help: maybe write a path separator here: `::`
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:36:15
+   |
+LL |     if let Bar:Baz = f() {
+   |               ^
+   |               |
+   |               expected one of `@` or `|`
+   |               help: maybe write a path separator here: `::`
+
+error: expected one of `=>`, `@`, `if`, or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:44:16
+   |
+LL |         ref Foo: Bar::Baz => {}
+   |                ^ expected one of `=>`, `@`, `if`, or `|`
+
+error: expected one of `=>`, `@`, `if`, or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:52:16
+   |
+LL |         mut Foo: Bar::Baz => {}
+   |                ^ expected one of `=>`, `@`, `if`, or `|`
+
+error: expected one of `@` or `|`, found `:`
+  --> $DIR/issue-87086-colon-path-sep.rs:62:12
+   |
+LL |         Foo:Bar::Baz => {}
+   |            ^
+   |            |
+   |            expected one of `@` or `|`
+   |            help: maybe write a path separator here: `::`
+
+error: aborting due to 8 previous errors
+
