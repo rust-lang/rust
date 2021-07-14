@@ -46,11 +46,59 @@ fn add_ty_alias_where_clause(
 }
 
 impl ItemLowerer<'_, '_, '_> {
-    fn with_trait_impl_ref<T>(
+    /// Clears (and restores) the `in_scope_lifetimes` field. Used when
+    /// visiting nested items, which never inherit in-scope lifetimes
+    /// from their surrounding environment.
+    #[tracing::instrument(level = "debug", skip(self, f))]
+    fn without_in_scope_lifetime_defs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let old_in_scope_lifetimes = mem::take(&mut self.lctx.in_scope_lifetimes);
+        debug!(?old_in_scope_lifetimes);
+
+        // this vector is only used when walking over impl headers,
+        // input types, and the like, and should not be non-empty in
+        // between items
+        assert!(self.lctx.lifetimes_to_define.is_empty());
+
+        let res = f(self);
+
+        assert!(self.lctx.in_scope_lifetimes.is_empty());
+        self.lctx.in_scope_lifetimes = old_in_scope_lifetimes;
+
+        res
+    }
+
+    /// Evaluates `f` with the lifetimes in `params` in-scope.
+    /// This is used to track which lifetimes have already been defined, and
+    /// which are new in-band lifetimes that need to have a definition created
+    /// for them.
+    fn with_parent_item_lifetime_defs(
         &mut self,
-        impl_ref: &Option<TraitRef>,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+        parent_item: LocalDefId,
+        f: impl FnOnce(&mut Self),
+    ) {
+        let parent_hir = self.lctx.owners[parent_item].unwrap().node().expect_item();
+        let parent_generics = match parent_hir.kind {
+            hir::ItemKind::Impl(hir::Impl { ref generics, .. })
+            | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
+            _ => &[],
+        };
+        let lt_def_names = parent_generics
+            .iter()
+            .filter_map(|param| match param.kind {
+                hir::GenericParamKind::Lifetime { .. } => {
+                    Some(param.name.normalize_to_macros_2_0())
+                }
+                _ => None,
+            })
+            .collect();
+        let old_in_scope_lifetimes = mem::replace(&mut self.lctx.in_scope_lifetimes, lt_def_names);
+
+        f(self);
+
+        self.lctx.in_scope_lifetimes = old_in_scope_lifetimes;
+    }
+
+    fn with_trait_impl_ref(&mut self, impl_ref: &Option<TraitRef>, f: impl FnOnce(&mut Self)) {
         let old = self.lctx.is_in_trait_impl;
         self.lctx.is_in_trait_impl = impl_ref.is_some();
         let ret = f(self);
@@ -66,20 +114,19 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     }
 
     fn visit_item(&mut self, item: &'a Item) {
-        let hir_id = self.lctx.with_hir_id_owner(item.id, |lctx| {
-            let node = lctx.without_in_scope_lifetime_defs(|lctx| lctx.lower_item(item));
-            hir::OwnerNode::Item(node)
+        let hir_id = self.without_in_scope_lifetime_defs(|this| {
+            this.lctx.with_hir_id_owner(item.id, |lctx| {
+                let node = lctx.lower_item(item);
+                hir::OwnerNode::Item(node)
+            })
         });
 
-        self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
-            let this = &mut ItemLowerer { lctx: this };
-            match item.kind {
-                ItemKind::Impl(box Impl { ref of_trait, .. }) => {
-                    this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
-                }
-                _ => visit::walk_item(this, item),
+        self.with_parent_item_lifetime_defs(hir_id, |this| match item.kind {
+            ItemKind::Impl(box Impl { ref of_trait, .. }) => {
+                this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
             }
-        });
+            _ => visit::walk_item(this, item),
+        })
     }
 
     fn visit_fn(&mut self, fk: FnKind<'a>, sp: Span, _: NodeId) {
@@ -114,61 +161,6 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    // Same as the method above, but accepts `hir::GenericParam`s
-    // instead of `ast::GenericParam`s.
-    // This should only be used with generics that have already had their
-    // in-band lifetimes added. In practice, this means that this function is
-    // only used when lowering a child item of a trait or impl.
-    #[tracing::instrument(level = "debug", skip(self, f))]
-    fn with_parent_item_lifetime_defs<T>(
-        &mut self,
-        parent_hir_id: LocalDefId,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        let parent_generics = match self.owners[parent_hir_id].unwrap().node().expect_item().kind {
-            hir::ItemKind::Impl(hir::Impl { ref generics, .. })
-            | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
-            _ => &[],
-        };
-        let lt_def_names = parent_generics
-            .iter()
-            .filter_map(|param| match param.kind {
-                hir::GenericParamKind::Lifetime { .. } => {
-                    Some(param.name.normalize_to_macros_2_0())
-                }
-                _ => None,
-            })
-            .collect();
-        let old_in_scope_lifetimes = mem::replace(&mut self.in_scope_lifetimes, lt_def_names);
-        debug!(in_scope_lifetimes = ?self.in_scope_lifetimes);
-
-        let res = f(self);
-
-        self.in_scope_lifetimes = old_in_scope_lifetimes;
-        res
-    }
-
-    // Clears (and restores) the `in_scope_lifetimes` field. Used when
-    // visiting nested items, which never inherit in-scope lifetimes
-    // from their surrounding environment.
-    #[tracing::instrument(level = "debug", skip(self, f))]
-    fn without_in_scope_lifetime_defs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let old_in_scope_lifetimes = mem::replace(&mut self.in_scope_lifetimes, vec![]);
-        debug!(?old_in_scope_lifetimes);
-
-        // this vector is only used when walking over impl headers,
-        // input types, and the like, and should not be non-empty in
-        // between items
-        assert!(self.lifetimes_to_define.is_empty());
-
-        let res = f(self);
-
-        assert!(self.in_scope_lifetimes.is_empty());
-        self.in_scope_lifetimes = old_in_scope_lifetimes;
-
-        res
-    }
-
     pub(super) fn lower_mod(&mut self, items: &[P<Item>], inner: Span) -> hir::Mod<'hir> {
         hir::Mod {
             inner: self.lower_span(inner),
