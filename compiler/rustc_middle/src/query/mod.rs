@@ -213,6 +213,8 @@ rustc_queries! {
     }
 
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
+        // This query reads from untracked data in definitions.
+        eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
     }
 
@@ -1446,6 +1448,7 @@ rustc_queries! {
         desc { "calculating the stability index for the local crate" }
     }
     query crates(_: ()) -> &'tcx [CrateNum] {
+        eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
 

@@ -130,7 +130,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 }
 
 impl CStore {
-    crate fn from_tcx(tcx: TyCtxt<'_>) -> &CStore {
+    pub fn from_tcx(tcx: TyCtxt<'_>) -> &CStore {
         tcx.cstore_as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
     }
 

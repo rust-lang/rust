@@ -1277,7 +1277,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if crate_num == LOCAL_CRATE {
             self.sess.local_stable_crate_id()
         } else {
-            self.untracked_resolutions.cstore.stable_crate_id_untracked(crate_num)
+            self.untracked_resolutions.cstore.stable_crate_id(crate_num)
         }
     }
 
@@ -1290,10 +1290,7 @@ impl<'tcx> TyCtxt<'tcx> {
             (self.crate_name, self.sess.local_stable_crate_id())
         } else {
             let cstore = &self.untracked_resolutions.cstore;
-            (
-                cstore.crate_name_untracked(def_id.krate),
-                cstore.stable_crate_id_untracked(def_id.krate),
-            )
+            (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
         };
 
         format!(
@@ -2831,8 +2828,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.crates =
-        |tcx, ()| tcx.arena.alloc_slice(&tcx.resolutions(()).cstore.crates_untracked());
     providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
