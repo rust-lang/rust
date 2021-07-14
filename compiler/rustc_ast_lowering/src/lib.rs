@@ -1465,17 +1465,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ))
                     }
                     ImplTraitContext::Disallowed(pos) => {
-                        let allowed_in = if self.sess.features_untracked().impl_trait_in_bindings {
-                            "bindings or function and inherent method return types"
-                        } else {
-                            "function and inherent method return types"
-                        };
                         let mut err = struct_span_err!(
                             self.sess,
                             t.span,
                             E0562,
                             "`impl Trait` not allowed outside of {}",
-                            allowed_in,
+                            "function and inherent method return types",
                         );
                         if pos == ImplTraitPosition::Binding && self.sess.is_nightly_build() {
                             err.help(
