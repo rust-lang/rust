@@ -1072,14 +1072,12 @@ impl<'a> Builder<'a> {
         let libdir = self.rustc_libdir(compiler);
 
         // Clear the output directory if the real rustc we're using has changed;
-        // Cargo cannot detect this as it thinks rustc is bootstrap/debug/rustc.
+        // Cargo usually cannot detect this because we use the same version string for all stage1
+        // builds, regardless of the git commit.
         //
         // Avoid doing this during dry run as that usually means the relevant
         // compiler is not yet linked/copied properly.
-        //
-        // Only clear out the directory if we're compiling std; otherwise, we
-        // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run && mode == Mode::Std && cmd == "build" {
+        if !self.config.dry_run && ["build", "check"].contains(&cmd) {
             self.clear_if_dirty(&out_dir, &self.rustc(compiler));
         }
 
