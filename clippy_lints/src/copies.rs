@@ -120,7 +120,10 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Duplicate code is less maintainable.
     ///
-    /// **Known problems:** Hopefully none.
+    /// **Known problems:**
+    /// * The lint doesn't check if the moved expressions modify values that are beeing used in
+    ///   the if condition. The suggestion can in that case modify the behavior of the program.
+    ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
     ///
     /// **Example:**
     /// ```ignore
@@ -358,8 +361,7 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
         expr_eq &= block_expr_eq;
     }
 
-    let has_expr = blocks[0].expr.is_some();
-    if has_expr && !expr_eq {
+    if !expr_eq {
         end_eq = 0;
     }
 
