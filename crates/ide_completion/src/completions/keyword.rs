@@ -211,6 +211,8 @@ mod tests {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw return
                 kw self
@@ -242,6 +244,8 @@ mod tests {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw return
                 kw self
@@ -273,6 +277,8 @@ mod tests {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw else
                 kw else if
@@ -308,6 +314,8 @@ fn quux() -> i32 {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw return
                 kw self
                 kw super
@@ -338,6 +346,8 @@ fn quux() -> i32 {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw continue
                 kw break
@@ -432,6 +442,8 @@ fn foo() {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw return
                 kw self
                 kw super
@@ -480,6 +492,8 @@ fn foo() {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw return
                 kw self
                 kw super
