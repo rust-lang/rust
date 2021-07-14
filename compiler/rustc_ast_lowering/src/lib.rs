@@ -332,6 +332,59 @@ impl FnDeclKind {
     }
 }
 
+#[derive(Copy, Clone)]
+enum AstOwner<'a> {
+    NonOwner,
+    Crate(&'a ast::Crate),
+    Item(&'a ast::Item),
+    AssocItem(&'a ast::AssocItem, visit::AssocCtxt),
+    ForeignItem(&'a ast::ForeignItem),
+}
+
+fn index_crate<'a>(
+    resolver: &dyn ResolverAstLowering,
+    krate: &'a Crate,
+) -> IndexVec<LocalDefId, AstOwner<'a>> {
+    let mut indexer = Indexer { resolver, index: IndexVec::new() };
+    indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner);
+    indexer.index[CRATE_DEF_ID] = AstOwner::Crate(krate);
+    visit::walk_crate(&mut indexer, krate);
+    return indexer.index;
+
+    struct Indexer<'s, 'a> {
+        resolver: &'s dyn ResolverAstLowering,
+        index: IndexVec<LocalDefId, AstOwner<'a>>,
+    }
+
+    impl<'a> visit::Visitor<'a> for Indexer<'_, 'a> {
+        fn visit_attribute(&mut self, _: &'a Attribute) {
+            // We do not want to lower expressions that appear in attributes,
+            // as they are not accessible to the rest of the HIR.
+        }
+
+        fn visit_item(&mut self, item: &'a ast::Item) {
+            let def_id = self.resolver.local_def_id(item.id);
+            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
+            self.index[def_id] = AstOwner::Item(item);
+            visit::walk_item(self, item)
+        }
+
+        fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
+            let def_id = self.resolver.local_def_id(item.id);
+            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
+            self.index[def_id] = AstOwner::AssocItem(item, ctxt);
+            visit::walk_assoc_item(self, item, ctxt);
+        }
+
+        fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
+            let def_id = self.resolver.local_def_id(item.id);
+            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
+            self.index[def_id] = AstOwner::ForeignItem(item);
+            visit::walk_foreign_item(self, item);
+        }
+    }
+}
+
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
 fn compute_hir_hash(
@@ -362,6 +415,8 @@ pub fn lower_crate<'a, 'hir>(
     arena: &'hir Arena<'hir>,
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
+
+    let ast_index = index_crate(resolver, krate);
 
     let owners =
         IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, resolver.definitions().def_index_count());
@@ -395,15 +450,9 @@ pub fn lower_crate<'a, 'hir>(
         allow_into_future: Some([sym::into_future][..].into()),
     };
 
-    // Lower the root module manually.
-    debug_assert_eq!(lctx.resolver.local_def_id(CRATE_NODE_ID), CRATE_DEF_ID);
-    lctx.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
-        let module = lctx.lower_mod(&krate.items, krate.spans.inner_span);
-        lctx.lower_attrs(hir::CRATE_HIR_ID, &krate.attrs);
-        hir::OwnerNode::Crate(lctx.arena.alloc(module))
-    });
-
-    visit::walk_crate(&mut item::ItemLowerer { lctx: &mut lctx }, krate);
+    for def_id in ast_index.indices() {
+        item::ItemLowerer { lctx: &mut lctx, ast_index: &ast_index }.lower_node(def_id);
+    }
     let owners = lctx.owners;
 
     let hir_hash = compute_hir_hash(resolver, &owners);
