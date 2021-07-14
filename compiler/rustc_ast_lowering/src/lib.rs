@@ -80,8 +80,6 @@ mod item;
 mod pat;
 mod path;
 
-const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
-
 rustc_hir::arena_types!(rustc_arena::declare_arena, 'tcx);
 
 struct LoweringContext<'a, 'hir: 'a> {
@@ -151,7 +149,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     in_scope_lifetimes: Vec<ParamName>,
 
     current_hir_id_owner: (LocalDefId, u32),
-    item_local_id_counters: NodeMap<u32>,
+    item_local_id_counters: IndexVec<LocalDefId, u32>,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
@@ -488,15 +486,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id
     }
 
-    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> LocalDefId {
-        // Set up the counter if needed.
-        self.item_local_id_counters.entry(owner).or_insert(0);
-        // Always allocate the first `HirId` for the owner itself.
-        let lowered = self.lower_node_id_with_owner(owner, owner);
-        debug_assert_eq!(lowered.local_id.as_u32(), 0);
-        lowered.owner
-    }
-
     fn create_stable_hashing_context(&self) -> LoweringHasher<'_> {
         LoweringHasher {
             source_map: CachingSourceMapView::new(self.sess.source_map()),
@@ -504,36 +493,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_node_id_generic(
-        &mut self,
-        ast_node_id: NodeId,
-        alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
-    ) -> hir::HirId {
-        assert_ne!(ast_node_id, DUMMY_NODE_ID);
+    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> LocalDefId {
+        // Set up the counter if needed.
+        let def_id = self.resolver.local_def_id(owner);
 
-        let min_size = ast_node_id.as_usize() + 1;
-
-        if min_size > self.node_id_to_hir_id.len() {
-            self.node_id_to_hir_id.resize(min_size, None);
-        }
-
-        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
-            existing_hir_id
+        // Always allocate the first `HirId` for the owner itself.
+        self.node_id_to_hir_id.ensure_contains_elem(owner, || None);
+        if let Some(_lowered) = self.node_id_to_hir_id[owner] {
+            debug_assert_eq!(_lowered.owner, def_id);
+            debug_assert_eq!(_lowered.local_id.as_u32(), 0);
         } else {
-            // Generate a new `HirId`.
-            let hir_id = alloc_hir_id(self);
-            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
+            self.item_local_id_counters.ensure_contains_elem(def_id, || 0);
+            let local_id_counter = &mut self.item_local_id_counters[def_id];
+            let local_id = *local_id_counter;
 
-            hir_id
+            // We want to be sure not to modify the counter in the map while it
+            // is also on the stack. Otherwise we'll get lost updates when writing
+            // back from the stack to the map.
+            debug_assert_eq!(local_id, 0);
+
+            *local_id_counter += 1;
+            self.node_id_to_hir_id[owner] = Some(hir::HirId::make_owner(def_id));
         }
+        def_id
     }
 
     fn with_hir_id_owner<T>(&mut self, owner: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let counter = self
-            .item_local_id_counters
-            .insert(owner, HIR_ID_COUNTER_LOCKED)
-            .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
         let def_id = self.resolver.local_def_id(owner);
+        let counter = self.item_local_id_counters[def_id];
         let old_owner = std::mem::replace(&mut self.current_hir_id_owner, (def_id, counter));
         let ret = f(self);
         let (new_def_id, new_counter) =
@@ -542,8 +529,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug_assert!(def_id == new_def_id);
         debug_assert!(new_counter >= counter);
 
-        let prev = self.item_local_id_counters.insert(owner, new_counter).unwrap();
-        debug_assert!(prev == HIR_ID_COUNTER_LOCKED);
+        self.item_local_id_counters[def_id] = new_counter;
         ret
     }
 
@@ -554,35 +540,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
-        self.lower_node_id_generic(ast_node_id, |this| {
-            let &mut (owner, ref mut local_id_counter) = &mut this.current_hir_id_owner;
+        assert_ne!(ast_node_id, DUMMY_NODE_ID);
+
+        self.node_id_to_hir_id.ensure_contains_elem(ast_node_id, || None);
+        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
+            existing_hir_id
+        } else {
+            // Generate a new `HirId`.
+            let &mut (owner, ref mut local_id_counter) = &mut self.current_hir_id_owner;
             let local_id = *local_id_counter;
             *local_id_counter += 1;
-            hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
-        })
-    }
-
-    fn lower_node_id_with_owner(&mut self, ast_node_id: NodeId, owner: NodeId) -> hir::HirId {
-        self.lower_node_id_generic(ast_node_id, |this| {
-            let local_id_counter = this
-                .item_local_id_counters
-                .get_mut(&owner)
-                .expect("called `lower_node_id_with_owner` before `allocate_hir_id_counter`");
-            let local_id = *local_id_counter;
-
-            // We want to be sure not to modify the counter in the map while it
-            // is also on the stack. Otherwise we'll get lost updates when writing
-            // back from the stack to the map.
-            debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
-
-            *local_id_counter += 1;
-            let owner = this.resolver.opt_local_def_id(owner).expect(
-                "you forgot to call `create_def` or are lowering node-IDs \
-                 that do not belong to the current owner",
-            );
-
-            hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
-        })
+            let hir_id = hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) };
+            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
+            hir_id
+        }
     }
 
     fn next_id(&mut self) -> hir::HirId {
@@ -592,7 +563,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         res.map_id(|id| {
-            self.lower_node_id_generic(id, |_| {
+            self.node_id_to_hir_id.get(id).copied().flatten().unwrap_or_else(|| {
                 panic!("expected `NodeId` to be lowered already for res {:#?}", res);
             })
         })
