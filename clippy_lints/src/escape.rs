@@ -11,7 +11,7 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 #[derive(Copy, Clone)]
 pub struct BoxedLocal {
@@ -133,13 +133,10 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, mode: ConsumeMode) {
+    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
-                if let ConsumeMode::Move = mode {
-                    // moved out or in. clearly can't be localized
-                    self.set.remove(&lid);
-                }
+                self.set.remove(&lid);
                 let map = &self.cx.tcx.hir();
                 if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
                     if self.set.contains(&lid) {
