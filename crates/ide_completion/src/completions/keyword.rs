@@ -105,6 +105,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("if", "if $1 {\n    $0\n}");
         add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
         add_keyword("for", "for $1 in $2 {\n    $0\n}");
+        add_keyword("true", "true");
+        add_keyword("false", "false");
     }
 
     if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || has_block_expr_parent {
@@ -209,6 +211,8 @@ mod tests {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw return
                 kw self
@@ -240,6 +244,8 @@ mod tests {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw return
                 kw self
@@ -271,6 +277,8 @@ mod tests {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw else
                 kw else if
@@ -306,6 +314,8 @@ fn quux() -> i32 {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw return
                 kw self
                 kw super
@@ -336,6 +346,8 @@ fn quux() -> i32 {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw let
                 kw continue
                 kw break
@@ -430,6 +442,8 @@ fn foo() {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw return
                 kw self
                 kw super
@@ -478,6 +492,8 @@ fn foo() {
                 kw if
                 kw if let
                 kw for
+                kw true
+                kw false
                 kw return
                 kw self
                 kw super
