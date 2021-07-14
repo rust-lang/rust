@@ -265,7 +265,7 @@ enum ImplTraitContext<'b, 'a> {
         origin: hir::OpaqueTyOrigin,
     },
     /// Impl trait in type aliases.
-    OtherOpaqueTy {
+    TypeAliasesOpaqueTy {
         /// Set of lifetimes that this opaque type can capture, if it uses
         /// them. This includes lifetimes bound since we entered this context.
         /// For example:
@@ -310,8 +310,8 @@ impl<'a> ImplTraitContext<'_, 'a> {
             ReturnPositionOpaqueTy { fn_def_id, origin } => {
                 ReturnPositionOpaqueTy { fn_def_id: *fn_def_id, origin: *origin }
             }
-            OtherOpaqueTy { capturable_lifetimes, origin } => {
-                OtherOpaqueTy { capturable_lifetimes, origin: *origin }
+            TypeAliasesOpaqueTy { capturable_lifetimes, origin } => {
+                TypeAliasesOpaqueTy { capturable_lifetimes, origin: *origin }
             }
             Disallowed(pos) => Disallowed(*pos),
         }
@@ -1126,7 +1126,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     //
                     //     fn foo() -> impl Iterator<Item = impl Debug>
                     ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                    | ImplTraitContext::OtherOpaqueTy { .. } => (true, itctx),
+                    | ImplTraitContext::TypeAliasesOpaqueTy { .. } => (true, itctx),
 
                     // We are in the argument position, but within a dyn type:
                     //
@@ -1150,7 +1150,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         capturable_lifetimes = FxHashSet::default();
                         (
                             true,
-                            ImplTraitContext::OtherOpaqueTy {
+                            ImplTraitContext::TypeAliasesOpaqueTy {
                                 capturable_lifetimes: &mut capturable_lifetimes,
                                 origin: hir::OpaqueTyOrigin::Misc,
                             },
@@ -1416,11 +1416,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             None,
                             |this| this.lower_param_bounds(bounds, itctx),
                         ),
-                    ImplTraitContext::OtherOpaqueTy { ref capturable_lifetimes, origin } => {
+                    ImplTraitContext::TypeAliasesOpaqueTy { ref capturable_lifetimes, origin } => {
                         // Reset capturable lifetimes, any nested impl trait
                         // types will inherit lifetimes from this opaque type,
                         // so don't need to capture them again.
-                        let nested_itctx = ImplTraitContext::OtherOpaqueTy {
+                        let nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy {
                             capturable_lifetimes: &mut FxHashSet::default(),
                             origin,
                         };
@@ -2321,13 +2321,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )),
                 _ => None,
             });
-            if let ImplTraitContext::OtherOpaqueTy { ref mut capturable_lifetimes, .. } = itctx {
+            if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes, .. } =
+                itctx
+            {
                 capturable_lifetimes.extend(lt_def_names.clone());
             }
 
             let res = this.lower_trait_ref(&p.trait_ref, itctx.reborrow());
 
-            if let ImplTraitContext::OtherOpaqueTy { ref mut capturable_lifetimes, .. } = itctx {
+            if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes, .. } =
+                itctx
+            {
                 for param in lt_def_names {
                     capturable_lifetimes.remove(&param);
                 }
