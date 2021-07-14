@@ -82,5 +82,29 @@ error: redundant closure
 LL |     let a = Some(1u8).map(|a| closure(a));
    |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `closure`
 
-error: aborting due to 13 previous errors
+error: redundant closure
+  --> $DIR/eta.rs:227:28
+   |
+LL |     x.into_iter().for_each(|x| add_to_res(x));
+   |                            ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut add_to_res`
+
+error: redundant closure
+  --> $DIR/eta.rs:228:28
+   |
+LL |     y.into_iter().for_each(|x| add_to_res(x));
+   |                            ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut add_to_res`
+
+error: redundant closure
+  --> $DIR/eta.rs:229:28
+   |
+LL |     z.into_iter().for_each(|x| add_to_res(x));
+   |                            ^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `add_to_res`
+
+error: redundant closure
+  --> $DIR/eta.rs:236:21
+   |
+LL |         Some(1).map(|n| closure(n));
+   |                     ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut closure`
+
+error: aborting due to 17 previous errors
 

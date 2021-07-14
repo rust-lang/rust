@@ -1,15 +1,16 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::higher;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, type_is_unsafe_function};
+use clippy_utils::usage::UsedAfterExprVisitor;
+use clippy_utils::{get_enclosing_loop_or_closure, higher};
 use clippy_utils::{is_adjusted, iter_input_pats};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{def_id, Expr, ExprKind, Param, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, ClosureKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -86,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     }
 }
 
-fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
+fn check_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let ExprKind::Closure(_, decl, eid, _, _) = expr.kind {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
@@ -131,7 +132,18 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
-                    if let Some(snippet) = snippet_opt(cx, caller.span) {
+                    if let Some(mut snippet) = snippet_opt(cx, caller.span) {
+                        if_chain! {
+                            if let ty::Closure(_, substs) = fn_ty.kind();
+                            if let ClosureKind::FnMut = substs.as_closure().kind();
+                            if UsedAfterExprVisitor::is_found(cx, caller)
+                                || get_enclosing_loop_or_closure(cx.tcx, expr).is_some();
+
+                            then {
+                                // Mutable closure is used after current expr; we cannot consume it.
+                                snippet = format!("&mut {}", snippet);
+                            }
+                        }
                         diag.span_suggestion(
                             expr.span,
                             "replace the closure with the function itself",
