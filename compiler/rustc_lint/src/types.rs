@@ -1434,6 +1434,7 @@ impl InvalidAtomicOrdering {
     fn inherent_atomic_method_call<'hir>(
         cx: &LateContext<'_>,
         expr: &Expr<'hir>,
+        recognized_names: &[Symbol], // used for fast path calculation
     ) -> Option<(Symbol, &'hir [Expr<'hir>])> {
         const ATOMIC_TYPES: &[Symbol] = &[
             sym::AtomicBool,
@@ -1453,6 +1454,7 @@ impl InvalidAtomicOrdering {
         ];
         if_chain! {
             if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
+            if recognized_names.contains(&method_path.ident.name);
             if let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
             if let Some(impl_did) = cx.tcx.impl_of_method(m_def_id);
             if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def();
@@ -1494,7 +1496,7 @@ impl InvalidAtomicOrdering {
         use rustc_hir::def::{DefKind, Res};
         use rustc_hir::QPath;
         if_chain! {
-            if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr);
+            if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store]);
             if let Some((ordering_arg, invalid_ordering)) = match method {
                 sym::load => Some((&args[1], sym::Release)),
                 sym::store => Some((&args[2], sym::Acquire)),
@@ -1543,7 +1545,7 @@ impl InvalidAtomicOrdering {
 
     fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr);
+            if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak]);
             if let Some((success_order_arg, failure_order_arg)) = match method {
                 sym::fetch_update => Some((&args[1], &args[2])),
                 sym::compare_exchange | sym::compare_exchange_weak => Some((&args[3], &args[4])),
