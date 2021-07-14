@@ -1,7 +1,4 @@
-use crate::{
-    iter::{InPlaceIterable, SourceIter},
-    mem::swap,
-};
+use crate::iter::{InPlaceIterable, SourceIter};
 
 /// A wrapper type around a key function.
 ///
@@ -61,6 +58,7 @@ where
 /// [`Iterator::dedup`]: Iterator::dedup
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ByPartialEq;
 
 impl ByPartialEq {
@@ -131,9 +129,9 @@ where
             self.last = Some(self.inner.next())
         }
 
-        let last = self.last.as_mut().unwrap();
+        // Safety: the above if statement ensures that `self.last` is always `Some`
+        let last = unsafe { self.last.as_mut().unwrap_unchecked() };
         let last_item = last.as_ref()?;
-
         let mut next = loop {
             let curr = self.inner.next();
             if let Some(curr_item) = &curr {
@@ -145,7 +143,7 @@ where
             }
         };
 
-        swap(last, &mut next);
+        crate::mem::swap(last, &mut next);
         next
     }
 
