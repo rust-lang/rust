@@ -5,7 +5,6 @@ use crate::rmeta::encoder;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
-use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -369,6 +368,7 @@ pub fn provide(providers: &mut Providers) {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
+        crates: |tcx, ()| tcx.arena.alloc_slice(&CStore::from_tcx(tcx).crates_untracked()),
 
         ..*providers
     };
@@ -451,6 +451,16 @@ impl CStore {
         self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
     }
 
+    pub fn def_kind(&self, def: DefId) -> DefKind {
+        self.get_crate_data(def.krate).def_kind(def.index)
+    }
+
+    pub fn crates_untracked(&self) -> Vec<CrateNum> {
+        let mut result = vec![];
+        self.iter_crate_data(|cnum, _| result.push(cnum));
+        result
+    }
+
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
     }
@@ -485,16 +495,12 @@ impl CrateStore for CStore {
         self
     }
 
-    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol {
+    fn crate_name(&self, cnum: CrateNum) -> Symbol {
         self.get_crate_data(cnum).root.name
     }
 
-    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId {
+    fn stable_crate_id(&self, cnum: CrateNum) -> StableCrateId {
         self.get_crate_data(cnum).root.stable_crate_id
-    }
-
-    fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh {
-        self.get_crate_data(cnum).root.hash
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
@@ -502,10 +508,6 @@ impl CrateStore for CStore {
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
         self.get_crate_data(def.krate).def_key(def.index)
-    }
-
-    fn def_kind(&self, def: DefId) -> DefKind {
-        self.get_crate_data(def.krate).def_kind(def.index)
     }
 
     fn def_path(&self, def: DefId) -> DefPath {
@@ -524,12 +526,6 @@ impl CrateStore for CStore {
         hash: DefPathHash,
     ) -> Option<DefId> {
         self.get_crate_data(cnum).def_path_hash_to_def_id(cnum, index_guess, hash)
-    }
-
-    fn crates_untracked(&self) -> Vec<CrateNum> {
-        let mut result = vec![];
-        self.iter_crate_data(|cnum, _| result.push(cnum));
-        result
     }
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {

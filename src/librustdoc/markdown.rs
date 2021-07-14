@@ -136,10 +136,10 @@ crate fn test(mut options: Options) -> Result<(), String> {
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 
     options.test_args.insert(0, "rustdoctest".to_string());
-    testing::test_main(
+    test::test_main(
         &options.test_args,
         collector.tests,
-        Some(testing::Options::new().display_output(options.display_warnings)),
+        Some(test::Options::new().display_output(options.display_warnings)),
     );
     Ok(())
 }

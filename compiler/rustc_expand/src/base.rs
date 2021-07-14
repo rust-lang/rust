@@ -745,9 +745,17 @@ impl SyntaxExtension {
             }
         }
 
-        let builtin_name = sess
+        let (builtin_name, helper_attrs) = sess
             .find_by_name(attrs, sym::rustc_builtin_macro)
-            .map(|a| a.value_str().unwrap_or(name));
+            .map(|attr| {
+                // Override `helper_attrs` passed above if it's a built-in macro,
+                // marking `proc_macro_derive` macros as built-in is not a realistic use case.
+                parse_macro_name_and_helper_attrs(sess.diagnostic(), attr, "built-in").map_or_else(
+                    || (Some(name), Vec::new()),
+                    |(name, helper_attrs)| (Some(name), helper_attrs),
+                )
+            })
+            .unwrap_or_else(|| (None, helper_attrs));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
         if let Some((_, sp)) = const_stability {
             sess.parse_sess
@@ -1211,6 +1219,88 @@ pub fn get_exprs_from_tts(
         }
     }
     Some(es)
+}
+
+pub fn parse_macro_name_and_helper_attrs(
+    diag: &rustc_errors::Handler,
+    attr: &Attribute,
+    descr: &str,
+) -> Option<(Symbol, Vec<Symbol>)> {
+    // Once we've located the `#[proc_macro_derive]` attribute, verify
+    // that it's of the form `#[proc_macro_derive(Foo)]` or
+    // `#[proc_macro_derive(Foo, attributes(A, ..))]`
+    let list = match attr.meta_item_list() {
+        Some(list) => list,
+        None => return None,
+    };
+    if list.len() != 1 && list.len() != 2 {
+        diag.span_err(attr.span, "attribute must have either one or two arguments");
+        return None;
+    }
+    let trait_attr = match list[0].meta_item() {
+        Some(meta_item) => meta_item,
+        _ => {
+            diag.span_err(list[0].span(), "not a meta item");
+            return None;
+        }
+    };
+    let trait_ident = match trait_attr.ident() {
+        Some(trait_ident) if trait_attr.is_word() => trait_ident,
+        _ => {
+            diag.span_err(trait_attr.span, "must only be one word");
+            return None;
+        }
+    };
+
+    if !trait_ident.name.can_be_raw() {
+        diag.span_err(
+            trait_attr.span,
+            &format!("`{}` cannot be a name of {} macro", trait_ident, descr),
+        );
+    }
+
+    let attributes_attr = list.get(1);
+    let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
+        if !attr.has_name(sym::attributes) {
+            diag.span_err(attr.span(), "second argument must be `attributes`")
+        }
+        attr.meta_item_list()
+            .unwrap_or_else(|| {
+                diag.span_err(attr.span(), "attribute must be of form: `attributes(foo, bar)`");
+                &[]
+            })
+            .iter()
+            .filter_map(|attr| {
+                let attr = match attr.meta_item() {
+                    Some(meta_item) => meta_item,
+                    _ => {
+                        diag.span_err(attr.span(), "not a meta item");
+                        return None;
+                    }
+                };
+
+                let ident = match attr.ident() {
+                    Some(ident) if attr.is_word() => ident,
+                    _ => {
+                        diag.span_err(attr.span, "must only be one word");
+                        return None;
+                    }
+                };
+                if !ident.name.can_be_raw() {
+                    diag.span_err(
+                        attr.span,
+                        &format!("`{}` cannot be a name of derive helper attribute", ident),
+                    );
+                }
+
+                Some(ident.name)
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    Some((trait_ident.name, proc_attrs))
 }
 
 /// This nonterminal looks like some specific enums from

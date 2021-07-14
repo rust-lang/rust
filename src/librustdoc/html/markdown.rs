@@ -33,6 +33,7 @@ use std::str;
 
 use crate::clean::RenderedLink;
 use crate::doctest;
+use crate::html::escape::Escape;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
 
@@ -207,26 +208,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let should_panic;
         let ignore;
         let edition;
-        if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
-            let parse_result = match kind {
-                CodeBlockKind::Fenced(ref lang) => {
-                    LangString::parse_without_check(&lang, self.check_error_codes, false)
-                }
-                CodeBlockKind::Indented => Default::default(),
-            };
-            if !parse_result.rust {
-                return Some(Event::Start(Tag::CodeBlock(kind)));
-            }
-            compile_fail = parse_result.compile_fail;
-            should_panic = parse_result.should_panic;
-            ignore = parse_result.ignore;
-            edition = parse_result.edition;
+        let kind = if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
+            kind
         } else {
             return event;
-        }
-
-        let explicit_edition = edition.is_some();
-        let edition = edition.unwrap_or(self.edition);
+        };
 
         let mut origtext = String::new();
         for event in &mut self.inner {
@@ -240,6 +226,35 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         }
         let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
+
+        let parse_result = match kind {
+            CodeBlockKind::Fenced(ref lang) => {
+                let parse_result =
+                    LangString::parse_without_check(&lang, self.check_error_codes, false);
+                if !parse_result.rust {
+                    return Some(Event::Html(
+                        format!(
+                            "<div class=\"example-wrap\">\
+                                 <pre{}>{}</pre>\
+                             </div>",
+                            format!(" class=\"language-{}\"", lang),
+                            Escape(&text),
+                        )
+                        .into(),
+                    ));
+                }
+                parse_result
+            }
+            CodeBlockKind::Indented => Default::default(),
+        };
+
+        compile_fail = parse_result.compile_fail;
+        should_panic = parse_result.should_panic;
+        ignore = parse_result.ignore;
+        edition = parse_result.edition;
+
+        let explicit_edition = edition.is_some();
+        let edition = edition.unwrap_or(self.edition);
 
         let playground_button = self.playground.as_ref().and_then(|playground| {
             let krate = &playground.crate_name;

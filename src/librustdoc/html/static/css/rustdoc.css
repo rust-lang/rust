@@ -435,7 +435,7 @@ nav.sub {
 	border-bottom-left-radius: 5px;
 }
 
-.rustdoc:not(.source) .example-wrap > pre.rust {
+.rustdoc:not(.source) .example-wrap > pre:not(.line-number) {
 	width: 100%;
 	overflow-x: auto;
 }
