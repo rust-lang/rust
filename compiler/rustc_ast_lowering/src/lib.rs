@@ -2577,21 +2577,35 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
+    fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, hir::HirId) {
+        self.pat_ident_binding_mode_mut(span, ident, hir::BindingAnnotation::Unannotated)
+    }
+
     fn pat_ident_binding_mode(
         &mut self,
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
     ) -> (&'hir hir::Pat<'hir>, hir::HirId) {
+        let (pat, hir_id) = self.pat_ident_binding_mode_mut(span, ident, bm);
+        (self.arena.alloc(pat), hir_id)
+    }
+
+    fn pat_ident_binding_mode_mut(
+        &mut self,
+        span: Span,
+        ident: Ident,
+        bm: hir::BindingAnnotation,
+    ) -> (hir::Pat<'hir>, hir::HirId) {
         let hir_id = self.next_id();
 
         (
-            self.arena.alloc(hir::Pat {
+            hir::Pat {
                 hir_id,
                 kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
                 default_binding_modes: true,
-            }),
+            },
             hir_id,
         )
     }
@@ -2609,13 +2623,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat {
-            hir_id: self.next_id(),
-            kind,
-            span,
-            default_binding_modes: false,
-        })
+    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> hir::Pat<'hir> {
+        hir::Pat { hir_id: self.next_id(), kind, span, default_binding_modes: false }
     }
 
     fn ty_path(
