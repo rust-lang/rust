@@ -34,7 +34,7 @@ h4 {
 	background: rgba(0, 0, 0, 0);
 }
 
-code {
+.docblock code {
 	color: #ffb454;
 }
 h3 > code, h4 > code, h5 > code {
