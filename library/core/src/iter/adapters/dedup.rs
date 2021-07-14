@@ -125,26 +125,11 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.last.is_none() {
-            self.last = Some(self.inner.next())
-        }
-
-        // Safety: the above if statement ensures that `self.last` is always `Some`
-        let last = unsafe { self.last.as_mut().unwrap_unchecked() };
+        let Self { inner, last, same_bucket } = self;
+        let last = last.get_or_insert_with(|| inner.next());
         let last_item = last.as_ref()?;
-        let mut next = loop {
-            let curr = self.inner.next();
-            if let Some(curr_item) = &curr {
-                if !(self.same_bucket)(last_item, curr_item) {
-                    break curr;
-                }
-            } else {
-                break None;
-            }
-        };
-
-        crate::mem::swap(last, &mut next);
-        next
+        let next = inner.find(|next_item| !(same_bucket)(last_item, next_item));
+        crate::mem::replace(last, next)
     }
 
     #[inline]
