@@ -22,11 +22,11 @@ use crate::utils::{format_mutability, mk_sp, mk_sp_lo_plus_one, rewrite_ident};
 /// Returns `true` if the given pattern is "short".
 /// A short pattern is defined by the following grammar:
 ///
-/// [small, ntp]:
+/// `[small, ntp]`:
 ///     - single token
 ///     - `&[single-line, ntp]`
 ///
-/// [small]:
+/// `[small]`:
 ///     - `[small, ntp]`
 ///     - unary tuple constructor `([small, ntp])`
 ///     - `&[small]`
