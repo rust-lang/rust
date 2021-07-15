@@ -11,7 +11,7 @@ use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionCont
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, fast_reject, Ty, TyCtxt};
+use rustc_middle::ty::{self, fast_reject, PredicateKind, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::iter;
@@ -184,7 +184,20 @@ fn overlap_within_probe(
 
     debug!("overlap: unification check succeeded");
 
-    let negate_obligation = |obligation| todo!("yaahc");
+    let negate_obligation = |mut obligation| {
+        let predicate_kind = obligation.predicate.inner.kind.0;
+        let predicate_kind = match predicate_kind {
+            PredicateKind::Trait(trait_pred, constness) => {
+                PredicateKind::NotTrait(trait_pred, constness)
+            }
+            PredicateKind::NotTrait(trait_pred, constness) => {
+                PredicateKind::Trait(trait_pred, constness)
+            }
+            _ => todo!("yaahc"),
+        };
+        obligation.predicate.inner.kind.0 = predicate_kind;
+        obligation
+    };
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
@@ -201,7 +214,7 @@ fn overlap_within_probe(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| {
+        .find(|&o| {
             if let Some(o_neg) = negate_obligation(o) {
                 // given o = `T: Trait` this produces `T: !Trait`
                 if selcx.predicate_must_hold(o_neg) {
@@ -210,7 +223,7 @@ fn overlap_within_probe(
                 }
             }
 
-            !selcx.predicate_may_hold_fatal(o)
+            !selcx.predicate_may_hold_fatal(&o)
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
