@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::peel_mid_ty_refs;
-use clippy_utils::{get_parent_node, in_macro, is_allowed};
+use clippy_utils::{get_parent_node, in_macro, is_lint_allowed};
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
 
                 match kind {
                     RefOp::Method(target_mut)
-                        if !is_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
+                        if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             && is_linted_explicit_deref_position(parent, expr.hir_id, expr.span) =>
                     {
                         self.state = Some((

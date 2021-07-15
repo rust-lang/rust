@@ -87,11 +87,8 @@ const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
-        if !is_item_interesting(item) {
-            // This does two things:
-            //  1) Reduce needless churn on `self.stack`
-            //  2) Don't push `StackItem::NoCheck` when entering `ItemKind::OpaqueTy`,
-            //     in order to lint `foo() -> impl <..>`
+        if matches!(item.kind, ItemKind::OpaqueTy(_)) {
+            // skip over `ItemKind::OpaqueTy` in order to lint `foo() -> impl <..>`
             return;
         }
         // We push the self types of `impl`s on a stack here. Only the top type on the stack is
@@ -119,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
-        if is_item_interesting(item) {
+        if !matches!(item.kind, ItemKind::OpaqueTy(_)) {
             self.stack.pop();
         }
     }
@@ -296,12 +293,4 @@ fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
             .with_hi(self_seg.args().span_ext().unwrap_or(self_seg.ident.span).hi());
         span_lint(cx, span);
     }
-}
-
-fn is_item_interesting(item: &Item<'_>) -> bool {
-    use rustc_hir::ItemKind::{Const, Enum, Fn, Impl, Static, Struct, Trait, Union};
-    matches!(
-        item.kind,
-        Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..)
-    )
 }

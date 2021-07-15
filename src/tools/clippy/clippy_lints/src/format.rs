@@ -1,17 +1,16 @@
-use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::paths;
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::higher::FormatExpn;
+use clippy_utils::last_path_segment;
+use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_expn_of, last_path_segment, match_def_path, match_function_call};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, MatchSource, PatKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{BorrowKind, Expr, ExprKind, QPath};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::symbol::kw;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the use of `format!("string literal with no
@@ -44,130 +43,78 @@ declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let span = match is_expn_of(expr.span, "format") {
-            Some(s) if !s.from_expansion() => s,
+        let FormatExpn { call_site, format_args } = match FormatExpn::parse(expr) {
+            Some(e) if !e.call_site.from_expansion() => e,
             _ => return,
         };
 
-        // Operate on the only argument of `alloc::fmt::format`.
-        if let Some(sugg) = on_new_v1(cx, expr) {
-            span_useless_format(cx, span, "consider using `.to_string()`", sugg);
-        } else if let Some(sugg) = on_new_v1_fmt(cx, expr) {
-            span_useless_format(cx, span, "consider using `.to_string()`", sugg);
-        }
+        let mut applicability = Applicability::MachineApplicable;
+        if format_args.value_args.is_empty() {
+            if_chain! {
+                if let [e] = &*format_args.format_string_parts;
+                if let ExprKind::Lit(lit) = &e.kind;
+                if let Some(s_src) = snippet_opt(cx, lit.span);
+                then {
+                    // Simulate macro expansion, converting {{ and }} to { and }.
+                    let s_expand = s_src.replace("{{", "{").replace("}}", "}");
+                    let sugg = format!("{}.to_string()", s_expand);
+                    span_useless_format(cx, call_site, sugg, applicability);
+                }
+            }
+        } else if let [value] = *format_args.value_args {
+            if_chain! {
+                if format_args.format_string_symbols == [kw::Empty];
+                if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
+                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::string_type, adt.did),
+                    ty::Str => true,
+                    _ => false,
+                };
+                if format_args.args.iter().all(|e| is_display_arg(e));
+                if format_args.fmt_expr.map_or(true, |e| check_unformatted(e));
+                then {
+                    let is_new_string = match value.kind {
+                        ExprKind::Binary(..) => true,
+                        ExprKind::MethodCall(path, ..) => path.ident.name.as_str() == "to_string",
+                        _ => false,
+                    };
+                    let sugg = if is_new_string {
+                        snippet_with_applicability(cx, value.span, "..", &mut applicability).into_owned()
+                    } else {
+                        let sugg = Sugg::hir_with_applicability(cx, value, "<arg>", &mut applicability);
+                        format!("{}.to_string()", sugg.maybe_par())
+                    };
+                    span_useless_format(cx, call_site, sugg, applicability);
+                }
+            }
+        };
     }
 }
 
-fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg: String) {
-    let to_replace = span.source_callsite();
-
+fn span_useless_format(cx: &LateContext<'_>, span: Span, mut sugg: String, mut applicability: Applicability) {
     // The callsite span contains the statement semicolon for some reason.
-    let snippet = snippet(cx, to_replace, "..");
-    if snippet.ends_with(';') {
+    if snippet_with_applicability(cx, span, "..", &mut applicability).ends_with(';') {
         sugg.push(';');
     }
 
-    span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |diag| {
-        diag.span_suggestion(
-            to_replace,
-            help,
-            sugg,
-            Applicability::MachineApplicable, // snippet
-        );
-    });
+    span_lint_and_sugg(
+        cx,
+        USELESS_FORMAT,
+        span,
+        "useless use of `format!`",
+        "consider using `.to_string()`",
+        sugg,
+        applicability,
+    );
 }
 
-fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) -> Option<String> {
+fn is_display_arg(expr: &Expr<'_>) -> bool {
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, format_args) = expr.kind;
-        if let ExprKind::Array(elems) = arms[0].body.kind;
-        if elems.len() == 1;
-        if let Some(args) = match_function_call(cx, &elems[0], &paths::FMT_ARGUMENTV1_NEW);
-        // matches `core::fmt::Display::fmt`
-        if args.len() == 2;
-        if let ExprKind::Path(ref qpath) = args[1].kind;
-        if let Some(did) = cx.qpath_res(qpath, args[1].hir_id).opt_def_id();
-        if match_def_path(cx, did, &paths::DISPLAY_FMT_METHOD);
-        // check `(arg0,)` in match block
-        if let PatKind::Tuple(pats, None) = arms[0].pat.kind;
-        if pats.len() == 1;
-        then {
-            let ty = cx.typeck_results().pat_ty(pats[0]).peel_refs();
-            if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym::string_type) {
-                return None;
-            }
-            if let ExprKind::Lit(ref lit) = format_args.kind {
-                if let LitKind::Str(ref s, _) = lit.node {
-                    return Some(format!("{:?}.to_string()", s.as_str()));
-                }
-            } else {
-                let sugg = Sugg::hir(cx, format_args, "<arg>");
-                if let ExprKind::MethodCall(path, _, _, _) = format_args.kind {
-                    if path.ident.name == sym!(to_string) {
-                        return Some(format!("{}", sugg));
-                    }
-                } else if let ExprKind::Binary(..) = format_args.kind {
-                    return Some(format!("{}", sugg));
-                }
-                return Some(format!("{}.to_string()", sugg.maybe_par()));
-            }
-        }
+        if let ExprKind::Call(_, [_, fmt]) = expr.kind;
+        if let ExprKind::Path(QPath::Resolved(_, path)) = fmt.kind;
+        if let [.., t, _] = path.segments;
+        if t.ident.name.as_str() == "Display";
+        then { true } else { false }
     }
-    None
-}
-
-fn on_new_v1<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<String> {
-    if_chain! {
-        if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1);
-        if args.len() == 2;
-        // Argument 1 in `new_v1()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, arr) = args[0].kind;
-        if let ExprKind::Array(pieces) = arr.kind;
-        if pieces.len() == 1;
-        if let ExprKind::Lit(ref lit) = pieces[0].kind;
-        if let LitKind::Str(ref s, _) = lit.node;
-        // Argument 2 in `new_v1()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, arg1) = args[1].kind;
-        if let ExprKind::Match(matchee, arms, MatchSource::Normal) = arg1.kind;
-        if arms.len() == 1;
-        if let ExprKind::Tup(tup) = matchee.kind;
-        then {
-            // `format!("foo")` expansion contains `match () { () => [], }`
-            if tup.is_empty() {
-                if let Some(s_src) = snippet_opt(cx, lit.span) {
-                    // Simulate macro expansion, converting {{ and }} to { and }.
-                    let s_expand = s_src.replace("{{", "{").replace("}}", "}");
-                    return Some(format!("{}.to_string()", s_expand));
-                }
-            } else if s.as_str().is_empty() {
-                return on_argumentv1_new(cx, &tup[0], arms);
-            }
-        }
-    }
-    None
-}
-
-fn on_new_v1_fmt<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<String> {
-    if_chain! {
-        if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1_FORMATTED);
-        if args.len() == 3;
-        if check_unformatted(&args[2]);
-        // Argument 1 in `new_v1_formatted()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, arr) = args[0].kind;
-        if let ExprKind::Array(pieces) = arr.kind;
-        if pieces.len() == 1;
-        if let ExprKind::Lit(ref lit) = pieces[0].kind;
-        if let LitKind::Str(..) = lit.node;
-        // Argument 2 in `new_v1_formatted()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, arg1) = args[1].kind;
-        if let ExprKind::Match(matchee, arms, MatchSource::Normal) = arg1.kind;
-        if arms.len() == 1;
-        if let ExprKind::Tup(tup) = matchee.kind;
-        then {
-            return on_argumentv1_new(cx, &tup[0], arms);
-        }
-    }
-    None
 }
 
 /// Checks if the expression matches
@@ -184,10 +131,9 @@ fn on_new_v1_fmt<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<S
 fn check_unformatted(expr: &Expr<'_>) -> bool {
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
-        if let ExprKind::Array(exprs) = expr.kind;
-        if exprs.len() == 1;
+        if let ExprKind::Array([expr]) = expr.kind;
         // struct `core::fmt::rt::v1::Argument`
-        if let ExprKind::Struct(_, fields, _) = exprs[0].kind;
+        if let ExprKind::Struct(_, fields, _) = expr.kind;
         if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym::format);
         // struct `core::fmt::rt::v1::FormatSpec`
         if let ExprKind::Struct(_, fields, _) = format_field.expr.kind;
