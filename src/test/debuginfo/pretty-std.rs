@@ -111,8 +111,9 @@
 // cdb-check:    [11]             : 33 '!' [Type: char]
 
 // cdb-command: dx os_string
-// cdb-check:os_string        [Type: [...]::OsString]
-// NOTE: OsString doesn't have a .natvis entry yet.
+// cdb-check:os_string        : "IAMA OS string 😃" [Type: std::ffi::os_str::OsString]
+// cdb-check:    [<Raw View>]     [Type: std::ffi::os_str::OsString]
+// cdb-check:    [chars]          : "IAMA OS string 😃"
 
 // cdb-command: dx some
 // cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
@@ -129,9 +130,23 @@
 // NOTE: cdb fails to interpret debug info of Option enums on i686.
 // cdb-check:some_string      [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
 
-#![allow(unused_variables)]
-use std::ffi::OsString;
+// cdb-command: dx linkedlist
+// cdb-check:linkedlist       : { len=0x2 } [Type: alloc::collections::linked_list::LinkedList<i32>]
+// cdb-check:    [<Raw View>]     [Type: alloc::collections::linked_list::LinkedList<i32>]
+// cdb-check:    [0x0]            : 128 [Type: int]
+// cdb-check:    [0x1]            : 42 [Type: int]
 
+// cdb-command: dx vecdeque
+// cdb-check:vecdeque         : { len=0x2 } [Type: alloc::collections::vec_deque::VecDeque<i32>]
+// cdb-check:    [<Raw View>]     [Type: alloc::collections::vec_deque::VecDeque<i32>]
+// cdb-check:    [len]            : 0x2
+// cdb-check:    [capacity]       : 0x8 [Type: unsigned [...]]
+// cdb-check:    [0x0]            : 90 [Type: int]
+// cdb-check:    [0x1]            : 20 [Type: int]
+
+#![allow(unused_variables)]
+use std::collections::{LinkedList, VecDeque};
+use std::ffi::OsString;
 
 fn main() {
 
@@ -155,6 +170,16 @@ fn main() {
     let none: Option<i64> = None;
 
     let some_string = Some("IAMA optional string!".to_owned());
+
+    // LinkedList
+    let mut linkedlist = LinkedList::new();
+    linkedlist.push_back(42);
+    linkedlist.push_front(128);
+
+    // VecDeque
+    let mut vecdeque = VecDeque::new();
+    vecdeque.push_back(20);
+    vecdeque.push_front(90);
 
     zzz(); // #break
 }
