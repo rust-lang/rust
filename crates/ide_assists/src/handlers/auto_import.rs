@@ -980,6 +980,7 @@ mod bar {
 
     #[test]
     fn uses_abs_path_with_extern_crate_clash() {
+        cov_mark::check!(ambiguous_crate_start);
         check_assist(
             auto_import,
             r#"

@@ -141,7 +141,12 @@ fn find_path_inner(
                 })
                 .is_some();
             return Some(ModPath::from_segments(
-                if name_already_occupied_in_type_ns { PathKind::Abs } else { PathKind::Plain },
+                if name_already_occupied_in_type_ns {
+                    cov_mark::hit!(ambiguous_crate_start);
+                    PathKind::Abs
+                } else {
+                    PathKind::Plain
+                },
                 vec![name],
             ));
         }
