@@ -63,7 +63,7 @@ const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
 const _: *const u8 =
     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
 //~^ ERROR evaluation of constant value failed
-//~| pointer must be in-bounds
+//~| out-of-bounds
 
 const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
 //~^ ERROR any use of this value will cause an error

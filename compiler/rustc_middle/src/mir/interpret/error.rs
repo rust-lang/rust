@@ -181,8 +181,8 @@ pub enum CheckInAllocMsg {
 }
 
 impl fmt::Display for CheckInAllocMsg {
-    /// When this is printed as an error the context looks like this
-    /// "{msg}pointer must be in-bounds at offset..."
+    /// When this is printed as an error the context looks like this:
+    /// "{msg}0x01 is not a valid pointer".
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -318,14 +318,24 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             PointerUseAfterFree(a) => {
                 write!(f, "pointer to {} was dereferenced after this allocation got freed", a)
             }
+            PointerOutOfBounds { alloc_id, offset, size: Size::ZERO, msg, allocation_size } => {
+                write!(
+                    f,
+                    "{}{} has size {}, so pointer at offset {} is out-of-bounds",
+                    msg,
+                    alloc_id,
+                    allocation_size.bytes(),
+                    offset.bytes(),
+                )
+            }
             PointerOutOfBounds { alloc_id, offset, size, msg, allocation_size } => write!(
                 f,
-                "{}pointer must be in-bounds for {} bytes at offset {}, but {} has size {}",
+                "{}{} has size {}, so pointer to {} bytes starting at offset {} is out-of-bounds",
                 msg,
+                alloc_id,
+                allocation_size.bytes(),
                 size.bytes(),
                 offset.bytes(),
-                alloc_id,
-                allocation_size.bytes()
             ),
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
                 write!(f, "null pointer is not a valid pointer for this operation")
