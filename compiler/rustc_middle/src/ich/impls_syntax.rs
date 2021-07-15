@@ -6,6 +6,7 @@ use crate::ich::StableHashingContext;
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::{BytePos, NormalizedPos, SourceFile};
+use std::assert::assert_matches;
 
 use smallvec::SmallVec;
 
