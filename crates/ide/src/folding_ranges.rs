@@ -7,6 +7,9 @@ use syntax::{
     SyntaxNode, TextRange, TextSize,
 };
 
+const REGION_START: &str = "// region:";
+const REGION_END: &str = "// endregion";
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum FoldKind {
     Comment,
@@ -30,8 +33,8 @@ pub struct Fold {
 
 // Feature: Folding
 //
-// Defines folding regions for curly braced blocks, runs of consecutive import
-// statements, and `region` / `endregion` comment markers.
+// Defines folding regions for curly braced blocks, runs of consecutive use, mod, const or static
+// items, and `region` / `endregion` comment markers.
 pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
@@ -39,8 +42,9 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut visited_mods = FxHashSet::default();
     let mut visited_consts = FxHashSet::default();
     let mut visited_statics = FxHashSet::default();
+
     // regions can be nested, here is a LIFO buffer
-    let mut regions_starts: Vec<TextSize> = vec![];
+    let mut region_starts: Vec<TextSize> = vec![];
 
     for element in file.syntax().descendants_with_tokens() {
         // Fold items that span multiple lines
@@ -59,27 +63,23 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
             NodeOrToken::Token(token) => {
                 // Fold groups of comments
                 if let Some(comment) = ast::Comment::cast(token) {
-                    if !visited_comments.contains(&comment) {
-                        // regions are not real comments
-                        if comment.text().trim().starts_with("// region:") {
-                            regions_starts.push(comment.syntax().text_range().start());
-                        } else if comment.text().trim().starts_with("// endregion") {
-                            if let Some(region) = regions_starts.pop() {
-                                res.push(Fold {
-                                    range: TextRange::new(
-                                        region,
-                                        comment.syntax().text_range().end(),
-                                    ),
-                                    kind: FoldKind::Region,
-                                })
-                            }
-                        } else {
-                            if let Some(range) =
-                                contiguous_range_for_comment(comment, &mut visited_comments)
-                            {
-                                res.push(Fold { range, kind: FoldKind::Comment })
-                            }
+                    if visited_comments.contains(&comment) {
+                        continue;
+                    }
+                    let text = comment.text().trim_start();
+                    if text.starts_with(REGION_START) {
+                        region_starts.push(comment.syntax().text_range().start());
+                    } else if text.starts_with(REGION_END) {
+                        if let Some(region) = region_starts.pop() {
+                            res.push(Fold {
+                                range: TextRange::new(region, comment.syntax().text_range().end()),
+                                kind: FoldKind::Region,
+                            })
                         }
+                    } else if let Some(range) =
+                        contiguous_range_for_comment(comment, &mut visited_comments)
+                    {
+                        res.push(Fold { range, kind: FoldKind::Comment })
                     }
                 }
             }
@@ -286,7 +286,9 @@ mod tests {
         let (ranges, text) = extract_tags(ra_fixture, "fold");
 
         let parse = SourceFile::parse(&text);
-        let folds = folding_ranges(&parse.tree());
+        let mut folds = folding_ranges(&parse.tree());
+        folds.sort_by_key(|fold| (fold.range.start(), fold.range.end()));
+
         assert_eq!(
             folds.len(),
             ranges.len(),
@@ -294,8 +296,8 @@ mod tests {
         );
 
         for (fold, (range, attr)) in folds.iter().zip(ranges.into_iter()) {
-            assert_eq!(fold.range.start(), range.start());
-            assert_eq!(fold.range.end(), range.end());
+            assert_eq!(fold.range.start(), range.start(), "mismatched start of folding ranges");
+            assert_eq!(fold.range.end(), range.end(), "mismatched end of folding ranges");
 
             let kind = match fold.kind {
                 FoldKind::Comment => "comment",
@@ -525,7 +527,10 @@ const FOO: [usize; 4] = <fold array>[
 // 1. some normal comment
 <fold region>// region: test
 // 2. some normal comment
-calling_function(x,y);
+<fold region>// region: inner
+fn f() {}
+// endregion</fold>
+fn f2() {}
 // endregion: test</fold>
 "#,
         )
