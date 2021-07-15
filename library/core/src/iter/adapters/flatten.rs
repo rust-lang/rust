@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map};
+use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
 use crate::ops::Try;
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -111,6 +111,14 @@ where
     I: FusedIterator,
     U: IntoIterator,
     F: FnMut(I::Item) -> U,
+{
+}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, I, F, const N: usize> TrustedLen for FlatMap<I, [T; N], F>
+where
+    I: TrustedLen,
+    F: FnMut(I::Item) -> [T; N],
 {
 }
 
@@ -230,6 +238,12 @@ where
 {
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, I, const N: usize> TrustedLen for Flatten<I> where
+    I: Iterator<Item = [T; N]> + TrustedLen
+{
+}
+
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
 #[derive(Clone, Debug)]
@@ -282,6 +296,21 @@ where
         let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), U::size_hint);
         let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), U::size_hint);
         let lo = flo.saturating_add(blo);
+
+        if let Some(fixed_size) = <<I as Iterator>::Item as ConstSizeIterable>::size() {
+            let (lower, upper) = self.iter.size_hint();
+
+            let lower = lower.saturating_mul(fixed_size).saturating_add(lo);
+            let upper = upper.and_then(|i| i.checked_mul(fixed_size));
+            let upper = fhi
+                .zip_with(bhi, usize::checked_add)
+                .flatten()
+                .zip_with(upper, usize::checked_add)
+                .flatten();
+
+            return (lower, upper);
+        }
+
         match (self.iter.size_hint(), fhi, bhi) {
             ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
             _ => (lo, None),
@@ -442,5 +471,23 @@ where
         }
 
         init
+    }
+}
+
+trait ConstSizeIterable {
+    fn size() -> Option<usize>;
+}
+
+impl<T> ConstSizeIterable for T {
+    #[inline]
+    default fn size() -> Option<usize> {
+        None
+    }
+}
+
+impl<T, const N: usize> ConstSizeIterable for [T; N] {
+    #[inline]
+    fn size() -> Option<usize> {
+        Some(N)
     }
 }
