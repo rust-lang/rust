@@ -345,7 +345,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ty,
                     ImplTraitContext::TypeAliasesOpaqueTy {
                         capturable_lifetimes: &mut FxHashSet::default(),
-                        origin: hir::OpaqueTyOrigin::TyAlias,
                     },
                 );
                 let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
@@ -918,7 +917,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ty,
                             ImplTraitContext::TypeAliasesOpaqueTy {
                                 capturable_lifetimes: &mut FxHashSet::default(),
-                                origin: hir::OpaqueTyOrigin::TyAlias,
                             },
                         );
                         hir::ImplItemKind::TyAlias(ty)

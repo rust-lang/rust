@@ -280,8 +280,6 @@ enum ImplTraitContext<'b, 'a> {
         // FIXME(impl_trait): but `required_region_bounds` will ICE later
         // anyway.
         capturable_lifetimes: &'b mut FxHashSet<hir::LifetimeName>,
-        /// Origin: OpaqueTyOrigin::TyAlias
-        origin: hir::OpaqueTyOrigin,
     },
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
@@ -310,8 +308,8 @@ impl<'a> ImplTraitContext<'_, 'a> {
             ReturnPositionOpaqueTy { fn_def_id, origin } => {
                 ReturnPositionOpaqueTy { fn_def_id: *fn_def_id, origin: *origin }
             }
-            TypeAliasesOpaqueTy { capturable_lifetimes, origin } => {
-                TypeAliasesOpaqueTy { capturable_lifetimes, origin: *origin }
+            TypeAliasesOpaqueTy { capturable_lifetimes } => {
+                TypeAliasesOpaqueTy { capturable_lifetimes }
             }
             Disallowed(pos) => Disallowed(*pos),
         }
@@ -1152,7 +1150,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             true,
                             ImplTraitContext::TypeAliasesOpaqueTy {
                                 capturable_lifetimes: &mut capturable_lifetimes,
-                                origin: hir::OpaqueTyOrigin::TyAlias,
                             },
                         )
                     }
@@ -1416,18 +1413,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             None,
                             |this| this.lower_param_bounds(bounds, itctx),
                         ),
-                    ImplTraitContext::TypeAliasesOpaqueTy { ref capturable_lifetimes, origin } => {
+                    ImplTraitContext::TypeAliasesOpaqueTy { ref capturable_lifetimes } => {
                         // Reset capturable lifetimes, any nested impl trait
                         // types will inherit lifetimes from this opaque type,
                         // so don't need to capture them again.
                         let nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy {
                             capturable_lifetimes: &mut FxHashSet::default(),
-                            origin,
                         };
                         self.lower_opaque_impl_trait(
                             span,
                             None,
-                            origin,
+                            hir::OpaqueTyOrigin::TyAlias,
                             def_node_id,
                             Some(capturable_lifetimes),
                             |this| this.lower_param_bounds(bounds, nested_itctx),
