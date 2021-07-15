@@ -1130,32 +1130,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(sub, ty::Variance::Covariant, sup, locations, category)
     }
 
-    /// Try to relate `sub <: sup`; if this fails, instantiate opaque
-    /// variables in `sub` with their inferred definitions and try
-    /// again. This is used for opaque types in places (e.g., `let x:
-    /// impl Foo = ..`).
-    fn sub_types_or_anon(
-        &mut self,
-        sub: Ty<'tcx>,
-        sup: Ty<'tcx>,
-        locations: Locations,
-        category: ConstraintCategory,
-    ) -> Fallible<()> {
-        if let Err(terr) = self.sub_types(sub, sup, locations, category) {
-            if let ty::Opaque(..) = sup.kind() {
-                // When you have `let x: impl Foo = ...` in a closure,
-                // the resulting inferend values are stored with the
-                // def-id of the base function.
-                let parent_def_id =
-                    self.tcx().closure_base_def_id(self.body.source.def_id()).expect_local();
-                return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
-            } else {
-                return Err(terr);
-            }
-        }
-        Ok(())
-    }
-
     fn eq_types(
         &mut self,
         a: Ty<'tcx>,
@@ -1490,7 +1464,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let rv_ty = rv.ty(body, tcx);
                 let rv_ty = self.normalize(rv_ty, location);
                 if let Err(terr) =
-                    self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
+                    self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
                     span_mirbug!(
                         self,
@@ -1777,9 +1751,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 let locations = term_location.to_locations();
 
-                if let Err(terr) =
-                    self.sub_types_or_anon(sig.output(), dest_ty, locations, category)
-                {
+                if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations, category) {
                     span_mirbug!(
                         self,
                         term,
