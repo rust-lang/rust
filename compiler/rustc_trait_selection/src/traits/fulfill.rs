@@ -353,7 +353,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                ty::PredicateKind::Trait(trait_ref, _constness) => {
+                ty::PredicateKind::Trait(trait_ref, _constness, _polarity) => {
                     let trait_obligation = obligation.with(binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
@@ -361,9 +361,6 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         trait_obligation,
                         &mut pending_obligation.stalled_on,
                     )
-                }
-                ty::PredicateKind::NotTrait(_trait_ref, _constness) => {
-                    todo!("yaahc")
                 }
                 ty::PredicateKind::Projection(data) => {
                     let project_obligation = obligation.with(binder.rebind(data));
@@ -391,7 +388,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
             },
             Some(pred) => match pred {
-                ty::PredicateKind::Trait(data, _) => {
+                ty::PredicateKind::Trait(data, _, _) => {
                     let trait_obligation = obligation.with(Binder::dummy(data));
 
                     self.process_trait_obligation(
@@ -399,10 +396,6 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         trait_obligation,
                         &mut pending_obligation.stalled_on,
                     )
-                }
-
-                ty::PredicateKind::NotTrait(_data, _) => {
-                    todo!("yaahc")
                 }
 
                 ty::PredicateKind::RegionOutlives(data) => {

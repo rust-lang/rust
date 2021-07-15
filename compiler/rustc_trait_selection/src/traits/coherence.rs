@@ -9,12 +9,14 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_infer::traits::PredicateObligation;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, fast_reject, PredicateKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, fast_reject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::iter;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -184,16 +186,11 @@ fn overlap_within_probe(
 
     debug!("overlap: unification check succeeded");
 
-    let negate_obligation = |mut obligation| {
-        let predicate_kind = obligation.predicate.inner.kind.0;
-        match predicate_kind {
-            PredicateKind::Trait(trait_pred, constness) => {
-                // call predicate.map here
-                obligation.predicate.inner.kind.0 = PredicateKind::NotTrait(trait_pred, constness);
-                Some(obligation)
-            }
-            _ => return None,
-        }
+    let negate_obligation =
+        |obligation: &PredicateObligation<'tcx>, tcx: TyCtxt<'tcx>| {
+            let predicate = obligation.predicate.negate_trait(tcx);
+            let mut obligation = obligation.clone();
+            predicate.map(|predicate| { obligation.predicate = predicate; obligation })
     };
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
@@ -211,16 +208,16 @@ fn overlap_within_probe(
             predicate: p,
         })
         .chain(obligations)
-        .find(|&o| {
-            if let Some(o_neg) = negate_obligation(o) {
+        .find(|o| {
+            if let Some(o_neg) = negate_obligation(o, infcx.tcx) {
                 // given o = `T: Trait` this produces `T: !Trait`
-                if selcx.predicate_must_hold(o_neg) {
+                if infcx.predicate_must_hold_considering_regions(&o_neg) {
                     // we can prove `T: !Trait` is true based on the impls we see
                     return true;
                 }
             }
 
-            !selcx.predicate_may_hold_fatal(&o)
+            !selcx.predicate_may_hold_fatal(o)
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once

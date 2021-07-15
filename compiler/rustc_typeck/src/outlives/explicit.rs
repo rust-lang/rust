@@ -50,8 +50,6 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         )
                     }
 
-                    ty::PredicateKind::NotTrait(..) => todo!("yaahc"),
-
                     ty::PredicateKind::Trait(..)
                     | ty::PredicateKind::Projection(..)
                     | ty::PredicateKind::WellFormed(..)

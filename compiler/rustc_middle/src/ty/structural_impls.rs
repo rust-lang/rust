@@ -174,13 +174,12 @@ impl fmt::Debug for ty::Predicate<'tcx> {
 impl fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::PredicateKind::Trait(ref a, constness) => {
+            ty::PredicateKind::Trait(ref a, constness, _polarity) => {
                 if let hir::Constness::Const = constness {
                     write!(f, "const ")?;
                 }
                 a.fmt(f)
             }
-            ty::PredicateKind::NotTrait(ref _a, _constness) => todo!("yaahc"),
             ty::PredicateKind::Subtype(ref pair) => pair.fmt(f),
             ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
@@ -420,11 +419,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
     type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
-            ty::PredicateKind::Trait(data, constness) => {
-                tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness))
-            }
-            ty::PredicateKind::NotTrait(_data, _constness) => {
-                todo!("yaahc")
+            ty::PredicateKind::Trait(data, constness, polarity) => {
+                tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness, polarity))
             }
             ty::PredicateKind::Subtype(data) => tcx.lift(data).map(ty::PredicateKind::Subtype),
             ty::PredicateKind::RegionOutlives(data) => {

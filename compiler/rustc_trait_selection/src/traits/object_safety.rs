@@ -280,12 +280,9 @@ fn predicate_references_self(
     let self_ty = tcx.types.self_param;
     let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(ref data, _) => {
+        ty::PredicateKind::Trait(ref data, _, _) => {
             // In the case of a trait predicate, we can skip the "self" type.
             if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
-        }
-        ty::PredicateKind::NotTrait(ref _data, _) => {
-            todo!("yaahc")
         }
         ty::PredicateKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
@@ -334,11 +331,8 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| {
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref trait_pred, _) => {
+            ty::PredicateKind::Trait(ref trait_pred, _, _) => {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
-            }
-            ty::PredicateKind::NotTrait(ref _trait_pred, _) => {
-                todo!("yaahc")
             }
             ty::PredicateKind::Projection(..)
             | ty::PredicateKind::Subtype(..)

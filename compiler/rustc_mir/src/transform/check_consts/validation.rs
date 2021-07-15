@@ -424,7 +424,7 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, _constness) => {
+                    ty::PredicateKind::Trait(pred, _constness, _polarity) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -444,9 +444,6 @@ impl Validator<'mir, 'tcx> {
                             // or cause errors in other passes
                             _ => continue,
                         }
-                    }
-                    ty::PredicateKind::NotTrait(_pred, _constness) => {
-                        todo!("yaahc")
                     }
                 }
             }

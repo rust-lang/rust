@@ -124,7 +124,7 @@ impl Elaborator<'tcx> {
 
         let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data, _) => {
+            ty::PredicateKind::Trait(data, _, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
@@ -145,9 +145,6 @@ impl Elaborator<'tcx> {
                 let obligations = obligations.filter(|o| visited.insert(o.predicate));
 
                 self.stack.extend(obligations);
-            }
-            ty::PredicateKind::NotTrait(_data, _) => {
-                todo!("yaahc")
             }
             ty::PredicateKind::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,

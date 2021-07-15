@@ -136,7 +136,11 @@ pub struct MainDefinition {
 
 impl MainDefinition {
     pub fn opt_fn_def_id(self) -> Option<DefId> {
-        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
+        if let Res::Def(DefKind::Fn, def_id) = self.res {
+            Some(def_id)
+        } else {
+            None
+        }
     }
 }
 
@@ -151,7 +155,7 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, TypeFoldable, Debug)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -371,7 +375,7 @@ impl ty::EarlyBoundRegion {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 crate struct PredicateInner<'tcx> {
     kind: Binder<'tcx, PredicateKind<'tcx>>,
     flags: TypeFlags,
@@ -408,6 +412,26 @@ impl<'tcx> Predicate<'tcx> {
     pub fn kind(self) -> Binder<'tcx, PredicateKind<'tcx>> {
         self.inner.kind
     }
+
+    /// hi oli
+    pub fn negate_trait(mut self, tcx: TyCtxt<'tcx>) -> Option<Self> {
+        let mut inner = self.inner.clone();
+
+        if !matches!(inner.kind.skip_binder(), PredicateKind::Trait(..)) {
+            return None;
+        }
+
+        inner.kind = inner.kind.map_bound(|kind| match kind {
+            PredicateKind::Trait(trait_pred, constness, ImplPolarity::Positive) => {
+                PredicateKind::Trait(trait_pred, constness, ImplPolarity::Negative)
+            }
+            _ => bug!(),
+        });
+
+        self.inner = tcx.arena.alloc(inner);
+
+        Some(self)
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
@@ -435,16 +459,7 @@ pub enum PredicateKind<'tcx> {
     /// A trait predicate will have `Constness::Const` if it originates
     /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
     /// `const fn foobar<Foo: Bar>() {}`).
-    Trait(TraitPredicate<'tcx>, Constness),
-
-    /// Corresponds to `where Foo: !Bar<A, B, C>`. `Foo` here would be
-    /// the `Self` type of the trait reference and `A`, `B`, and `C`
-    /// would be the type parameters.
-    ///
-    /// A trait predicate will have `Constness::Const` if it originates
-    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
-    /// `const fn foobar<Foo: Bar>() {}`).
-    NotTrait(TraitPredicate<'tcx>, Constness),
+    Trait(TraitPredicate<'tcx>, Constness, ImplPolarity),
 
     /// `where 'a: 'b`
     RegionOutlives(RegionOutlivesPredicate<'tcx>),
@@ -733,7 +748,7 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
+        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness, self.polarity)
             .to_predicate(tcx)
     }
 }
@@ -742,7 +757,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.value
             .map_bound(|trait_ref| {
-                PredicateKind::Trait(ty::TraitPredicate { trait_ref }, self.constness)
+                PredicateKind::Trait(ty::TraitPredicate { trait_ref }, self.constness, self.polarity)
             })
             .to_predicate(tcx)
     }
@@ -750,7 +765,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness)).to_predicate(tcx)
+        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness, self.polarity)).to_predicate(tcx)
     }
 }
 
@@ -776,10 +791,9 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Trait(t, constness) => {
-                Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
+            PredicateKind::Trait(t, constness, polarity) => {
+                Some(ConstnessAnd { constness, polarity, value: predicate.rebind(t.trait_ref) })
             }
-            PredicateKind::NotTrait(..) => todo!("yaahc"),
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::RegionOutlives(..)
@@ -797,7 +811,6 @@ impl<'tcx> Predicate<'tcx> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::TypeOutlives(data) => Some(predicate.rebind(data)),
-            PredicateKind::NotTrait(..) => todo!("yaahc"),
             PredicateKind::Trait(..)
             | PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
@@ -1056,7 +1069,11 @@ impl WithOptConstParam<LocalDefId> {
     }
 
     pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
+        if let Some(did) = self.const_param_did {
+            did
+        } else {
+            self.did.to_def_id()
+        }
     }
 }
 
@@ -1245,6 +1262,7 @@ impl<'tcx> ParamEnv<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ConstnessAnd<T> {
     pub constness: Constness,
+    pub polarity: ImplPolarity,
     pub value: T,
 }
 
@@ -1253,7 +1271,7 @@ pub struct ConstnessAnd<T> {
 pub trait WithConstness: Sized {
     #[inline]
     fn with_constness(self, constness: Constness) -> ConstnessAnd<Self> {
-        ConstnessAnd { constness, value: self }
+        ConstnessAnd { constness, polarity: ImplPolarity::Positive, value: self }
     }
 
     #[inline]

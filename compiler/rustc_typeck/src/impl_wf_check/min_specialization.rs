@@ -366,7 +366,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         _ if predicate.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
+        ty::PredicateKind::Trait(pred, hir::Constness::NotConst, _) => {
             if !matches!(
                 trait_predicate_kind(tcx, predicate),
                 Some(TraitSpecializationKind::Marker)
@@ -394,13 +394,12 @@ fn trait_predicate_kind<'tcx>(
     predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
+        ty::PredicateKind::Trait(pred, hir::Constness::NotConst, ty::ImplPolarity::Positive) => {
             Some(tcx.trait_def(pred.def_id()).specialization_kind)
         }
-        ty::PredicateKind::NotTrait(_pred, _) => {
-            todo!("yaahc")
-        }
-        ty::PredicateKind::Trait(_, hir::Constness::Const)
+        ty::PredicateKind::Trait(_, hir::Constness::Const, _)
+        | ty::PredicateKind::Trait(_, _, ty::ImplPolarity::Negative)
+        | ty::PredicateKind::Trait(_, _, ty::ImplPolarity::Reservation)
         | ty::PredicateKind::RegionOutlives(_)
         | ty::PredicateKind::TypeOutlives(_)
         | ty::PredicateKind::Projection(_)

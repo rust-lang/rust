@@ -107,11 +107,8 @@ pub fn predicate_obligations<'a, 'tcx>(
 
     // It's ok to skip the binder here because wf code is prepared for it
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(t, _) => {
+        ty::PredicateKind::Trait(t, _, _) => {
             wf.compute_trait_ref(&t.trait_ref, Elaborate::None);
-        }
-        ty::PredicateKind::NotTrait(_t, _) => {
-            todo!("yaahc")
         }
         ty::PredicateKind::RegionOutlives(..) => {}
         ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
@@ -228,7 +225,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                 }
             }
         }
-        ty::PredicateKind::Trait(pred, _) => {
+        ty::PredicateKind::Trait(pred, _, _) => {
             // An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);

@@ -832,16 +832,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(trait_predicate, _) => {
+                ty::PredicateKind::Trait(trait_predicate, _, _) => {
                     match *trait_predicate.trait_ref.self_ty().kind() {
                         ty::Param(p) if p == param_ty => {
                             Some(bound_predicate.rebind(trait_predicate.trait_ref))
                         }
                         _ => None,
                     }
-                }
-                ty::PredicateKind::NotTrait(_trait_predicate, _) => {
-                    todo!("yaahc")
                 }
                 ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Projection(..)

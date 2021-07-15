@@ -793,11 +793,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         bound_predicate.rebind(data).required_poly_trait_ref(self.tcx),
                         obligation,
                     )),
-                    ty::PredicateKind::Trait(data, _) => {
+                    ty::PredicateKind::Trait(data, _, _) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
-                    }
-                    ty::PredicateKind::NotTrait(_data, _) => {
-                        todo!("yaahc")
                     }
                     ty::PredicateKind::Subtype(..) => None,
                     ty::PredicateKind::RegionOutlives(..) => None,
