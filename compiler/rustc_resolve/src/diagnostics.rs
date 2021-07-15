@@ -502,14 +502,14 @@ impl<'a> Resolver<'a> {
 
                 err
             }
-            ResolutionError::SelfInTyParamDefault => {
+            ResolutionError::SelfInGenericParamDefault => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0735,
-                    "type parameters cannot use `Self` in their defaults"
+                    "generic parameters cannot use `Self` in their defaults"
                 );
-                err.span_label(span, "`Self` in type parameter default".to_string());
+                err.span_label(span, "`Self` in generic parameter default".to_string());
                 err
             }
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
