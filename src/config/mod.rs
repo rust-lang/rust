@@ -69,6 +69,8 @@ create_config! {
     format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
     format_macro_bodies: bool, true, false, "Format the bodies of macros";
+    hex_literal_case: HexLiteralCase, HexLiteralCase::Preserve, false,
+        "Format hexadecimal integer literals";
 
     // Single line expressions and items
     empty_item_single_line: bool, true, false,
@@ -570,6 +572,7 @@ license_template_path = ""
 format_strings = false
 format_macro_matchers = false
 format_macro_bodies = true
+hex_literal_case = "Preserve"
 empty_item_single_line = true
 struct_lit_single_line = true
 fn_single_line = false

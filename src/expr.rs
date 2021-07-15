@@ -13,7 +13,7 @@ use crate::comment::{
     rewrite_missing_comment, CharClasses, FindUncommented,
 };
 use crate::config::lists::*;
-use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
+use crate::config::{Config, ControlBraceStyle, HexLiteralCase, IndentStyle, Version};
 use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
     struct_lit_tactic, write_list, ListFormatting, Separator,
@@ -1168,6 +1168,7 @@ pub(crate) fn rewrite_literal(
 ) -> Option<String> {
     match l.kind {
         ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
+        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
         _ => wrap_str(
             context.snippet(l.span).to_owned(),
             context.config.max_width(),
@@ -1199,6 +1200,36 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
         str_lit,
         &StringFormat::new(shape.visual_indent(0), context.config),
         shape.width.saturating_sub(2),
+    )
+}
+
+fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
+    let span = lit.span;
+    let symbol = lit.token.symbol.as_str();
+
+    if symbol.starts_with("0x") {
+        let hex_lit = match context.config.hex_literal_case() {
+            HexLiteralCase::Preserve => None,
+            HexLiteralCase::Upper => Some(symbol[2..].to_ascii_uppercase()),
+            HexLiteralCase::Lower => Some(symbol[2..].to_ascii_lowercase()),
+        };
+        if let Some(hex_lit) = hex_lit {
+            return wrap_str(
+                format!(
+                    "0x{}{}",
+                    hex_lit,
+                    lit.token.suffix.map_or(String::new(), |s| s.to_string())
+                ),
+                context.config.max_width(),
+                shape,
+            );
+        }
+    }
+
+    wrap_str(
+        context.snippet(span).to_owned(),
+        context.config.max_width(),
+        shape,
     )
 }
 
