@@ -5,6 +5,7 @@
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::sync::{Lock, RwLock};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
@@ -1628,26 +1629,28 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
-    names: FxHashMap<&'static str, Symbol>,
-    strings: Vec<&'static str>,
+    names: Lock<FxHashMap<&'static str, Symbol>>,
+    strings: RwLock<Vec<&'static str>>,
 }
 
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
         Interner {
-            strings: init.into(),
-            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
+            strings: RwLock::new(init.into()),
+            names: Lock::new(init.iter().copied().zip((0..).map(Symbol::new)).collect()),
             ..Default::default()
         }
     }
 
     #[inline]
-    pub fn intern(&mut self, string: &str) -> Symbol {
-        if let Some(&name) = self.names.get(string) {
+    pub fn intern(&self, string: &str) -> Symbol {
+        let mut names = self.names.lock();
+        let mut strings = self.strings.write();
+        if let Some(&name) = names.get(string) {
             return name;
         }
 
-        let name = Symbol::new(self.strings.len() as u32);
+        let name = Symbol::new(strings.len() as u32);
 
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
@@ -1656,15 +1659,15 @@ impl Interner {
         // It is safe to extend the arena allocation to `'static` because we only access
         // these while the arena is still alive.
         let string: &'static str = unsafe { &*(string as *const str) };
-        self.strings.push(string);
-        self.names.insert(string, name);
+        strings.push(string);
+        names.insert(string, name);
         name
     }
 
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
-        self.strings[symbol.0.as_usize()]
+        self.strings.read()[symbol.0.as_usize()]
     }
 }
 
@@ -1796,8 +1799,8 @@ impl Ident {
 }
 
 #[inline]
-fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    with_session_globals(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
+fn with_interner<T, F: FnOnce(&Interner) -> T>(f: F) -> T {
+    with_session_globals(|session_globals| f(&session_globals.symbol_interner))
 }
 
 /// An alternative to [`Symbol`], useful when the chars within the symbol need to
