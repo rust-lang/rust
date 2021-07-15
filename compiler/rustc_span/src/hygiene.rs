@@ -579,19 +579,19 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
         } else {
             let mut s = String::from("");
             s.push_str("Expansions:");
-            let mut debug_expn_data = |(id, expn_info): (&ExpnId, &ExpnData)| {
+            let mut debug_expn_data = |(id, expn_data): (&ExpnId, &ExpnData)| {
                 s.push_str(&format!(
                     "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
                     id,
-                    expn_info.parent,
-                    expn_info.call_site.ctxt(),
-                    expn_info.def_site.ctxt(),
-                    expn_info.kind,
+                    expn_data.parent,
+                    expn_data.call_site.ctxt(),
+                    expn_data.def_site.ctxt(),
+                    expn_data.kind,
                 ))
             };
-            data.local_expn_data.iter_enumerated().for_each(|(id, expn_info)| {
-                let expn_info = expn_info.as_ref().expect("no expansion data for an expansion ID");
-                debug_expn_data((&id.to_expn_id(), expn_info))
+            data.local_expn_data.iter_enumerated().for_each(|(id, expn_data)| {
+                let expn_data = expn_data.as_ref().expect("no expansion data for an expansion ID");
+                debug_expn_data((&id.to_expn_id(), expn_data))
             });
             data.foreign_expn_data.iter().for_each(debug_expn_data);
             s.push_str("\n\nSyntaxContexts:");
