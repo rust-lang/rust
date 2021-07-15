@@ -601,16 +601,4 @@ fn f() -> m::E { V$0 }
             "#]],
         )
     }
-
-    #[test]
-    fn dont_complete_attr() {
-        check(
-            r#"
-struct Foo;
-#[$0]
-fn f() {}
-"#,
-            expect![[""]],
-        )
-    }
 }

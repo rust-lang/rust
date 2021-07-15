@@ -1,3 +1,4 @@
+//! Completion tests for item list position.
 use expect_test::{expect, Expect};
 
 use crate::tests::{completion_list, BASE_FIXTURE};

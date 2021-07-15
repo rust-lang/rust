@@ -1,4 +1,4 @@
-//! Completions tests for item specifics overall.
+//! Completion tests for item specifics overall.
 //!
 //! Except for use items which are tested in [super::use_tree] and mod declarations with are tested
 //! in [crate::completions::mod_].
