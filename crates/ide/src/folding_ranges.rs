@@ -1,11 +1,13 @@
 use rustc_hash::FxHashSet;
 
 use syntax::{
-    ast::{self, AstNode, AstToken, VisibilityOwner},
-    Direction, NodeOrToken, SourceFile,
+    ast::{self, AstNode, AstToken},
+    match_ast, Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, *},
-    SyntaxNode, TextRange, TextSize,
+    TextRange, TextSize,
 };
+
+use std::hash::Hash;
 
 const REGION_START: &str = "// region:";
 const REGION_END: &str = "// endregion";
@@ -84,46 +86,39 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 }
             }
             NodeOrToken::Node(node) => {
-                // Fold groups of imports
-                if node.kind() == USE && !visited_imports.contains(&node) {
-                    if let Some(range) = contiguous_range_for_group(&node, &mut visited_imports) {
-                        res.push(Fold { range, kind: FoldKind::Imports })
-                    }
-                }
-
-                // Fold groups of mods
-                if let Some(module) = ast::Module::cast(node.clone()) {
-                    if !has_visibility(&node)
-                        && !visited_mods.contains(&node)
-                        && module.item_list().is_none()
-                    {
-                        if let Some(range) = contiguous_range_for_group_unless(
-                            &node,
-                            has_visibility,
-                            &mut visited_mods,
-                        ) {
-                            res.push(Fold { range, kind: FoldKind::Mods })
-                        }
-                    }
-                }
-
-                // Fold groups of consts
-                if node.kind() == CONST && !visited_consts.contains(&node) {
-                    if let Some(range) = contiguous_range_for_group(&node, &mut visited_consts) {
-                        res.push(Fold { range, kind: FoldKind::Consts })
-                    }
-                }
-                // Fold groups of consts
-                if node.kind() == STATIC && !visited_statics.contains(&node) {
-                    if let Some(range) = contiguous_range_for_group(&node, &mut visited_statics) {
-                        res.push(Fold { range, kind: FoldKind::Statics })
-                    }
-                }
-
-                // Fold where clause
-                if node.kind() == WHERE_CLAUSE {
-                    if let Some(range) = fold_range_for_where_clause(&node) {
-                        res.push(Fold { range, kind: FoldKind::WhereClause })
+                match_ast! {
+                    match node {
+                        ast::Module(module) => {
+                            if module.item_list().is_none() {
+                                if let Some(range) = contiguous_range_for_item_group(
+                                    module,
+                                    &mut visited_mods,
+                                ) {
+                                    res.push(Fold { range, kind: FoldKind::Mods })
+                                }
+                            }
+                        },
+                        ast::Use(use_) => {
+                            if let Some(range) = contiguous_range_for_item_group(use_, &mut visited_imports) {
+                                res.push(Fold { range, kind: FoldKind::Imports })
+                            }
+                        },
+                        ast::Const(konst) => {
+                            if let Some(range) = contiguous_range_for_item_group(konst, &mut visited_consts) {
+                                res.push(Fold { range, kind: FoldKind::Consts })
+                            }
+                        },
+                        ast::Static(statik) => {
+                            if let Some(range) = contiguous_range_for_item_group(statik, &mut visited_statics) {
+                                res.push(Fold { range, kind: FoldKind::Statics })
+                            }
+                        },
+                        ast::WhereClause(where_clause) => {
+                            if let Some(range) = fold_range_for_where_clause(where_clause) {
+                                res.push(Fold { range, kind: FoldKind::WhereClause })
+                            }
+                        },
+                        _ => (),
                     }
                 }
             }
@@ -154,26 +149,16 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     }
 }
 
-fn has_visibility(node: &SyntaxNode) -> bool {
-    ast::Module::cast(node.clone()).and_then(|m| m.visibility()).is_some()
-}
+fn contiguous_range_for_item_group<N>(first: N, visited: &mut FxHashSet<N>) -> Option<TextRange>
+where
+    N: ast::VisibilityOwner + Clone + Hash + Eq,
+{
+    if !visited.insert(first.clone()) {
+        return None;
+    }
 
-fn contiguous_range_for_group(
-    first: &SyntaxNode,
-    visited: &mut FxHashSet<SyntaxNode>,
-) -> Option<TextRange> {
-    contiguous_range_for_group_unless(first, |_| false, visited)
-}
-
-fn contiguous_range_for_group_unless(
-    first: &SyntaxNode,
-    unless: impl Fn(&SyntaxNode) -> bool,
-    visited: &mut FxHashSet<SyntaxNode>,
-) -> Option<TextRange> {
-    visited.insert(first.clone());
-
-    let mut last = first.clone();
-    for element in first.siblings_with_tokens(Direction::Next) {
+    let (mut last, mut last_vis) = (first.clone(), first.visibility());
+    for element in first.syntax().siblings_with_tokens(Direction::Next) {
         let node = match element {
             NodeOrToken::Token(token) => {
                 if let Some(ws) = ast::Whitespace::cast(token) {
@@ -189,20 +174,32 @@ fn contiguous_range_for_group_unless(
             NodeOrToken::Node(node) => node,
         };
 
-        // Stop if we find a node that doesn't belong to the group
-        if node.kind() != first.kind() || unless(&node) {
-            break;
+        if let Some(next) = N::cast(node) {
+            let next_vis = next.visibility();
+            if eq_visibility(next_vis.clone(), last_vis) {
+                visited.insert(next.clone());
+                last_vis = next_vis;
+                last = next;
+                continue;
+            }
         }
-
-        visited.insert(node.clone());
-        last = node;
+        // Stop if we find an item of a different kind or with a different visibility.
+        break;
     }
 
-    if first != &last {
-        Some(TextRange::new(first.text_range().start(), last.text_range().end()))
+    if first != last {
+        Some(TextRange::new(first.syntax().text_range().start(), last.syntax().text_range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None
+    }
+}
+
+fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
+    match (vis0, vis1) {
+        (None, None) => true,
+        (Some(vis0), Some(vis1)) => vis0.is_eq_to(&vis1),
+        _ => false,
     }
 }
 
@@ -230,12 +227,9 @@ fn contiguous_range_for_comment(
                 }
                 if let Some(c) = ast::Comment::cast(token) {
                     if c.kind() == group_kind {
+                        let text = c.text().trim_start();
                         // regions are not real comments
-                        if c.text().trim().starts_with("// region:")
-                            || c.text().trim().starts_with("// endregion")
-                        {
-                            break;
-                        } else {
+                        if !(text.starts_with(REGION_START) || text.starts_with(REGION_END)) {
                             visited.insert(c.clone());
                             last = c;
                             continue;
@@ -259,19 +253,14 @@ fn contiguous_range_for_comment(
     }
 }
 
-fn fold_range_for_where_clause(node: &SyntaxNode) -> Option<TextRange> {
-    let first_where_pred = node.first_child();
-    let last_where_pred = node.last_child();
+fn fold_range_for_where_clause(where_clause: ast::WhereClause) -> Option<TextRange> {
+    let first_where_pred = where_clause.predicates().next();
+    let last_where_pred = where_clause.predicates().last();
 
     if first_where_pred != last_where_pred {
-        let mut it = node.descendants_with_tokens();
-        if let (Some(_where_clause), Some(where_kw), Some(last_comma)) =
-            (it.next(), it.next(), it.last())
-        {
-            let start = where_kw.text_range().end();
-            let end = last_comma.text_range().end();
-            return Some(TextRange::new(start, end));
-        }
+        let start = where_clause.where_token()?.text_range().end();
+        let end = where_clause.syntax().text_range().end();
+        return Some(TextRange::new(start, end));
     }
     None
 }
