@@ -6,6 +6,7 @@
 //! integer. It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
+use std::assert::assert_matches;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::convert::{TryFrom, TryInto};
