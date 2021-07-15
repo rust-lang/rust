@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
 use clippy_utils::{
     both, count_eq, eq_expr_value, get_enclosing_block, get_parent_expr, if_sequence, in_macro, is_else_clause,
-    run_lints, search_same, ContainsName, SpanlessEq, SpanlessHash,
+    is_lint_allowed, search_same, ContainsName, SpanlessEq, SpanlessHash,
 };
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -120,7 +120,10 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Duplicate code is less maintainable.
     ///
-    /// **Known problems:** Hopefully none.
+    /// **Known problems:**
+    /// * The lint doesn't check if the moved expressions modify values that are beeing used in
+    ///   the if condition. The suggestion can in that case modify the behavior of the program.
+    ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
     ///
     /// **Example:**
     /// ```ignore
@@ -337,8 +340,8 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
             if block_expr_eq;
             if l_stmts.len() == r_stmts.len();
             if l_stmts.len() == current_start_eq;
-            if run_lints(cx, &[IF_SAME_THEN_ELSE], win[0].hir_id);
-            if run_lints(cx, &[IF_SAME_THEN_ELSE], win[1].hir_id);
+            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, win[0].hir_id);
+            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, win[1].hir_id);
             then {
                 span_lint_and_note(
                     cx,
@@ -358,8 +361,7 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
         expr_eq &= block_expr_eq;
     }
 
-    let has_expr = blocks[0].expr.is_some();
-    if has_expr && !expr_eq {
+    if !expr_eq {
         end_eq = 0;
     }
 

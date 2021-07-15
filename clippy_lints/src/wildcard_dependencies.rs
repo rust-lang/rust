@@ -1,5 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
-use clippy_utils::run_lints;
+use clippy_utils::{diagnostics::span_lint, is_lint_allowed};
 use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -31,7 +30,7 @@ declare_lint_pass!(WildcardDependencies => [WILDCARD_DEPENDENCIES]);
 
 impl LateLintPass<'_> for WildcardDependencies {
     fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
-        if !run_lints(cx, &[WILDCARD_DEPENDENCIES], CRATE_HIR_ID) {
+        if is_lint_allowed(cx, WILDCARD_DEPENDENCIES, CRATE_HIR_ID) {
             return;
         }
 

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{get_trait_def_id, is_allowed, is_automatically_derived, match_def_path};
+use clippy_utils::{get_trait_def_id, is_automatically_derived, is_lint_allowed, match_def_path};
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};
@@ -362,7 +362,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
         if let ty::Adt(def, _) = ty.kind();
         if let Some(local_def_id) = def.did.as_local();
         let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-        if !is_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
+        if !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
         if cx.tcx.inherent_impls(def.did)
             .iter()
             .map(|imp_did| item_from_def_id(cx, *imp_did))

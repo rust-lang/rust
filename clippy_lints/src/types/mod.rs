@@ -3,6 +3,7 @@ mod box_vec;
 mod linked_list;
 mod option_option;
 mod rc_buffer;
+mod rc_mutex;
 mod redundant_allocation;
 mod type_complexity;
 mod utils;
@@ -177,8 +178,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for use of redundant allocations anywhere in the code.
     ///
-    /// **Why is this bad?** Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Box<T>>`, `Box<&T>`
-    /// add an unnecessary level of indirection.
+    /// **Why is this bad?** Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Arc<T>>`, `Rc<Box<T>>`, Arc<&T>`, `Arc<Rc<T>>`,
+    /// `Arc<Arc<T>>`, `Arc<Box<T>>`, `Box<&T>`, `Box<Rc<T>>`, `Box<Arc<T>>`, `Box<Box<T>>`, add an unnecessary level of indirection.
     ///
     /// **Known problems:** None.
     ///
@@ -250,12 +251,41 @@ declare_clippy_lint! {
     "usage of very complex types that might be better factored into `type` definitions"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `Rc<Mutex<T>>`.
+    ///
+    /// **Why is this bad?** `Rc` is used in single thread and `Mutex` is used in multi thread.
+    /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
+    ///
+    /// **Known problems:** Sometimes combining generic types can lead to the requirement that a
+    /// type use Rc in conjunction with Mutex. We must consider those cases false positives, but
+    /// alas they are quite hard to rule out. Luckily they are also rare.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// use std::rc::Rc;
+    /// use std::sync::Mutex;
+    /// fn foo(interned: Rc<Mutex<i32>>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// use std::rc::Rc;
+    /// use std::cell::RefCell
+    /// fn foo(interned: Rc<RefCell<i32>>) { ... }
+    /// ```
+    pub RC_MUTEX,
+    restriction,
+    "usage of `Rc<Mutex<T>>`"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
     type_complexity_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, TYPE_COMPLEXITY]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
@@ -375,6 +405,7 @@ impl Types {
                     triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
                     triggered |= option_option::check(cx, hir_ty, qpath, def_id);
                     triggered |= linked_list::check(cx, hir_ty, def_id);
+                    triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
 
                     if triggered {
                         return;

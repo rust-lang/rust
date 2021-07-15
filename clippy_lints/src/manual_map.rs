@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{
-    can_move_expr_to_closure, in_constant, is_allowed, is_else_clause, is_lang_ctor, path_to_local_id,
+    can_move_expr_to_closure, in_constant, is_else_clause, is_lang_ctor, is_lint_allowed, path_to_local_id,
     peel_hir_expr_refs,
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
@@ -102,7 +102,7 @@ impl LateLintPass<'_> for ManualMap {
 
             // These two lints will go back and forth with each other.
             if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit
-                && !is_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
+                && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
             {
                 return;
             }
@@ -146,7 +146,7 @@ impl LateLintPass<'_> for ManualMap {
                     },
                     _ => {
                         if path_to_local_id(some_expr, id)
-                            && !is_allowed(cx, MATCH_AS_REF, expr.hir_id)
+                            && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
                             && binding_ref.is_some()
                         {
                             return;

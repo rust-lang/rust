@@ -71,4 +71,6 @@ fn main() {
     // Wrap it with braces
     let v: Vec<String> = vec!["foo".to_string(), "bar".to_string()];
     let _s: String = format!("{}", &*v.join("\n"));
+
+    format!("prepend {:+}", "s");
 }
