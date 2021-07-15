@@ -60,6 +60,9 @@ pub enum InstanceDef<'tcx> {
     /// (the definition of the function itself).
     ReifyShim(DefId),
 
+    /// Compiler-generated untyped version of an item.
+    ErasedShim(DefId),
+
     /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
     ///
     /// `DefId` is `FnTrait::call_*`.
@@ -143,6 +146,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Item(def) => def.did,
             InstanceDef::VtableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
+            | InstanceDef::ErasedShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
@@ -158,6 +162,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Item(def) => def,
             InstanceDef::VtableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
+            | InstanceDef::ErasedShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
@@ -245,6 +250,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match *self {
             InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrShim(..)
+            | InstanceDef::ErasedShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
@@ -270,6 +276,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::Item(_) => Ok(()),
             InstanceDef::VtableShim(_) => write!(f, " - shim(vtable)"),
             InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+            InstanceDef::ErasedShim(_) => write!(f, " - shim(erased)"),
             InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
             InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
             InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
@@ -478,6 +485,22 @@ impl<'tcx> Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let substs = tcx.intern_substs(&[ty.into()]);
         Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
+    }
+
+    pub fn resolve_erased(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        _substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        let substs = InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+            ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+            ty::GenericParamDefKind::Type { .. } => tcx.types.u8.into(),
+            ty::GenericParamDefKind::Const { .. } => {
+                panic!("Unsupported type-erased const params")
+            }
+        });
+        let def = ty::InstanceDef::ErasedShim(def_id);
+        ty::Instance { def, substs }
     }
 
     pub fn fn_once_adapter_instance(

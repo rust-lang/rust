@@ -1,0 +1,51 @@
+// MIR for `normal` after DynErasedBody
+
+fn normal(_1: &u8, _2: for<'r> fn(&'r u8) {generic::<u8>}, _3: &&str) -> () {
+    debug f => _1;                       // in scope 0 at $DIR/dyn_erased.rs:21:23: 21:24
+    let mut _0: ();                      // return place in scope 0 at $DIR/dyn_erased.rs:21:30: 21:30
+    let _4: ();                          // in scope 0 at $DIR/dyn_erased.rs:22:5: 22:15
+    let mut _5: &u8;                     // in scope 0 at $DIR/dyn_erased.rs:22:13: 22:14
+    let _6: ();                          // in scope 0 at $DIR/dyn_erased.rs:23:5: 23:20
+    let mut _7: &&str;                   // in scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+    let _8: &&str;                       // in scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+    let _9: ();                          // in scope 0 at $DIR/dyn_erased.rs:24:5: 24:19
+    let mut _10: &&str;                  // in scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+
+    bb0: {
+        StorageLive(_4);                 // scope 0 at $DIR/dyn_erased.rs:22:5: 22:15
+        StorageLive(_5);                 // scope 0 at $DIR/dyn_erased.rs:22:13: 22:14
+        _5 = _1;                         // scope 0 at $DIR/dyn_erased.rs:22:13: 22:14
+        _4 = move _2(move _5) -> bb1;    // scope 0 at $DIR/dyn_erased.rs:22:5: 22:15
+    }
+
+    bb1: {
+        StorageDead(_5);                 // scope 0 at $DIR/dyn_erased.rs:22:14: 22:15
+        StorageDead(_4);                 // scope 0 at $DIR/dyn_erased.rs:22:15: 22:16
+        StorageLive(_6);                 // scope 0 at $DIR/dyn_erased.rs:23:5: 23:20
+        StorageLive(_7);                 // scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+        StorageLive(_8);                 // scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+        _10 = move _3;                   // scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+        _8 = _10;                        // scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+        _7 = _8;                         // scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+        _6 = generic::<&str>(move _7) -> bb2; // scope 0 at $DIR/dyn_erased.rs:23:5: 23:20
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:23:5: 23:12
+                                         // + literal: Const { ty: for<'r> fn(&'r &str) {generic::<&str>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2: {
+        StorageDead(_7);                 // scope 0 at $DIR/dyn_erased.rs:23:19: 23:20
+        StorageDead(_8);                 // scope 0 at $DIR/dyn_erased.rs:23:20: 23:21
+        StorageDead(_6);                 // scope 0 at $DIR/dyn_erased.rs:23:20: 23:21
+        StorageLive(_9);                 // scope 0 at $DIR/dyn_erased.rs:24:5: 24:19
+        _9 = non_generic(const 5_u32) -> bb3; // scope 0 at $DIR/dyn_erased.rs:24:5: 24:19
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:24:5: 24:16
+                                         // + literal: Const { ty: fn(u32) {non_generic}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        StorageDead(_9);                 // scope 0 at $DIR/dyn_erased.rs:24:19: 24:20
+        return;                          // scope 0 at $DIR/dyn_erased.rs:25:2: 25:2
+    }
+}

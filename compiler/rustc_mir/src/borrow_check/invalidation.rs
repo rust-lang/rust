@@ -154,6 +154,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
+                erased: _,
             } => {
                 self.consume_operand(location, func);
                 for arg in args {

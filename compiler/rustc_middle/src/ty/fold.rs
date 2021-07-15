@@ -86,6 +86,12 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
+    fn has_param_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_PARAM)
+    }
+    fn has_param_consts(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_CT_PARAM)
+    }
     fn has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
     }

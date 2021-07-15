@@ -822,6 +822,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             destination: Some((Place::from(new_temp), new_target)),
                             from_hir_call,
                             fn_span,
+                            erased: false,
                         },
                         source_info: SourceInfo::outermost(terminator.source_info.span),
                         ..terminator

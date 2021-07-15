@@ -1,0 +1,21 @@
+// MIR for `dropping` after DynErasedBody
+
+fn dropping(_1: &u8, _2: unsafe fn(*mut Droppy<u8>) {std::ptr::drop_in_place::<Droppy<u8>>}) -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/dyn_erased.rs:70:31: 70:33
+    let mut _3: Droppy<u8>;              // in scope 0 at $DIR/dyn_erased.rs:71:24: 71:43
+    let _4: *mut Droppy<u8>;             // in scope 0 at $DIR/dyn_erased.rs:71:43: 71:44
+    let _5: ();                          // in scope 0 at $DIR/dyn_erased.rs:71:43: 71:44
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_3);                 // scope 0 at $DIR/dyn_erased.rs:71:24: 71:43
+        _4 = &raw mut _3;                // scope 0 at $DIR/dyn_erased.rs:71:43: 71:44
+        _5 = move _2(move _4) -> bb1;    // scope 0 at $DIR/dyn_erased.rs:71:43: 71:44
+    }
+
+    bb1: {
+        StorageDead(_3);                 // scope 0 at $DIR/dyn_erased.rs:71:43: 71:44
+        return;                          // scope 0 at $DIR/dyn_erased.rs:72:2: 72:2
+    }
+}

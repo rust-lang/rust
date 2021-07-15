@@ -1,0 +1,34 @@
+// MIR for `coreturn` after DynErased
+
+fn coreturn(_1: &T) -> &T {
+    debug f => _1;                       // in scope 0 at $DIR/dyn_erased.rs:30:25: 30:26
+    let mut _0: &T;                      // return place in scope 0 at $DIR/dyn_erased.rs:30:35: 30:37
+    let _2: for<'r> fn(&'r T);           // in scope 0 at $DIR/dyn_erased.rs:31:5: 31:12
+    let mut _3: &u8;                     // in scope 0 at $DIR/dyn_erased.rs:30:35: 30:37
+
+    bb0: {
+        _2 = generic::<T> as for<'r> fn(&'r T) (Pointer(ReifyFnPointer)); // scope 0 at $DIR/dyn_erased.rs:30:1: 34:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:31:5: 31:12
+                                         // + literal: Const { ty: for<'r> fn(&'r T) {generic::<T>}, val: Value(Scalar(<ZST>)) }
+        _3 = coreturn::<T>[erased](move _1, move _2) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:30:1: 34:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: for<'r> fn(&'r T) -> &'r T {coreturn::<T>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        _0 = transmute::<&T, &u8>(move _3) -> [return: bb3, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:30:1: 34:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&T) -> &u8 {std::intrinsics::transmute::<&T, &u8>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at $DIR/dyn_erased.rs:30:1: 34:2
+    }
+
+    bb3: {
+        return;                          // scope 0 at $DIR/dyn_erased.rs:30:1: 34:2
+    }
+}

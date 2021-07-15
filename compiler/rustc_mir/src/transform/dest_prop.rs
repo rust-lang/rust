@@ -628,6 +628,7 @@ impl Conflicts<'a> {
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
+                erased: _,
             } => {
                 // No arguments may overlap with the destination.
                 for arg in args.iter().chain(Some(func)) {

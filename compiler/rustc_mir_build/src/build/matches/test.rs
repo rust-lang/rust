@@ -445,6 +445,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: source_info.span,
+                erased: false,
             },
         );
         self.diverge_from(block);

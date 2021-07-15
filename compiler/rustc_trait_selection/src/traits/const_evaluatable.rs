@@ -469,6 +469,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 // This is currently fairly irrelevant as it requires `const Trait`s.
                 from_hir_call: true,
                 fn_span,
+                erased: _,
             } => {
                 let local = self.place_to_local(fn_span, place)?;
                 let func = self.operand_to_node(fn_span, func)?;

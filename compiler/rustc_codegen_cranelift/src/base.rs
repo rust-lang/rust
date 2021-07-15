@@ -370,9 +370,17 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 fn_span,
                 cleanup: _,
                 from_hir_call: _,
+                erased,
             } => {
                 fx.tcx.sess.time("codegen call", || {
-                    crate::abi::codegen_terminator_call(fx, *fn_span, func, args, *destination)
+                    crate::abi::codegen_terminator_call(
+                        fx,
+                        *fn_span,
+                        func,
+                        args,
+                        *destination,
+                        *erased,
+                    )
                 });
             }
             TerminatorKind::InlineAsm {

@@ -523,6 +523,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
+        erased: bool,
     ) {
         let source_info = terminator.source_info;
         let span = source_info.span;
@@ -531,15 +532,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let callee = self.codegen_operand(&mut bx, func);
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
-            ty::FnDef(def_id, substs) => (
-                Some(
+            ty::FnDef(def_id, substs) => {
+                let instance = if erased {
+                    ty::Instance::resolve_erased(bx.tcx(), def_id, substs)
+                } else {
                     ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
                         .unwrap()
                         .unwrap()
-                        .polymorphize(bx.tcx()),
-                ),
-                None,
-            ),
+                        .polymorphize(bx.tcx())
+                };
+                (Some(instance), None)
+            }
+            _ if erased => bug!("{} is not erasable", callee.layout.ty),
             ty::FnPtr(_) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
@@ -975,6 +979,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
                 from_hir_call: _,
                 fn_span,
+                erased,
             } => {
                 self.codegen_call_terminator(
                     helper,
@@ -985,6 +990,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     destination,
                     cleanup,
                     fn_span,
+                    erased,
                 );
             }
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {

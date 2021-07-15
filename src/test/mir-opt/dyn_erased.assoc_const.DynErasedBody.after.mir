@@ -1,0 +1,10 @@
+// MIR for `assoc_const` after DynErasedBody
+
+fn assoc_const(_1: &u8, _2: usize) -> usize {
+    let mut _0: usize;                   // return place in scope 0 at $DIR/dyn_erased.rs:54:34: 54:39
+
+    bb0: {
+        _0 = move _2;                    // scope 0 at $DIR/dyn_erased.rs:55:5: 55:9
+        return;                          // scope 0 at $DIR/dyn_erased.rs:56:2: 56:2
+    }
+}

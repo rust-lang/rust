@@ -313,6 +313,7 @@ fn check_terminator(
             destination: _,
             cleanup: _,
             fn_span: _,
+            erased: _,
         } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {

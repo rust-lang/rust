@@ -39,6 +39,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FunctionItemRefChecker<'a, 'tcx> {
             cleanup: _,
             from_hir_call: _,
             fn_span: _,
+            erased: _,
         } = &terminator.kind
         {
             let source_info = *self.body.source_info(location);

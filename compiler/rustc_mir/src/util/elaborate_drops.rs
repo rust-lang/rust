@@ -635,6 +635,7 @@ where
                     cleanup: unwind.into_option(),
                     from_hir_call: true,
                     fn_span: self.source_info.span,
+                    erased: false,
                 },
                 source_info: self.source_info,
             }),
@@ -972,6 +973,7 @@ where
             cleanup: None,
             from_hir_call: false,
             fn_span: self.source_info.span,
+            erased: false,
         }; // FIXME(#43234)
         let free_block = self.new_block(unwind, call);
 

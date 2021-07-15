@@ -1025,6 +1025,7 @@ symbols! {
         rustc_dump_env_program_clauses,
         rustc_dump_program_clauses,
         rustc_dump_user_substs,
+        rustc_dyn,
         rustc_error,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,

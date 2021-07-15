@@ -65,7 +65,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
+            Call {
+                ref func,
+                ref args,
+                destination,
+                ref cleanup,
+                from_hir_call: _,
+                fn_span: _,
+                erased: _,
+            } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
@@ -473,6 +481,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(fn_val, caller_abi, &args, ret, unwind)
+            }
+            ty::InstanceDef::ErasedShim(_) => {
+                bug!("Interpreting type-erased functions is not implemented.")
             }
         }
     }

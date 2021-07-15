@@ -53,6 +53,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id))
         }
+        ty::InstanceDef::ErasedShim(def_id) => {
+            let orig_mir = tcx.optimized_mir(def_id);
+            let sub_mir = orig_mir.dyn_erased_body.as_deref().unwrap();
+            sub_mir.clone()
+        }
         ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
             let fn_mut = tcx.require_lang_item(LangItem::FnMut, None);
             let call_mut = tcx
@@ -445,6 +450,7 @@ impl CloneShimBuilder<'tcx> {
                 cleanup: Some(cleanup),
                 from_hir_call: true,
                 fn_span: self.span,
+                erased: false,
             },
             false,
         );
@@ -823,6 +829,7 @@ fn build_call_shim<'tcx>(
             },
             from_hir_call: true,
             fn_span: span,
+            erased: false,
         },
         false,
     );

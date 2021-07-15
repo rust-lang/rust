@@ -698,6 +698,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
+                erased: _,
             } => {
                 self.consume_operand(loc, (func, span), flow_state);
                 for arg in args {

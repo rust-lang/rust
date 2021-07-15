@@ -1471,6 +1471,7 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
+                erased: _,
             } => {
                 self.check_assigned_place(*dest, |this| {
                     this.visit_operand(func, location);

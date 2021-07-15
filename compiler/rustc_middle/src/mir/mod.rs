@@ -185,6 +185,9 @@ pub struct Body<'tcx> {
 
     pub generator: Option<Box<GeneratorInfo<'tcx>>>,
 
+    /// Erased version for dyn_erased.
+    pub dyn_erased_body: Option<Box<Body<'tcx>>>,
+
     /// Declarations of locals.
     ///
     /// The first local is the return value pointer, followed by `arg_count`
@@ -273,6 +276,7 @@ impl<'tcx> Body<'tcx> {
                     generator_kind,
                 })
             }),
+            dyn_erased_body: None,
             local_decls,
             user_type_annotations,
             arg_count,
@@ -300,6 +304,7 @@ impl<'tcx> Body<'tcx> {
             basic_blocks,
             source_scopes: IndexVec::new(),
             generator: None,
+            dyn_erased_body: None,
             local_decls: IndexVec::new(),
             user_type_annotations: IndexVec::new(),
             arg_count: 0,
