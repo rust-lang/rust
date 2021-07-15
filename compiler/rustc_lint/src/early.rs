@@ -210,8 +210,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_arm(&mut self, a: &'a ast::Arm) {
-        run_early_pass!(self, check_arm, a);
-        ast_visit::walk_arm(self, a);
+        self.with_lint_attrs(a.id, &a.attrs, |cx| {
+            run_early_pass!(cx, check_arm, a);
+            ast_visit::walk_arm(cx, a);
+        })
     }
 
     fn visit_expr_post(&mut self, e: &'a ast::Expr) {

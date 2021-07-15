@@ -12,7 +12,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AstLike, Block, Inline, ItemKind, MacArgs};
+use rustc_ast::{AstLike, Block, Inline, ItemKind, Local, MacArgs};
 use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
 use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
@@ -1161,6 +1161,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         });
     }
 
+    // This is needed in order to set `lint_node_id` for `let` statements
+    fn visit_local(&mut self, local: &mut P<Local>) {
+        assign_id!(self, &mut local.id, || noop_visit_local(local, self));
+    }
+
     fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
         let mut arm = configure!(self, arm);
 
@@ -1307,6 +1312,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
+        // We don't use `assign_id!` - it will be called when we visit statement's contents
+        // (e.g. an expression, item, or local)
         let ast::Stmt { id, kind, span } = stmt;
         noop_flat_map_stmt_kind(kind, self)
             .into_iter()
