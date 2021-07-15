@@ -628,7 +628,7 @@ impl Options {
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
 
-        let (lint_opts, describe_lints, lint_cap, _) =
+        let (lint_opts, describe_lints, lint_cap) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
 
         Ok(Options {
