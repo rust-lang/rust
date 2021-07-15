@@ -76,3 +76,20 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&());
     core::intrinsics::discriminant_value(&E::B);
 }
+
+// Check that the MIR shims used for reifying intrinsics to `fn` pointers,
+// also go through the lowering pass.
+pub fn reify_intrinsics() -> impl Copy {
+    (
+// EMIT_MIR core.intrinsics-#1-wrapping_add.LowerIntrinsics.diff
+        core::intrinsics::wrapping_add::<u32> as unsafe fn(_, _) -> _,
+// EMIT_MIR core.intrinsics-#1-size_of.LowerIntrinsics.diff
+        core::intrinsics::size_of::<u8> as unsafe fn() -> _,
+// EMIT_MIR core.intrinsics-#1-unreachable.LowerIntrinsics.diff
+        core::intrinsics::unreachable as unsafe fn() -> !,
+// EMIT_MIR core.intrinsics-#1-forget.LowerIntrinsics.diff
+        core::intrinsics::forget::<E> as unsafe fn(_),
+// EMIT_MIR core.intrinsics-#1-discriminant_value.LowerIntrinsics.diff
+        core::intrinsics::discriminant_value::<E> as unsafe fn(_) -> _,
+    )
+}
