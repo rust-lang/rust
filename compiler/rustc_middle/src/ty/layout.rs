@@ -312,7 +312,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let dl = self.data_layout();
         let pack = repr.pack;
         if pack.is_some() && repr.align.is_some() {
-            bug!("struct cannot be packed and aligned");
+            self.tcx.sess.delay_span_bug(DUMMY_SP, "struct cannot be packed and aligned");
+            return Err(LayoutError::Unknown(ty));
         }
 
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -808,7 +809,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 if def.is_union() {
                     if def.repr.pack.is_some() && def.repr.align.is_some() {
-                        bug!("union cannot be packed and aligned");
+                        self.tcx.sess.delay_span_bug(
+                            tcx.def_span(def.did),
+                            "union cannot be packed and aligned",
+                        );
+                        return Err(LayoutError::Unknown(ty));
                     }
 
                     let mut align =
