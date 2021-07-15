@@ -232,8 +232,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
-        let alloc =
-            M::init_allocation_extra(self, id, Cow::Owned(alloc), Some(kind));
+        let alloc = M::init_allocation_extra(self, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         M::tag_alloc_base_pointer(self, Pointer::from(id))
     }
@@ -372,7 +371,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         )
     }
 
-    /// Check if the given pointer is allowed to do a memory access of given `size` and `align`
+    /// Check if the given pointerpoints to live memory of given `size` and `align`
     /// (ignoring `M::enforce_alignment`). The caller can control the error message for the
     /// out-of-bounds case.
     #[inline(always)]
@@ -384,7 +383,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
         self.check_and_deref_ptr(ptr, size, Some(align), msg, |alloc_id, _, _| {
-            let (size, align) = self.get_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
+            let check = match msg {
+                CheckInAllocMsg::DerefTest | CheckInAllocMsg::MemoryAccessTest => {
+                    AllocCheck::Dereferenceable
+                }
+                CheckInAllocMsg::PointerArithmeticTest | CheckInAllocMsg::InboundsTest => {
+                    AllocCheck::Live
+                }
+            };
+            let (size, align) = self.get_size_and_align(alloc_id, check)?;
             Ok((size, align, ()))
         })?;
         Ok(())
@@ -551,8 +558,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // `get_global_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `InterpResult<'tcx, &Allocation<M::PointerTag>>`.
         let a = self.alloc_map.get_or(id, || {
-            let alloc = self.get_global_alloc(id, /*is_write*/ false)
-                .map_err(Err)?;
+            let alloc = self.get_global_alloc(id, /*is_write*/ false).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
                     // We got a ref, cheaply return that as an "error" so that the
