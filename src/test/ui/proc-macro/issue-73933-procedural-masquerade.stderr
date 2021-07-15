@@ -11,7 +11,7 @@ LL | enum ProceduralMasqueradeDummyType {
 
 warning: 1 warning emitted
 
-Future incompatibility report: Future breakage date: None, diagnostic:
+Future incompatibility report: Future breakage diagnostic:
 warning: using `procedural-masquerade` crate
   --> $DIR/issue-73933-procedural-masquerade.rs:8:6
    |
