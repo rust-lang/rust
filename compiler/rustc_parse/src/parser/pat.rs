@@ -3,12 +3,16 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::{self as ast, AttrVec, Attribute, MacCall, Pat, PatField, PatKind, RangeEnd};
-use rustc_ast::{BindingMode, Expr, ExprKind, Mutability, Path, QSelf, RangeSyntax};
+use rustc_ast::{
+    self as ast, AttrVec, Attribute, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat,
+    PatField, PatKind, Path, PathSegment, QSelf, RangeEnd, RangeSyntax,
+};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
+
+use std::mem::take;
 
 type Expected = Option<&'static str>;
 
@@ -101,11 +105,8 @@ impl<'a> Parser<'a> {
             let mut first_pat = first_pat;
 
             if let (RecoverColon::Yes, token::Colon) = (ra, &self.token.kind) {
-                if matches!(
-                    first_pat.kind,
-                    PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, None)
-                        | PatKind::Path(..)
-                ) && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+                if matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
+                    && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
                 {
                     // The pattern looks like it might be a path with a `::` -> `:` typo:
                     // `match foo { bar:baz => {} }`
@@ -126,17 +127,87 @@ impl<'a> Parser<'a> {
                                     err.cancel();
                                     *self = snapshot;
                                 }
-                                Ok(pat) => {
+                                Ok(mut pat) => {
                                     // We've parsed the rest of the pattern.
-                                    err.span_suggestion(
-                                        span,
-                                        "maybe write a path separator here",
-                                        "::".to_string(),
-                                        Applicability::MachineApplicable,
-                                    );
+                                    let new_span = first_pat.span.to(pat.span);
+                                    let mut show_sugg = false;
+                                    match &mut pat.kind {
+                                        PatKind::Struct(qself @ None, path, ..)
+                                        | PatKind::TupleStruct(qself @ None, path, _)
+                                        | PatKind::Path(qself @ None, path) => {
+                                            match &first_pat.kind {
+                                                PatKind::Ident(_, ident, _) => {
+                                                    path.segments.insert(
+                                                        0,
+                                                        PathSegment::from_ident(ident.clone()),
+                                                    );
+                                                    path.span = new_span;
+                                                    show_sugg = true;
+                                                    first_pat = pat;
+                                                }
+                                                PatKind::Path(old_qself, old_path) => {
+                                                    path.segments = old_path
+                                                        .segments
+                                                        .iter()
+                                                        .cloned()
+                                                        .chain(take(&mut path.segments))
+                                                        .collect();
+                                                    path.span = new_span;
+                                                    *qself = old_qself.clone();
+                                                    first_pat = pat;
+                                                    show_sugg = true;
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                        PatKind::Ident(
+                                            BindingMode::ByValue(Mutability::Not),
+                                            ident,
+                                            None,
+                                        ) => match &first_pat.kind {
+                                            PatKind::Ident(_, old_ident, _) => {
+                                                let path = PatKind::Path(
+                                                    None,
+                                                    Path {
+                                                        span: new_span,
+                                                        segments: vec![
+                                                            PathSegment::from_ident(
+                                                                old_ident.clone(),
+                                                            ),
+                                                            PathSegment::from_ident(ident.clone()),
+                                                        ],
+                                                        tokens: None,
+                                                    },
+                                                );
+                                                first_pat = self.mk_pat(new_span, path);
+                                                show_sugg = true;
+                                            }
+                                            PatKind::Path(old_qself, old_path) => {
+                                                let mut segments = old_path.segments.clone();
+                                                segments
+                                                    .push(PathSegment::from_ident(ident.clone()));
+                                                let path = PatKind::Path(
+                                                    old_qself.clone(),
+                                                    Path { span: new_span, segments, tokens: None },
+                                                );
+                                                first_pat = self.mk_pat(new_span, path);
+                                                show_sugg = true;
+                                            }
+                                            _ => {}
+                                        },
+                                        _ => {}
+                                    }
+                                    if show_sugg {
+                                        err.span_suggestion(
+                                            span,
+                                            "maybe write a path separator here",
+                                            "::".to_string(),
+                                            Applicability::MachineApplicable,
+                                        );
+                                    } else {
+                                        first_pat = self.mk_pat(new_span, PatKind::Wild);
+                                    }
                                     err.emit();
-                                    first_pat =
-                                        self.mk_pat(first_pat.span.to(pat.span), PatKind::Wild);
                                 }
                             }
                         }
