@@ -1051,6 +1051,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
+    fn filter_positive_and_reservation_impls(
+        &mut self,
+        candidate: SelectionCandidate<'tcx>,
+    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+        todo!("yaahc")
+    }
+
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
         debug!("is_knowable(intercrate={:?})", self.intercrate);
 
