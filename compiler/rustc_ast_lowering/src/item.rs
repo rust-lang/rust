@@ -1,16 +1,19 @@
 use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
-use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
+use super::{AstOwner, ImplTraitContext, ImplTraitPosition, ResolverAstLowering};
 use crate::{Arena, FnDeclKind};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::utils::NtToTokenstream;
+use rustc_session::Session;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -19,11 +22,14 @@ use smallvec::{smallvec, SmallVec};
 use tracing::debug;
 
 use std::iter;
-use std::mem;
 
-pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
-    pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
-    pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'lowering>>,
+pub(super) struct ItemLowerer<'a, 'hir> {
+    pub(super) sess: &'a Session,
+    pub(super) resolver: &'a mut dyn ResolverAstLowering,
+    pub(super) nt_to_tokenstream: NtToTokenstream,
+    pub(super) arena: &'hir Arena<'hir>,
+    pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
+    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -46,76 +52,50 @@ fn add_ty_alias_where_clause(
     }
 }
 
-impl<'a, 'hir> ItemLowerer<'_, 'a, 'hir> {
-    /// Clears (and restores) the `in_scope_lifetimes` field. Used when
-    /// visiting nested items, which never inherit in-scope lifetimes
-    /// from their surrounding environment.
-    #[tracing::instrument(level = "debug", skip(self, f))]
-    fn without_in_scope_lifetime_defs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let old_in_scope_lifetimes = mem::take(&mut self.lctx.in_scope_lifetimes);
-        debug!(?old_in_scope_lifetimes);
+impl<'a, 'hir> ItemLowerer<'a, 'hir> {
+    fn make_lctx(&mut self) -> LoweringContext<'_, 'hir> {
+        LoweringContext {
+            // Pseudo-globals.
+            sess: &self.sess,
+            resolver: self.resolver,
+            nt_to_tokenstream: self.nt_to_tokenstream,
+            arena: self.arena,
+            owners: self.owners,
 
-        // this vector is only used when walking over impl headers,
-        // input types, and the like, and should not be non-empty in
-        // between items
-        assert!(self.lctx.lifetimes_to_define.is_empty());
+            // HirId handling.
+            bodies: Vec::new(),
+            attrs: SortedMap::default(),
+            current_hir_id_owner: CRATE_DEF_ID,
+            item_local_id_counter: hir::ItemLocalId::new(0),
+            node_id_to_local_id: Default::default(),
+            local_id_to_def_id: SortedMap::new(),
+            trait_map: Default::default(),
 
-        let res = f(self);
-
-        assert!(self.lctx.in_scope_lifetimes.is_empty());
-        self.lctx.in_scope_lifetimes = old_in_scope_lifetimes;
-
-        res
-    }
-
-    /// Evaluates `f` with the lifetimes in `params` in-scope.
-    /// This is used to track which lifetimes have already been defined, and
-    /// which are new in-band lifetimes that need to have a definition created
-    /// for them.
-    fn with_parent_item_lifetime_defs(
-        &mut self,
-        parent_hir: &'hir hir::Item<'hir>,
-        f: impl FnOnce(&mut Self),
-    ) {
-        let parent_generics = match parent_hir.kind {
-            hir::ItemKind::Impl(hir::Impl { ref generics, .. })
-            | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
-            _ => &[],
-        };
-        let lt_def_names = parent_generics
-            .iter()
-            .filter_map(|param| match param.kind {
-                hir::GenericParamKind::Lifetime { .. } => {
-                    Some(param.name.normalize_to_macros_2_0())
-                }
-                _ => None,
-            })
-            .collect();
-        let old_in_scope_lifetimes = mem::replace(&mut self.lctx.in_scope_lifetimes, lt_def_names);
-
-        f(self);
-
-        self.lctx.in_scope_lifetimes = old_in_scope_lifetimes;
-    }
-
-    fn with_trait_impl_ref(
-        &mut self,
-        impl_ref: &Option<hir::TraitRef<'_>>,
-        f: impl FnOnce(&mut Self),
-    ) {
-        let old = self.lctx.is_in_trait_impl;
-        self.lctx.is_in_trait_impl = impl_ref.is_some();
-        let ret = f(self);
-        self.lctx.is_in_trait_impl = old;
-        ret
+            // Lowering state.
+            catch_scope: None,
+            loop_scope: None,
+            is_in_loop_condition: false,
+            is_in_trait_impl: false,
+            is_in_dyn_type: false,
+            anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
+            generator_kind: None,
+            task_context: None,
+            current_item: None,
+            lifetimes_to_define: Vec::new(),
+            is_collecting_anonymous_lifetimes: None,
+            in_scope_lifetimes: Vec::new(),
+            allow_try_trait: Some([sym::try_trait_v2][..].into()),
+            allow_gen_future: Some([sym::gen_future][..].into()),
+            allow_into_future: Some([sym::into_future][..].into()),
+        }
     }
 
     pub(super) fn lower_node(
         &mut self,
         def_id: LocalDefId,
     ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
-        self.lctx.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-        if let hir::MaybeOwner::Phantom = self.lctx.owners[def_id] {
+        self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+        if let hir::MaybeOwner::Phantom = self.owners[def_id] {
             let node = self.ast_index[def_id];
             match node {
                 AstOwner::NonOwner => {}
@@ -126,53 +106,72 @@ impl<'a, 'hir> ItemLowerer<'_, 'a, 'hir> {
             }
         }
 
-        self.lctx.owners[def_id]
+        self.owners[def_id]
     }
 
     fn lower_crate(&mut self, c: &'a Crate) {
-        debug_assert_eq!(self.lctx.resolver.local_def_id(CRATE_NODE_ID), CRATE_DEF_ID);
+        debug_assert_eq!(self.resolver.local_def_id(CRATE_NODE_ID), CRATE_DEF_ID);
 
-        self.lctx.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
+        let mut lctx = self.make_lctx();
+        lctx.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, c.spans.inner_span);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
             hir::OwnerNode::Crate(lctx.arena.alloc(module))
-        });
+        })
     }
 
     fn lower_item(&mut self, item: &'a Item) {
-        self.without_in_scope_lifetime_defs(|this| {
-            this.lctx.with_hir_id_owner(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
-        });
+        let mut lctx = self.make_lctx();
+        lctx.with_hir_id_owner(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
     }
 
     fn lower_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        let def_id = self.lctx.resolver.local_def_id(item.id);
-
-        let do_lower = |lctx: &mut LoweringContext<'_, '_>| {
-            lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
-                AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
-                AssocCtxt::Impl => hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)),
-            });
-        };
+        let def_id = self.resolver.local_def_id(item.id);
 
         let parent_id = {
-            let parent = self.lctx.resolver.definitions().def_key(def_id).parent;
+            let parent = self.resolver.definitions().def_key(def_id).parent;
             let local_def_index = parent.unwrap();
             LocalDefId { local_def_index }
         };
+
         let parent_hir = self.lower_node(parent_id).unwrap().node().expect_item();
-        self.with_parent_item_lifetime_defs(parent_hir, |this| match parent_hir.kind {
-            hir::ItemKind::Impl(hir::Impl { ref of_trait, .. }) => {
-                this.with_trait_impl_ref(of_trait, |this| do_lower(this.lctx))
+        let mut lctx = self.make_lctx();
+
+        // Evaluate with the lifetimes in `params` in-scope.
+        // This is used to track which lifetimes have already been defined,
+        // and which need to be replicated when lowering an async fn.
+        match parent_hir.kind {
+            hir::ItemKind::Impl(hir::Impl { ref of_trait, ref generics, .. }) => {
+                lctx.is_in_trait_impl = of_trait.is_some();
+                lctx.in_scope_lifetimes = generics
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, hir::GenericParamKind::Lifetime { .. }))
+                    .map(|param| param.name)
+                    .collect();
             }
-            _ => do_lower(this.lctx),
-        });
+            hir::ItemKind::Trait(_, _, ref generics, ..) => {
+                lctx.in_scope_lifetimes = generics
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, hir::GenericParamKind::Lifetime { .. }))
+                    .map(|param| param.name)
+                    .collect();
+            }
+            _ => {}
+        };
+
+        lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
+            AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
+            AssocCtxt::Impl => hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)),
+        })
     }
 
     fn lower_foreign_item(&mut self, item: &'a ForeignItem) {
-        self.lctx.with_hir_id_owner(item.id, |lctx| {
+        let mut lctx = self.make_lctx();
+        lctx.with_hir_id_owner(item.id, |lctx| {
             hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
-        });
+        })
     }
 }
 

@@ -85,7 +85,7 @@ mod path;
 
 rustc_hir::arena_types!(rustc_arena::declare_arena);
 
-struct LoweringContext<'a, 'hir: 'a> {
+struct LoweringContext<'a, 'hir> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
@@ -100,7 +100,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    owners: IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
+    owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
@@ -418,42 +418,20 @@ pub fn lower_crate<'a, 'hir>(
 
     let ast_index = index_crate(resolver, krate);
 
-    let owners =
+    let mut owners =
         IndexVec::from_fn_n(|_| hir::MaybeOwner::Phantom, resolver.definitions().def_index_count());
-    let mut lctx = LoweringContext {
-        sess,
-        resolver,
-        nt_to_tokenstream,
-        arena,
-        owners,
-        bodies: Vec::new(),
-        attrs: SortedMap::new(),
-        catch_scope: None,
-        loop_scope: None,
-        is_in_loop_condition: false,
-        is_in_trait_impl: false,
-        is_in_dyn_type: false,
-        anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        current_hir_id_owner: CRATE_DEF_ID,
-        item_local_id_counter: hir::ItemLocalId::new(0),
-        node_id_to_local_id: FxHashMap::default(),
-        local_id_to_def_id: SortedMap::new(),
-        trait_map: FxHashMap::default(),
-        generator_kind: None,
-        task_context: None,
-        current_item: None,
-        lifetimes_to_define: Vec::new(),
-        is_collecting_anonymous_lifetimes: None,
-        in_scope_lifetimes: Vec::new(),
-        allow_try_trait: Some([sym::try_trait_v2][..].into()),
-        allow_gen_future: Some([sym::gen_future][..].into()),
-        allow_into_future: Some([sym::into_future][..].into()),
-    };
 
     for def_id in ast_index.indices() {
-        item::ItemLowerer { lctx: &mut lctx, ast_index: &ast_index }.lower_node(def_id);
+        item::ItemLowerer {
+            sess,
+            resolver,
+            nt_to_tokenstream,
+            arena,
+            ast_index: &ast_index,
+            owners: &mut owners,
+        }
+        .lower_node(def_id);
     }
-    let owners = lctx.owners;
 
     let hir_hash = compute_hir_hash(resolver, &owners);
     let krate = hir::Crate { owners, hir_hash };
@@ -530,7 +508,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         owner: NodeId,
         f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
-    ) -> LocalDefId {
+    ) {
         let def_id = self.resolver.local_def_id(owner);
 
         let current_attrs = std::mem::take(&mut self.attrs);
@@ -560,8 +538,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
         self.owners[def_id] = hir::MaybeOwner::Owner(self.arena.alloc(info));
-
-        def_id
     }
 
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
