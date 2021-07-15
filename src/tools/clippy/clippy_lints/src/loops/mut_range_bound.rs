@@ -7,7 +7,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::{mir::FakeReadCause, ty};
 use rustc_span::source_map::Span;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
     if let Some(higher::Range {
@@ -82,7 +82,7 @@ struct MutatePairDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
-    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
