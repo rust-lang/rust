@@ -625,7 +625,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if let PatKind::TupleStruct(
                 QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind;
             if args.len() == 1;
-            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(args[0]).kind;
+            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
             let body = remove_blocks(arms[0].body);
             if path_to_local_id(body, arg);
 

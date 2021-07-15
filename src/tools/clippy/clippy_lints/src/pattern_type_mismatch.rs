@@ -258,7 +258,7 @@ fn get_variant<'a>(adt_def: &'a AdtDef, qpath: &QPath<'_>) -> Option<&'a Variant
 
 fn find_first_mismatch_in_tuple<'tcx, I>(
     cx: &LateContext<'tcx>,
-    pats: &[&Pat<'_>],
+    pats: &[Pat<'_>],
     ty_iter_src: I,
 ) -> Option<(Span, Mutability, Level)>
 where

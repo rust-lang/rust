@@ -132,7 +132,7 @@ fn detect_option_if_let_else<'tcx>(
         if !is_else_clause(cx.tcx, expr);
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
-        if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
+        if let PatKind::TupleStruct(struct_qpath, [inner_pat], _) = &arms[0].pat.kind;
         if is_lang_ctor(cx, struct_qpath, OptionSome);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
         if !contains_return_break_continue_macro(arms[0].body);

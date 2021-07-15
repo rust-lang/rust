@@ -325,7 +325,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_tuple_subpats(
         &mut self,
-        pats: &'tcx [&'tcx hir::Pat<'tcx>],
+        pats: &'tcx [hir::Pat<'tcx>],
         expected_len: usize,
         gap_pos: Option<usize>,
     ) -> Vec<FieldPat<'tcx>> {
@@ -338,7 +338,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [&'tcx hir::Pat<'tcx>]) -> Vec<Pat<'tcx>> {
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Vec<Pat<'tcx>> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
@@ -350,9 +350,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         span: Span,
         ty: Ty<'tcx>,
-        prefix: &'tcx [&'tcx hir::Pat<'tcx>],
+        prefix: &'tcx [hir::Pat<'tcx>],
         slice: &'tcx Option<&'tcx hir::Pat<'tcx>>,
-        suffix: &'tcx [&'tcx hir::Pat<'tcx>],
+        suffix: &'tcx [hir::Pat<'tcx>],
     ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);
         let slice = self.lower_opt_pattern(slice);

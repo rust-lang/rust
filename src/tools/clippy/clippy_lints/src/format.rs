@@ -92,7 +92,7 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
         if let PatKind::Tuple(pats, None) = arms[0].pat.kind;
         if pats.len() == 1;
         then {
-            let ty = cx.typeck_results().pat_ty(pats[0]).peel_refs();
+            let ty = cx.typeck_results().pat_ty(&pats[0]).peel_refs();
             if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym::string_type) {
                 return None;
             }
