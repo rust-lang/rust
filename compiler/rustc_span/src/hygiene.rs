@@ -153,14 +153,25 @@ impl LocalExpnId {
     }
 
     pub fn fresh_empty() -> LocalExpnId {
-        HygieneData::with(|data| data.fresh_expn(None))
+        HygieneData::with(|data| {
+            let expn_id = data.local_expn_data.push(None);
+            let _eid = data.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
+            debug_assert_eq!(expn_id, _eid);
+            expn_id
+        })
     }
 
-    pub fn fresh(expn_data: ExpnData, ctx: impl HashStableContext) -> LocalExpnId {
+    pub fn fresh(mut expn_data: ExpnData, ctx: impl HashStableContext) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_id = HygieneData::with(|data| data.fresh_expn(Some(expn_data)));
-        update_disambiguator(expn_id, ctx);
-        expn_id
+        let expn_hash = update_disambiguator(&mut expn_data, ctx);
+        HygieneData::with(|data| {
+            let expn_id = data.local_expn_data.push(Some(expn_data));
+            let _eid = data.local_expn_hashes.push(expn_hash);
+            debug_assert_eq!(expn_id, _eid);
+            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, expn_id.to_expn_id());
+            debug_assert!(_old_id.is_none());
+            expn_id
+        })
     }
 
     #[inline]
@@ -179,14 +190,18 @@ impl LocalExpnId {
     }
 
     #[inline]
-    pub fn set_expn_data(self, expn_data: ExpnData, ctx: impl HashStableContext) {
+    pub fn set_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
+        let expn_hash = update_disambiguator(&mut expn_data, ctx);
         HygieneData::with(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
             *old_expn_data = Some(expn_data);
+            debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
+            data.local_expn_hashes[self] = expn_hash;
+            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
+            debug_assert!(_old_id.is_none());
         });
-        update_disambiguator(self, ctx)
     }
 
     #[inline]
@@ -333,13 +348,6 @@ impl HygieneData {
 
     pub fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         with_session_globals(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
-    }
-
-    fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> LocalExpnId {
-        let expn_id = self.local_expn_data.push(expn_data);
-        let _eid = self.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
-        debug_assert_eq!(expn_id, _eid);
-        expn_id
     }
 
     #[inline]
@@ -1413,8 +1421,7 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 /// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
 /// from another crate's metadata - since `ExpnHash` includes the stable crate id,
 /// collisions are only possible between `ExpnId`s within the same crate.
-fn update_disambiguator(expn_id: LocalExpnId, mut ctx: impl HashStableContext) {
-    let mut expn_data = expn_id.expn_data();
+fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContext) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(
         expn_data.disambiguator, 0,
@@ -1433,8 +1440,7 @@ fn update_disambiguator(expn_id: LocalExpnId, mut ctx: impl HashStableContext) {
     });
 
     if disambiguator != 0 {
-        debug!("Set disambiguator for {:?} (hash {:?})", expn_id, expn_hash);
-        debug!("expn_data = {:?}", expn_data);
+        debug!("Set disambiguator for expn_data={:?} expn_hash={:?}", expn_data, expn_hash);
 
         expn_data.disambiguator = disambiguator;
         expn_hash = expn_data.hash_expn(&mut ctx);
@@ -1450,15 +1456,7 @@ fn update_disambiguator(expn_id: LocalExpnId, mut ctx: impl HashStableContext) {
         });
     }
 
-    let expn_hash =
-        ExpnHash::new(ctx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(), expn_hash);
-    HygieneData::with(|data| {
-        data.local_expn_data[expn_id].as_mut().unwrap().disambiguator = disambiguator;
-        debug_assert_eq!(data.local_expn_hashes[expn_id].0, Fingerprint::ZERO);
-        data.local_expn_hashes[expn_id] = expn_hash;
-        let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, expn_id.to_expn_id());
-        debug_assert!(_old_id.is_none());
-    });
+    ExpnHash::new(ctx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(), expn_hash)
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
