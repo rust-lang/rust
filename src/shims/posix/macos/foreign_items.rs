@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__error" => {
                 let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
-                this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
+                this.write_scalar(errno_place.to_ref(this).to_scalar()?, dest)?;
             }
 
             // File related shims
@@ -74,7 +74,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Environment related shims
             "_NSGetEnviron" => {
                 let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_scalar(this.machine.env_vars.environ.unwrap().ptr, dest)?;
+                this.write_pointer(
+                    this.machine.env_vars.environ.expect("machine must be initialized").ptr,
+                    dest,
+                )?;
             }
 
             // Time related shims
@@ -100,18 +103,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Access to command-line arguments
             "_NSGetArgc" => {
                 let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
+                this.write_pointer(
+                    this.machine.argc.expect("machine must be initialized").ptr,
+                    dest,
+                )?;
             }
             "_NSGetArgv" => {
                 let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
+                this.write_pointer(
+                    this.machine.argv.expect("machine must be initialized").ptr,
+                    dest,
+                )?;
             }
 
             // Thread-local storage
             "_tlv_atexit" => {
                 let &[ref dtor, ref data] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let dtor = this.read_scalar(dtor)?.check_init()?;
+                let dtor = this.read_pointer(dtor)?;
                 let dtor = this.memory.get_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?.check_init()?;
                 let active_thread = this.get_active_thread();
@@ -138,7 +147,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_setname_np" => {
                 let &[ref name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let name = this.read_scalar(name)?.check_init()?;
+                let name = this.read_pointer(name)?;
                 this.pthread_setname_np(name)?;
             }
 

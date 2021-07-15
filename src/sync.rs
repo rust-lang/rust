@@ -152,7 +152,7 @@ pub(super) struct SynchronizationState {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
-    futexes: HashMap<Pointer, Futex>,
+    futexes: HashMap<u64, Futex>,
 }
 
 // Private extension trait for local helper methods
@@ -486,18 +486,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.threads.sync.condvars[id].waiters.retain(|waiter| waiter.thread != thread);
     }
 
-    fn futex_wait(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
+    fn futex_wait(&mut self, addr: u64, thread: ThreadId) {
         let this = self.eval_context_mut();
-        let futex = &mut this.machine.threads.sync.futexes.entry(addr.erase_tag()).or_default();
+        let futex = &mut this.machine.threads.sync.futexes.entry(addr).or_default();
         let waiters = &mut futex.waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
         waiters.push_back(FutexWaiter { thread });
     }
 
-    fn futex_wake(&mut self, addr: Pointer<stacked_borrows::Tag>) -> Option<ThreadId> {
+    fn futex_wake(&mut self, addr: u64) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
-        let futex = &mut this.machine.threads.sync.futexes.get_mut(&addr.erase_tag())?;
+        let futex = &mut this.machine.threads.sync.futexes.get_mut(&addr)?;
         let data_race = &this.memory.extra.data_race;
 
         // Each futex-wake happens-before the end of the futex wait
@@ -513,9 +513,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         res
     }
 
-    fn futex_remove_waiter(&mut self, addr: Pointer<stacked_borrows::Tag>, thread: ThreadId) {
+    fn futex_remove_waiter(&mut self, addr: u64, thread: ThreadId) {
         let this = self.eval_context_mut();
-        if let Some(futex) = this.machine.threads.sync.futexes.get_mut(&addr.erase_tag()) {
+        if let Some(futex) = this.machine.threads.sync.futexes.get_mut(&addr) {
             futex.waiters.retain(|waiter| waiter.thread != thread);
         }
     }

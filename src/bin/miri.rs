@@ -10,6 +10,7 @@ extern crate rustc_session;
 
 use std::convert::TryFrom;
 use std::env;
+use std::num::NonZeroU64;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -412,11 +413,16 @@ fn main() {
                     }
                 }
                 arg if arg.starts_with("-Zmiri-track-alloc-id=") => {
-                    let id: u64 = match arg.strip_prefix("-Zmiri-track-alloc-id=").unwrap().parse()
+                    let id = match arg
+                        .strip_prefix("-Zmiri-track-alloc-id=")
+                        .unwrap()
+                        .parse()
+                        .ok()
+                        .and_then(NonZeroU64::new)
                     {
-                        Ok(id) => id,
-                        Err(err) =>
-                            panic!("-Zmiri-track-alloc-id requires a valid `u64` argument: {}", err),
+                        Some(id) => id,
+                        None =>
+                            panic!("-Zmiri-track-alloc-id requires a valid non-zero `u64` argument"),
                     };
                     miri_config.tracked_alloc_id = Some(miri::AllocId(id));
                 }

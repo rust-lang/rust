@@ -33,7 +33,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Read the function argument that will be sent to the new thread
         // before the thread starts executing since reading after the
         // context switch will incorrectly report a data-race.
-        let fn_ptr = this.read_scalar(start_routine)?.check_init()?;
+        let fn_ptr = this.read_pointer(start_routine)?;
         let func_arg = this.read_immediate(arg)?;
 
         // Finally switch to new thread so that we can push the first stackframe.
@@ -70,7 +70,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.is_null(this.read_scalar(retval)?.check_init()?)? {
+        if !this.ptr_is_null(this.read_pointer(retval)?)? {
             // FIXME: implement reading the thread function's return place.
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
@@ -110,7 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let option = this.read_scalar(option)?.to_i32()?;
         if option == this.eval_libc_i32("PR_SET_NAME")? {
-            let address = this.read_scalar(arg2)?.check_init()?;
+            let address = this.read_pointer(arg2)?;
             let mut name = this.read_c_str(address)?.to_owned();
             // The name should be no more than 16 bytes, including the null
             // byte. Since `read_c_str` returns the string without the null
@@ -118,7 +118,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             name.truncate(15);
             this.set_active_thread_name(name);
         } else if option == this.eval_libc_i32("PR_GET_NAME")? {
-            let address = this.read_scalar(arg2)?.check_init()?;
+            let address = this.read_pointer(arg2)?;
             let mut name = this.get_active_thread_name().to_vec();
             name.push(0u8);
             assert!(name.len() <= 16);
@@ -130,7 +130,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn pthread_setname_np(&mut self, name: Scalar<Tag>) -> InterpResult<'tcx> {
+    fn pthread_setname_np(&mut self, name: Pointer<Option<Tag>>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "pthread_setname_np");
 

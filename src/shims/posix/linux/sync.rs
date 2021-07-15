@@ -31,13 +31,8 @@ pub fn futex<'tcx>(
     let op = this.read_scalar(&args[2])?.to_i32()?;
     let val = this.read_scalar(&args[3])?.to_i32()?;
 
-    // The raw pointer value is used to identify the mutex.
-    // Not all mutex operations actually read from this address or even require this address to exist.
-    // This will make FUTEX_WAKE fail on an integer cast to a pointer. But FUTEX_WAIT on
-    // such a pointer can never work anyway, so that seems fine.
-    let futex_ptr = this.force_ptr(addr.to_scalar()?)?;
-
     let thread = this.get_active_thread();
+    let addr_scalar = addr.to_scalar()?;
 
     let futex_private = this.eval_libc_i32("FUTEX_PRIVATE_FLAG")?;
     let futex_wait = this.eval_libc_i32("FUTEX_WAIT")?;
@@ -57,14 +52,16 @@ pub fn futex<'tcx>(
                     args.len()
                 );
             }
-            let timeout = &args[4];
-            let timeout_time = if this.is_null(this.read_scalar(timeout)?.check_init()?)? {
+
+            // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
+            let timeout = this.ref_to_mplace(&this.read_immediate(&args[4])?)?;
+            let timeout_time = if this.ptr_is_null(timeout.ptr)? {
                 None
             } else {
                 this.check_no_isolation(
                     "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout",
                 )?;
-                let duration = match this.read_timespec(timeout)? {
+                let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {
                         let einval = this.eval_libc("EINVAL")?;
@@ -83,7 +80,7 @@ pub fn futex<'tcx>(
             // The API requires `addr` to be a 4-byte aligned pointer, and will
             // use the 4 bytes at the given address as an (atomic) i32.
             this.memory.check_ptr_access_align(
-                addr.to_scalar()?,
+                this.scalar_to_ptr(addr_scalar),
                 Size::from_bytes(4),
                 Align::from_bytes(4).unwrap(),
                 CheckInAllocMsg::MemoryAccessTest,
@@ -111,7 +108,7 @@ pub fn futex<'tcx>(
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
-                this.futex_wait(futex_ptr, thread);
+                this.futex_wait(addr_scalar.to_machine_usize(this)?, thread);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
                 this.write_scalar(Scalar::from_machine_isize(0, this), dest)?;
                 // Register a timeout callback if a timeout was specified.
@@ -123,7 +120,7 @@ pub fn futex<'tcx>(
                         timeout_time,
                         Box::new(move |this| {
                             this.unblock_thread(thread);
-                            this.futex_remove_waiter(futex_ptr, thread);
+                            this.futex_remove_waiter(addr_scalar.to_machine_usize(this)?, thread);
                             let etimedout = this.eval_libc("ETIMEDOUT")?;
                             this.set_last_error(etimedout)?;
                             this.write_scalar(Scalar::from_machine_isize(-1, this), &dest)?;
@@ -146,7 +143,7 @@ pub fn futex<'tcx>(
         op if op == futex_wake => {
             let mut n = 0;
             for _ in 0..val {
-                if let Some(thread) = this.futex_wake(futex_ptr) {
+                if let Some(thread) = this.futex_wake(addr_scalar.to_machine_usize(this)?) {
                     this.unblock_thread(thread);
                     this.unregister_timeout_callback_if_exists(thread);
                     n += 1;

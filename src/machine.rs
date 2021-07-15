@@ -119,6 +119,35 @@ impl fmt::Display for MiriMemoryKind {
     }
 }
 
+/// Pointer provenance (tag).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Tag {
+    pub alloc_id: AllocId,
+    // Stacked Borrows tag.
+    pub sb: SbTag,
+}
+
+impl Provenance for Tag {
+    const OFFSET_IS_ADDR: bool = true;
+
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (tag, addr) = ptr.into_parts(); // address is absolute
+        write!(f, "0x{:x}", addr.bytes())?;
+        // Forward `alternate` flag to `alloc_id` printing.
+        if f.alternate() {
+            write!(f, "[{:#?}]", tag.alloc_id)?;
+        } else {
+            write!(f, "[{:?}]", tag.alloc_id)?;
+        }
+        // Print Stacked Borrows tag.
+        write!(f, "{:?}", tag.sb)
+    }
+
+    fn get_alloc_id(self) -> AllocId {
+        self.alloc_id
+    }
+}
+
 /// Extra per-allocation data
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
@@ -136,8 +165,8 @@ pub struct MemoryExtra {
     pub data_race: Option<data_race::MemoryExtra>,
     pub intptrcast: intptrcast::MemoryExtra,
 
-    /// Mapping extern static names to their canonical allocation.
-    extern_statics: FxHashMap<Symbol, AllocId>,
+    /// Mapping extern static names to their base pointer.
+    extern_statics: FxHashMap<Symbol, Pointer<Tag>>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
@@ -183,11 +212,10 @@ impl MemoryExtra {
     fn add_extern_static<'tcx, 'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
         name: &str,
-        ptr: Scalar<Tag>,
+        ptr: Pointer<Option<Tag>>,
     ) {
-        let ptr = ptr.assert_ptr();
-        assert_eq!(ptr.offset, Size::ZERO);
-        this.memory.extra.extern_statics.try_insert(Symbol::intern(name), ptr.alloc_id).unwrap();
+        let ptr = ptr.into_pointer_or_addr().unwrap();
+        this.memory.extra.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
     }
 
     /// Sets up the "extern statics" for this machine.
@@ -257,9 +285,9 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
     /// We also need the full command line as one string because of Windows.
-    pub(crate) argc: Option<Scalar<Tag>>,
-    pub(crate) argv: Option<Scalar<Tag>>,
-    pub(crate) cmd_line: Option<Scalar<Tag>>,
+    pub(crate) argc: Option<MemPlace<Tag>>,
+    pub(crate) argv: Option<MemPlace<Tag>>,
+    pub(crate) cmd_line: Option<MemPlace<Tag>>,
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
@@ -487,82 +515,107 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
-    fn thread_local_static_alloc_id(
+    fn thread_local_static_base_pointer(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, AllocId> {
-        ecx.get_or_create_thread_local_alloc_id(def_id)
+    ) -> InterpResult<'tcx, Pointer<Tag>> {
+        ecx.get_or_create_thread_local_alloc(def_id)
     }
 
-    fn extern_static_alloc_id(
+    fn extern_static_base_pointer(
         memory: &Memory<'mir, 'tcx, Self>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, AllocId> {
+    ) -> InterpResult<'tcx, Pointer<Tag>> {
         let attrs = memory.tcx.get_attrs(def_id);
         let link_name = match memory.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name,
             None => memory.tcx.item_name(def_id),
         };
-        if let Some(&id) = memory.extra.extern_statics.get(&link_name) {
-            Ok(id)
+        if let Some(&ptr) = memory.extra.extern_statics.get(&link_name) {
+            Ok(ptr)
         } else {
             throw_unsup_format!("`extern` static {:?} is not supported by Miri", def_id)
         }
     }
 
     fn init_allocation_extra<'b>(
-        memory_extra: &MemoryExtra,
+        mem: &Memory<'mir, 'tcx, Self>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
-        if Some(id) == memory_extra.tracked_alloc_id {
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>> {
+        if Some(id) == mem.extra.tracked_alloc_id {
             register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
         }
 
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
-            let (stacks, base_tag) =
-                Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind);
-            (Some(stacks), base_tag)
+        let stacks = if let Some(stacked_borrows) = &mem.extra.stacked_borrows {
+            Some(Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind))
         } else {
-            // No stacks, no tag.
-            (None, Tag::Untagged)
+            None
         };
-        let race_alloc = if let Some(data_race) = &memory_extra.data_race {
+        let race_alloc = if let Some(data_race) = &mem.extra.data_race {
             Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size(), kind))
         } else {
             None
         };
-        let mut stacked_borrows = memory_extra.stacked_borrows.as_ref().map(|sb| sb.borrow_mut());
-        let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
-            |alloc| {
-                if let Some(stacked_borrows) = &mut stacked_borrows {
-                    // Only globals may already contain pointers at this point
-                    assert_eq!(kind, MiriMemoryKind::Global.into());
-                    stacked_borrows.global_base_ptr(alloc)
-                } else {
-                    Tag::Untagged
-                }
-            },
+        let alloc: Allocation<Tag, Self::AllocExtra> = alloc.convert_tag_add_extra(
+            &mem.tcx,
             AllocExtra { stacked_borrows: stacks, data_race: race_alloc },
+            |ptr| Evaluator::tag_alloc_base_pointer(mem, ptr),
         );
-        (Cow::Owned(alloc), base_tag)
+        Cow::Owned(alloc)
+    }
+
+    fn tag_alloc_base_pointer(
+        mem: &Memory<'mir, 'tcx, Self>,
+        ptr: Pointer<AllocId>,
+    ) -> Pointer<Tag> {
+        let absolute_addr = intptrcast::GlobalState::rel_ptr_to_addr(&mem, ptr);
+        let sb_tag = if let Some(stacked_borrows) = &mem.extra.stacked_borrows {
+            stacked_borrows.borrow_mut().base_tag(ptr.provenance)
+        } else {
+            SbTag::Untagged
+        };
+        Pointer::new(Tag { alloc_id: ptr.provenance, sb: sb_tag }, Size::from_bytes(absolute_addr))
+    }
+
+    #[inline(always)]
+    fn ptr_from_addr(
+        mem: &Memory<'mir, 'tcx, Self>,
+        addr: u64,
+    ) -> Pointer<Option<Self::PointerTag>> {
+        intptrcast::GlobalState::ptr_from_addr(addr, mem)
+    }
+
+    /// Convert a pointer with provenance into an allocation-offset pair,
+    /// or a `None` with an absolute address if that conversion is not possible.
+    fn ptr_get_alloc(
+        mem: &Memory<'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+    ) -> (AllocId, Size) {
+        let rel = intptrcast::GlobalState::abs_ptr_to_rel(mem, ptr);
+        (ptr.provenance.alloc_id, rel)
     }
 
     #[inline(always)]
     fn memory_read(
         memory_extra: &Self::MemoryExtra,
         alloc_extra: &AllocExtra,
-        ptr: Pointer<Tag>,
-        size: Size,
+        tag: Tag,
+        range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &alloc_extra.data_race {
-            data_race.read(ptr, size, memory_extra.data_race.as_ref().unwrap())?;
+            data_race.read(tag.alloc_id, range, memory_extra.data_race.as_ref().unwrap())?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-            stacked_borrows.memory_read(ptr, size, memory_extra.stacked_borrows.as_ref().unwrap())
+            stacked_borrows.memory_read(
+                tag.alloc_id,
+                tag.sb,
+                range,
+                memory_extra.stacked_borrows.as_ref().unwrap(),
+            )
         } else {
             Ok(())
         }
@@ -572,16 +625,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn memory_written(
         memory_extra: &mut Self::MemoryExtra,
         alloc_extra: &mut AllocExtra,
-        ptr: Pointer<Tag>,
-        size: Size,
+        tag: Tag,
+        range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.write(ptr, size, memory_extra.data_race.as_mut().unwrap())?;
+            data_race.write(tag.alloc_id, range, memory_extra.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.memory_written(
-                ptr,
-                size,
+                tag.alloc_id,
+                tag.sb,
+                range,
                 memory_extra.stacked_borrows.as_mut().unwrap(),
             )
         } else {
@@ -593,43 +647,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn memory_deallocated(
         memory_extra: &mut Self::MemoryExtra,
         alloc_extra: &mut AllocExtra,
-        ptr: Pointer<Tag>,
-        size: Size,
+        tag: Tag,
+        range: AllocRange,
     ) -> InterpResult<'tcx> {
-        if Some(ptr.alloc_id) == memory_extra.tracked_alloc_id {
-            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(ptr.alloc_id));
+        if Some(tag.alloc_id) == memory_extra.tracked_alloc_id {
+            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(tag.alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(ptr, size, memory_extra.data_race.as_mut().unwrap())?;
+            data_race.deallocate(tag.alloc_id, range, memory_extra.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.memory_deallocated(
-                ptr,
-                size,
+                tag.alloc_id,
+                tag.sb,
+                range,
                 memory_extra.stacked_borrows.as_mut().unwrap(),
             )
         } else {
             Ok(())
-        }
-    }
-
-    fn after_static_mem_initialized(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
-        size: Size,
-    ) -> InterpResult<'tcx> {
-        if ecx.memory.extra.data_race.is_some() {
-            ecx.reset_vector_clocks(ptr, size)?;
-        }
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn tag_global_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
-        if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
-            stacked_borrows.borrow_mut().global_base_ptr(id)
-        } else {
-            Tag::Untagged
         }
     }
 
@@ -700,21 +735,5 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             profiler.finish_recording_interval_event(timing.unwrap());
         }
         res
-    }
-
-    #[inline(always)]
-    fn int_to_ptr(
-        memory: &Memory<'mir, 'tcx, Self>,
-        int: u64,
-    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
-        intptrcast::GlobalState::int_to_ptr(int, memory)
-    }
-
-    #[inline(always)]
-    fn ptr_to_int(
-        memory: &Memory<'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
-    ) -> InterpResult<'tcx, u64> {
-        intptrcast::GlobalState::ptr_to_int(ptr, memory)
     }
 }

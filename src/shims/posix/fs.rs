@@ -17,7 +17,6 @@ use rustc_target::abi::{Align, LayoutOf, Size};
 use crate::*;
 use helpers::{check_arg_count, immty_from_int_checked, immty_from_uint_checked};
 use shims::time::system_time_to_duration;
-use stacked_borrows::Tag;
 
 #[derive(Debug)]
 struct FileHandle {
@@ -317,7 +316,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let path_scalar = this.read_scalar(path_op)?.check_init()?;
+        let path_scalar = this.read_pointer(path_op)?;
         let path = this.read_path_from_c_str(path_scalar)?.into_owned();
 
         let metadata = match FileMetadata::from_path(this, &path, follow_symlink)? {
@@ -582,7 +581,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         let fd = options.open(&path).map(|file| {
             let fh = &mut this.machine.file_handler;
@@ -670,7 +669,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn read(&mut self, fd: i32, buf: Scalar<Tag>, count: u64) -> InterpResult<'tcx, i64> {
+    fn read(&mut self, fd: i32, buf: Pointer<Option<Tag>>, count: u64) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -718,7 +717,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn write(&mut self, fd: i32, buf: Scalar<Tag>, count: u64) -> InterpResult<'tcx, i64> {
+    fn write(&mut self, fd: i32, buf: Pointer<Option<Tag>>, count: u64) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -788,7 +787,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`unlink`")?;
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         let result = remove_file(path).map(|_| 0);
         this.try_unwrap_io_result(result)
@@ -814,8 +813,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`symlink`")?;
 
-        let target = this.read_path_from_c_str(this.read_scalar(target_op)?.check_init()?)?;
-        let linkpath = this.read_path_from_c_str(this.read_scalar(linkpath_op)?.check_init()?)?;
+        let target = this.read_path_from_c_str(this.read_pointer(target_op)?)?;
+        let linkpath = this.read_path_from_c_str(this.read_pointer(linkpath_op)?)?;
 
         let result = create_link(&target, &linkpath).map(|_| 0);
         this.try_unwrap_io_result(result)
@@ -877,11 +876,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.assert_target_os("linux", "statx");
         this.check_no_isolation("`statx`")?;
 
-        let statxbuf_scalar = this.read_scalar(statxbuf_op)?.check_init()?;
-        let pathname_scalar = this.read_scalar(pathname_op)?.check_init()?;
+        let statxbuf_ptr = this.read_pointer(statxbuf_op)?;
+        let pathname_ptr = this.read_pointer(pathname_op)?;
 
         // If the statxbuf or pathname pointers are null, the function fails with `EFAULT`.
-        if this.is_null(statxbuf_scalar)? || this.is_null(pathname_scalar)? {
+        if this.ptr_is_null(statxbuf_ptr)? || this.ptr_is_null(pathname_ptr)? {
             let efault = this.eval_libc("EFAULT")?;
             this.set_last_error(efault)?;
             return Ok(-1);
@@ -898,13 +897,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let statx_ty = this
                 .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])
                 .ty(*this.tcx, ty::ParamEnv::reveal_all());
-            let statxbuf_ty = this.tcx.mk_mut_ptr(statx_ty);
-            let statxbuf_layout = this.layout_of(statxbuf_ty)?;
-            let statxbuf_imm = ImmTy::from_scalar(statxbuf_scalar, statxbuf_layout);
-            this.ref_to_mplace(&statxbuf_imm)?
+            let statx_layout = this.layout_of(statx_ty)?;
+            MPlaceTy::from_aligned_ptr(statxbuf_ptr, statx_layout)
         };
 
-        let path = this.read_path_from_c_str(pathname_scalar)?.into_owned();
+        let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
         let flags = this.read_scalar(flags_op)?.to_i32()?;
         let empty_path_flag = flags & this.eval_libc("AT_EMPTY_PATH")?.to_i32()? != 0;
@@ -1037,17 +1034,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`rename`")?;
 
-        let oldpath_scalar = this.read_scalar(oldpath_op)?.check_init()?;
-        let newpath_scalar = this.read_scalar(newpath_op)?.check_init()?;
+        let oldpath_ptr = this.read_pointer(oldpath_op)?;
+        let newpath_ptr = this.read_pointer(newpath_op)?;
 
-        if this.is_null(oldpath_scalar)? || this.is_null(newpath_scalar)? {
+        if this.ptr_is_null(oldpath_ptr)? || this.ptr_is_null(newpath_ptr)? {
             let efault = this.eval_libc("EFAULT")?;
             this.set_last_error(efault)?;
             return Ok(-1);
         }
 
-        let oldpath = this.read_path_from_c_str(oldpath_scalar)?;
-        let newpath = this.read_path_from_c_str(newpath_scalar)?;
+        let oldpath = this.read_path_from_c_str(oldpath_ptr)?;
+        let newpath = this.read_path_from_c_str(newpath_ptr)?;
 
         let result = rename(oldpath, newpath).map(|_| 0);
 
@@ -1065,12 +1062,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         #[cfg_attr(not(unix), allow(unused_variables))]
         let mode = if this.tcx.sess.target.os == "macos" {
-            u32::from(this.read_scalar(mode_op)?.check_init()?.to_u16()?)
+            u32::from(this.read_scalar(mode_op)?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
         };
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         #[cfg_attr(not(unix), allow(unused_mut))]
         let mut builder = DirBuilder::new();
@@ -1093,7 +1090,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`rmdir`")?;
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         let result = remove_dir(path).map(|_| 0i32);
 
@@ -1105,7 +1102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`opendir`")?;
 
-        let name = this.read_path_from_c_str(this.read_scalar(name_op)?.check_init()?)?;
+        let name = this.read_path_from_c_str(this.read_pointer(name_op)?)?;
 
         let result = read_dir(name);
 
@@ -1449,8 +1446,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("readlink")?;
 
-        let pathname = this.read_path_from_c_str(this.read_scalar(pathname_op)?.check_init()?)?;
-        let buf = this.read_scalar(buf_op)?.check_init()?;
+        let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
+        let buf = this.read_pointer(buf_op)?;
         let bufsize = this.read_scalar(bufsize_op)?.to_machine_usize(this)?;
 
         let result = std::fs::read_link(pathname);

@@ -1,7 +1,6 @@
 use std::time::SystemTime;
 
 use crate::*;
-use stacked_borrows::Tag;
 use thread::Time;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
@@ -364,8 +363,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let attr = this.read_scalar(attr_op)?.check_init()?;
-        let kind = if this.is_null(attr)? {
+        let attr = this.read_pointer(attr_op)?;
+        let kind = if this.ptr_is_null(attr)? {
             this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
         } else {
             mutexattr_get_kind(this, attr_op)?.check_init()?
@@ -657,8 +656,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let attr = this.read_scalar(attr_op)?.check_init()?;
-        let clock_id = if this.is_null(attr)? {
+        let attr = this.read_pointer(attr_op)?;
+        let clock_id = if this.ptr_is_null(attr)? {
             this.eval_libc("CLOCK_REALTIME")?
         } else {
             condattr_get_clock_id(this, attr_op)?.check_init()?
@@ -727,7 +726,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Extract the timeout.
         let clock_id = cond_get_clock_id(this, cond_op)?.to_i32()?;
-        let duration = match this.read_timespec(abstime_op)? {
+        let duration = match this.read_timespec(&this.deref_operand(abstime_op)?)? {
             Some(duration) => duration,
             None => {
                 let einval = this.eval_libc("EINVAL")?;

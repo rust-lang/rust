@@ -1,7 +1,6 @@
 use std::convert::TryFrom;
 use std::time::{Duration, Instant, SystemTime};
 
-use crate::stacked_borrows::Tag;
 use crate::*;
 use helpers::{immty_from_int_checked, immty_from_uint_checked};
 use thread::Time;
@@ -63,8 +62,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("`gettimeofday`")?;
 
         // Using tz is obsolete and should always be null
-        let tz = this.read_scalar(tz_op)?.check_init()?;
-        if !this.is_null(tz)? {
+        let tz = this.read_pointer(tz_op)?;
+        if !this.ptr_is_null(tz)? {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
             return Ok(-1);
@@ -206,7 +205,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`nanosleep`")?;
 
-        let duration = match this.read_timespec(req_op)? {
+        let duration = match this.read_timespec(&this.deref_operand(req_op)?)? {
             Some(duration) => duration,
             None => {
                 let einval = this.eval_libc("EINVAL")?;

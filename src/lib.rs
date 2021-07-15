@@ -65,13 +65,14 @@ pub use crate::eval::{
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
     AllocExtra, Evaluator, FrameData, MemoryExtra, MiriEvalContext, MiriEvalContextExt,
-    MiriMemoryKind, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    MiriMemoryKind, Tag, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack, Stacks, Tag,
+    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, SbTag, Stack,
+    Stacks,
 };
 pub use crate::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{

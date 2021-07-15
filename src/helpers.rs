@@ -53,18 +53,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&mut self, path: &[&str]) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    fn eval_path_scalar(&mut self, path: &[&str]) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
         let const_val = this.eval_to_allocation(cid)?;
         let const_val = this.read_scalar(&const_val.into())?;
-        return Ok(const_val);
+        return Ok(const_val.check_init()?);
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
     fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut().eval_path_scalar(&["libc", name])?.check_init()
+        self.eval_context_mut().eval_path_scalar(&["libc", name])
     }
 
     /// Helper function to get a `libc` constant as an `i32`.
@@ -75,9 +75,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Helper function to get a `windows` constant as a `Scalar`.
     fn eval_windows(&mut self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut()
-            .eval_path_scalar(&["std", "sys", "windows", module, name])?
-            .check_init()
+        self.eval_context_mut().eval_path_scalar(&["std", "sys", "windows", module, name])
     }
 
     /// Helper function to get a `windows` constant as an `u64`.
@@ -107,17 +105,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
     }
 
-    /// Test if this immediate equals 0.
-    fn is_null(&self, val: Scalar<Tag>) -> InterpResult<'tcx, bool> {
+    /// Test if this pointer equals 0.
+    fn ptr_is_null(&self, ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_ref();
         let null = Scalar::null_ptr(this);
-        this.ptr_eq(val, null)
-    }
-
-    /// Turn a Scalar into an Option<NonNullScalar>
-    fn test_null(&self, val: Scalar<Tag>) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
-        let this = self.eval_context_ref();
-        Ok(if this.is_null(val)? { None } else { Some(val) })
+        this.ptr_eq(Scalar::from_maybe_pointer(ptr, this), null)
     }
 
     /// Get the `Place` for a local
@@ -128,7 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Generate some random bytes, and write them to `dest`.
-    fn gen_random(&mut self, ptr: Scalar<Tag>, len: u64) -> InterpResult<'tcx> {
+    fn gen_random(&mut self, ptr: Pointer<Option<Tag>>, len: u64) -> InterpResult<'tcx> {
         // Some programs pass in a null pointer and a length of 0
         // to their platform's random-generation function (e.g. getrandom())
         // on Linux. For compatibility with these programs, we don't perform
@@ -195,13 +187,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter
-    /// will be true if this is frozen, false if this is in an `UnsafeCell`.
+    /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
+    /// of `action` will be true if this is frozen, false if this is in an `UnsafeCell`.
+    /// The range is relative to `place`.
+    ///
+    /// Assumes that the `place` has a proper pointer in it.
     fn visit_freeze_sensitive(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
         size: Size,
-        mut action: impl FnMut(Pointer<Tag>, Size, bool) -> InterpResult<'tcx>,
+        mut action: impl FnMut(AllocRange, bool) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
@@ -214,29 +209,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Store how far we proceeded into the place so far. Everything to the left of
         // this offset has already been handled, in the sense that the frozen parts
         // have had `action` called on them.
-        let mut end_ptr = place.ptr.assert_ptr();
+        let ptr = place.ptr.into_pointer_or_addr().unwrap();
+        let start_offset = ptr.into_parts().1 as Size; // we just compare offsets, the abs. value never matters
+        let mut cur_offset = start_offset;
         // Called when we detected an `UnsafeCell` at the given offset and size.
-        // Calls `action` and advances `end_ptr`.
-        let mut unsafe_cell_action = |unsafe_cell_ptr: Scalar<Tag>, unsafe_cell_size: Size| {
-            let unsafe_cell_ptr = unsafe_cell_ptr.assert_ptr();
-            debug_assert_eq!(unsafe_cell_ptr.alloc_id, end_ptr.alloc_id);
-            debug_assert_eq!(unsafe_cell_ptr.tag, end_ptr.tag);
+        // Calls `action` and advances `cur_ptr`.
+        let mut unsafe_cell_action = |unsafe_cell_ptr: Pointer<Option<Tag>>,
+                                      unsafe_cell_size: Size| {
+            let unsafe_cell_ptr = unsafe_cell_ptr.into_pointer_or_addr().unwrap();
+            debug_assert_eq!(unsafe_cell_ptr.provenance, ptr.provenance);
             // We assume that we are given the fields in increasing offset order,
             // and nothing else changes.
-            let unsafe_cell_offset = unsafe_cell_ptr.offset;
-            let end_offset = end_ptr.offset;
-            assert!(unsafe_cell_offset >= end_offset);
-            let frozen_size = unsafe_cell_offset - end_offset;
-            // Everything between the end_ptr and this `UnsafeCell` is frozen.
+            let unsafe_cell_offset = unsafe_cell_ptr.into_parts().1 as Size; // we just compare offsets, the abs. value never matters
+            assert!(unsafe_cell_offset >= cur_offset);
+            let frozen_size = unsafe_cell_offset - cur_offset;
+            // Everything between the cur_ptr and this `UnsafeCell` is frozen.
             if frozen_size != Size::ZERO {
-                action(end_ptr, frozen_size, /*frozen*/ true)?;
+                action(alloc_range(cur_offset - start_offset, frozen_size), /*frozen*/ true)?;
             }
+            cur_offset += frozen_size;
             // This `UnsafeCell` is NOT frozen.
             if unsafe_cell_size != Size::ZERO {
-                action(unsafe_cell_ptr, unsafe_cell_size, /*frozen*/ false)?;
+                action(
+                    alloc_range(cur_offset - start_offset, unsafe_cell_size),
+                    /*frozen*/ false,
+                )?;
             }
-            // Update end end_ptr.
-            end_ptr = unsafe_cell_ptr.wrapping_offset(unsafe_cell_size, this);
+            cur_offset += unsafe_cell_size;
             // Done
             Ok(())
         };
@@ -264,7 +263,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(place.ptr.ptr_wrapping_offset(size, this), Size::ZERO)?;
+        unsafe_cell_action(place.ptr.wrapping_offset(size, this), Size::ZERO)?;
         // Done!
         return Ok(());
 
@@ -347,7 +346,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // Gather the subplaces and sort them before visiting.
                         let mut places =
                             fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
-                        places.sort_by_key(|place| place.ptr.assert_ptr().offset);
+                        // we just compare offsets, the abs. value never matters
+                        places.sort_by_key(|place| {
+                            place.ptr.into_pointer_or_addr().unwrap().into_parts().1 as Size
+                        });
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
                     FieldsShape::Union { .. } | FieldsShape::Primitive => {
@@ -379,9 +381,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let mut offset = Size::from_bytes(0);
 
         for &imm in imms {
-            this.write_immediate_to_mplace(
+            this.write_immediate(
                 *imm,
-                &place.offset(offset, MemPlaceMeta::None, imm.layout, &*this.tcx)?,
+                &place.offset(offset, MemPlaceMeta::None, imm.layout, &*this.tcx)?.into(),
             )?;
             offset += imm.layout.size;
         }
@@ -567,12 +569,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`
     /// if the value in the `timespec` struct is invalid. Some libc functions will return
     /// `EINVAL` in this case.
-    fn read_timespec(
-        &mut self,
-        timespec_ptr_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, Option<Duration>> {
+    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let tp = this.deref_operand(timespec_ptr_op)?;
         let seconds_place = this.mplace_field(&tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
         let seconds = seconds_scalar.to_machine_isize(this)?;
@@ -593,14 +591,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         })
     }
 
-    fn read_c_str<'a>(&'a self, sptr: Scalar<Tag>) -> InterpResult<'tcx, &'a [u8]>
+    fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, &'a [u8]>
     where
         'tcx: 'a,
         'mir: 'a,
     {
         let this = self.eval_context_ref();
         let size1 = Size::from_bytes(1);
-        let ptr = this.force_ptr(sptr)?; // We need to read at least 1 byte, so we can eagerly get a ptr.
 
         // Step 1: determine the length.
         let mut len = Size::ZERO;
@@ -620,12 +617,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.memory.read_bytes(ptr.into(), len)
     }
 
-    fn read_wide_str(&self, sptr: Scalar<Tag>) -> InterpResult<'tcx, Vec<u16>> {
+    fn read_wide_str(&self, mut ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, Vec<u16>> {
         let this = self.eval_context_ref();
         let size2 = Size::from_bytes(2);
         let align2 = Align::from_bytes(2).unwrap();
 
-        let mut ptr = this.force_ptr(sptr)?; // We need to read at least 1 wchar, so we can eagerly get a ptr.
         let mut wchars = Vec::new();
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
@@ -708,6 +704,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
         check_arg_count(args)
+    }
+
+    /// Mark a machine allocation that was just created as immutable.
+    fn mark_immutable(&mut self, mplace: &MemPlace<Tag>) {
+        let this = self.eval_context_mut();
+        this.memory
+            .mark_immutable(mplace.ptr.into_pointer_or_addr().unwrap().provenance.alloc_id)
+            .unwrap();
     }
 }
 

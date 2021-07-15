@@ -9,5 +9,5 @@ fn main() {
     // That should be UB, as the reference is not fully dereferencable.
     let ptr: *const SliceWithHead = unsafe { std::mem::transmute((&buf, 4usize)) };
     // Re-borrow that. This should be UB.
-    let _ptr = unsafe { &*ptr }; //~ ERROR pointer must be in-bounds at offset 5
+    let _ptr = unsafe { &*ptr }; //~ ERROR pointer to 5 bytes starting at offset 0 is out-of-bounds
 }

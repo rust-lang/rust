@@ -1,4 +1,4 @@
-// error-pattern: must be in-bounds at offset 5, but is outside bounds of alloc
+// error-pattern: pointer to 5 bytes starting at offset 0 is out-of-bounds
 fn main() {
     let v = [0i8; 4];
     let x = &v as *const i8;
