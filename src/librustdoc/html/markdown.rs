@@ -621,8 +621,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                                 is_paragraph = true;
                             }
                             html::push_html(&mut ret, content.into_iter());
-                            write!(ret, "&nbsp;<a href=\"#fnref{}\" rev=\"footnote\">↩</a>", id)
-                                .unwrap();
+                            write!(ret, "&nbsp;<a href=\"#fnref{}\">↩</a>", id).unwrap();
                             if is_paragraph {
                                 ret.push_str("</p>");
                             }
