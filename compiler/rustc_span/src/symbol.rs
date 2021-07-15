@@ -1628,8 +1628,7 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
 // revisited after further improvements to `indexmap`.
 #[derive(Default)]
 pub struct Interner {
-    arena: DroplessArena,
-    names: Lock<FxHashMap<&'static str, Symbol>>,
+    arena_and_names: Lock<(DroplessArena, FxHashMap<&'static str, Symbol>)>,
     strings: RwLock<Vec<&'static str>>,
 }
 
@@ -1637,16 +1636,19 @@ impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
         Interner {
             strings: RwLock::new(init.into()),
-            names: Lock::new(init.iter().copied().zip((0..).map(Symbol::new)).collect()),
+            arena_and_names: Lock::new((
+                DroplessArena::default(),
+                init.iter().copied().zip((0..).map(Symbol::new)).collect(),
+            )),
             ..Default::default()
         }
     }
 
     #[inline]
     pub fn intern(&self, string: &str) -> Symbol {
-        let mut names = self.names.lock();
+        let mut arena_and_names = self.arena_and_names.lock();
         let mut strings = self.strings.write();
-        if let Some(&name) = names.get(string) {
+        if let Some(&name) = arena_and_names.1.get(string) {
             return name;
         }
 
@@ -1655,12 +1657,12 @@ impl Interner {
         // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
         // UTF-8.
         let string: &str =
-            unsafe { str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes())) };
+            unsafe { str::from_utf8_unchecked(arena_and_names.0.alloc_slice(string.as_bytes())) };
         // It is safe to extend the arena allocation to `'static` because we only access
         // these while the arena is still alive.
         let string: &'static str = unsafe { &*(string as *const str) };
         strings.push(string);
-        names.insert(string, name);
+        arena_and_names.1.insert(string, name);
         name
     }
 
