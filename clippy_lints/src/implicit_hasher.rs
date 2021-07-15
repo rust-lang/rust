@@ -1,5 +1,3 @@
-#![allow(rustc::default_hash_types)]
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 

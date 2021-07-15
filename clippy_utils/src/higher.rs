@@ -285,7 +285,7 @@ impl FormatExpn<'tcx> {
             if let Some(init) = local.init;
             if let ExprKind::Call(_, [format_args]) = init.kind;
             let expn_data = expr.span.ctxt().outer_expn_data();
-            if let ExpnKind::Macro { name: sym::format, .. } = expn_data.kind;
+            if let ExpnKind::Macro(_, sym::format) = expn_data.kind;
             if let Some(format_args) = FormatArgsExpn::parse(format_args);
             then {
                 Some(FormatExpn {
@@ -320,7 +320,7 @@ impl FormatArgsExpn<'tcx> {
     /// Parses an expanded `format_args!` or `format_args_nl!` invocation
     pub fn parse(expr: &'tcx Expr<'tcx>) -> Option<Self> {
         if_chain! {
-            if let ExpnKind::Macro { name, .. } = expr.span.ctxt().outer_expn_data().kind;
+            if let ExpnKind::Macro(_, name) = expr.span.ctxt().outer_expn_data().kind;
             let name = name.as_str();
             if name.ends_with("format_args") || name.ends_with("format_args_nl");
             if let ExprKind::Call(_, args) = expr.kind;

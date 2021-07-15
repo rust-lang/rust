@@ -483,7 +483,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
-    let crates = tcx.crates();
+    let crates = tcx.crates(());
     let krate = try_res!(crates.iter().find(|&&num| tcx.crate_name(num).as_str() == krate));
     let first = try_res!(item_child_by_name(tcx, krate.as_def_id(), first));
     let last = path
@@ -953,12 +953,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro {
-                kind: MacroKind::Bang,
-                name: mac_name,
-                proc_macro: _,
-            } = data.kind
-            {
+            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
                 if mac_name.as_str() == name {
                     return Some(new_span);
                 }
@@ -986,12 +981,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro {
-            kind: MacroKind::Bang,
-            name: mac_name,
-            proc_macro: _,
-        } = data.kind
-        {
+        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
             if mac_name.as_str() == name {
                 return Some(new_span);
             }

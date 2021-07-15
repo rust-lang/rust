@@ -592,7 +592,7 @@ Released 2021-02-11
 
 * Previously deprecated [`str_to_string`] and [`string_to_string`] have been un-deprecated
   as `restriction` lints [#6333](https://github.com/rust-lang/rust-clippy/pull/6333)
-* Deprecate `panic_params` lint. This is now available in rustc as `non_fmt_panic`
+* Deprecate `panic_params` lint. This is now available in rustc as `non_fmt_panics`
   [#6351](https://github.com/rust-lang/rust-clippy/pull/6351)
 * Move [`map_err_ignore`] to `restriction`
   [#6416](https://github.com/rust-lang/rust-clippy/pull/6416)

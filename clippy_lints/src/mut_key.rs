@@ -120,8 +120,8 @@ fn is_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bo
         },
         Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span)),
         Adt(..) => {
-            cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
-                && !ty.has_escaping_bound_vars()
+            !ty.has_escaping_bound_vars()
+                && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
                 && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
         },
         _ => false,
