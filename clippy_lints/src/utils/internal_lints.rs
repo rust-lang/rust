@@ -3,8 +3,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sug
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{
-    is_else_clause, is_expn_of, is_expr_path_def_path, match_def_path, method_calls, path_to_res, paths, run_lints,
-    SpanlessEq,
+    is_else_clause, is_expn_of, is_expr_path_def_path, is_lint_allowed, match_def_path, method_calls, path_to_res,
+    paths, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
@@ -353,7 +353,7 @@ impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !run_lints(cx, &[DEFAULT_LINT], item.hir_id()) {
+        if is_lint_allowed(cx, DEFAULT_LINT, item.hir_id()) {
             return;
         }
 
@@ -411,7 +411,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx Crate<'_>) {
-        if !run_lints(cx, &[LINT_WITHOUT_LINT_PASS], CRATE_HIR_ID) {
+        if is_lint_allowed(cx, LINT_WITHOUT_LINT_PASS, CRATE_HIR_ID) {
             return;
         }
 
@@ -497,7 +497,7 @@ impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !run_lints(cx, &[COMPILER_LINT_FUNCTIONS], expr.hir_id) {
+        if is_lint_allowed(cx, COMPILER_LINT_FUNCTIONS, expr.hir_id) {
             return;
         }
 
@@ -526,7 +526,7 @@ declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
 impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !run_lints(cx, &[OUTER_EXPN_EXPN_DATA], expr.hir_id) {
+        if is_lint_allowed(cx, OUTER_EXPN_EXPN_DATA, expr.hir_id) {
             return;
         }
 
@@ -576,7 +576,7 @@ declare_lint_pass!(CollapsibleCalls => [COLLAPSIBLE_SPAN_LINT_CALLS]);
 
 impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !run_lints(cx, &[COLLAPSIBLE_SPAN_LINT_CALLS], expr.hir_id) {
+        if is_lint_allowed(cx, COLLAPSIBLE_SPAN_LINT_CALLS, expr.hir_id) {
             return;
         }
 
@@ -757,7 +757,7 @@ declare_lint_pass!(MatchTypeOnDiagItem => [MATCH_TYPE_ON_DIAGNOSTIC_ITEM]);
 
 impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !run_lints(cx, &[MATCH_TYPE_ON_DIAGNOSTIC_ITEM], expr.hir_id) {
+        if is_lint_allowed(cx, MATCH_TYPE_ON_DIAGNOSTIC_ITEM, expr.hir_id) {
             return;
         }
 

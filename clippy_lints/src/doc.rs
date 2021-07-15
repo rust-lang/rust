@@ -550,7 +550,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             FootnoteReference(text) | Text(text) => {
                 let (begin, span) = get_current_span(spans, range.start);
                 paragraph_span = paragraph_span.with_hi(span.hi());
-                ticks_unbalanced |= text.contains('`');
+                ticks_unbalanced |= text.contains('`') && !in_code;
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
                     // Which are represented as a link to "http://example.com" with
@@ -595,7 +595,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let handler = Handler::with_emitter(false, None, box emitter);
                 let sess = ParseSess::with_span_handler(handler, sm);
 
-                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
+                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
                         for mut err in errs {
@@ -653,7 +653,10 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
     // Because of the global session, we need to create a new session in a different thread with
     // the edition we need.
     let text = text.to_owned();
-    if thread::spawn(move || has_needless_main(text, edition)).join().expect("thread::spawn failed") {
+    if thread::spawn(move || has_needless_main(text, edition))
+        .join()
+        .expect("thread::spawn failed")
+    {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }

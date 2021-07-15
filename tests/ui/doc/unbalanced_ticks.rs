@@ -34,3 +34,10 @@ fn in_code_block() {}
 /// - This `item has unbalanced tick marks
 /// - This item needs backticks_here
 fn other_markdown() {}
+
+#[rustfmt::skip]
+/// - ```rust
+///   /// `lol`
+///   pub struct Struct;
+///   ```
+fn iss_7421() {}

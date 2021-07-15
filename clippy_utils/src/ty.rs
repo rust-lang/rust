@@ -14,8 +14,8 @@ use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TypeFoldable, UintTy};
 use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
-use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::query::normalize::AtExt;
 
 use crate::{match_def_path, must_use_attr};
 
@@ -129,10 +129,11 @@ pub fn implements_trait<'tcx>(
         return false;
     }
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
-    cx.tcx.infer_ctxt().enter(|infcx|
-        infcx.type_implements_trait(trait_id, ty, ty_params, cx.param_env)
-        .must_apply_modulo_regions()
-    )
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        infcx
+            .type_implements_trait(trait_id, ty, ty_params, cx.param_env)
+            .must_apply_modulo_regions()
+    })
 }
 
 /// Checks whether this type implements `Drop`.
@@ -231,6 +232,17 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
         ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
         ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
+        _ => false,
+    }
+}
+
+/// Checks if the type is a reference equals to a diagnostic item
+pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
+    match ty.kind() {
+        ty::Ref(_, ref_ty, _) => match ref_ty.kind() {
+            ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
+            _ => false,
+        },
         _ => false,
     }
 }

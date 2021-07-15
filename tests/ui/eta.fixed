@@ -220,3 +220,19 @@ impl std::ops::Deref for Bar {
 fn test_deref_with_trait_method() {
     let _ = [Bar].iter().map(|s| s.to_string()).collect::<Vec<_>>();
 }
+
+fn mutable_closure_used_again(x: Vec<i32>, y: Vec<i32>, z: Vec<i32>) {
+    let mut res = Vec::new();
+    let mut add_to_res = |n| res.push(n);
+    x.into_iter().for_each(&mut add_to_res);
+    y.into_iter().for_each(&mut add_to_res);
+    z.into_iter().for_each(add_to_res);
+}
+
+fn mutable_closure_in_loop() {
+    let mut value = 0;
+    let mut closure = |n| value += n;
+    for _ in 0..5 {
+        Some(1).map(&mut closure);
+    }
+}

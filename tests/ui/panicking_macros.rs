@@ -43,6 +43,18 @@ fn core_versions() {
     unreachable!();
 }
 
+fn assert() {
+    assert!(true);
+    assert_eq!(true, true);
+    assert_ne!(true, false);
+}
+
+fn assert_msg() {
+    assert!(true, "this should not panic");
+    assert_eq!(true, true, "this should not panic");
+    assert_ne!(true, false, "this should not panic");
+}
+
 fn debug_assert() {
     debug_assert!(true);
     debug_assert_eq!(true, true);
@@ -61,4 +73,8 @@ fn main() {
     unimplemented();
     unreachable();
     core_versions();
+    assert();
+    assert_msg();
+    debug_assert();
+    debug_assert_msg();
 }

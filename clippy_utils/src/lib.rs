@@ -1163,7 +1163,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
 /// Returns `true` if the lint is allowed in the current context
 ///
 /// Useful for skipping long running code when it's unnecessary
-pub fn is_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
+pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
@@ -1529,25 +1529,6 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
         ) => cx.typeck_results().qpath_res(qpath, *path_hir_id).opt_def_id(),
         _ => None,
     }
-}
-
-/// This function checks if any of the lints in the slice is enabled for the provided `HirId`.
-/// A lint counts as enabled with any of the levels: `Level::Forbid` | `Level::Deny` | `Level::Warn`
-///
-/// ```ignore
-/// #[deny(clippy::YOUR_AWESOME_LINT)]
-/// println!("Hello, World!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == true
-///
-/// #[allow(clippy::YOUR_AWESOME_LINT)]
-/// println!("See you soon!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == false
-/// ```
-pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
-    lints.iter().any(|lint| {
-        matches!(
-            cx.tcx.lint_level_at_node(lint, id),
-            (Level::Forbid | Level::Deny | Level::Warn, _)
-        )
-    })
 }
 
 /// Returns Option<String> where String is a textual representation of the type encapsulated in the
