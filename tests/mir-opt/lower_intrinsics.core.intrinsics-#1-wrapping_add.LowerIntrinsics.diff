@@ -1,0 +1,23 @@
+- // MIR for `wrapping_add` before LowerIntrinsics
++ // MIR for `wrapping_add` after LowerIntrinsics
+
+  fn wrapping_add(_1: T, _2: T) -> T {
+      let mut _0: T;                       // return place in scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+
+      bb0: {
+-         _0 = wrapping_add::<T>(move _1, move _2) -> bb1; // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // mir::Constant
+-                                          // + span: $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_add::<T>}, val: Value(Scalar(<ZST>)) }
++         _0 = Add(move _1, move _2);      // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++         goto -> bb1;                     // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb1: {
+          return;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+  }
