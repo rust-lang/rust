@@ -47,3 +47,10 @@ pub mod sub_mod {
     /// ```
     pub struct Foo;
 }
+
+pub mod long_trait {
+    use std::ops::DerefMut;
+
+    pub trait ALongNameBecauseItHelpsTestingTheCurrentProblem: DerefMut<Target = u32>
+        + From<u128> + Send + Sync + AsRef<str> + 'static {}
+}
