@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
-use clippy_utils::{expr_path_res, is_allowed, match_any_def_paths, paths};
+use clippy_utils::{expr_path_res, is_lint_allowed, match_any_def_paths, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -246,7 +246,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
         // Honor the allow attribute on parameters. See issue 5644.
         if let Some(body) = &body {
-            if is_allowed(cx, PTR_ARG, body.params[idx].hir_id) {
+            if is_lint_allowed(cx, PTR_ARG, body.params[idx].hir_id) {
                 continue;
             }
         }

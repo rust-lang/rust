@@ -1,9 +1,9 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::higher::FormatArgsExpn;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -34,29 +34,26 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, _, unwrap_args, _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, _, [write_call], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if !unwrap_args.is_empty();
-            if let ExprKind::MethodCall(write_fun, _, write_args, _) =
-                unwrap_args[0].kind;
+            if let ExprKind::MethodCall(write_fun, _, [write_recv, write_arg], _) = write_call.kind;
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
-            if !write_args.is_empty();
-            if let Some(dest_name) = if match_function_call(cx, &write_args[0], &paths::STDOUT).is_some() {
+            if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
                 Some("stdout")
-            } else if match_function_call(cx, &write_args[0], &paths::STDERR).is_some() {
+            } else if match_function_call(cx, write_recv, &paths::STDERR).is_some() {
                 Some("stderr")
             } else {
                 None
             };
+            if let Some(format_args) = FormatArgsExpn::parse(write_arg);
             then {
-                let write_span = unwrap_args[0].span;
                 let calling_macro =
                     // ordering is important here, since `writeln!` uses `write!` internally
-                    if is_expn_of(write_span, "writeln").is_some() {
+                    if is_expn_of(write_call.span, "writeln").is_some() {
                         Some("writeln")
-                    } else if is_expn_of(write_span, "write").is_some() {
+                    } else if is_expn_of(write_call.span, "write").is_some() {
                         Some("write")
                     } else {
                         None
@@ -70,82 +67,40 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 // We need to remove the last trailing newline from the string because the
                 // underlying `fmt::write` function doesn't know whether `println!` or `print!` was
                 // used.
-                if let Some(mut write_output) = write_output_string(write_args) {
+                let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
+                    (
+                        format!("{}!({}(), ...)", macro_name, dest_name),
+                        macro_name.replace("write", "print"),
+                    )
+                } else {
+                    (
+                        format!("{}().write_fmt(...)", dest_name),
+                        "print".into(),
+                    )
+                };
+                let msg = format!("use of `{}.unwrap()`", used);
+                if let [write_output] = *format_args.format_string_symbols {
+                    let mut write_output = write_output.to_string();
                     if write_output.ends_with('\n') {
                         write_output.pop();
                     }
 
-                    if let Some(macro_name) = calling_macro {
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!(
-                                "use of `{}!({}(), ...).unwrap()`",
-                                macro_name,
-                                dest_name
-                            ),
-                            "try this",
-                            format!("{}{}!(\"{}\")", prefix, macro_name.replace("write", "print"), write_output.escape_default()),
-                            Applicability::MachineApplicable
-                        );
-                    } else {
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!("use of `{}().write_fmt(...).unwrap()`", dest_name),
-                            "try this",
-                            format!("{}print!(\"{}\")", prefix, write_output.escape_default()),
-                            Applicability::MachineApplicable
-                        );
-                    }
+                    let sugg = format!("{}{}!(\"{}\")", prefix, sugg_mac, write_output.escape_default());
+                    span_lint_and_sugg(
+                        cx,
+                        EXPLICIT_WRITE,
+                        expr.span,
+                        &msg,
+                        "try this",
+                        sugg,
+                        Applicability::MachineApplicable
+                    );
                 } else {
                     // We don't have a proper suggestion
-                    if let Some(macro_name) = calling_macro {
-                        span_lint(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!(
-                                "use of `{}!({}(), ...).unwrap()`. Consider using `{}{}!` instead",
-                                macro_name,
-                                dest_name,
-                                prefix,
-                                macro_name.replace("write", "print")
-                            )
-                        );
-                    } else {
-                        span_lint(
-                            cx,
-                            EXPLICIT_WRITE,
-                            expr.span,
-                            &format!("use of `{}().write_fmt(...).unwrap()`. Consider using `{}print!` instead", dest_name, prefix),
-                        );
-                    }
+                    let help = format!("consider using `{}{}!` instead", prefix, sugg_mac);
+                    span_lint_and_help(cx, EXPLICIT_WRITE, expr.span, &msg, None, &help);
                 }
-
             }
         }
     }
-}
-
-// Extract the output string from the given `write_args`.
-fn write_output_string(write_args: &[Expr<'_>]) -> Option<String> {
-    if_chain! {
-        // Obtain the string that should be printed
-        if write_args.len() > 1;
-        if let ExprKind::Call(_, output_args) = write_args[1].kind;
-        if !output_args.is_empty();
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, output_string_expr) = output_args[0].kind;
-        if let ExprKind::Array(string_exprs) = output_string_expr.kind;
-        // we only want to provide an automatic suggestion for simple (non-format) strings
-        if string_exprs.len() == 1;
-        if let ExprKind::Lit(ref lit) = string_exprs[0].kind;
-        if let LitKind::Str(ref write_output, _) = lit.node;
-        then {
-            return Some(write_output.to_string())
-        }
-    }
-    None
 }

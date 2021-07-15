@@ -5,11 +5,11 @@
 
 use crate::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
-use rustc_ast::ast;
+use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
 use rustc_hir::{BorrowKind, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
+use rustc_span::{sym, ExpnKind, Span, Symbol};
 
 /// Converts a hir binary operator to the corresponding `ast` type.
 #[must_use]
@@ -265,4 +265,108 @@ pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx 
         }
     }
     None
+}
+
+/// A parsed `format!` expansion
+pub struct FormatExpn<'tcx> {
+    /// Span of `format!(..)`
+    pub call_site: Span,
+    /// Inner `format_args!` expansion
+    pub format_args: FormatArgsExpn<'tcx>,
+}
+
+impl FormatExpn<'tcx> {
+    /// Parses an expanded `format!` invocation
+    pub fn parse(expr: &'tcx Expr<'tcx>) -> Option<Self> {
+        if_chain! {
+            if let ExprKind::Block(block, _) = expr.kind;
+            if let [stmt] = block.stmts;
+            if let StmtKind::Local(local) = stmt.kind;
+            if let Some(init) = local.init;
+            if let ExprKind::Call(_, [format_args]) = init.kind;
+            let expn_data = expr.span.ctxt().outer_expn_data();
+            if let ExpnKind::Macro(_, sym::format) = expn_data.kind;
+            if let Some(format_args) = FormatArgsExpn::parse(format_args);
+            then {
+                Some(FormatExpn {
+                    call_site: expn_data.call_site,
+                    format_args,
+                })
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// A parsed `format_args!` expansion
+pub struct FormatArgsExpn<'tcx> {
+    /// Span of the first argument, the format string
+    pub format_string_span: Span,
+    /// Values passed after the format string
+    pub value_args: Vec<&'tcx Expr<'tcx>>,
+
+    /// String literal expressions which represent the format string split by "{}"
+    pub format_string_parts: &'tcx [Expr<'tcx>],
+    /// Symbols corresponding to [`format_string_parts`]
+    pub format_string_symbols: Vec<Symbol>,
+    /// Expressions like `ArgumentV1::new(arg0, Debug::fmt)`
+    pub args: &'tcx [Expr<'tcx>],
+    /// The final argument passed to `Arguments::new_v1_formatted`, if applicable
+    pub fmt_expr: Option<&'tcx Expr<'tcx>>,
+}
+
+impl FormatArgsExpn<'tcx> {
+    /// Parses an expanded `format_args!` or `format_args_nl!` invocation
+    pub fn parse(expr: &'tcx Expr<'tcx>) -> Option<Self> {
+        if_chain! {
+            if let ExpnKind::Macro(_, name) = expr.span.ctxt().outer_expn_data().kind;
+            let name = name.as_str();
+            if name.ends_with("format_args") || name.ends_with("format_args_nl");
+            if let ExprKind::Call(_, args) = expr.kind;
+            if let Some((strs_ref, args, fmt_expr)) = match args {
+                // Arguments::new_v1
+                [strs_ref, args] => Some((strs_ref, args, None)),
+                // Arguments::new_v1_formatted
+                [strs_ref, args, fmt_expr] => Some((strs_ref, args, Some(fmt_expr))),
+                _ => None,
+            };
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, strs_arr) = strs_ref.kind;
+            if let ExprKind::Array(format_string_parts) = strs_arr.kind;
+            if let Some(format_string_symbols) = format_string_parts
+                .iter()
+                .map(|e| {
+                    if let ExprKind::Lit(lit) = &e.kind {
+                        if let LitKind::Str(symbol, _style) = lit.node {
+                            return Some(symbol);
+                        }
+                    }
+                    None
+                })
+                .collect();
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, args) = args.kind;
+            if let ExprKind::Match(args, [arm], _) = args.kind;
+            if let ExprKind::Tup(value_args) = args.kind;
+            if let Some(value_args) = value_args
+                .iter()
+                .map(|e| match e.kind {
+                    ExprKind::AddrOf(_, _, e) => Some(e),
+                    _ => None,
+                })
+                .collect();
+            if let ExprKind::Array(args) = arm.body.kind;
+            then {
+                Some(FormatArgsExpn {
+                    format_string_span: strs_ref.span,
+                    value_args,
+                    format_string_parts,
+                    format_string_symbols,
+                    args,
+                    fmt_expr,
+                })
+            } else {
+                None
+            }
+        }
+    }
 }

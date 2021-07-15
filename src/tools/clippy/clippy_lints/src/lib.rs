@@ -338,6 +338,7 @@ mod size_of_in_element_count;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
 mod strings;
+mod strlen_on_c_strings;
 mod suspicious_operation_groupings;
 mod suspicious_trait_impl;
 mod swap;
@@ -914,6 +915,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         strings::STRING_LIT_AS_BYTES,
         strings::STRING_TO_STRING,
         strings::STR_TO_STRING,
+        strlen_on_c_strings::STRLEN_ON_C_STRINGS,
         suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS,
         suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
@@ -944,6 +946,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         types::LINKEDLIST,
         types::OPTION_OPTION,
         types::RC_BUFFER,
+        types::RC_MUTEX,
         types::REDUNDANT_ALLOCATION,
         types::TYPE_COMPLEXITY,
         types::VEC_BOX,
@@ -1042,6 +1045,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(strings::STRING_TO_STRING),
         LintId::of(strings::STR_TO_STRING),
         LintId::of(types::RC_BUFFER),
+        LintId::of(types::RC_MUTEX),
         LintId::of(unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS),
         LintId::of(unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(verbose_file_reads::VERBOSE_FILE_READS),
@@ -1375,7 +1379,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(non_expressive_names::MANY_SINGLE_CHAR_NAMES),
         LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
-        LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
         LintId::of(open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
@@ -1409,6 +1412,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
+        LintId::of(strlen_on_c_strings::STRLEN_ON_C_STRINGS),
         LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(swap::ALMOST_SWAPPED),
@@ -1546,7 +1550,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(non_expressive_names::MANY_SINGLE_CHAR_NAMES),
-        LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
         LintId::of(ptr::CMP_NULL),
         LintId::of(ptr::PTR_ARG),
         LintId::of(ptr_eq::PTR_EQ),
@@ -1639,6 +1642,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(reference::REF_IN_DEREF),
         LintId::of(repeat_once::REPEAT_ONCE),
         LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
+        LintId::of(strlen_on_c_strings::STRLEN_ON_C_STRINGS),
         LintId::of(swap::MANUAL_SWAP),
         LintId::of(temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(transmute::CROSSPOINTER_TRANSMUTE),
@@ -1791,6 +1795,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(mutex_atomic::MUTEX_INTEGER),
+        LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
         LintId::of(path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
         LintId::of(redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(regex::TRIVIAL_REGEX),
@@ -2095,6 +2100,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box missing_enforced_import_rename::ImportRename::new(import_renames.clone()));
     let scripts = conf.allowed_scripts.clone();
     store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
+    store.register_late_pass(|| box strlen_on_c_strings::StrlenOnCStrings);
 }
 
 #[rustfmt::skip]
