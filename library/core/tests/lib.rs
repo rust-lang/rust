@@ -28,6 +28,7 @@
 #![feature(hashmap_internals)]
 #![feature(try_find)]
 #![feature(is_sorted)]
+#![feature(iter_map_windows)]
 #![feature(pattern)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
