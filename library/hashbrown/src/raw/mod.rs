@@ -3,7 +3,6 @@ use crate::scopeguard::guard;
 use crate::TryReserveError;
 #[cfg(feature = "nightly")]
 use crate::UnavailableMutError;
-use core::hint;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
@@ -11,6 +10,7 @@ use core::mem::ManuallyDrop;
 #[cfg(feature = "nightly")]
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
+use core::{hint, ptr};
 
 cfg_if! {
     // Use the SSE2 implementation if possible: it allows us to scan 16 buckets
@@ -359,6 +359,7 @@ impl<T> Bucket<T> {
     pub unsafe fn as_mut<'a>(&self) -> &'a mut T {
         &mut *self.as_ptr()
     }
+    #[cfg(feature = "raw")]
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn copy_from_nonoverlapping(&self, other: &Self) {
         self.as_ptr().copy_from_nonoverlapping(other.as_ptr(), 1);
@@ -682,24 +683,14 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         hasher: impl Fn(&T) -> u64,
         fallibility: Fallibility,
     ) -> Result<(), TryReserveError> {
-        // Avoid `Option::ok_or_else` because it bloats LLVM IR.
-        let new_items = match self.table.items.checked_add(additional) {
-            Some(new_items) => new_items,
-            None => return Err(fallibility.capacity_overflow()),
-        };
-        let full_capacity = bucket_mask_to_capacity(self.table.bucket_mask);
-        if new_items <= full_capacity / 2 {
-            // Rehash in-place without re-allocating if we have plenty of spare
-            // capacity that is locked up due to DELETED entries.
-            self.rehash_in_place(hasher);
-            Ok(())
-        } else {
-            // Otherwise, conservatively resize to at least the next size up
-            // to avoid churning deletes into frequent rehashes.
-            self.resize(
-                usize::max(new_items, full_capacity + 1),
-                hasher,
+        unsafe {
+            self.table.reserve_rehash_inner(
+                additional,
+                &|table, index| hasher(table.bucket::<T>(index).as_ref()),
                 fallibility,
+                TableLayout::new::<T>(),
+                mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)),
+                mem::needs_drop::<T>(),
             )
         }
     }
@@ -708,76 +699,15 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// allocation).
     ///
     /// If `hasher` panics then some the table's contents may be lost.
+    #[cfg(test)]
     fn rehash_in_place(&mut self, hasher: impl Fn(&T) -> u64) {
         unsafe {
-            // If the hash function panics then properly clean up any elements
-            // that we haven't rehashed yet. We unfortunately can't preserve the
-            // element since we lost their hash and have no way of recovering it
-            // without risking another panic.
-            self.table.prepare_rehash_in_place();
-
-            let mut guard = guard(&mut self.table, move |self_| {
-                if mem::needs_drop::<T>() {
-                    for i in 0..self_.buckets() {
-                        if *self_.ctrl(i) == DELETED {
-                            self_.set_ctrl(i, EMPTY);
-                            self_.bucket::<T>(i).drop();
-                            self_.items -= 1;
-                        }
-                    }
-                }
-                self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
-            });
-
-            // At this point, DELETED elements are elements that we haven't
-            // rehashed yet. Find them and re-insert them at their ideal
-            // position.
-            'outer: for i in 0..guard.buckets() {
-                if *guard.ctrl(i) != DELETED {
-                    continue;
-                }
-
-                'inner: loop {
-                    // Hash the current item
-                    let item = guard.bucket(i);
-                    let hash = hasher(item.as_ref());
-
-                    // Search for a suitable place to put it
-                    let new_i = guard.find_insert_slot(hash);
-
-                    // Probing works by scanning through all of the control
-                    // bytes in groups, which may not be aligned to the group
-                    // size. If both the new and old position fall within the
-                    // same unaligned group, then there is no benefit in moving
-                    // it and we can just continue to the next item.
-                    if likely(guard.is_in_same_group(i, new_i, hash)) {
-                        guard.set_ctrl_h2(i, hash);
-                        continue 'outer;
-                    }
-
-                    // We are moving the current item to a new position. Write
-                    // our H2 to the control byte of the new position.
-                    let prev_ctrl = guard.replace_ctrl_h2(new_i, hash);
-                    if prev_ctrl == EMPTY {
-                        guard.set_ctrl(i, EMPTY);
-                        // If the target slot is empty, simply move the current
-                        // element into the new slot and clear the old control
-                        // byte.
-                        guard.bucket(new_i).copy_from_nonoverlapping(&item);
-                        continue 'outer;
-                    } else {
-                        // If the target slot is occupied, swap the two elements
-                        // and then continue processing the element that we just
-                        // swapped into the old slot.
-                        debug_assert_eq!(prev_ctrl, DELETED);
-                        mem::swap(guard.bucket(new_i).as_mut(), item.as_mut());
-                        continue 'inner;
-                    }
-                }
-            }
-
-            guard.growth_left = bucket_mask_to_capacity(guard.bucket_mask) - guard.items;
-            mem::forget(guard);
+            self.table.rehash_in_place(
+                &|table, index| hasher(table.bucket::<T>(index).as_ref()),
+                mem::size_of::<T>(),
+                mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)),
+                mem::needs_drop::<T>(),
+            );
         }
     }
 
@@ -790,30 +720,12 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         fallibility: Fallibility,
     ) -> Result<(), TryReserveError> {
         unsafe {
-            let mut new_table =
-                self.table
-                    .prepare_resize(TableLayout::new::<T>(), capacity, fallibility)?;
-
-            // Copy all elements to the new table.
-            for item in self.iter() {
-                // This may panic.
-                let hash = hasher(item.as_ref());
-
-                // We can use a simpler version of insert() here since:
-                // - there are no DELETED entries.
-                // - we know there is enough space in the table.
-                // - all elements are unique.
-                let (index, _) = new_table.prepare_insert_slot(hash);
-                new_table.bucket(index).copy_from_nonoverlapping(&item);
-            }
-
-            // We successfully copied all elements without panicking. Now replace
-            // self with the new table. The old table will have its memory freed but
-            // the items will not be dropped (since they have been moved into the
-            // new table).
-            mem::swap(&mut self.table, &mut new_table);
-
-            Ok(())
+            self.table.resize_inner(
+                capacity,
+                &|table, index| hasher(table.bucket::<T>(index).as_ref()),
+                fallibility,
+                TableLayout::new::<T>(),
+            )
         }
     }
 
@@ -1313,6 +1225,19 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn bucket_ptr(&self, index: usize, size_of: usize) -> *mut u8 {
+        debug_assert_ne!(self.bucket_mask, 0);
+        debug_assert!(index < self.buckets());
+        let base: *mut u8 = self.data_end().as_ptr();
+        if size_of == 0 {
+            // FIXME: Check if this `data_end` is aligned with ZST?
+            base
+        } else {
+            base.sub((index + 1) * size_of)
+        }
+    }
+
+    #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn data_end<T>(&self) -> NonNull<T> {
         NonNull::new_unchecked(self.ctrl.as_ptr().cast())
     }
@@ -1455,6 +1380,180 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                 self_.free_buckets(table_layout);
             }
         }))
+    }
+
+    /// Reserves or rehashes to make room for `additional` more elements.
+    ///
+    /// This uses dynamic dispatch to reduce the amount of
+    /// code generated, but it is eliminated by LLVM optimizations when inlined.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+    unsafe fn reserve_rehash_inner(
+        &mut self,
+        additional: usize,
+        hasher: &dyn Fn(&mut Self, usize) -> u64,
+        fallibility: Fallibility,
+        layout: TableLayout,
+        drop: fn(*mut u8),
+        drops: bool,
+    ) -> Result<(), TryReserveError> {
+        // Avoid `Option::ok_or_else` because it bloats LLVM IR.
+        let new_items = match self.items.checked_add(additional) {
+            Some(new_items) => new_items,
+            None => return Err(fallibility.capacity_overflow()),
+        };
+        let full_capacity = bucket_mask_to_capacity(self.bucket_mask);
+        if new_items <= full_capacity / 2 {
+            // Rehash in-place without re-allocating if we have plenty of spare
+            // capacity that is locked up due to DELETED entries.
+            self.rehash_in_place(hasher, layout.size, drop, drops);
+            Ok(())
+        } else {
+            // Otherwise, conservatively resize to at least the next size up
+            // to avoid churning deletes into frequent rehashes.
+            self.resize_inner(
+                usize::max(new_items, full_capacity + 1),
+                hasher,
+                fallibility,
+                layout,
+            )
+        }
+    }
+
+    /// Allocates a new table of a different size and moves the contents of the
+    /// current table into it.
+    ///
+    /// This uses dynamic dispatch to reduce the amount of
+    /// code generated, but it is eliminated by LLVM optimizations when inlined.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+    unsafe fn resize_inner(
+        &mut self,
+        capacity: usize,
+        hasher: &dyn Fn(&mut Self, usize) -> u64,
+        fallibility: Fallibility,
+        layout: TableLayout,
+    ) -> Result<(), TryReserveError> {
+        let mut new_table = self.prepare_resize(layout, capacity, fallibility)?;
+
+        // Copy all elements to the new table.
+        for i in 0..self.buckets() {
+            if !is_full(*self.ctrl(i)) {
+                continue;
+            }
+
+            // This may panic.
+            let hash = hasher(self, i);
+
+            // We can use a simpler version of insert() here since:
+            // - there are no DELETED entries.
+            // - we know there is enough space in the table.
+            // - all elements are unique.
+            let (index, _) = new_table.prepare_insert_slot(hash);
+
+            ptr::copy_nonoverlapping(
+                self.bucket_ptr(i, layout.size),
+                new_table.bucket_ptr(index, layout.size),
+                layout.size,
+            );
+        }
+
+        // We successfully copied all elements without panicking. Now replace
+        // self with the new table. The old table will have its memory freed but
+        // the items will not be dropped (since they have been moved into the
+        // new table).
+        mem::swap(self, &mut new_table);
+
+        Ok(())
+    }
+
+    /// Rehashes the contents of the table in place (i.e. without changing the
+    /// allocation).
+    ///
+    /// If `hasher` panics then some the table's contents may be lost.
+    ///
+    /// This uses dynamic dispatch to reduce the amount of
+    /// code generated, but it is eliminated by LLVM optimizations when inlined.
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+    unsafe fn rehash_in_place(
+        &mut self,
+        hasher: &dyn Fn(&mut Self, usize) -> u64,
+        size_of: usize,
+        drop: fn(*mut u8),
+        drops: bool,
+    ) {
+        // If the hash function panics then properly clean up any elements
+        // that we haven't rehashed yet. We unfortunately can't preserve the
+        // element since we lost their hash and have no way of recovering it
+        // without risking another panic.
+        self.prepare_rehash_in_place();
+
+        let mut guard = guard(self, move |self_| {
+            if drops {
+                for i in 0..self_.buckets() {
+                    if *self_.ctrl(i) == DELETED {
+                        self_.set_ctrl(i, EMPTY);
+                        drop(self_.bucket_ptr(i, size_of));
+                        self_.items -= 1;
+                    }
+                }
+            }
+            self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
+        });
+
+        // At this point, DELETED elements are elements that we haven't
+        // rehashed yet. Find them and re-insert them at their ideal
+        // position.
+        'outer: for i in 0..guard.buckets() {
+            if *guard.ctrl(i) != DELETED {
+                continue;
+            }
+
+            let i_p = guard.bucket_ptr(i, size_of);
+
+            'inner: loop {
+                // Hash the current item
+                let hash = hasher(*guard, i);
+
+                // Search for a suitable place to put it
+                let new_i = guard.find_insert_slot(hash);
+                let new_i_p = guard.bucket_ptr(new_i, size_of);
+
+                // Probing works by scanning through all of the control
+                // bytes in groups, which may not be aligned to the group
+                // size. If both the new and old position fall within the
+                // same unaligned group, then there is no benefit in moving
+                // it and we can just continue to the next item.
+                if likely(guard.is_in_same_group(i, new_i, hash)) {
+                    guard.set_ctrl_h2(i, hash);
+                    continue 'outer;
+                }
+
+                // We are moving the current item to a new position. Write
+                // our H2 to the control byte of the new position.
+                let prev_ctrl = guard.replace_ctrl_h2(new_i, hash);
+                if prev_ctrl == EMPTY {
+                    guard.set_ctrl(i, EMPTY);
+                    // If the target slot is empty, simply move the current
+                    // element into the new slot and clear the old control
+                    // byte.
+                    ptr::copy_nonoverlapping(i_p, new_i_p, size_of);
+                    continue 'outer;
+                } else {
+                    // If the target slot is occupied, swap the two elements
+                    // and then continue processing the element that we just
+                    // swapped into the old slot.
+                    debug_assert_eq!(prev_ctrl, DELETED);
+                    ptr::swap_nonoverlapping(i_p, new_i_p, size_of);
+                    continue 'inner;
+                }
+            }
+        }
+
+        guard.growth_left = bucket_mask_to_capacity(guard.bucket_mask) - guard.items;
+
+        mem::forget(guard);
     }
 
     #[inline]
