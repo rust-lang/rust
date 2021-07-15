@@ -630,7 +630,8 @@ pub trait PrettyPrinter<'tcx>:
                     for (predicate, _) in bounds {
                         let predicate = predicate.subst(self.tcx(), substs);
                         let bound_predicate = predicate.kind();
-                        if let ty::PredicateKind::Trait(pred, _, _) = bound_predicate.skip_binder() {
+                        if let ty::PredicateKind::Trait(pred, _, _) = bound_predicate.skip_binder()
+                        {
                             let trait_ref = bound_predicate.rebind(pred.trait_ref);
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {

@@ -136,11 +136,7 @@ pub struct MainDefinition {
 
 impl MainDefinition {
     pub fn opt_fn_def_id(self) -> Option<DefId> {
-        if let Res::Def(DefKind::Fn, def_id) = self.res {
-            Some(def_id)
-        } else {
-            None
-        }
+        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
     }
 }
 
@@ -155,7 +151,18 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, TypeFoldable, Debug)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    TyEncodable,
+    TyDecodable,
+    HashStable,
+    TypeFoldable,
+    Debug
+)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -748,8 +755,12 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness, self.polarity)
-            .to_predicate(tcx)
+        PredicateKind::Trait(
+            ty::TraitPredicate { trait_ref: self.value },
+            self.constness,
+            self.polarity,
+        )
+        .to_predicate(tcx)
     }
 }
 
@@ -757,7 +768,11 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.value
             .map_bound(|trait_ref| {
-                PredicateKind::Trait(ty::TraitPredicate { trait_ref }, self.constness, self.polarity)
+                PredicateKind::Trait(
+                    ty::TraitPredicate { trait_ref },
+                    self.constness,
+                    self.polarity,
+                )
             })
             .to_predicate(tcx)
     }
@@ -765,7 +780,9 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness, self.polarity)).to_predicate(tcx)
+        self.value
+            .map_bound(|value| PredicateKind::Trait(value, self.constness, self.polarity))
+            .to_predicate(tcx)
     }
 }
 
@@ -1069,11 +1086,7 @@ impl WithOptConstParam<LocalDefId> {
     }
 
     pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did {
-            did
-        } else {
-            self.did.to_def_id()
-        }
+        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
     }
 }
 

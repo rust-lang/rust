@@ -26,7 +26,10 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ImplPolarity, RegionVid, ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness};
+use rustc_middle::ty::{
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ImplPolarity, RegionVid,
+    ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
+};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;

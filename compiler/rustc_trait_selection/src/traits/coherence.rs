@@ -5,6 +5,7 @@
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
@@ -16,7 +17,6 @@ use rustc_middle::ty::{self, fast_reject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::iter;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -186,11 +186,13 @@ fn overlap_within_probe(
 
     debug!("overlap: unification check succeeded");
 
-    let negate_obligation =
-        |obligation: &PredicateObligation<'tcx>, tcx: TyCtxt<'tcx>| {
-            let predicate = obligation.predicate.negate_trait(tcx);
-            let mut obligation = obligation.clone();
-            predicate.map(|predicate| { obligation.predicate = predicate; obligation })
+    let negate_obligation = |obligation: &PredicateObligation<'tcx>, tcx: TyCtxt<'tcx>| {
+        let predicate = obligation.predicate.negate_trait(tcx);
+        let mut obligation = obligation.clone();
+        predicate.map(|predicate| {
+            obligation.predicate = predicate;
+            obligation
+        })
     };
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
