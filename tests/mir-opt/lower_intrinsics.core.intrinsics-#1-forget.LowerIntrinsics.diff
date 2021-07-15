@@ -1,0 +1,23 @@
+- // MIR for `std::intrinsics::forget` before LowerIntrinsics
++ // MIR for `std::intrinsics::forget` after LowerIntrinsics
+
+  fn std::intrinsics::forget(_1: T) -> () {
+      let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+
+      bb0: {
+-         _0 = std::intrinsics::forget::<T>(move _1) -> bb1; // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // mir::Constant
+-                                          // + span: $SRC_DIR/core/src/intrinsics.rs:LL:COL
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T) {std::intrinsics::forget::<T>}, val: Value(Scalar(<ZST>)) }
++         _0 = const ();                   // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++         goto -> bb1;                     // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb1: {
+          return;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+      }
+  }
