@@ -52,6 +52,7 @@ impl Group {
     /// value for an empty hash table.
     ///
     /// This is guaranteed to be aligned to the group size.
+    #[inline]
     pub const fn static_empty() -> &'static [u8; Group::WIDTH] {
         #[repr(C)]
         struct AlignedBytes {
