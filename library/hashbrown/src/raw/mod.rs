@@ -921,14 +921,13 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Searches for an element in the table.
     #[inline]
     pub fn find(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<Bucket<T>> {
-        unsafe {
-            for bucket in self.iter_hash(hash) {
-                let elm = bucket.as_ref();
-                if likely(eq(elm)) {
-                    return Some(bucket);
-                }
-            }
-            None
+        let result = self.table.find_inner(hash, &mut |index| unsafe {
+            eq(self.bucket(index).as_ref())
+        });
+
+        match result {
+            Some(index) => Some(unsafe { self.bucket(index) }),
+            None => None,
         }
     }
 
@@ -1054,6 +1053,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// `RawIterHash`. Because we cannot make the `next` method unsafe on the
     /// `RawIterHash` struct, we have to make the `iter_hash` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
+    #[allow(dead_code)] // Used when the `raw` API is enabled
     pub unsafe fn iter_hash(&self, hash: u64) -> RawIterHash<'_, T, A> {
         RawIterHash::new(self, hash)
     }
@@ -1252,6 +1252,33 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                 }
             }
             probe_seq.move_next(self.bucket_mask);
+        }
+    }
+
+    /// Searches for an element in the table.
+    #[inline]
+    fn find_inner(&self, hash: u64, eq: &mut dyn FnMut(usize) -> bool) -> Option<usize> {
+        unsafe {
+            let h2_hash = h2(hash);
+            let mut probe_seq = self.probe_seq(hash);
+
+            loop {
+                let group = Group::load(self.ctrl(probe_seq.pos));
+
+                for bit in group.match_byte(h2_hash) {
+                    let index = (probe_seq.pos + bit) & self.bucket_mask;
+
+                    if likely(eq(index)) {
+                        return Some(index);
+                    }
+                }
+
+                if likely(group.match_empty().any_bit_set()) {
+                    return None;
+                }
+
+                probe_seq.move_next(self.bucket_mask);
+            }
         }
     }
 
