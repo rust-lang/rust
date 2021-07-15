@@ -92,12 +92,18 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 }
 
                 // Fold groups of mods
-                if node.kind() == MODULE && !has_visibility(&node) && !visited_mods.contains(&node)
-                {
-                    if let Some(range) =
-                        contiguous_range_for_group_unless(&node, has_visibility, &mut visited_mods)
+                if let Some(module) = ast::Module::cast(node.clone()) {
+                    if !has_visibility(&node)
+                        && !visited_mods.contains(&node)
+                        && module.item_list().is_none()
                     {
-                        res.push(Fold { range, kind: FoldKind::Mods })
+                        if let Some(range) = contiguous_range_for_group_unless(
+                            &node,
+                            has_visibility,
+                            &mut visited_mods,
+                        ) {
+                            res.push(Fold { range, kind: FoldKind::Mods })
+                        }
                     }
                 }
 
@@ -328,7 +334,8 @@ fn main() <fold block>{
     //! because it has another flavor</fold>
     <fold comment>/* As does this
     multiline comment */</fold>
-}</fold>"#,
+}</fold>
+"#,
         );
     }
 
@@ -341,9 +348,7 @@ use std::<fold block>{
     vec,
     io as iop
 }</fold>;
-
-fn main() <fold block>{
-}</fold>"#,
+"#,
         );
     }
 
@@ -368,8 +373,13 @@ pub not_folding_single_next;
 mod with_attribute;
 mod with_attribute_next;</fold>
 
-fn main() <fold block>{
-}</fold>"#,
+mod inline0 {}
+mod inline1 {}
+
+mod inline2 <fold block>{
+
+}</fold>
+"#,
         );
     }
 
@@ -387,9 +397,7 @@ use std::f64;</fold>
 <fold imports>use std::collections::HashMap;
 // Some random comment
 use std::collections::VecDeque;</fold>
-
-fn main() <fold block>{
-}</fold>"#,
+"#,
         );
     }
 
@@ -409,9 +417,7 @@ use std::collections::<fold block>{
     VecDeque,
 }</fold>;
 // Some random comment
-
-fn main() <fold block>{
-}</fold>"#,
+"#,
         );
     }
 
@@ -531,7 +537,7 @@ calling_function(x,y);
             r#"
 <fold consts>const FIRST_CONST: &str = "first";
 const SECOND_CONST: &str = "second";</fold>
-            "#,
+"#,
         )
     }
 
@@ -541,7 +547,7 @@ const SECOND_CONST: &str = "second";</fold>
             r#"
 <fold statics>static FIRST_STATIC: &str = "first";
 static SECOND_STATIC: &str = "second";</fold>
-            "#,
+"#,
         )
     }
 
@@ -574,7 +580,7 @@ fn foo()<fold returntype>-> (
 )</fold> { (true, true) }
 
 fn bar() -> (bool, bool) { (true, true) }
-            "#,
+"#,
         )
     }
 }
