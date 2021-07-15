@@ -1903,7 +1903,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::UnifyReceiver(..)
             | ObligationCauseCode::OpaqueType
             | ObligationCauseCode::MiscObligation
-            | ObligationCauseCode::WellFormed(..) => {}
+            | ObligationCauseCode::WellFormed(..)
+            | ObligationCauseCode::MatchImpl(..) => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }

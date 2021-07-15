@@ -185,7 +185,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin {
-            if let ObligationCauseCode::ItemObligation(item_def_id) = cause.code {
+            let code = match &cause.code {
+                ObligationCauseCode::MatchImpl(parent, ..) => &**parent,
+                _ => &cause.code,
+            };
+            if let ObligationCauseCode::ItemObligation(item_def_id) = *code {
                 // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
                 // lifetime as above, but called using a fully-qualified path to the method:
                 // `Foo::qux(bar)`.
@@ -468,7 +472,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 }
 
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
-struct TraitObjectVisitor(Vec<DefId>);
+pub(super) struct TraitObjectVisitor(pub(super) Vec<DefId>);
 
 impl TypeVisitor<'_> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
@@ -485,7 +489,7 @@ impl TypeVisitor<'_> for TraitObjectVisitor {
 }
 
 /// Collect all `hir::Ty<'_>` `Span`s for trait objects with an implicit lifetime.
-struct HirTraitObjectVisitor(Vec<Span>, DefId);
+pub(super) struct HirTraitObjectVisitor(pub(super) Vec<Span>, pub(super) DefId);
 
 impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor {
     type Map = ErasedMap<'tcx>;
