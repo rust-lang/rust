@@ -172,9 +172,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 vec
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
-            ItemKind::Fn(..) | ItemKind::Impl(box ImplKind { of_trait: None, .. }) => {
-                smallvec![i.id]
-            }
             _ => smallvec![i.id],
         };
 
@@ -215,9 +212,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut vis = self.lower_visibility(&i.vis, None);
 
         if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
+            let hir_id = self.lower_node_id(i.id);
+            self.lower_attrs(hir_id, &i.attrs);
             if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
-                let hir_id = self.lower_node_id(i.id);
-                self.lower_attrs(hir_id, &i.attrs);
                 let body = P(self.lower_mac_args(body));
                 self.insert_macro_def(hir::MacroDef {
                     ident,
@@ -227,10 +224,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ast: MacroDef { body, macro_rules },
                 });
             } else {
-                for a in i.attrs.iter() {
-                    let a = self.lower_attr(a);
-                    self.non_exported_macro_attrs.push(a);
-                }
+                self.insert_non_exported_macro(hir_id.expect_owner(), i.span)
             }
             return None;
         }

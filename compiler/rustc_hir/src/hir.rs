@@ -1,7 +1,7 @@
 // ignore-tidy-filelength
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, CRATE_DEF_ID};
-crate use crate::hir_id::{HirId, ItemLocalId};
+crate use crate::hir_id::{HirId, ItemLocalId, CRATE_HIR_ID};
 use crate::{itemlikevisit, LangItem};
 
 use rustc_ast::util::parser::ExprPrecedence;
@@ -628,9 +628,6 @@ pub struct ModuleItems {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    // Attributes from non-exported macros, kept only for collecting the library feature list.
-    pub non_exported_macro_attrs: &'hir [Attribute],
-
     pub owners: IndexVec<LocalDefId, Option<OwnerNode<'hir>>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
@@ -702,7 +699,7 @@ impl Crate<'_> {
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
                 OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
                 OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
-                OwnerNode::MacroDef(_) | OwnerNode::Crate(_) => {}
+                OwnerNode::MacroDef(_) | OwnerNode::NonExportedMacro(..) | OwnerNode::Crate(_) => {}
             }
         }
     }
@@ -717,7 +714,10 @@ impl Crate<'_> {
             Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
             Some(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            Some(OwnerNode::MacroDef(_)) | Some(OwnerNode::Crate(_)) | None => {}
+            Some(OwnerNode::MacroDef(_))
+            | Some(OwnerNode::NonExportedMacro(..))
+            | Some(OwnerNode::Crate(_))
+            | None => {}
         })
     }
 
@@ -731,6 +731,13 @@ impl Crate<'_> {
     pub fn exported_macros<'hir>(&'hir self) -> impl Iterator<Item = &'hir MacroDef<'hir>> + 'hir {
         self.owners.iter().filter_map(|owner| match owner {
             Some(OwnerNode::MacroDef(macro_def)) => Some(*macro_def),
+            _ => None,
+        })
+    }
+
+    pub fn non_exported_macros<'hir>(&'hir self) -> impl Iterator<Item = LocalDefId> + 'hir {
+        self.owners.iter().filter_map(|owner| match owner {
+            Some(OwnerNode::NonExportedMacro(_, def_id)) => Some(*def_id),
             _ => None,
         })
     }
@@ -2951,6 +2958,7 @@ pub enum OwnerNode<'hir> {
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
     MacroDef(&'hir MacroDef<'hir>),
+    NonExportedMacro(Span, LocalDefId),
     Crate(&'hir Mod<'hir>),
 }
 
@@ -2962,7 +2970,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { ident, .. })
             | OwnerNode::TraitItem(TraitItem { ident, .. })
             | OwnerNode::MacroDef(MacroDef { ident, .. }) => Some(*ident),
-            OwnerNode::Crate(..) => None,
+            OwnerNode::NonExportedMacro(..) | OwnerNode::Crate(..) => None,
         }
     }
 
@@ -2973,6 +2981,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { span, .. })
             | OwnerNode::TraitItem(TraitItem { span, .. })
             | OwnerNode::MacroDef(MacroDef { span, .. })
+            | OwnerNode::NonExportedMacro(span, _)
             | OwnerNode::Crate(Mod { inner: span, .. }) => *span,
         }
     }
@@ -3018,6 +3027,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { def_id, .. })
             | OwnerNode::ForeignItem(ForeignItem { def_id, .. })
             | OwnerNode::MacroDef(MacroDef { def_id, .. }) => *def_id,
+            OwnerNode::NonExportedMacro(_, def_id) => def_id,
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
         }
     }
@@ -3097,6 +3107,7 @@ impl<'hir> Into<Node<'hir>> for OwnerNode<'hir> {
             OwnerNode::TraitItem(n) => Node::TraitItem(n),
             OwnerNode::MacroDef(n) => Node::MacroDef(n),
             OwnerNode::Crate(n) => Node::Crate(n),
+            OwnerNode::NonExportedMacro(span, id) => Node::NonExportedMacro(span, id),
         }
     }
 }
@@ -3122,6 +3133,7 @@ pub enum Node<'hir> {
     Block(&'hir Block<'hir>),
     Local(&'hir Local<'hir>),
     MacroDef(&'hir MacroDef<'hir>),
+    NonExportedMacro(Span, LocalDefId),
 
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
@@ -3187,7 +3199,9 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem { def_id, .. })
             | Node::ImplItem(ImplItem { def_id, .. })
             | Node::ForeignItem(ForeignItem { def_id, .. })
-            | Node::MacroDef(MacroDef { def_id, .. }) => Some(HirId::make_owner(*def_id)),
+            | Node::MacroDef(MacroDef { def_id, .. })
+            | Node::NonExportedMacro(_, def_id) => Some(HirId::make_owner(*def_id)),
+            Node::Crate(_) => Some(CRATE_HIR_ID),
             Node::Field(FieldDef { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })
@@ -3205,7 +3219,7 @@ impl<'hir> Node<'hir> {
             Node::PathSegment(PathSegment { hir_id, .. }) => *hir_id,
             Node::Variant(Variant { id, .. }) => Some(*id),
             Node::Ctor(variant) => variant.ctor_hir_id(),
-            Node::Crate(_) | Node::Visibility(_) => None,
+            Node::Visibility(_) => None,
         }
     }
 
@@ -3216,6 +3230,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(i) => Some(OwnerNode::TraitItem(i)),
             Node::ImplItem(i) => Some(OwnerNode::ImplItem(i)),
             Node::MacroDef(i) => Some(OwnerNode::MacroDef(i)),
+            Node::NonExportedMacro(span, def_id) => Some(OwnerNode::NonExportedMacro(span, def_id)),
             Node::Crate(i) => Some(OwnerNode::Crate(i)),
             _ => None,
         }

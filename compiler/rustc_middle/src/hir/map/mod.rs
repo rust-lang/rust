@@ -264,6 +264,7 @@ impl<'hir> Map<'hir> {
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
             Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
+            Node::NonExportedMacro(..) => DefKind::Macro(MacroKind::Bang),
             Node::GenericParam(param) => match param.kind {
                 GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
                 GenericParamKind::Type { .. } => DefKind::TyParam,
@@ -548,6 +549,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn visit_non_exported_macros_in_krate(&self, mut f: impl FnMut(LocalDefId)) {
+        for def_id in self.krate().non_exported_macros() {
+            f(def_id)
+        }
+    }
+
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
     pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
@@ -650,7 +657,10 @@ impl<'hir> Map<'hir> {
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
         if let Some((hir_id, _node)) = self.parent_owner_iter(hir_id).next() {
             // A MacroDef does not have children.
-            debug_assert!(!matches!(_node, OwnerNode::MacroDef(_)));
+            debug_assert!(!matches!(
+                _node,
+                OwnerNode::MacroDef(_) | OwnerNode::NonExportedMacro(..)
+            ));
             hir_id
         } else {
             CRATE_HIR_ID
@@ -876,6 +886,7 @@ impl<'hir> Map<'hir> {
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
             Node::MacroDef(macro_def) => macro_def.span,
+            Node::NonExportedMacro(span, _) => span,
             Node::Crate(item) => item.inner,
         };
         Some(span)
@@ -1008,7 +1019,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.untracked_crate.non_exported_macro_attrs.hash_stable(&mut hcx, &mut stable_hasher);
 
     let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
@@ -1113,6 +1123,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::GenericParam(ref param)) => format!("generic_param {:?}{}", param, id_str),
         Some(Node::Visibility(ref vis)) => format!("visibility {:?}{}", vis, id_str),
         Some(Node::MacroDef(_)) => format!("macro {}{}", path_str(), id_str),
+        Some(Node::NonExportedMacro(..)) => format!("macro {}{}", path_str(), id_str),
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
