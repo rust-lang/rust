@@ -1,10 +1,7 @@
-// run-rustfix
 #![warn(clippy::all)]
 #![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
 #![allow(clippy::blacklisted_name, unused_variables, dead_code)]
-
-use std::boxed::Box;
-use std::rc::Rc;
+#![allow(unused_imports)]
 
 pub struct MyStruct {}
 
@@ -17,32 +14,67 @@ pub enum MyEnum {
     Two,
 }
 
-// Rc<&T>
+mod outer_box {
+    use crate::MyEnum;
+    use crate::MyStruct;
+    use crate::SubT;
+    use std::boxed::Box;
+    use std::rc::Rc;
+    use std::sync::Arc;
 
-pub fn test1<T>(foo: Rc<&T>) {}
+    pub fn box_test6<T>(foo: Box<Rc<T>>) {}
 
-pub fn test2(foo: Rc<&MyStruct>) {}
+    pub fn box_test7<T>(foo: Box<Arc<T>>) {}
 
-pub fn test3(foo: Rc<&MyEnum>) {}
+    pub fn box_test8() -> Box<Rc<SubT<usize>>> {
+        unimplemented!();
+    }
 
-pub fn test4_neg(foo: Rc<SubT<&usize>>) {}
+    pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
+        unimplemented!();
+    }
+}
 
-// Rc<Rc<T>>
+mod outer_rc {
+    use crate::MyEnum;
+    use crate::MyStruct;
+    use crate::SubT;
+    use std::boxed::Box;
+    use std::rc::Rc;
+    use std::sync::Arc;
 
-pub fn test5(a: Rc<Rc<bool>>) {}
+    pub fn rc_test5(a: Rc<Box<bool>>) {}
 
-// Rc<Box<T>>
+    pub fn rc_test7(a: Rc<Arc<bool>>) {}
 
-pub fn test6(a: Rc<Box<bool>>) {}
+    pub fn rc_test8() -> Rc<Box<SubT<usize>>> {
+        unimplemented!();
+    }
 
-// Box<&T>
+    pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
+        unimplemented!();
+    }
+}
 
-pub fn test7<T>(foo: Box<&T>) {}
+mod outer_arc {
+    use crate::MyEnum;
+    use crate::MyStruct;
+    use crate::SubT;
+    use std::boxed::Box;
+    use std::rc::Rc;
+    use std::sync::Arc;
 
-pub fn test8(foo: Box<&MyStruct>) {}
+    pub fn arc_test5(a: Arc<Box<bool>>) {}
 
-pub fn test9(foo: Box<&MyEnum>) {}
+    pub fn arc_test6(a: Arc<Rc<bool>>) {}
 
-pub fn test10_neg(foo: Box<SubT<&usize>>) {}
+    pub fn arc_test8() -> Arc<Box<SubT<usize>>> {
+        unimplemented!();
+    }
+
+    pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
+        unimplemented!();
+    }
+}
 
 fn main() {}
