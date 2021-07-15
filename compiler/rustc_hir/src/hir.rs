@@ -2745,7 +2745,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
+    ForeignMod { abi: Abi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
@@ -2782,7 +2782,7 @@ pub struct Impl<'hir> {
     pub of_trait: Option<TraitRef<'hir>>,
 
     pub self_ty: &'hir Ty<'hir>,
-    pub items: &'hir [ImplItemRef<'hir>],
+    pub items: &'hir [ImplItemRef],
 }
 
 impl ItemKind<'_> {
@@ -2846,13 +2846,12 @@ pub struct TraitItemRef {
 /// passes to find the impl they want without loading the ID (which
 /// means fewer edges in the incremental compilation graph).
 #[derive(Debug, HashStable_Generic)]
-pub struct ImplItemRef<'hir> {
+pub struct ImplItemRef {
     pub id: ImplItemId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: AssocItemKind,
     pub span: Span,
-    pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
 }
 
@@ -2886,12 +2885,11 @@ impl ForeignItemId {
 /// passes to find the impl they want without loading the ID (which
 /// means fewer edges in the incremental compilation graph).
 #[derive(Debug, HashStable_Generic)]
-pub struct ForeignItemRef<'hir> {
+pub struct ForeignItemRef {
     pub id: ForeignItemId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub span: Span,
-    pub vis: Visibility<'hir>,
 }
 
 #[derive(Debug)]

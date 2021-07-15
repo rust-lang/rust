@@ -401,7 +401,7 @@ impl InherentCollect<'tcx> {
         lang: &str,
         ty: &str,
         span: Span,
-        assoc_items: &[hir::ImplItemRef<'_>],
+        assoc_items: &[hir::ImplItemRef],
     ) {
         match (lang_def_id, lang_def_id2) {
             (Some(lang_def_id), _) if lang_def_id == impl_def_id.to_def_id() => {
