@@ -1054,7 +1054,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// `RawIterHash`. Because we cannot make the `next` method unsafe on the
     /// `RawIterHash` struct, we have to make the `iter_hash` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
-    #[allow(dead_code)] // Used when the `raw` API is enabled
+    #[cfg(feature = "raw")]
     pub unsafe fn iter_hash(&self, hash: u64) -> RawIterHash<'_, T, A> {
         RawIterHash::new(self, hash)
     }
@@ -2214,6 +2214,7 @@ struct RawIterHashInner<'a, A: Allocator + Clone> {
 
 impl<'a, T, A: Allocator + Clone> RawIterHash<'a, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg(feature = "raw")]
     fn new(table: &'a RawTable<T, A>, hash: u64) -> Self {
         RawIterHash {
             inner: RawIterHashInner::new(&table.table, hash),
@@ -2223,6 +2224,7 @@ impl<'a, T, A: Allocator + Clone> RawIterHash<'a, T, A> {
 }
 impl<'a, A: Allocator + Clone> RawIterHashInner<'a, A> {
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg(feature = "raw")]
     fn new(table: &'a RawTableInner<A>, hash: u64) -> Self {
         unsafe {
             let h2_hash = h2(hash);
