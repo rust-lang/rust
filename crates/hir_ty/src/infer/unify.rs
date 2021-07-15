@@ -143,6 +143,11 @@ pub(crate) struct InferenceTable<'a> {
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
+pub(crate) struct InferenceTableSnapshot {
+    var_table_snapshot: chalk_solve::infer::InferenceSnapshot<Interner>,
+    // FIXME: snapshot type_variable_table, pending_obligations?
+}
+
 impl<'a> InferenceTable<'a> {
     pub(crate) fn new(db: &'a dyn HirDatabase, trait_env: Arc<TraitEnvironment>) -> Self {
         InferenceTable {
@@ -333,6 +338,15 @@ impl<'a> InferenceTable<'a> {
     /// otherwise, return ty.
     pub(crate) fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
         self.var_unification_table.normalize_ty_shallow(&Interner, ty).unwrap_or_else(|| ty.clone())
+    }
+
+    pub(crate) fn snapshot(&mut self) -> InferenceTableSnapshot {
+        let snapshot = self.var_unification_table.snapshot();
+        InferenceTableSnapshot { var_table_snapshot: snapshot }
+    }
+
+    pub(crate) fn rollback_to(&mut self, snapshot: InferenceTableSnapshot) {
+        self.var_unification_table.rollback_to(snapshot.var_table_snapshot);
     }
 
     pub(crate) fn register_obligation(&mut self, goal: Goal) {
