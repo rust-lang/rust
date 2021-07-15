@@ -1084,6 +1084,8 @@ options! {
         "set the optimization fuel quota for a crate"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
+    future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
+        "forces all lints to be future incompatible, used for internal testing (default: no)"),
     gcc_ld: Option<LdImpl> = (None, parse_gcc_ld, [TRACKED], "implementation of ld used by cc"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),

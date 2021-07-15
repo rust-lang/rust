@@ -43,7 +43,6 @@ struct FutureIncompatReport {
 
 #[derive(Deserialize)]
 struct FutureBreakageItem {
-    future_breakage_date: Option<String>,
     diagnostic: Diagnostic,
 }
 
@@ -104,9 +103,7 @@ pub fn extract_rendered(output: &str) -> String {
                                 .into_iter()
                                 .map(|item| {
                                     format!(
-                                        "Future breakage date: {}, diagnostic:\n{}",
-                                        item.future_breakage_date
-                                            .unwrap_or_else(|| "None".to_string()),
+                                        "Future breakage diagnostic:\n{}",
                                         item.diagnostic
                                             .rendered
                                             .unwrap_or_else(|| "Not rendered".to_string())
