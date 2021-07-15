@@ -340,11 +340,25 @@ impl<'a> InferenceContext<'a> {
                     None => (Vec::new(), self.err_ty()),
                 };
                 self.register_obligations_for_call(&callee_ty);
-                self.check_call_arguments(args, &param_tys);
+
+                let expected_inputs = self.expected_inputs_for_expected_output(
+                    expected,
+                    ret_ty.clone(),
+                    param_tys.clone(),
+                );
+
+                self.check_call_arguments(args, &expected_inputs, &param_tys);
                 self.normalize_associated_types_in(ret_ty)
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
-                .infer_method_call(tgt_expr, *receiver, args, method_name, generic_args.as_deref()),
+                .infer_method_call(
+                    tgt_expr,
+                    *receiver,
+                    args,
+                    method_name,
+                    generic_args.as_deref(),
+                    expected,
+                ),
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
@@ -575,7 +589,7 @@ impl<'a> InferenceContext<'a> {
                         // FIXME: record type error - expected reference but found ptr,
                         // which cannot be coerced
                     }
-                    Expectation::rvalue_hint(Ty::clone(exp_inner))
+                    Expectation::rvalue_hint(&mut self.table, Ty::clone(exp_inner))
                 } else {
                     Expectation::none()
                 };
@@ -902,6 +916,7 @@ impl<'a> InferenceContext<'a> {
         args: &[ExprId],
         method_name: &Name,
         generic_args: Option<&GenericArgs>,
+        expected: &Expectation,
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
         let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
@@ -935,7 +950,7 @@ impl<'a> InferenceContext<'a> {
         };
         let method_ty = method_ty.substitute(&Interner, &substs);
         self.register_obligations_for_call(&method_ty);
-        let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
+        let (formal_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
             Some(sig) => {
                 if !sig.params().is_empty() {
                     (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
@@ -945,13 +960,41 @@ impl<'a> InferenceContext<'a> {
             }
             None => (self.err_ty(), Vec::new(), self.err_ty()),
         };
-        self.unify(&expected_receiver_ty, &receiver_ty);
+        self.unify(&formal_receiver_ty, &receiver_ty);
 
-        self.check_call_arguments(args, &param_tys);
+        let expected_inputs =
+            self.expected_inputs_for_expected_output(expected, ret_ty.clone(), param_tys.clone());
+
+        self.check_call_arguments(args, &expected_inputs, &param_tys);
         self.normalize_associated_types_in(ret_ty)
     }
 
-    fn check_call_arguments(&mut self, args: &[ExprId], param_tys: &[Ty]) {
+    fn expected_inputs_for_expected_output(
+        &mut self,
+        expected_output: &Expectation,
+        output: Ty,
+        inputs: Vec<Ty>,
+    ) -> Vec<Ty> {
+        // rustc does a snapshot here and rolls back the unification, but since
+        // we actually want to keep unbound variables in the result it then
+        // needs to do 'fudging' to recreate them. So I'm not sure rustc's
+        // approach is cleaner than ours, which is to create independent copies
+        // of the variables before unifying. It might be more performant though,
+        // so we might want to benchmark when we can actually do
+        // snapshot/rollback.
+        if let Some(expected_ty) = expected_output.to_option(&mut self.table) {
+            let (expected_ret_ty, expected_params) = self.table.reinstantiate((output, inputs));
+            if self.table.try_unify(&expected_ty, &expected_ret_ty).is_ok() {
+                expected_params
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn check_call_arguments(&mut self, args: &[ExprId], expected_inputs: &[Ty], param_tys: &[Ty]) {
         // Quoting https://github.com/rust-lang/rust/blob/6ef275e6c3cb1384ec78128eceeb4963ff788dca/src/librustc_typeck/check/mod.rs#L3325 --
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -959,14 +1002,45 @@ impl<'a> InferenceContext<'a> {
         // type-check the functions. This isn't really the right way to do this.
         for &check_closures in &[false, true] {
             let param_iter = param_tys.iter().cloned().chain(repeat(self.err_ty()));
-            for (&arg, param_ty) in args.iter().zip(param_iter) {
+            let expected_iter = expected_inputs
+                .iter()
+                .cloned()
+                .chain(param_iter.clone().skip(expected_inputs.len()));
+            for ((&arg, param_ty), expected_ty) in args.iter().zip(param_iter).zip(expected_iter) {
                 let is_closure = matches!(&self.body[arg], Expr::Lambda { .. });
                 if is_closure != check_closures {
                     continue;
                 }
 
+                // the difference between param_ty and expected here is that
+                // expected is the parameter when the expected *return* type is
+                // taken into account. So in `let _: &[i32] = identity(&[1, 2])`
+                // the expected type is already `&[i32]`, whereas param_ty is
+                // still an unbound type variable. We don't always want to force
+                // the parameter to coerce to the expected type (for example in
+                // `coerce_unsize_expected_type_4`).
                 let param_ty = self.normalize_associated_types_in(param_ty);
-                self.infer_expr_coerce(arg, &Expectation::has_type(param_ty.clone()));
+                let expected = Expectation::rvalue_hint(&mut self.table, expected_ty);
+                // infer with the expected type we have...
+                let ty = self.infer_expr_inner(arg, &expected);
+
+                // then coerce to either the expected type or just the formal parameter type
+                let coercion_target = if let Some(ty) = expected.only_has_type(&mut self.table) {
+                    // if we are coercing to the expectation, unify with the
+                    // formal parameter type to connect everything
+                    self.unify(&ty, &param_ty);
+                    ty
+                } else {
+                    param_ty
+                };
+                if !coercion_target.is_unknown() {
+                    if self.coerce(Some(arg), &ty, &coercion_target).is_err() {
+                        self.result.type_mismatches.insert(
+                            arg.into(),
+                            TypeMismatch { expected: coercion_target, actual: ty.clone() },
+                        );
+                    }
+                }
             }
         }
     }
