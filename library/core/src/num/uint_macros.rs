@@ -1245,9 +1245,9 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_neg(self) -> Self {
-            self.overflowing_neg().0
+            (0 as $SelfT).wrapping_sub(self)
         }
 
         /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
