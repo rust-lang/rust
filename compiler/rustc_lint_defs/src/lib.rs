@@ -296,6 +296,7 @@ pub enum BuiltinLintDiagnostics {
     DeprecatedMacro(Option<Symbol>, Span),
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),
+    UnusedBuiltinAttribute { attr_name: Symbol, macro_name: String, invoc_span: Span },
     PatternsInFnsWithoutBody(Span, Ident),
     LegacyDeriveHelpers(Span),
     ExternDepSpec(String, ExternDepSpec),
