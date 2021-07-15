@@ -253,3 +253,19 @@ use {$0};
         "#]],
     );
 }
+
+#[test]
+fn impl_prefix_does_not_add_fn_snippet() {
+    // regression test for 7222
+    check(
+        r#"
+mod foo {
+    pub fn bar(x: u32) {}
+}
+use self::foo::impl$0
+"#,
+        expect![[r#"
+            fn bar fn(u32)
+        "#]],
+    );
+}
