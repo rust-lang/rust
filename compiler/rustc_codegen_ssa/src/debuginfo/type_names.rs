@@ -85,25 +85,14 @@ pub fn push_debuginfo_type_name<'tcx>(
 
             for component_type in component_types {
                 push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
-                output.push(',');
-
-                // Natvis does not always like having spaces between parts of the type name
-                // and this causes issues when we need to write a typename in natvis, for example
-                // as part of a cast like the `HashMap` visualizer does.
-                if !cpp_like_names {
-                    output.push(' ');
-                }
+                push_arg_separator(cpp_like_names, output);
             }
             if !component_types.is_empty() {
-                output.pop();
-
-                if !cpp_like_names {
-                    output.pop();
-                }
+                pop_arg_separator(output);
             }
 
             if cpp_like_names {
-                push_close_angle_bracket(tcx, output);
+                push_close_angle_bracket(cpp_like_names, output);
             } else {
                 output.push(')');
             }
@@ -125,7 +114,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
 
             if cpp_like_names {
-                push_close_angle_bracket(tcx, output);
+                push_close_angle_bracket(cpp_like_names, output);
             }
         }
         ty::Ref(_, inner_type, mutbl) => {
@@ -151,7 +140,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
 
             if cpp_like_names && !is_slice_or_str {
-                push_close_angle_bracket(tcx, output);
+                push_close_angle_bracket(cpp_like_names, output);
             }
         }
         ty::Array(inner_type, len) => {
@@ -183,7 +172,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
-                push_close_angle_bracket(tcx, output);
+                push_close_angle_bracket(cpp_like_names, output);
             } else {
                 output.push(']');
             }
@@ -196,7 +185,7 @@ pub fn push_debuginfo_type_name<'tcx>(
                 false
             } else {
                 if trait_data.len() > 1 && auto_traits.len() != 0 {
-                    // We need enclosing parens
+                    // We need enclosing parens because there is more than one trait
                     output.push_str("(dyn ");
                     true
                 } else {
@@ -209,7 +198,8 @@ pub fn push_debuginfo_type_name<'tcx>(
                 let principal =
                     tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, qualified, output);
-                push_generic_params_internal(tcx, principal.substs, output, visited);
+                let principal_has_generic_params =
+                    push_generic_params_internal(tcx, principal.substs, output, visited);
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
@@ -220,17 +210,21 @@ pub fn push_debuginfo_type_name<'tcx>(
                     .collect();
 
                 if projection_bounds.len() != 0 {
-                    pop_close_angle_bracket(output);
+                    if principal_has_generic_params {
+                        // push_generic_params_internal() above added a `>` but we actually
+                        // want to add more items to that list, so remove that again.
+                        pop_close_angle_bracket(output);
+                    }
 
                     for (item_def_id, ty) in projection_bounds {
-                        output.push_str(", ");
+                        push_arg_separator(cpp_like_names, output);
 
                         if cpp_like_names {
                             output.push_str("assoc$<");
                             push_item_name(tcx, item_def_id, false, output);
-                            output.push_str(", ");
+                            push_arg_separator(cpp_like_names, output);
                             push_debuginfo_type_name(tcx, ty, true, output, visited);
-                            push_close_angle_bracket(tcx, output);
+                            push_close_angle_bracket(cpp_like_names, output);
                         } else {
                             push_item_name(tcx, item_def_id, false, output);
                             output.push('=');
@@ -238,7 +232,7 @@ pub fn push_debuginfo_type_name<'tcx>(
                         }
                     }
 
-                    push_close_angle_bracket(tcx, output);
+                    push_close_angle_bracket(cpp_like_names, output);
                 }
 
                 if auto_traits.len() != 0 {
@@ -262,11 +256,11 @@ pub fn push_debuginfo_type_name<'tcx>(
                     push_auto_trait_separator(cpp_like_names, output);
                 }
 
-                pop_auto_trait_separator(cpp_like_names, output);
+                pop_auto_trait_separator(output);
             }
 
             if cpp_like_names {
-                push_close_angle_bracket(tcx, output);
+                push_close_angle_bracket(cpp_like_names, output);
             } else if has_enclosing_parens {
                 output.push(')');
             }
@@ -320,10 +314,9 @@ pub fn push_debuginfo_type_name<'tcx>(
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(tcx, parameter_type, true, output, visited);
-                    output.push_str(", ");
+                    push_arg_separator(cpp_like_names, output);
                 }
-                output.pop();
-                output.pop();
+                pop_arg_separator(output);
             }
 
             if sig.c_variadic {
@@ -429,21 +422,25 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.push_str(&format!(", {}", variant));
             }
         }
-        push_close_angle_bracket(tcx, output);
+        push_close_angle_bracket(true, output);
     }
 
-    fn auto_trait_separator(cpp_like_names: bool) -> &'static str {
-        if cpp_like_names { ", " } else { " + " }
-    }
+    const NON_CPP_AUTO_TRAIT_SEPARATOR: &str = " + ";
 
     fn push_auto_trait_separator(cpp_like_names: bool, output: &mut String) {
-        output.push_str(auto_trait_separator(cpp_like_names));
+        if cpp_like_names {
+            push_arg_separator(cpp_like_names, output);
+        } else {
+            output.push_str(NON_CPP_AUTO_TRAIT_SEPARATOR);
+        }
     }
 
-    fn pop_auto_trait_separator(cpp_like_names: bool, output: &mut String) {
-        let sep = auto_trait_separator(cpp_like_names);
-        assert!(output.ends_with(sep));
-        output.truncate(output.len() - sep.len());
+    fn pop_auto_trait_separator(output: &mut String) {
+        if output.ends_with(NON_CPP_AUTO_TRAIT_SEPARATOR) {
+            output.truncate(output.len() - NON_CPP_AUTO_TRAIT_SEPARATOR.len());
+        } else {
+            pop_arg_separator(output);
+        }
     }
 }
 
@@ -504,12 +501,14 @@ fn push_generic_params_internal<'tcx>(
     substs: SubstsRef<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
-) {
+) -> bool {
     if substs.non_erasable_generics().next().is_none() {
-        return;
+        return false;
     }
 
     debug_assert_eq!(substs, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs));
+
+    let cpp_like_names = cpp_like_names(tcx);
 
     output.push('<');
 
@@ -524,13 +523,12 @@ fn push_generic_params_internal<'tcx>(
             other => bug!("Unexpected non-erasable generic: {:?}", other),
         }
 
-        output.push_str(", ");
+        push_arg_separator(cpp_like_names, output);
     }
+    pop_arg_separator(output);
+    push_close_angle_bracket(cpp_like_names, output);
 
-    output.pop();
-    output.pop();
-
-    push_close_angle_bracket(tcx, output);
+    true
 }
 
 fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: &mut String) {
@@ -583,10 +581,10 @@ pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, out
     push_generic_params_internal(tcx, substs, output, &mut visited);
 }
 
-fn push_close_angle_bracket<'tcx>(tcx: TyCtxt<'tcx>, output: &mut String) {
+fn push_close_angle_bracket(cpp_like_names: bool, output: &mut String) {
     // MSVC debugger always treats `>>` as a shift, even when parsing templates,
     // so add a space to avoid confusion.
-    if cpp_like_names(tcx) && output.ends_with('>') {
+    if cpp_like_names && output.ends_with('>') {
         output.push(' ')
     };
 
@@ -594,11 +592,32 @@ fn push_close_angle_bracket<'tcx>(tcx: TyCtxt<'tcx>, output: &mut String) {
 }
 
 fn pop_close_angle_bracket(output: &mut String) {
-    assert!(output.ends_with('>'));
+    assert!(output.ends_with('>'), "'output' does not end with '>': {}", output);
     output.pop();
     if output.ends_with(' ') {
         output.pop();
     }
+}
+
+fn push_arg_separator(cpp_like_names: bool, output: &mut String) {
+    // Natvis does not always like having spaces between parts of the type name
+    // and this causes issues when we need to write a typename in natvis, for example
+    // as part of a cast like the `HashMap` visualizer does.
+    if cpp_like_names {
+        output.push(',');
+    } else {
+        output.push_str(", ");
+    };
+}
+
+fn pop_arg_separator(output: &mut String) {
+    if output.ends_with(' ') {
+        output.pop();
+    }
+
+    assert!(output.ends_with(','));
+
+    output.pop();
 }
 
 fn cpp_like_names(tcx: TyCtxt<'_>) -> bool {
