@@ -280,11 +280,13 @@ impl AutoTraitFinder<'tcx> {
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
+        // TODO(yaahc): double check this is fine
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
                 substs: infcx.tcx.mk_substs_trait(ty, &[]),
             },
+            polarity: ty::ImplPolarity::Positive,
         }));
 
         let computed_preds = param_env.caller_bounds().iter();

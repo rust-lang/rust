@@ -735,7 +735,8 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
         a: ty::TraitPredicate<'tcx>,
         b: ty::TraitPredicate<'tcx>,
     ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>> {
-        Ok(ty::TraitPredicate { trait_ref: relation.relate(a.trait_ref, b.trait_ref)? })
+        // TODO(yaahc): double check this is fine
+        Ok(ty::TraitPredicate { trait_ref: relation.relate(a.trait_ref, b.trait_ref)?, polarity: ty::ImplPolarity::Positive })
     }
 }
 

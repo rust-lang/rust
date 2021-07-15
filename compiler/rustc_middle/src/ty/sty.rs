@@ -877,7 +877,8 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| ty::TraitPredicate { trait_ref })
+        // TODO(yaahc): double check this is fine
+        self.map_bound(|trait_ref| ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Positive })
     }
 }
 

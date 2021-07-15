@@ -610,6 +610,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         def_id: t.def_id(),
                                         substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
                                     },
+                                    polarity,
                                 },
                                 constness,
                                 polarity,

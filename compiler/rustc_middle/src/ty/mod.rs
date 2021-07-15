@@ -622,6 +622,7 @@ impl<'tcx> Predicate<'tcx> {
 #[derive(HashStable, TypeFoldable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
+    pub polarity: ImplPolarity,
 }
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
@@ -756,7 +757,7 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::Trait(
-            ty::TraitPredicate { trait_ref: self.value },
+            ty::TraitPredicate { trait_ref: self.value, polarity: self.polarity },
             self.constness,
             self.polarity,
         )
@@ -769,7 +770,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
         self.value
             .map_bound(|trait_ref| {
                 PredicateKind::Trait(
-                    ty::TraitPredicate { trait_ref },
+                    ty::TraitPredicate { trait_ref, polarity: self.polarity },
                     self.constness,
                     self.polarity,
                 )

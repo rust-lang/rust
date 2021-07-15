@@ -2718,7 +2718,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         self.prove_predicates(
             Some(ty::PredicateKind::Trait(
-                ty::TraitPredicate { trait_ref },
+                ty::TraitPredicate { trait_ref, polarity: ImplPolarity::Positive },
                 hir::Constness::NotConst,
                 ImplPolarity::Positive,
             )),

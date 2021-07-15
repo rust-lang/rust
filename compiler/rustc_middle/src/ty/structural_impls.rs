@@ -366,7 +366,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
-        tcx.lift(self.trait_ref).map(|trait_ref| ty::TraitPredicate { trait_ref })
+        // TODO(yaahc): double check this is fine
+        tcx.lift(self.trait_ref).map(|trait_ref| ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Positive })
     }
 }
 

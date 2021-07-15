@@ -826,12 +826,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
+                    // TODO(yaahc): double check
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
                         Binder::bind(
                             TraitPredicate {
                                 trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                                polarity: ty::ImplPolarity::Positive,
                             },
                             tcx,
                         ),
