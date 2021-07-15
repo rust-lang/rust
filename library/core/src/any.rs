@@ -108,6 +108,7 @@ use crate::intrinsics;
 // unsafe traits and unsafe methods (i.e., `type_id` would still be safe to call,
 // but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Any")]
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
