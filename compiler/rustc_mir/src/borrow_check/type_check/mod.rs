@@ -1119,6 +1119,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         )
     }
 
+    /// Try to relate `sub <: sup`
     fn sub_types(
         &mut self,
         sub: Ty<'tcx>,
