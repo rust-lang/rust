@@ -127,6 +127,8 @@ macro_rules! assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
+/// use std::assert::assert_matches;
+///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
 /// assert_matches!(a, Some(_));
@@ -135,10 +137,10 @@ macro_rules! assert_ne {
 /// let c = Ok("abc".to_string());
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
-#[macro_export]
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(core_panic)]
-macro_rules! assert_matches {
+#[rustc_macro_transparency = "semitransparent"]
+pub macro assert_matches {
     ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
@@ -150,7 +152,7 @@ macro_rules! assert_matches {
                 );
             }
         }
-    });
+    }),
     ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
@@ -162,7 +164,7 @@ macro_rules! assert_matches {
                 );
             }
         }
-    });
+    }),
 }
 
 /// Asserts that a boolean expression is `true` at runtime.
@@ -284,6 +286,8 @@ macro_rules! debug_assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
+/// use std::assert::debug_assert_matches;
+///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
 /// debug_assert_matches!(a, Some(_));
@@ -295,8 +299,9 @@ macro_rules! debug_assert_ne {
 #[macro_export]
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(assert_matches)]
-macro_rules! debug_assert_matches {
-    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_matches!($($arg)*); })
+#[rustc_macro_transparency = "semitransparent"]
+pub macro debug_assert_matches($($arg:tt)*) {
+    if $crate::cfg!(debug_assertions) { $crate::assert::assert_matches!($($arg)*); }
 }
 
 /// Returns whether the given expression matches any of the given patterns.

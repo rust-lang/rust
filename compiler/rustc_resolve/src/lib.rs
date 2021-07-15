@@ -249,7 +249,7 @@ enum ResolutionError<'a> {
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
     /// Error E0735: generic parameters with a default cannot use `Self`
-    SelfInTyParamDefault,
+    SelfInGenericParamDefault,
     /// Error E0767: use of unreachable label
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
 }
@@ -2643,7 +2643,7 @@ impl<'a> Resolver<'a> {
         if let ForwardGenericParamBanRibKind = all_ribs[rib_index].kind {
             if record_used {
                 let res_error = if rib_ident.name == kw::SelfUpper {
-                    ResolutionError::SelfInTyParamDefault
+                    ResolutionError::SelfInGenericParamDefault
                 } else {
                     ResolutionError::ForwardDeclaredGenericParam
                 };
