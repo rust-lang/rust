@@ -135,6 +135,49 @@ fn main() {}
           },
           {
             "args": {
+              "overrideCargo": null,
+              "workspaceRoot": server.path().join("foo"),
+              "cargoArgs": [
+                "test",
+                "--package",
+                "foo",
+                "--test",
+                "spam"
+              ],
+              "cargoExtraArgs": [],
+              "executableArgs": [
+                "",
+                "--nocapture"
+              ]
+            },
+            "kind": "cargo",
+            "label": "test-mod ",
+            "location": {
+              "targetUri": "file:///[..]/tests/spam.rs",
+              "targetRange": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 3,
+                  "character": 0
+                }
+              },
+              "targetSelectionRange": {
+                "start": {
+                  "line": 0,
+                  "character": 0
+                },
+                "end": {
+                  "line": 3,
+                  "character": 0
+                }
+              }
+            },
+          },
+          {
+            "args": {
               "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
               "cargoExtraArgs": [],

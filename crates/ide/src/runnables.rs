@@ -16,7 +16,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, format_to};
 use syntax::ast::{self, AstNode, AttrsOwner};
 
-use crate::{display::TryToNav, references, FileId, NavigationTarget};
+use crate::{
+    display::{ToNav, TryToNav},
+    references, FileId, NavigationTarget,
+};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Runnable {
@@ -175,6 +178,10 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
                 .for_each(|(r, assoc)| add_opt(r, Some(assoc.into())));
         }
     });
+
+    sema.to_module_defs(file_id)
+        .map(|it| runnable_mod_outline_definition(&sema, it))
+        .for_each(|it| add_opt(it, None));
 
     res.extend(in_macro_expansion.into_iter().flat_map(|(_, runnables)| {
         let use_name_in_title = runnables.len() != 1;
@@ -349,6 +356,30 @@ pub(crate) fn runnable_impl(sema: &Semantics<RootDatabase>, def: &hir::Impl) -> 
     let test_id = TestId::Path(format!("{}{}", adt_name, params));
 
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::DocTest { test_id }, cfg })
+}
+
+/// Creates a test mod runnable for outline modules at the top of their definition.
+fn runnable_mod_outline_definition(
+    sema: &Semantics<RootDatabase>,
+    def: hir::Module,
+) -> Option<Runnable> {
+    if !has_test_function_or_multiple_test_submodules(sema, &def) {
+        return None;
+    }
+    let path =
+        def.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
+
+    let attrs = def.attrs(sema.db);
+    let cfg = attrs.cfg();
+    match def.definition_source(sema.db).value {
+        hir::ModuleSource::SourceFile(_) => Some(Runnable {
+            use_name_in_title: false,
+            nav: def.to_nav(sema.db),
+            kind: RunnableKind::TestMod { path },
+            cfg,
+        }),
+        _ => None,
+    }
 }
 
 fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Option<Runnable> {
@@ -541,7 +572,7 @@ mod not_a_root {
     fn main() {}
 }
 "#,
-            &[Bin, Test, Test, Bench],
+            &[Bin, Test, Test, Bench, TestMod],
             expect![[r#"
                 [
                     Runnable {
@@ -615,6 +646,21 @@ mod not_a_root {
                             test_id: Path(
                                 "bench",
                             ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 0..137,
+                            name: "",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "",
                         },
                         cfg: None,
                     },
@@ -1143,7 +1189,7 @@ $0
 #[cfg(feature = "foo")]
 fn test_foo1() {}
 "#,
-            &[Test],
+            &[Test, TestMod],
             expect![[r#"
                 [
                     Runnable {
@@ -1174,6 +1220,21 @@ fn test_foo1() {}
                             ),
                         ),
                     },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 0..51,
+                            name: "",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "",
+                        },
+                        cfg: None,
+                    },
                 ]
             "#]],
         );
@@ -1189,7 +1250,7 @@ $0
 #[cfg(all(feature = "foo", feature = "bar"))]
 fn test_foo1() {}
 "#,
-            &[Test],
+            &[Test, TestMod],
             expect![[r#"
                 [
                     Runnable {
@@ -1229,6 +1290,21 @@ fn test_foo1() {}
                                 ],
                             ),
                         ),
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 0..73,
+                            name: "",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "",
+                        },
+                        cfg: None,
                     },
                 ]
             "#]],
@@ -1316,7 +1392,7 @@ mod tests {
 }
 gen2!();
 "#,
-            &[TestMod, TestMod, Test, Test],
+            &[TestMod, TestMod, TestMod, Test, Test],
             expect![[r#"
                 [
                     Runnable {
@@ -1333,6 +1409,21 @@ gen2!();
                         },
                         kind: TestMod {
                             path: "tests",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 0..237,
+                            name: "",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "",
                         },
                         cfg: None,
                     },
@@ -1579,7 +1670,7 @@ fn t0() {}
 #[test]
 fn t1() {}
 "#,
-            &[Test, Test],
+            &[Test, Test, TestMod],
             expect![[r#"
                 [
                     Runnable {
@@ -1621,6 +1712,21 @@ fn t1() {}
                             attr: TestAttr {
                                 ignore: false,
                             },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..39,
+                            name: "m",
+                            kind: Module,
+                        },
+                        kind: TestMod {
+                            path: "m",
                         },
                         cfg: None,
                     },
