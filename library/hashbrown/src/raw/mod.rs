@@ -921,14 +921,14 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Searches for an element in the table.
     #[inline]
     pub fn find(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<Bucket<T>> {
-        unsafe {
-            for bucket in self.iter_hash(hash) {
-                let elm = bucket.as_ref();
-                if likely(eq(elm)) {
-                    return Some(bucket);
-                }
-            }
-            None
+        let result = self.table.find_inner(hash, &mut |index| unsafe {
+            eq(self.bucket(index).as_ref())
+        });
+
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match result {
+            Some(index) => Some(unsafe { self.bucket(index) }),
+            None => None,
         }
     }
 
@@ -1054,6 +1054,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// `RawIterHash`. Because we cannot make the `next` method unsafe on the
     /// `RawIterHash` struct, we have to make the `iter_hash` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg(feature = "raw")]
     pub unsafe fn iter_hash(&self, hash: u64) -> RawIterHash<'_, T, A> {
         RawIterHash::new(self, hash)
     }
@@ -1251,6 +1252,32 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                     return result;
                 }
             }
+            probe_seq.move_next(self.bucket_mask);
+        }
+    }
+
+    /// Searches for an element in the table. This uses dynamic dispatch to reduce the amount of
+    /// code generated, but it is eliminated by LLVM optimizations.
+    #[inline]
+    fn find_inner(&self, hash: u64, eq: &mut dyn FnMut(usize) -> bool) -> Option<usize> {
+        let h2_hash = h2(hash);
+        let mut probe_seq = self.probe_seq(hash);
+
+        loop {
+            let group = unsafe { Group::load(self.ctrl(probe_seq.pos)) };
+
+            for bit in group.match_byte(h2_hash) {
+                let index = (probe_seq.pos + bit) & self.bucket_mask;
+
+                if likely(eq(index)) {
+                    return Some(index);
+                }
+            }
+
+            if likely(group.match_empty().any_bit_set()) {
+                return None;
+            }
+
             probe_seq.move_next(self.bucket_mask);
         }
     }
@@ -2187,6 +2214,7 @@ struct RawIterHashInner<'a, A: Allocator + Clone> {
 
 impl<'a, T, A: Allocator + Clone> RawIterHash<'a, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg(feature = "raw")]
     fn new(table: &'a RawTable<T, A>, hash: u64) -> Self {
         RawIterHash {
             inner: RawIterHashInner::new(&table.table, hash),
@@ -2196,6 +2224,7 @@ impl<'a, T, A: Allocator + Clone> RawIterHash<'a, T, A> {
 }
 impl<'a, A: Allocator + Clone> RawIterHashInner<'a, A> {
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg(feature = "raw")]
     fn new(table: &'a RawTableInner<A>, hash: u64) -> Self {
         unsafe {
             let h2_hash = h2(hash);
