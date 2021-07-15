@@ -186,17 +186,14 @@ fn overlap_within_probe(
 
     let negate_obligation = |mut obligation| {
         let predicate_kind = obligation.predicate.inner.kind.0;
-        let predicate_kind = match predicate_kind {
+        match predicate_kind {
             PredicateKind::Trait(trait_pred, constness) => {
-                PredicateKind::NotTrait(trait_pred, constness)
+                // call predicate.map here
+                obligation.predicate.inner.kind.0 = PredicateKind::NotTrait(trait_pred, constness);
+                Some(obligation)
             }
-            PredicateKind::NotTrait(trait_pred, constness) => {
-                PredicateKind::Trait(trait_pred, constness)
-            }
-            _ => todo!("yaahc"),
-        };
-        obligation.predicate.inner.kind.0 = predicate_kind;
-        obligation
+            _ => return None,
+        }
     };
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
