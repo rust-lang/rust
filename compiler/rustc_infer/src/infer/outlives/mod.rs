@@ -27,6 +27,7 @@ pub fn explicit_outlives_bounds<'tcx>(
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+            ty::PredicateKind::NotTrait(..) => todo!("yaahc"),
             ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
                 Some(OutlivesBound::RegionSubRegion(r_b, r_a))
             }

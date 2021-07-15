@@ -444,6 +444,9 @@ impl Validator<'mir, 'tcx> {
                             _ => continue,
                         }
                     }
+                    ty::PredicateKind::NotTrait(_pred, _constness) => {
+                        todo!("yaahc")
+                    }
                 }
             }
             match predicates.parent {

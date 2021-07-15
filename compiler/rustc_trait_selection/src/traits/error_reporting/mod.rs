@@ -541,6 +541,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err
                     }
 
+                    ty::PredicateKind::NotTrait(_trait_predicate, _) => {
+                        todo!("yaahc")
+                    }
+
                     ty::PredicateKind::Subtype(predicate) => {
                         // Errors for Subtype predicates show up as
                         // `FulfillmentErrorCode::CodeSubtypeError`,

@@ -110,6 +110,9 @@ pub fn predicate_obligations<'a, 'tcx>(
         ty::PredicateKind::Trait(t, _) => {
             wf.compute_trait_ref(&t.trait_ref, Elaborate::None);
         }
+        ty::PredicateKind::NotTrait(_t, _) => {
+            todo!("yaahc")
+        }
         ty::PredicateKind::RegionOutlives(..) => {}
         ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
             wf.compute(ty.into());

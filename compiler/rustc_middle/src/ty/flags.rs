@@ -219,6 +219,9 @@ impl FlagComputation {
             ty::PredicateKind::Trait(trait_pred, _constness) => {
                 self.add_substs(trait_pred.trait_ref.substs);
             }
+            ty::PredicateKind::NotTrait(_trait_pred, _constness) => {
+                todo!("yaahc")
+            }
             ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
                 self.add_region(a);
                 self.add_region(b);

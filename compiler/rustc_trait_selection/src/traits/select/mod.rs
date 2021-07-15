@@ -461,6 +461,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
+                ty::PredicateKind::NotTrait(..) => Ok(EvaluatedToErr),
+
                 ty::PredicateKind::Subtype(p) => {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
@@ -2442,7 +2444,11 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head { head.depth } else { 0 }
+        if let Some(head) = self.head {
+            head.depth
+        } else {
+            0
+        }
     }
 }
 

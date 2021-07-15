@@ -458,6 +458,15 @@ pub enum PredicateKind<'tcx> {
     /// `const fn foobar<Foo: Bar>() {}`).
     Trait(TraitPredicate<'tcx>, Constness),
 
+    /// Corresponds to `where Foo: !Bar<A, B, C>`. `Foo` here would be
+    /// the `Self` type of the trait reference and `A`, `B`, and `C`
+    /// would be the type parameters.
+    ///
+    /// A trait predicate will have `Constness::Const` if it originates
+    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
+    /// `const fn foobar<Foo: Bar>() {}`).
+    NotTrait(TraitPredicate<'tcx>, Constness),
+
     /// `where 'a: 'b`
     RegionOutlives(RegionOutlivesPredicate<'tcx>),
 
@@ -791,6 +800,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Trait(t, constness) => {
                 Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
+            PredicateKind::NotTrait(..) => todo!("yaahc"),
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::RegionOutlives(..)
@@ -808,6 +818,7 @@ impl<'tcx> Predicate<'tcx> {
         let predicate = self.kind();
         match predicate.skip_binder() {
             PredicateKind::TypeOutlives(data) => Some(predicate.rebind(data)),
+            PredicateKind::NotTrait(..) => todo!("yaahc"),
             PredicateKind::Trait(..)
             | PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)

@@ -146,6 +146,9 @@ impl Elaborator<'tcx> {
 
                 self.stack.extend(obligations);
             }
+            ty::PredicateKind::NotTrait(_data, _) => {
+                todo!("yaahc")
+            }
             ty::PredicateKind::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
                 // although we easily could.

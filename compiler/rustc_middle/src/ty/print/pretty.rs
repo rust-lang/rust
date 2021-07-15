@@ -2197,6 +2197,9 @@ define_print_and_forward_display! {
                 }
                 p!(print(data))
             }
+            ty::PredicateKind::NotTrait(ref _data, _constness) => {
+                todo!("yaahc")
+            }
             ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
             ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
             ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),

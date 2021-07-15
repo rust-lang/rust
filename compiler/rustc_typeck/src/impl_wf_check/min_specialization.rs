@@ -397,6 +397,9 @@ fn trait_predicate_kind<'tcx>(
         ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
             Some(tcx.trait_def(pred.def_id()).specialization_kind)
         }
+        ty::PredicateKind::NotTrait(_pred, _) => {
+            todo!("yaahc")
+        }
         ty::PredicateKind::Trait(_, hir::Constness::Const)
         | ty::PredicateKind::RegionOutlives(_)
         | ty::PredicateKind::TypeOutlives(_)

@@ -90,6 +90,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 ty::PredicateKind::Trait(predicate, _) => chalk_ir::DomainGoal::FromEnv(
                     chalk_ir::FromEnv::Trait(predicate.trait_ref.lower_into(interner)),
                 ),
+                ty::PredicateKind::NotTrait(_predicate, _) => todo!("yaahc"),
                 ty::PredicateKind::RegionOutlives(predicate) => chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
                         a: predicate.0.lower_into(interner),
@@ -142,6 +143,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                     chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)),
                 ))
             }
+            ty::PredicateKind::NotTrait(_predicate, _) => todo!("yaahc"),
             ty::PredicateKind::RegionOutlives(predicate) => {
                 chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
@@ -572,6 +574,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             ty::PredicateKind::Trait(predicate, _) => {
                 Some(chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)))
             }
+            ty::PredicateKind::NotTrait(_predicate, _) => todo!("yaahc"),
             ty::PredicateKind::RegionOutlives(predicate) => {
                 Some(chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
                     a: predicate.0.lower_into(interner),
@@ -708,6 +711,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
                     predicate.trait_ref.lower_into(interner),
                 ),
             )),
+            ty::PredicateKind::NotTrait(_predicate, _) => todo!("yaahc"),
             ty::PredicateKind::Projection(predicate) => Some(chalk_ir::Binders::new(
                 binders,
                 chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),

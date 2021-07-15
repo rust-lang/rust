@@ -330,6 +330,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Trait(pred, _) => Some(bound_predicate.rebind(pred).clean(cx)),
+            ty::PredicateKind::NotTrait(_pred, _) => todo!("yaahc"),
             ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),

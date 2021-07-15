@@ -840,6 +840,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         _ => None,
                     }
                 }
+                ty::PredicateKind::NotTrait(_trait_predicate, _) => {
+                    todo!("yaahc")
+                }
                 ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::RegionOutlives(..)
