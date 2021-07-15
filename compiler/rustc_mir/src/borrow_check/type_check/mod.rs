@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     /// Equates a type `anon_ty` that may contain opaque types whose
-    /// values are to be inferred by the MIR with def-id `anon_owner_def_id`.
+    /// values are to be inferred by the MIR.
     ///
     /// The type `revealed_ty` contains the same type as `anon_ty`, but with the
     /// hidden types for impl traits revealed.
@@ -1210,12 +1210,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ///   generics of `foo`). Note that `anon_ty` is not just the opaque type,
     ///   but the entire return type (which may contain opaque types within it).
     /// * `revealed_ty` would be `Box<(T, u32)>`
-    /// * `anon_owner_def_id` would be the def-id of `foo`
     fn eq_opaque_type_and_type(
         &mut self,
         revealed_ty: Ty<'tcx>,
         anon_ty: Ty<'tcx>,
-        anon_owner_def_id: LocalDefId,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
@@ -1245,12 +1243,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
+        let mir_def_id = body.source.def_id().expect_local();
 
         // the "concrete opaque types" maps
-        let concrete_opaque_types = &tcx.typeck(anon_owner_def_id).concrete_opaque_types;
+        let concrete_opaque_types = &tcx.typeck(mir_def_id).concrete_opaque_types;
         let mut opaque_type_values = VecMap::new();
 
-        debug!("eq_opaque_type_and_type: mir_def_id={:?}", body.source.def_id());
+        debug!("eq_opaque_type_and_type: mir_def_id={:?}", mir_def_id);
         let opaque_type_map = self.fully_perform_op(
             locations,
             category,
@@ -1268,7 +1267,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // any generic parameters.)
                     let (output_ty, opaque_type_map) =
                         obligations.add(infcx.instantiate_opaque_types(
-                            anon_owner_def_id,
+                            mir_def_id,
                             dummy_body_id,
                             param_env,
                             anon_ty,

@@ -122,7 +122,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(terr) = self.eq_opaque_type_and_type(
             mir_output_ty,
             normalized_output_ty,
-            mir_def_id,
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -145,7 +144,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if let Err(err) = self.eq_opaque_type_and_type(
                 mir_output_ty,
                 user_provided_output_ty,
-                mir_def_id,
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
             ) {
