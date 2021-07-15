@@ -1,4 +1,4 @@
-//! Completions tests for type position.
+//! Completion tests for type position.
 use expect_test::{expect, Expect};
 
 use crate::tests::completion_list;

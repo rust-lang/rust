@@ -4,12 +4,14 @@
 //! `attributes` or `lifetimes` where the completed concept is a distinct thing.
 //! Notable examples for completions that are being tested in this module's submodule are paths.
 
+mod attribute;
 mod item_list;
-mod use_tree;
-mod items;
+mod item;
 mod pattern;
-mod type_pos;
 mod predicate;
+mod type_pos;
+mod use_tree;
+
 mod sourcegen;
 
 use std::mem;

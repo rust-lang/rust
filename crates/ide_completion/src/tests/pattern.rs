@@ -1,4 +1,4 @@
-//! Completions tests for pattern position.
+//! Completion tests for pattern position.
 use expect_test::{expect, Expect};
 
 use crate::tests::{completion_list, BASE_FIXTURE};

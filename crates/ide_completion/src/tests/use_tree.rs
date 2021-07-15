@@ -1,4 +1,4 @@
-//! Completions tests for use trees.
+//! Completion tests for use trees.
 use expect_test::{expect, Expect};
 
 use crate::tests::completion_list;
