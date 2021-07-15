@@ -30,7 +30,9 @@ pub trait Delegate<'tcx> {
     // on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
     //
     // Use of a `Copy` type in a ByValue context is considered a use
-    // by `ImmBorrow` and `borrow` is called instead.
+    // by `ImmBorrow` and `borrow` is called instead. This is because
+    // a shared borrow is the "minimum access" that would be needed
+    // to perform a copy.
     //
     //
     // The parameter `diag_expr_id` indicates the HIR id that ought to be used for
