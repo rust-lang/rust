@@ -17,7 +17,7 @@ use ide_db::{RootDatabase, SymbolKind};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, HasFormatSpecifier},
-    AstNode, AstToken, Direction, NodeOrToken,
+    match_ast, AstNode, AstToken, Direction, NodeOrToken,
     SyntaxKind::*,
     SyntaxNode, TextRange, WalkEvent, T,
 };
@@ -159,15 +159,16 @@ pub(crate) fn highlight(
     // Determine the root based on the given range.
     let (root, range_to_highlight) = {
         let source_file = sema.parse(file_id);
+        let source_file = source_file.syntax();
         match range_to_highlight {
             Some(range) => {
-                let node = match source_file.syntax().covering_element(range) {
+                let node = match source_file.covering_element(range) {
                     NodeOrToken::Node(it) => it,
-                    NodeOrToken::Token(it) => it.parent().unwrap(),
+                    NodeOrToken::Token(it) => it.parent().unwrap_or_else(|| source_file.clone()),
                 };
                 (node, range)
             }
-            None => (source_file.syntax().clone(), source_file.syntax().text_range()),
+            None => (source_file.clone(), source_file.text_range()),
         }
     };
 
@@ -211,58 +212,57 @@ fn traverse(
             continue;
         }
 
-        // Track "inside macro" state
-        match event.clone().map(|it| it.into_node().and_then(ast::MacroCall::cast)) {
-            WalkEvent::Enter(Some(mc)) => {
-                if let Some(range) = macro_call_range(&mc) {
-                    hl.add(HlRange {
-                        range,
-                        highlight: HlTag::Symbol(SymbolKind::Macro).into(),
-                        binding_hash: None,
-                    });
+        match event.clone() {
+            WalkEvent::Enter(NodeOrToken::Node(node)) => {
+                match_ast! {
+                    match node {
+                        ast::MacroCall(mcall) => {
+                            if let Some(range) = macro_call_range(&mcall) {
+                                hl.add(HlRange {
+                                    range,
+                                    highlight: HlTag::Symbol(SymbolKind::Macro).into(),
+                                    binding_hash: None,
+                                });
+                            }
+                            current_macro_call = Some(mcall);
+                            continue;
+                        },
+                        ast::Macro(mac) => {
+                            macro_highlighter.init();
+                            current_macro = Some(mac);
+                            continue;
+                        },
+                        ast::Item(item) => {
+                            if sema.is_attr_macro_call(&item) {
+                                current_attr_macro_call = Some(item);
+                            }
+                        },
+                        ast::Attr(__) => inside_attribute = true,
+                        _ => ()
+                    }
                 }
-                current_macro_call = Some(mc.clone());
-                continue;
             }
-            WalkEvent::Leave(Some(mc)) => {
-                assert_eq!(current_macro_call, Some(mc));
-                current_macro_call = None;
-            }
-            _ => (),
-        }
-        match event.clone().map(|it| it.into_node().and_then(ast::Item::cast)) {
-            WalkEvent::Enter(Some(item)) => {
-                if sema.is_attr_macro_call(&item) {
-                    current_attr_macro_call = Some(item);
+            WalkEvent::Leave(NodeOrToken::Node(node)) => {
+                match_ast! {
+                    match node {
+                        ast::MacroCall(mcall) => {
+                            assert_eq!(current_macro_call, Some(mcall));
+                            current_macro_call = None;
+                        },
+                        ast::Macro(mac) => {
+                            assert_eq!(current_macro, Some(mac));
+                            current_macro = None;
+                            macro_highlighter = MacroHighlighter::default();
+                        },
+                        ast::Item(item) => {
+                            if current_attr_macro_call == Some(item) {
+                                current_attr_macro_call = None;
+                            }
+                        },
+                        ast::Attr(__) => inside_attribute = false,
+                        _ => ()
+                    }
                 }
-            }
-            WalkEvent::Leave(Some(item)) => {
-                if current_attr_macro_call == Some(item) {
-                    current_attr_macro_call = None;
-                }
-            }
-            _ => (),
-        }
-
-        match event.clone().map(|it| it.into_node().and_then(ast::Macro::cast)) {
-            WalkEvent::Enter(Some(mac)) => {
-                macro_highlighter.init();
-                current_macro = Some(mac);
-                continue;
-            }
-            WalkEvent::Leave(Some(mac)) => {
-                assert_eq!(current_macro, Some(mac));
-                current_macro = None;
-                macro_highlighter = MacroHighlighter::default();
-            }
-            _ => (),
-        }
-        match &event {
-            WalkEvent::Enter(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
-                inside_attribute = true
-            }
-            WalkEvent::Leave(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
-                inside_attribute = false
             }
             _ => (),
         }

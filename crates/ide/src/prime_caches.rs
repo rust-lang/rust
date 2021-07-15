@@ -1,6 +1,6 @@
-//! rust-analyzer is lazy and doesn't not compute anything unless asked. This
+//! rust-analyzer is lazy and doesn't compute anything unless asked. This
 //! sometimes is counter productive when, for example, the first goto definition
-//! request takes longer to compute. This modules implemented prepopulating of
+//! request takes longer to compute. This modules implemented prepopulation of
 //! various caches, it's not really advanced at the moment.
 
 use hir::db::DefDatabase;
@@ -27,7 +27,7 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
     let topo = &graph.crates_in_topological_order();
 
     cb(PrimeCachesProgress::Started);
-    // Take care to emit the finish signal  even when the computation is canceled.
+    // Take care to emit the finish signal even when the computation is canceled.
     let _d = stdx::defer(|| cb(PrimeCachesProgress::Finished));
 
     // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.

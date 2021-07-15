@@ -13,7 +13,7 @@ use hir::{PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    search::{ReferenceAccess, SearchScope},
+    search::{ReferenceAccess, SearchScope, UsageSearchResult},
     RootDatabase,
 };
 use rustc_hash::FxHashMap;
@@ -56,48 +56,20 @@ pub(crate) fn find_all_refs(
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
 
-    let (def, is_literal_search) =
-        if let Some(name) = get_name_of_item_declaration(&syntax, position) {
-            (
-                match NameClass::classify(sema, &name)? {
-                    NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                    NameClass::PatFieldShorthand { local_def: _, field_ref } => {
-                        Definition::Field(field_ref)
-                    }
-                },
-                true,
-            )
-        } else {
-            (find_def(sema, &syntax, position.offset)?, false)
-        };
+    let mut is_literal_search = false;
+    let def = if let Some(name) = name_for_constructor_search(&syntax, position) {
+        is_literal_search = true;
+        match NameClass::classify(sema, &name)? {
+            NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+            NameClass::PatFieldShorthand { local_def: _, field_ref } => {
+                Definition::Field(field_ref)
+            }
+        }
+    } else {
+        find_def(sema, &syntax, position.offset)?
+    };
 
     let mut usages = def.usages(sema).set_scope(search_scope).include_self_refs().all();
-    if is_literal_search {
-        // filter for constructor-literals
-        let refs = usages.references.values_mut();
-        match def {
-            Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(enum_))) => {
-                refs.for_each(|it| {
-                    it.retain(|reference| {
-                        reference
-                            .name
-                            .as_name_ref()
-                            .map_or(false, |name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
-                    })
-                });
-                usages.references.retain(|_, it| !it.is_empty());
-            }
-            Definition::ModuleDef(hir::ModuleDef::Adt(_) | hir::ModuleDef::Variant(_)) => {
-                refs.for_each(|it| {
-                    it.retain(|reference| {
-                        reference.name.as_name_ref().map_or(false, is_lit_name_ref)
-                    })
-                });
-                usages.references.retain(|_, it| !it.is_empty());
-            }
-            _ => {}
-        }
-    }
     let declaration = match def {
         Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
             Some(NavigationTarget::from_module_to_decl(sema.db, module))
@@ -108,6 +80,10 @@ pub(crate) fn find_all_refs(
         let decl_range = nav.focus_or_full_range();
         Declaration { nav, access: decl_access(&def, &syntax, decl_range) }
     });
+    if is_literal_search {
+        retain_adt_literal_usages(&mut usages, def, sema);
+    }
+
     let references = usages
         .into_iter()
         .map(|(file_id, refs)| {
@@ -174,7 +150,37 @@ pub(crate) fn decl_access(
     None
 }
 
-fn get_name_of_item_declaration(syntax: &SyntaxNode, position: FilePosition) -> Option<ast::Name> {
+/// Filter out all non-literal usages for adt-defs
+fn retain_adt_literal_usages(
+    usages: &mut UsageSearchResult,
+    def: Definition,
+    sema: &Semantics<RootDatabase>,
+) {
+    let refs = usages.references.values_mut();
+    match def {
+        Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(enum_))) => {
+            refs.for_each(|it| {
+                it.retain(|reference| {
+                    reference
+                        .name
+                        .as_name_ref()
+                        .map_or(false, |name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
+                })
+            });
+            usages.references.retain(|_, it| !it.is_empty());
+        }
+        Definition::ModuleDef(hir::ModuleDef::Adt(_) | hir::ModuleDef::Variant(_)) => {
+            refs.for_each(|it| {
+                it.retain(|reference| reference.name.as_name_ref().map_or(false, is_lit_name_ref))
+            });
+            usages.references.retain(|_, it| !it.is_empty());
+        }
+        _ => {}
+    }
+}
+
+/// Returns `Some` if the cursor is at a position for an item to search for all its constructor/literal usages
+fn name_for_constructor_search(syntax: &SyntaxNode, position: FilePosition) -> Option<ast::Name> {
     let token = syntax.token_at_offset(position.offset).right_biased()?;
     let token_parent = token.parent()?;
     let kind = token.kind();
