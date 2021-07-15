@@ -120,6 +120,12 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         })
     }
 
+    fn visit_expr_field(&mut self, f: &'a ast::ExprField) {
+        self.with_lint_attrs(f.id, &f.attrs, |cx| {
+            ast_visit::walk_expr_field(cx, f);
+        })
+    }
+
     fn visit_stmt(&mut self, s: &'a ast::Stmt) {
         // Add the statement's lint attributes to our
         // current state when checking the statement itself.
@@ -389,9 +395,15 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
-    for (_id, lints) in buffered.map {
+    for (id, lints) in buffered.map {
         for early_lint in lints {
-            sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
+            sess.delay_span_bug(
+                early_lint.span,
+                &format!(
+                    "failed to process buffered lint here (dummy = {})",
+                    id == ast::DUMMY_NODE_ID
+                ),
+            );
         }
     }
 }
