@@ -5,7 +5,7 @@ use crate::fmt;
 /// This `struct` is created by the [`Iterator::map_windows`]. See its
 /// documentation for more information.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
 pub struct MapWindows<I: Iterator, F, const N: usize> {
     iter: I,
     f: F,
@@ -21,7 +21,7 @@ impl<I: Iterator, F, const N: usize> MapWindows<I, F, N> {
     }
 }
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
 impl<I, F, R, const N: usize> Iterator for MapWindows<I, F, N>
 where
     I: Iterator,
@@ -44,7 +44,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
 impl<I: Iterator + fmt::Debug, F, const N: usize> fmt::Debug for MapWindows<I, F, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MapWindows").field("iter", &self.iter).finish()

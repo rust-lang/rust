@@ -49,7 +49,7 @@ pub use self::intersperse::{Intersperse, IntersperseWith};
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::map_while::MapWhile;
 
-#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
 pub use self::map_windows::MapWindows;
 
 #[unstable(feature = "trusted_random_access", issue = "none")]

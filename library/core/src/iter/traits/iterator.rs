@@ -1523,7 +1523,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(false)); // 8.5 <= NAN
     /// assert_eq!(it.next(), None);
     /// ```
-    #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
     fn map_windows<F, R, const N: usize>(self, f: F) -> MapWindows<Self, F, N>
     where
         Self: Sized,
