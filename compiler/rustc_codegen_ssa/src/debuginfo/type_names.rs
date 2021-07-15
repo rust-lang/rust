@@ -34,6 +34,8 @@ pub fn compute_debuginfo_type_name<'tcx>(
     t: Ty<'tcx>,
     qualified: bool,
 ) -> String {
+    let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
+
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
     push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
@@ -42,7 +44,7 @@ pub fn compute_debuginfo_type_name<'tcx>(
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-pub fn push_debuginfo_type_name<'tcx>(
+fn push_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
@@ -577,6 +579,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: 
 }
 
 pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, output: &mut String) {
+    let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
     push_generic_params_internal(tcx, substs, output, &mut visited);
 }
