@@ -11,7 +11,7 @@ LL |         Foo(z.into_iter())
                    found struct `std::vec::IntoIter<u64>`
 
 error[E0308]: mismatched types
-  --> $DIR/reject-opaque_types-in-fields.rs:30:13
+  --> $DIR/reject-opaque_types-in-fields.rs:33:13
    |
 LL | type X = impl Iterator<Item = u64> + Unpin;
    |          --------------------------------- the expected opaque type
@@ -28,7 +28,7 @@ error: could not find defining uses
 LL | type ImplCopy = impl Copy;
    |                 ^^^^^^^^^
 
-error: type alias impl traits are not allowed as field types in enums
+error: type aliases of `impl Trait` are not allowed as field types in enums
   --> $DIR/reject-opaque_types-in-fields.rs:6:1
    |
 LL |   type ImplCopy = impl Copy;
@@ -37,7 +37,10 @@ LL |   type ImplCopy = impl Copy;
 LL | / enum Wrapper {
 LL | |
 LL | |     First(ImplCopy),
-   | |           -------- this field contains a type alias impl trait
+   | |           --------
+   | |           |
+   | |           this field contains a type alias `ImplCopy` of an `impl Trait`
+   | |           this type is a type alias of an `impl Trait`
 LL | |     Second
 LL | | }
    | |_^
@@ -48,7 +51,7 @@ error: could not find defining uses
 LL | type X = impl Iterator<Item = u64> + Unpin;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: type alias impl traits are not allowed as field types in structs
+error: type aliases of `impl Trait` are not allowed as field types in structs
   --> $DIR/reject-opaque_types-in-fields.rs:15:1
    |
 LL | type X = impl Iterator<Item = u64> + Unpin;
@@ -57,21 +60,35 @@ LL | type X = impl Iterator<Item = u64> + Unpin;
 LL | struct Foo(X);
    | ^^^^^^^^^^^-^^
    |            |
-   |            this field contains a type alias impl trait
+   |            this field contains a type alias `X` of an `impl Trait`
+   |            this type is a type alias of an `impl Trait`
 
-error: type alias impl traits are not allowed as field types in structs
+error: type aliases of `impl Trait` are not allowed as field types in structs
   --> $DIR/reject-opaque_types-in-fields.rs:25:1
+   |
+LL | type X = impl Iterator<Item = u64> + Unpin;
+   | ------------------------------------------- type alias defined here
+...
+LL | struct FooNested(Vec<X>);
+   | ^^^^^^^^^^^^^^^^^------^^
+   |                  |   |
+   |                  |   this type is a type alias of an `impl Trait`
+   |                  this field contains a type alias `X` of an `impl Trait`
+
+error: type aliases of `impl Trait` are not allowed as field types in structs
+  --> $DIR/reject-opaque_types-in-fields.rs:28:1
    |
 LL | type X = impl Iterator<Item = u64> + Unpin;
    | ------------------------------------------- type alias defined here
 ...
 LL | struct Bar {a : X}
    | ^^^^^^^^^^^^-----^
-   |             |
-   |             this field contains a type alias impl trait
+   |             |   |
+   |             |   this type is a type alias of an `impl Trait`
+   |             this field contains a type alias `X` of an `impl Trait`
 
-error: type alias impl traits are not allowed as field types in unions
-  --> $DIR/reject-opaque_types-in-fields.rs:35:1
+error: type aliases of `impl Trait` are not allowed as field types in unions
+  --> $DIR/reject-opaque_types-in-fields.rs:38:1
    |
 LL |   type X = impl Iterator<Item = u64> + Unpin;
    |   ------------------------------------------- type alias defined here
@@ -79,24 +96,27 @@ LL |   type X = impl Iterator<Item = u64> + Unpin;
 LL | / union MyUnion {
 LL | |
 LL | |   a: X,
-   | |   ---- this field contains a type alias impl trait
+   | |   ----
+   | |   |  |
+   | |   |  this type is a type alias of an `impl Trait`
+   | |   this field contains a type alias `X` of an `impl Trait`
 LL | |
 LL | | }
    | |_^
 
 error[E0740]: unions may not contain fields that need dropping
-  --> $DIR/reject-opaque_types-in-fields.rs:37:3
+  --> $DIR/reject-opaque_types-in-fields.rs:40:3
    |
 LL |   a: X,
    |   ^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/reject-opaque_types-in-fields.rs:37:3
+  --> $DIR/reject-opaque_types-in-fields.rs:40:3
    |
 LL |   a: X,
    |   ^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0308, E0740.
 For more information about an error, try `rustc --explain E0308`.

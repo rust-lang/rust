@@ -9,7 +9,7 @@ pub trait MyTrait {}
 impl MyTrait for bool {}
 
 struct Blah {
-    //~^ ERROR type alias impl traits are not allowed as field types in structs
+    //~^ ERROR type aliases of `impl Trait` are not allowed as field types in structs
     my_foo: Foo,
     my_u8: u8
 }

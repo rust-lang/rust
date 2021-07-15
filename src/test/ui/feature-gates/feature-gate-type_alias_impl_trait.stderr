@@ -60,7 +60,7 @@ error: could not find defining uses
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
 
-error: type alias impl traits are not allowed as field types in structs
+error: type aliases of `impl Trait` are not allowed as field types in structs
   --> $DIR/feature-gate-type_alias_impl_trait.rs:8:1
    |
 LL | type Foo = impl Debug;
@@ -69,7 +69,8 @@ LL | type Foo = impl Debug;
 LL | struct Bar(Foo);
    | ^^^^^^^^^^^---^^
    |            |
-   |            this field contains a type alias impl trait
+   |            this field contains a type alias `Foo` of an `impl Trait`
+   |            this type is a type alias of an `impl Trait`
 
 error: could not find defining uses
   --> $DIR/feature-gate-type_alias_impl_trait.rs:20:13

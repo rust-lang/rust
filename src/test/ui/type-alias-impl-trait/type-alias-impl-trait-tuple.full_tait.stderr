@@ -7,13 +7,16 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
-error: type alias impl traits are not allowed as field types in structs
+error: type aliases of `impl Trait` are not allowed as field types in structs
   --> $DIR/type-alias-impl-trait-tuple.rs:11:1
    |
 LL | / struct Blah {
 LL | |
 LL | |     my_foo: Foo,
-   | |     ----------- this field contains a type alias impl trait
+   | |     -----------
+   | |     |       |
+   | |     |       this type is a type alias of an `impl Trait`
+   | |     this field contains a type alias `Foo` of an `impl Trait`
 LL | |     my_u8: u8
 LL | | }
    | |_^

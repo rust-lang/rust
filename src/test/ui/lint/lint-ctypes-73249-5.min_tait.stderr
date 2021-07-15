@@ -1,4 +1,4 @@
-error: type alias impl traits are not allowed as field types in structs
+error: type aliases of `impl Trait` are not allowed as field types in structs
   --> $DIR/lint-ctypes-73249-5.rs:16:1
    |
 LL |   type Qux = impl Baz;
@@ -7,7 +7,10 @@ LL |   type Qux = impl Baz;
 LL | / pub struct A {
 LL | |
 LL | |     x: Qux,
-   | |     ------ this field contains a type alias impl trait
+   | |     ------
+   | |     |  |
+   | |     |  this type is a type alias of an `impl Trait`
+   | |     this field contains a type alias `Qux` of an `impl Trait`
 LL | | }
    | |_^
 

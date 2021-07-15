@@ -7,7 +7,7 @@ use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{def::DefKind, def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -437,10 +437,66 @@ fn check_fields_for_opaque_types(
     def_id: LocalDefId,
     span: Span,
 ) {
-    fn find_span_of_field_def_and_ty_alias(
+    struct TyAliasFinder<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        ty_alias_span: Option<Span>,
+        ty_alias_ident: Option<Ident>,
+        field_ty_span: Option<Span>,
+    }
+
+    impl TyAliasFinder<'_> {
+        fn new(tcx: TyCtxt<'tcx>) -> TyAliasFinder<'_> {
+            TyAliasFinder { tcx, ty_alias_span: None, ty_alias_ident: None, field_ty_span: None }
+        }
+
+        fn get_collected_information(&self) -> (Option<Span>, Option<Ident>, Option<Span>) {
+            (self.field_ty_span, self.ty_alias_ident, self.ty_alias_span)
+        }
+    }
+
+    impl<'tcx> intravisit::Visitor<'tcx> for TyAliasFinder<'tcx> {
+        type Map = intravisit::ErasedMap<'tcx>;
+
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::None
+        }
+
+        fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
+            if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = t.kind {
+                if let Res::Def(DefKind::TyAlias, ty_alias_def_id) = path.res {
+                    let span = path.span;
+                    if let Some(ty_alias_local_id) = ty_alias_def_id.as_local() {
+                        let ty_alias_hir_id =
+                            self.tcx.hir().local_def_id_to_hir_id(ty_alias_local_id);
+                        let node = self.tcx.hir().get(ty_alias_hir_id);
+                        match node {
+                            hir::Node::Item(hir::Item {
+                                ident, kind, span: ty_alias_span, ..
+                            }) => match kind {
+                                hir::ItemKind::TyAlias(_, _) => {
+                                    self.ty_alias_span = Some(*ty_alias_span);
+                                    self.ty_alias_ident = Some(*ident);
+                                    self.field_ty_span = Some(span);
+                                    return;
+                                }
+                                _ => bug!("expected an item of kind TyAlias"),
+                            },
+                            _ => {
+                                self.field_ty_span = Some(span);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            intravisit::walk_ty(self, t);
+        }
+    }
+
+    fn find_ty_alias_information(
         tcx: TyCtxt<'tcx>,
         field_def: &ty::FieldDef,
-    ) -> (Option<Span>, Option<Span>) {
+    ) -> (Option<Span>, Option<Span>, Option<Ident>, Option<Span>) {
         let field_def_def_id = field_def.did;
         if let Some(field_def_local_id) = field_def_def_id.as_local() {
             let field_def_hir_id = tcx.hir().local_def_id_to_hir_id(field_def_local_id);
@@ -448,29 +504,15 @@ fn check_fields_for_opaque_types(
                 span: field_def_span, ty: field_def_ty, ..
             }) = tcx.hir().get(field_def_hir_id)
             {
-                if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = field_def_ty.kind {
-                    if let Res::Def(DefKind::TyAlias, ty_alias_def_id) = path.res {
-                        if let Some(ty_alias_local_id) = ty_alias_def_id.as_local() {
-                            let ty_alias_hir_id =
-                                tcx.hir().local_def_id_to_hir_id(ty_alias_local_id);
-                            let node = tcx.hir().get(ty_alias_hir_id);
-                            match node {
-                                hir::Node::Item(hir::Item {
-                                    kind, span: ty_alias_span, ..
-                                }) => match kind {
-                                    hir::ItemKind::TyAlias(_, _) => {
-                                        return (Some(*field_def_span), Some(*ty_alias_span));
-                                    }
-                                    _ => bug!("expected an item of kind TyAlias"),
-                                },
-                                _ => return (Some(*field_def_span), None),
-                            }
-                        }
-                    }
-                }
+                let mut type_alias_finder = TyAliasFinder::new(tcx);
+                type_alias_finder.visit_ty(field_def_ty);
+
+                let (field_ty_span, ty_alias_ident, ty_alias_span) =
+                    type_alias_finder.get_collected_information();
+                return (Some(*field_def_span), field_ty_span, ty_alias_ident, ty_alias_span);
             }
         }
-        (None, None)
+        (None, None, None, None)
     }
 
     debug!("check_fields_of_opaque_types(adt_def: {:?}, span: {:?})", adt_def, span);
@@ -484,59 +526,68 @@ fn check_fields_for_opaque_types(
         debug!("field_def: {:?}", field_def);
 
         let field_ty = field_def.ty(tcx, substs);
-        match field_ty.kind() {
-            ty::Opaque(..) => {
-                use ty::AdtKind::*;
-                let adt_kind = match adt_def.adt_kind() {
-                    Struct => "struct",
-                    Enum => "enum",
-                    Union => "union",
-                };
+        if field_ty.has_opaque_types() {
+            use ty::AdtKind::*;
+            let adt_kind = match adt_def.adt_kind() {
+                Struct => "struct",
+                Enum => "enum",
+                Union => "union",
+            };
 
-                let mut diag;
-                match find_span_of_field_def_and_ty_alias(tcx, field_def) {
-                    (Some(field_def_span), Some(ty_alias_span)) => {
-                        diag = tcx.sess.struct_span_err(
-                            span,
-                            &format!(
-                                "type alias impl traits are not allowed as field types in {}s",
-                                adt_kind
-                            ),
-                        );
-                        diag.span_label(
-                            field_def_span,
-                            "this field contains a type alias impl trait",
-                        );
-                        diag.span_label(ty_alias_span, "type alias defined here");
-                    }
-                    (Some(field_def_span), None) => {
-                        diag = tcx.sess.struct_span_err(
-                            span,
-                            &format!(
-                                "type alias impl traits are not allowed as field types in {}s",
-                                adt_kind
-                            ),
-                        );
+            let mut diag;
+            match find_ty_alias_information(tcx, field_def) {
+                (
+                    Some(field_def_span),
+                    Some(field_ty_span),
+                    Some(ty_alias_ident),
+                    Some(ty_alias_span),
+                ) => {
+                    diag = tcx.sess.struct_span_err(
+                        span,
+                        &format!(
+                            "type aliases of `impl Trait` are not allowed as field types in {}s",
+                            adt_kind
+                        ),
+                    );
+                    let field_def_span_msg = format!(
+                        "this field contains a type alias `{}` of an `impl Trait`",
+                        ty_alias_ident
+                    );
 
-                        diag.span_label(
-                            field_def_span,
-                            "this field contains a type alias impl trait",
-                        );
-                    }
-                    _ => {
-                        diag = tcx.sess.struct_span_err(
-                            span,
-                            &format!(
-                                "type alias impl traits are not allowed as field types in {}s",
-                                adt_kind
-                            ),
-                        );
-                    }
+                    let field_ty_span_msg =
+                        "this type is a type alias of an `impl Trait`".to_string();
+
+                    diag.span_label(field_def_span, field_def_span_msg);
+                    diag.span_label(field_ty_span, field_ty_span_msg);
+                    diag.span_label(ty_alias_span, "type alias defined here");
                 }
+                (Some(field_def_span), Some(field_ty_span), None, None) => {
+                    diag = tcx.sess.struct_span_err(
+                        span,
+                        &format!(
+                            "type aliases of `impl Trait` are not allowed as field types in {}s",
+                            adt_kind
+                        ),
+                    );
 
-                diag.emit();
+                    diag.span_label(
+                        field_def_span,
+                        "this field contains a type alias of an `impl trait`",
+                    );
+                    diag.span_label(field_ty_span, "this type is a type alias of an `impl trait`");
+                }
+                _ => {
+                    diag = tcx.sess.struct_span_err(
+                        span,
+                        &format!(
+                            "type alias impl traits are not allowed as field types in {}s",
+                            adt_kind
+                        ),
+                    );
+                }
             }
-            _ => {}
+
+            diag.emit();
         }
     });
 }
