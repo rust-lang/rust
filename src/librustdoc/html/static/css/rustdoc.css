@@ -247,6 +247,9 @@ code, pre, a.test-arrow {
 pre {
 	padding: 14px;
 }
+.type-decl pre {
+	overflow-x: auto;
+}
 
 .source .content pre {
 	padding: 20px;
