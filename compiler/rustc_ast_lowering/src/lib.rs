@@ -85,7 +85,7 @@ mod path;
 
 rustc_hir::arena_types!(rustc_arena::declare_arena);
 
-struct LoweringContext<'a, 'hir> {
+struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
@@ -99,12 +99,12 @@ struct LoweringContext<'a, 'hir> {
     /// Used to allocate HIR nodes.
     arena: &'hir Arena<'hir>,
 
-    /// The items being lowered are collected here.
-    owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
+    /// Collect items that were created by lowering the current owner.
+    children: FxHashMap<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -536,13 +536,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
 
-        self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-        self.owners[def_id] = hir::MaybeOwner::Owner(self.arena.alloc(info));
+        let _old = self.children.insert(def_id, hir::MaybeOwner::Owner(info));
+        debug_assert!(_old.is_none())
     }
 
-    fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
+    fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
+        let local_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
+        let trait_map = std::mem::take(&mut self.trait_map);
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
@@ -562,7 +564,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hash_without_bodies,
             nodes,
             bodies,
-            local_id_to_def_id: std::mem::take(&mut self.local_id_to_def_id),
+            local_id_to_def_id,
         };
         let attrs = {
             let mut hcx = self.resolver.create_stable_hashing_context();
@@ -572,7 +574,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::AttributeMap { map: attrs, hash }
         };
 
-        hir::OwnerInfo { nodes, parenting, attrs, trait_map: std::mem::take(&mut self.trait_map) }
+        self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
@@ -620,11 +622,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 assert_ne!(local_id, hir::ItemLocalId::new(0));
                 if let Some(def_id) = self.resolver.opt_local_def_id(ast_node_id) {
-                    self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-                    if let o @ hir::MaybeOwner::Phantom = &mut self.owners[def_id] {
-                        // Do not override a `MaybeOwner::Owner` that may already here.
-                        *o = hir::MaybeOwner::NonOwner(hir_id);
-                    }
+                    // Do not override a `MaybeOwner::Owner` that may already here.
+                    self.children.entry(def_id).or_insert(hir::MaybeOwner::NonOwner(hir_id));
                     self.local_id_to_def_id.insert(local_id, def_id);
                 }
 
