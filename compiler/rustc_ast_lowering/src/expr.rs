@@ -55,7 +55,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         0,
                         ParenthesizedGenericArgs::Err,
                         ImplTraitContext::disallowed(),
-                        None,
                     ));
                     let args = self.lower_exprs(args);
                     hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args, span)

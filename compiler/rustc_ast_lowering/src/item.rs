@@ -197,7 +197,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item<'hir>> {
         let mut ident = i.ident;
-        let mut vis = self.lower_visibility(&i.vis, None);
+        let mut vis = self.lower_visibility(&i.vis);
 
         if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
             let hir_id = self.lower_node_id(i.id);
@@ -519,7 +519,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let new_id = self.allocate_hir_id_counter(new_node_id);
                     self.with_hir_id_owner(new_node_id, |this| {
                         let res = this.lower_res(res);
-                        let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
+                        let path = this.lower_path_extra(res, &path, ParamMode::Explicit);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
                         if let Some(attrs) = attrs {
@@ -530,7 +530,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
 
-                let path = self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None);
+                let path = self.lower_path_extra(ret_res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -627,7 +627,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
                 let res = self.lower_res(res);
-                let path = self.lower_path_extra(res, &prefix, ParamMode::Explicit, None);
+                let path = self.lower_path_extra(res, &prefix, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
@@ -696,17 +696,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
-            vis: self.lower_visibility(&i.vis, None),
+            vis: self.lower_visibility(&i.vis),
             span: i.span,
         }
     }
 
-    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef<'hir> {
+    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
         hir::ForeignItemRef {
             id: hir::ForeignItemId { def_id: self.allocate_hir_id_counter(i.id) },
             ident: i.ident,
             span: i.span,
-            vis: self.lower_visibility(&i.vis, Some(i.id)),
+            is_pub: i.vis.kind.is_pub(),
         }
     }
 
@@ -777,7 +777,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME(jseyfried): positional field hygiene.
                 None => Ident::new(sym::integer(index), f.span),
             },
-            vis: self.lower_visibility(&f.vis, None),
+            vis: self.lower_visibility(&f.vis),
             ty,
         }
     }
@@ -910,14 +910,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             def_id: hir_id.expect_owner(),
             ident: i.ident,
             generics,
-            vis: self.lower_visibility(&i.vis, None),
+            vis: self.lower_visibility(&i.vis),
             defaultness,
             kind,
             span: i.span,
         }
     }
 
-    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef<'hir> {
+    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
@@ -925,7 +925,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             id: hir::ImplItemId { def_id: self.allocate_hir_id_counter(i.id) },
             ident: i.ident,
             span: i.span,
-            vis: self.lower_visibility(&i.vis, Some(i.id)),
+            is_pub: i.vis.kind.is_pub(),
             defaultness,
             kind: match &i.kind {
                 AssocItemKind::Const(..) => hir::AssocItemKind::Const,
@@ -943,25 +943,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// lowered. This can happen during `lower_impl_item_ref()` where we need to
     /// lower a `Visibility` value although we haven't lowered the owning
     /// `ImplItem` in question yet.
-    fn lower_visibility(
-        &mut self,
-        v: &Visibility,
-        explicit_owner: Option<NodeId>,
-    ) -> hir::Visibility<'hir> {
+    fn lower_visibility(&mut self, v: &Visibility) -> hir::Visibility<'hir> {
         let node = match v.kind {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
             VisibilityKind::Restricted { ref path, id } => {
                 debug!("lower_visibility: restricted path id = {:?}", id);
-                let lowered_id = if let Some(owner) = explicit_owner {
-                    self.lower_node_id_with_owner(id, owner)
-                } else {
-                    self.lower_node_id(id)
-                };
-                let res = self.expect_full_res(id);
-                let res = self.lower_res(res);
+                let lowered_id = self.lower_node_id(id);
                 hir::VisibilityKind::Restricted {
-                    path: self.lower_path_extra(res, path, ParamMode::Explicit, explicit_owner),
+                    path: self.lower_path(id, path, ParamMode::Explicit),
                     hir_id: lowered_id,
                 }
             }
