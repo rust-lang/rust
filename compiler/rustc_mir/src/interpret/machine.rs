@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use rustc_middle::mir;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -310,8 +310,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     fn init_allocation_extra<'b>(
-        memory_extra: &Self::MemoryExtra,
-        tcx: TyCtxt<'tcx>,
+        mem: &Memory<'mir, 'tcx, Self>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
@@ -441,8 +440,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
 
     #[inline(always)]
     fn init_allocation_extra<'b>(
-        _memory_extra: &Self::MemoryExtra,
-        _tcx: TyCtxt<$tcx>,
+        _mem: &Memory<$mir, $tcx, Self>,
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<Self::MemoryKind>>,
@@ -473,10 +471,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn ptr_get_alloc(
-        _mem: &Memory<$mir, $tcx, Self>,
-        ptr: Pointer<AllocId>,
-    ) -> (AllocId, Size) {
+    fn ptr_get_alloc(_mem: &Memory<$mir, $tcx, Self>, ptr: Pointer<AllocId>) -> (AllocId, Size) {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (alloc_id, offset) = ptr.into_parts();
         (alloc_id, offset)

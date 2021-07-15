@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::iter;
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::{Deref, Range};
 use std::ptr;
 
 use rustc_ast::Mutability;
@@ -156,16 +156,30 @@ impl<Tag> Allocation<Tag> {
 
 impl Allocation {
     /// Convert Tag and add Extra fields
-    pub fn with_prov_and_extra<Tag, Extra>(
+    pub fn convert_tag_add_extra<Tag, Extra>(
         self,
-        mut tagger: impl FnMut(AllocId) -> Tag,
+        cx: &impl HasDataLayout,
         extra: Extra,
+        mut tagger: impl FnMut(Pointer<AllocId>) -> Pointer<Tag>,
     ) -> Allocation<Tag, Extra> {
+        // Compute new pointer tags, which also adjusts the bytes.
+        let mut bytes = self.bytes;
+        let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
+        let ptr_size = cx.data_layout().pointer_size.bytes_usize();
+        let endian = cx.data_layout().endian;
+        for &(offset, alloc_id) in self.relocations.iter() {
+            let idx = offset.bytes_usize();
+            let ptr_bytes = &mut bytes[idx..idx + ptr_size];
+            let bits = read_target_uint(endian, ptr_bytes).unwrap();
+            let (ptr_tag, ptr_offset) =
+                tagger(Pointer::new(alloc_id, Size::from_bytes(bits))).into_parts();
+            write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
+            new_relocations.push((offset, ptr_tag));
+        }
+        // Create allocation.
         Allocation {
-            bytes: self.bytes,
-            relocations: Relocations::from_presorted(
-                self.relocations.iter().map(|&(offset, tag)| (offset, tagger(tag))).collect(),
-            ),
+            bytes,
+            relocations: Relocations::from_presorted(new_relocations),
             init_mask: self.init_mask,
             align: self.align,
             mutability: self.mutability,
@@ -377,7 +391,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
 
         // See if we have to also write a relocation.
         if let Some(provenance) = provenance {
-            self.relocations.insert(range.start, provenance);
+            self.relocations.0.insert(range.start, provenance);
         }
 
         Ok(())
@@ -437,7 +451,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         }
 
         // Forget all the relocations.
-        self.relocations.remove_range(first..last);
+        self.relocations.0.remove_range(first..last);
     }
 
     /// Errors if there are relocations overlapping with the edges of the
@@ -597,12 +611,6 @@ impl<Tag> Deref for Relocations<Tag> {
     }
 }
 
-impl<Tag> DerefMut for Relocations<Tag> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 /// A partial, owned list of relocations to transfer into another allocation.
 pub struct AllocationRelocations<Tag> {
     relative_relocations: Vec<(Size, Tag)>,
@@ -643,7 +651,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
     /// to be clear of relocations.
     pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
-        self.relocations.insert_presorted(relocations.relative_relocations);
+        self.relocations.0.insert_presorted(relocations.relative_relocations);
     }
 }
 
