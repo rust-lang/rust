@@ -925,6 +925,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             eq(self.bucket(index).as_ref())
         });
 
+        // Avoid `Option::map` because it bloats LLVM IR.
         match result {
             Some(index) => Some(unsafe { self.bucket(index) }),
             None => None,
@@ -1255,30 +1256,29 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
-    /// Searches for an element in the table.
+    /// Searches for an element in the table. This uses dynamic dispatch to reduce the amount of
+    /// code generated, but it is eliminated by LLVM optimizations.
     #[inline]
     fn find_inner(&self, hash: u64, eq: &mut dyn FnMut(usize) -> bool) -> Option<usize> {
-        unsafe {
-            let h2_hash = h2(hash);
-            let mut probe_seq = self.probe_seq(hash);
+        let h2_hash = h2(hash);
+        let mut probe_seq = self.probe_seq(hash);
 
-            loop {
-                let group = Group::load(self.ctrl(probe_seq.pos));
+        loop {
+            let group = unsafe { Group::load(self.ctrl(probe_seq.pos)) };
 
-                for bit in group.match_byte(h2_hash) {
-                    let index = (probe_seq.pos + bit) & self.bucket_mask;
+            for bit in group.match_byte(h2_hash) {
+                let index = (probe_seq.pos + bit) & self.bucket_mask;
 
-                    if likely(eq(index)) {
-                        return Some(index);
-                    }
+                if likely(eq(index)) {
+                    return Some(index);
                 }
-
-                if likely(group.match_empty().any_bit_set()) {
-                    return None;
-                }
-
-                probe_seq.move_next(self.bucket_mask);
             }
+
+            if likely(group.match_empty().any_bit_set()) {
+                return None;
+            }
+
+            probe_seq.move_next(self.bucket_mask);
         }
     }
 
