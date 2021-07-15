@@ -226,21 +226,21 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // to return `ty` because there are bound vars that we aren't yet handling in a more
                 // complete way.
 
+                // `BoundVarReplacer` can't handle escaping bound vars. Ideally, we want this before even calling
+                // `QueryNormalizer`, but some const-generics tests pass escaping bound vars.
+                // Also, use `ty` so we get that sweet `outer_exclusive_binder` optimization
+                assert!(!ty.has_vars_bound_at_or_above(ty::DebruijnIndex::from_usize(
+                    self.universes.len()
+                )));
+
                 let tcx = self.infcx.tcx;
                 let infcx = self.infcx;
-                let replaced = crate::traits::project::BoundVarReplacer::replace_bound_vars(
-                    infcx,
-                    &mut self.universes,
-                    data,
-                );
-                let (data, mapped_regions, mapped_types, mapped_consts) = match replaced {
-                    Some(r) => r,
-                    None => {
-                        bug!("{:?} {:?}", data, self.universes);
-                        //self.error = true;
-                        //return ty.super_fold_with(self);
-                    }
-                };
+                let (data, mapped_regions, mapped_types, mapped_consts) =
+                    crate::traits::project::BoundVarReplacer::replace_bound_vars(
+                        infcx,
+                        &mut self.universes,
+                        data,
+                    );
                 let data = data.super_fold_with(self);
 
                 let mut orig_values = OriginalQueryValues::default();
