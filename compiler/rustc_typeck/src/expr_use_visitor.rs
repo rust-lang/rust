@@ -2,8 +2,6 @@
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 
-pub use self::ConsumeMode::*;
-
 // Export these here so that Clippy can use them.
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 
@@ -28,19 +26,20 @@ use crate::mem_categorization as mc;
 /// This trait defines the callbacks you can expect to receive when
 /// employing the ExprUseVisitor.
 pub trait Delegate<'tcx> {
-    // The value found at `place` is either copied or moved, depending
+    // The value found at `place` is moved, depending
     // on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    //
+    // Use of a `Copy` type in a ByValue context is considered a use
+    // by `ImmBorrow` and `borrow` is called instead. This is because
+    // a shared borrow is the "minimum access" that would be needed
+    // to perform a copy.
+    //
     //
     // The parameter `diag_expr_id` indicates the HIR id that ought to be used for
     // diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
     // id will be the id of the expression `expr` but the place itself will have
     // the id of the binding in the pattern `pat`.
-    fn consume(
-        &mut self,
-        place_with_id: &PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId,
-        mode: ConsumeMode,
-    );
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
     // The value found at `place` is being borrowed with kind `bk`.
     // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
@@ -60,7 +59,7 @@ pub trait Delegate<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum ConsumeMode {
+enum ConsumeMode {
     Copy, // reference to x where x has a type that copies
     Move, // reference to x where x has a type that moves
 }
@@ -141,10 +140,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
-        debug!("delegate_consume(place_with_id={:?})", place_with_id);
-
-        let mode = copy_or_move(&self.mc, place_with_id);
-        self.delegate.consume(place_with_id, diag_expr_id, mode);
+        delegate_consume(&self.mc, self.delegate, place_with_id, diag_expr_id)
     }
 
     fn consume_exprs(&mut self, exprs: &[hir::Expr<'_>]) {
@@ -653,9 +649,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             delegate.borrow(place, discr_place.hir_id, bk);
                         }
                         ty::BindByValue(..) => {
-                            let mode = copy_or_move(mc, &place);
                             debug!("walk_pat binding consuming pat");
-                            delegate.consume(place, discr_place.hir_id, mode);
+                            delegate_consume(mc, *delegate, place, discr_place.hir_id);
                         }
                     }
                 }
@@ -773,8 +768,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
                     match capture_info.capture_kind {
                         ty::UpvarCapture::ByValue(_) => {
-                            let mode = copy_or_move(&self.mc, &place_with_id);
-                            self.delegate.consume(&place_with_id, place_with_id.hir_id, mode);
+                            self.delegate_consume(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow(
@@ -798,8 +792,28 @@ fn copy_or_move<'a, 'tcx>(
         place_with_id.place.ty(),
         mc.tcx().hir().span(place_with_id.hir_id),
     ) {
-        Move
+        ConsumeMode::Move
     } else {
-        Copy
+        ConsumeMode::Copy
+    }
+}
+
+// - If a place is used in a `ByValue` context then move it if it's not a `Copy` type.
+// - If the place that is a `Copy` type consider it a `ImmBorrow`.
+fn delegate_consume<'a, 'tcx>(
+    mc: &mc::MemCategorizationContext<'a, 'tcx>,
+    delegate: &mut (dyn Delegate<'tcx> + 'a),
+    place_with_id: &PlaceWithHirId<'tcx>,
+    diag_expr_id: hir::HirId,
+) {
+    debug!("delegate_consume(place_with_id={:?})", place_with_id);
+
+    let mode = copy_or_move(&mc, place_with_id);
+
+    match mode {
+        ConsumeMode::Move => delegate.consume(place_with_id, diag_expr_id),
+        ConsumeMode::Copy => {
+            delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+        }
     }
 }
