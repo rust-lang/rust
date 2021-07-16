@@ -1001,7 +1001,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
-    /// The [`split_off`] is similar to `truncate`, but causes the excess
+    /// The [`split_off`] method is similar to `truncate`, but causes the excess
     /// elements to be returned instead of dropped.
     ///
     /// Note that this method has no effect on the allocated capacity
