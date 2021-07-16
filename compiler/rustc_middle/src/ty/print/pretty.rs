@@ -1229,9 +1229,9 @@ pub trait PrettyPrinter<'tcx>:
                         )?;
                     }
                     ty::Adt(def, substs) => {
-                        let variant_id =
-                            contents.variant.expect("destructed const of adt without variant id");
-                        let variant_def = &def.variants[variant_id];
+                        let variant_idx =
+                            contents.variant.expect("destructed const of adt without variant idx");
+                        let variant_def = &def.variants[variant_idx];
                         p!(print_value_path(variant_def.def_id, substs));
 
                         match variant_def.ctor_kind {
