@@ -580,7 +580,13 @@ class RustBuild(object):
         if ostype != "Linux":
             return
 
-        if not os.path.exists("/etc/NIXOS"):
+        # Use `/etc/os-release` instead of `/etc/NIXOS`.
+        # The latter one does not exist on NixOS when using tmpfs as root.
+        try:
+            with open("/etc/os-release", "r") as f:
+                if not any(line.strip() == "ID=nixos" for line in f):
+                    return
+        except FileNotFoundError:
             return
         if os.path.exists("/lib"):
             return
