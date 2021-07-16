@@ -152,6 +152,7 @@ pub const fn identity<T>(x: T) -> T {
 /// is_hello(s);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "AsRef")]
 pub trait AsRef<T: ?Sized> {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -193,6 +194,7 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
 pub trait AsMut<T: ?Sized> {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]

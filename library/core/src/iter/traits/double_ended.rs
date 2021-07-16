@@ -36,6 +36,7 @@ use crate::ops::{ControlFlow, Try};
 /// assert_eq!(None, iter.next_back());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "DoubleEndedIterator")]
 pub trait DoubleEndedIterator: Iterator {
     /// Removes and returns an element from the end of the iterator.
     ///

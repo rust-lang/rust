@@ -61,6 +61,7 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Duration")]
 pub struct Duration {
     secs: u64,
     nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC
