@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-//~^ WARN the feature `generic_associated_types` is incomplete
 
 fn main() {}
 

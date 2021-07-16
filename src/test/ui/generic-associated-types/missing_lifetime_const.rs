@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-//~^ WARNING the feature
 
 trait Foo {
     type Assoc<'a, const N: usize>;

@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(generic_associated_types)]
-#![allow(incomplete_features)]
 
 pub trait Iter {
     type Item<'a> where Self: 'a;

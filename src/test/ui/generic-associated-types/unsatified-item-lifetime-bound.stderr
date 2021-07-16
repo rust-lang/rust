@@ -1,5 +1,5 @@
 warning: unnecessary lifetime parameter `'a`
-  --> $DIR/unsatified-item-lifetime-bound.rs:5:12
+  --> $DIR/unsatified-item-lifetime-bound.rs:4:12
    |
 LL |     type Y<'a: 'static>;
    |            ^^^^^^^^^^^
@@ -7,39 +7,39 @@ LL |     type Y<'a: 'static>;
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatified-item-lifetime-bound.rs:14:8
+  --> $DIR/unsatified-item-lifetime-bound.rs:13:8
    |
 LL |     f: <T as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 13:10
-  --> $DIR/unsatified-item-lifetime-bound.rs:13:10
+note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 12:10
+  --> $DIR/unsatified-item-lifetime-bound.rs:12:10
    |
 LL | struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatified-item-lifetime-bound.rs:19:8
+  --> $DIR/unsatified-item-lifetime-bound.rs:18:8
    |
 LL |     f: <T as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 18:10
-  --> $DIR/unsatified-item-lifetime-bound.rs:18:10
+note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 17:10
+  --> $DIR/unsatified-item-lifetime-bound.rs:17:10
    |
 LL | struct C<'a, T: X> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatified-item-lifetime-bound.rs:24:8
+  --> $DIR/unsatified-item-lifetime-bound.rs:23:8
    |
 LL |     f: <() as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 23:10
-  --> $DIR/unsatified-item-lifetime-bound.rs:23:10
+note: lifetime parameter instantiated with the lifetime `'a` as defined on the struct at 22:10
+  --> $DIR/unsatified-item-lifetime-bound.rs:22:10
    |
 LL | struct D<'a> {
    |          ^^

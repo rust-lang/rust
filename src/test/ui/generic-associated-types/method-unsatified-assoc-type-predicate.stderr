@@ -1,14 +1,5 @@
-warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/method-unsatified-assoc-type-predicate.rs:4:12
-   |
-LL | #![feature(generic_associated_types)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
-
 error[E0599]: the method `f` exists for struct `S`, but its trait bounds were not satisfied
-  --> $DIR/method-unsatified-assoc-type-predicate.rs:29:7
+  --> $DIR/method-unsatified-assoc-type-predicate.rs:26:7
    |
 LL | struct S;
    | ---------
@@ -24,6 +15,6 @@ LL |     a.f();
            `<S as X>::Y<i32> = i32`
            which is required by `S: M`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0599`.

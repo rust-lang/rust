@@ -2,9 +2,6 @@
 // generics for a generic associated type.
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete
-//~| NOTE `#[warn(incomplete_features)]` on by default
-//~| NOTE see issue #44265
 
 trait X {
     type Y<T>;

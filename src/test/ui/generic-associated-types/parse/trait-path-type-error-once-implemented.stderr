@@ -1,20 +1,11 @@
-warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/trait-path-type-error-once-implemented.rs:1:12
-   |
-LL | #![feature(generic_associated_types)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
-
 error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
-  --> $DIR/trait-path-type-error-once-implemented.rs:9:29
+  --> $DIR/trait-path-type-error-once-implemented.rs:8:29
    |
 LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
    |                             ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/trait-path-type-error-once-implemented.rs:5:10
+  --> $DIR/trait-path-type-error-once-implemented.rs:4:10
    |
 LL |     type Y<'a>;
    |          ^ --
@@ -24,7 +15,7 @@ LL |   fn f2<'a>(arg : Box<dyn X<Y<'a, 1> = &'a ()>>) {}
    |                               ^^^
 
 error[E0107]: this associated type takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/trait-path-type-error-once-implemented.rs:9:29
+  --> $DIR/trait-path-type-error-once-implemented.rs:8:29
    |
 LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
    |                             ^--- help: remove these generics
@@ -32,11 +23,11 @@ LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
    |                             expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
-  --> $DIR/trait-path-type-error-once-implemented.rs:5:10
+  --> $DIR/trait-path-type-error-once-implemented.rs:4:10
    |
 LL |     type Y<'a>;
    |          ^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

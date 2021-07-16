@@ -1,7 +1,6 @@
 // Regression test for #68645
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete and may not
 
 trait Fun {
     type F<'a>: Fn() -> u32;

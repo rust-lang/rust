@@ -1,4 +1,3 @@
-#![allow(incomplete_features)]
 #![feature(generic_associated_types)]
 
 use std::ops::Deref;

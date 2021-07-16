@@ -1,7 +1,6 @@
 // Regression test for #68641
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete and may not
 
 trait UnsafeCopy {
     type Item<'a>: Copy;

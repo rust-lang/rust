@@ -3,7 +3,6 @@
 // proven when a bound and a where clause of an associated type are the same.
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete
 #![feature(trivial_bounds)]
 
 trait Print {

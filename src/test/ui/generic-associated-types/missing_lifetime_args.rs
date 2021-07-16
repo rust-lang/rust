@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types`
 
 trait X {
     type Y<'a, 'b>;

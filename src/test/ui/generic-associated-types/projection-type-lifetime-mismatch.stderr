@@ -1,17 +1,17 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/projection-type-lifetime-mismatch.rs:18:5
+  --> $DIR/projection-type-lifetime-mismatch.rs:17:5
    |
 LL |     x.m()
    |     ^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/projection-type-lifetime-mismatch.rs:23:5
+  --> $DIR/projection-type-lifetime-mismatch.rs:22:5
    |
 LL |     x.m()
    |     ^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/projection-type-lifetime-mismatch.rs:28:5
+  --> $DIR/projection-type-lifetime-mismatch.rs:27:5
    |
 LL |     x.m()
    |     ^^^^^ lifetime `'static` required

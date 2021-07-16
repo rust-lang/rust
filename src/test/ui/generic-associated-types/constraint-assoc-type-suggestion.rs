@@ -1,7 +1,6 @@
 // Test that correct syntax is used in suggestion to constrain associated type
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete
 
 trait X {
     type Y<T>;
