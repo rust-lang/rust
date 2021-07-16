@@ -296,7 +296,6 @@ impl<T, const N: usize> [T; N] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(array_map)]
     /// let x = [1, 2, 3];
     /// let y = x.map(|v| v + 1);
     /// assert_eq!(y, [2, 3, 4]);
@@ -310,7 +309,7 @@ impl<T, const N: usize> [T; N] {
     /// let y = x.map(|v| v.len());
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
-    #[unstable(feature = "array_map", issue = "75243")]
+    #[stable(feature = "array_map", since = "1.55.0")]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
@@ -377,7 +376,7 @@ impl<T, const N: usize> [T; N] {
     /// array if its elements are not `Copy`.
     ///
     /// ```
-    /// #![feature(array_methods, array_map)]
+    /// #![feature(array_methods)]
     ///
     /// let strings = ["Ferris".to_string(), "♥".to_string(), "Rust".to_string()];
     /// let is_ascii = strings.each_ref().map(|s| s.is_ascii());
