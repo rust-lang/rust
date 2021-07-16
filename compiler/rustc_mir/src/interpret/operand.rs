@@ -118,8 +118,14 @@ impl<Tag: Provenance> std::fmt::Display for ImmTy<'tcx, Tag> {
             ty: Ty<'tcx>,
         ) -> Result<FmtPrinter<'a, 'tcx, F>, std::fmt::Error> {
             match s {
-                ScalarMaybeUninit::Scalar(s) => {
-                    cx.pretty_print_const_scalar(s.erase_for_fmt(), ty, true)
+                ScalarMaybeUninit::Scalar(Scalar::Int(int)) => {
+                    cx.pretty_print_const_scalar_int(int, ty, true)
+                }
+                ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _sz)) => {
+                    // Just print the ptr value. `pretty_print_const_scalar_ptr` would also try to
+                    // print what is points to, which would fail since it has no access to the local
+                    // memory.
+                    cx.pretty_print_const_pointer(ptr, ty, true)
                 }
                 ScalarMaybeUninit::Uninit => cx.typed_value(
                     |mut this| {
@@ -139,11 +145,11 @@ impl<Tag: Provenance> std::fmt::Display for ImmTy<'tcx, Tag> {
                         p(cx, s, ty)?;
                         return Ok(());
                     }
-                    write!(f, "{}: {}", s.erase_for_fmt(), self.layout.ty)
+                    write!(f, "{}: {}", s, self.layout.ty)
                 }
                 Immediate::ScalarPair(a, b) => {
                     // FIXME(oli-obk): at least print tuples and slices nicely
-                    write!(f, "({}, {}): {}", a.erase_for_fmt(), b.erase_for_fmt(), self.layout.ty,)
+                    write!(f, "({}, {}): {}", a, b, self.layout.ty,)
                 }
             }
         })
@@ -693,8 +699,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(match *tag_encoding {
             TagEncoding::Direct => {
                 let tag_bits = tag_val
-                    .to_bits(tag_layout.size)
-                    .map_err(|_| err_ub!(InvalidTag(tag_val.erase_for_fmt())))?;
+                    .try_to_int()
+                    .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
+                    .assert_bits(tag_layout.size);
                 // Cast bits from tag layout to discriminant layout.
                 let discr_val = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
@@ -711,7 +718,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-generator"),
                 }
-                .ok_or_else(|| err_ub!(InvalidTag(tag_val.erase_for_fmt())))?;
+                .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
                 // Return the cast value, and the index.
                 (discr_val, index.0)
             }
@@ -720,18 +727,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
-                let variant = match tag_val.to_bits_or_ptr(tag_layout.size) {
-                    Err(ptr) => {
-                        // The niche must be just 0 (which an inbounds pointer value never is)
+                let variant = match tag_val.try_to_int() {
+                    Err(dbg_val) => {
+                        // So this is a pointer then, and casting to an int failed.
+                        // Can only happen during CTFE.
+                        let ptr = self.scalar_to_ptr(tag_val);
+                        // The niche must be just 0, and the ptr not null, then we know this is
+                        // okay. Everything else, we conservatively reject.
                         let ptr_valid = niche_start == 0
                             && variants_start == variants_end
-                            && !self.memory.ptr_may_be_null(ptr.into());
+                            && !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {
-                            throw_ub!(InvalidTag(tag_val.erase_for_fmt()))
+                            throw_ub!(InvalidTag(dbg_val))
                         }
                         dataful_variant
                     }
                     Ok(tag_bits) => {
+                        let tag_bits = tag_bits.assert_bits(tag_layout.size);
                         // We need to use machine arithmetic to get the relative variant idx:
                         // variant_index_relative = tag_val - niche_start_val
                         let tag_val = ImmTy::from_uint(tag_bits, tag_layout);

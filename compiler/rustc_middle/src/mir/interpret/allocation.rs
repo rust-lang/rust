@@ -377,7 +377,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             }
         };
 
-        let (bytes, provenance) = match val.to_bits_or_ptr(range.size) {
+        // `to_bits_or_ptr_internal` is the right method because we just want to store this data
+        // as-is into memory.
+        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
             Err(val) => {
                 let (provenance, offset) = val.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))

@@ -535,7 +535,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // types below!
                 if self.ctfe_mode.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
-                    let is_bits = value.check_init().map_or(false, |v| v.try_to_int().is_some());
+                    let is_bits = value.check_init().map_or(false, |v| v.try_to_int().is_ok());
                     if !is_bits {
                         throw_validation_failure!(self.path,
                             { "{}", value } expected { "initialized plain (non-pointer) bytes" }
@@ -652,11 +652,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             err_ub!(InvalidUninitBytes(None)) => { "{}", value }
                 expected { "something {}", wrapping_range_format(valid_range, max_hi) },
         );
-        let bits = match value.to_bits_or_ptr(op.layout.size) {
-            Err(ptr) => {
+        let bits = match value.try_to_int() {
+            Err(_) => {
+                // So this is a pointer then, and casting to an int failed.
+                // Can only happen during CTFE.
+                let ptr = self.ecx.scalar_to_ptr(value);
                 if lo == 1 && hi == max_hi {
                     // Only null is the niche.  So make sure the ptr is NOT null.
-                    if self.ecx.memory.ptr_may_be_null(ptr.into()) {
+                    if self.ecx.memory.ptr_may_be_null(ptr) {
                         throw_validation_failure!(self.path,
                             { "a potentially null pointer" }
                             expected {
@@ -678,7 +681,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     )
                 }
             }
-            Ok(data) => data,
+            Ok(int) => int.assert_bits(op.layout.size),
         };
         // Now compare. This is slightly subtle because this is a special "wrap-around" range.
         if wrapping_range_contains(&valid_range, bits) {

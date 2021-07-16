@@ -289,9 +289,10 @@ impl<Tag> Scalar<Tag> {
     /// This is almost certainly not the method you want!  You should dispatch on the type
     /// and use `to_{u8,u16,...}`/`scalar_to_ptr` to perform ptr-to-int / int-to-ptr casts as needed.
     ///
-    /// This method only exists for the benefit of low-level memory operations.
+    /// This method only exists for the benefit of low-level operations that truly need to treat the
+    /// scalar in whatever form it is.
     #[inline]
-    pub fn to_bits_or_ptr(self, target_size: Size) -> Result<u128, Pointer<Tag>> {
+    pub fn to_bits_or_ptr_internal(self, target_size: Size) -> Result<u128, Pointer<Tag>> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Int(int) => Ok(int.assert_bits(target_size)),
@@ -304,32 +305,23 @@ impl<Tag> Scalar<Tag> {
 }
 
 impl<'tcx, Tag: Provenance> Scalar<Tag> {
-    /// Erase the tag from the scalar, if any.
-    ///
-    /// Used by error reporting code to avoid having the error type depend on `Tag`.
-    #[inline]
-    pub fn erase_for_fmt(self) -> Scalar {
-        match self {
-            Scalar::Ptr(ptr, sz) => Scalar::Ptr(ptr.erase_for_fmt(), sz),
-            Scalar::Int(int) => Scalar::Int(int),
-        }
-    }
-
     /// Fundamental scalar-to-int (cast) operation. Many convenience wrappers exist below, that you
     /// likely want to use instead.
     ///
     /// Will perform ptr-to-int casts if needed and possible.
+    /// If that fails, we know the offset is relative, so we return an "erased" Scalar
+    /// (which is useful for error messages but not much else).
     #[inline]
-    pub fn try_to_int(self) -> Option<ScalarInt> {
+    pub fn try_to_int(self) -> Result<ScalarInt, Scalar<AllocId>> {
         match self {
-            Scalar::Int(int) => Some(int),
+            Scalar::Int(int) => Ok(int),
             Scalar::Ptr(ptr, sz) => {
                 if Tag::OFFSET_IS_ADDR {
-                    Some(
-                        ScalarInt::try_from_uint(ptr.offset.bytes(), Size::from_bytes(sz)).unwrap(),
-                    )
+                    Ok(ScalarInt::try_from_uint(ptr.offset.bytes(), Size::from_bytes(sz)).unwrap())
                 } else {
-                    None
+                    // We know `offset` is relative, since `OFFSET_IS_ADDR == false`.
+                    let (tag, offset) = ptr.into_parts();
+                    Err(Scalar::Ptr(Pointer::new(tag.get_alloc_id(), offset), sz))
                 }
             }
         }
@@ -340,19 +332,20 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         self.try_to_int().unwrap()
     }
 
+    /// This throws UB (instead of ICEing) on a size mismatch since size mismatches can arise in
+    /// Miri when someone declares a function that we shim (such as `malloc`) with a wrong type.
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.try_to_int()
-            .ok_or_else(|| err_unsup!(ReadPointerAsBytes))?
-            .to_bits(target_size)
-            .map_err(|size| {
+        self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsBytes))?.to_bits(target_size).map_err(
+            |size| {
                 err_ub!(ScalarSizeMismatch {
                     target_size: target_size.bytes(),
                     data_size: size.bytes(),
                 })
                 .into()
-            })
+            },
+        )
     }
 
     #[inline(always)]
@@ -522,17 +515,6 @@ impl<Tag> ScalarMaybeUninit<Tag> {
 }
 
 impl<'tcx, Tag: Provenance> ScalarMaybeUninit<Tag> {
-    /// Erase the tag from the scalar, if any.
-    ///
-    /// Used by error reporting code to avoid having the error type depend on `Tag`.
-    #[inline]
-    pub fn erase_for_fmt(self) -> ScalarMaybeUninit {
-        match self {
-            ScalarMaybeUninit::Scalar(s) => ScalarMaybeUninit::Scalar(s.erase_for_fmt()),
-            ScalarMaybeUninit::Uninit => ScalarMaybeUninit::Uninit,
-        }
-    }
-
     #[inline(always)]
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
         self.check_init()?.to_bool()

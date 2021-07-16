@@ -897,11 +897,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty
-            // due to the local having ZST type.
+            // due to the local having ZST type. Hence we can `unwrap`.
             trace!(
                 "deallocating local {:?}: {:?}",
                 local,
-                self.memory.dump_alloc(ptr.provenance.unwrap().erase_for_fmt())
+                self.memory.dump_alloc(ptr.provenance.unwrap().get_alloc_id())
             );
             self.memory.deallocate(ptr, None, MemoryKind::Stack)?;
         };
@@ -989,28 +989,28 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                             },
                             mplace.ptr,
                         )?;
-                        allocs.extend(mplace.ptr.map_erase_for_fmt().provenance);
+                        allocs.extend(mplace.ptr.provenance.map(Provenance::get_alloc_id));
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(fmt, " {:?}", val)?;
                         if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val {
-                            allocs.push(ptr.provenance.erase_for_fmt());
+                            allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(fmt, " ({:?}, {:?})", val1, val2)?;
                         if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val1 {
-                            allocs.push(ptr.provenance.erase_for_fmt());
+                            allocs.push(ptr.provenance.get_alloc_id());
                         }
                         if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val2 {
-                            allocs.push(ptr.provenance.erase_for_fmt());
+                            allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
                 }
 
                 write!(fmt, ": {:?}", self.ecx.memory.dump_allocs(allocs))
             }
-            Place::Ptr(mplace) => match mplace.ptr.map_erase_for_fmt().provenance {
+            Place::Ptr(mplace) => match mplace.ptr.provenance.map(Provenance::get_alloc_id) {
                 Some(alloc_id) => write!(
                     fmt,
                     "by align({}) ref {:?}: {:?}",

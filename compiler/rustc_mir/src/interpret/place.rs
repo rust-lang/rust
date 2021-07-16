@@ -62,17 +62,6 @@ impl<Tag> MemPlaceMeta<Tag> {
             Self::None | Self::Poison => false,
         }
     }
-
-    pub fn erase_for_fmt(self) -> MemPlaceMeta
-    where
-        Tag: Provenance,
-    {
-        match self {
-            Self::Meta(s) => MemPlaceMeta::Meta(s.erase_for_fmt()),
-            Self::None => MemPlaceMeta::None,
-            Self::Poison => MemPlaceMeta::Poison,
-        }
-    }
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable)]
@@ -182,18 +171,6 @@ impl<'tcx, Tag> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
 }
 
 impl<Tag> MemPlace<Tag> {
-    #[inline]
-    pub fn erase_for_fmt(self) -> MemPlace
-    where
-        Tag: Provenance,
-    {
-        MemPlace {
-            ptr: self.ptr.map_erase_for_fmt(),
-            align: self.align,
-            meta: self.meta.erase_for_fmt(),
-        }
-    }
-
     #[inline(always)]
     pub fn from_ptr(ptr: Pointer<Option<Tag>>, align: Align) -> Self {
         MemPlace { ptr, align, meta: MemPlaceMeta::None }

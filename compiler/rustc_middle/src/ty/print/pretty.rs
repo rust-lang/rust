@@ -1,5 +1,5 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Scalar};
+use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
@@ -1107,9 +1107,9 @@ pub trait PrettyPrinter<'tcx>:
 
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
-    fn pretty_print_const_pointer(
+    fn pretty_print_const_pointer<Tag: Provenance>(
         mut self,
-        _: Pointer,
+        _: Pointer<Tag>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
@@ -1680,9 +1680,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         }
     }
 
-    fn pretty_print_const_pointer(
+    fn pretty_print_const_pointer<Tag: Provenance>(
         self,
-        p: Pointer,
+        p: Pointer<Tag>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {

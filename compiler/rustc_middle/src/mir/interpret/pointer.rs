@@ -89,7 +89,7 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 pub trait Provenance: Copy {
     /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
     /// If `true, ptr-to-int casts work by simply discarding the provenance.
-    /// If `false`, ptr-to-int casts are not supported.
+    /// If `false`, ptr-to-int casts are not supported. The offset *must* be relative in that case.
     const OFFSET_IS_ADDR: bool;
 
     /// Determines how a pointer should be printed.
@@ -97,8 +97,9 @@ pub trait Provenance: Copy {
     where
         Self: Sized;
 
-    /// "Erasing" a tag converts it to the default tag type if possible. Used only for formatting purposes!
-    fn erase_for_fmt(self) -> AllocId;
+    /// Provenance must always be able to identify the allocation this ptr points to.
+    /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
+    fn get_alloc_id(self) -> AllocId;
 }
 
 impl Provenance for AllocId {
@@ -120,7 +121,7 @@ impl Provenance for AllocId {
         Ok(())
     }
 
-    fn erase_for_fmt(self) -> AllocId {
+    fn get_alloc_id(self) -> AllocId {
         self
     }
 }
@@ -177,14 +178,6 @@ impl<Tag> Pointer<Option<Tag>> {
             None => Err(self.offset),
         }
     }
-
-    #[inline(always)]
-    pub fn map_erase_for_fmt(self) -> Pointer<Option<AllocId>>
-    where
-        Tag: Provenance,
-    {
-        Pointer { offset: self.offset, provenance: self.provenance.map(Provenance::erase_for_fmt) }
-    }
 }
 
 impl<Tag> Pointer<Option<Tag>> {
@@ -206,15 +199,6 @@ impl<'tcx, Tag> Pointer<Tag> {
     #[inline(always)]
     pub fn into_parts(self) -> (Tag, Size) {
         (self.provenance, self.offset)
-    }
-
-    #[inline(always)]
-    pub fn erase_for_fmt(self) -> Pointer
-    where
-        Tag: Provenance,
-    {
-        // FIXME: This is wrong! `self.offset` might be an absolute address.
-        Pointer { offset: self.offset, provenance: self.provenance.erase_for_fmt() }
     }
 
     pub fn map_provenance(self, f: impl FnOnce(Tag) -> Tag) -> Self {

@@ -921,12 +921,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         match **op {
             interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUninit::Scalar(s))) => {
-                s.try_to_int().is_some()
+                s.try_to_int().is_ok()
             }
             interpret::Operand::Immediate(Immediate::ScalarPair(
                 ScalarMaybeUninit::Scalar(l),
                 ScalarMaybeUninit::Scalar(r),
-            )) => l.try_to_int().is_some() && r.try_to_int().is_some(),
+            )) => l.try_to_int().is_ok() && r.try_to_int().is_ok(),
             _ => false,
         }
     }

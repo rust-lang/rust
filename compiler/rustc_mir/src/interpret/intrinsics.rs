@@ -362,7 +362,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 //
                 // Control flow is weird because we cannot early-return (to reach the
                 // `go_to_block` at the end).
-                let done = if let (Some(a), Some(b)) = (a.try_to_int(), b.try_to_int()) {
+                let done = if let (Ok(a), Ok(b)) = (a.try_to_int(), b.try_to_int()) {
                     let a = a.try_to_machine_usize(*self.tcx).unwrap();
                     let b = b.try_to_machine_usize(*self.tcx).unwrap();
                     if a == b && a != 0 {

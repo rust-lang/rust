@@ -757,12 +757,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         trace!("get_fn({:?})", ptr);
-        let (alloc_id, offset, ptr) = self.ptr_get_alloc(ptr)?;
+        let (alloc_id, offset, _ptr) = self.ptr_get_alloc(ptr)?;
         if offset.bytes() != 0 {
-            throw_ub!(InvalidFunctionPointer(ptr.erase_for_fmt()))
+            throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
         }
         self.get_fn_alloc(alloc_id)
-            .ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_for_fmt())).into())
+            .ok_or_else(|| err_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset))).into())
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
@@ -801,7 +801,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 if reachable.insert(id) {
                     // This is a new allocation, add its relocations to `todo`.
                     if let Some((_, alloc)) = self.alloc_map.get(id) {
-                        todo.extend(alloc.relocations().values().map(|tag| tag.erase_for_fmt()));
+                        todo.extend(alloc.relocations().values().map(|tag| tag.get_alloc_id()));
                     }
                 }
             }
@@ -841,7 +841,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Tag, Extra>,
         ) -> std::fmt::Result {
-            for alloc_id in alloc.relocations().values().map(|tag| tag.erase_for_fmt()) {
+            for alloc_id in alloc.relocations().values().map(|tag| tag.get_alloc_id()) {
                 allocs_to_print.push_back(alloc_id);
             }
             write!(fmt, "{}", pretty::display_allocation(tcx, alloc))
@@ -1129,7 +1129,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 /// Machine pointer introspection.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
-        match scalar.to_bits_or_ptr(self.pointer_size()) {
+        // We use `to_bits_or_ptr_internal` since we are just implementing the method people need to
+        // call to force getting out a pointer.
+        match scalar.to_bits_or_ptr_internal(self.pointer_size()) {
             Err(ptr) => ptr.into(),
             Ok(bits) => {
                 let addr = u64::try_from(bits).unwrap();
