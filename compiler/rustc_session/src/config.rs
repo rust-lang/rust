@@ -755,7 +755,7 @@ impl DebuggingOptions {
     }
 
     pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
-        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
+        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::V0)
     }
 }
 
