@@ -526,8 +526,8 @@ impl TraverseCoverageGraphWithLoops {
     pub fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
         let start_bcb = basic_coverage_blocks.start_node();
         let backedges = find_loop_backedges(basic_coverage_blocks);
-        let mut context_stack = Vec::new();
-        context_stack.push(TraversalContext { loop_backedges: None, worklist: vec![start_bcb] });
+        let context_stack =
+            vec![TraversalContext { loop_backedges: None, worklist: vec![start_bcb] }];
         // `context_stack` starts with a `TraversalContext` for the main function context (beginning
         // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
         // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
