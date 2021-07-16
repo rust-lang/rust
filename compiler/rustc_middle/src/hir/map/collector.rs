@@ -86,12 +86,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         collector
     }
 
-    pub(super) fn finalize_and_compute_crate_hash(mut self) -> IndexedHir<'hir> {
-        // Insert bodies into the map
-        for (id, body) in self.krate.bodies.iter() {
-            let bodies = &mut self.map[id.hir_id.owner].as_mut().unwrap().bodies;
-            assert!(bodies.insert(id.hir_id.local_id, body).is_none());
-        }
+    pub(super) fn finalize_and_compute_crate_hash(self) -> IndexedHir<'hir> {
         IndexedHir { map: self.map, parenting: self.parenting }
     }
 
@@ -101,9 +96,14 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let mut nodes = IndexVec::new();
         nodes.push(Some(ParentedNode { parent: ItemLocalId::new(0), node: node.into() }));
 
+        let mut bodies = FxHashMap::default();
+        for (id, body) in self.krate.owners[owner].as_ref().unwrap().bodies.iter() {
+            let _old = bodies.insert(*id, body);
+            debug_assert!(_old.is_none());
+        }
+
         debug_assert!(self.map[owner].is_none());
-        self.map[owner] =
-            Some(self.arena.alloc(OwnerNodes { hash, nodes, bodies: FxHashMap::default() }));
+        self.map[owner] = Some(self.arena.alloc(OwnerNodes { hash, nodes, bodies }));
     }
 
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {

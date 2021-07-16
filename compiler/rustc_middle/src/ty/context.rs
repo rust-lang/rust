@@ -2828,7 +2828,8 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.in_scope_traits_map = |tcx, id| tcx.hir_crate(()).trait_map.get(&id);
+    providers.in_scope_traits_map =
+        |tcx, id| tcx.hir_crate(()).owners[id].as_ref().map(|owner_info| &owner_info.trait_map);
     providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
     providers.module_exports = |tcx, id| tcx.resolutions(()).export_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {

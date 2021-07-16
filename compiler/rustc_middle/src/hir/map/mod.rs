@@ -1,6 +1,6 @@
 use self::collector::NodeCollector;
 
-use crate::hir::{AttributeMap, IndexedHir, ModuleItems, Owner};
+use crate::hir::{IndexedHir, ModuleItems, Owner};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -166,8 +166,8 @@ impl<'hir> Map<'hir> {
 
     pub fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
         let krate = self.krate();
-        krate.owners.iter().filter_map(|owner| match owner.as_ref()? {
-            OwnerNode::Item(item) => Some(*item),
+        krate.owners.iter().filter_map(|owner| match owner.as_ref()?.node {
+            OwnerNode::Item(item) => Some(item),
             _ => None,
         })
     }
@@ -495,11 +495,35 @@ impl<'hir> Map<'hir> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        self.krate().bodies.keys().map(move |&body_id| self.body_owner_def_id(body_id))
+        self.krate()
+            .owners
+            .iter_enumerated()
+            .flat_map(move |(owner, owner_info)| {
+                let bodies = &owner_info.as_ref()?.bodies;
+                Some(bodies.keys().map(move |&local_id| {
+                    let hir_id = HirId { owner, local_id };
+                    let body_id = BodyId { hir_id };
+                    self.body_owner_def_id(body_id)
+                }))
+            })
+            .flatten()
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
-        par_for_each_in(&self.krate().bodies, |(&body_id, _)| f(self.body_owner_def_id(body_id)));
+        use rustc_data_structures::sync::{par_iter, ParallelIterator};
+        #[cfg(parallel_compiler)]
+        use rustc_rayon::iter::IndexedParallelIterator;
+
+        par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
+            let owner = LocalDefId::new(owner);
+            if let Some(owner_info) = owner_info {
+                par_iter(&owner_info.bodies).for_each(|(&local_id, _)| {
+                    let hir_id = HirId { owner, local_id };
+                    let body_id = BodyId { hir_id };
+                    f(self.body_owner_def_id(body_id))
+                })
+            }
+        });
     }
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
@@ -551,9 +575,14 @@ impl<'hir> Map<'hir> {
     /// Walks the attributes in a crate.
     pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
         let krate = self.krate();
-        for (&id, attrs) in krate.attrs.iter() {
-            for a in *attrs {
-                visitor.visit_attribute(id, a)
+        for (owner, info) in krate.owners.iter_enumerated() {
+            if let Some(info) = info {
+                for (&local_id, attrs) in info.attrs.iter() {
+                    let id = HirId { owner, local_id };
+                    for a in *attrs {
+                        visitor.visit_attribute(id, a)
+                    }
+                }
             }
         }
     }
@@ -572,7 +601,7 @@ impl<'hir> Map<'hir> {
     {
         let krate = self.krate();
         for owner in krate.owners.iter().filter_map(Option::as_ref) {
-            match owner {
+            match owner.node {
                 OwnerNode::Item(item) => visitor.visit_item(item),
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
                 OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
@@ -588,7 +617,7 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref() {
+        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref().map(|o| o.node) {
             Some(OwnerNode::Item(item)) => visitor.visit_item(item),
             Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
@@ -1091,7 +1120,10 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     for (def_path_hash, fingerprint, def_id) in hir_body_nodes.iter() {
         def_path_hash.0.hash_stable(&mut hcx, &mut stable_hasher);
         fingerprint.hash_stable(&mut hcx, &mut stable_hasher);
-        AttributeMap { map: &tcx.untracked_crate.attrs, prefix: *def_id }
+        tcx.untracked_crate.owners[*def_id]
+            .as_ref()
+            .unwrap()
+            .attrs
             .hash_stable(&mut hcx, &mut stable_hasher);
         if tcx.sess.opts.debugging_opts.incremental_relative_spans {
             let span = tcx.untracked_resolutions.definitions.def_span(*def_id);

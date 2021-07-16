@@ -77,47 +77,21 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
     }
 }
 
-/// Attributes owner by a HIR owner. It is build as a slice inside the attributes map, restricted
-/// to the nodes whose `HirId::owner` is `prefix`.
-#[derive(Copy, Clone)]
+/// Attributes owner by a HIR owner.
+#[derive(Copy, Clone, Debug, HashStable)]
 pub struct AttributeMap<'tcx> {
-    map: &'tcx BTreeMap<HirId, &'tcx [Attribute]>,
-    prefix: LocalDefId,
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for AttributeMap<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let range = self.range();
-
-        range.clone().count().hash_stable(hcx, hasher);
-        for (key, value) in range {
-            key.hash_stable(hcx, hasher);
-            value.hash_stable(hcx, hasher);
-        }
-    }
-}
-
-impl<'tcx> std::fmt::Debug for AttributeMap<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AttributeMap")
-            .field("prefix", &self.prefix)
-            .field("range", &&self.range().collect::<Vec<_>>()[..])
-            .finish()
-    }
+    map: &'tcx BTreeMap<ItemLocalId, &'tcx [Attribute]>,
 }
 
 impl<'tcx> AttributeMap<'tcx> {
-    fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map.get(&HirId { owner: self.prefix, local_id: id }).copied().unwrap_or(&[])
+    fn new(owner_info: &'tcx Option<OwnerInfo<'tcx>>) -> AttributeMap<'tcx> {
+        const FALLBACK: &'static BTreeMap<ItemLocalId, &'static [Attribute]> = &BTreeMap::new();
+        let map = owner_info.as_ref().map_or(FALLBACK, |info| &info.attrs);
+        AttributeMap { map }
     }
 
-    fn range(&self) -> std::collections::btree_map::Range<'_, rustc_hir::HirId, &[Attribute]> {
-        let local_zero = ItemLocalId::from_u32(0);
-        let range = HirId { owner: self.prefix, local_id: local_zero }..HirId {
-            owner: LocalDefId { local_def_index: self.prefix.local_def_index + 1 },
-            local_id: local_zero,
-        };
-        self.map.range(range)
+    fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
+        self.map.get(&id).copied().unwrap_or(&[])
     }
 }
 
@@ -163,7 +137,7 @@ pub fn provide(providers: &mut Providers) {
         let index = tcx.index_hir(());
         index.parenting.get(&id).copied().unwrap_or(CRATE_HIR_ID)
     };
-    providers.hir_attrs = |tcx, id| AttributeMap { map: &tcx.hir_crate(()).attrs, prefix: id };
+    providers.hir_attrs = |tcx, id| AttributeMap::new(&tcx.hir_crate(()).owners[id]);
     providers.source_span = |tcx, def_id| tcx.resolutions(()).definitions.def_span(def_id);
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {

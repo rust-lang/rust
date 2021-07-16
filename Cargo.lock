@@ -4088,6 +4088,7 @@ dependencies = [
  "polonius-engine",
  "rand 0.8.4",
  "rand_xoshiro 0.6.0",
+ "rustc-rayon",
  "rustc-rayon-core",
  "rustc_apfloat",
  "rustc_arena",

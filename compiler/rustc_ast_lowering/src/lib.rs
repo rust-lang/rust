@@ -35,14 +35,13 @@
 #![feature(iter_zip)]
 #![recursion_limit = "256"]
 
-use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -97,12 +96,11 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    owners: IndexVec<LocalDefId, Option<hir::OwnerNode<'hir>>>,
-    bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
+    owners: IndexVec<LocalDefId, Option<hir::OwnerInfo<'hir>>>,
+    bodies: BTreeMap<hir::ItemLocalId, hir::Body<'hir>>,
+    attrs: BTreeMap<hir::ItemLocalId, &'hir [Attribute]>,
 
     generator_kind: Option<hir::GeneratorKind>,
-
-    attrs: BTreeMap<hir::HirId, &'hir [Attribute]>,
 
     /// When inside an `async` context, this is the `HirId` of the
     /// `task_context` local bound to the resume argument of the generator.
@@ -152,6 +150,9 @@ struct LoweringContext<'a, 'hir: 'a> {
     item_local_id_counter: hir::ItemLocalId,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
+    /// NodeIds that are lowered inside the current HIR owner.
+    local_node_ids: Vec<NodeId>,
+
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
 }
@@ -182,7 +183,7 @@ pub trait ResolverAstLowering {
 
     fn next_node_id(&mut self) -> NodeId;
 
-    fn take_trait_map(&mut self) -> NodeMap<Vec<hir::TraitCandidate>>;
+    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<hir::TraitCandidate>>;
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
 
@@ -314,12 +315,13 @@ pub fn lower_crate<'a, 'hir>(
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
+    let owners = IndexVec::from_fn_n(|_| None, resolver.definitions().def_index_count());
     LoweringContext {
         sess,
         resolver,
         nt_to_tokenstream,
         arena,
-        owners: IndexVec::default(),
+        owners,
         bodies: BTreeMap::new(),
         attrs: BTreeMap::default(),
         catch_scope: None,
@@ -331,6 +333,7 @@ pub fn lower_crate<'a, 'hir>(
         current_hir_id_owner: CRATE_DEF_ID,
         item_local_id_counter: hir::ItemLocalId::new(0),
         node_id_to_hir_id: IndexVec::new(),
+        local_node_ids: Vec::new(),
         generator_kind: None,
         task_context: None,
         current_item: None,
@@ -420,14 +423,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::OwnerNode::Crate(lctx.arena.alloc(module))
         });
 
-        let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
-        for (k, v) in self.resolver.take_trait_map().into_iter() {
-            if let Some(Some(hir_id)) = self.node_id_to_hir_id.get(k) {
-                let map = trait_map.entry(hir_id.owner).or_default();
-                map.insert(hir_id.local_id, v.into_boxed_slice());
-            }
-        }
-
         let mut def_id_to_hir_id = IndexVec::default();
 
         for (node_id, hir_id) in self.node_id_to_hir_id.into_iter_enumerated() {
@@ -441,16 +436,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
-        #[cfg(debug_assertions)]
-        for (&id, attrs) in self.attrs.iter() {
-            // Verify that we do not store empty slices in the map.
-            if attrs.is_empty() {
-                panic!("Stored empty attributes for {:?}", id);
-            }
-        }
-
-        let krate =
-            hir::Crate { owners: self.owners, bodies: self.bodies, trait_map, attrs: self.attrs };
+        let krate = hir::Crate { owners: self.owners };
         self.arena.alloc(krate)
     }
 
@@ -468,23 +454,55 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> LocalDefId {
         let def_id = self.resolver.local_def_id(owner);
 
-        // Always allocate the first `HirId` for the owner itself.
-        let _old = self.node_id_to_hir_id.insert(owner, hir::HirId::make_owner(def_id));
-        debug_assert_eq!(_old, None);
-
+        let current_attrs = std::mem::take(&mut self.attrs);
+        let current_bodies = std::mem::take(&mut self.bodies);
+        let current_node_ids = std::mem::take(&mut self.local_node_ids);
         let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
 
-        let item = f(self);
+        // Always allocate the first `HirId` for the owner itself.
+        let _old = self.node_id_to_hir_id.insert(owner, hir::HirId::make_owner(def_id));
+        debug_assert_eq!(_old, None);
+        self.local_node_ids.push(owner);
 
+        let item = f(self);
+        let info = self.make_owner_info(item);
+
+        self.attrs = current_attrs;
+        self.bodies = current_bodies;
+        self.local_node_ids = current_node_ids;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
 
-        let _old = self.owners.insert(def_id, item);
+        let _old = self.owners.insert(def_id, info);
         debug_assert!(_old.is_none());
 
         def_id
+    }
+
+    fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
+        let attrs = std::mem::take(&mut self.attrs);
+        let bodies = std::mem::take(&mut self.bodies);
+        let local_node_ids = std::mem::take(&mut self.local_node_ids);
+        let trait_map = local_node_ids
+            .into_iter()
+            .filter_map(|node_id| {
+                let hir_id = self.node_id_to_hir_id[node_id]?;
+                let traits = self.resolver.take_trait_map(node_id)?;
+                Some((hir_id.local_id, traits.into_boxed_slice()))
+            })
+            .collect();
+
+        #[cfg(debug_assertions)]
+        for (&id, attrs) in attrs.iter() {
+            // Verify that we do not store empty slices in the map.
+            if attrs.is_empty() {
+                panic!("Stored empty attributes for {:?}", id);
+            }
+        }
+
+        hir::OwnerInfo { node, attrs, bodies, trait_map }
     }
 
     /// This method allocates a new `HirId` for the given `NodeId` and stores it in
@@ -501,6 +519,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let owner = self.current_hir_id_owner;
             let local_id = self.item_local_id_counter;
             self.item_local_id_counter.increment_by(1);
+            self.local_node_ids.push(ast_node_id);
             hir::HirId { owner, local_id }
         })
     }
@@ -791,9 +810,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if attrs.is_empty() {
             None
         } else {
+            debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
             debug_assert!(!ret.is_empty());
-            self.attrs.insert(id, ret);
+            self.attrs.insert(id.local_id, ret);
             Some(ret)
         }
     }
@@ -819,9 +839,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
-        if let Some(&a) = self.attrs.get(&target_id) {
+        debug_assert_eq!(id.owner, self.current_hir_id_owner);
+        debug_assert_eq!(target_id.owner, self.current_hir_id_owner);
+        if let Some(&a) = self.attrs.get(&target_id.local_id) {
             debug_assert!(!a.is_empty());
-            self.attrs.insert(id, a);
+            self.attrs.insert(id.local_id, a);
         }
     }
 
@@ -2066,7 +2088,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let hir_id = self.next_id();
         if let Some(a) = attrs {
             debug_assert!(!a.is_empty());
-            self.attrs.insert(hir_id, a);
+            self.attrs.insert(hir_id.local_id, a);
         }
         let local = hir::Local { hir_id, init, pat, source, span: self.lower_span(span), ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
