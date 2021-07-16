@@ -65,7 +65,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
         };
 
         let result = value.fold_with(&mut normalizer);
-        debug!(
+        info!(
             "normalize::<{}>: result={:?} with {} obligations",
             std::any::type_name::<T>(),
             result,

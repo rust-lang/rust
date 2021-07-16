@@ -400,6 +400,7 @@ impl<'tcx> From<ty::TyVid> for TyVidEqKey<'tcx> {
 
 impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     type Value = TypeVariableValue<'tcx>;
+    #[inline(always)]
     fn index(&self) -> u32 {
         self.vid.index
     }

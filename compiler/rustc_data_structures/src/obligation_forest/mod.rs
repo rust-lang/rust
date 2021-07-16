@@ -418,6 +418,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// be called in a loop until `outcome.stalled` is false.
     ///
     /// This _cannot_ be unrolled (presently, at least).
+    #[inline(never)]
     pub fn process_obligations<P, OUT>(&mut self, processor: &mut P) -> OUT
     where
         P: ObligationProcessor<Obligation = O>,
@@ -671,6 +672,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.reused_node_vec = node_rewrites;
     }
 
+    #[inline(never)]
     fn apply_rewrites(&mut self, node_rewrites: &[usize]) {
         let orig_nodes_len = node_rewrites.len();
 
