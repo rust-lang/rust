@@ -1218,8 +1218,15 @@ pub trait PrettyPrinter<'tcx>:
                         }
                         p!(")");
                     }
-                    ty::Adt(def, substs) if def.variants.is_empty() => {
-                        p!(print_value_path(def.did, substs));
+                    ty::Adt(def, _) if def.variants.is_empty() => {
+                        self = self.typed_value(
+                            |mut this| {
+                                write!(this, "unreachable()")?;
+                                Ok(this)
+                            },
+                            |this| this.print_type(ty),
+                            ": ",
+                        )?;
                     }
                     ty::Adt(def, substs) => {
                         let variant_id =
