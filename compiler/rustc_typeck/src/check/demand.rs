@@ -10,6 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -201,7 +202,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let sole_field = &variant.fields[0];
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
-                        let variant_path = self.tcx.def_path_str(variant.def_id);
+                        let variant_path =
+                            with_no_trimmed_paths(|| self.tcx.def_path_str(variant.def_id));
                         // FIXME #56861: DRYer prelude filtering
                         if let Some(path) = variant_path.strip_prefix("std::prelude::") {
                             if let Some((_, path)) = path.split_once("::") {
