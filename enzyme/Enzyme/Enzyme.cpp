@@ -1264,6 +1264,11 @@ public:
         F.addParamAttr(2, Attribute::WriteOnly);
         F.addParamAttr(2, Attribute::NoCapture);
       }
+      if (F.getName() == "omp_get_max_threads" ||
+          F.getName() == "omp_get_thread_num") {
+        F.addFnAttr(Attribute::ReadOnly);
+        F.addFnAttr(Attribute::InaccessibleMemOnly);
+      }
       if (F.getName() == "frexp" || F.getName() == "frexpf" ||
           F.getName() == "frexpl") {
         F.addFnAttr(Attribute::ArgMemOnly);
