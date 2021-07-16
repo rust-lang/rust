@@ -62,7 +62,7 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     href, print_abi_with_space, print_constness_with_space, print_default_space,
-    print_generic_bounds, print_where_clause, Buffer, PrintWithSpace,
+    print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
 use crate::html::markdown::{Markdown, MarkdownHtml, MarkdownSummaryLine};
 
@@ -856,8 +856,8 @@ fn render_assoc_item(
     ) {
         let name = meth.name.as_ref().unwrap();
         let href = match link {
-            AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
-            AssocItemLink::Anchor(None) => format!("#{}.{}", meth.type_(), name),
+            AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{}", id)),
+            AssocItemLink::Anchor(None) => Some(format!("#{}.{}", meth.type_(), name)),
             AssocItemLink::GotoSource(did, provided_methods) => {
                 // We're creating a link from an impl-item to the corresponding
                 // trait-item and need to map the anchored type accordingly.
@@ -867,9 +867,11 @@ fn render_assoc_item(
                     ItemType::TyMethod
                 };
 
-                href(did.expect_def_id(), cx)
-                    .map(|p| format!("{}#{}.{}", p.0, ty, name))
-                    .unwrap_or_else(|| format!("#{}.{}", ty, name))
+                match (href(did.expect_def_id(), cx), ty) {
+                    (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
+                    (Err(HrefError::DocumentationNotBuilt), ItemType::TyMethod) => None,
+                    (Err(_), ty) => Some(format!("#{}.{}", ty, name)),
+                }
             }
         };
         let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
@@ -904,7 +906,7 @@ fn render_assoc_item(
         w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
         write!(
             w,
-            "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a href=\"{href}\" class=\"fnname\">{name}</a>\
+            "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
              {generics}{decl}{notable_traits}{where_clause}",
             indent = indent_str,
             vis = vis,
@@ -913,7 +915,8 @@ fn render_assoc_item(
             unsafety = unsafety,
             defaultness = defaultness,
             abi = abi,
-            href = href,
+            // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
+            href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
             name = name,
             generics = g.print(cx),
             decl = d.full_print(header_len, indent, header.asyncness, cx),

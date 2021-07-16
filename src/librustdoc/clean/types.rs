@@ -459,7 +459,7 @@ impl Item {
             .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
                 match did {
                     Some(did) => {
-                        if let Some((mut href, ..)) = href(did.clone(), cx) {
+                        if let Ok((mut href, ..)) = href(did.clone(), cx) {
                             if let Some(ref fragment) = *fragment {
                                 href.push('#');
                                 href.push_str(fragment);
