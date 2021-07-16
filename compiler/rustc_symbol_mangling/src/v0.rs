@@ -1,8 +1,10 @@
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
@@ -11,6 +13,7 @@ use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
 use std::fmt::Write;
+use std::iter;
 use std::ops::Range;
 
 pub(super) fn mangle(
@@ -578,6 +581,106 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
                 let _ = write!(self.out, "{:x}_", bits);
             }
+
+            // HACK(eddyb) because `ty::Const` only supports sized values (for now),
+            // we can't use `deref_const` + supporting `str`, we have to specially
+            // handle `&str` and include both `&` ("R") and `str` ("e") prefixes.
+            ty::Ref(_, ty, hir::Mutability::Not) if *ty == self.tcx.types.str_ => {
+                self.push("R");
+                match ct.val {
+                    ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
+                        // NOTE(eddyb) the following comment was kept from `ty::print::pretty`:
+                        // The `inspect` here is okay since we checked the bounds, and there are no
+                        // relocations (we have an active `str` reference here). We don't use this
+                        // result to affect interpreter execution.
+                        let slice =
+                            data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                        let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
+
+                        self.push("e");
+                        // FIXME(eddyb) use a specialized hex-encoding loop.
+                        for byte in s.bytes() {
+                            let _ = write!(self.out, "{:02x}", byte);
+                        }
+                        self.push("_");
+                    }
+
+                    _ => {
+                        bug!("symbol_names: unsupported `&str` constant: {:?}", ct);
+                    }
+                }
+            }
+
+            ty::Ref(_, _, mutbl) => {
+                self.push(match mutbl {
+                    hir::Mutability::Not => "R",
+                    hir::Mutability::Mut => "Q",
+                });
+                self = self.tcx.deref_const(ty::ParamEnv::reveal_all().and(ct)).print(self)?;
+            }
+
+            ty::Array(..) | ty::Tuple(..) | ty::Adt(..) => {
+                let contents = self.tcx.destructure_const(ty::ParamEnv::reveal_all().and(ct));
+                let fields = contents.fields.iter().copied();
+
+                let print_field_list = |mut this: Self| {
+                    for field in fields.clone() {
+                        this = field.print(this)?;
+                    }
+                    this.push("E");
+                    Ok(this)
+                };
+
+                match *ct.ty.kind() {
+                    ty::Array(..) => {
+                        self.push("A");
+                        self = print_field_list(self)?;
+                    }
+                    ty::Tuple(..) => {
+                        self.push("T");
+                        self = print_field_list(self)?;
+                    }
+                    ty::Adt(def, substs) => {
+                        let variant_idx =
+                            contents.variant.expect("destructed const of adt without variant idx");
+                        let variant_def = &def.variants[variant_idx];
+
+                        self.push("V");
+                        self = self.print_def_path(variant_def.def_id, substs)?;
+
+                        match variant_def.ctor_kind {
+                            CtorKind::Const => {
+                                self.push("U");
+                            }
+                            CtorKind::Fn => {
+                                self.push("T");
+                                self = print_field_list(self)?;
+                            }
+                            CtorKind::Fictive => {
+                                self.push("S");
+                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
+                                    // HACK(eddyb) this mimics `path_append`,
+                                    // instead of simply using `field_def.ident`,
+                                    // just to be able to handle disambiguators.
+                                    let disambiguated_field =
+                                        self.tcx.def_key(field_def.did).disambiguated_data;
+                                    let field_name =
+                                        disambiguated_field.data.get_opt_name().map(|s| s.as_str());
+                                    self.push_disambiguator(
+                                        disambiguated_field.disambiguator as u64,
+                                    );
+                                    self.push_ident(&field_name.as_ref().map_or("", |s| &s[..]));
+
+                                    self = field.print(self)?;
+                                }
+                                self.push("E");
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }
