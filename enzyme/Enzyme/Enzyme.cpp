@@ -749,6 +749,7 @@ public:
 
     std::map<CallInst *, DerivativeMode> toLower;
     std::set<CallInst *> InactiveCalls;
+    std::set<CallInst *> IterCalls;
   retry:;
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
@@ -807,6 +808,10 @@ public:
               CI->addParamAttr(i, Attribute::NoCapture);
             }
           }
+        }
+        if (Fn->getName() == "__enzyme_iter") {
+          Fn->addFnAttr(Attribute::ReadNone);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
         if (Fn->getName().contains("__enzyme_call_inactive")) {
           InactiveCalls.insert(CI);
@@ -1243,6 +1248,10 @@ public:
                   F->getName() == "__enzyme_pointer") {
                 toErase.push_back(CI);
               }
+              if (F->getName() == "__enzyme_iter") {
+                CI->replaceAllUsesWith(CI->getArgOperand(0));
+                toErase.push_back(CI);
+              }
             }
           }
         }
@@ -1250,6 +1259,7 @@ public:
     }
     for (auto I : toErase) {
       I->eraseFromParent();
+      changed = true;
     }
 
     Logic.clear();

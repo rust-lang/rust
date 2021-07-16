@@ -2557,6 +2557,9 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     invertedPointers[arg] = li;
     return lookupM(invertedPointers[arg], BuilderM);
   } else if (auto arg = dyn_cast<BinaryOperator>(oval)) {
+    if (arg->getOpcode() == Instruction::FAdd)
+      return lookupM(getNewFromOriginal(arg), BuilderM);
+
     if (!arg->getType()->isIntOrIntVectorTy()) {
       llvm::errs() << *oval << "\n";
     }
