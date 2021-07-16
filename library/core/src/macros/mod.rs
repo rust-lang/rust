@@ -286,7 +286,7 @@ macro_rules! debug_assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert::debug_assert_matches;
+/// use std::assert_matches::debug_assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
