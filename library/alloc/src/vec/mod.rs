@@ -1001,7 +1001,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
-    /// The [`drain`] method can emulate `truncate`, but causes the excess
+    /// The [`split_off`] is similar to `truncate`, but causes the excess
     /// elements to be returned instead of dropped.
     ///
     /// Note that this method has no effect on the allocated capacity
@@ -1036,7 +1036,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     ///
     /// [`clear`]: Vec::clear
-    /// [`drain`]: Vec::drain
+    /// [`split_off`]: Vec::split_off
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         // This is safe because:
