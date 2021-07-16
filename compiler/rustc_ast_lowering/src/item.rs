@@ -37,13 +37,13 @@ impl ItemLowerer<'_, '_, '_> {
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_item(&mut self, item: &'a Item) {
         let mut item_hir_id = None;
-        self.lctx.allocate_hir_id_counter(item.id);
-        self.lctx.with_hir_id_owner(item.id, |lctx| {
-            lctx.without_in_scope_lifetime_defs(|lctx| {
-                if let Some(hir_item) = lctx.lower_item(item) {
-                    let id = lctx.insert_item(hir_item);
-                    item_hir_id = Some(id);
+        self.lctx.without_in_scope_lifetime_defs(|lctx| {
+            lctx.with_hir_id_owner(item.id, |lctx| {
+                let node = lctx.lower_item(item);
+                if let hir::OwnerNode::Item(hir_item) = node {
+                    item_hir_id = Some(hir_item.item_id());
                 }
+                node
             })
         });
 
@@ -68,26 +68,17 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
-            AssocCtxt::Trait => {
-                let hir_item = lctx.lower_trait_item(item);
-                lctx.insert_trait_item(hir_item);
-            }
-            AssocCtxt::Impl => {
-                let hir_item = lctx.lower_impl_item(item);
-                lctx.insert_impl_item(hir_item);
-            }
+            AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
+            AssocCtxt::Impl => hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)),
         });
 
         visit::walk_assoc_item(self, item, ctxt);
     }
 
     fn visit_foreign_item(&mut self, item: &'a ForeignItem) {
-        self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| {
-            let hir_item = lctx.lower_foreign_item(item);
-            lctx.insert_foreign_item(hir_item);
+            hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
         });
 
         visit::walk_foreign_item(self, item);
@@ -167,7 +158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         node_ids
             .into_iter()
-            .map(|node_id| hir::ItemId { def_id: self.allocate_hir_id_counter(node_id) })
+            .map(|node_id| hir::ItemId { def_id: self.resolver.local_def_id(node_id) })
             .collect()
     }
 
@@ -195,7 +186,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item<'hir>> {
+    fn lower_item(&mut self, i: &Item) -> hir::OwnerNode<'hir> {
         let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis);
 
@@ -204,23 +195,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(hir_id, &i.attrs);
             if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
                 let body = P(self.lower_mac_args(body));
-                self.insert_macro_def(hir::MacroDef {
+                let def = hir::MacroDef {
                     ident,
                     vis,
                     def_id: hir_id.expect_owner(),
                     span: i.span,
                     ast: MacroDef { body, macro_rules },
-                });
+                };
+                return hir::OwnerNode::MacroDef(self.arena.alloc(def));
             } else {
-                self.insert_non_exported_macro(hir_id.expect_owner(), i.span)
+                return hir::OwnerNode::NonExportedMacro(i.span, hir_id.expect_owner());
             }
-            return None;
         }
 
         let hir_id = self.lower_node_id(i.id);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, &mut vis, &i.kind);
-        Some(hir::Item { def_id: hir_id.expect_owner(), ident, kind, vis, span: i.span })
+        let item = hir::Item { def_id: hir_id.expect_owner(), ident, kind, vis, span: i.span };
+        hir::OwnerNode::Item(self.arena.alloc(item))
     }
 
     fn lower_item_kind(
@@ -516,7 +508,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     let span = path.span;
 
-                    let new_id = self.allocate_hir_id_counter(new_node_id);
+                    let new_id = self.resolver.local_def_id(new_node_id);
                     self.with_hir_id_owner(new_node_id, |this| {
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit);
@@ -526,7 +518,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.attrs.insert(hir::HirId::make_owner(new_id), attrs);
                         }
 
-                        this.insert_item(hir::Item { def_id: new_id, ident, kind, vis, span });
+                        let item = hir::Item { def_id: new_id, ident, kind, vis, span };
+                        hir::OwnerNode::Item(this.arena.alloc(item))
                     });
                 }
 
@@ -570,7 +563,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let new_hir_id = self.allocate_hir_id_counter(id);
+                    let new_hir_id = self.resolver.local_def_id(id);
 
                     let mut prefix = prefix.clone();
 
@@ -594,13 +587,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.attrs.insert(hir::HirId::make_owner(new_hir_id), attrs);
                         }
 
-                        this.insert_item(hir::Item {
-                            def_id: new_hir_id,
-                            ident,
-                            kind,
-                            vis,
-                            span: use_tree.span,
-                        });
+                        let item =
+                            hir::Item { def_id: new_hir_id, ident, kind, vis, span: use_tree.span };
+                        hir::OwnerNode::Item(this.arena.alloc(item))
                     });
                 }
 
@@ -664,11 +653,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         respan(vis.span, vis_kind)
     }
 
-    fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
+    fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let hir_id = self.lower_node_id(i.id);
         let def_id = hir_id.expect_owner();
         self.lower_attrs(hir_id, &i.attrs);
-        hir::ForeignItem {
+        let item = hir::ForeignItem {
             def_id,
             ident: i.ident,
             kind: match i.kind {
@@ -698,12 +687,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             vis: self.lower_visibility(&i.vis),
             span: i.span,
-        }
+        };
+        self.arena.alloc(item)
     }
 
     fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
         hir::ForeignItemRef {
-            id: hir::ForeignItemId { def_id: self.allocate_hir_id_counter(i.id) },
+            id: hir::ForeignItemId { def_id: self.resolver.local_def_id(i.id) },
             ident: i.ident,
             span: i.span,
             is_pub: i.vis.kind.is_pub(),
@@ -782,7 +772,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {
+    fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let hir_id = self.lower_node_id(i.id);
         let trait_item_def_id = hir_id.expect_owner();
 
@@ -826,7 +816,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         self.lower_attrs(hir_id, &i.attrs);
-        hir::TraitItem { def_id: trait_item_def_id, ident: i.ident, generics, kind, span: i.span }
+        let item = hir::TraitItem {
+            def_id: trait_item_def_id,
+            ident: i.ident,
+            generics,
+            kind,
+            span: i.span,
+        };
+        self.arena.alloc(item)
     }
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
@@ -840,7 +837,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
-        let id = hir::TraitItemId { def_id: self.allocate_hir_id_counter(i.id) };
+        let id = hir::TraitItemId { def_id: self.resolver.local_def_id(i.id) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
         hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
     }
@@ -850,7 +847,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
-    fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
+    fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
         let impl_item_def_id = self.resolver.local_def_id(i.id);
 
         let (generics, kind) = match &i.kind {
@@ -906,7 +903,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
-        hir::ImplItem {
+        let item = hir::ImplItem {
             def_id: hir_id.expect_owner(),
             ident: i.ident,
             generics,
@@ -914,7 +911,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             defaultness,
             kind,
             span: i.span,
-        }
+        };
+        self.arena.alloc(item)
     }
 
     fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
@@ -922,7 +920,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItemRef {
-            id: hir::ImplItemId { def_id: self.allocate_hir_id_counter(i.id) },
+            id: hir::ImplItemId { def_id: self.resolver.local_def_id(i.id) },
             ident: i.ident,
             span: i.span,
             is_pub: i.vis.kind.is_pub(),
