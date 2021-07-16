@@ -568,6 +568,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// - `substs`, the substs  used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
+    #[instrument(skip(self))]
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
@@ -576,11 +577,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
-        debug!(
-            "infer_opaque_definition_from_instantiation(def_id={:?}, instantiated_ty={:?})",
-            def_id, instantiated_ty
-        );
-
         // Use substs to build up a reverse map from regions to their
         // identity mappings. This is necessary because of `impl
         // Trait` lifetimes are computed by replacing existing
@@ -588,6 +584,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // `impl Trait` return type, resulting in the parameters
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
+        debug!(?id_substs);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
             substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
 
@@ -602,7 +599,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             instantiated_ty,
             span,
         ));
-        debug!("infer_opaque_definition_from_instantiation: definition_ty={:?}", definition_ty);
+        debug!(?definition_ty);
 
         definition_ty
     }
@@ -857,7 +854,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 self.tcx.mk_generator(def_id, substs, movability)
             }
 
-            ty::Param(..) => {
+            ty::Param(param) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ty.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list; replace with the parameter from the
@@ -865,6 +862,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {:?}", u),
                     None => {
+                        debug!(?param, ?self.map);
                         self.tcx
                             .sess
                             .struct_span_err(
@@ -931,8 +929,8 @@ struct Instantiator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
+    #[instrument(skip(self))]
     fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
-        debug!("instantiate_opaque_types_in_map(value={:?})", value);
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
             tcx,

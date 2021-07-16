@@ -1,7 +1,6 @@
 // build-pass
 
 #![crate_type = "lib"]
-#![allow(incomplete_features)]
 #![feature(staged_api)]
 #![feature(const_trait_impl)]
 #![stable(feature = "foo", since = "1.0.0")]

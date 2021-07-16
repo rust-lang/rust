@@ -1,5 +1,5 @@
 error[E0658]: const trait impls are experimental
-  --> $DIR/feature-gate.rs:10:6
+  --> $DIR/feature-gate.rs:9:6
    |
 LL | impl const T for S {}
    |      ^^^^^
