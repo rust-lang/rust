@@ -10,6 +10,18 @@ note: hidden type `&'<empty> str` captures lifetime smaller than the function bo
 LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
    |                             ^^^^^^^^^^^^^^^^^^^^
 
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/issue-85113.rs:14:1
+   |
+LL | fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'<empty> str`, got `&'a str`
+   |
+note: previous use here
+  --> $DIR/issue-85113.rs:14:1
+   |
+LL | fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0477]: the type `&'<empty> str` does not fulfill the required lifetime
   --> $DIR/issue-85113.rs:5:29
    |
@@ -42,7 +54,7 @@ LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
    = note: expected `Output<'a>`
               found `Output<'_>`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0477, E0495, E0700.
 For more information about an error, try `rustc --explain E0477`.
