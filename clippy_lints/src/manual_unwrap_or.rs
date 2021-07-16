@@ -61,13 +61,13 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             if let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)| {
                 match arm.pat.kind {
                     PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
-                    PatKind::TupleStruct(ref qpath, &[pat], _) =>
+                    PatKind::TupleStruct(ref qpath, [pat], _) =>
                         matches!(pat.kind, PatKind::Wild) && is_lang_ctor(cx, qpath, ResultErr),
                     _ => false,
                 }
             });
             let unwrap_arm = &arms[1 - idx];
-            if let PatKind::TupleStruct(ref qpath, &[unwrap_pat], _) = unwrap_arm.pat.kind;
+            if let PatKind::TupleStruct(ref qpath, [unwrap_pat], _) = unwrap_arm.pat.kind;
             if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
             if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
             if path_to_local_id(unwrap_arm.body, binding_hir_id);
