@@ -259,6 +259,27 @@ impl<T: Copy> Clone for Unaligned<T> {
 }
 
 /// Loads a `v128` vector from the given heap address.
+///
+/// This intrinsic will emit a load with an alignment of 1. While this is
+/// provided for completeness it is not strictly necessary, you can also load
+/// the pointer directly:
+///
+/// ```rust,ignore
+/// let a: &v128 = ...;
+/// let value = unsafe { v128_load(a) };
+/// // .. is the same as ..
+/// let value = *a;
+/// ```
+///
+/// The alignment of the load can be configured by doing a manual load without
+/// this intrinsic.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 16 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load))]
 #[target_feature(enable = "simd128")]
@@ -269,6 +290,13 @@ pub unsafe fn v128_load(m: *const v128) -> v128 {
 }
 
 /// Load eight 8-bit integers and sign extend each one to a 16-bit lane
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load8x8_s))]
 #[target_feature(enable = "simd128")]
@@ -280,6 +308,13 @@ pub unsafe fn i16x8_load_extend_i8x8(m: *const i8) -> v128 {
 }
 
 /// Load eight 8-bit integers and zero extend each one to a 16-bit lane
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load8x8_u))]
 #[target_feature(enable = "simd128")]
@@ -294,6 +329,13 @@ pub unsafe fn i16x8_load_extend_u8x8(m: *const u8) -> v128 {
 pub use i16x8_load_extend_u8x8 as u16x8_load_extend_u8x8;
 
 /// Load four 16-bit integers and sign extend each one to a 32-bit lane
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load16x4_s))]
 #[target_feature(enable = "simd128")]
@@ -305,6 +347,13 @@ pub unsafe fn i32x4_load_extend_i16x4(m: *const i16) -> v128 {
 }
 
 /// Load four 16-bit integers and zero extend each one to a 32-bit lane
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load16x4_u))]
 #[target_feature(enable = "simd128")]
@@ -319,6 +368,13 @@ pub unsafe fn i32x4_load_extend_u16x4(m: *const u16) -> v128 {
 pub use i32x4_load_extend_u16x4 as u32x4_load_extend_u16x4;
 
 /// Load two 32-bit integers and sign extend each one to a 64-bit lane
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load32x2_s))]
 #[target_feature(enable = "simd128")]
@@ -330,6 +386,13 @@ pub unsafe fn i64x2_load_extend_i32x2(m: *const i32) -> v128 {
 }
 
 /// Load two 32-bit integers and zero extend each one to a 64-bit lane
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load32x2_u))]
 #[target_feature(enable = "simd128")]
@@ -344,6 +407,17 @@ pub unsafe fn i64x2_load_extend_u32x2(m: *const u32) -> v128 {
 pub use i64x2_load_extend_u32x2 as u64x2_load_extend_u32x2;
 
 /// Load a single element and splat to all lanes of a v128 vector.
+///
+/// While this intrinsic is provided for completeness it can also be replaced
+/// with `u8x16_splat(*m)` and it should generate equivalent code (and also not
+/// require `unsafe`).
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 1 byte from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load8_splat))]
 #[target_feature(enable = "simd128")]
@@ -354,6 +428,17 @@ pub unsafe fn v128_load8_splat(m: *const u8) -> v128 {
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
+///
+/// While this intrinsic is provided for completeness it can also be replaced
+/// with `u16x8_splat(*m)` and it should generate equivalent code (and also not
+/// require `unsafe`).
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 2 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load16_splat))]
 #[target_feature(enable = "simd128")]
@@ -365,6 +450,17 @@ pub unsafe fn v128_load16_splat(m: *const u16) -> v128 {
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
+///
+/// While this intrinsic is provided for completeness it can also be replaced
+/// with `u32x4_splat(*m)` and it should generate equivalent code (and also not
+/// require `unsafe`).
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 4 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load32_splat))]
 #[target_feature(enable = "simd128")]
@@ -376,6 +472,17 @@ pub unsafe fn v128_load32_splat(m: *const u32) -> v128 {
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
+///
+/// While this intrinsic is provided for completeness it can also be replaced
+/// with `u64x2_splat(*m)` and it should generate equivalent code (and also not
+/// require `unsafe`).
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load64_splat))]
 #[target_feature(enable = "simd128")]
@@ -388,6 +495,19 @@ pub unsafe fn v128_load64_splat(m: *const u64) -> v128 {
 
 /// Load a 32-bit element into the low bits of the vector and sets all other
 /// bits to zero.
+///
+/// This intrinsic is provided for completeness and is equivalent to `u32x4(*m,
+/// 0, 0, 0)` (which doesn't require `unsafe`). Note, though, that at the time
+/// of this writing this equivalent pattern does not optimize to the same
+/// WebAssembly instruction that this function generates. This will be fixed in
+/// the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 4 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load32_zero))]
 #[target_feature(enable = "simd128")]
@@ -399,6 +519,19 @@ pub unsafe fn v128_load32_zero(m: *const u32) -> v128 {
 
 /// Load a 64-bit element into the low bits of the vector and sets all other
 /// bits to zero.
+///
+/// This intrinsic is provided for completeness and is equivalent to `u64x2(*m,
+/// 0)` (which doesn't require `unsafe`). Note, though, that at the time
+/// of this writing this equivalent pattern does not optimize to the same
+/// WebAssembly instruction that this function generates. This will be fixed in
+/// the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load64_zero))]
 #[target_feature(enable = "simd128")]
@@ -409,6 +542,27 @@ pub unsafe fn v128_load64_zero(m: *const u64) -> v128 {
 }
 
 /// Stores a `v128` vector to the given heap address.
+///
+/// This intrinsic will emit a store with an alignment of 1. While this is
+/// provided for completeness it is not strictly necessary, you can also store
+/// the pointer directly:
+///
+/// ```rust,ignore
+/// let a: &mut v128 = ...;
+/// unsafe { v128_store(a, value) };
+/// // .. is the same as ..
+/// *a = value;
+/// ```
+///
+/// The alignment of the store can be configured by doing a manual store without
+/// this intrinsic.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to store 16 bytes to. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned store.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.store))]
 #[target_feature(enable = "simd128")]
@@ -419,6 +573,19 @@ pub unsafe fn v128_store(m: *mut v128, a: v128) {
 }
 
 /// Loads an 8-bit value from `m` and sets lane `L` of `v` to that value.
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `u8x16_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 1 byte from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load8_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -430,6 +597,19 @@ pub unsafe fn v128_load8_lane<const L: usize>(v: v128, m: *const u8) -> v128 {
 }
 
 /// Loads a 16-bit value from `m` and sets lane `L` of `v` to that value.
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `u16x8_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 2 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load16_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -441,6 +621,19 @@ pub unsafe fn v128_load16_lane<const L: usize>(v: v128, m: *const u16) -> v128 {
 }
 
 /// Loads a 32-bit value from `m` and sets lane `L` of `v` to that value.
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `u32x4_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 4 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load32_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -452,6 +645,19 @@ pub unsafe fn v128_load32_lane<const L: usize>(v: v128, m: *const u32) -> v128 {
 }
 
 /// Loads a 64-bit value from `m` and sets lane `L` of `v` to that value.
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `u64x2_replace_lane::<L>(v, *m)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to load 8 bytes from. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned load.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load64_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -463,6 +669,19 @@ pub unsafe fn v128_load64_lane<const L: usize>(v: v128, m: *const u64) -> v128 {
 }
 
 /// Stores the 8-bit value from lane `L` of `v` into `m`
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `*m = u8x16_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to store 1 byte to. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned store.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.store8_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -474,6 +693,19 @@ pub unsafe fn v128_store8_lane<const L: usize>(v: v128, m: *mut u8) {
 }
 
 /// Stores the 16-bit value from lane `L` of `v` into `m`
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `*m = u16x8_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to store 2 bytes to. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned store.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.store16_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -485,6 +717,19 @@ pub unsafe fn v128_store16_lane<const L: usize>(v: v128, m: *mut u16) {
 }
 
 /// Stores the 32-bit value from lane `L` of `v` into `m`
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `*m = u32x4_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to store 4 bytes to. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned store.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.store32_lane, L = 0))]
 #[target_feature(enable = "simd128")]
@@ -496,6 +741,19 @@ pub unsafe fn v128_store32_lane<const L: usize>(v: v128, m: *mut u32) {
 }
 
 /// Stores the 64-bit value from lane `L` of `v` into `m`
+///
+/// This intrinsic is provided for completeness and is equivalent to
+/// `*m = u64x2_extract_lane::<L>(v)` (which doesn't require `unsafe`). Note,
+/// though, that at the time of this writing this equivalent pattern does not
+/// optimize to the same WebAssembly instruction that this function generates.
+/// This will be fixed in the LLVM 13 release.
+///
+/// # Unsafety
+///
+/// This intrinsic is unsafe because it takes a raw pointer as an argument, and
+/// the pointer must be valid to store 8 bytes to. Note that there is no
+/// alignment requirement on this pointer since this intrinsic performs a
+/// 1-aligned store.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.store64_lane, L = 0))]
 #[target_feature(enable = "simd128")]
