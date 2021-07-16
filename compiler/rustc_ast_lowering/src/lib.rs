@@ -474,9 +474,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
         self.owners.insert(hir::CRATE_HIR_ID.owner, hir::OwnerNode::Crate(module));
 
-        let proc_macros =
-            c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
-
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (k, v) in self.resolver.take_trait_map().into_iter() {
             if let Some(Some(hir_id)) = self.node_id_to_hir_id.get(k) {
@@ -517,7 +514,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             owners,
             bodies: self.bodies,
             modules: self.modules,
-            proc_macros,
             trait_map,
             attrs: self.attrs,
         };

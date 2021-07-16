@@ -1003,7 +1003,7 @@ impl<'a> Resolver<'a> {
         Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
     }
 
-    crate fn finalize_macro_resolutions(&mut self) {
+    crate fn finalize_macro_resolutions(&mut self, krate: &ast::Crate) {
         let check_consistency = |this: &mut Self,
                                  path: &[Segment],
                                  span,
@@ -1126,6 +1126,8 @@ impl<'a> Resolver<'a> {
                 ident.span,
             );
         }
+
+        self.proc_macros = krate.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
     }
 
     fn check_stability_and_deprecation(
