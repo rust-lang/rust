@@ -27,8 +27,8 @@ use super::{
 /// operations and wide pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash)]
-pub enum Immediate<Tag = AllocId> {
+#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
+pub enum Immediate<Tag: Provenance = AllocId> {
     Scalar(ScalarMaybeUninit<Tag>),
     ScalarPair(ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>),
 }
@@ -36,31 +36,21 @@ pub enum Immediate<Tag = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Immediate, 56);
 
-impl<Tag: Provenance> std::fmt::Debug for Immediate<Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Immediate::*;
-        match self {
-            Scalar(s) => f.debug_tuple("Scalar").field(s).finish(),
-            ScalarPair(s1, s2) => f.debug_tuple("ScalarPair").field(s1).field(s2).finish(),
-        }
-    }
-}
-
-impl<Tag> From<ScalarMaybeUninit<Tag>> for Immediate<Tag> {
+impl<Tag: Provenance> From<ScalarMaybeUninit<Tag>> for Immediate<Tag> {
     #[inline(always)]
     fn from(val: ScalarMaybeUninit<Tag>) -> Self {
         Immediate::Scalar(val)
     }
 }
 
-impl<Tag> From<Scalar<Tag>> for Immediate<Tag> {
+impl<Tag: Provenance> From<Scalar<Tag>> for Immediate<Tag> {
     #[inline(always)]
     fn from(val: Scalar<Tag>) -> Self {
         Immediate::Scalar(val.into())
     }
 }
 
-impl<'tcx, Tag> Immediate<Tag> {
+impl<'tcx, Tag: Provenance> Immediate<Tag> {
     pub fn from_pointer(p: Pointer<Tag>, cx: &impl HasDataLayout) -> Self {
         Immediate::Scalar(ScalarMaybeUninit::from_pointer(p, cx))
     }
@@ -93,21 +83,14 @@ impl<'tcx, Tag> Immediate<Tag> {
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
 // as input for binary and cast operations.
-#[derive(Copy, Clone)]
-pub struct ImmTy<'tcx, Tag = AllocId> {
+#[derive(Copy, Clone, Debug)]
+pub struct ImmTy<'tcx, Tag: Provenance = AllocId> {
     imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
-
-impl<'tcx, Tag: Provenance> std::fmt::Debug for ImmTy<'tcx, Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ImmTy { imm, layout } = self;
-        f.debug_struct("ImmTy").field("imm", imm).field("layout", layout).finish()
-    }
-}
 
 impl<Tag: Provenance> std::fmt::Display for ImmTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -156,7 +139,7 @@ impl<Tag: Provenance> std::fmt::Display for ImmTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag> std::ops::Deref for ImmTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> std::ops::Deref for ImmTy<'tcx, Tag> {
     type Target = Immediate<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Immediate<Tag> {
@@ -167,39 +150,22 @@ impl<'tcx, Tag> std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash)]
-pub enum Operand<Tag = AllocId> {
+#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
+pub enum Operand<Tag: Provenance = AllocId> {
     Immediate(Immediate<Tag>),
     Indirect(MemPlace<Tag>),
 }
 
-impl<Tag: Provenance> std::fmt::Debug for Operand<Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Operand::*;
-        match self {
-            Immediate(i) => f.debug_tuple("Immediate").field(i).finish(),
-            Indirect(p) => f.debug_tuple("Indirect").field(p).finish(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct OpTy<'tcx, Tag = AllocId> {
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct OpTy<'tcx, Tag: Provenance = AllocId> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(OpTy<'_, ()>, 80);
+rustc_data_structures::static_assert_size!(OpTy<'_>, 80);
 
-impl<'tcx, Tag: Provenance> std::fmt::Debug for OpTy<'tcx, Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let OpTy { op, layout } = self;
-        f.debug_struct("OpTy").field("op", op).field("layout", layout).finish()
-    }
-}
-
-impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Operand<Tag> {
@@ -207,28 +173,28 @@ impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
         OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout }
     }
 }
 
-impl<'tcx, Tag: Copy> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
         OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
     }
 }
 
-impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
         OpTy { op: Operand::Immediate(val.imm), layout: val.layout }
     }
 }
 
-impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>, layout: TyAndLayout<'tcx>) -> Self {
         ImmTy { imm: val.into(), layout }
@@ -259,10 +225,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub fn to_const_int(self) -> ConstInt
-    where
-        Tag: Provenance,
-    {
+    pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
         let int = self.to_scalar().expect("to_const_int doesn't work on scalar pairs").assert_int();
         ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())

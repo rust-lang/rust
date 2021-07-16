@@ -80,7 +80,7 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Tag = AllocId, Extra = ()> {
+pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +161,7 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone, PartialEq, Eq, HashStable)]
-pub struct LocalState<'tcx, Tag = AllocId> {
+pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
     pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     #[stable_hasher(ignore)]
@@ -169,8 +169,8 @@ pub struct LocalState<'tcx, Tag = AllocId> {
 }
 
 /// Current value of a local variable
-#[derive(Copy, Clone, PartialEq, Eq, HashStable)]
-pub enum LocalValue<Tag = AllocId> {
+#[derive(Copy, Clone, PartialEq, Eq, HashStable, Debug)] // Miri debug-prints these
+pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// This local is alive but not yet initialized. It can be written to
@@ -186,19 +186,7 @@ pub enum LocalValue<Tag = AllocId> {
     Live(Operand<Tag>),
 }
 
-impl<Tag: Provenance> std::fmt::Debug for LocalValue<Tag> {
-    // Miri debug-prints these
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use LocalValue::*;
-        match self {
-            Dead => f.debug_tuple("Dead").finish(),
-            Uninitialized => f.debug_tuple("Uninitialized").finish(),
-            Live(o) => f.debug_tuple("Live").field(o).finish(),
-        }
-    }
-}
-
-impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
+impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
     ///
     /// Note: This may only be invoked from the `Machine::access_local` hook and not from
@@ -232,7 +220,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
+impl<'mir, 'tcx, Tag: Provenance> Frame<'mir, 'tcx, Tag> {
     pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Tag, Extra> {
         Frame {
             body: self.body,
@@ -247,7 +235,7 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+impl<'mir, 'tcx, Tag: Provenance, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Get the current location within the Frame.
     ///
     /// If this is `Err`, we are not currently executing any particular statement in
@@ -1024,7 +1012,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
     }
 }
 
-impl<'ctx, 'mir, 'tcx, Tag, Extra> HashStable<StableHashingContext<'ctx>>
+impl<'ctx, 'mir, 'tcx, Tag: Provenance, Extra> HashStable<StableHashingContext<'ctx>>
     for Frame<'mir, 'tcx, Tag, Extra>
 where
     Extra: HashStable<StableHashingContext<'ctx>>,

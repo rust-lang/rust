@@ -86,7 +86,9 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// This trait abstracts over the kind of provenance that is associated with a `Pointer`. It is
 /// mostly opaque; the `Machine` trait extends it with some more operations that also have access to
 /// some global state.
-pub trait Provenance: Copy {
+/// We don't actually care about this `Debug` bound (we use `Provenance::fmt` to format the entire
+/// pointer), but `derive` adds some unecessary bounds.
+pub trait Provenance: Copy + fmt::Debug {
     /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
     /// If `true, ptr-to-int casts work by simply discarding the provenance.
     /// If `false`, ptr-to-int casts are not supported. The offset *must* be relative in that case.
@@ -142,14 +144,14 @@ static_assert_size!(Pointer, 16);
 // all the Miri types.
 impl<Tag: Provenance> fmt::Debug for Pointer<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Tag::fmt(self, f)
+        Provenance::fmt(self, f)
     }
 }
 
 impl<Tag: Provenance> fmt::Debug for Pointer<Option<Tag>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.provenance {
-            Some(tag) => Tag::fmt(&Pointer::new(tag, self.offset), f),
+            Some(tag) => Provenance::fmt(&Pointer::new(tag, self.offset), f),
             None => write!(f, "0x{:x}", self.offset.bytes()),
         }
     }

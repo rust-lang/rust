@@ -19,9 +19,9 @@ use super::{
     Operand, Pointer, PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit,
 };
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
-pub enum MemPlaceMeta<Tag = AllocId> {
+pub enum MemPlaceMeta<Tag: Provenance = AllocId> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
     Meta(Scalar<Tag>),
     /// `Sized` types or unsized `extern type`
@@ -36,18 +36,7 @@ pub enum MemPlaceMeta<Tag = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
 
-impl<Tag: Provenance> std::fmt::Debug for MemPlaceMeta<Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use MemPlaceMeta::*;
-        match self {
-            Meta(s) => f.debug_tuple("Meta").field(s).finish(),
-            None => f.debug_tuple("None").finish(),
-            Poison => f.debug_tuple("Poison").finish(),
-        }
-    }
-}
-
-impl<Tag> MemPlaceMeta<Tag> {
+impl<Tag: Provenance> MemPlaceMeta<Tag> {
     pub fn unwrap_meta(self) -> Scalar<Tag> {
         match self {
             Self::Meta(s) => s,
@@ -64,8 +53,8 @@ impl<Tag> MemPlaceMeta<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable)]
-pub struct MemPlace<Tag = AllocId> {
+#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+pub struct MemPlace<Tag: Provenance = AllocId> {
     /// The pointer can be a pure integer, with the `None` tag.
     pub ptr: Pointer<Option<Tag>>,
     pub align: Align,
@@ -78,19 +67,8 @@ pub struct MemPlace<Tag = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(MemPlace, 48);
 
-impl<Tag: Provenance> std::fmt::Debug for MemPlace<Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let MemPlace { ptr, align, meta } = self;
-        f.debug_struct("MemPlace")
-            .field("ptr", ptr)
-            .field("align", align)
-            .field("meta", meta)
-            .finish()
-    }
-}
-
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable)]
-pub enum Place<Tag = AllocId> {
+#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+pub enum Place<Tag: Provenance = AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Tag>),
 
@@ -102,20 +80,8 @@ pub enum Place<Tag = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Place, 56);
 
-impl<Tag: Provenance> std::fmt::Debug for Place<Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use Place::*;
-        match self {
-            Ptr(p) => f.debug_tuple("Ptr").field(p).finish(),
-            Local { frame, local } => {
-                f.debug_struct("Local").field("frame", frame).field("local", local).finish()
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct PlaceTy<'tcx, Tag = AllocId> {
+#[derive(Copy, Clone, Debug)]
+pub struct PlaceTy<'tcx, Tag: Provenance = AllocId> {
     place: Place<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
@@ -123,14 +89,7 @@ pub struct PlaceTy<'tcx, Tag = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PlaceTy<'_>, 72);
 
-impl<'tcx, Tag: Provenance> std::fmt::Debug for PlaceTy<'tcx, Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let PlaceTy { place, layout } = self;
-        f.debug_struct("PlaceTy").field("place", place).field("layout", layout).finish()
-    }
-}
-
-impl<'tcx, Tag> std::ops::Deref for PlaceTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> std::ops::Deref for PlaceTy<'tcx, Tag> {
     type Target = Place<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Place<Tag> {
@@ -139,8 +98,8 @@ impl<'tcx, Tag> std::ops::Deref for PlaceTy<'tcx, Tag> {
 }
 
 /// A MemPlace with its layout. Constructing it is only possible in this module.
-#[derive(Copy, Clone, Hash, Eq, PartialEq)]
-pub struct MPlaceTy<'tcx, Tag = AllocId> {
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
     mplace: MemPlace<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
@@ -148,14 +107,7 @@ pub struct MPlaceTy<'tcx, Tag = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
 
-impl<'tcx, Tag: Provenance> std::fmt::Debug for MPlaceTy<'tcx, Tag> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let MPlaceTy { mplace, layout } = self;
-        f.debug_struct("MPlaceTy").field("mplace", mplace).field("layout", layout).finish()
-    }
-}
-
-impl<'tcx, Tag> std::ops::Deref for MPlaceTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     type Target = MemPlace<Tag>;
     #[inline(always)]
     fn deref(&self) -> &MemPlace<Tag> {
@@ -163,14 +115,14 @@ impl<'tcx, Tag> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
         PlaceTy { place: Place::Ptr(mplace.mplace), layout: mplace.layout }
     }
 }
 
-impl<Tag> MemPlace<Tag> {
+impl<Tag: Provenance> MemPlace<Tag> {
     #[inline(always)]
     pub fn from_ptr(ptr: Pointer<Option<Tag>>, align: Align) -> Self {
         MemPlace { ptr, align, meta: MemPlaceMeta::None }
@@ -212,7 +164,7 @@ impl<Tag> MemPlace<Tag> {
     }
 }
 
-impl<'tcx, Tag: Copy> MPlaceTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
     /// Produces a MemPlace that works for ZST but nothing else
     #[inline]
     pub fn dangling(layout: TyAndLayout<'tcx>) -> Self {
@@ -239,10 +191,7 @@ impl<'tcx, Tag: Copy> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub(super) fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64>
-    where
-        Tag: Provenance,
-    {
+    pub(super) fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind() {
@@ -269,7 +218,7 @@ impl<'tcx, Tag: Copy> MPlaceTy<'tcx, Tag> {
 }
 
 // These are defined here because they produce a place.
-impl<'tcx, Tag: Copy> OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
     #[inline(always)]
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
@@ -284,10 +233,7 @@ impl<'tcx, Tag: Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
-    pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Tag>
-    where
-        Tag: Provenance,
-    {
+    pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Tag> {
         self.try_as_mplace().unwrap()
     }
 }
