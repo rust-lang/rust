@@ -496,6 +496,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
 
+            let opaque_type_key = self.fcx.fully_resolve(opaque_type_key).unwrap();
+
             // Prevent:
             // * `fn foo<T>() -> Foo<T>`
             // * `fn foo<T: Bound + Other>() -> Foo<T>`
@@ -508,6 +510,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // fn foo<U>() -> Foo<U> { .. }
             // ```
             // figures out the concrete type with `U`, but the stored type is with `T`.
+
+            // FIXME: why are we calling this here? This seems too early, and duplicated.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 opaque_type_key,
                 instantiated_ty,
@@ -529,33 +533,33 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if !opaque_type_key.substs.needs_infer() {
-                // We only want to add an entry into `concrete_opaque_types`
-                // if we actually found a defining usage of this opaque type.
-                // Otherwise, we do nothing - we'll either find a defining usage
-                // in some other location, or we'll end up emitting an error due
-                // to the lack of defining usage
-                if !skip_add {
-                    let old_concrete_ty = self
-                        .typeck_results
-                        .concrete_opaque_types
-                        .insert(opaque_type_key, definition_ty);
-                    if let Some(old_concrete_ty) = old_concrete_ty {
-                        if old_concrete_ty != definition_ty {
-                            span_bug!(
-                                span,
-                                "`visit_opaque_types` tried to write different types for the same \
+            if opaque_type_key.substs.needs_infer() {
+                span_bug!(span, "{:#?} has inference variables", opaque_type_key.substs)
+            }
+
+            // We only want to add an entry into `concrete_opaque_types`
+            // if we actually found a defining usage of this opaque type.
+            // Otherwise, we do nothing - we'll either find a defining usage
+            // in some other location, or we'll end up emitting an error due
+            // to the lack of defining usage
+            if !skip_add {
+                let old_concrete_ty = self
+                    .typeck_results
+                    .concrete_opaque_types
+                    .insert(opaque_type_key, definition_ty);
+                if let Some(old_concrete_ty) = old_concrete_ty {
+                    if old_concrete_ty != definition_ty {
+                        span_bug!(
+                            span,
+                            "`visit_opaque_types` tried to write different types for the same \
                                  opaque type: {:?}, {:?}, {:?}, {:?}",
-                                opaque_type_key.def_id,
-                                definition_ty,
-                                opaque_defn,
-                                old_concrete_ty,
-                            );
-                        }
+                            opaque_type_key.def_id,
+                            definition_ty,
+                            opaque_defn,
+                            old_concrete_ty,
+                        );
                     }
                 }
-            } else {
-                self.tcx().sess.delay_span_bug(span, "`opaque_defn` has inference variables");
             }
         }
     }

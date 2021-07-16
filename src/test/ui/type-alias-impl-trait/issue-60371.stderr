@@ -25,11 +25,14 @@ LL |     type Item = impl Bug;
    = help: the following implementations were found:
              <&() as Bug>
 
-error: could not find defining uses
+error[E0277]: the trait bound `(): Bug` is not satisfied
   --> $DIR/issue-60371.rs:10:17
    |
 LL |     type Item = impl Bug;
-   |                 ^^^^^^^^
+   |                 ^^^^^^^^ the trait `Bug` is not implemented for `()`
+   |
+   = help: the following implementations were found:
+             <&() as Bug>
 
 error: aborting due to 4 previous errors
 
