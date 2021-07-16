@@ -48,6 +48,7 @@
       <Item Name="[len]" ExcludeView="simple">vec.len</Item>
       <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
       <Synthetic Name="[chars]">
+        <DisplayString>{(char*)vec.buf.ptr.pointer,[vec.len]s8}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>vec.len</Size>
@@ -57,22 +58,38 @@
       </Synthetic>
     </Expand>
   </Type>
+
   <Type Name="alloc::rc::Rc&lt;*&gt;">
     <DisplayString>{ptr.pointer->value}</DisplayString>
     <Expand>
       <ExpandedItem>ptr.pointer->value</ExpandedItem>
+      <Item Name="[Reference count]">ptr.pointer->strong</Item>
+      <Item Name="[Weak reference count]">ptr.pointer->weak</Item>
     </Expand>
   </Type>
+  <Type Name="alloc::rc::Weak&lt;*&gt;">
+    <DisplayString>{ptr.pointer->value}</DisplayString>
+    <Expand>
+      <ExpandedItem>ptr.pointer->value</ExpandedItem>
+      <Item Name="[Reference count]">ptr.pointer->strong</Item>
+      <Item Name="[Weak reference count]">ptr.pointer->weak</Item>
+    </Expand>
+  </Type>
+
   <Type Name="alloc::sync::Arc&lt;*&gt;">
     <DisplayString>{ptr.pointer->data}</DisplayString>
     <Expand>
       <ExpandedItem>ptr.pointer->data</ExpandedItem>
+      <Item Name="[Reference count]">ptr.pointer->strong</Item>
+      <Item Name="[Weak reference count]">ptr.pointer->weak</Item>
     </Expand>
   </Type>
   <Type Name="alloc::sync::Weak&lt;*&gt;">
     <DisplayString>{ptr.pointer->data}</DisplayString>
     <Expand>
       <ExpandedItem>ptr.pointer->data</ExpandedItem>
+      <Item Name="[Reference count]">ptr.pointer->strong</Item>
+      <Item Name="[Weak reference count]">ptr.pointer->weak</Item>
     </Expand>
   </Type>
   <Type Name="alloc::borrow::Cow&lt;*&gt;">
