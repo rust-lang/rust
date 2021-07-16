@@ -1,12 +1,4 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-ref-macro.rs:8:1
-   |
-LL | #[hello]
-   | ^^^^^^^^ expected `&mut i32`, found integer
-   |
-   = note: this error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0308]: mismatched types
   --> $DIR/suggest-ref-macro.rs:15:11
    |
 LL |         x(123);
@@ -28,6 +20,14 @@ LL |     bla!(456);
    |          |
    |          expected `&mut i32`, found integer
    |          help: consider mutably borrowing here: `&mut 456`
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-ref-macro.rs:8:1
+   |
+LL | #[hello]
+   | ^^^^^^^^ expected `&mut i32`, found integer
+   |
+   = note: this error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

@@ -516,7 +516,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
         self.owners.insert(hir::CRATE_HIR_ID.owner, hir::OwnerNode::Crate(module));
 
-        let body_ids = body_ids(&self.bodies);
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
@@ -559,7 +558,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let krate = hir::Crate {
             owners,
             bodies: self.bodies,
-            body_ids,
             trait_impls: self.trait_impls,
             modules: self.modules,
             proc_macros,
@@ -2850,14 +2848,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         }
     }
-}
-
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'_>>) -> Vec<hir::BodyId> {
-    // Sorting by span ensures that we get things in order within a
-    // file, and also puts the files in a sensible order.
-    let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
-    body_ids.sort_by_key(|b| bodies[b].value.span);
-    body_ids
 }
 
 /// Helper struct for delayed construction of GenericArgs.
