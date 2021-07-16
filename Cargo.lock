@@ -269,7 +269,7 @@ dependencies = [
  "crossbeam-utils 0.8.3",
  "curl",
  "curl-sys",
- "env_logger 0.8.1",
+ "env_logger 0.9.0",
  "filetime",
  "flate2",
  "fwdansi",
@@ -1086,6 +1086,19 @@ name = "env_logger"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54532e3223c5af90a6a757c90b5c5521564b07e5e7a958681bcd2afad421cdcd"
+dependencies = [
+ "atty",
+ "humantime 2.0.1",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
 dependencies = [
  "atty",
  "humantime 2.0.1",
