@@ -1,17 +1,3 @@
-error[E0277]: the trait bound `Self: Trait1` is not satisfied
-  --> $DIR/issue-74816.rs:10:5
-   |
-LL |     type Associated: Trait1 = Self;
-   |     ^^^^^^^^^^^^^^^^^------^^^^^^^^
-   |     |                |
-   |     |                required by this bound in `Trait2::Associated`
-   |     the trait `Trait1` is not implemented for `Self`
-   |
-help: consider further restricting `Self`
-   |
-LL | trait Trait2: Trait1 {
-   |             ^^^^^^^^
-
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-74816.rs:10:5
    |
@@ -25,6 +11,20 @@ help: consider further restricting `Self`
    |
 LL | trait Trait2: Sized {
    |             ^^^^^^^
+
+error[E0277]: the trait bound `Self: Trait1` is not satisfied
+  --> $DIR/issue-74816.rs:10:5
+   |
+LL |     type Associated: Trait1 = Self;
+   |     ^^^^^^^^^^^^^^^^^------^^^^^^^^
+   |     |                |
+   |     |                required by this bound in `Trait2::Associated`
+   |     the trait `Trait1` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait Trait2: Trait1 {
+   |             ^^^^^^^^
 
 error: aborting due to 2 previous errors
 
