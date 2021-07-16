@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, AstToken},
-    match_ast, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
+    match_ast, NodeOrToken, SyntaxElement, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -41,7 +41,6 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         .ok()?;
 
     let parent = macro_call.syntax().parent()?;
-    let parent_is_let_stmt = ast::LetStmt::can_cast(parent.kind());
     let (range, text) = match &*input_expressions {
         // dbg!()
         [] => {
@@ -75,7 +74,6 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                     (
                         ast::Expr::BoxExpr(_) | ast::Expr::PrefixExpr(_) | ast::Expr::RefExpr(_),
                         ast::Expr::AwaitExpr(_)
-                        | ast::Expr::BinExpr(_)
                         | ast::Expr::CallExpr(_)
                         | ast::Expr::CastExpr(_)
                         | ast::Expr::FieldExpr(_)
@@ -108,13 +106,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             )
         }
         // dbg!(expr0, expr1, ...)
-        exprs => (macro_call.syntax().text_range(), format!("({})", exprs.iter().format(","))),
-    };
-
-    let range = if macro_call.semicolon_token().is_some() && parent_is_let_stmt {
-        TextRange::new(range.start(), range.end() - TextSize::of(";"))
-    } else {
-        range
+        exprs => (macro_call.syntax().text_range(), format!("({})", exprs.iter().format(", "))),
     };
 
     acc.add(AssistId("remove_dbg", AssistKind::Refactor), "Remove dbg!()", range, |builder| {
@@ -143,18 +135,8 @@ mod tests {
     #[test]
     fn test_remove_dbg() {
         check("$0dbg!(1 + 1)", "1 + 1");
-        check("dbg!$0((1 + 1))", "(1 + 1)");
+        check("dbg!$0(1 + 1)", "1 + 1");
         check("dbg!(1 $0+ 1)", "1 + 1");
-        check("let _ = $0dbg!(1 + 1)", "let _ = 1 + 1");
-        check(
-            "if let Some(_) = dbg!(n.$0checked_sub(4)) {}",
-            "if let Some(_) = n.checked_sub(4) {}",
-        );
-        check("$0dbg!(Foo::foo_test()).bar()", "Foo::foo_test().bar()");
-    }
-
-    #[test]
-    fn test_remove_dbg_with_brackets_and_braces() {
         check("dbg![$01 + 1]", "1 + 1");
         check("dbg!{$01 + 1}", "1 + 1");
     }
@@ -167,100 +149,36 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_dbg_keep_semicolon() {
+    fn test_remove_dbg_keep_semicolon_in_let() {
         // https://github.com/rust-analyzer/rust-analyzer/issues/5129#issuecomment-651399779
-        // not quite though
-        // adding a comment at the end of the line makes
-        // the ast::MacroCall to include the semicolon at the end
         check(
             r#"let res = $0dbg!(1 * 20); // needless comment"#,
             r#"let res = 1 * 20; // needless comment"#,
         );
-    }
-
-    #[test]
-    fn remove_dbg_from_non_leaf_simple_expression() {
-        check_assist(
-            remove_dbg,
-            r"
-fn main() {
-    let mut a = 1;
-    while dbg!$0(a) < 10000 {
-        a += 1;
-    }
-}
-",
-            r"
-fn main() {
-    let mut a = 1;
-    while a < 10000 {
-        a += 1;
-    }
-}
-",
+        check(r#"let res = $0dbg!(); // needless comment"#, r#"let res = (); // needless comment"#);
+        check(
+            r#"let res = $0dbg!(1, 2); // needless comment"#,
+            r#"let res = (1, 2); // needless comment"#,
         );
     }
 
     #[test]
-    fn test_remove_dbg_keep_expression() {
-        check(r#"let res = $0dbg!(a + b).foo();"#, r#"let res = (a + b).foo();"#);
-        check(r#"let res = $0dbg!(2 + 2) * 5"#, r#"let res = (2 + 2) * 5"#);
-        check(r#"let res = $0dbg![2 + 2] * 5"#, r#"let res = (2 + 2) * 5"#);
+    fn test_remove_dbg_cast_cast() {
+        check(r#"let res = $0dbg!(x as u32) as u32;"#, r#"let res = x as u32 as u32;"#);
     }
 
     #[test]
-    fn test_remove_dbg_method_chaining() {
-        check(r#"let res = $0dbg!(foo().bar()).baz();"#, r#"let res = foo().bar().baz();"#);
-        check(r#"let res = $0dbg!(foo.bar()).baz();"#, r#"let res = foo.bar().baz();"#);
+    fn test_remove_dbg_prefix() {
+        check(r#"let res = $0dbg!(&result).foo();"#, r#"let res = (&result).foo();"#);
+        check(r#"let res = &$0dbg!(&result);"#, r#"let res = &&result;"#);
+        check(r#"let res = $0dbg!(!result) && true;"#, r#"let res = !result && true;"#);
     }
 
     #[test]
-    fn test_remove_dbg_field_chaining() {
-        check(r#"let res = $0dbg!(foo.bar).baz;"#, r#"let res = foo.bar.baz;"#);
-    }
-
-    #[test]
-    fn test_remove_dbg_from_inside_fn() {
-        check_assist(
-            remove_dbg,
-            r#"
-fn square(x: u32) -> u32 {
-    x * x
-}
-
-fn main() {
-    let x = square(dbg$0!(5 + 10));
-    println!("{}", x);
-}"#,
-            r#"
-fn square(x: u32) -> u32 {
-    x * x
-}
-
-fn main() {
-    let x = square(5 + 10);
-    println!("{}", x);
-}"#,
-        );
-    }
-
-    #[test]
-    fn test_remove_dbg_try_expr() {
-        check(r#"let res = $0dbg!(result?).foo();"#, r#"let res = result?.foo();"#);
-    }
-
-    #[test]
-    fn test_remove_dbg_await_expr() {
+    fn test_remove_dbg_post_expr() {
         check(r#"let res = $0dbg!(fut.await).foo();"#, r#"let res = fut.await.foo();"#);
-    }
-
-    #[test]
-    fn test_remove_dbg_as_cast() {
-        check(r#"let res = $0dbg!(3 as usize).foo();"#, r#"let res = (3 as usize).foo();"#);
-    }
-
-    #[test]
-    fn test_remove_dbg_index_expr() {
+        check(r#"let res = $0dbg!(result?).foo();"#, r#"let res = result?.foo();"#);
+        check(r#"let res = $0dbg!(foo as u32).foo();"#, r#"let res = (foo as u32).foo();"#);
         check(r#"let res = $0dbg!(array[3]).foo();"#, r#"let res = array[3].foo();"#);
         check(r#"let res = $0dbg!(tuple.3).foo();"#, r#"let res = tuple.3.foo();"#);
     }
@@ -269,46 +187,6 @@ fn main() {
     fn test_remove_dbg_range_expr() {
         check(r#"let res = $0dbg!(foo..bar).foo();"#, r#"let res = (foo..bar).foo();"#);
         check(r#"let res = $0dbg!(foo..=bar).foo();"#, r#"let res = (foo..=bar).foo();"#);
-    }
-
-    #[test]
-    fn test_remove_dbg_followed_by_block() {
-        check_assist(
-            remove_dbg,
-            r#"fn foo() {
-    if $0dbg!(x || y) {}
-}"#,
-            r#"fn foo() {
-    if x || y {}
-}"#,
-        );
-        check_assist(
-            remove_dbg,
-            r#"fn foo() {
-    while let foo = $0dbg!(&x) {}
-}"#,
-            r#"fn foo() {
-    while let foo = &x {}
-}"#,
-        );
-        check_assist(
-            remove_dbg,
-            r#"fn foo() {
-    if let foo = $0dbg!(&x) {}
-}"#,
-            r#"fn foo() {
-    if let foo = &x {}
-}"#,
-        );
-        check_assist(
-            remove_dbg,
-            r#"fn foo() {
-    match $0dbg!(&x) {}
-}"#,
-            r#"fn foo() {
-    match &x {}
-}"#,
-        );
     }
 
     #[test]
@@ -353,5 +231,11 @@ fn foo() {
     };
 }"#,
         );
+    }
+
+    #[test]
+    fn test_remove_multi_dbg() {
+        check(r#"$0dbg!(0, 1)"#, r#"(0, 1)"#);
+        check(r#"$0dbg!(0, (1, 2))"#, r#"(0, (1, 2))"#);
     }
 }
