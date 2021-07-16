@@ -86,7 +86,7 @@ impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for SyncOnceCell<T> {}
 impl<T: UnwindSafe> UnwindSafe for SyncOnceCell<T> {}
 
 #[unstable(feature = "once_cell", issue = "74465")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "none")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "67792")]
 impl<T> const Default for SyncOnceCell<T> {
     fn default() -> SyncOnceCell<T> {
         SyncOnceCell::new()

@@ -599,7 +599,7 @@ impl<H> Clone for BuildHasherDefault<H> {
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "none")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "67792")]
 impl<H> const Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
         BuildHasherDefault(marker::PhantomData)

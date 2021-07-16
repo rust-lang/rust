@@ -2443,7 +2443,7 @@ impl AsRef<[u8]> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_default_impls", issue = "none")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "67792")]
 impl const Default for &str {
     /// Creates an empty str
     #[inline]
