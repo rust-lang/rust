@@ -391,7 +391,8 @@ macro_rules! array_impl_default {
     };
     {$n:expr,} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "none")]
+        impl<T> const Default for [T; $n] {
             fn default() -> [T; $n] { [] }
         }
     };

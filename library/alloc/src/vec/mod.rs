@@ -2734,7 +2734,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for Vec<T> {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "none")]
+impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
     fn default() -> Vec<T> {
         Vec::new()

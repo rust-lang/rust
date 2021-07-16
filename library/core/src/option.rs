@@ -1267,7 +1267,8 @@ impl<T: Clone> Clone for Option<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for Option<T> {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "none")]
+impl<T> const Default for Option<T> {
     /// Returns [`None`][Option::None].
     ///
     /// # Examples
