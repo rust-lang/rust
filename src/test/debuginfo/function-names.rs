@@ -1,5 +1,5 @@
 // Function names are formatted differently in old versions of GDB
-// min-gdb-version: 9.2
+// min-gdb-version: 10.1
 
 // compile-flags:-g
 
