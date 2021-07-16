@@ -168,8 +168,11 @@ unsafe fn handle_deadlock() {
 
     let context = tls::get_tlv();
     assert!(context != 0);
-    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
-    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
+    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_>>();
+    let icx: &tls::ImplicitCtxt<'_> = &*(context as *const tls::ImplicitCtxt<'_>);
+
+    // We do not need to copy the query ImplicitCtxt since this deadlock handler is not part of a
+    // normal query invocation.
 
     let session_globals = rustc_span::with_session_globals(|sg| sg as *const _);
     let session_globals = &*session_globals;

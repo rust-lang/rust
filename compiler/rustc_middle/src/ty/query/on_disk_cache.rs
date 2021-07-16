@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
@@ -462,7 +462,7 @@ impl<'sess> OnDiskCache<'sess> {
         // mapping to aid that reconstruction in the next session. While we also
         // use it to decode `DefId`s we encoded in the cache as `DefPathHashes`,
         // they're already registered during `DefId` encoding.
-        if dep_node.kind.can_reconstruct_query_key() {
+        if dep_node.can_reconstruct_query_key() {
             let hash = DefPathHash(dep_node.hash.into());
 
             // We can't simply copy the `RawDefId` from `foreign_def_path_hashes` to

@@ -16,7 +16,6 @@ pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
 use crate::dep_graph::{DepNode, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 
-use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_span::Span;
@@ -63,16 +62,13 @@ impl QueryStackFrame {
 }
 
 pub trait QueryContext: HasDepContext {
-    /// Get the query information from the TLS context.
-    fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
-
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>>;
+    fn try_collect_active_jobs(&self) -> Option<QueryMap>;
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
+    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode);
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
+    fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool;
 
     /// Load diagnostics associated to the node in the previous session.
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;
@@ -86,14 +82,4 @@ pub trait QueryContext: HasDepContext {
         dep_node_index: DepNodeIndex,
         diagnostics: ThinVec<Diagnostic>,
     );
-
-    /// Executes a job by changing the `ImplicitCtxt` to point to the
-    /// new query job while it executes. It returns the diagnostics
-    /// captured during execution and the actual result.
-    fn start_query<R>(
-        &self,
-        token: QueryJobId<Self::DepKind>,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce() -> R,
-    ) -> R;
 }

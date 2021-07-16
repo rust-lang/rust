@@ -60,7 +60,6 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 
 pub mod on_disk_cache;
@@ -252,7 +251,6 @@ macro_rules! define_callbacks {
             fn try_print_query_stack(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
-                query: Option<QueryJobId<dep_graph::DepKind>>,
                 handler: &Handler,
                 num_frames: Option<usize>,
             ) -> usize;

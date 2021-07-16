@@ -10,6 +10,8 @@
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
+extern crate rustc_query_system;
+#[macro_use]
 extern crate tracing;
 
 use rustc_data_structures::fingerprint::Fingerprint;
