@@ -297,7 +297,7 @@ where
         let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), U::size_hint);
         let lo = flo.saturating_add(blo);
 
-        if let Some(fixed_size) = <<I as Iterator>::Item as ConstSizeIterable>::size() {
+        if let Some(fixed_size) = <<I as Iterator>::Item as ConstSizeIntoIterator>::size() {
             let (lower, upper) = self.iter.size_hint();
 
             let lower = lower.saturating_mul(fixed_size).saturating_add(lo);
@@ -474,18 +474,18 @@ where
     }
 }
 
-trait ConstSizeIterable {
+trait ConstSizeIntoIterator: IntoIterator {
     fn size() -> Option<usize>;
 }
 
-impl<T> ConstSizeIterable for T {
+impl<T> ConstSizeIntoIterator for T where T: IntoIterator {
     #[inline]
     default fn size() -> Option<usize> {
         None
     }
 }
 
-impl<T, const N: usize> ConstSizeIterable for [T; N] {
+impl<T, const N: usize> ConstSizeIntoIterator for [T; N] {
     #[inline]
     fn size() -> Option<usize> {
         Some(N)
