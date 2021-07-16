@@ -1,31 +1,23 @@
-warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-78722.rs:7:12
+error[E0308]: mismatched types
+  --> $DIR/issue-78722.rs:15:20
    |
-LL | #![feature(impl_trait_in_bindings)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-
-error[E0658]: `async` blocks are not allowed in constants
-  --> $DIR/issue-78722.rs:17:20
-   |
-LL |         let f: F = async { 1 };
-   |                    ^^^^^^^^^^^
-   |
-   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
-   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
-
-error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/issue-78722.rs:17:13
-   |
-LL |         let f: F = async { 1 };
-   |             ^ constants cannot evaluate destructors
+LL | type F = impl core::future::Future<Output = u8>;
+   |          -------------------------------------- the expected opaque type
 ...
-LL |     }],
-   |     - value is dropped here
+LL |         let f: F = async { 1 };
+   |                -   ^^^^^^^^^^^ expected opaque type, found a different opaque type
+   |                |
+   |                expected due to this
+   | 
+  ::: $SRC_DIR/core/src/future/mod.rs:LL:COL
+   |
+LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
+   |                                           ------------------------------- the found opaque type
+   |
+   = note: expected opaque type `impl Future` (opaque type at <$DIR/issue-78722.rs:8:10>)
+              found opaque type `impl Future` (opaque type at <$SRC_DIR/core/src/future/mod.rs:LL:COL>)
+   = note: distinct uses of `impl Trait` result in different opaque types
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0493, E0658.
-For more information about an error, try `rustc --explain E0493`.
+For more information about this error, try `rustc --explain E0308`.

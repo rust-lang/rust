@@ -3,7 +3,6 @@
 #![feature(min_type_alias_impl_trait)]
 #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
 //[full_tait]~^ WARN incomplete
-#![feature(impl_trait_in_bindings)] //~ WARN the feature `impl_trait_in_bindings` is incomplete
 #![feature(untagged_unions)]
 
 use std::iter;

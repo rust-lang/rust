@@ -2,7 +2,7 @@ error[E0601]: `main` function not found in crate `imported_main_const_fn_item_ty
   --> $DIR/imported_main_const_fn_item_type_forbidden.rs:1:1
    |
 LL | / #![feature(imported_main)]
-LL | | #![feature(min_type_alias_impl_trait, impl_trait_in_bindings)]
+LL | | #![feature(min_type_alias_impl_trait)]
 LL | | #![allow(incomplete_features)]
 LL | |
 ...  |
@@ -12,6 +12,25 @@ LL | | use foo::BAR as main;
    |       |
    |       non-function item at `crate::main` is found
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:10:29
+   |
+LL |     type MainFn = impl Fn();
+   |                   --------- the expected opaque type
+...
+LL |     pub const BAR: MainFn = bar;
+   |                             ^^^ expected opaque type, found fn item
+   |
+   = note: expected opaque type `impl Fn<()>`
+                  found fn item `fn() {bar}`
 
-For more information about this error, try `rustc --explain E0601`.
+error: could not find defining uses
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:6:19
+   |
+LL |     type MainFn = impl Fn();
+   |                   ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0601.
+For more information about an error, try `rustc --explain E0308`.

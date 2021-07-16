@@ -455,9 +455,6 @@ declare_features! (
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
-    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (incomplete, impl_trait_in_bindings, "1.30.0", Some(63065), None),
-
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
 

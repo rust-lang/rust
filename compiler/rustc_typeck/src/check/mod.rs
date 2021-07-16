@@ -118,9 +118,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt, UserType};
 use rustc_session::config;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
+use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
-use rustc_span::{source_map::DUMMY_SP, sym};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -441,19 +441,12 @@ fn typeck_with_fallback<'tcx>(
             let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
-            let revealed_ty = fcx.instantiate_opaque_types_from_value(
-                id,
-                expected_type,
-                body.value.span,
-                Some(sym::impl_trait_in_bindings),
-            );
-
             // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor::new(&fcx, id).visit_body(body);
+            GatherLocalsVisitor::new(&fcx).visit_body(body);
 
-            fcx.check_expr_coercable_to_type(&body.value, revealed_ty, None);
+            fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
 
-            fcx.write_ty(id, revealed_ty);
+            fcx.write_ty(id, expected_type);
 
             fcx
         };
