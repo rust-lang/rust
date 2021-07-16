@@ -44,6 +44,7 @@ use rustc_span::Span;
 use rustc_target::abi::Align;
 
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::ops::ControlFlow;
 use std::{fmt, ptr, str};
@@ -132,6 +133,7 @@ pub struct ResolverOutputs {
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,
     pub main_def: Option<MainDefinition>,
+    pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 }
 
 #[derive(Clone, Copy, Debug)]

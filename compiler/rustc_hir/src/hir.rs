@@ -672,7 +672,6 @@ pub struct ModuleItems {
 pub struct Crate<'hir> {
     pub owners: IndexVec<LocalDefId, Option<OwnerNode<'hir>>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
-    pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
     /// A list of modules written out in the order in which they
     /// appear in the crate. This includes the main crate module.

@@ -1281,7 +1281,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             this.with_self_rib(Res::SelfTy(None, None), |this| {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                    let item_def_id = this.r.local_def_id(item_id).to_def_id();
+                    let item_def_id = this.r.local_def_id(item_id);
+
+                    // Register the trait definitions from here.
+                    if let Some(trait_id) = trait_id {
+                        this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
+                    }
+
+                    let item_def_id = item_def_id.to_def_id();
                     this.with_self_rib(Res::SelfTy(trait_id, Some((item_def_id, false))), |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
