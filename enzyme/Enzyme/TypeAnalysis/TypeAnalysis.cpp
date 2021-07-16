@@ -226,8 +226,8 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
           ConstantInt::get(Type::getInt32Ty(Val->getContext()), i),
       };
       auto g2 = GetElementPtrInst::Create(
-          nullptr, UndefValue::get(PointerType::getUnqual(Val->getType())),
-          vec);
+          Val->getType(),
+          UndefValue::get(PointerType::getUnqual(Val->getType())), vec);
 #if LLVM_VERSION_MAJOR > 6
       APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
@@ -273,8 +273,8 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
           ConstantInt::get(Type::getInt32Ty(Val->getContext()), i),
       };
       auto g2 = GetElementPtrInst::Create(
-          nullptr, UndefValue::get(PointerType::getUnqual(Val->getType())),
-          vec);
+          Val->getType(),
+          UndefValue::get(PointerType::getUnqual(Val->getType())), vec);
 #if LLVM_VERSION_MAJOR > 6
       APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
@@ -1188,7 +1188,8 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   auto pointerData0 = pointerAnalysis.Data0();
 
   for (auto vec : getSet(idnext, idnext.size() - 1)) {
-    auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), vec);
+    auto g2 = GetElementPtrInst::Create(gep.getSourceElementType(),
+                                        gep.getOperand(0), vec);
 #if LLVM_VERSION_MAJOR > 6
     APInt ai(DL.getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
 #else
@@ -1702,7 +1703,7 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
                        ConstantInt::get(Type::getInt64Ty(I.getContext()), i)};
       auto ud =
           UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
-      auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+      auto g2 = GetElementPtrInst::Create(I.getOperand(0)->getType(), ud, vec);
 #if LLVM_VERSION_MAJOR > 6
       APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
@@ -1738,7 +1739,8 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
             ConstantInt::get(Type::getInt64Ty(I.getContext()), mask[i])};
         auto ud =
             UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
-        auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+        auto g2 =
+            GetElementPtrInst::Create(I.getOperand(0)->getType(), ud, vec);
 #if LLVM_VERSION_MAJOR > 6
         APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
@@ -1770,7 +1772,8 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
                                           mask[i] - numFirst)};
         auto ud =
             UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
-        auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+        auto g2 =
+            GetElementPtrInst::Create(I.getOperand(0)->getType(), ud, vec);
 #if LLVM_VERSION_MAJOR > 6
         APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
@@ -1817,7 +1820,7 @@ void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
     vec.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ind));
   }
   auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
-  auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+  auto g2 = GetElementPtrInst::Create(I.getOperand(0)->getType(), ud, vec);
 #if LLVM_VERSION_MAJOR > 6
   APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
@@ -1851,7 +1854,7 @@ void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
     vec.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ind));
   }
   auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
-  auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+  auto g2 = GetElementPtrInst::Create(I.getOperand(0)->getType(), ud, vec);
 #if LLVM_VERSION_MAJOR > 6
   APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
 #else
