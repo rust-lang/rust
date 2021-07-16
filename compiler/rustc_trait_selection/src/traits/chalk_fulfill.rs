@@ -58,6 +58,9 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     obligation: obligation.clone(),
                     code: FulfillmentErrorCode::CodeAmbiguity,
                     points_at_arg_span: false,
+                    // FIXME - does Chalk have a notation of 'root obligation'?
+                    // This is just for diagnostics, so it's okay if this is wrong
+                    root_obligation: obligation.clone(),
                 })
                 .collect();
             Err(errors)
@@ -105,11 +108,14 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 ),
 
                                 Err(_err) => errors.push(FulfillmentError {
-                                    obligation,
+                                    obligation: obligation.clone(),
                                     code: FulfillmentErrorCode::CodeSelectionError(
                                         SelectionError::Unimplemented,
                                     ),
                                     points_at_arg_span: false,
+                                    // FIXME - does Chalk have a notation of 'root obligation'?
+                                    // This is just for diagnostics, so it's okay if this is wrong
+                                    root_obligation: obligation,
                                 }),
                             }
                         } else {
@@ -119,11 +125,14 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     }
 
                     Err(NoSolution) => errors.push(FulfillmentError {
-                        obligation,
+                        obligation: obligation.clone(),
                         code: FulfillmentErrorCode::CodeSelectionError(
                             SelectionError::Unimplemented,
                         ),
                         points_at_arg_span: false,
+                        // FIXME - does Chalk have a notation of 'root obligation'?
+                        // This is just for diagnostics, so it's okay if this is wrong
+                        root_obligation: obligation,
                     }),
                 }
             }

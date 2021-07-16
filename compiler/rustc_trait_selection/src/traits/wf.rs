@@ -1,6 +1,7 @@
 use crate::infer::InferCtxt;
 use crate::opaque_types::required_region_bounds;
 use crate::traits;
+use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -9,7 +10,6 @@ use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstnes
 use rustc_span::Span;
 
 use std::iter;
-use std::rc::Rc;
 /// Returns the set of obligations needed to make `arg` well-formed.
 /// If `arg` contains unresolved inference variables, this may include
 /// further WF obligations. However, if `arg` IS an unresolved
@@ -295,7 +295,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
                 let derived_cause = traits::DerivedObligationCause {
                     parent_trait_ref: parent_trait_ref.value,
-                    parent_code: Rc::new(obligation.cause.code.clone()),
+                    parent_code: Lrc::new(obligation.cause.code.clone()),
                 };
                 cause.make_mut().code =
                     traits::ObligationCauseCode::DerivedObligation(derived_cause);

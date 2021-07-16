@@ -67,8 +67,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
     {
         self.infcx
             .partially_normalize_associated_types_in(
-                DUMMY_SP,
-                hir::CRATE_HIR_ID,
+                ObligationCause::misc(DUMMY_SP, hir::CRATE_HIR_ID),
                 self.param_env,
                 value,
             )
