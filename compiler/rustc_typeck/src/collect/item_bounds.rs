@@ -45,9 +45,9 @@ fn associated_type_bounds<'tcx>(
         }
     });
 
-    let all_bounds = tcx
-        .arena
-        .alloc_from_iter(bounds.predicates(tcx, item_ty).into_iter().chain(bounds_from_parent));
+    let all_bounds = tcx.arena.alloc_from_iter(
+        bounds.predicates(tcx, item_ty, None).into_iter().chain(bounds_from_parent),
+    );
     debug!("associated_type_bounds({}) = {:?}", tcx.def_path_str(assoc_item_def_id), all_bounds);
     all_bounds
 }
@@ -73,7 +73,7 @@ fn opaque_type_bounds<'tcx>(
             SizedByDefault::Yes,
             span,
         )
-        .predicates(tcx, item_ty);
+        .predicates(tcx, item_ty, None);
 
         debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(opaque_def_id), bounds);
 

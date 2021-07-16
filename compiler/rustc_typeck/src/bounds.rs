@@ -1,6 +1,7 @@
 //! Bounds are restrictions applied to some types after they've been converted into the
 //! `ty` form from the HIR.
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::Constness;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::Span;
@@ -53,9 +54,10 @@ impl<'tcx> Bounds<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_ty: Ty<'tcx>,
+        sized_preds_map: Option<&mut FxIndexMap<Ty<'tcx>, (ty::Predicate<'tcx>, Span)>>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         // If it could be sized, and is, add the `Sized` predicate.
-        let sized_predicate = self.implicitly_sized.and_then(|span| {
+        let mut sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {
                 let trait_ref = ty::Binder::dummy(ty::TraitRef {
                     def_id: sized,
@@ -64,17 +66,24 @@ impl<'tcx> Bounds<'tcx> {
                 (trait_ref.without_const().to_predicate(tcx), span)
             })
         });
-
-        sized_predicate
-            .into_iter()
-            .chain(self.region_bounds.iter().map(|&(region_bound, span)| {
+        // Insert into a map for deferred output of `Sized` predicates, if provided.
+        if let Some(map) = sized_preds_map {
+            if let Some(pred) = sized_predicate {
+                map.insert(param_ty, pred);
+                // Don't output with the others if it's being deferred.
+                sized_predicate = None;
+            }
+        }
+        self.region_bounds
+            .iter()
+            .map(|&(region_bound, span)| {
                 (
                     region_bound
                         .map_bound(|region_bound| ty::OutlivesPredicate(param_ty, region_bound))
                         .to_predicate(tcx),
                     span,
                 )
-            }))
+            })
             .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
                 let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
                 (predicate, span)
@@ -84,6 +93,7 @@ impl<'tcx> Bounds<'tcx> {
                     .iter()
                     .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
             )
+            .chain(sized_predicate.into_iter())
             .collect()
     }
 }

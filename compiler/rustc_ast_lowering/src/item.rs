@@ -1379,58 +1379,66 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    // Get the `LocalId` of `bound_pred.bounded_ty`, but only if it's a plain type parameter.
+    fn get_def_id(&mut self, bound_pred: &WhereBoundPredicate) -> Option<LocalDefId> {
+        match bound_pred.bounded_ty.kind {
+            TyKind::Path(None, ref path) => {
+                if !(path.segments.len() == 1 && bound_pred.bound_generic_params.is_empty()) {
+                    return None;
+                }
+            }
+            _ => return None,
+        }
+        if let Some(Res::Def(DefKind::TyParam, def_id)) =
+            self.resolver.get_partial_res(bound_pred.bounded_ty.id).map(|d| d.base_res())
+        {
+            if let Some(def_id) = def_id.as_local() {
+                return Some(def_id);
+            }
+        }
+        None
+    }
+
     pub(super) fn lower_generics_mut(
         &mut self,
         generics: &Generics,
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> GenericsCtor<'hir> {
-        // Collect `?Trait` bounds in where clause and move them to parameter definitions.
-        // FIXME: this could probably be done with less rightward drift. It also looks like two
-        // control paths where `report_error` is called are the only paths that advance to after the
-        // match statement, so the error reporting could probably just be moved there.
+        // Collect `?Trait` bounds in where clause and move them to
+        // parameter definitions. Currently, the decision to add the
+        // predicate for the implicit `Sized` bound only examines the
+        // generic parameters, not the where clauses, to discover any
+        // `?Sized` bounds. (e.g., `AstConv::is_unsized`)
         let mut add_bounds: NodeMap<Vec<_>> = Default::default();
         for pred in &generics.where_clause.predicates {
-            if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
-                'next_bound: for bound in &bound_pred.bounds {
-                    if let GenericBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
-                        let report_error = |this: &mut Self| {
-                            this.diagnostic().span_err(
-                                bound_pred.bounded_ty.span,
-                                "`?Trait` bounds are only permitted at the \
-                                 point where a type parameter is declared",
-                            );
-                        };
-                        // Check if the where clause type is a plain type parameter.
-                        match bound_pred.bounded_ty.kind {
-                            TyKind::Path(None, ref path)
-                                if path.segments.len() == 1
-                                    && bound_pred.bound_generic_params.is_empty() =>
-                            {
-                                if let Some(Res::Def(DefKind::TyParam, def_id)) = self
-                                    .resolver
-                                    .get_partial_res(bound_pred.bounded_ty.id)
-                                    .map(|d| d.base_res())
-                                {
-                                    if let Some(def_id) = def_id.as_local() {
-                                        for param in &generics.params {
-                                            if let GenericParamKind::Type { .. } = param.kind {
-                                                if def_id == self.resolver.local_def_id(param.id) {
-                                                    add_bounds
-                                                        .entry(param.id)
-                                                        .or_default()
-                                                        .push(bound.clone());
-                                                    continue 'next_bound;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                report_error(self)
-                            }
-                            _ => report_error(self),
+            let bound_pred = match *pred {
+                WherePredicate::BoundPredicate(ref bound_pred) => bound_pred,
+                _ => continue,
+            };
+            'next_bound: for bound in &bound_pred.bounds {
+                if !matches!(*bound, GenericBound::Trait(_, TraitBoundModifier::Maybe)) {
+                    continue;
+                }
+                // Check if the where clause type is a plain type parameter.
+                if let Some(def_id) = self.get_def_id(bound_pred) {
+                    // Search for it in the generic type parameters.
+                    for param in &generics.params {
+                        if !matches!(param.kind, GenericParamKind::Type { .. }) {
+                            continue;
+                        }
+                        if def_id == self.resolver.local_def_id(param.id) {
+                            add_bounds.entry(param.id).or_default().push(bound.clone());
+                            continue 'next_bound;
                         }
                     }
                 }
+                // Either the `bounded_ty` is not a plain type parameter, or it's not
+                // found in the generic type parameters list.
+                self.diagnostic().span_err(
+                    bound_pred.bounded_ty.span,
+                    "`?Trait` bounds are only permitted at the \
+                    point where a type parameter is declared",
+                );
             }
         }
 
