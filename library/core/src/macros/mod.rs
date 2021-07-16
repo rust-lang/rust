@@ -127,7 +127,7 @@ macro_rules! assert_ne {
 /// ```
 /// #![feature(assert_matches)]
 ///
-/// use std::assert::assert_matches;
+/// use std::assert_matches::assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
@@ -301,7 +301,7 @@ macro_rules! debug_assert_ne {
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
-    if $crate::cfg!(debug_assertions) { $crate::assert::assert_matches!($($arg)*); }
+    if $crate::cfg!(debug_assertions) { $crate::assert_matches::assert_matches!($($arg)*); }
 }
 
 /// Returns whether the given expression matches any of the given patterns.
