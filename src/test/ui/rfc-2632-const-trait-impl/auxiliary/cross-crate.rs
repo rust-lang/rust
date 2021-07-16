@@ -1,5 +1,4 @@
 #![feature(const_trait_impl)]
-#![allow(incomplete_features)]
 
 pub trait MyTrait {
     fn func(self);

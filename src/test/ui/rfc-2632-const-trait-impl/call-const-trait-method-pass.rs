@@ -1,6 +1,5 @@
 // run-pass
 
-#![allow(incomplete_features)]
 #![feature(const_trait_impl)]
 
 struct Int(i32);

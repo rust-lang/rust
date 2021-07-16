@@ -1,5 +1,5 @@
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/const-check-fns-in-const-impl.rs:12:16
+  --> $DIR/const-check-fns-in-const-impl.rs:11:16
    |
 LL |     fn foo() { non_const() }
    |                ^^^^^^^^^^^

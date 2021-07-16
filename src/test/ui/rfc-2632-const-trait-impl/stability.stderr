@@ -1,5 +1,5 @@
 error: trait methods cannot be stable const fn
-  --> $DIR/stability.rs:14:5
+  --> $DIR/stability.rs:13:5
    |
 LL | /     fn sub(self, rhs: Self) -> Self {
 LL | |
@@ -8,7 +8,7 @@ LL | |     }
    | |_____^
 
 error: `<Int as Add>::add` is not yet stable as a const fn
-  --> $DIR/stability.rs:32:5
+  --> $DIR/stability.rs:31:5
    |
 LL |     Int(1i32) + Int(2i32)
    |     ^^^^^^^^^^^^^^^^^^^^^
