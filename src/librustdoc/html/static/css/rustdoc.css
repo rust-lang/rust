@@ -247,6 +247,9 @@ code, pre, a.test-arrow {
 pre {
 	padding: 14px;
 }
+.type-decl pre {
+	overflow-x: auto;
+}
 
 .source .content pre {
 	padding: 20px;
@@ -1631,15 +1634,18 @@ details.undocumented[open] > summary::before {
 		display: none;
 	}
 
+	/* We do NOT hide this element so that alternative device readers still have this information
+	   available. */
 	.sidebar-elems {
 		position: fixed;
 		z-index: 1;
-		left: 0;
 		top: 45px;
 		bottom: 0;
+		width: 246px;
+		/* We move the sidebar to the left by its own width so it doesn't appear. */
+		left: -246px;
 		overflow-y: auto;
 		border-right: 1px solid;
-		display: none;
 	}
 
 	.sidebar > .block.version {
@@ -1727,8 +1733,7 @@ details.undocumented[open] > summary::before {
 	}
 
 	.show-it {
-		display: block;
-		width: 246px;
+		left: 0;
 	}
 
 	.show-it > .block.items {

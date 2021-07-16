@@ -195,6 +195,21 @@ fn box_mut_2() {
     //~| NOTE: Min Capture p_foo[Deref,Deref,(0, 0)] -> UniqueImmBorrow
 }
 
+// Test that move closures can take ownership of Copy type
+fn returned_closure_owns_copy_type_data() -> impl Fn() -> i32 {
+    let x = 10;
+
+    let c = #[rustc_capture_analysis] move || x;
+    //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| First Pass analysis includes:
+    //~| NOTE: Capturing x[] -> ImmBorrow
+    //~| Min Capture analysis includes:
+    //~| NOTE: Min Capture x[] -> ByValue
+
+    c
+}
+
 fn main() {
     simple_move_closure();
     simple_ref();

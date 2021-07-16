@@ -236,9 +236,9 @@ fn test_lints_tracking_hash_different_values() {
         (String::from("d"), Level::Deny),
     ];
 
-    assert_different_hash(&v1, &v2);
-    assert_different_hash(&v1, &v3);
-    assert_different_hash(&v2, &v3);
+    assert_non_crate_hash_different(&v1, &v2);
+    assert_non_crate_hash_different(&v1, &v3);
+    assert_non_crate_hash_different(&v2, &v3);
 }
 
 #[test]
@@ -261,7 +261,21 @@ fn test_lints_tracking_hash_different_construction_order() {
     ];
 
     // The hash should be order-dependent
-    assert_different_hash(&v1, &v2);
+    assert_non_crate_hash_different(&v1, &v2);
+}
+
+#[test]
+fn test_lint_cap_hash_different() {
+    let mut v1 = Options::default();
+    let mut v2 = Options::default();
+    let v3 = Options::default();
+
+    v1.lint_cap = Some(Level::Forbid);
+    v2.lint_cap = Some(Level::Allow);
+
+    assert_non_crate_hash_different(&v1, &v2);
+    assert_non_crate_hash_different(&v1, &v3);
+    assert_non_crate_hash_different(&v2, &v3);
 }
 
 #[test]

@@ -9,26 +9,64 @@
 // cdb-command: g
 
 // cdb-command:dx static_c,d
-// cdb-check:static_c,d       [Type: core::cell::Cell<i32>]
-// cdb-check:    [...] value            [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:static_c,d       : 10 [Type: core::cell::Cell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::Cell<i32>]
 
 // cdb-command: dx static_c.value,d
-// cdb-check:static_c.value,d [Type: core::cell::UnsafeCell<i32>]
-// cdb-check:    [...] value            : 10 [Type: int]
+// cdb-check:static_c.value,d : 10 [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::UnsafeCell<i32>]
 
 // cdb-command:  dx dynamic_c,d
-// cdb-check:dynamic_c,d      [Type: core::cell::RefCell<i32>]
-// cdb-check:    [...] borrow           [Type: core::cell::Cell<isize>]
-// cdb-check:    [...] value            [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:dynamic_c,d      : 15 [Type: core::cell::RefCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefCell<i32>]
+// cdb-check:    [Borrow state]   : Unborrowed
 
 // cdb-command: dx dynamic_c.value,d
-// cdb-check:dynamic_c.value,d [Type: core::cell::UnsafeCell<i32>]
-// cdb-check:    [...] value            : 15 [Type: int]
+// cdb-check:dynamic_c.value,d : 15 [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::UnsafeCell<i32>]
 
 // cdb-command: dx b,d
-// cdb-check:b,d              [Type: core::cell::RefMut<i32>]
-// cdb-check:    [...] value            : [...] : 42 [Type: int *]
-// cdb-check:    [...] borrow           [Type: core::cell::BorrowRefMut]
+// cdb-check:b,d              : 42 [Type: core::cell::RefMut<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefMut<i32>]
+// cdb-check:    42 [Type: int]
+
+// cdb-command: g
+
+// cdb-command: dx dynamic_c,d
+// cdb-check:dynamic_c,d      : 15 [Type: core::cell::RefCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefCell<i32>]
+// cdb-check:    [Borrow state]   : Immutably borrowed
+
+// cdb-command: dx r_borrow,d
+// cdb-check:r_borrow,d       : 15 [Type: core::cell::Ref<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::Ref<i32>]
+// cdb-check:    15 [Type: int]
+
+// cdb-command: g
+
+// cdb-command: dx dynamic_c,d
+// cdb-check:dynamic_c,d      : 15 [Type: core::cell::RefCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefCell<i32>]
+// cdb-check:    [Borrow state]   : Unborrowed
+
+// cdb-command: g
+
+// cdb-command: dx dynamic_c,d
+// cdb-check:dynamic_c,d      : 15 [Type: core::cell::RefCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefCell<i32>]
+// cdb-check:    [Borrow state]   : Mutably borrowed
+
+// cdb-command: dx r_borrow_mut,d
+// cdb-check:r_borrow_mut,d   : 15 [Type: core::cell::RefMut<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefMut<i32>]
+// cdb-check:    15 [Type: int]
+
+// cdb-command: g
+
+// cdb-command: dx dynamic_c,d
+// cdb-check:dynamic_c,d      : 15 [Type: core::cell::RefCell<i32>]
+// cdb-check:    [<Raw View>]     [Type: core::cell::RefCell<i32>]
+// cdb-check:    [Borrow state]   : Unborrowed
 
 #![allow(unused_variables)]
 
@@ -44,6 +82,21 @@ fn main() {
     let dynamic_c_0 = RefCell::new(15);
     let mut b = dynamic_c_0.borrow_mut();
     *b = 42;
+
+    zzz(); // #break
+
+    // Check that `RefCell`'s borrow state visualizes correctly
+    {
+        let r_borrow = dynamic_c.borrow();
+        zzz(); // #break
+    }
+
+    zzz(); // #break
+
+    {
+        let r_borrow_mut = dynamic_c.borrow_mut();
+        zzz(); // #break
+    }
 
     zzz(); // #break
 }

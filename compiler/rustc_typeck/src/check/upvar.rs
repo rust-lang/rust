@@ -1528,20 +1528,11 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
-        mode: euv::ConsumeMode,
     ) {
         debug!(
-            "adjust_upvar_borrow_kind_for_consume(place_with_id={:?}, diag_expr_id={:?}, mode={:?})",
-            place_with_id, diag_expr_id, mode
+            "adjust_upvar_borrow_kind_for_consume(place_with_id={:?}, diag_expr_id={:?})",
+            place_with_id, diag_expr_id
         );
-
-        // Copy type being used as ByValue are equivalent to ImmBorrow and don't require any
-        // escalation.
-        match mode {
-            euv::ConsumeMode::Copy => return,
-            euv::ConsumeMode::Move => {}
-        };
-
         let tcx = self.fcx.tcx;
         let upvar_id = if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             upvar_id
@@ -1716,22 +1707,14 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn consume(
-        &mut self,
-        place_with_id: &PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId,
-        mode: euv::ConsumeMode,
-    ) {
-        debug!(
-            "consume(place_with_id={:?}, diag_expr_id={:?}, mode={:?})",
-            place_with_id, diag_expr_id, mode
-        );
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+        debug!("consume(place_with_id={:?}, diag_expr_id={:?})", place_with_id, diag_expr_id);
 
         if !self.capture_information.contains_key(&place_with_id.place) {
             self.init_capture_info_for_place(&place_with_id, diag_expr_id);
         }
 
-        self.adjust_upvar_borrow_kind_for_consume(&place_with_id, diag_expr_id, mode);
+        self.adjust_upvar_borrow_kind_for_consume(&place_with_id, diag_expr_id);
     }
 
     fn borrow(

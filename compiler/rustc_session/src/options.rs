@@ -133,9 +133,9 @@ top_level_options!(
         /// can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
-        lint_opts: Vec<(String, lint::Level)> [TRACKED],
-        lint_cap: Option<lint::Level> [TRACKED],
-        force_warns: Vec<String> [TRACKED],
+        lint_opts: Vec<(String, lint::Level)> [TRACKED_NO_CRATE_HASH],
+        lint_cap: Option<lint::Level> [TRACKED_NO_CRATE_HASH],
+        force_warns: Vec<String> [TRACKED_NO_CRATE_HASH],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
