@@ -60,7 +60,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter, ptr};
 use tracing::debug;
@@ -1030,6 +1030,7 @@ pub struct Resolver<'a> {
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
 
     main_def: Option<MainDefinition>,
+    trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1396,6 +1397,7 @@ impl<'a> Resolver<'a> {
             legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),
             main_def: Default::default(),
+            trait_impls: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1453,6 +1455,7 @@ impl<'a> Resolver<'a> {
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
             main_def,
+            trait_impls: self.trait_impls,
         }
     }
 
@@ -1472,6 +1475,7 @@ impl<'a> Resolver<'a> {
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
             main_def: self.main_def.clone(),
+            trait_impls: self.trait_impls.clone(),
         }
     }
 

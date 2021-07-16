@@ -103,8 +103,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     owners: BTreeMap<LocalDefId, hir::OwnerNode<'hir>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
 
-    trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
-
     modules: BTreeMap<LocalDefId, hir::ModuleItems>,
 
     generator_kind: Option<hir::GeneratorKind>,
@@ -325,7 +323,6 @@ pub fn lower_crate<'a, 'hir>(
         arena,
         owners: BTreeMap::new(),
         bodies: BTreeMap::new(),
-        trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         attrs: BTreeMap::default(),
         catch_scope: None,
@@ -519,7 +516,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let krate = hir::Crate {
             owners,
             bodies: self.bodies,
-            trait_impls: self.trait_impls,
             modules: self.modules,
             proc_macros,
             trait_map,

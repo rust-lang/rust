@@ -195,7 +195,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 }
 
 pub fn check_coherence(tcx: TyCtxt<'_>) {
-    for &trait_def_id in tcx.hir().krate().trait_impls.keys() {
+    for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
         tcx.ensure().coherent_trait(trait_def_id);
     }
 
