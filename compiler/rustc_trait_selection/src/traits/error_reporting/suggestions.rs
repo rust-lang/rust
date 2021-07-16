@@ -2309,6 +2309,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.help("add `#![feature(trivial_bounds)]` to the crate attributes to enable");
                 }
             }
+            ObligationCauseCode::TraitUpcastingObligation => {
+                err.help("see issue #65991");
+                if tcx.sess.opts.unstable_features.is_nightly_build() {
+                    err.help(
+                        "add `#![feature(trait_upcasting)]` to the crate attributes to enable",
+                    );
+                }
+            }
         }
     }
 

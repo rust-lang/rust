@@ -326,6 +326,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
     OpaqueType,
+
+    /// #[feature(trait_upcasting)] is not enabled
+    TraitUpcastingObligation,
 }
 
 impl ObligationCauseCode<'_> {

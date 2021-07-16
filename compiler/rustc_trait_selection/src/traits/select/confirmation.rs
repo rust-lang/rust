@@ -33,7 +33,9 @@ use crate::traits::{
     ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
     ImplSourceUserDefinedData,
 };
-use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
+use crate::traits::{
+    ObjectCastObligation, PredicateObligation, TraitObligation, TraitUpcastingObligation,
+};
 use crate::traits::{Obligation, ObligationCause};
 use crate::traits::{SelectionError, Unimplemented};
 
@@ -703,7 +705,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
-                // See `assemble_candidates_for_unsizing` for more info.
+                // Upcast coercions permit several things:
+                //
+                // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
+                // 2. Tightening the region bound, e.g., `Foo + 'a` to `Foo + 'b` if `'a: 'b`
+                // 3. Tightening trait to its super traits, eg. `Foo` to `Bar` if `Foo: Bar`
+                //
+                // Note that neither of the first two of these changes requires any
+                // change at runtime. The third needs to change pointer metadata at runtime.
+                //
+                // We always perform upcasting coercions when we can because of reason
+                // #2 (region bounds).
+
+                // We already checked the compatiblity of auto traits within `assemble_candidates_for_unsizing`.
+
                 let iter = data_a
                     .principal()
                     .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
@@ -722,7 +737,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
 
-                // Require that the traits involved in this upcast are **equal**;
+                // Require that the traits involved in this upcast are `sup`;
                 // only the **lifetime bound** is changed.
                 let InferOk { obligations, .. } = self
                     .infcx
@@ -744,6 +759,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.predicate.rebind(outlives).to_predicate(tcx),
                 ));
+
+                if !tcx.features().trait_upcasting {
+                    // to keep old behavior, we do this a second time, this time we use `eq`.
+
+                    // we also totally ignore auto traits, since they're already covered in the prior check.
+                    let iter = data_a
+                        .principal()
+                        .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
+                        .into_iter();
+                    let existential_predicates = tcx.mk_poly_existential_predicates(iter);
+                    let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
+
+                    let cause = ObligationCause::new(
+                        obligation.cause.span,
+                        obligation.cause.body_id,
+                        TraitUpcastingObligation,
+                    );
+
+                    // Require that the traits involved in this upcast are `eq` this time.
+                    let InferOk { obligations, .. } = self
+                        .infcx
+                        .at(&cause, obligation.param_env)
+                        .eq(target, source_trait)
+                        .map_err(|_| Unimplemented)?;
+                    nested.extend(obligations);
+                }
             }
 
             // `T` -> `Trait`

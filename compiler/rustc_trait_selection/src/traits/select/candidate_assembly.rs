@@ -693,22 +693,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let may_apply = match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
-                // Upcasts permit two things:
-                //
-                // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
-                // 2. Tightening the region bound, e.g., `Foo + 'a` to `Foo + 'b` if `'a: 'b`
-                //
-                // Note that neither of these changes requires any
-                // change at runtime. Eventually this will be
-                // generalized.
-                //
-                // We always upcast when we can because of reason
-                // #2 (region bounds).
-                data_a.principal_def_id() == data_b.principal_def_id()
-                    && data_b
-                        .auto_traits()
-                        // All of a's auto traits need to be in b's auto traits.
-                        .all(|b| data_a.auto_traits().any(|a| a == b))
+                // See `confirm_builtin_unsize_candidate` for more info.
+                let auto_traits_compatible = data_b
+                    .auto_traits()
+                    // All of a's auto traits need to be in b's auto traits.
+                    .all(|b| data_a.auto_traits().any(|a| a == b));
+                auto_traits_compatible
             }
 
             // `T` -> `Trait`
