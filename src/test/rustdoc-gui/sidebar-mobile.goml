@@ -8,3 +8,13 @@ assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})
 // Opening the sidebar menu.
 click: ".sidebar-menu"
 assert-css: (".sidebar-elems", {"display": "block", "left": "0px"})
+// Closing the sidebar menu.
+click: ".sidebar-menu"
+assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})
+// Force the sidebar open by focusing a link inside it.
+// This makes it easier for keyboard users to get to it.
+focus: ".sidebar-title"
+assert-css: (".sidebar-elems", {"display": "block", "left": "0px"})
+// When we tab out of the sidebar, close it.
+focus: ".search-input"
+assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})

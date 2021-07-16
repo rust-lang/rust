@@ -1732,7 +1732,8 @@ details.undocumented[open] > summary::before {
 		width: calc(100% + 30px);
 	}
 
-	.show-it {
+	.show-it, .sidebar-elems:focus-within {
+		z-index:  2;
 		left: 0;
 	}
 
