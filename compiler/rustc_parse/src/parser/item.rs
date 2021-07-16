@@ -26,8 +26,7 @@ impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
         let (attrs, items, span) = self.parse_mod(&token::Eof)?;
-        let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
-        Ok(ast::Crate { attrs, items, span, proc_macros })
+        Ok(ast::Crate { attrs, items, span })
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.

@@ -13,7 +13,6 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
-use std::cell::RefCell;
 
 struct ProcMacroDerive {
     id: NodeId,
@@ -90,7 +89,7 @@ pub fn inject(
         return krate;
     }
 
-    let decls = mk_decls(&mut krate, &mut cx, &macros);
+    let decls = mk_decls(&mut cx, &macros);
     krate.items.push(decls);
 
     krate
@@ -289,15 +288,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
-fn mk_decls(
-    ast_krate: &mut ast::Crate,
-    cx: &mut ExtCtxt<'_>,
-    macros: &[ProcMacro],
-) -> P<ast::Item> {
-    // We're the ones filling in this Vec,
-    // so it should be empty to start with
-    assert!(ast_krate.proc_macros.is_empty());
-
+fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,
@@ -316,26 +307,25 @@ fn mk_decls(
     let attr = Ident::new(sym::attr, span);
     let bang = Ident::new(sym::bang, span);
 
-    let krate_ref = RefCell::new(ast_krate);
-
-    // We add NodeIds to 'krate.proc_macros' in the order
+    // We add NodeIds to 'resolver.proc_macros' in the order
     // that we generate expressions. The position of each NodeId
     // in the 'proc_macros' Vec corresponds to its position
     // in the static array that will be generated
     let decls = {
-        let local_path =
-            |sp: Span, name| cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]));
-        let proc_macro_ty_method_path = |method| {
+        let local_path = |cx: &ExtCtxt<'_>, sp: Span, name| {
+            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]))
+        };
+        let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
             cx.expr_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty, method]))
         };
         macros
             .iter()
             .map(|m| match m {
                 ProcMacro::Derive(cd) => {
-                    krate_ref.borrow_mut().proc_macros.push(cd.id);
+                    cx.resolver.declare_proc_macro(cd.id);
                     cx.expr_call(
                         span,
-                        proc_macro_ty_method_path(custom_derive),
+                        proc_macro_ty_method_path(cx, custom_derive),
                         vec![
                             cx.expr_str(cd.span, cd.trait_name),
                             cx.expr_vec_slice(
@@ -345,12 +335,12 @@ fn mk_decls(
                                     .map(|&s| cx.expr_str(cd.span, s))
                                     .collect::<Vec<_>>(),
                             ),
-                            local_path(cd.span, cd.function_name),
+                            local_path(cx, cd.span, cd.function_name),
                         ],
                     )
                 }
                 ProcMacro::Def(ca) => {
-                    krate_ref.borrow_mut().proc_macros.push(ca.id);
+                    cx.resolver.declare_proc_macro(ca.id);
                     let ident = match ca.def_type {
                         ProcMacroDefType::Attr => attr,
                         ProcMacroDefType::Bang => bang,
@@ -358,10 +348,10 @@ fn mk_decls(
 
                     cx.expr_call(
                         span,
-                        proc_macro_ty_method_path(ident),
+                        proc_macro_ty_method_path(cx, ident),
                         vec![
                             cx.expr_str(ca.span, ca.function_name.name),
-                            local_path(ca.span, ca.function_name),
+                            local_path(cx, ca.span, ca.function_name),
                         ],
                     )
                 }

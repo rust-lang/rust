@@ -466,6 +466,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
         self.crate_loader.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.session)
     }
+
+    fn declare_proc_macro(&mut self, id: NodeId) {
+        self.proc_macros.push(id)
+    }
 }
 
 impl<'a> Resolver<'a> {

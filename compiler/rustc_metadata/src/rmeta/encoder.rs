@@ -454,7 +454,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let table = self.tcx.resolutions(()).definitions.def_path_table();
         if self.is_proc_macro {
             for def_index in std::iter::once(CRATE_DEF_INDEX)
-                .chain(self.tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index))
+                .chain(self.tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index))
             {
                 let def_key = self.lazy(table.def_key(def_index));
                 let def_path_hash = self.lazy(table.def_path_hash(def_index));
@@ -1630,7 +1630,8 @@ impl EncodeContext<'a, 'tcx> {
 
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).copied();
-            let macros = self.lazy(hir.krate().proc_macros.iter().map(|p| p.owner.local_def_index));
+            let macros =
+                self.lazy(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
             for (i, span) in spans.into_iter().enumerate() {
                 let span = self.lazy(span);
@@ -1649,13 +1650,14 @@ impl EncodeContext<'a, 'tcx> {
             // Normally, this information is encoded when we walk the items
             // defined in this crate. However, we skip doing that for proc-macro crates,
             // so we manually encode just the information that we need
-            for proc_macro in &hir.krate().proc_macros {
-                let id = proc_macro.owner.local_def_index;
-                let mut name = hir.name(*proc_macro);
-                let span = hir.span(*proc_macro);
+            for &proc_macro in &tcx.resolutions(()).proc_macros {
+                let id = proc_macro;
+                let proc_macro = hir.local_def_id_to_hir_id(proc_macro);
+                let mut name = hir.name(proc_macro);
+                let span = hir.span(proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
-                let attrs = hir.attrs(*proc_macro);
+                let attrs = hir.attrs(proc_macro);
                 let macro_kind = if tcx.sess.contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
                 } else if tcx.sess.contains_name(attrs, sym::proc_macro_attribute) {
@@ -1673,10 +1675,10 @@ impl EncodeContext<'a, 'tcx> {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
 
-                let mut def_key = self.tcx.hir().def_key(proc_macro.owner);
+                let mut def_key = self.tcx.hir().def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
-                let def_id = DefId::local(id);
+                let def_id = id.to_def_id();
                 record!(self.tables.def_kind[def_id] <- DefKind::Macro(macro_kind));
                 record!(self.tables.kind[def_id] <- EntryKind::ProcMacro(macro_kind));
                 record!(self.tables.attributes[def_id] <- attrs);
