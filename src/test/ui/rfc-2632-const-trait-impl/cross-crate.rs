@@ -1,6 +1,5 @@
 // revisions: stock gated
 #![cfg_attr(gated, feature(const_trait_impl))]
-#![allow(incomplete_features)]
 
 // aux-build: cross-crate.rs
 extern crate cross_crate;

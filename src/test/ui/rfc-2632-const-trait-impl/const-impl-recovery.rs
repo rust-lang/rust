@@ -1,5 +1,4 @@
 #![feature(const_trait_impl)]
-#![allow(incomplete_features)]
 
 trait Foo {}
 

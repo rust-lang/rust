@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `std::ops::Add` for type `i32`
-  --> $DIR/const-and-non-const-impl.rs:6:1
+  --> $DIR/const-and-non-const-impl.rs:5:1
    |
 LL | impl const std::ops::Add for i32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | impl const std::ops::Add for i32 {
            - impl Add for i32;
 
 error[E0119]: conflicting implementations of trait `std::ops::Add` for type `Int`
-  --> $DIR/const-and-non-const-impl.rs:24:1
+  --> $DIR/const-and-non-const-impl.rs:23:1
    |
 LL | impl std::ops::Add for Int {
    | -------------------------- first implementation here
@@ -17,7 +17,7 @@ LL | impl const std::ops::Add for Int {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Int`
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/const-and-non-const-impl.rs:6:1
+  --> $DIR/const-and-non-const-impl.rs:5:1
    |
 LL | impl const std::ops::Add for i32 {
    | ^^^^^^^^^^^-------------^^^^^---

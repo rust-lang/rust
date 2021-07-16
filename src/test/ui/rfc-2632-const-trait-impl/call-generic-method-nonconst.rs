@@ -2,7 +2,6 @@
 // ignore-test
 
 #![feature(const_trait_impl)]
-#![allow(incomplete_features)]
 
 struct S;
 

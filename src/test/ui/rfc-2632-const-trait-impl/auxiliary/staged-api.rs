@@ -1,5 +1,4 @@
 #![feature(const_trait_impl)]
-#![allow(incomplete_features)]
 
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
