@@ -129,7 +129,23 @@ fn test_trusted_len_flatten() {
     let iter = array::IntoIter::new([[(); usize::MAX]; 2]).flatten();
     assert_eq!(iter.size_hint(), (usize::MAX, None));
 
+    let mut a = [(); 10];
+    let mut b = [(); 10];
+
+    let iter = array::IntoIter::new([&mut a, &mut b]).flatten();
+    assert_trusted_len(&iter);
+    assert_eq!(iter.size_hint(), (20, Some(20)));
+    core::mem::drop(iter);
+
+    let iter = array::IntoIter::new([&a, &b]).flatten();
+    assert_trusted_len(&iter);
+    assert_eq!(iter.size_hint(), (20, Some(20)));
+
     let iter = [(), (), ()].iter().flat_map(|_| [(); 1000]);
     assert_trusted_len(&iter);
     assert_eq!(iter.size_hint(), (3000, Some(3000)));
+
+    let iter = [(), ()].iter().flat_map(|_| &a);
+    assert_trusted_len(&iter);
+    assert_eq!(iter.size_hint(), (20, Some(20)));
 }

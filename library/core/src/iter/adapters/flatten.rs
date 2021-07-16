@@ -122,6 +122,22 @@ where
 {
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T, I, F, const N: usize> TrustedLen for FlatMap<I, &'a [T; N], F>
+where
+    I: TrustedLen,
+    F: FnMut(I::Item) -> &'a [T; N],
+{
+}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T, I, F, const N: usize> TrustedLen for FlatMap<I, &'a mut [T; N], F>
+where
+    I: TrustedLen,
+    F: FnMut(I::Item) -> &'a mut [T; N],
+{
+}
+
 /// An iterator that flattens one level of nesting in an iterator of things
 /// that can be turned into iterators.
 ///
@@ -239,8 +255,10 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, I, const N: usize> TrustedLen for Flatten<I> where
-    I: Iterator<Item = [T; N]> + TrustedLen
+unsafe impl<I> TrustedLen for Flatten<I>
+where
+    I: TrustedLen,
+    <I as Iterator>::Item: TrustedConstSize,
 {
 }
 
@@ -475,10 +493,14 @@ where
 }
 
 trait ConstSizeIntoIterator: IntoIterator {
+    // FIXME(#31844): convert to an associated const once specialization supports that
     fn size() -> Option<usize>;
 }
 
-impl<T> ConstSizeIntoIterator for T where T: IntoIterator {
+impl<T> ConstSizeIntoIterator for T
+where
+    T: IntoIterator,
+{
     #[inline]
     default fn size() -> Option<usize> {
         None
@@ -491,3 +513,30 @@ impl<T, const N: usize> ConstSizeIntoIterator for [T; N] {
         Some(N)
     }
 }
+
+impl<T, const N: usize> ConstSizeIntoIterator for &[T; N] {
+    #[inline]
+    fn size() -> Option<usize> {
+        Some(N)
+    }
+}
+
+impl<T, const N: usize> ConstSizeIntoIterator for &mut [T; N] {
+    #[inline]
+    fn size() -> Option<usize> {
+        Some(N)
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "std_internals", issue = "none")]
+// FIXME(#20400): Instead of this helper trait there should be multiple impl TrustedLen for Flatten<>
+//   blocks with different bounds on Iterator::Item but the compiler erroneously considers them overlapping
+pub unsafe trait TrustedConstSize: IntoIterator {}
+
+#[unstable(feature = "std_internals", issue = "none")]
+unsafe impl<T, const N: usize> TrustedConstSize for [T; N] {}
+#[unstable(feature = "std_internals", issue = "none")]
+unsafe impl<T, const N: usize> TrustedConstSize for &'_ [T; N] {}
+#[unstable(feature = "std_internals", issue = "none")]
+unsafe impl<T, const N: usize> TrustedConstSize for &'_ mut [T; N] {}
