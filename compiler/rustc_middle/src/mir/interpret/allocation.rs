@@ -285,6 +285,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this memory.
     pub fn get_bytes_mut_ptr(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> *mut [u8] {
         self.mark_init(range, true);
+        // This also clears relocations that just overlap with the written range. So writing to some
+        // byte can de-initialize its neighbors! See
+        // <https://github.com/rust-lang/rust/issues/87184> for details.
         self.clear_relocations(cx, range);
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
@@ -327,7 +330,11 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         range: AllocRange,
     ) -> AllocResult<ScalarMaybeUninit<Tag>> {
-        // `get_bytes_unchecked` tests relocation edges.
+        // `get_bytes_with_uninit_and_ptr` tests relocation edges.
+        // We deliberately error when loading data that partially has provenance, or partially
+        // initialized data (that's the check below), into a scalar. The LLVM semantics of this are
+        // unclear so we are conservative. See <https://github.com/rust-lang/rust/issues/69488> for
+        // further discussion.
         let bytes = self.get_bytes_with_uninit_and_ptr(cx, range)?;
         // Uninit check happens *after* we established that the alignment is correct.
         // We must not return `Ok()` for unaligned pointers!
