@@ -252,12 +252,16 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             | PatKind::Path(..)
                             | PatKind::Struct(..)
                             | PatKind::Tuple(..) => {
-                                // If the PatKind is a TupleStruct, Struct or Tuple then we want to check
+                                // If the PatKind is a TupleStruct, Path, Struct or Tuple then we want to check
                                 // whether the Variant is a MultiVariant or a SingleVariant. We only want
                                 // to borrow discr if it is a MultiVariant.
                                 // If it is a SingleVariant and creates a binding we will handle that when
                                 // this callback gets called again.
-                                if let ty::Adt(def, _) = place.place.base_ty.kind() {
+
+                                // Get the type of the Place after all projections have been applied
+                                let place_ty = place.place.ty();
+
+                                if let ty::Adt(def, _) = place_ty.kind() {
                                     if def.variants.len() > 1 {
                                         needs_to_be_read = true;
                                     }
