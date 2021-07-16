@@ -674,12 +674,6 @@ pub struct Crate<'hir> {
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
-    /// A list of the body ids written out in the order in which they
-    /// appear in the crate. If you're going to process all the bodies
-    /// in the crate, you should iterate over this list rather than the keys
-    /// of bodies.
-    pub body_ids: Vec<BodyId>,
-
     /// A list of modules written out in the order in which they
     /// appear in the crate. This includes the main crate module.
     pub modules: BTreeMap<LocalDefId, ModuleItems>,

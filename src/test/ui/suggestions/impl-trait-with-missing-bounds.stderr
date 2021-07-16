@@ -1,21 +1,4 @@
 error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
-  --> $DIR/impl-trait-with-missing-bounds.rs:6:13
-   |
-LL |         qux(constraint);
-   |             ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   |
-   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
-note: required by a bound in `qux`
-  --> $DIR/impl-trait-with-missing-bounds.rs:50:16
-   |
-LL | fn qux(_: impl std::fmt::Debug) {}
-   |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
-help: introduce a type parameter with a trait bound instead of using `impl Trait`
-   |
-LL | fn foo<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
-   |       +++++++++++++              ~  ++++++++++++++++++++++++++++++++++
-
-error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:14:13
    |
 LL |         qux(constraint);
@@ -82,6 +65,23 @@ help: introduce a type parameter with a trait bound instead of using `impl Trait
    |
 LL | fn bak<I: Iterator + std::fmt::Debug>(constraints: I) where <I as Iterator>::Item: Debug {
    |       +++++++++++++++++++++++++++++++              ~  ++++++++++++++++++++++++++++++++++
+
+error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
+  --> $DIR/impl-trait-with-missing-bounds.rs:6:13
+   |
+LL |         qux(constraint);
+   |             ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
+note: required by a bound in `qux`
+  --> $DIR/impl-trait-with-missing-bounds.rs:50:16
+   |
+LL | fn qux(_: impl std::fmt::Debug) {}
+   |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
+help: introduce a type parameter with a trait bound instead of using `impl Trait`
+   |
+LL | fn foo<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
+   |       +++++++++++++              ~  ++++++++++++++++++++++++++++++++++
 
 error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:45:13

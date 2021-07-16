@@ -1677,16 +1677,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + Captures<'tcx> + 'tcx {
-        self.hir()
-            .krate()
-            .body_ids
-            .iter()
-            .map(move |&body_id| self.hir().body_owner_def_id(body_id))
+        self.hir().krate().bodies.keys().map(move |&body_id| self.hir().body_owner_def_id(body_id))
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + sync::Sync + sync::Send>(self, f: F) {
-        par_iter(&self.hir().krate().body_ids)
-            .for_each(|&body_id| f(self.hir().body_owner_def_id(body_id)));
+        par_iter(&self.hir().krate().bodies)
+            .for_each(|(&body_id, _)| f(self.hir().body_owner_def_id(body_id)));
     }
 
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
