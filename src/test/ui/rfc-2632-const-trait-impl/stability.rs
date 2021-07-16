@@ -1,4 +1,3 @@
-#![allow(incomplete_features)]
 #![feature(allow_internal_unstable)]
 #![feature(const_add)]
 #![feature(const_trait_impl)]

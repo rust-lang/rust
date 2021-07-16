@@ -534,7 +534,7 @@ declare_features! (
     (active, bindings_after_at, "1.41.0", Some(65490), None),
 
     /// Allows `impl const Trait for T` syntax.
-    (incomplete, const_trait_impl, "1.42.0", Some(67792), None),
+    (active, const_trait_impl, "1.42.0", Some(67792), None),
 
     /// Allows `T: ?const Trait` syntax in bounds.
     (incomplete, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
