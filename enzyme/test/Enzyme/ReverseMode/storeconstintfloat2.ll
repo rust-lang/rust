@@ -13,7 +13,7 @@ declare noalias i8* @malloc(i64)
 ; Function Attrs: nounwind uwtable
 define dso_local double @_Z6foobard(double %t) {
 entry:
-  %malloccall = tail call i8* @malloc(i64 8) #4
+  %malloccall = tail call i8* @malloc(i64 8)
   %x = bitcast i8* %malloccall to double*
   %0 = bitcast i8* %malloccall to i64*
   ; this is storing double 1.0, but represented as an integer
@@ -59,19 +59,34 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %while.body.i.i.i
 
 ; CHECK: while.body.i.i.i:
-; CHECK-NEXT:   %[[phiload:.+]] = phi double* [ null, %entry ], [ %[[loadi1_realloccast:.+]], %while.body.i.i.i ]
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %while.body.i.i.i ], [ 0, %entry ]
-; CHECK-NEXT:   %load.i1 = phi double [ %x.promoted, %entry ], [ %add10.i.i.i, %while.body.i.i.i ]
+; CHECK-NEXT:   %[[phiload:.+]] = phi double* [ null, %entry ], [ %[[loadi1_realloccast:.+]], %[[mergeblk:.+]] ]
+; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %[[mergeblk]] ], [ 0, %entry ]
+; CHECK-NEXT:   %load.i1 = phi double [ %x.promoted, %entry ], [ %add10.i.i.i, %[[mergeblk]] ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %[[prevc:.+]] = bitcast double* %[[phiload]] to i8*
-; CHECK-NEXT:   %[[shl:.+]] = mul nuw nsw i64 8, %iv.next
-; CHECK-NEXT:   %[[loadi1_realloccache:.+]] = call i8* @realloc(i8* %[[prevc]], i64 %[[shl]])
-; CHECK-NEXT:   %[[loadi1_realloccast]] = bitcast i8* %[[loadi1_realloccache]] to double*
+
+; CHECK-NEXT:   %[[phibc:.+]] = bitcast double* %[[phiload]] to i8*
+; CHECK-NEXT:   %[[nexttrunc0:.+]] = and i64 %iv.next, 1
+; CHECK-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0
+; CHECK-NEXT:   %[[popcnt:.+]] = call i64 @llvm.ctpop.i64(i64 %iv.next)
+; CHECK-NEXT:   %[[le2:.+]] = icmp ult i64 %[[popcnt:.+]], 3
+; CHECK-NEXT:   %[[shouldgrow:.+]] = and i1 %[[le2]], %[[nexttrunc]]
+; CHECK-NEXT:   br i1 %[[shouldgrow]], label %grow.i, label %[[mergeblk]]
+
+; CHECK: grow.i:                                           ; preds = %while.body.i.i.i
+; CHECK-NEXT:   %[[ctlz:.+]] = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true)
+; CHECK-NEXT:   %[[maxbit:.+]] = sub nuw nsw i64 64, %[[ctlz]]
+; CHECK-NEXT:   %[[numbytes:.+]] = shl i64 8, %[[maxbit]]
+; CHECK-NEXT:   %[[growalloc:.+]] = call i8* @realloc(i8* %[[phibc]], i64 %[[numbytes]])
+; CHECK-NEXT:   br label %[[mergeblk]]
+
+; CHECK: [[mergeblk]]:
+; CHECK-NEXT:   %[[phiptr:.+]] = phi i8* [ %[[growalloc]], %grow.i ], [ %[[phibc]], %while.body.i.i.i ]
+; CHECK-NEXT:   %[[loadi1_realloccast:.+]] = bitcast i8* %[[phiptr]] to double*
 ; CHECK-NEXT:   %[[tiv:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %[[tostore:.+]] = fmul fast double %load.i1, 0xBFF3333333333332
 ; CHECK-NEXT:   %[[storeplace:.+]] = getelementptr inbounds double, double* %[[loadi1_realloccast]], i64 %iv
 ; CHECK-NEXT:   store double %[[tostore]], double* %[[storeplace]], align 8, !invariant.group !0
-; CHECK-NEXT:   %reass.mul325.i = fmul fast double %4, %div
+; CHECK-NEXT:   %reass.mul325.i = fmul fast double %[[tostore]], %div
 ; CHECK-NEXT:   %add10.i.i.i = fadd fast double %reass.mul325.i, %load.i1
 ; CHECK-NEXT:   %inc.i.i.i = add nuw nsw i32 %[[tiv]], 1
 ; CHECK-NEXT:   %conv8.i.i.i = sitofp i32 %inc.i.i.i to double
@@ -94,16 +109,16 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[a8:.+]] = load double, double* %[[xipc]], align 8
 ; CHECK-NEXT:   %[[a9:.+]] = fadd fast double %[[a8]], %[[a17:.+]]
 ; CHECK-NEXT:   store double %[[a9]], double* %[[xipc]], align 8
-; CHECK-NEXT:   %m0diffet = fmul fast double %13, 1.000000e-02
+; CHECK-NEXT:   %m0diffet = fmul fast double %[[a13:.+]], 1.000000e-02
 ; CHECK-NEXT:   store i64 0, i64* %[[ipc]], align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   %[[a10:.+]] = insertvalue { double } undef, double %m0diffet, 0
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[phiptr]])
 ; CHECK-NEXT:   ret { double } %[[a10]]
 
 ; CHECK: invertwhile.body.i.i.i:
-; CHECK-NEXT:   %"div'de.0" = phi double [ 0.000000e+00, %loopexit ], [ %[[a13:.+]], %incinvertwhile.body.i.i.i ]
+; CHECK-NEXT:   %"div'de.0" = phi double [ 0.000000e+00, %loopexit ], [ %[[a13]], %incinvertwhile.body.i.i.i ]
 ; CHECK-NEXT:   %"x.promoted'de.0" = phi double [ 0.000000e+00, %loopexit ], [ %[[a17]], %incinvertwhile.body.i.i.i ]
 ; CHECK-NEXT:   %"add10.i.i.i'de.0" = phi double [ %[[a7:.+]], %loopexit ], [ %[[p14:.+]], %incinvertwhile.body.i.i.i ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %loopexit ], [ %[[a18:.+]], %incinvertwhile.body.i.i.i ]
@@ -118,7 +133,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[p14]] = select{{( fast)?}} i1 %[[a15]], double 0.000000e+00, double %[[a14]]
 ; CHECK-NEXT:   %[[a16:.+]] = fadd fast double %"x.promoted'de.0", %[[a14]]
 ; CHECK-NEXT:   %[[a17]] = select{{( fast)?}} i1 %[[a15]], double %[[a16]], double %"x.promoted'de.0"
-; CHECK-NEXT:   br i1 %15, label %invertentry, label %incinvertwhile.body.i.i.i
+; CHECK-NEXT:   br i1 %[[a15]], label %invertentry, label %incinvertwhile.body.i.i.i
 
 ; CHECK: incinvertwhile.body.i.i.i:
 ; CHECK-NEXT:   %[[a18]] = add nsw i64 %"iv'ac.0", -1

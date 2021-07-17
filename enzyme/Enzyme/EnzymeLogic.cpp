@@ -2068,6 +2068,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       user->setCalledFunction(NewF);
     }
   }
+  PPC.AlwaysInline(gutils->newFunc);
   auto Arch = llvm::Triple(NewF->getParent()->getTargetTriple()).getArch();
   if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
     PPC.ReplaceReallocs(NewF, /*mem2reg*/ true);
@@ -3210,6 +3211,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     PreservedAnalyses PA;
     PPC.FAM.invalidate(*gutils->newFunc, PA);
   }
+  PPC.AlwaysInline(gutils->newFunc);
   if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
     PPC.ReplaceReallocs(gutils->newFunc, /*mem2reg*/ true);
   if (PostOpt)

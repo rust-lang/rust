@@ -71,6 +71,7 @@ public:
                            llvm::Type *additionalArg = nullptr);
 
   void ReplaceReallocs(llvm::Function *NewF, bool mem2reg = false);
+  void AlwaysInline(llvm::Function *NewF);
   void optimizeIntermediate(llvm::Function *F);
 
   void clear();

@@ -695,8 +695,6 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
   }
 
   Type *BPTy = Type::getInt8PtrTy(T->getContext());
-  auto realloc = newFunc->getParent()->getOrInsertFunction(
-      "realloc", BPTy, BPTy, Type::getInt64Ty(T->getContext()));
 
   Value *storeInto = alloc;
 
@@ -799,32 +797,31 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
         IRBuilder<> build(containedloops.back().first.incvar->getNextNode());
         Value *allocation = build.CreateLoad(storeInto);
-        Value *realloc_size = nullptr;
-        if (isa<ConstantInt>(sublimits[i].first) &&
-            cast<ConstantInt>(sublimits[i].first)->isOne()) {
-          realloc_size = containedloops.back().first.incvar;
-        } else {
-          realloc_size = build.CreateMul(containedloops.back().first.incvar,
-                                         sublimits[i].first, "", /*NUW*/ true,
-                                         /*NSW*/ true);
-        }
 
-        Value *idxs[2] = {
+        Value *tsize = ConstantInt::get(
+            size->getType(),
+            newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+                myType) /
+                8);
+
+        Value *idxs[] = {
+            /*ptr*/
             build.CreatePointerCast(allocation, BPTy),
-            build.CreateMul(
-                ConstantInt::get(size->getType(),
-                                 newFunc->getParent()
-                                         ->getDataLayout()
-                                         .getTypeAllocSizeInBits(myType) /
-                                     8),
-                realloc_size, "", /*NUW*/ true, /*NSW*/ true)};
+            /*incrementing value to increase when it goes past a power of two*/
+            containedloops.back().first.incvar,
+            /*buffer size (element x subloops)*/
+            build.CreateMul(tsize, sublimits[i].first, "", /*NUW*/ true,
+                            /*NSW*/ true)};
 
+        assert(cast<PointerType>(allocation->getType())->getElementType() ==
+               myType);
         Value *realloccall = nullptr;
-        allocation = build.CreatePointerCast(
-            realloccall =
-                build.CreateCall(realloc, idxs, name + "_realloccache"),
-            allocation->getType(), name + "_realloccast");
+
+        realloccall = build.CreateCall(
+            getOrInsertExponentialAllocator(*newFunc->getParent()), idxs,
+            name + "_realloccache");
         scopeAllocs[alloc].push_back(cast<CallInst>(realloccall));
+        allocation = build.CreateBitCast(realloccall, allocation->getType());
         storealloc = build.CreateStore(allocation, storeInto);
         // Unlike the static case we can not mark the memory as invariant
         // since we are reloading/storing based off the number of loop

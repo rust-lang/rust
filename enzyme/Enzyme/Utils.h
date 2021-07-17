@@ -796,4 +796,5 @@ enum class MPI_CallType {
 llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
                                    ConcreteType CT, llvm::Type *intType,
                                    llvm::IRBuilder<> &B2);
+llvm::Function *getOrInsertExponentialAllocator(llvm::Module &M);
 #endif

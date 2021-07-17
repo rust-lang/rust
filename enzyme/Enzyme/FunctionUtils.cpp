@@ -489,6 +489,35 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
   return AI;
 }
 
+void PreProcessCache::AlwaysInline(Function *NewF) {
+  PreservedAnalyses PA;
+  PA.preserve<AssumptionAnalysis>();
+  PA.preserve<TargetLibraryAnalysis>();
+  FAM.invalidate(*NewF, PA);
+  SmallVector<CallInst *, 2> ToInline;
+  // TODO this logic should be combined with the dynamic loop emission
+  // to minimize the number of branches if the realloc is used for multiple
+  // values with the same bound.
+  for (auto &BB : *NewF) {
+    for (auto &I : BB) {
+      if (auto CI = dyn_cast<CallInst>(&I)) {
+        if (!CI->getCalledFunction())
+          continue;
+        if (CI->getCalledFunction()->hasFnAttribute(Attribute::AlwaysInline))
+          ToInline.push_back(CI);
+      }
+    }
+  }
+  for (auto CI : ToInline) {
+    InlineFunctionInfo IFI;
+#if LLVM_VERSION_MAJOR >= 11
+    InlineFunction(*CI, IFI);
+#else
+    InlineFunction(CI, IFI);
+#endif
+  }
+}
+
 /// Calls to realloc with an appropriate implementation
 void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
   if (mem2reg) {

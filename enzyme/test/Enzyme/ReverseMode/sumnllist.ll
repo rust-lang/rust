@@ -102,8 +102,25 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %[[dstructload:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[nextstruct:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
 ; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
-; CHECK-NEXT:   %[[added:.+]] = shl nuw nsw i64 %[[postidx]], 3
-; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
+
+
+; CHECK-NEXT:   %[[nexttrunc0:.+]] = and i64 %[[postidx]], 1
+; CHECK-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0
+; CHECK-NEXT:   %[[popcnt:.+]] = call i64 @llvm.ctpop.i64(i64 %iv.next)
+; CHECK-NEXT:   %[[le2:.+]] = icmp ult i64 %[[popcnt:.+]], 3
+; CHECK-NEXT:   %[[shouldgrow:.+]] = and i1 %[[le2]], %[[nexttrunc]]
+; CHECK-NEXT:   br i1 %[[shouldgrow]], label %grow.i, label %[[mergeblk:.+]]
+
+; CHECK: grow.i:
+; CHECK-NEXT:   %[[ctlz:.+]] = call i64 @llvm.ctlz.i64(i64 %[[postidx]], i1 true)
+; CHECK-NEXT:   %[[maxbit:.+]] = sub nuw nsw i64 64, %[[ctlz]]
+; CHECK-NEXT:   %[[numbytes:.+]] = shl i64 8, %[[maxbit]]
+; CHECK-NEXT:   %[[growalloc:.+]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[numbytes]])
+; CHECK-NEXT:   br label %[[mergeblk]]
+
+; CHECK: [[mergeblk]]:
+; CHECK-NEXT:   %[[postrealloc]] = phi i8* [ %[[growalloc]], %grow.i ], [ %[[phirealloc]], %for.cond1.preheader ]
+
 ; CHECK-NEXT:   %[[tostructp:.+]] = bitcast i8* %[[postrealloc]] to %struct.n**
 ; CHECK-NEXT:   %[[cache:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[tostructp]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %struct.n* %[[valstruct]], %struct.n** %[[cache]]
@@ -117,8 +134,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
 ; CHECK-NEXT:   br i1 %[[mycmp]], label %[[invertforcondcleanup:.+]], label %for.cond1.preheader
 
-; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
-; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %for.cond1.preheader ]
+; CHECK: for.body5:
+; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %[[mergeblk]] ]
 ; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %[[cond:.+]] = icmp eq i64 %[[iv]], %times
 ; CHECK-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5

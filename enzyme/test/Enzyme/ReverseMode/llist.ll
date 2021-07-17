@@ -161,14 +161,30 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %for.body
 
 ; CHECK: for.body:
-; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ]
-; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %[[cur:.+]] = phi %struct.n* [ %"'ipl", %for.body ], [ %"node'", %entry ]
-; CHECK-NEXT:   %val.08 = phi %struct.n* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
+; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %[[mergephi:.+]], %[[mergeblk:.+]] ], [ null, %entry ]
+; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %[[mergeblk]] ], [ 0, %entry ]
+; CHECK-NEXT:   %[[cur:.+]] = phi %struct.n* [ %"'ipl", %[[mergeblk]] ], [ %"node'", %entry ]
+; CHECK-NEXT:   %val.08 = phi %struct.n* [ %[[loadst:.+]], %[[mergeblk]] ], [ %node, %entry ]
 ; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
-; CHECK-NEXT:   %[[addalloc:.+]] = shl nuw nsw i64 %[[postidx]], 3
-; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[addalloc]])
-; CHECK-NEXT:   %[[bcalloc:.+]] = bitcast i8* %_realloccache to %struct.n**
+
+
+; CHECK-NEXT:   %[[nexttrunc0:.+]] = and i64 %[[postidx]], 1
+; CHECK-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0
+; CHECK-NEXT:   %[[popcnt:.+]] = call i64 @llvm.ctpop.i64(i64 %iv.next)
+; CHECK-NEXT:   %[[le2:.+]] = icmp ult i64 %[[popcnt:.+]], 3
+; CHECK-NEXT:   %[[shouldgrow:.+]] = and i1 %[[le2]], %[[nexttrunc]]
+; CHECK-NEXT:   br i1 %[[shouldgrow]], label %grow.i, label %[[mergeblk]]
+
+; CHECK: grow.i:
+; CHECK-NEXT:   %[[ctlz:.+]] = call i64 @llvm.ctlz.i64(i64 %[[postidx]], i1 true)
+; CHECK-NEXT:   %[[maxbit:.+]] = sub nuw nsw i64 64, %[[ctlz]]
+; CHECK-NEXT:   %[[numbytes:.+]] = shl i64 8, %[[maxbit]]
+; CHECK-NEXT:   %[[growalloc:.+]] = call i8* @realloc(i8* %[[rawcache]], i64 %[[numbytes]])
+; CHECK-NEXT:   br label %[[mergeblk]]
+
+; CHECK: [[mergeblk]]:
+; CHECK-NEXT:   %[[mergephi]] = phi i8* [ %[[growalloc]], %grow.i ], [ %[[rawcache]], %for.body ]
+; CHECK-NEXT:   %[[bcalloc:.+]] = bitcast i8* %[[mergephi]] to %struct.n**
 ; CHECK-NEXT:   %[[storest:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[bcalloc]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %struct.n* %[[cur]], %struct.n** %[[storest]]
 ; CHECK-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[cur]], i64 0, i32 1
@@ -182,11 +198,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body.preheader:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[mergephi]])
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: [[antiloop]]:
-; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ %[[preidx]], %for.body ]
+; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ %[[preidx]], %[[mergeblk]] ]
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[bcalloc]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %struct.n*, %struct.n** %[[structptr]]
 ; CHECK-NEXT:   %[[valueipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[struct]], i64 0, i32 0

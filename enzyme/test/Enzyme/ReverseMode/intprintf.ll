@@ -39,15 +39,31 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   br label %while
 
 ; CHECK: while:
-; CHECK-NEXT:   %0 = phi i8* [ null, %entry ], [ %_realloccache, %while ]
-; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while ]
-; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
+; CHECK-NEXT:   %0 = phi i8* [ null, %entry ], [ %[[phiptr:.+]], %[[mergeblk:.+]] ]
+; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %[[mergeblk]] ]
+; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %mul2, %[[mergeblk]] ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %[[bytesalloc:.+]] = shl nuw nsw i64 %iv.next, 3
-; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %[[bytesalloc]])
-; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
-; CHECK-NEXT:   %[[storeloc:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %iv
-; CHECK-NEXT:   store double %1, double* %[[storeloc]], align 8, !invariant.group !0
+
+; CHECK-NEXT:   %[[nexttrunc0:.+]] = and i64 %iv.next, 1
+; CHECK-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0
+; CHECK-NEXT:   %[[popcnt:.+]] = call i64 @llvm.ctpop.i64(i64 %iv.next)
+; CHECK-NEXT:   %[[le2:.+]] = icmp ult i64 %[[popcnt:.+]], 3
+; CHECK-NEXT:   %[[shouldgrow:.+]] = and i1 %[[le2]], %[[nexttrunc]]
+; CHECK-NEXT:   br i1 %[[shouldgrow]], label %grow.i, label %[[mergeblk]]
+
+; CHECK: grow.i: 
+; CHECK-NEXT:   %[[ctlz:.+]] = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true)
+; CHECK-NEXT:   %[[maxbit:.+]] = sub nuw nsw i64 64, %[[ctlz]]
+; CHECK-NEXT:   %[[numbytes:.+]] = shl i64 8, %[[maxbit]]
+; CHECK-NEXT:   %[[growalloc:.+]] = call i8* @realloc(i8* %0, i64 %[[numbytes]])
+; CHECK-NEXT:   br label %[[mergeblk]]
+
+; CHECK: [[mergeblk]]:
+; CHECK-NEXT:   %[[phiptr]] = phi i8* [ %[[growalloc]], %grow.i ], [ %0, %while ]
+; CHECK-NEXT:   %[[_realloccast:.+]] = bitcast i8* %[[phiptr]] to double*
+
+; CHECK-NEXT:   %[[storeloc:.+]] = getelementptr inbounds double, double* %[[_realloccast]], i64 %iv
+; CHECK-NEXT:   store double %1, double* %[[storeloc]], align 8, !invariant.group ![[grp:[0-9]+]]
 ; CHECK-NEXT:   %mul2 = fmul fast double %1, %t
 ; CHECK-NEXT:   %cmp2 = fcmp fast ugt double %mul2, 2.000000e+00
 ; CHECK-NEXT:   br i1 %cmp2, label %exit, label %while
@@ -61,15 +77,15 @@ declare double @__enzyme_autodiff(i8*, double)
 
 ; CHECK: invertentry:
 ; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[d9:.+]], 0
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[phiptr]])
 ; CHECK-NEXT:   ret { double } %[[res]]
 
 ; CHECK: invertwhile:
 ; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %[[d9]], %incinvertwhile ]
 ; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %[[m0diffe:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %[[d11:.+]], %incinvertwhile ]
-; CHECK-NEXT:   %[[gepalloc:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[d8:.+]] = load double, double* %[[gepalloc]], align 8, !invariant.group !0
+; CHECK-NEXT:   %[[gepalloc:.+]] = getelementptr inbounds double, double* %[[_realloccast]], i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[d8:.+]] = load double, double* %[[gepalloc]], align 8, !invariant.group ![[grp]]
 ; CHECK-NEXT:   %[[m1diffet:.+]] = fmul fast double %"mul2'de.0", %[[d8]]
 ; CHECK-NEXT:   %[[d9]] = fadd fast double %"t'de.0", %[[m1diffet]]
 ; CHECK-NEXT:   %[[icmp:.+]] = icmp eq i64 %"iv'ac.0", 0
