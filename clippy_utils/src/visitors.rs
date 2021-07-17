@@ -147,22 +147,23 @@ macro_rules! visitable_ref {
             }
         }
     };
-    ([$t:ident], $f:ident) => {
-        impl Visitable<'tcx> for &'tcx [$t<'tcx>] {
-            fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
-                for x in self {
-                    visitor.$f(x);
-                }
-            }
-        }
-    };
 }
 visitable_ref!(Arm, visit_arm);
 visitable_ref!(Block, visit_block);
 visitable_ref!(Body, visit_body);
 visitable_ref!(Expr, visit_expr);
 visitable_ref!(Stmt, visit_stmt);
-visitable_ref!([Stmt], visit_stmt);
+
+// impl<'tcx, I: IntoIterator> Visitable<'tcx> for I
+// where
+//     I::Item: Visitable<'tcx>,
+// {
+//     fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+//         for x in self {
+//             x.visit(visitor);
+//         }
+//     }
+// }
 
 /// Calls the given function for each break expression.
 pub fn visit_break_exprs<'tcx>(

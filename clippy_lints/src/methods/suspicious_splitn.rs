@@ -1,4 +1,3 @@
-use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_note;
 use if_chain::if_chain;
 use rustc_ast::LitKind;
@@ -8,15 +7,8 @@ use rustc_span::source_map::Spanned;
 
 use super::SUSPICIOUS_SPLITN;
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    method_name: &str,
-    expr: &Expr<'_>,
-    self_arg: &Expr<'_>,
-    count_arg: &Expr<'_>,
-) {
+pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_arg: &Expr<'_>, count: u128) {
     if_chain! {
-        if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg);
         if count <= 1;
         if let Some(call_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(call_id);
@@ -24,9 +16,9 @@ pub(super) fn check(
         if lang_items.slice_impl() == Some(impl_id) || lang_items.str_impl() == Some(impl_id);
         then {
             // Ignore empty slice and string literals when used with a literal count.
-            if (matches!(self_arg.kind, ExprKind::Array([]))
+            if matches!(self_arg.kind, ExprKind::Array([]))
                 || matches!(self_arg.kind, ExprKind::Lit(Spanned { node: LitKind::Str(s, _), .. }) if s.is_empty())
-            ) && matches!(count_arg.kind, ExprKind::Lit(_))
+
             {
                 return;
             }
