@@ -4,7 +4,7 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{convert::TryFrom, env, ops, path::PathBuf, process::Command};
+use std::{convert::TryFrom, env, fs, ops, path::PathBuf, process::Command};
 
 use anyhow::{format_err, Result};
 use la_arena::{Arena, Idx};
@@ -73,7 +73,7 @@ impl Sysroot {
             let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
                 .iter()
                 .map(|it| sysroot_src_dir.join(it))
-                .find(|it| it.exists());
+                .find(|it| fs::metadata(it).is_ok());
 
             if let Some(root) = root {
                 sysroot.crates.alloc(SysrootCrateData {
@@ -142,7 +142,7 @@ fn discover_sysroot_src_dir(
         let path = AbsPathBuf::try_from(path.as_str())
             .map_err(|path| format_err!("RUST_SRC_PATH must be absolute: {}", path.display()))?;
         let core = path.join("core");
-        if core.exists() {
+        if fs::metadata(&core).is_ok() {
             log::debug!("Discovered sysroot by RUST_SRC_PATH: {}", path.display());
             return Ok(path);
         }
@@ -171,7 +171,7 @@ try installing the Rust source the same way you installed rustc",
 fn get_rustc_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
     let rustc_src = sysroot_path.join("lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml");
     log::debug!("Checking for rustc source code: {}", rustc_src.display());
-    if rustc_src.exists() {
+    if fs::metadata(&rustc_src).is_ok() {
         Some(rustc_src)
     } else {
         None
@@ -182,7 +182,7 @@ fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
     // Try the new path first since the old one still exists.
     let rust_src = sysroot_path.join("lib/rustlib/src/rust");
     log::debug!("Checking sysroot (looking for `library` and `src` dirs): {}", rust_src.display());
-    ["library", "src"].iter().map(|it| rust_src.join(it)).find(|it| it.exists())
+    ["library", "src"].iter().map(|it| rust_src.join(it)).find(|it| fs::metadata(it).is_ok())
 }
 
 impl SysrootCrateData {

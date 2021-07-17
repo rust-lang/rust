@@ -258,7 +258,7 @@ impl WorkspaceBuildData {
             inject_cargo_env(package, package_build_data);
             if let Some(out_dir) = &package_build_data.out_dir {
                 // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
+                if let Some(out_dir) = out_dir.as_os_str().to_str().map(|s| s.to_owned()) {
                     package_build_data.envs.push(("OUT_DIR".to_string(), out_dir));
                 }
             }

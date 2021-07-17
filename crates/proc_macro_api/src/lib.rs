@@ -86,6 +86,7 @@ impl ProcMacroClient {
         Ok(ProcMacroClient { process: Arc::new(Mutex::new(process)) })
     }
 
+    // TODO: use paths::AbsPath here
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
         let _p = profile::span("ProcMacroClient::by_dylib_path");
         match version::read_dylib_info(dylib_path) {

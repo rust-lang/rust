@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, path::Path, process::Command};
+use std::{collections::VecDeque, fmt, fs, process::Command};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
@@ -311,8 +311,8 @@ impl ProjectWorkspace {
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
         let _p = profile::span("ProjectWorkspace::to_crate_graph");
-        let proc_macro_loader = |path: &Path| match proc_macro_client {
-            Some(client) => client.by_dylib_path(path),
+        let proc_macro_loader = |path: &AbsPath| match proc_macro_client {
+            Some(client) => client.by_dylib_path(path.as_ref()), // TODO
             None => Vec::new(),
         };
 
@@ -364,7 +364,7 @@ impl ProjectWorkspace {
 
 fn project_json_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
-    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
+    proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     project: &ProjectJson,
     sysroot: &Option<Sysroot>,
@@ -431,7 +431,7 @@ fn project_json_to_crate_graph(
 fn cargo_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     override_cfg: &CfgOverrides,
-    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
+    proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     cargo: &CargoWorkspace,
     build_data_map: Option<&WorkspaceBuildData>,
@@ -616,7 +616,7 @@ fn handle_rustc_crates(
     crate_graph: &mut CrateGraph,
     rustc_build_data_map: Option<&WorkspaceBuildData>,
     cfg_options: &CfgOptions,
-    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
+    proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
     public_deps: &[(CrateName, CrateId)],
     cargo: &CargoWorkspace,
@@ -708,7 +708,7 @@ fn add_target_crate_root(
     pkg: &cargo_workspace::PackageData,
     build_data: Option<&PackageBuildData>,
     cfg_options: &CfgOptions,
-    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
+    proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     file_id: FileId,
     cargo_name: &str,
 ) -> CrateId {

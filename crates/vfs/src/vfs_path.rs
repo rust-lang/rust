@@ -121,6 +121,7 @@ impl VfsPath {
                 #[cfg(windows)]
                 {
                     use windows_paths::Encode;
+                    let path: &std::path::Path = path.as_ref();
                     let components = path.components();
                     let mut add_sep = false;
                     for component in components {

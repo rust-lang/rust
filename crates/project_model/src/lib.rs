@@ -24,7 +24,7 @@ mod rustc_cfg;
 mod build_data;
 
 use std::{
-    fs::{read_dir, ReadDir},
+    fs::{self, read_dir, ReadDir},
     io,
     process::Command,
 };
@@ -54,10 +54,10 @@ pub enum ProjectManifest {
 
 impl ProjectManifest {
     pub fn from_manifest_file(path: AbsPathBuf) -> Result<ProjectManifest> {
-        if path.ends_with("rust-project.json") {
+        if path.file_name().unwrap_or_default() == "rust-project.json" {
             return Ok(ProjectManifest::ProjectJson(path));
         }
-        if path.ends_with("Cargo.toml") {
+        if path.file_name().unwrap_or_default() == "Cargo.toml" {
             return Ok(ProjectManifest::CargoToml(path));
         }
         bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
@@ -91,7 +91,7 @@ impl ProjectManifest {
         }
 
         fn find_in_parent_dirs(path: &AbsPath, target_file_name: &str) -> Option<AbsPathBuf> {
-            if path.ends_with(target_file_name) {
+            if path.file_name().unwrap_or_default() == target_file_name {
                 return Some(path.to_path_buf());
             }
 
@@ -99,7 +99,7 @@ impl ProjectManifest {
 
             while let Some(path) = curr {
                 let candidate = path.join(target_file_name);
-                if candidate.exists() {
+                if fs::metadata(&candidate).is_ok() {
                     return Some(candidate);
                 }
                 curr = path.parent();
