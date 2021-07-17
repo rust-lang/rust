@@ -1843,7 +1843,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// If you do not need to own the tail `Vec`, use [`Vec::drain`] to avoid
     /// an extra allocation.
-    /// 
+    ///
     /// # Panics
     ///
     /// Panics if `at > len`.
