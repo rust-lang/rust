@@ -1,7 +1,8 @@
 #![allow(overflowing_literals)]
 
+mod float;
+mod lemire;
 mod parse;
-mod rawfp;
 
 // Take a float literal, turn it into a string in various ways (that are all trusted
 // to be correct) and see if those strings are parsed back to the value of the literal.
@@ -28,12 +29,6 @@ fn ordinary() {
     test_literal!(0.1);
     test_literal!(12345.);
     test_literal!(0.9999999);
-
-    if cfg!(miri) {
-        // Miri is too slow
-        return;
-    }
-
     test_literal!(2.2250738585072014e-308);
 }
 
@@ -54,7 +49,6 @@ fn large() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri is too slow
 fn subnormals() {
     test_literal!(5e-324);
     test_literal!(91e-324);
@@ -66,7 +60,6 @@ fn subnormals() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // Miri is too slow
 fn infinity() {
     test_literal!(1e400);
     test_literal!(1e309);
@@ -78,12 +71,6 @@ fn infinity() {
 fn zero() {
     test_literal!(0.0);
     test_literal!(1e-325);
-
-    if cfg!(miri) {
-        // Miri is too slow
-        return;
-    }
-
     test_literal!(1e-326);
     test_literal!(1e-500);
 }

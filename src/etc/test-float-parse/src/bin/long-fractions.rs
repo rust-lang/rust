@@ -1,7 +1,5 @@
-mod _common;
-
-use _common::validate;
 use std::char;
+use test_float_parse::validate;
 
 fn main() {
     for n in 0..10 {

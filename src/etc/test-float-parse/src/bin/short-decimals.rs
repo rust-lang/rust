@@ -1,6 +1,4 @@
-mod _common;
-
-use _common::validate;
+use test_float_parse::validate;
 
 fn main() {
     // Skip e = 0 because small-u32 already does those.

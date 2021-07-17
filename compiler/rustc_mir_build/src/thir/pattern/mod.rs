@@ -31,7 +31,6 @@ crate enum PatternError {
     AssocConstInPattern(Span),
     ConstParamInPattern(Span),
     StaticInPattern(Span),
-    FloatBug,
     NonConstPath(Span),
 }
 
@@ -563,10 +562,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
             match self.tcx.at(expr.span).lit_to_const(lit_input) {
                 Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span, false).kind,
-                Err(LitToConstError::UnparseableFloat) => {
-                    self.errors.push(PatternError::FloatBug);
-                    PatKind::Wild
-                }
                 Err(LitToConstError::Reported) => PatKind::Wild,
                 Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
             }
