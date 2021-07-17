@@ -26,7 +26,7 @@ impl MultiItemModifier for Expander {
             return ExpandResult::Ready(vec![item]);
         }
 
-        let item = cfg_eval(ecx, item);
+        let configured_item = cfg_eval(ecx, item.clone());
 
         let result =
             ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
@@ -56,7 +56,7 @@ impl MultiItemModifier for Expander {
                         report_path_args(sess, &meta);
                         meta.path
                     })
-                    .map(|path| (path, item.clone(), None))
+                    .map(|path| (path, configured_item.clone(), None))
                     .collect()
             });
 
