@@ -179,6 +179,7 @@ impl Inherited<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let ok = self.partially_normalize_associated_types_in(cause, param_env, value);
+        debug!(?ok);
         self.register_infer_ok_obligations(ok)
     }
 }

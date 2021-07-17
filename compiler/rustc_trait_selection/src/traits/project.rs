@@ -273,7 +273,7 @@ where
     Normalized { value, obligations }
 }
 
-#[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
+#[instrument(level = "info", skip(selcx, param_env, cause, obligations))]
 pub fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -285,11 +285,24 @@ pub fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
+    debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
     let result = ensure_sufficient_stack(|| normalizer.fold(value));
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result
+}
+
+pub(crate) fn needs_normalization<'tcx, T: TypeFoldable<'tcx>>(value: &T, reveal: Reveal) -> bool {
+    match reveal {
+        Reveal::UserFacing => value
+            .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),
+        Reveal::All => value.has_type_flags(
+            ty::TypeFlags::HAS_TY_PROJECTION
+                | ty::TypeFlags::HAS_TY_OPAQUE
+                | ty::TypeFlags::HAS_CT_PROJECTION,
+        ),
+    }
 }
 
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
@@ -314,6 +327,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
 
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let value = self.selcx.infcx().resolve_vars_if_possible(value);
+        debug!(?value);
 
         assert!(
             !value.has_escaping_bound_vars(),
@@ -321,7 +335,11 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             value
         );
 
-        if !value.has_projections() { value } else { value.fold_with(self) }
+        if !needs_normalization(&value, self.param_env.reveal()) {
+            value
+        } else {
+            value.fold_with(self)
+        }
     }
 }
 
@@ -341,7 +359,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_projections() {
+        if !needs_normalization(&ty, self.param_env.reveal()) {
             return ty;
         }
         // We don't want to normalize associated types that occur inside of region
@@ -825,7 +843,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
     let cache_result = infcx.inner.borrow_mut().projection_cache().try_start(cache_key);
     match cache_result {
-        Ok(()) => {}
+        Ok(()) => debug!("no cache"),
         Err(ProjectionCacheEntry::Ambiguous) => {
             // If we found ambiguity the last time, that means we will continue
             // to do so until some type in the key changes (and we know it
@@ -852,6 +870,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::Recur) => {
+            debug!("recur cache");
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
@@ -1058,12 +1077,11 @@ impl<'tcx> Progress<'tcx> {
 ///
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
+#[tracing::instrument(level = "info", skip(selcx))]
 fn project_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
 ) -> Result<ProjectedTy<'tcx>, ProjectionTyError<'tcx>> {
-    debug!(?obligation, "project_type");
-
     if !selcx.tcx().recursion_limit().value_within_limit(obligation.recursion_depth) {
         debug!("project: overflow!");
         // This should really be an immediate error, but some existing code

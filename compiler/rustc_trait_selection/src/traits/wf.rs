@@ -85,6 +85,7 @@ pub fn trait_obligations<'a, 'tcx>(
     let mut wf =
         WfPredicates { infcx, param_env, body_id, span, out: vec![], recursion_depth: 0, item };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
+    debug!(obligations = ?wf.out);
     wf.normalize()
 }
 

@@ -1578,6 +1578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Add all the obligations that are required, substituting and normalized appropriately.
+    #[tracing::instrument(level = "debug", skip(self, span, def_id, substs))]
     fn add_required_obligations(&self, span: Span, def_id: DefId, substs: &SubstsRef<'tcx>) {
         let (bounds, spans) = self.instantiate_bounds(span, def_id, &substs);
 

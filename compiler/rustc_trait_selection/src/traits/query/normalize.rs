@@ -6,6 +6,7 @@ use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::project::needs_normalization;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -49,7 +50,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             value,
             self.param_env,
         );
-        if !value.has_projections() {
+        if !needs_normalization(&value, self.param_env.reveal()) {
             return Ok(Normalized { value, obligations: vec![] });
         }
 
@@ -65,7 +66,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
         };
 
         let result = value.fold_with(&mut normalizer);
-        debug!(
+        info!(
             "normalize::<{}>: result={:?} with {} obligations",
             std::any::type_name::<T>(),
             result,
@@ -112,7 +113,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_projections() {
+        if !needs_normalization(&ty, self.param_env.reveal()) {
             return ty;
         }
 
