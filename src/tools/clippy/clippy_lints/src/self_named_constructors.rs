@@ -62,10 +62,10 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
 
         // Ensure method is constructor-like
         if let Some(self_adt) = self_ty.ty_adt_def() {
-            if !contains_adt_constructor(ret_ty, self_adt) {
+            if !contains_adt_constructor(cx.tcx, ret_ty, self_adt) {
                 return;
             }
-        } else if !contains_ty(ret_ty, self_ty) {
+        } else if !contains_ty(cx.tcx, ret_ty, self_ty) {
             return;
         }
 

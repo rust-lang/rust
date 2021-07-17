@@ -418,7 +418,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
     fn compute(&mut self, arg: GenericArg<'tcx>) {
-        let mut walker = arg.walk();
+        let mut walker = arg.walk(self.tcx());
         let param_env = self.param_env;
         let depth = self.recursion_depth;
         while let Some(arg) = walker.next() {

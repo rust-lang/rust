@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 //
                 // See also https://github.com/rust-lang/rust-clippy/issues/2894.
                 for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
-                    if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
+                    if trait_sem_ty.walk(cx.tcx).any(|inner| inner == self_ty.into()) {
                         let mut visitor = SkipTyCollector::default();
                         visitor.visit_ty(impl_hir_ty);
                         types_to_skip.extend(visitor.types_to_skip);
