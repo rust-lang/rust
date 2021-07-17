@@ -5,7 +5,39 @@
 
 #![feature(asm, llvm_asm)]
 #![feature(trace_macros, concat_idents)]
+#![feature(stmt_expr_attributes, arbitrary_enum_discriminant)]
 #![feature(derive_default_enum)]
+
+#[derive(Default)]
+struct DefaultInnerAttrStruct {
+    #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    foo: (),
+}
+
+#[derive(Default)]
+struct DefaultInnerAttrTupleStruct(#[default] ());
+//~^ ERROR the `#[default]` attribute may only be used on unit enum variants
+
+#[derive(Default)]
+#[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+struct DefaultOuterAttrStruct {}
+
+#[derive(Default)]
+#[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+enum DefaultOuterAttrEnum {
+    #[default]
+    Foo,
+}
+
+#[rustfmt::skip] // needs some work to handle this case
+#[repr(u8)]
+#[derive(Default)]
+enum AttrOnInnerExpression {
+    Foo = #[default] 0, //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Bar([u8; #[default] 1]), //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    #[default]
+    Baz,
+}
 
 #[derive(Default)] //~ ERROR no default declared
 enum NoDeclaredDefault {
@@ -50,7 +82,7 @@ enum ManyDefaultAttrs {
 #[derive(Default)]
 enum DefaultHasFields {
     #[default]
-    Foo {}, //~ ERROR `#[default]` may only be used on unit variants
+    Foo {}, //~ ERROR the `#[default]` attribute may only be used on unit enum variants
     Bar,
 }
 
