@@ -343,6 +343,10 @@ impl Step for Llvm {
             enabled_llvm_projects.push("polly");
         }
 
+        if builder.config.llvm_clang {
+            enabled_llvm_projects.push("clang");
+        }
+
         // We want libxml to be disabled.
         // See https://github.com/rust-lang/rust/pull/50104
         cfg.define("LLVM_ENABLE_LIBXML2", "OFF");

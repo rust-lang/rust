@@ -103,6 +103,7 @@ pub struct Config {
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
+    pub llvm_clang: bool,
     pub llvm_from_ci: bool,
 
     pub use_lld: bool,
@@ -431,6 +432,7 @@ struct Llvm {
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
     polly: Option<bool>,
+    clang: Option<bool>,
     download_ci_llvm: Option<StringOrBool>,
 }
 
@@ -743,6 +745,7 @@ impl Config {
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = llvm.polly.unwrap_or(false);
+            config.llvm_clang = llvm.clang.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
@@ -789,6 +792,7 @@ impl Config {
                 check_ci_llvm!(llvm.use_linker);
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
+                check_ci_llvm!(llvm.clang);
 
                 // CI-built LLVM can be either dynamic or static.
                 let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
