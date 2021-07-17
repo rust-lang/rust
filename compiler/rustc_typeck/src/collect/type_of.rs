@@ -275,7 +275,16 @@ fn get_path_containing_arg_in_pat<'hir>(
 }
 
 pub(super) fn default_anon_const_substs(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
-    InternalSubsts::identity_for_item(tcx, def_id)
+    let substs = InternalSubsts::identity_for_item(tcx, def_id);
+    // We only expect substs with the following type flags as default substs.
+    //
+    // Getting this wrong can lead to ICE and unsoundness, so we assert it here.
+    for arg in substs.iter().flat_map(|s| s.walk(tcx)) {
+        let allowed_flags = ty::TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS
+            | ty::TypeFlags::STILL_FURTHER_SPECIALIZABLE;
+        assert!(!arg.has_type_flags(!allowed_flags));
+    }
+    substs
 }
 
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {

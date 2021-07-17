@@ -288,7 +288,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     }
     #[instrument(skip(self))]
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
+        if !c.has_potential_param_types_or_consts() {
             return ControlFlow::CONTINUE;
         }
 
@@ -321,7 +321,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 
     #[instrument(skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
+        if !ty.has_potential_param_types_or_consts() {
             return ControlFlow::CONTINUE;
         }
 
@@ -363,7 +363,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a, 'tcx> {
 
     #[instrument(skip(self))]
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
+        if !c.has_potential_param_types_or_consts() {
             return ControlFlow::CONTINUE;
         }
 
@@ -381,7 +381,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a, 'tcx> {
 
     #[instrument(skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
+        if !ty.has_potential_param_types_or_consts() {
             return ControlFlow::CONTINUE;
         }
 
