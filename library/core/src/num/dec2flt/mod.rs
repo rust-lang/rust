@@ -27,20 +27,12 @@
 //!
 //! We then try a long chain of progressively more general and expensive special cases using
 //! machine-sized integers and small, fixed-sized floating point numbers (first `f32`/`f64`, then
-//! a type with 64 bit significand, `Fp`). When all these fail, we bite the bullet and resort to a
-//! simple but very slow algorithm that involved computing `f * 10^e` fully and doing an iterative
-//! search for the best approximation.
-//!
-//! Primarily, this module and its children implement the algorithms described in:
-//! "How to Read Floating Point Numbers Accurately" by William D. Clinger,
-//! available online: <https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.45.4152>
-//!
-//! In addition, there are numerous helper functions that are used in the paper but not available
-//! in Rust (or at least in core). Our version is additionally complicated by the need to handle
-//! overflow and underflow and the desire to handle subnormal numbers. Bellerophon and
-//! Algorithm R have trouble with overflow, subnormals, and underflow. We conservatively switch to
-//! Algorithm M (with the modifications described in section 8 of the paper) well before the
-//! inputs get into the critical region.
+//! a type with 64 bit significand). The extended-precision algorithm
+//! uses the Eisel-Lemire algorithm, which uses a 128-bit (or 192-bit)
+//! representation that can accurately and quickly compute the vast majority
+//! of floats. When all these fail, we bite the bullet and resort to using
+//! a large-decimal representation, shifting the digits into range, calculating
+//! the upper significant bits and exactly round to the nearest representation.
 //!
 //! Another aspect that needs attention is the ``RawFloat`` trait by which almost all functions
 //! are parametrized. One might think that it's enough to parse to `f64` and cast the result to
@@ -54,10 +46,9 @@
 //! operations as well, if you want 0.5 ULP accuracy you need to do *everything* in full precision
 //! and round *exactly once, at the end*, by considering all truncated bits at once.
 //!
-//! FIXME: Although some code duplication is necessary, perhaps parts of the code could be shuffled
-//! around such that less code is duplicated. Large parts of the algorithms are independent of the
-//! float type to output, or only needs access to a few constants, which could be passed in as
-//! parameters.
+//! Primarily, this module and its children implement the algorithms described in:
+//! "Number Parsing at a Gigabyte per Second", available online:
+//! <https://arxiv.org/abs/2101.11408>.
 //!
 //! # Other
 //!
@@ -87,16 +78,22 @@
 use crate::fmt;
 use crate::str::FromStr;
 
-use self::num::digits_to_big;
-use self::parse::{parse_decimal, Decimal, ParseResult, Sign};
-use self::rawfp::RawFloat;
+use self::common::{BiasedFp, ByteSlice};
+use self::float::RawFloat;
+use self::lemire::compute_float;
+use self::parse::{parse_inf_nan, parse_number};
+use self::slow::parse_long_mantissa;
 
-mod algorithm;
-mod num;
+mod common;
+mod decimal;
+mod fpu;
+mod slow;
 mod table;
-// These two have their own tests.
+// float is used in flt2dec, and all are used in unit tests.
+pub mod float;
+pub mod lemire;
+pub mod number;
 pub mod parse;
-pub mod rawfp;
 
 macro_rules! from_str_float_impl {
     ($t:ty) => {
@@ -135,13 +132,6 @@ macro_rules! from_str_float_impl {
             /// ```
             ///
             /// [EBNF]: https://www.w3.org/TR/REC-xml/#sec-notation
-            ///
-            /// # Known bugs
-            ///
-            /// In some situations, some strings that should create a valid float
-            /// instead return an error. See [issue #31407] for details.
-            ///
-            /// [issue #31407]: https://github.com/rust-lang/rust/issues/31407
             ///
             /// # Arguments
             ///
@@ -211,148 +201,70 @@ impl fmt::Display for ParseFloatError {
     }
 }
 
-fn pfe_empty() -> ParseFloatError {
+pub(super) fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
 }
 
-fn pfe_invalid() -> ParseFloatError {
+// Used in unit tests, keep public.
+// This is much better than making FloatErrorKind and ParseFloatError::kind public.
+pub fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
 
-/// Splits a decimal string into sign and the rest, without inspecting or validating the rest.
-fn extract_sign(s: &str) -> (Sign, &str) {
-    match s.as_bytes()[0] {
-        b'+' => (Sign::Positive, &s[1..]),
-        b'-' => (Sign::Negative, &s[1..]),
-        // If the string is invalid, we never use the sign, so we don't need to validate here.
-        _ => (Sign::Positive, s),
-    }
+/// Converts a `BiasedFp` to the closest machine float type.
+fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
+    let mut word = x.f;
+    word |= (x.e as u64) << T::MANTISSA_EXPLICIT_BITS;
+    T::from_u64_bits(word)
 }
 
 /// Converts a decimal string into a floating point number.
-fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
-    if s.is_empty() {
+pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
+    let mut s = s.as_bytes();
+    let c = if let Some(&c) = s.first() {
+        c
+    } else {
         return Err(pfe_empty());
+    };
+    let negative = c == b'-';
+    if c == b'-' || c == b'+' {
+        s = s.advance(1);
     }
-    let (sign, s) = extract_sign(s);
-    let flt = match parse_decimal(s) {
-        ParseResult::Valid(decimal) => convert(decimal)?,
-        ParseResult::ShortcutToInf => T::INFINITY,
-        ParseResult::ShortcutToZero => T::ZERO,
-        ParseResult::Invalid => {
-            if s.eq_ignore_ascii_case("nan") {
-                T::NAN
-            } else if s.eq_ignore_ascii_case("inf") || s.eq_ignore_ascii_case("infinity") {
-                T::INFINITY
+    if s.is_empty() {
+        return Err(pfe_invalid());
+    }
+
+    let num = match parse_number(s, negative) {
+        Some(r) => r,
+        None => {
+            if let Some(value) = parse_inf_nan(s, negative) {
+                return Ok(value);
             } else {
                 return Err(pfe_invalid());
             }
         }
     };
+    if let Some(value) = num.try_fast_path::<F>() {
+        return Ok(value);
+    }
 
-    match sign {
-        Sign::Positive => Ok(flt),
-        Sign::Negative => Ok(-flt),
+    // If significant digits were truncated, then we can have rounding error
+    // only if `mantissa + 1` produces a different result. We also avoid
+    // redundantly using the Eisel-Lemire algorithm if it was unable to
+    // correctly round on the first pass.
+    let mut fp = compute_float::<F>(num.exponent, num.mantissa);
+    if num.many_digits && fp.e >= 0 && fp != compute_float::<F>(num.exponent, num.mantissa + 1) {
+        fp.e = -1;
     }
-}
+    // Unable to correctly round the float using the Eisel-Lemire algorithm.
+    // Fallback to a slower, but always correct algorithm.
+    if fp.e < 0 {
+        fp = parse_long_mantissa::<F>(s);
+    }
 
-/// The main workhorse for the decimal-to-float conversion: Orchestrate all the preprocessing
-/// and figure out which algorithm should do the actual conversion.
-fn convert<T: RawFloat>(mut decimal: Decimal<'_>) -> Result<T, ParseFloatError> {
-    simplify(&mut decimal);
-    if let Some(x) = trivial_cases(&decimal) {
-        return Ok(x);
+    let mut float = biased_fp_to_float::<F>(fp);
+    if num.negative {
+        float = -float;
     }
-    // Remove/shift out the decimal point.
-    let e = decimal.exp - decimal.fractional.len() as i64;
-    if let Some(x) = algorithm::fast_path(decimal.integral, decimal.fractional, e) {
-        return Ok(x);
-    }
-    // Big32x40 is limited to 1280 bits, which translates to about 385 decimal digits.
-    // If we exceed this, we'll crash, so we error out before getting too close (within 10^10).
-    let upper_bound = bound_intermediate_digits(&decimal, e);
-    if upper_bound > 375 {
-        return Err(pfe_invalid());
-    }
-    let f = digits_to_big(decimal.integral, decimal.fractional);
-
-    // Now the exponent certainly fits in 16 bit, which is used throughout the main algorithms.
-    let e = e as i16;
-    // FIXME These bounds are rather conservative. A more careful analysis of the failure modes
-    // of Bellerophon could allow using it in more cases for a massive speed up.
-    let exponent_in_range = table::MIN_E <= e && e <= table::MAX_E;
-    let value_in_range = upper_bound <= T::MAX_NORMAL_DIGITS as u64;
-    if exponent_in_range && value_in_range {
-        Ok(algorithm::bellerophon(&f, e))
-    } else {
-        Ok(algorithm::algorithm_m(&f, e))
-    }
-}
-
-// As written, this optimizes badly (see #27130, though it refers to an old version of the code).
-// `inline(always)` is a workaround for that. There are only two call sites overall and it doesn't
-// make code size worse.
-
-/// Strip zeros where possible, even when this requires changing the exponent
-#[inline(always)]
-fn simplify(decimal: &mut Decimal<'_>) {
-    let is_zero = &|&&d: &&u8| -> bool { d == b'0' };
-    // Trimming these zeros does not change anything but may enable the fast path (< 15 digits).
-    let leading_zeros = decimal.integral.iter().take_while(is_zero).count();
-    decimal.integral = &decimal.integral[leading_zeros..];
-    let trailing_zeros = decimal.fractional.iter().rev().take_while(is_zero).count();
-    let end = decimal.fractional.len() - trailing_zeros;
-    decimal.fractional = &decimal.fractional[..end];
-    // Simplify numbers of the form 0.0...x and x...0.0, adjusting the exponent accordingly.
-    // This may not always be a win (possibly pushes some numbers out of the fast path), but it
-    // simplifies other parts significantly (notably, approximating the magnitude of the value).
-    if decimal.integral.is_empty() {
-        let leading_zeros = decimal.fractional.iter().take_while(is_zero).count();
-        decimal.fractional = &decimal.fractional[leading_zeros..];
-        decimal.exp -= leading_zeros as i64;
-    } else if decimal.fractional.is_empty() {
-        let trailing_zeros = decimal.integral.iter().rev().take_while(is_zero).count();
-        let end = decimal.integral.len() - trailing_zeros;
-        decimal.integral = &decimal.integral[..end];
-        decimal.exp += trailing_zeros as i64;
-    }
-}
-
-/// Returns a quick-an-dirty upper bound on the size (log10) of the largest value that Algorithm R
-/// and Algorithm M will compute while working on the given decimal.
-fn bound_intermediate_digits(decimal: &Decimal<'_>, e: i64) -> u64 {
-    // We don't need to worry too much about overflow here thanks to trivial_cases() and the
-    // parser, which filter out the most extreme inputs for us.
-    let f_len: u64 = decimal.integral.len() as u64 + decimal.fractional.len() as u64;
-    if e >= 0 {
-        // In the case e >= 0, both algorithms compute about `f * 10^e`. Algorithm R proceeds to
-        // do some complicated calculations with this but we can ignore that for the upper bound
-        // because it also reduces the fraction beforehand, so we have plenty of buffer there.
-        f_len + (e as u64)
-    } else {
-        // If e < 0, Algorithm R does roughly the same thing, but Algorithm M differs:
-        // It tries to find a positive number k such that `f << k / 10^e` is an in-range
-        // significand. This will result in about `2^53 * f * 10^e` < `10^17 * f * 10^e`.
-        // One input that triggers this is 0.33...33 (375 x 3).
-        f_len + e.unsigned_abs() + 17
-    }
-}
-
-/// Detects obvious overflows and underflows without even looking at the decimal digits.
-fn trivial_cases<T: RawFloat>(decimal: &Decimal<'_>) -> Option<T> {
-    // There were zeros but they were stripped by simplify()
-    if decimal.integral.is_empty() && decimal.fractional.is_empty() {
-        return Some(T::ZERO);
-    }
-    // This is a crude approximation of ceil(log10(the real value)). We don't need to worry too
-    // much about overflow here because the input length is tiny (at least compared to 2^64) and
-    // the parser already handles exponents whose absolute value is greater than 10^18
-    // (which is still 10^19 short of 2^64).
-    let max_place = decimal.exp + decimal.integral.len() as i64;
-    if max_place > T::INF_CUTOFF {
-        return Some(T::INFINITY);
-    } else if max_place < T::ZERO_CUTOFF {
-        return Some(T::ZERO);
-    }
-    None
+    Ok(float)
 }

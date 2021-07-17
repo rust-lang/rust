@@ -67,12 +67,6 @@ impl<'tcx> Cx<'tcx> {
 
         match self.tcx.at(sp).lit_to_const(LitToConstInput { lit, ty, neg }) {
             Ok(c) => c,
-            Err(LitToConstError::UnparseableFloat) => {
-                // FIXME(#31407) this is only necessary because float parsing is buggy
-                self.tcx.sess.span_err(sp, "could not evaluate float literal (see issue #31407)");
-                // create a dummy value and continue compiling
-                self.tcx.const_error(ty)
-            }
             Err(LitToConstError::Reported) => {
                 // create a dummy value and continue compiling
                 self.tcx.const_error(ty)

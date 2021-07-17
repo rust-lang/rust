@@ -172,7 +172,6 @@ pub enum LitToConstError {
     /// This is used for graceful error handling (`delay_span_bug`) in
     /// type checking (`Const::from_anon_const`).
     TypeError,
-    UnparseableFloat,
     Reported,
 }
 
