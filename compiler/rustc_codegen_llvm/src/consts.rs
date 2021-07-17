@@ -11,7 +11,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer,
+    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer, Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
@@ -25,7 +25,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
-    for &(offset, ((), alloc_id)) in alloc.relocations().iter() {
+    for &(offset, alloc_id) in alloc.relocations().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
@@ -55,7 +55,10 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         };
 
         llvals.push(cx.scalar_to_backend(
-            Pointer::new(alloc_id, Size::from_bytes(ptr_offset)).into(),
+            InterpScalar::from_pointer(
+                Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
+                &cx.tcx,
+            ),
             &Scalar { value: Primitive::Pointer, valid_range: 0..=!0 },
             cx.type_i8p_ext(address_space),
         ));

@@ -302,7 +302,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:139:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds at offset N, but is outside bounds of allocN which has size N
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: allocN has size N, so pointer to 24 bytes starting at offset N is out-of-bounds
 
 error: aborting due to 28 previous errors
 

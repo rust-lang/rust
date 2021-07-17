@@ -211,7 +211,8 @@ macro_rules! make_value_visitor {
                     // If it is a trait object, switch to the real type that was used to create it.
                     ty::Dynamic(..) => {
                         // immediate trait objects are not a thing
-                        let dest = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
+                        let op = v.to_op(self.ecx())?;
+                        let dest = op.assert_mem_place();
                         let inner = self.ecx().unpack_dyn_trait(&dest)?.1;
                         trace!("walk_value: dyn object layout: {:#?}", inner.layout);
                         // recurse with the inner type
@@ -241,7 +242,8 @@ macro_rules! make_value_visitor {
                     },
                     FieldsShape::Array { .. } => {
                         // Let's get an mplace first.
-                        let mplace = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
+                        let op = v.to_op(self.ecx())?;
+                        let mplace = op.assert_mem_place();
                         // Now we can go over all the fields.
                         // This uses the *run-time length*, i.e., if we are a slice,
                         // the dynamic info from the metadata is used.

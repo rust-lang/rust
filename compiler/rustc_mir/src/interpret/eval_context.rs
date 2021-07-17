@@ -8,7 +8,6 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{GlobalId, InterpResult, Pointer, Scalar};
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
@@ -18,8 +17,9 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
-    Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place,
-    PlaceTy, ScalarMaybeUninit, StackPopJump,
+    AllocId, GlobalId, Immediate, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory,
+    MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar, ScalarMaybeUninit,
+    StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 use crate::util::storage::AlwaysLiveLocals;
@@ -80,7 +80,7 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
+pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +161,7 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone, PartialEq, Eq, HashStable)]
-pub struct LocalState<'tcx, Tag = ()> {
+pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
     pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     #[stable_hasher(ignore)]
@@ -169,8 +169,8 @@ pub struct LocalState<'tcx, Tag = ()> {
 }
 
 /// Current value of a local variable
-#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable)] // Miri debug-prints these
-pub enum LocalValue<Tag = ()> {
+#[derive(Copy, Clone, PartialEq, Eq, HashStable, Debug)] // Miri debug-prints these
+pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// This local is alive but not yet initialized. It can be written to
@@ -186,7 +186,7 @@ pub enum LocalValue<Tag = ()> {
     Live(Operand<Tag>),
 }
 
-impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
+impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
     ///
     /// Note: This may only be invoked from the `Machine::access_local` hook and not from
@@ -220,7 +220,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
+impl<'mir, 'tcx, Tag: Provenance> Frame<'mir, 'tcx, Tag> {
     pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Tag, Extra> {
         Frame {
             body: self.body,
@@ -235,7 +235,7 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+impl<'mir, 'tcx, Tag: Provenance, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Get the current location within the Frame.
     ///
     /// If this is `Err`, we are not currently executing any particular statement in
@@ -406,20 +406,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn force_ptr(
-        &self,
-        scalar: Scalar<M::PointerTag>,
-    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        self.memory.force_ptr(scalar)
-    }
-
-    #[inline(always)]
-    pub fn force_bits(
-        &self,
-        scalar: Scalar<M::PointerTag>,
-        size: Size,
-    ) -> InterpResult<'tcx, u128> {
-        self.memory.force_bits(scalar, size)
+    pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
+        self.memory.scalar_to_ptr(scalar)
     }
 
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
@@ -650,7 +638,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.unwrap_meta();
+                let vtable = self.scalar_to_ptr(metadata.unwrap_meta());
                 // Read size and align from vtable (already checks size).
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
@@ -897,9 +885,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty
-            // due to the local having ZST type.
-            let ptr = ptr.assert_ptr();
-            trace!("deallocating local: {:?}", self.memory.dump_alloc(ptr.alloc_id));
+            // due to the local having ZST type. Hence we can `unwrap`.
+            trace!(
+                "deallocating local {:?}: {:?}",
+                local,
+                self.memory.dump_alloc(ptr.provenance.unwrap().get_alloc_id())
+            );
             self.memory.deallocate(ptr, None, MemoryKind::Stack)?;
         };
         Ok(())
@@ -975,46 +966,45 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                 match self.ecx.stack()[frame].locals[local].value {
                     LocalValue::Dead => write!(fmt, " is dead")?,
                     LocalValue::Uninitialized => write!(fmt, " is uninitialized")?,
-                    LocalValue::Live(Operand::Indirect(mplace)) => match mplace.ptr {
-                        Scalar::Ptr(ptr) => {
-                            write!(
-                                fmt,
-                                " by align({}){} ref:",
-                                mplace.align.bytes(),
-                                match mplace.meta {
-                                    MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
-                                    MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
-                                }
-                            )?;
-                            allocs.push(ptr.alloc_id);
-                        }
-                        ptr => write!(fmt, " by integral ref: {:?}", ptr)?,
-                    },
+                    LocalValue::Live(Operand::Indirect(mplace)) => {
+                        write!(
+                            fmt,
+                            " by align({}){} ref {:?}:",
+                            mplace.align.bytes(),
+                            match mplace.meta {
+                                MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
+                                MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
+                            },
+                            mplace.ptr,
+                        )?;
+                        allocs.extend(mplace.ptr.provenance.map(Provenance::get_alloc_id));
+                    }
                     LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(fmt, " {:?}", val)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val {
-                            allocs.push(ptr.alloc_id);
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val {
+                            allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(fmt, " ({:?}, {:?})", val1, val2)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val1 {
-                            allocs.push(ptr.alloc_id);
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val1 {
+                            allocs.push(ptr.provenance.get_alloc_id());
                         }
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val2 {
-                            allocs.push(ptr.alloc_id);
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val2 {
+                            allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
                 }
 
                 write!(fmt, ": {:?}", self.ecx.memory.dump_allocs(allocs))
             }
-            Place::Ptr(mplace) => match mplace.ptr {
-                Scalar::Ptr(ptr) => write!(
+            Place::Ptr(mplace) => match mplace.ptr.provenance.map(Provenance::get_alloc_id) {
+                Some(alloc_id) => write!(
                     fmt,
-                    "by align({}) ref: {:?}",
+                    "by align({}) ref {:?}: {:?}",
                     mplace.align.bytes(),
-                    self.ecx.memory.dump_alloc(ptr.alloc_id)
+                    mplace.ptr,
+                    self.ecx.memory.dump_alloc(alloc_id)
                 ),
                 ptr => write!(fmt, " integral by ref: {:?}", ptr),
             },
@@ -1022,7 +1012,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
     }
 }
 
-impl<'ctx, 'mir, 'tcx, Tag, Extra> HashStable<StableHashingContext<'ctx>>
+impl<'ctx, 'mir, 'tcx, Tag: Provenance, Extra> HashStable<StableHashingContext<'ctx>>
     for Frame<'mir, 'tcx, Tag, Extra>
 where
     Extra: HashStable<StableHashingContext<'ctx>>,

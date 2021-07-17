@@ -16,7 +16,6 @@ use crate::interpret::{
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
     NeedsRfc(String),
-    PtrToIntCast,
     ConstAccessesStatic,
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
@@ -48,12 +47,6 @@ impl fmt::Display for ConstEvalErrKind {
         match *self {
             NeedsRfc(ref msg) => {
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
-            }
-            PtrToIntCast => {
-                write!(
-                    f,
-                    "cannot cast pointer to integer because it was not created by cast from integer"
-                )
             }
             ConstAccessesStatic => write!(f, "constant accesses static"),
             ModifiedGlobal => {

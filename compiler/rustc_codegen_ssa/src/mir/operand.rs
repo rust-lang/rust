@@ -90,10 +90,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     Abi::ScalarPair(ref a, _) => a,
                     _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout),
                 };
-                let a = Scalar::from(Pointer::new(
-                    bx.tcx().create_memory_alloc(data),
-                    Size::from_bytes(start),
-                ));
+                let a = Scalar::from_pointer(
+                    Pointer::new(bx.tcx().create_memory_alloc(data), Size::from_bytes(start)),
+                    &bx.tcx(),
+                );
                 let a_llval = bx.scalar_to_backend(
                     a,
                     a_scalar,

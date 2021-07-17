@@ -1,5 +1,5 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Scalar};
+use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
@@ -974,7 +974,7 @@ pub trait PrettyPrinter<'tcx>:
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         match scalar {
-            Scalar::Ptr(ptr) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
+            Scalar::Ptr(ptr, _size) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
             Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, print_ty),
         }
     }
@@ -987,6 +987,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
+        let (alloc_id, offset) = ptr.into_parts();
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(
@@ -1002,10 +1003,10 @@ pub trait PrettyPrinter<'tcx>:
                     ..
                 },
                 _,
-            ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
+            ) => match self.tcx().get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Memory(alloc)) => {
                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);
-                    let range = AllocRange { start: ptr.offset, size: Size::from_bytes(len) };
+                    let range = AllocRange { start: offset, size: Size::from_bytes(len) };
                     if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), range) {
                         p!(pretty_print_byte_str(byte_str))
                     } else {
@@ -1020,7 +1021,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::FnPtr(_) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
-                match self.tcx().get_global_alloc(ptr.alloc_id) {
+                match self.tcx().get_global_alloc(alloc_id) {
                     Some(GlobalAlloc::Function(instance)) => {
                         self = self.typed_value(
                             |this| this.print_value_path(instance.def_id(), instance.substs),
@@ -1068,8 +1069,8 @@ pub trait PrettyPrinter<'tcx>:
             ty::Char if char::try_from(int).is_ok() => {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
-            // Raw pointers
-            ty::RawPtr(_) | ty::FnPtr(_) => {
+            // Pointer types
+            ty::Ref(..) | ty::RawPtr(_) | ty::FnPtr(_) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
@@ -1106,9 +1107,9 @@ pub trait PrettyPrinter<'tcx>:
 
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
-    fn pretty_print_const_pointer(
+    fn pretty_print_const_pointer<Tag: Provenance>(
         mut self,
-        _: Pointer,
+        _: Pointer<Tag>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
@@ -1679,9 +1680,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         }
     }
 
-    fn pretty_print_const_pointer(
+    fn pretty_print_const_pointer<Tag: Provenance>(
         self,
-        p: Pointer,
+        p: Pointer<Tag>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {

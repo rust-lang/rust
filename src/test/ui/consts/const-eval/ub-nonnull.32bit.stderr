@@ -13,7 +13,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-nonnull.rs:19:30
    |
 LL |     let out_of_bounds_ptr = &ptr[255];
-   |                              ^^^^^^^^ memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of alloc10 which has size 1
+   |                              ^^^^^^^^ dereferencing pointer failed: alloc11 has size 1, so pointer to 256 bytes starting at offset 0 is out-of-bounds
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:23:1

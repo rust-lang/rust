@@ -318,8 +318,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     right.layout.ty
                 );
 
-                let l = self.force_bits(left.to_scalar()?, left.layout.size)?;
-                let r = self.force_bits(right.to_scalar()?, right.layout.size)?;
+                let l = left.to_scalar()?.to_bits(left.layout.size)?;
+                let r = right.to_scalar()?.to_bits(right.layout.size)?;
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
             _ if left.layout.ty.is_any_ptr() => {
@@ -386,7 +386,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             _ => {
                 assert!(layout.ty.is_integral());
-                let val = self.force_bits(val, layout.size)?;
+                let val = val.to_bits(layout.size)?;
                 let (res, overflow) = match un_op {
                     Not => (self.truncate(!val, layout), false), // bitwise negation, then truncate
                     Neg => {

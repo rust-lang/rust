@@ -928,7 +928,11 @@ impl<'tcx> Cx<'tcx> {
                 } else {
                     let ptr = self.tcx.create_static_alloc(id);
                     ExprKind::StaticRef {
-                        literal: ty::Const::from_scalar(self.tcx, Scalar::Ptr(ptr.into()), ty),
+                        literal: ty::Const::from_scalar(
+                            self.tcx,
+                            Scalar::from_pointer(ptr.into(), &self.tcx),
+                            ty,
+                        ),
                         def_id: id,
                     }
                 };

@@ -96,7 +96,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
         // Initialize fields.
-        self.write_immediate(file.to_ref(), &self.mplace_field(&location, 0).unwrap().into())
+        self.write_immediate(file.to_ref(self), &self.mplace_field(&location, 0).unwrap().into())
             .expect("writing to memory we just allocated cannot fail");
         self.write_scalar(line, &self.mplace_field(&location, 1).unwrap().into())
             .expect("writing to memory we just allocated cannot fail");

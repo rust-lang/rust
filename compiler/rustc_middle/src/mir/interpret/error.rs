@@ -170,6 +170,8 @@ impl fmt::Display for InvalidProgramInfo<'_> {
 /// Details of why a pointer had to be in-bounds.
 #[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum CheckInAllocMsg {
+    /// We are dereferencing a pointer (i.e., creating a place).
+    DerefTest,
     /// We are access memory.
     MemoryAccessTest,
     /// We are doing pointer arithmetic.
@@ -179,13 +181,14 @@ pub enum CheckInAllocMsg {
 }
 
 impl fmt::Display for CheckInAllocMsg {
-    /// When this is printed as an error the context looks like this
-    /// "{msg}pointer must be in-bounds at offset..."
+    /// When this is printed as an error the context looks like this:
+    /// "{msg}0x01 is not a valid pointer".
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match *self {
+                CheckInAllocMsg::DerefTest => "dereferencing pointer failed: ",
                 CheckInAllocMsg::MemoryAccessTest => "memory access failed: ",
                 CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic failed: ",
                 CheckInAllocMsg::InboundsTest => "",
@@ -238,7 +241,9 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     PointerUseAfterFree(AllocId),
     /// Used a pointer outside the bounds it is valid for.
     PointerOutOfBounds {
-        ptr: Pointer,
+        alloc_id: AllocId,
+        offset: Size,
+        size: Size,
         msg: CheckInAllocMsg,
         allocation_size: Size,
     },
@@ -307,20 +312,30 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidVtableAlignment(msg) => write!(f, "invalid vtable: alignment {}", msg),
             UnterminatedCString(p) => write!(
                 f,
-                "reading a null-terminated string starting at {} with no null found before end of allocation",
+                "reading a null-terminated string starting at {:?} with no null found before end of allocation",
                 p,
             ),
             PointerUseAfterFree(a) => {
                 write!(f, "pointer to {} was dereferenced after this allocation got freed", a)
             }
-            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
+            PointerOutOfBounds { alloc_id, offset, size: Size::ZERO, msg, allocation_size } => {
+                write!(
+                    f,
+                    "{}{} has size {}, so pointer at offset {} is out-of-bounds",
+                    msg,
+                    alloc_id,
+                    allocation_size.bytes(),
+                    offset.bytes(),
+                )
+            }
+            PointerOutOfBounds { alloc_id, offset, size, msg, allocation_size } => write!(
                 f,
-                "{}pointer must be in-bounds at offset {}, \
-                           but is outside bounds of {} which has size {}",
+                "{}{} has size {}, so pointer to {} bytes starting at offset {} is out-of-bounds",
                 msg,
-                ptr.offset.bytes(),
-                ptr.alloc_id,
-                allocation_size.bytes()
+                alloc_id,
+                allocation_size.bytes(),
+                size.bytes(),
+                offset.bytes(),
             ),
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
                 write!(f, "null pointer is not a valid pointer for this operation")
@@ -348,13 +363,13 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             InvalidTag(val) => write!(f, "enum value has invalid tag: {}", val),
             InvalidFunctionPointer(p) => {
-                write!(f, "using {} as function pointer but it does not point to a function", p)
+                write!(f, "using {:?} as function pointer but it does not point to a function", p)
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
             InvalidUninitBytes(Some((alloc, access))) => write!(
                 f,
-                "reading {} byte{} of memory starting at {}, \
-                 but {} byte{} {} uninitialized starting at {}, \
+                "reading {} byte{} of memory starting at {:?}, \
+                 but {} byte{} {} uninitialized starting at {:?}, \
                  and this operation requires initialized memory",
                 access.access_size.bytes(),
                 pluralize!(access.access_size.bytes()),
@@ -392,8 +407,6 @@ pub enum UnsupportedOpInfo {
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
-    /// Encountered raw bytes where we needed a pointer.
-    ReadBytesAsPointer,
     /// Accessing thread local statics
     ThreadLocalStatic(DefId),
     /// Accessing an unsupported extern static.
@@ -408,7 +421,6 @@ impl fmt::Display for UnsupportedOpInfo {
             ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
             NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
-            ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({:?})", did),
         }
     }

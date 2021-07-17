@@ -162,9 +162,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             ThreadLocalRef(did) => {
-                let id = M::thread_local_static_alloc_id(self, did)?;
-                let val = self.global_base_pointer(id.into())?;
-                self.write_scalar(val, &dest)?;
+                let ptr = M::thread_local_static_base_pointer(self, did)?;
+                self.write_pointer(ptr, &dest)?;
             }
 
             Use(ref operand) => {
@@ -240,7 +239,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // of the first element.
                     let elem_size = first.layout.size;
                     let first_ptr = first.ptr;
-                    let rest_ptr = first_ptr.ptr_offset(elem_size, self)?;
+                    let rest_ptr = first_ptr.offset(elem_size, self)?;
                     self.memory.copy_repeatedly(
                         first_ptr,
                         first.align,
@@ -264,11 +263,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             AddressOf(_, place) | Ref(_, _, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
-                if place.layout.size.bytes() > 0 {
-                    // definitely not a ZST
-                    assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
-                }
-                self.write_immediate(place.to_ref(), &dest)?;
+                self.write_immediate(place.to_ref(self), &dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {
