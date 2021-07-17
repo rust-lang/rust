@@ -1098,11 +1098,14 @@ fn markdown_summary_with_limit(
 
     'outer: for event in p {
         match &event {
+            // Note: update this if more text (not style) nodes are added.
+            // This is needed so that all tags are closed before we stop.
+            Event::Text(_) | Event::Code(_) if stopped_early => break,
             Event::Text(text) => {
                 for word in text.split_inclusive(char::is_whitespace) {
                     if text_length + word.len() >= length_limit {
                         stopped_early = true;
-                        break 'outer;
+                        continue 'outer;
                     }
 
                     push(&mut s, &mut text_length, word);
@@ -1111,7 +1114,7 @@ fn markdown_summary_with_limit(
             Event::Code(code) => {
                 if text_length + code.len() >= length_limit {
                     stopped_early = true;
-                    break;
+                    continue;
                 }
 
                 s.push_str("<code>");
@@ -1134,7 +1137,7 @@ fn markdown_summary_with_limit(
             Event::HardBreak | Event::SoftBreak => {
                 if text_length + 1 >= length_limit {
                     stopped_early = true;
-                    break;
+                    continue;
                 }
 
                 push(&mut s, &mut text_length, " ");
