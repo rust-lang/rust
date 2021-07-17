@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<() as Bar>::Foo == ()`
   --> $DIR/issue-63355.rs:34:20
    |
 LL |     type Foo = FooImpl;
-   |                ------- expected `()`, found opaque type
+   |                ------- expected this to be `()`
 ...
 LL | pub type FooImpl = impl Foo;
    |                    -------- the found opaque type
