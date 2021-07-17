@@ -684,7 +684,7 @@ mod parse {
             Some(v) => v,
         };
 
-        *slot = Some(match v.trim_end_matches("s") {
+        *slot = Some(match v.trim_end_matches('s') {
             "statement" | "stmt" => MirSpanview::Statement,
             "terminator" | "term" => MirSpanview::Terminator,
             "block" | "basicblock" => MirSpanview::Block,
