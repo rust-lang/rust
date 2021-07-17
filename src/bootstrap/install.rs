@@ -242,9 +242,6 @@ install!((self, builder, _config),
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
     RustcCodegenCranelift, "rustc_codegen_cranelift", Self::should_build(_config), only_hosts: true, {
-        // Note: Even though `should_build` may return true for `extended` default tools,
-        // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
-        // is also true, or the `tools` array explicitly includes "rust-demangler".
         let tarball = builder.ensure(dist::CodegenBackend {
             compiler: self.compiler,
             backend: INTERNER.intern_str("cranelift"),
