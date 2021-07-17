@@ -276,6 +276,8 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     let cid = key.value;
     let def = cid.instance.def.with_opt_param();
 
+    debug!("promoted={:?}", cid.promoted);
+
     if let Some(def) = def.as_local() {
         if tcx.has_typeck_results(def.did) {
             if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
@@ -291,6 +293,18 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         }
         if let Some(error_reported) = tcx.mir_const_qualif_opt_const_arg(def).error_occured {
             return Err(ErrorHandled::Reported(error_reported));
+        }
+
+        if cid.promoted.is_none() {
+            let borrowck_results = if let Some(param_did) = def.const_param_did {
+                tcx.mir_borrowck_const_arg((def.did, param_did))
+            } else {
+                tcx.mir_borrowck(def.did)
+            };
+
+            if borrowck_results.errored {
+                return Err(ErrorHandled::Reported(ErrorReported {}));
+            }
         }
     }
 

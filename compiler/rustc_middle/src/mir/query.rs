@@ -214,6 +214,7 @@ pub struct BorrowCheckResult<'tcx> {
     pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
+    pub errored: bool,
 }
 
 /// The result of the `mir_const_qualif` query.

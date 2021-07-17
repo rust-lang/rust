@@ -432,10 +432,12 @@ fn do_mir_borrowck<'a, 'tcx>(
         diag.buffer(&mut mbcx.errors_buffer);
     }
 
+    let mut errored = false;
     if !mbcx.errors_buffer.is_empty() {
         mbcx.errors_buffer.sort_by_key(|diag| diag.sort_span);
 
         for diag in mbcx.errors_buffer.drain(..) {
+            errored |= diag.is_error();
             mbcx.infcx.tcx.sess.diagnostic().emit_diagnostic(&diag);
         }
     }
@@ -444,6 +446,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
+        errored,
     };
 
     debug!("do_mir_borrowck: result = {:#?}", result);
