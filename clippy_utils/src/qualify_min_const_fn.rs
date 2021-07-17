@@ -88,7 +88,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
 }
 
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
-    for arg in ty.walk() {
+    for arg in ty.walk(tcx) {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
 
