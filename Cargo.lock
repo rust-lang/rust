@@ -1758,9 +1758,9 @@ dependencies = [
 
 [[package]]
 name = "ungrammar"
-version = "1.14.1"
+version = "1.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dbe67c0c0f5ded8e404578a9ab1009ffdb6ee219779329aefc0cb4fe7f44891"
+checksum = "5334230a6ae9ca52bc811c968c0ae12f1750c0698ed52ea68dabab7ce5a80972"
 
 [[package]]
 name = "unicase"
