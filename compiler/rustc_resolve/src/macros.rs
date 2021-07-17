@@ -311,38 +311,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
             self.create_stable_hashing_context(),
         );
 
-        if let Res::Def(_, _) = res {
-            // Gate macro attributes in `#[derive]` output.
-            if !self.session.features_untracked().macro_attributes_in_derive_output
-                && kind == MacroKind::Attr
-                && ext.builtin_name != Some(sym::derive)
-            {
-                let mut expn_id = parent_scope.expansion;
-                loop {
-                    // Helper attr table is a quick way to determine whether the attr is `derive`.
-                    if self.helper_attrs.contains_key(&expn_id) {
-                        feature_err(
-                            &self.session.parse_sess,
-                            sym::macro_attributes_in_derive_output,
-                            path.span,
-                            "macro attributes in `#[derive]` output are unstable",
-                        )
-                        .emit();
-                        break;
-                    } else {
-                        let expn_data = expn_id.expn_data();
-                        match expn_data.kind {
-                            ExpnKind::Root
-                            | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
-                                break;
-                            }
-                            _ => expn_id = expn_data.parent.expect_local(),
-                        }
-                    }
-                }
-            }
-        }
-
         Ok(ext)
     }
 
