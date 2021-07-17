@@ -45,10 +45,10 @@ use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
-use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_middle::middle::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
+use rustc_middle::ty::{self, DefIdTree, MainDefinition};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -1229,6 +1229,20 @@ impl<'a, 'b> rustc_span::HashStableContext for ExpandHasher<'a, 'b> {
     }
 }
 
+#[derive(Debug)]
+pub struct ResolverOutputs {
+    pub visibilities: FxHashMap<LocalDefId, ty::Visibility>,
+    pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
+    pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
+    pub export_map: ExportMap<LocalDefId>,
+    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    /// Extern prelude entries. The value is `true` if the entry was introduced
+    /// via `extern crate` item and not `--extern` option or compiler built-in.
+    pub extern_prelude: FxHashMap<Symbol, bool>,
+    pub main_def: Option<MainDefinition>,
+}
+
 impl<'a> Resolver<'a> {
     pub fn new(
         session: &'a Session,
@@ -1426,7 +1440,7 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(self) -> ResolverOutputs {
+    pub fn into_outputs(self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
         let definitions = self.definitions;
         let visibilities = self.visibilities;
         let extern_crate_map = self.extern_crate_map;
@@ -1435,9 +1449,8 @@ impl<'a> Resolver<'a> {
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
         let main_def = self.main_def;
-        ResolverOutputs {
-            definitions,
-            cstore: Box::new(self.crate_loader.into_cstore()),
+        let cstore = Box::new(self.crate_loader.into_cstore());
+        let resolutions = ResolverOutputs {
             visibilities,
             extern_crate_map,
             export_map,
@@ -1450,13 +1463,14 @@ impl<'a> Resolver<'a> {
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
             main_def,
-        }
+        };
+        (definitions, cstore, resolutions)
     }
 
-    pub fn clone_outputs(&self) -> ResolverOutputs {
-        ResolverOutputs {
-            definitions: self.definitions.clone(),
-            cstore: Box::new(self.cstore().clone()),
+    pub fn clone_outputs(&self) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
+        let definitions = self.definitions.clone();
+        let cstore = Box::new(self.cstore().clone());
+        let resolutions = ResolverOutputs {
             visibilities: self.visibilities.clone(),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
@@ -1469,7 +1483,8 @@ impl<'a> Resolver<'a> {
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
             main_def: self.main_def.clone(),
-        }
+        };
+        (definitions, cstore, resolutions)
     }
 
     pub fn cstore(&self) -> &CStore {
