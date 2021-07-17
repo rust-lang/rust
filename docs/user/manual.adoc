@@ -279,7 +279,7 @@ let g:ale_linters = {'rust': ['analyzer']}
 
 ==== nvim-lsp
 
-NeoVim 0.5 (not yet released) has built-in language server support.
+NeoVim 0.5 has built-in language server support.
 For a quick start configuration of rust-analyzer, use https://github.com/neovim/nvim-lspconfig#rust_analyzer[neovim/nvim-lspconfig].
 Once `neovim/nvim-lspconfig` is installed, use `+lua require'lspconfig'.rust_analyzer.setup({})+` in your `init.vim`.
 
