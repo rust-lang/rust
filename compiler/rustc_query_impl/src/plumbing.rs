@@ -279,6 +279,14 @@ macro_rules! is_anon {
     };
 }
 
+macro_rules! if_eval_always {
+    ([][$($tt:tt)*]) => {};
+    ([eval_always $($rest:tt)*][$($tt:tt)*]) => { $($tt)* };
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($tt:tt)*]) => {
+        if_eval_always!{[$($($modifiers)*)*][$($tt)*]}
+    };
+}
+
 macro_rules! is_eval_always {
     ([]) => {{
         false
@@ -483,6 +491,11 @@ macro_rules! define_queries {
         }
 
         static QUERY_CALLBACKS: &[QueryStruct] = &make_dep_kind_array!(query_callbacks);
+
+        define_queries_input! {
+            tcx: $tcx,
+            input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
+        }
     }
 }
 
@@ -572,6 +585,54 @@ fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     } else {
         format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
     }
+}
+
+macro_rules! define_queries_input {
+    (tcx: $tcx:tt,
+     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
+        #[derive(Copy, Clone)]
+        pub struct QueryCtxtInput<'tcx> {
+            tcx: QueryCtxt<'tcx>,
+        }
+
+        impl<'tcx> QueryCtxt<'tcx> {
+            /// Fill a query's cache with externally computed information.
+            /// The methods are only generated for eval_always queries.
+            ///
+            /// These methods:
+            /// - should only be used before any query invocation;
+            /// - should be used in conjunction with a query provider which returns a fallback
+            ///   value (or panics if it makes no sense).
+            pub fn input(self) -> QueryCtxtInput<'tcx> {
+                QueryCtxtInput { tcx: self }
+            }
+        }
+
+        impl<'tcx> QueryCtxtInput<'tcx> {
+            $(if_eval_always! {
+                [$($modifiers)*]
+                [
+            $(#[$attr])*
+            pub fn $name(self, key: query_keys::$name<'tcx>, value: query_values::$name<'tcx>) {
+                use rustc_middle::dep_graph::DepNode;
+                let tcx = self.tcx.tcx;
+                let dep_node = DepNode::construct(tcx, queries::$name::DEP_KIND, &key);
+                debug_assert!(queries::$name::EVAL_ALWAYS, "Only eval_always queries can be pre-filled.");
+                // We abuse the dep_graph by providing the result as the argument.  This is an
+                // escape hatch provided by the API which does not check the key.
+                // We use the `eval_always` variant since there is never any dependency to record.
+                let (value, dep_node_index) = tcx.dep_graph.with_eval_always_task(
+                    dep_node,
+                    tcx,
+                    value,
+                    |_, value| value,
+                    queries::$name::hash_result,
+                );
+                tcx.query_caches.$name.insert(key, value, dep_node_index)
+            }
+                ]})*
+        }
+    };
 }
 
 rustc_query_description! {}

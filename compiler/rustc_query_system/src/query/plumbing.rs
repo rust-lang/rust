@@ -74,6 +74,13 @@ impl<C: QueryCache> QueryCacheStore<C> {
         (QueryLookup { key_hash, shard }, lock)
     }
 
+    pub fn insert(&self, key: C::Key, result: C::Value, dep_node_index: DepNodeIndex) {
+        let key_hash = hash_for_shard(&key);
+        let shard = get_shard_index_by_hash(key_hash);
+        let mut lock = self.shards.get_shard_by_index(shard).lock();
+        self.cache.complete(&mut lock, key, result, dep_node_index);
+    }
+
     pub fn iter_results(&self, f: &mut dyn FnMut(&C::Key, &C::Value, DepNodeIndex)) {
         self.cache.iter(&self.shards, f)
     }
