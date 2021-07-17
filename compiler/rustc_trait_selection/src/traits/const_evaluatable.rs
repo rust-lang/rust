@@ -91,7 +91,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         let leaf = leaf.subst(tcx, ct.substs);
                         if leaf.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
-                        } else if leaf.has_param_types_or_consts() {
+                        } else if leaf.has_param_types_or_consts(tcx) {
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
 
@@ -101,7 +101,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         let ty = ty.subst(tcx, ct.substs);
                         if ty.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
-                        } else if ty.has_param_types_or_consts() {
+                        } else if ty.has_param_types_or_consts(tcx) {
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
 
@@ -158,7 +158,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     let concrete =
         infcx.const_eval_resolve(param_env, ty::Unevaluated::new(def, substs), Some(span));
 
-    if concrete.is_ok() && substs.has_param_types_or_consts() {
+    if concrete.is_ok() && substs.has_param_types_or_consts(infcx.tcx) {
         match infcx.tcx.def_kind(def.did) {
             DefKind::AnonConst => {
                 let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(def);

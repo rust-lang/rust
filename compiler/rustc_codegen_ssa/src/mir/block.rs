@@ -1398,7 +1398,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
                     let dst_layout = bx.layout_of(self.monomorphized_place_ty(dst.as_ref()));
-                    assert!(!dst_layout.ty.has_erasable_regions());
+                    assert!(!dst_layout.ty.has_erasable_regions(self.cx.tcx()));
                     let place = PlaceRef::alloca(bx, dst_layout);
                     place.storage_live(bx);
                     self.codegen_transmute_into(bx, src, place);

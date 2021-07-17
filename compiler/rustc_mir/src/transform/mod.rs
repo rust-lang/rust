@@ -400,7 +400,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         }
     }
 
-    debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
+    debug_assert!(!body.has_free_regions(tcx), "Free regions in MIR for CTFE");
 
     body
 }
@@ -594,7 +594,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
     run_optimization_passes(tcx, &mut body);
 
-    debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
+    debug_assert!(!body.has_free_regions(tcx), "Free regions in optimized MIR");
 
     body
 }
@@ -621,7 +621,7 @@ fn promoted_mir<'tcx>(
         run_post_borrowck_cleanup_passes(tcx, body);
     }
 
-    debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
+    debug_assert!(!promoted.has_free_regions(tcx), "Free regions in promoted MIR");
 
     tcx.arena.alloc(promoted)
 }
