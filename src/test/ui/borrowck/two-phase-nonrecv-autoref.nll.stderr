@@ -6,6 +6,8 @@ LL |         f(f(10));
    |         |
    |         first mutable borrow occurs here
    |         first borrow later used by call
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:59:11
@@ -25,6 +27,8 @@ LL |         f(f(10));
    |         |
    |         first mutable borrow occurs here
    |         first borrow later used by call
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:73:11
@@ -44,6 +48,8 @@ LL |     double_access(&mut a, &a);
    |     |             |
    |     |             mutable borrow occurs here
    |     mutable borrow later used by call
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
   --> $DIR/two-phase-nonrecv-autoref.rs:138:7

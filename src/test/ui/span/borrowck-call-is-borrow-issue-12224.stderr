@@ -9,6 +9,8 @@ LL |     f(Box::new(|| {
 LL |
 LL |         f((Box::new(|| {})))
    |         - second borrow occurs due to use of `f` in closure
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:25:5

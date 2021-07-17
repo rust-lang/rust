@@ -6,6 +6,8 @@ LL |     v[0].oh_no(&v);
    |     |    |
    |     |    mutable borrow later used by call
    |     mutable borrow occurs here
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0502]: cannot borrow `v` as immutable because it is also borrowed as mutable
   --> $DIR/regions-adjusted-lvalue-op.rs:15:16
@@ -15,6 +17,8 @@ LL |     (*v).oh_no(&v);
    |       |  |
    |       |  mutable borrow later used by call
    |       mutable borrow occurs here
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error: aborting due to 2 previous errors
 

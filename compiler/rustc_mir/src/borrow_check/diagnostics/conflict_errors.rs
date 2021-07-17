@@ -25,8 +25,8 @@ use crate::borrow_check::{
 };
 
 use super::{
-    explain_borrow::BorrowExplanation, FnSelfUseKind, IncludingDowncast, RegionName,
-    RegionNameSource, UseSpans,
+    explain_borrow::{BorrowExplanation, LaterUseKind},
+    FnSelfUseKind, IncludingDowncast, RegionName, RegionNameSource, UseSpans,
 };
 
 #[derive(Debug)]
@@ -723,6 +723,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None,
             Some((issued_span, span)),
         );
+
+        match explanation {
+            BorrowExplanation::UsedLater(LaterUseKind::Call, _call_span, _) => {
+                err.help(
+                    "try adding a local storing the argument and then using the local in the call",
+                );
+            }
+            _ => {}
+        }
 
         err
     }

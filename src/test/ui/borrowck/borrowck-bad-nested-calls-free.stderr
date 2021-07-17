@@ -7,6 +7,8 @@ LL |         &*a,
    |         --- immutable borrow occurs here
 LL |         rewrite(&mut a));
    |                 ^^^^^^ mutable borrow occurs here
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-bad-nested-calls-free.rs:32:17
@@ -17,6 +19,8 @@ LL |         &*a,
    |         --- immutable borrow occurs here
 LL |         rewrite(&mut a));
    |                 ^^^^^^ mutable borrow occurs here
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error: aborting due to 2 previous errors
 

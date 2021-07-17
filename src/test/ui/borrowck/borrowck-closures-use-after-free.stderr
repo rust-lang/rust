@@ -10,6 +10,8 @@ LL |   test(&*ptr);
    |   ---- ^^^^^ immutable borrow occurs here
    |   |
    |   mutable borrow later used by call
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error: aborting due to previous error
 

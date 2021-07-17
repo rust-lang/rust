@@ -29,6 +29,8 @@ LL |     borrow_mut2(x, x);
    |     |           |
    |     |           first mutable borrow occurs here
    |     first borrow later used by call
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
   --> $DIR/coerce-overloaded-autoderef-fail.rs:28:5
@@ -39,6 +41,8 @@ LL |     borrow2(x, x);
    |     |          immutable borrow occurs here
    |     mutable borrow occurs here
    |     immutable borrow later used by call
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error: aborting due to 4 previous errors
 

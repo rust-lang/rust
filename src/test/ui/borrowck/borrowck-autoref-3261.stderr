@@ -10,6 +10,8 @@ LL |         |opt| {
 ...
 LL |                     x = X(Either::Left((0, 0)));
    |                     - second borrow occurs due to use of `x` in closure
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error: aborting due to previous error
 

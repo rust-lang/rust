@@ -7,6 +7,8 @@ LL |     foo.method(&mut foo);
    |     |   |      first mutable borrow occurs here
    |     |   first borrow later used by call
    |     second mutable borrow occurs here
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/two-phase-multi-mut.rs:11:16
@@ -16,6 +18,8 @@ LL |     foo.method(&mut foo);
    |     |   |
    |     |   first borrow later used by call
    |     first mutable borrow occurs here
+   |
+   = help: try adding a local storing the argument and then using the local in the call
 
 error: aborting due to 2 previous errors
 
