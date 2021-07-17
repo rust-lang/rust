@@ -2,6 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 
 use rustc_ast::ptr::P;
+use rustc_ast::walk_list;
 use rustc_ast::EnumDef;
 use rustc_ast::VariantData;
 use rustc_ast::{Expr, MetaItem};
@@ -19,6 +20,8 @@ pub fn expand_deriving_default(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
+    item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
+
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];
     let trait_def = TraitDef {
@@ -184,9 +187,12 @@ fn extract_default_variant<'a>(
     };
 
     if !matches!(variant.data, VariantData::Unit(..)) {
-        cx.struct_span_err(variant.ident.span, "`#[default]` may only be used on unit variants")
-            .help("consider a manual implementation of `Default`")
-            .emit();
+        cx.struct_span_err(
+            variant.ident.span,
+            "the `#[default]` attribute may only be used on unit enum variants",
+        )
+        .help("consider a manual implementation of `Default`")
+        .emit();
 
         return Err(());
     }
@@ -252,4 +258,32 @@ fn validate_default_attribute(
         return Err(());
     }
     Ok(())
+}
+
+struct DetectNonVariantDefaultAttr<'a, 'b> {
+    cx: &'a ExtCtxt<'b>,
+}
+
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
+    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
+        if attr.has_name(kw::Default) {
+            self.cx
+                .struct_span_err(
+                    attr.span,
+                    "the `#[default]` attribute may only be used on unit enum variants",
+                )
+                .emit();
+        }
+
+        rustc_ast::visit::walk_attribute(self, attr);
+    }
+    fn visit_variant(&mut self, v: &'a rustc_ast::Variant) {
+        self.visit_ident(v.ident);
+        self.visit_vis(&v.vis);
+        self.visit_variant_data(&v.data);
+        walk_list!(self, visit_anon_const, &v.disr_expr);
+        for attr in &v.attrs {
+            rustc_ast::visit::walk_attribute(self, attr);
+        }
+    }
 }
