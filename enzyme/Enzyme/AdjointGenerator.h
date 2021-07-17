@@ -3845,6 +3845,38 @@ public:
         return;
       }
 
+      if (funcName == "cbrt") {
+        if (gutils->knownRecomputeHeuristic.find(orig) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+        Value *args[] = {x};
+#if LLVM_VERSION_MAJOR >= 11
+        auto callval = orig->getCalledOperand();
+#else
+        auto callval = orig->getCalledValue();
+#endif
+        Value *dif0 = Builder2.CreateFDiv(
+            Builder2.CreateFMul(diffe(orig, Builder2), x),
+            Builder2.CreateFMul(
+                ConstantFP::get(x->getType(), 3),
+                Builder2.CreateCall(orig->getFunctionType(), callval, args)));
+        addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return;
+      }
+
       if (funcName == "tanhf" || funcName == "tanh") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
@@ -4201,9 +4233,9 @@ public:
                                       getIndex(orig, CacheType::Self));
             }
           }
+          eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
-            eraseIfUnused(*orig);
             return;
           }
 
@@ -4244,9 +4276,9 @@ public:
                                       getIndex(orig, CacheType::Self));
             }
           }
+          eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
-            eraseIfUnused(*orig);
             return;
           }
 
@@ -4288,9 +4320,9 @@ public:
                                       getIndex(orig, CacheType::Self));
             }
           }
+          eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
-            eraseIfUnused(*orig);
             return;
           }
 
