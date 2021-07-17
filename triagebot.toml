@@ -102,6 +102,8 @@ message_on_add = """\
 - Needs `I-nominated`?
 """
 message_on_remove = "Issue #{number}'s prioritization request has been removed."
+message_on_close = "Issue #{number} has been closed while requested for prioritization."
+message_on_reopen = "Issue #{number} has been reopened."
 
 [notify-zulip."T-rustdoc"]
 required_labels = ["I-nominated"]
