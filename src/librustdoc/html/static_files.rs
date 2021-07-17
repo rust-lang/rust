@@ -64,6 +64,10 @@ crate static RUST_FAVICON_SVG: &[u8] = include_bytes!("static/images/favicon.svg
 crate static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/images/favicon-16x16.png");
 crate static RUST_FAVICON_PNG_32: &[u8] = include_bytes!("static/images/favicon-32x32.png");
 
+/// The pixel art buttons
+crate static MINUS_PNG_DATAURL: &str = include_str!("static/images/minus-17x17.png.url");
+crate static PLUS_PNG_DATAURL: &str = include_str!("static/images/plus-17x17.png.url");
+
 crate static PAGE: &str = include_str!("templates/page.html");
 
 /// The built-in themes given to every documentation site.
