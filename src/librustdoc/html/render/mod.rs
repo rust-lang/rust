@@ -1690,7 +1690,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     {
         write!(
             buffer,
-            "<p class=\"location\">{}{}</p>",
+            "<h2 class=\"location\">{}{}</h2>",
             match *it.kind {
                 clean::StructItem(..) => "Struct ",
                 clean::TraitItem(..) => "Trait ",
@@ -1753,7 +1753,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     // to navigate the documentation (though slightly inefficiently).
 
     if !it.is_mod() {
-        buffer.write_str("<p class=\"location\">Other items in<br>");
+        buffer.write_str("<h2 class=\"location\">Other items in<br>");
         for (i, name) in cx.current.iter().take(parentlen).enumerate() {
             if i > 0 {
                 buffer.write_str("::<wbr>");
@@ -1765,7 +1765,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
                 *name
             );
         }
-        buffer.write_str("</p>");
+        buffer.write_str("</h2>");
     }
 
     // Sidebar refers to the enclosing module, not this module.
@@ -1876,7 +1876,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 ret.sort();
 
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
+                    "<h3 class=\"sidebar-title\"><a href=\"#implementations\">Methods</a></h3>\
                      <div class=\"sidebar-links\">",
                 );
                 for line in ret {
@@ -1941,24 +1941,24 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
 
             if !concrete_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#trait-implementations\">\
-                        Trait Implementations</a>",
+                    "<h3 class=\"sidebar-title\"><a href=\"#trait-implementations\">\
+                        Trait Implementations</a></h3>",
                 );
                 write_sidebar_links(out, concrete_format);
             }
 
             if !synthetic_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
-                        Auto Trait Implementations</a>",
+                    "<h3 class=\"sidebar-title\"><a href=\"#synthetic-implementations\">\
+                        Auto Trait Implementations</a></h3>",
                 );
                 write_sidebar_links(out, synthetic_format);
             }
 
             if !blanket_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
-                        Blanket Implementations</a>",
+                    "<h3 class=\"sidebar-title\"><a href=\"#blanket-implementations\">\
+                        Blanket Implementations</a></h3>",
                 );
                 write_sidebar_links(out, blanket_format);
             }
@@ -2010,7 +2010,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
             if !ret.is_empty() {
                 write!(
                     out,
-                    "<a class=\"sidebar-title\" href=\"#deref-methods\">Methods from {}&lt;Target={}&gt;</a>",
+                    "<h3 class=\"sidebar-title\"><a href=\"#deref-methods\">Methods from {}&lt;Target={}&gt;</a></h3>",
                     Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print(cx))),
                     Escape(&format!("{:#}", real_target.print(cx))),
                 );
@@ -2046,7 +2046,7 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     if !fields.is_empty() {
         if let CtorKind::Fictive = s.struct_type {
             sidebar.push_str(
-                "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
+                "<h3 class=\"sidebar-title\"><a href=\"#fields\">Fields</a></h3>\
                 <div class=\"sidebar-links\">",
             );
 
@@ -2123,8 +2123,8 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     print_sidebar_section(
         buf,
         &t.items,
-        "<a class=\"sidebar-title\" href=\"#associated-types\">\
-            Associated Types</a><div class=\"sidebar-links\">",
+        "<h3 class=\"sidebar-title\"><a href=\"#associated-types\">\
+            Associated Types</a></h3><div class=\"sidebar-links\">",
         |m| m.is_associated_type(),
         |out, sym| write!(out, "<a href=\"#associatedtype.{0}\">{0}</a>", sym),
         "</div>",
@@ -2133,8 +2133,8 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     print_sidebar_section(
         buf,
         &t.items,
-        "<a class=\"sidebar-title\" href=\"#associated-const\">\
-            Associated Constants</a><div class=\"sidebar-links\">",
+        "<h3 class=\"sidebar-title\"><a href=\"#associated-const\">\
+            Associated Constants</a></h3><div class=\"sidebar-links\">",
         |m| m.is_associated_const(),
         |out, sym| write!(out, "<a href=\"#associatedconstant.{0}\">{0}</a>", sym),
         "</div>",
@@ -2143,8 +2143,8 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     print_sidebar_section(
         buf,
         &t.items,
-        "<a class=\"sidebar-title\" href=\"#required-methods\">\
-            Required Methods</a><div class=\"sidebar-links\">",
+        "<h3 class=\"sidebar-title\"><a href=\"#required-methods\">\
+            Required Methods</a></h3><div class=\"sidebar-links\">",
         |m| m.is_ty_method(),
         |out, sym| write!(out, "<a href=\"#tymethod.{0}\">{0}</a>", sym),
         "</div>",
@@ -2153,8 +2153,8 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     print_sidebar_section(
         buf,
         &t.items,
-        "<a class=\"sidebar-title\" href=\"#provided-methods\">\
-            Provided Methods</a><div class=\"sidebar-links\">",
+        "<h3 class=\"sidebar-title\"><a href=\"#provided-methods\">\
+            Provided Methods</a></h3><div class=\"sidebar-links\">",
         |m| m.is_method(),
         |out, sym| write!(out, "<a href=\"#method.{0}\">{0}</a>", sym),
         "</div>",
@@ -2176,8 +2176,8 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         if !res.is_empty() {
             res.sort();
             buf.push_str(
-                "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                    Implementations on Foreign Types</a>\
+                "<h3 class=\"sidebar-title\"><a href=\"#foreign-impls\">\
+                    Implementations on Foreign Types</a></h3>\
                  <div class=\"sidebar-links\">",
             );
             for (name, id) in res.into_iter() {
@@ -2189,11 +2189,11 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 
     sidebar_assoc_items(cx, buf, it);
 
-    buf.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
+    buf.push_str("<h3 class=\"sidebar-title\"><a href=\"#implementors\">Implementors</a></h3>");
     if t.is_auto {
         buf.push_str(
-            "<a class=\"sidebar-title\" \
-                href=\"#synthetic-implementors\">Auto Implementors</a>",
+            "<h3 class=\"sidebar-title\"><a \
+                href=\"#synthetic-implementors\">Auto Implementors</a></h3>",
         );
     }
 
@@ -2236,7 +2236,7 @@ fn sidebar_union(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, u: &clean
 
     if !fields.is_empty() {
         sidebar.push_str(
-            "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
+            "<h3 class=\"sidebar-title\"><a href=\"#fields\">Fields</a></h3>\
             <div class=\"sidebar-links\">",
         );
 
@@ -2268,7 +2268,7 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
     if !variants.is_empty() {
         variants.sort_unstable();
         sidebar.push_str(&format!(
-            "<a class=\"sidebar-title\" href=\"#variants\">Variants</a>\
+            "<h3 class=\"sidebar-title\"><a href=\"#variants\">Variants</a></h3>\
              <div class=\"sidebar-links\">{}</div>",
             variants.join(""),
         ));
