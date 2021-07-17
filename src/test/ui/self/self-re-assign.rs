@@ -3,6 +3,7 @@
 // that we do not glue_drop before we glue_take (#3290).
 
 #![feature(box_syntax)]
+#![allow(dead_code)]
 
 use std::rc::Rc;
 
