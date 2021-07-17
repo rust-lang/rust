@@ -1511,7 +1511,7 @@ rustc_queries! {
 
     query output_filenames(_: ()) -> Arc<OutputFilenames> {
         eval_always
-        desc { "output_filenames" }
+        desc { "output filenames" }
     }
 
     /// Do not call this query directly: invoke `normalize` instead.

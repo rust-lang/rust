@@ -770,6 +770,7 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     providers.names_imported_by_glob_use = |_, ()| panic!();
     providers.extern_prelude = |_, ()| panic!();
     providers.main_def = |_, ()| panic!();
+    providers.output_filenames = |_, ()| panic!();
     *providers
 });
 
@@ -786,6 +787,7 @@ fn initialize_query_cache<'tcx>(
     gcx: &mut QueryContext<'tcx>,
     queries: &'tcx TcxQueries<'tcx>,
     resolutions: ResolverOutputs,
+    output_filenames: OutputFilenames,
 ) {
     gcx.enter(|tcx| {
         let filler = QueryCtxt { tcx, queries: &queries }.input();
@@ -808,6 +810,7 @@ fn initialize_query_cache<'tcx>(
         filler.names_imported_by_glob_use((), resolutions.glob_map);
         filler.extern_prelude((), resolutions.extern_prelude);
         filler.main_def((), resolutions.main_def);
+        filler.output_filenames((), std::sync::Arc::new(output_filenames));
     });
 }
 
@@ -878,13 +881,12 @@ pub fn create_global_ctxt<'tcx>(
                 query_result_on_disk_cache,
                 queries.as_dyn(),
                 &crate_name,
-                outputs,
             )
         })
     });
 
     let mut gcx = QueryContext { gcx };
-    initialize_query_cache(&mut gcx, queries, resolver_outputs);
+    initialize_query_cache(&mut gcx, queries, resolver_outputs, outputs);
     gcx
 }
 
