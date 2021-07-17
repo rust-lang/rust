@@ -6,7 +6,7 @@
 
 #![feature(assert_matches)]
 
-use std::assert::assert_matches;
+use std::assert_matches::assert_matches;
 
 fn main() {
     assert!(matches!((), ()));
