@@ -38,7 +38,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // See https://github.com/rust-lang/rust/pull/86475#discussion_r655162674
         assert!(
-            !ty.needs_subst() && !poly_trait_ref.map_or(false, |trait_ref| trait_ref.needs_subst())
+            !ty.needs_subst(tcx)
+                && poly_trait_ref.map_or(true, |trait_ref| !trait_ref.needs_subst(tcx))
         );
         let param_env = ty::ParamEnv::reveal_all();
         let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
@@ -81,7 +82,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 VtblEntry::Vacant => continue,
                 VtblEntry::Method(def_id, substs) => {
                     // See https://github.com/rust-lang/rust/pull/86475#discussion_r655162674
-                    assert!(!substs.needs_subst());
+                    assert!(!substs.needs_subst(tcx));
 
                     // Prepare the fn ptr we write into the vtable.
                     let instance =

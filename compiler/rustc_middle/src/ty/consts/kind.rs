@@ -12,6 +12,12 @@ use rustc_target::abi::Size;
 
 use super::ScalarInt;
 /// An unevaluated, potentially generic, constant.
+///
+/// If `substs_` is `None` it means that this anon const
+/// still has its default substs.
+///
+/// We check for all possible substs in `fn default_anon_const_substs`,
+/// so refer to that check for more info.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable)]
 pub struct Unevaluated<'tcx> {

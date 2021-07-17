@@ -1614,7 +1614,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     ConstEquate(..) |
                     TypeWellFormedFromEnv(..) => continue,
                 };
-                if predicate.is_global() {
+                if predicate.is_global(cx.tcx) {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
                         lint.build(&format!(
                             "{} bound {} does not depend on any type \

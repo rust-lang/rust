@@ -486,7 +486,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_subst() {
+        if !t.potentially_needs_subst() {
             return t;
         }
 
@@ -497,10 +497,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if !c.needs_subst() {
-            return c;
-        }
-
         if let ty::ConstKind::Param(p) = c.val {
             self.const_for_param(p, c)
         } else {

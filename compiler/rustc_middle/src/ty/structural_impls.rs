@@ -1079,6 +1079,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
         }
     }
 
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_unevaluated_const(*self)
+    }
+
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         if let Some(tcx) = visitor.tcx_for_anon_const_substs() {
             self.substs(tcx).visit_with(visitor)

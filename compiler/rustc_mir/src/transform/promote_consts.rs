@@ -992,6 +992,7 @@ pub fn promote_candidates<'tcx>(
         scope.parent_scope = None;
 
         let promoted = Body::new(
+            tcx,
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),

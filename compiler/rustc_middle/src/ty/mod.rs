@@ -1251,7 +1251,7 @@ impl<'tcx> ParamEnv<'tcx> {
             Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 
             Reveal::All => {
-                if value.is_global() {
+                if value.is_known_global() {
                     ParamEnvAnd { param_env: self.without_caller_bounds(), value }
                 } else {
                     ParamEnvAnd { param_env: self, value }
