@@ -5,8 +5,6 @@
 // compile-flags: -Z span-debug
 // aux-build: test-macros.rs
 
-#![feature(macro_attributes_in_derive_output)]
-
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
 

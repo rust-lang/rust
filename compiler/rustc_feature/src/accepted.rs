@@ -287,6 +287,8 @@ declare_features! (
     (accepted, const_fn_unsize, "1.54.0", Some(64992), None),
     /// Allows `impl Trait` with multiple unrelated lifetimes.
     (accepted, member_constraints, "1.54.0", Some(61997), None),
+    /// Allows macro attributes to observe output of `#[derive]`.
+    (accepted, macro_attributes_in_derive_output, "1.55.0", Some(81119), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
