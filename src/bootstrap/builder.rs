@@ -481,6 +481,7 @@ impl<'a> Builder<'a> {
                 dist::RustcDocs,
                 dist::Mingw,
                 dist::Rustc,
+                dist::CodegenBackend,
                 dist::DebuggerScripts,
                 dist::Std,
                 dist::RustcDev,
