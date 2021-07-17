@@ -242,6 +242,6 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     err.emit();
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers { entry_fn, ..*providers };
 }

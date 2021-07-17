@@ -130,7 +130,7 @@ fn all_diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashMap<Symbol, De
     collector
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.diagnostic_items = diagnostic_items;
     providers.all_diagnostic_items = all_diagnostic_items;
 }

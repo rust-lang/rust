@@ -245,7 +245,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     providers.supported_target_features = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         if tcx.sess.opts.actually_rustdoc {

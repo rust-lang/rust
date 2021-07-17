@@ -30,6 +30,8 @@ Rust MIR: a lowered representation of Rust.
 #![feature(once_cell)]
 #![feature(control_flow_enum)]
 #![feature(try_reserve)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -48,7 +50,7 @@ pub mod util;
 
 use rustc_middle::ty::query::Providers;
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     borrow_check::provide(providers);
     const_eval::provide(providers);
     shim::provide(providers);

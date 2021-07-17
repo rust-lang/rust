@@ -136,6 +136,6 @@ fn get_lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
     collector.lib_features
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.get_lib_features = get_lib_features;
 }

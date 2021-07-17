@@ -541,7 +541,7 @@ fn vtable_trait_first_method_offset<'tcx>(
     vtable_base
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub const fn provide(providers: &mut ty::query::Providers) {
     object_safety::provide(providers);
     structural_match::provide(providers);
     *providers = ty::query::Providers {

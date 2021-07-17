@@ -4,6 +4,8 @@
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -21,7 +23,7 @@ mod type_op;
 
 use rustc_middle::ty::query::Providers;
 
-pub fn provide(p: &mut Providers) {
+pub const fn provide(p: &mut Providers) {
     dropck_outlives::provide(p);
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);

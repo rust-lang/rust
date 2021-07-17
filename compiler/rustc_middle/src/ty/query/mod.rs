@@ -215,8 +215,11 @@ macro_rules! define_callbacks {
             ) -> query_values::$name<'tcx>,)*
         }
 
-        impl Default for Providers {
-            fn default() -> Self {
+
+        // FIXME: Make this an `impl const Default for Providers`
+        // when `const_trait_impl` is no longer incomplete
+        impl Providers {
+            pub const fn default() -> Self {
                 Providers {
                     $($name: |_, key| bug!(
                         "`tcx.{}({:?})` unsupported by its crate; \

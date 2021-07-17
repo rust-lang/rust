@@ -40,7 +40,7 @@ fn is_item_raw<'tcx>(
     })
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers) {
+pub(crate) const fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         is_copy_raw,
         is_sized_raw,

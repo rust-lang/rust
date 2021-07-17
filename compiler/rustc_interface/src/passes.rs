@@ -45,7 +45,6 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
-use std::lazy::SyncLazy;
 use std::marker::PhantomPinned;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -737,35 +736,35 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
-    let providers = &mut Providers::default();
+pub static DEFAULT_QUERY_PROVIDERS: Providers = {
+    let mut providers = Providers::default();
     providers.analysis = analysis;
-    proc_macro_decls::provide(providers);
-    plugin::build::provide(providers);
-    rustc_middle::hir::provide(providers);
-    mir::provide(providers);
-    mir_build::provide(providers);
-    rustc_privacy::provide(providers);
-    typeck::provide(providers);
-    ty::provide(providers);
-    traits::provide(providers);
-    rustc_passes::provide(providers);
-    rustc_resolve::provide(providers);
-    rustc_traits::provide(providers);
-    rustc_ty_utils::provide(providers);
-    rustc_metadata::provide(providers);
-    rustc_lint::provide(providers);
-    rustc_symbol_mangling::provide(providers);
-    rustc_codegen_ssa::provide(providers);
-    *providers
-});
+    proc_macro_decls::provide(&mut providers);
+    plugin::build::provide(&mut providers);
+    rustc_middle::hir::provide(&mut providers);
+    mir::provide(&mut providers);
+    mir_build::provide(&mut providers);
+    rustc_privacy::provide(&mut providers);
+    typeck::provide(&mut providers);
+    ty::provide(&mut providers);
+    traits::provide(&mut providers);
+    rustc_passes::provide(&mut providers);
+    rustc_resolve::provide(&mut providers);
+    rustc_traits::provide(&mut providers);
+    rustc_ty_utils::provide(&mut providers);
+    rustc_metadata::provide(&mut providers);
+    rustc_lint::provide(&mut providers);
+    rustc_symbol_mangling::provide(&mut providers);
+    rustc_codegen_ssa::provide(&mut providers);
+    providers
+};
 
-pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
-    let mut extern_providers = *DEFAULT_QUERY_PROVIDERS;
+pub static DEFAULT_EXTERN_QUERY_PROVIDERS: Providers = {
+    let mut extern_providers = DEFAULT_QUERY_PROVIDERS;
     rustc_metadata::provide_extern(&mut extern_providers);
     rustc_codegen_ssa::provide_extern(&mut extern_providers);
     extern_providers
-});
+};
 
 pub struct QueryContext<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
@@ -808,10 +807,10 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
+    let mut local_providers = DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut local_providers);
 
-    let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
+    let mut extern_providers = DEFAULT_EXTERN_QUERY_PROVIDERS;
     codegen_backend.provide(&mut extern_providers);
     codegen_backend.provide_extern(&mut extern_providers);
 

@@ -23,7 +23,7 @@ use std::convert::TryInto;
 use std::ops::ControlFlow;
 
 /// Provide implementations of queries relating to polymorphization analysis.
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
 }
 

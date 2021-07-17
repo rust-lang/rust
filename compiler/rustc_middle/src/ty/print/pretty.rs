@@ -2348,6 +2348,6 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     map
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub const fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { trimmed_def_paths, ..*providers };
 }

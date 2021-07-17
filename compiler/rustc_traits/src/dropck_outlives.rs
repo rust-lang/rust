@@ -17,7 +17,7 @@ use rustc_trait_selection::traits::{
     Normalized, ObligationCause, TraitEngine, TraitEngineExt as _,
 };
 
-crate fn provide(p: &mut Providers) {
+crate const fn provide(p: &mut Providers) {
     *p = Providers { dropck_outlives, adt_dtorck_constraint, ..*p };
 }
 

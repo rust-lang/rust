@@ -15,6 +15,8 @@
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
 #![feature(nll)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 
@@ -3504,6 +3506,6 @@ impl CrateLint {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     late::lifetimes::provide(providers);
 }

@@ -8,6 +8,8 @@
 #![feature(min_specialization)]
 #![feature(try_blocks)]
 #![feature(never_type)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 extern crate proc_macro;

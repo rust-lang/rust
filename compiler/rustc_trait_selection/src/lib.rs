@@ -20,6 +20,8 @@
 #![feature(never_type)]
 #![feature(crate_visibility_modifier)]
 #![feature(control_flow_enum)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

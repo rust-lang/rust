@@ -750,7 +750,7 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut Checker { tcx }.as_deep_visitor());
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_unstable_api_usage, stability_index, ..*providers };
 }
 

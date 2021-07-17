@@ -357,7 +357,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId)
     !tcx.reachable_set(()).contains(&def_id)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
@@ -367,7 +367,7 @@ pub fn provide(providers: &mut Providers) {
     providers.wasm_import_module_map = wasm_import_module_map;
 }
 
-pub fn provide_extern(providers: &mut Providers) {
+pub const fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }

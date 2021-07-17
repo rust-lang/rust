@@ -33,6 +33,6 @@ pub mod region;
 pub mod resolve_lifetime;
 pub mod stability;
 
-pub fn provide(providers: &mut crate::ty::query::Providers) {
+pub const fn provide(providers: &mut crate::ty::query::Providers) {
     limits::provide(providers);
 }

@@ -29,7 +29,7 @@ use std::any::Any;
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => $compute:block)*) => {
-        pub fn provide_extern(providers: &mut Providers) {
+        pub const fn provide_extern(providers: &mut Providers) {
             $(fn $name<$lt>(
                 $tcx: TyCtxt<$lt>,
                 def_id_arg: ty::query::query_keys::$name<$lt>,
@@ -235,7 +235,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about

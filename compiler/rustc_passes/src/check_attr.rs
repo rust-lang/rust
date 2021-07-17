@@ -1652,6 +1652,6 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_attrs, ..*providers };
 }

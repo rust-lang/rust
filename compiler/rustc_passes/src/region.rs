@@ -840,6 +840,6 @@ fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     tcx.arena.alloc(scope_tree)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers { region_scope_tree, ..*providers };
 }

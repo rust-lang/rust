@@ -4,6 +4,8 @@
 #![feature(control_flow_enum)]
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_mut_refs)]
 #![recursion_limit = "256"]
 
 use rustc_attr as attr;
@@ -2019,7 +2021,7 @@ impl<'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers {
         visibility,
         privacy_access_levels,

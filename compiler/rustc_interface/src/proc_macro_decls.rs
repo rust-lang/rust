@@ -32,6 +32,6 @@ impl<'v> ItemLikeVisitor<'v> for Finder<'_> {
     fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     *providers = Providers { proc_macro_decls_static, ..*providers };
 }
