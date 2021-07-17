@@ -1,0 +1,13 @@
+error: expected `fn`, found keyword `unsafe`
+  --> $DIR/wrong-unsafe copy.rs:9:8
+   |
+LL | extern unsafe fn test() {}
+   | -------^^^^^^
+   | |      |
+   | |      expected `fn`
+   | help: `unsafe` must come before `extern`: `unsafe extern`
+   |
+   = note: keyword order for functions declaration is `<visibility>`, `const`, `async`, `unsafe`, `extern`, `"<ABI>"`
+
+error: aborting due to previous error
+
