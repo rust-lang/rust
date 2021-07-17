@@ -385,7 +385,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::N
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_bound_variable_kinds((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_bound_variable_kinds((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
