@@ -240,12 +240,13 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Dereferencing a dangling pointer after it got freed.
     PointerUseAfterFree(AllocId),
     /// Used a pointer outside the bounds it is valid for.
+    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
     PointerOutOfBounds {
         alloc_id: AllocId,
-        offset: Size,
-        size: Size,
+        alloc_size: Size,
+        ptr_offset: i64,
+        ptr_size: Size,
         msg: CheckInAllocMsg,
-        allocation_size: Size,
     },
     /// Using an integer as a pointer in the wrong way.
     DanglingIntPointer(u64, CheckInAllocMsg),
@@ -318,24 +319,25 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             PointerUseAfterFree(a) => {
                 write!(f, "pointer to {} was dereferenced after this allocation got freed", a)
             }
-            PointerOutOfBounds { alloc_id, offset, size: Size::ZERO, msg, allocation_size } => {
+            PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size: Size::ZERO, msg } => {
                 write!(
                     f,
-                    "{}{} has size {}, so pointer at offset {} is out-of-bounds",
+                    "{}{alloc_id} has size {alloc_size}, so pointer at offset {ptr_offset} is out-of-bounds",
                     msg,
-                    alloc_id,
-                    allocation_size.bytes(),
-                    offset.bytes(),
+                    alloc_id = alloc_id,
+                    alloc_size = alloc_size.bytes(),
+                    ptr_offset = ptr_offset,
                 )
             }
-            PointerOutOfBounds { alloc_id, offset, size, msg, allocation_size } => write!(
+            PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => write!(
                 f,
-                "{}{} has size {}, so pointer to {} bytes starting at offset {} is out-of-bounds",
+                "{}{alloc_id} has size {alloc_size}, so pointer to {ptr_size} byte{ptr_size_p} starting at offset {ptr_offset} is out-of-bounds",
                 msg,
-                alloc_id,
-                allocation_size.bytes(),
-                size.bytes(),
-                offset.bytes(),
+                alloc_id = alloc_id,
+                alloc_size = alloc_size.bytes(),
+                ptr_size = ptr_size.bytes(),
+                ptr_size_p = pluralize!(ptr_size.bytes()),
+                ptr_offset = ptr_offset,
             ),
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
                 write!(f, "null pointer is not a valid pointer for this operation")
