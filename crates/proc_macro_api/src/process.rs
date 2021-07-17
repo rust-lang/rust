@@ -4,10 +4,10 @@ use std::{
     convert::{TryFrom, TryInto},
     ffi::{OsStr, OsString},
     io::{self, BufRead, BufReader, Write},
-    path::{Path, PathBuf},
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
 };
 
+use paths::{AbsPath, AbsPathBuf};
 use stdx::JodChild;
 
 use crate::{
@@ -24,7 +24,7 @@ pub(crate) struct ProcMacroProcessSrv {
 
 impl ProcMacroProcessSrv {
     pub(crate) fn run(
-        process_path: PathBuf,
+        process_path: AbsPathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<ProcMacroProcessSrv> {
         let mut process = Process::run(process_path, args)?;
@@ -37,7 +37,7 @@ impl ProcMacroProcessSrv {
 
     pub(crate) fn find_proc_macros(
         &mut self,
-        dylib_path: &Path,
+        dylib_path: &AbsPath,
     ) -> Result<Vec<(String, ProcMacroKind)>, tt::ExpansionError> {
         let task = ListMacrosTask { lib: dylib_path.to_path_buf() };
 
@@ -84,7 +84,7 @@ struct Process {
 
 impl Process {
     fn run(
-        path: PathBuf,
+        path: AbsPathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<Process> {
         let args: Vec<OsString> = args.into_iter().map(|s| s.as_ref().into()).collect();
@@ -101,8 +101,11 @@ impl Process {
     }
 }
 
-fn mk_child(path: &Path, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<Child> {
-    Command::new(&path)
+fn mk_child(
+    path: &AbsPath,
+    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+) -> io::Result<Child> {
+    Command::new(path.as_os_str())
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

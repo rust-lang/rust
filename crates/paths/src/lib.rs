@@ -3,6 +3,7 @@
 use std::{
     borrow::Borrow,
     convert::{TryFrom, TryInto},
+    ffi::OsStr,
     ops,
     path::{Component, Path, PathBuf},
 };
@@ -65,6 +66,27 @@ impl PartialEq<AbsPath> for AbsPathBuf {
     }
 }
 
+impl serde::Serialize for AbsPathBuf {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for AbsPathBuf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let path = PathBuf::deserialize(deserializer)?;
+        AbsPathBuf::try_from(path).map_err(|path| {
+            serde::de::Error::custom(format!("expected absolute path, got {}", path.display()))
+        })
+    }
+}
+
 impl AbsPathBuf {
     /// Wrap the given absolute path in `AbsPathBuf`
     ///
@@ -96,13 +118,6 @@ impl AbsPathBuf {
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 pub struct AbsPath(Path);
-
-impl ops::Deref for AbsPath {
-    type Target = Path;
-    fn deref(&self) -> &Path {
-        &self.0
-    }
-}
 
 impl AsRef<Path> for AbsPath {
     fn as_ref(&self) -> &Path {
@@ -168,6 +183,43 @@ impl AbsPath {
     pub fn strip_prefix(&self, base: &AbsPath) -> Option<&RelPath> {
         self.0.strip_prefix(base).ok().map(RelPath::new_unchecked)
     }
+    pub fn starts_with(&self, base: &AbsPath) -> bool {
+        self.0.starts_with(&base.0)
+    }
+    pub fn ends_with(&self, suffix: &RelPath) -> bool {
+        self.0.starts_with(&suffix.0)
+    }
+
+    // region:delegate-methods
+
+    // Note that we deliberately don't implement `Deref<Target = Path>` here.
+    //
+    // The problem with `Path` is that it directly exposes convenience IO-ing
+    // methods. For example, `Path::exists` delegates to `fs::metadata`.
+    //
+    // For `AbsPath`, we want to make sure that this is a POD type, and that all
+    // IO goes via `fs`. That way, it becomes easier to mock IO when we need it.
+
+    pub fn file_name(&self) -> Option<&OsStr> {
+        self.0.file_name()
+    }
+    pub fn extension(&self) -> Option<&OsStr> {
+        self.0.extension()
+    }
+    pub fn file_stem(&self) -> Option<&OsStr> {
+        self.0.file_stem()
+    }
+    pub fn as_os_str(&self) -> &OsStr {
+        self.0.as_os_str()
+    }
+    pub fn display(&self) -> std::path::Display<'_> {
+        self.0.display()
+    }
+    #[deprecated(note = "use std::fs::metadata().is_ok() instead")]
+    pub fn exists(&self) -> bool {
+        self.0.exists()
+    }
+    // endregion:delegate-methods
 }
 
 /// Wrapper around a relative [`PathBuf`].
@@ -223,13 +275,6 @@ impl RelPathBuf {
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 pub struct RelPath(Path);
-
-impl ops::Deref for RelPath {
-    type Target = Path;
-    fn deref(&self) -> &Path {
-        &self.0
-    }
-}
 
 impl AsRef<Path> for RelPath {
     fn as_ref(&self) -> &Path {

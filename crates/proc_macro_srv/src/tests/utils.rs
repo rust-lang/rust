@@ -3,6 +3,7 @@
 use crate::dylib;
 use crate::ProcMacroSrv;
 use expect_test::Expect;
+use paths::AbsPathBuf;
 use proc_macro_api::ListMacrosTask;
 use std::str::FromStr;
 
@@ -41,7 +42,7 @@ fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect:
 }
 
 pub fn list() -> Vec<String> {
-    let path = fixtures::proc_macro_test_dylib_path();
+    let path = AbsPathBuf::assert(fixtures::proc_macro_test_dylib_path());
     let task = ListMacrosTask { lib: path };
     let mut srv = ProcMacroSrv::default();
     let res = srv.list_macros(&task).unwrap();

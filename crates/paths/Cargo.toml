@@ -7,3 +7,6 @@ edition = "2018"
 
 [lib]
 doctest = false
+
+[dependencies]
+serde = "1"

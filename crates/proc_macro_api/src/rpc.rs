@@ -6,8 +6,7 @@
 //! to be much easier, we deliberately duplicate `tt` structs with `#[serde(with = "XXDef")]`
 //! for separation of code responsibility.
 
-use std::path::PathBuf;
-
+use paths::AbsPathBuf;
 use serde::{Deserialize, Serialize};
 use tt::{
     Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, SmolStr, Spacing, Subtree, TokenId,
@@ -16,7 +15,7 @@ use tt::{
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ListMacrosTask {
-    pub lib: PathBuf,
+    pub lib: AbsPathBuf,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -50,7 +49,7 @@ pub struct ExpansionTask {
     #[serde(with = "opt_subtree_def")]
     pub attributes: Option<Subtree>,
 
-    pub lib: PathBuf,
+    pub lib: AbsPathBuf,
 
     /// Environment variables to set during macro expansion.
     pub env: Vec<(String, String)>,
@@ -272,7 +271,7 @@ mod tests {
             macro_body: tt.clone(),
             macro_name: Default::default(),
             attributes: None,
-            lib: Default::default(),
+            lib: AbsPathBuf::assert(std::env::current_dir().unwrap()),
             env: Default::default(),
         };
 

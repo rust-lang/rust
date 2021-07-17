@@ -1,6 +1,7 @@
 //! Handles dynamic library loading for proc macro
 
 use std::{
+    convert::TryInto,
     fmt,
     fs::File,
     io,
@@ -10,6 +11,7 @@ use std::{
 use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
+use paths::AbsPath;
 use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
 use super::abis::Abi;
@@ -116,7 +118,10 @@ impl ProcMacroLibraryLibloading {
             invalid_data_err(format!("Cannot find registrar symbol in file {}", file.display()))
         })?;
 
-        let version_info = read_dylib_info(file)?;
+        let abs_file: &AbsPath = file.try_into().map_err(|_| {
+            invalid_data_err(format!("expected an absolute path, got {}", file.display()))
+        })?;
+        let version_info = read_dylib_info(&abs_file)?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
         let abi = Abi::from_lib(&lib, symbol_name, version_info)?;
@@ -136,7 +141,7 @@ impl Expander {
 
         let lib = ensure_file_with_lock_free_access(&lib)?;
 
-        let library = ProcMacroLibraryLibloading::open(&lib)?;
+        let library = ProcMacroLibraryLibloading::open(lib.as_ref())?;
 
         Ok(Expander { inner: library })
     }

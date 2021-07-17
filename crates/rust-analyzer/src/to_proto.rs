@@ -1,7 +1,7 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::{
     iter::once,
-    path::{self, Path},
+    path,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -14,6 +14,7 @@ use ide::{
 };
 use itertools::Itertools;
 use serde_json::to_value;
+use vfs::AbsPath;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -622,10 +623,9 @@ pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> lsp_types::Url
 /// This will only happen when processing windows paths.
 ///
 /// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
-pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
-    assert!(path.is_absolute());
+pub(crate) fn url_from_abs_path(path: &AbsPath) -> lsp_types::Url {
     let url = lsp_types::Url::from_file_path(path).unwrap();
-    match path.components().next() {
+    match path.as_ref().components().next() {
         Some(path::Component::Prefix(prefix))
             if matches!(prefix.kind(), path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)) =>
         {
@@ -1328,15 +1328,13 @@ fn main() {
     // `Url` is not able to parse windows paths on unix machines.
     #[test]
     #[cfg(target_os = "windows")]
-    fn test_lowercase_drive_letter_with_drive() {
-        let url = url_from_abs_path(Path::new("C:\\Test"));
-        assert_eq!(url.to_string(), "file:///c:/Test");
-    }
+    fn test_lowercase_drive_letter() {
+        use std::{convert::TryInto, path::Path};
 
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn test_drive_without_colon_passthrough() {
-        let url = url_from_abs_path(Path::new(r#"\\localhost\C$\my_dir"#));
+        let url = url_from_abs_path(Path::new("C:\\Test").try_into().unwrap());
+        assert_eq!(url.to_string(), "file:///c:/Test");
+
+        let url = url_from_abs_path(Path::new(r#"\\localhost\C$\my_dir"#).try_into().unwrap());
         assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
     }
 }

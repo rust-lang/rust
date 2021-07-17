@@ -273,11 +273,11 @@ impl CargoWorkspace {
                 .parent()
                 .map(|p| p.to_path_buf())
                 .or(cwd)
-                .map(|dir| dir.to_string_lossy().to_string())
-                .unwrap_or_else(|| "<failed to get path>".into());
+                .map(|dir| format!(" in `{}`", dir.display()))
+                .unwrap_or_default();
 
             format!(
-                "Failed to run `cargo metadata --manifest-path {}` in `{}`",
+                "Failed to run `cargo metadata --manifest-path {}`{}",
                 cargo_toml.display(),
                 workdir
             )

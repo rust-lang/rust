@@ -11,10 +11,10 @@ mod rpc;
 mod version;
 
 use base_db::{Env, ProcMacro};
+use paths::{AbsPath, AbsPathBuf};
 use std::{
     ffi::OsStr,
     io,
-    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
@@ -28,7 +28,7 @@ pub use version::{read_dylib_info, RustCInfo};
 #[derive(Debug, Clone)]
 struct ProcMacroProcessExpander {
     process: Arc<Mutex<ProcMacroProcessSrv>>,
-    dylib_path: PathBuf,
+    dylib_path: AbsPathBuf,
     name: SmolStr,
 }
 
@@ -79,25 +79,25 @@ pub struct ProcMacroClient {
 impl ProcMacroClient {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn extern_process(
-        process_path: PathBuf,
+        process_path: AbsPathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<ProcMacroClient> {
         let process = ProcMacroProcessSrv::run(process_path, args)?;
         Ok(ProcMacroClient { process: Arc::new(Mutex::new(process)) })
     }
 
-    pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
+    pub fn by_dylib_path(&self, dylib_path: &AbsPath) -> Vec<ProcMacro> {
         let _p = profile::span("ProcMacroClient::by_dylib_path");
         match version::read_dylib_info(dylib_path) {
             Ok(info) => {
                 if info.version.0 < 1 || info.version.1 < 47 {
-                    eprintln!("proc-macro {} built by {:#?} is not supported by Rust Analyzer, please update your rust version.", dylib_path.to_string_lossy(), info);
+                    eprintln!("proc-macro {} built by {:#?} is not supported by Rust Analyzer, please update your rust version.", dylib_path.display(), info);
                 }
             }
             Err(err) => {
                 eprintln!(
                     "proc-macro {} failed to find the given version. Reason: {}",
-                    dylib_path.to_string_lossy(),
+                    dylib_path.display(),
                     err
                 );
             }
@@ -128,7 +128,7 @@ impl ProcMacroClient {
                 let expander = Arc::new(ProcMacroProcessExpander {
                     process: self.process.clone(),
                     name: name.clone(),
-                    dylib_path: dylib_path.into(),
+                    dylib_path: dylib_path.to_path_buf(),
                 });
 
                 ProcMacro { name, kind, expander }
