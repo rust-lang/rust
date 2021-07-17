@@ -14,12 +14,6 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
-        eval_always
-        no_hash
-        desc { "get the resolver outputs" }
-    }
-
     /// Represents crate as a whole (as distinct from the top-level crate module).
     /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
     /// we will have to assume that any change means that you need to be recompiled.
@@ -1160,6 +1154,7 @@ rustc_queries! {
     }
 
     query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export<LocalDefId>]> {
+        eval_always
         desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1262,6 +1257,10 @@ rustc_queries! {
     query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {
         desc { "looking up the entry function of a crate" }
     }
+    query main_def(_: ()) -> Option<ty::MainDefinition> {
+        eval_always
+        desc { |tcx| "looking up the entry function in the AST" }
+    }
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the derive registrar for a crate" }
     }
@@ -1282,6 +1281,13 @@ rustc_queries! {
     query crate_extern_paths(_: CrateNum) -> Vec<PathBuf> {
         eval_always
         desc { "looking up the paths for extern crates" }
+    }
+
+    /// Extern prelude entries. The value is `true` if the entry was introduced
+    /// via `extern crate` item and not `--extern` option or compiler built-in.
+    query extern_prelude(_: ()) -> FxHashMap<Symbol, bool> {
+        eval_always
+        desc { "looking up prelude entries" }
     }
 
     /// Given a crate and a trait, look up all impls of that trait in the crate.
@@ -1351,6 +1357,7 @@ rustc_queries! {
     }
 
     query visibility(def_id: DefId) -> ty::Visibility {
+        eval_always
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1375,6 +1382,7 @@ rustc_queries! {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
+        eval_always
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1451,13 +1459,17 @@ rustc_queries! {
         eval_always
     }
     query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
+        eval_always
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
+        eval_always
         desc { "looking up all possibly unused extern crates" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
-        desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
+    query names_imported_by_glob_use(_: ()) -> FxHashMap<LocalDefId, FxHashSet<Symbol>> {
+        eval_always
+        storage(ArenaCacheSelector<'tcx>)
+        desc { |tcx| "names imported by glob use" }
     }
 
     query stability_index(_: ()) -> stability::Index<'tcx> {

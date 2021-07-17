@@ -2372,18 +2372,16 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
 fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
-    let mut map = FxHashMap::default();
-
     if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
         // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
         // wrapper can be used to suppress this query, in exchange for full paths being formatted.
         tcx.sess.delay_good_path_bug("trimmed_def_paths constructed");
     }
 
-    let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
-        &mut FxHashMap::default();
+    let mut unique_symbols_rev: FxHashMap<(Namespace, Symbol), Option<DefId>> =
+        FxHashMap::default();
 
-    for symbol_set in tcx.resolutions(()).glob_map.values() {
+    for symbol_set in tcx.names_imported_by_glob_use(()).values() {
         for symbol in symbol_set {
             unique_symbols_rev.insert((Namespace::TypeNS, *symbol), None);
             unique_symbols_rev.insert((Namespace::ValueNS, *symbol), None);
@@ -2409,13 +2407,13 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
         }
     });
 
-    for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
-        if let Some(def_id) = opt_def_id {
-            map.insert(def_id, symbol);
-        }
-    }
-
-    map
+    unique_symbols_rev
+        .into_iter()
+        .filter_map(|((_, symbol), opt_def_id)| {
+            let def_id = opt_def_id?;
+            Some((def_id, symbol))
+        })
+        .collect()
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

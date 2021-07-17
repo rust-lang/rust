@@ -2069,51 +2069,46 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
+    // When a visibility was found by the resolver, the query cache has already been filled, so we
+    // are left with non-explicit visibilities.
     let def_id = def_id.expect_local();
-    match tcx.resolutions(()).visibilities.get(&def_id) {
-        Some(vis) => *vis,
-        None => {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-            match tcx.hir().get(hir_id) {
-                // Unique types created for closures participate in type privacy checking.
-                // They have visibilities inherited from the module they are defined in.
-                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
-                    ty::Visibility::Restricted(tcx.parent_module(hir_id).to_def_id())
-                }
-                // - AST lowering may clone `use` items and the clones don't
-                //   get their entries in the resolver's visibility table.
-                // - AST lowering also creates opaque type items with inherited visibilies.
-                //   Visibility on them should have no effect, but to avoid the visibility
-                //   query failing on some items, we provide it for opaque types as well.
-                Node::Item(hir::Item {
-                    vis,
-                    kind: hir::ItemKind::Use(..) | hir::ItemKind::OpaqueTy(..),
-                    ..
-                }) => ty::Visibility::from_hir(vis, hir_id, tcx),
-                // Visibilities of trait impl items are inherited from their traits
-                // and are not filled in resolve.
-                Node::ImplItem(impl_item) => {
-                    match tcx.hir().get(tcx.hir().get_parent_item(hir_id)) {
-                        Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(tr), .. }),
-                            ..
-                        }) => tr.path.res.opt_def_id().map_or_else(
-                            || {
-                                tcx.sess.delay_span_bug(tr.path.span, "trait without a def-id");
-                                ty::Visibility::Public
-                            },
-                            |def_id| tcx.visibility(def_id),
-                        ),
-                        _ => span_bug!(impl_item.span, "the parent is not a trait impl"),
-                    }
-                }
-                _ => span_bug!(
-                    tcx.def_span(def_id),
-                    "visibility table unexpectedly missing a def-id: {:?}",
-                    def_id,
-                ),
-            }
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    match tcx.hir().get(hir_id) {
+        // Unique types created for closures participate in type privacy checking.
+        // They have visibilities inherited from the module they are defined in.
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
+            ty::Visibility::Restricted(tcx.parent_module(hir_id).to_def_id())
         }
+        // - AST lowering may clone `use` items and the clones don't
+        //   get their entries in the resolver's visibility table.
+        // - AST lowering also creates opaque type items with inherited visibilies.
+        //   Visibility on them should have no effect, but to avoid the visibility
+        //   query failing on some items, we provide it for opaque types as well.
+        Node::Item(hir::Item {
+            vis,
+            kind: hir::ItemKind::Use(..) | hir::ItemKind::OpaqueTy(..),
+            ..
+        }) => ty::Visibility::from_hir(vis, hir_id, tcx),
+        // Visibilities of trait impl items are inherited from their traits
+        // and are not filled in resolve.
+        Node::ImplItem(impl_item) => match tcx.hir().get(tcx.hir().get_parent_item(hir_id)) {
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(tr), .. }),
+                ..
+            }) => tr.path.res.opt_def_id().map_or_else(
+                || {
+                    tcx.sess.delay_span_bug(tr.path.span, "trait without a def-id");
+                    ty::Visibility::Public
+                },
+                |def_id| tcx.visibility(def_id),
+            ),
+            _ => span_bug!(impl_item.span, "the parent is not a trait impl"),
+        },
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "visibility table unexpectedly missing a def-id: {:?}",
+            def_id,
+        ),
     }
 }
 

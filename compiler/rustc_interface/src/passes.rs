@@ -12,22 +12,23 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
-use rustc_middle::middle::cstore::{MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::middle::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
-use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_query_impl::{OnDiskCache, Queries as TcxQueries, QueryCtxt};
+use rustc_resolve::{Resolver, ResolverArenas, ResolverOutputs};
 use rustc_serialize::json;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
 use rustc_session::lint;
@@ -142,7 +143,9 @@ mod boxed_resolver {
             f((&mut *resolver).as_mut().unwrap())
         }
 
-        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
+        pub fn to_resolver_outputs(
+            resolver: Rc<RefCell<BoxedResolver>>,
+        ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs) {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
@@ -756,6 +759,16 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     rustc_lint::provide(providers);
     rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
+    // Providers for manually initialized queries. Must be kept in sync with
+    // `initialize_query_cache`.
+    //providers.visibility is provided in rustc_privacy.
+    providers.extern_mod_stmt_cnum = |_, _| None;
+    providers.maybe_unused_trait_import = |_, _| false;
+    providers.maybe_unused_extern_crates = |_, ()| panic!();
+    providers.module_exports = |_, _| None;
+    providers.names_imported_by_glob_use = |_, ()| panic!();
+    providers.extern_prelude = |_, ()| panic!();
+    providers.main_def = |_, ()| panic!();
     *providers
 });
 
@@ -765,6 +778,37 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|
     rustc_codegen_ssa::provide_extern(&mut extern_providers);
     extern_providers
 });
+
+/// Fill the query cache with values from the resolver.
+/// Must be kept in sync with `DEFAULT_QUERY_PROVIDERS`.
+fn initialize_query_cache<'tcx>(
+    gcx: &mut QueryContext<'tcx>,
+    queries: &'tcx TcxQueries<'tcx>,
+    resolutions: ResolverOutputs,
+) {
+    gcx.enter(|tcx| {
+        let filler = QueryCtxt { tcx, queries: &queries }.input();
+        for (id, vis) in resolutions.visibilities {
+            filler.visibility(id.to_def_id(), vis);
+        }
+        for (id, cnum) in resolutions.extern_crate_map {
+            filler.extern_mod_stmt_cnum(id, Some(cnum));
+        }
+        for id in resolutions.maybe_unused_trait_imports {
+            filler.maybe_unused_trait_import(id, true)
+        }
+        filler.maybe_unused_extern_crates(
+            (),
+            tcx.arena.alloc_from_iter(resolutions.maybe_unused_extern_crates),
+        );
+        for (id, export) in resolutions.export_map {
+            filler.module_exports(id, Some(tcx.arena.alloc_from_iter(export)));
+        }
+        filler.names_imported_by_glob_use((), resolutions.glob_map);
+        filler.extern_prelude((), resolutions.extern_prelude);
+        filler.main_def((), resolutions.main_def);
+    });
+}
 
 pub struct QueryContext<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
@@ -802,7 +846,7 @@ pub fn create_global_ctxt<'tcx>(
     let krate = resolver
         .borrow_mut()
         .access(|resolver| lower_to_hir(sess, &lint_store, resolver, krate, hir_arena));
-    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
+    let (definitions, cstore, resolver_outputs) = BoxedResolver::to_resolver_outputs(resolver);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -823,12 +867,13 @@ pub fn create_global_ctxt<'tcx>(
     });
 
     let gcx = sess.time("setup_global_ctxt", || {
-        global_ctxt.get_or_init(move || {
+        global_ctxt.get_or_init(|| {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
                 arena,
-                resolver_outputs,
+                definitions,
+                cstore,
                 krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
@@ -839,7 +884,9 @@ pub fn create_global_ctxt<'tcx>(
         })
     });
 
-    QueryContext { gcx }
+    let mut gcx = QueryContext { gcx };
+    initialize_query_cache(&mut gcx, queries, resolver_outputs);
+    gcx
 }
 
 /// Runs the resolution, type-checking, region checking and other

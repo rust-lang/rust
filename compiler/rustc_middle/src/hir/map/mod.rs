@@ -158,7 +158,7 @@ impl<'hir> Map<'hir> {
 
     pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
-        self.tcx.untracked_resolutions.definitions.def_key(def_id)
+        self.tcx.definitions.def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
@@ -167,13 +167,13 @@ impl<'hir> Map<'hir> {
 
     pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
-        self.tcx.untracked_resolutions.definitions.def_path(def_id)
+        self.tcx.definitions.def_path(def_id)
     }
 
     #[inline]
     pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
-        self.tcx.untracked_resolutions.definitions.def_path_hash(def_id)
+        self.tcx.definitions.def_path_hash(def_id)
     }
 
     #[inline]
@@ -190,20 +190,20 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
         // FIXME(#85914) is this access safe for incr. comp.?
-        self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
+        self.tcx.definitions.opt_hir_id_to_local_def_id(hir_id)
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
         // FIXME(#85914) is this access safe for incr. comp.?
-        self.tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id)
+        self.tcx.definitions.local_def_id_to_hir_id(def_id)
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         // Create a dependency to the crate to be sure we reexcute this when the amount of
         // definitions change.
         self.tcx.ensure().hir_crate(());
-        self.tcx.untracked_resolutions.definitions.iter_local_def_id()
+        self.tcx.definitions.iter_local_def_id()
     }
 
     pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
@@ -948,13 +948,8 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tc
 
     // We can access untracked state since we are an eval_always query.
     let hcx = tcx.create_stable_hashing_context();
-    let mut collector = NodeCollector::root(
-        tcx.sess,
-        &**tcx.arena,
-        tcx.untracked_crate,
-        &tcx.untracked_resolutions.definitions,
-        hcx,
-    );
+    let mut collector =
+        NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
     intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
     let map = collector.finalize_and_compute_crate_hash();
@@ -972,7 +967,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         .map
         .iter_enumerated()
         .filter_map(|(def_id, hod)| {
-            let def_path_hash = tcx.untracked_resolutions.definitions.def_path_hash(def_id);
+            let def_path_hash = tcx.definitions.def_path_hash(def_id);
             let mut hasher = StableHasher::new();
             hod.as_ref()?.hash_stable(&mut hcx, &mut hasher);
             AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id }
@@ -1024,7 +1019,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
         .crates(())
         .iter()
         .map(|&cnum| {
-            let stable_crate_id = tcx.resolutions(()).cstore.stable_crate_id(cnum);
+            let stable_crate_id = tcx.cstore.stable_crate_id(cnum);
             let hash = tcx.crate_hash(cnum);
             (stable_crate_id, hash)
         })

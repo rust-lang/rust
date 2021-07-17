@@ -1172,8 +1172,14 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             }
             hir::ItemKind::Use(path, hir::UseKind::Glob) => {
                 // Make a comma-separated list of names of imported modules.
-                let names = self.tcx.names_imported_by_glob_use(item.def_id);
-                let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
+                let names: Vec<_> = self
+                    .tcx
+                    .names_imported_by_glob_use(())
+                    .get(&item.def_id)
+                    .into_iter()
+                    .flatten()
+                    .map(|n| n.to_string())
+                    .collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`

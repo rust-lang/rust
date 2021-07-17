@@ -116,7 +116,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         crates_to_lint: &mut crates_to_lint,
     });
 
-    let extern_prelude = &tcx.resolutions(()).extern_prelude;
+    let extern_prelude = &tcx.extern_prelude(());
 
     for extern_crate in &crates_to_lint {
         let def_id = extern_crate.def_id.expect_local();

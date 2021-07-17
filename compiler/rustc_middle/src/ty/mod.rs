@@ -19,9 +19,7 @@ pub use assoc::*;
 pub use generics::*;
 pub use vtable::*;
 
-use crate::hir::exports::ExportMap;
 use crate::ich::StableHashingContext;
-use crate::middle::cstore::CrateStoreDyn;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -30,7 +28,7 @@ use crate::ty::util::Discr;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, ParallelIterator};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
@@ -118,23 +116,7 @@ mod sty;
 
 // Data types
 
-#[derive(Debug)]
-pub struct ResolverOutputs {
-    pub definitions: rustc_hir::definitions::Definitions,
-    pub cstore: Box<CrateStoreDyn>,
-    pub visibilities: FxHashMap<LocalDefId, Visibility>,
-    pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
-    pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
-    pub export_map: ExportMap<LocalDefId>,
-    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
-    /// Extern prelude entries. The value is `true` if the entry was introduced
-    /// via `extern crate` item and not `--extern` option or compiler built-in.
-    pub extern_prelude: FxHashMap<Symbol, bool>,
-    pub main_def: Option<MainDefinition>,
-}
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,

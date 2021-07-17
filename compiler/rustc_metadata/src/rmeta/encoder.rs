@@ -454,7 +454,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.resolutions(()).definitions.def_path_table();
+        let table = self.tcx.definitions.def_path_table();
         if self.is_proc_macro {
             for def_index in std::iter::once(CRATE_DEF_INDEX)
                 .chain(self.tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index))
