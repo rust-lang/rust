@@ -1,13 +1,15 @@
 error[E0283]: type annotations needed
   --> $DIR/issue-29147.rs:21:13
    |
-LL | trait Foo { fn xxx(&self); }
-   |             -------------- required by `Foo::xxx`
-...
 LL |     let _ = <S5<_>>::xxx;
    |             ^^^^^^^^^^^^ cannot infer type for struct `S5<_>`
    |
    = note: cannot satisfy `S5<_>: Foo`
+note: required by `Foo::xxx`
+  --> $DIR/issue-29147.rs:10:13
+   |
+LL | trait Foo { fn xxx(&self); }
+   |             ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

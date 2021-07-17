@@ -55,12 +55,18 @@ LL |     S::default().x;
 error[E0624]: associated function `f` is private
   --> $DIR/test.rs:32:18
    |
+LL |             pub(super) fn f(&self) {}
+   |             ---------------------- private associated function defined here
+...
 LL |     S::default().f();
    |                  ^ private associated function
 
 error[E0624]: associated function `g` is private
   --> $DIR/test.rs:33:8
    |
+LL |             pub(super) fn g() {}
+   |             ----------------- private associated function defined here
+...
 LL |     S::g();
    |        ^ private associated function
 
@@ -81,12 +87,22 @@ error[E0624]: associated function `g` is private
    |
 LL |     u.g();
    |       ^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub_restricted.rs:14:5
+   |
+LL |     pub(crate) fn g(&self) {}
+   |     ---------------------- private associated function defined here
 
 error[E0624]: associated function `h` is private
   --> $DIR/test.rs:46:7
    |
 LL |     u.h();
    |       ^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub_restricted.rs:15:5
+   |
+LL |     crate fn h(&self) {}
+   |     ----------------- private associated function defined here
 
 error: aborting due to 12 previous errors
 

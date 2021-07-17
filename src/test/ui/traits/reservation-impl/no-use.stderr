@@ -1,14 +1,16 @@
 error[E0277]: the trait bound `(): MyTrait` is not satisfied
   --> $DIR/no-use.rs:10:26
    |
-LL | trait MyTrait { fn foo(&self); }
-   |                 -------------- required by `MyTrait::foo`
-...
 LL |     <() as MyTrait>::foo(&());
    |                          ^^^ the trait `MyTrait` is not implemented for `()`
    |
    = help: the following implementations were found:
              <() as MyTrait>
+note: required by `MyTrait::foo`
+  --> $DIR/no-use.rs:5:17
+   |
+LL | trait MyTrait { fn foo(&self); }
+   |                 ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

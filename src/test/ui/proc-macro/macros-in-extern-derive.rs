@@ -1,5 +1,5 @@
 extern "C" {
-    #[derive(Copy)] //~ ERROR `derive` may only be applied to structs, enums and unions
+    #[derive(Copy)] //~ ERROR `derive` may only be applied to `struct`s, `enum`s and `union`s
     fn f();
 }
 

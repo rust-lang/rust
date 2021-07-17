@@ -1,6 +1,9 @@
 error[E0624]: associated function `method` is private
   --> $DIR/method-private.rs:19:9
    |
+LL |         fn method(&self) {}
+   |         ---------------- private associated function defined here
+...
 LL |     foo.method();
    |         ^^^^^^ private associated function
    |

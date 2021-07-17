@@ -3,6 +3,11 @@ error[E0624]: associated function `foo` is private
    |
 LL |         Foo::foo(&f);
    |              ^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/issue-21202.rs:4:9
+   |
+LL |         fn foo(&self) { }
+   |         ------------- private associated function defined here
 
 error: aborting due to previous error
 

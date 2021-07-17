@@ -10,7 +10,7 @@ LL |             field: MissingType
   ::: $DIR/span-from-proc-macro.rs:8:1
    |
 LL | #[error_from_attribute]
-   | ----------------------- in this macro invocation
+   | ----------------------- in this procedural macro expansion
 
 error[E0412]: cannot find type `OtherMissingType` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:46:21
@@ -24,7 +24,7 @@ LL |             Variant(OtherMissingType)
   ::: $DIR/span-from-proc-macro.rs:11:10
    |
 LL | #[derive(ErrorFromDerive)]
-   |          --------------- in this macro invocation
+   |          --------------- in this derive macro expansion
 
 error[E0425]: cannot find value `my_ident` in this scope
   --> $DIR/auxiliary/span-from-proc-macro.rs:29:9

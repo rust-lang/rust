@@ -4,7 +4,11 @@ error[E0277]: the trait bound `&T: std::io::Read` is not satisfied
 LL |         let mut stream_reader = BufReader::new(&stream);
    |                                                ^^^^^^^ the trait `std::io::Read` is not implemented for `&T`
    |
-   = note: required by `BufReader::<R>::new`
+note: required by `BufReader::<R>::new`
+  --> $SRC_DIR/std/src/io/buffered/bufreader.rs:LL:COL
+   |
+LL |     pub fn new(inner: R) -> BufReader<R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider removing the leading `&`-reference
    |
 LL |         let mut stream_reader = BufReader::new(stream);

@@ -56,6 +56,8 @@ LL | #[message = "This error has a field, and references {name}"]
 error: invalid format string: expected `'}'` but string was terminated
   --> $DIR/session-derive-errors.rs:116:1
    |
+LL | #[derive(SessionDiagnostic)]
+   |          ----------------- in this derive macro expansion
 LL | #[error = "E0123"]
    |               - because of this opening brace
 LL | #[message = "This is missing a closing brace: {name"]
@@ -67,6 +69,9 @@ LL | #[message = "This is missing a closing brace: {name"]
 error: invalid format string: unmatched `}` found
   --> $DIR/session-derive-errors.rs:125:1
    |
+LL | #[derive(SessionDiagnostic)]
+   |          ----------------- in this derive macro expansion
+LL | #[error = "E0123"]
 LL | #[message = "This is missing an opening brace: name}"]
    | ^ unmatched `}` in format string
    |

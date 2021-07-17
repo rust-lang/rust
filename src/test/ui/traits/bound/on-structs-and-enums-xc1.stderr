@@ -15,7 +15,11 @@ error[E0277]: the trait bound `{integer}: Trait` is not satisfied
 LL |     let foo = Foo {
    |               ^^^ the trait `Trait` is not implemented for `{integer}`
    |
-   = note: required by `Foo`
+note: required by `Foo`
+  --> $DIR/auxiliary/on_structs_and_enums_xc.rs:5:1
+   |
+LL | pub struct Foo<T:Trait> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

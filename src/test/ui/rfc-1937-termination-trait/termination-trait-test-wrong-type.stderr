@@ -1,6 +1,8 @@
 error[E0277]: `main` has invalid return type `Result<f32, ParseFloatError>`
   --> $DIR/termination-trait-test-wrong-type.rs:6:1
    |
+LL |   #[test]
+   |   ------- in this procedural macro expansion
 LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseFloatError> {
 LL | |     "0".parse()
 LL | | }

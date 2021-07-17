@@ -13,12 +13,18 @@ LL |     let _woohoo = (Box::new(my_struct)).priv_field;
 error[E0624]: associated function `happyfun` is private
   --> $DIR/issue-3763.rs:24:18
    |
+LL |         fn happyfun(&self) {}
+   |         ------------------ private associated function defined here
+...
 LL |     (&my_struct).happyfun();
    |                  ^^^^^^^^ private associated function
 
 error[E0624]: associated function `happyfun` is private
   --> $DIR/issue-3763.rs:26:27
    |
+LL |         fn happyfun(&self) {}
+   |         ------------------ private associated function defined here
+...
 LL |     (Box::new(my_struct)).happyfun();
    |                           ^^^^^^^^ private associated function
 

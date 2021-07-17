@@ -3,6 +3,11 @@ error[E0624]: associated function `nap` is private
    |
 LL |   nyan.nap();
    |        ^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/cci_class_5.rs:8:9
+   |
+LL |         fn nap(&self) {}
+   |         ------------- private associated function defined here
 
 error: aborting due to previous error
 

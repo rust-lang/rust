@@ -1,6 +1,9 @@
 error[E0277]: `Error` doesn't implement `Debug`
   --> $DIR/derives-span-Debug-tuple-struct.rs:8:5
    |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+LL | struct Struct(
 LL |     Error
    |     ^^^^^ `Error` cannot be formatted using `{:?}`
    |
