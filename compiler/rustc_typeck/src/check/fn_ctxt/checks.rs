@@ -937,7 +937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let ty = self.resolve_vars_if_possible(ty);
                         // We walk the argument type because the argument's type could have
                         // been `Option<T>`, but the `FulfillmentError` references `T`.
-                        if ty.walk().any(|arg| arg == predicate.self_ty().into()) {
+                        if ty.walk(self.tcx).any(|arg| arg == predicate.self_ty().into()) {
                             Some(i)
                         } else {
                             None

@@ -237,7 +237,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // code at the moment, because types like `for <'a> fn(&'a ())` do
         // not *yet* implement `PartialEq`. So for now we leave this here.
         has_impl
-            || ty.walk().any(|t| match t.unpack() {
+            || ty.walk(self.tcx()).any(|t| match t.unpack() {
                 ty::subst::GenericArgKind::Lifetime(_) => false,
                 ty::subst::GenericArgKind::Type(t) => t.is_fn_ptr(),
                 ty::subst::GenericArgKind::Const(_) => false,

@@ -947,7 +947,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let mut unsizing_params = GrowableBitSet::new_empty();
                 if tcx.features().relaxed_struct_unsize {
-                    for arg in tail_field_ty.walk() {
+                    for arg in tail_field_ty.walk(tcx) {
                         if let Some(i) = maybe_unsizing_param_idx(arg) {
                             unsizing_params.insert(i);
                         }
@@ -956,7 +956,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // Ensure none of the other fields mention the parameters used
                     // in unsizing.
                     for field in prefix_fields {
-                        for arg in tcx.type_of(field.did).walk() {
+                        for arg in tcx.type_of(field.did).walk(tcx) {
                             if let Some(i) = maybe_unsizing_param_idx(arg) {
                                 unsizing_params.remove(i);
                             }
@@ -968,7 +968,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 } else {
                     let mut found = false;
-                    for arg in tail_field_ty.walk() {
+                    for arg in tail_field_ty.walk(tcx) {
                         if let Some(i) = maybe_unsizing_param_idx(arg) {
                             unsizing_params.insert(i);
                             found = true;
@@ -984,7 +984,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // by putting it in a query; it would only need the `DefId` as it
                     // looks at declared field types, not anything substituted.
                     for field in prefix_fields {
-                        for arg in tcx.type_of(field.did).walk() {
+                        for arg in tcx.type_of(field.did).walk(tcx) {
                             if let Some(i) = maybe_unsizing_param_idx(arg) {
                                 if unsizing_params.contains(i) {
                                     return Err(Unimplemented);

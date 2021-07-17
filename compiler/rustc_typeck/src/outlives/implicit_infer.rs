@@ -114,7 +114,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
-    for arg in field_ty.walk() {
+    for arg in field_ty.walk(tcx) {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
 
@@ -306,7 +306,7 @@ pub fn check_explicit_predicates<'tcx>(
         // 'b`.
         if let Some(self_ty) = ignored_self_ty {
             if let GenericArgKind::Type(ty) = outlives_predicate.0.unpack() {
-                if ty.walk().any(|arg| arg == self_ty.into()) {
+                if ty.walk(tcx).any(|arg| arg == self_ty.into()) {
                     debug!("skipping self ty = {:?}", &ty);
                     continue;
                 }

@@ -194,7 +194,7 @@ fn compute_components_recursive(
     out: &mut SmallVec<[Component<'tcx>; 4]>,
     visited: &mut SsoHashSet<GenericArg<'tcx>>,
 ) {
-    for child in parent.walk_shallow(visited) {
+    for child in parent.walk_shallow(tcx, visited) {
         match child.unpack() {
             GenericArgKind::Type(ty) => {
                 compute_components(tcx, ty, out, visited);
