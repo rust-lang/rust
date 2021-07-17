@@ -26,8 +26,8 @@ use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::lev_distance::find_best_match_for_name;
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::{edition, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
@@ -2096,12 +2096,34 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
                 self.normalize_ty(span, tcx.mk_opaque(did, substs))
             }
+            Res::Def(DefKind::TyAlias, did) => {
+                assert_eq!(opt_self_ty, None);
+                self.prohibit_generics(path.segments.split_last().unwrap().1);
+                let ty = self.ast_path_to_ty(span, did, path.segments.last().unwrap());
+                if self.tcx().has_attr(did, sym::rustc_per_edition) {
+                    let ty = if let ty::Tuple(..) = ty.kind() {
+                        let mut fields = ty.tuple_fields();
+                        let edition = span.edition();
+                        edition::ALL_EDITIONS
+                            .iter()
+                            .take_while(|&&e| e != edition)
+                            .fold(fields.next(), |ty, _| fields.next().or(ty))
+                    } else {
+                        None
+                    };
+                    ty.unwrap_or_else(|| {
+                        self.tcx().sess.span_err(
+                            self.tcx().def_span(did),
+                            "#[rustc_per_edition] type alias needs to be a tuple of at least one field",
+                        );
+                        tcx.ty_error()
+                    })
+                } else {
+                    ty
+                }
+            }
             Res::Def(
-                DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Struct
-                | DefKind::Union
-                | DefKind::ForeignTy,
+                DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::ForeignTy,
                 did,
             ) => {
                 assert_eq!(opt_self_ty, None);
