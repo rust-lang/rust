@@ -90,8 +90,8 @@ fn dropck_outlives<'tcx>(
 
                 // "outlives" represent types/regions that may be touched
                 // by a destructor.
-                result.kinds.extend(constraints.outlives.drain(..));
-                result.overflows.extend(constraints.overflows.drain(..));
+                result.kinds.append(&mut constraints.outlives);
+                result.overflows.append(&mut constraints.overflows);
 
                 // If we have even one overflow, we should stop trying to evaluate further --
                 // chances are, the subsequent overflows for this evaluation won't provide useful
