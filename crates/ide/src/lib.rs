@@ -217,7 +217,7 @@ impl Analysis {
         cfg_options.insert_atom("test".into());
         crate_graph.add_crate_root(
             file_id,
-            Edition::Edition2018,
+            Edition::CURRENT,
             None,
             cfg_options.clone(),
             cfg_options,
