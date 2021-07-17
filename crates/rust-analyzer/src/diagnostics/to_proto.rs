@@ -1,12 +1,10 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
 
 use flycheck::{DiagnosticLevel, DiagnosticSpan};
 use stdx::format_to;
+use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
 
@@ -46,7 +44,7 @@ fn is_dummy_macro_file(file_name: &str) -> bool {
 /// Converts a Rust span to a LSP location
 fn location(
     config: &DiagnosticsMapConfig,
-    workspace_root: &Path,
+    workspace_root: &AbsPath,
     span: &DiagnosticSpan,
 ) -> lsp_types::Location {
     let file_name = resolve_path(config, workspace_root, &span.file_name);
@@ -67,7 +65,7 @@ fn location(
 /// workspace into account and tries to avoid those, in case macros are involved.
 fn primary_location(
     config: &DiagnosticsMapConfig,
-    workspace_root: &Path,
+    workspace_root: &AbsPath,
     span: &DiagnosticSpan,
 ) -> lsp_types::Location {
     let span_stack = std::iter::successors(Some(span), |span| Some(&span.expansion.as_ref()?.span));
@@ -88,7 +86,7 @@ fn primary_location(
 /// If the span is unlabelled this will return `None`.
 fn diagnostic_related_information(
     config: &DiagnosticsMapConfig,
-    workspace_root: &Path,
+    workspace_root: &AbsPath,
     span: &DiagnosticSpan,
 ) -> Option<lsp_types::DiagnosticRelatedInformation> {
     let message = span.label.clone()?;
@@ -98,7 +96,11 @@ fn diagnostic_related_information(
 
 /// Resolves paths applying any matching path prefix remappings, and then
 /// joining the path to the workspace root.
-fn resolve_path(config: &DiagnosticsMapConfig, workspace_root: &Path, file_name: &str) -> PathBuf {
+fn resolve_path(
+    config: &DiagnosticsMapConfig,
+    workspace_root: &AbsPath,
+    file_name: &str,
+) -> AbsPathBuf {
     match config
         .remap_prefix
         .iter()
@@ -121,7 +123,7 @@ enum MappedRustChildDiagnostic {
 
 fn map_rust_child_diagnostic(
     config: &DiagnosticsMapConfig,
-    workspace_root: &Path,
+    workspace_root: &AbsPath,
     rd: &flycheck::Diagnostic,
 ) -> MappedRustChildDiagnostic {
     let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
@@ -191,7 +193,7 @@ pub(crate) struct MappedRustDiagnostic {
 pub(crate) fn map_rust_diagnostic_to_lsp(
     config: &DiagnosticsMapConfig,
     rd: &flycheck::Diagnostic,
-    workspace_root: &Path,
+    workspace_root: &AbsPath,
 ) -> Vec<MappedRustDiagnostic> {
     let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if primary_spans.is_empty() {
@@ -426,6 +428,8 @@ fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescript
 #[cfg(test)]
 #[cfg(not(windows))]
 mod tests {
+    use std::{convert::TryInto, path::Path};
+
     use super::*;
 
     use expect_test::{expect_file, ExpectFile};
@@ -436,7 +440,7 @@ mod tests {
 
     fn check_with_config(config: DiagnosticsMapConfig, diagnostics_json: &str, expect: ExpectFile) {
         let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
-        let workspace_root = Path::new("/test/");
+        let workspace_root: &AbsPath = Path::new("/test/").try_into().unwrap();
         let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root);
         expect.assert_debug_eq(&actual)
     }

@@ -271,7 +271,7 @@ mod tests {
             macro_body: tt.clone(),
             macro_name: Default::default(),
             attributes: None,
-            lib: Default::default(),
+            lib: AbsPathBuf::assert(std::env::current_dir().unwrap()),
             env: Default::default(),
         };
 

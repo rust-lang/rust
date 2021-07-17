@@ -5,12 +5,12 @@
 use std::{
     fmt,
     io::{self, BufRead, BufReader},
-    path::PathBuf,
     process::{self, Command, Stdio},
     time::Duration,
 };
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use paths::AbsPathBuf;
 use serde::Deserialize;
 use stdx::JodChild;
 
@@ -63,7 +63,7 @@ impl FlycheckHandle {
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
-        workspace_root: PathBuf,
+        workspace_root: AbsPathBuf,
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(id, sender, config, workspace_root);
         let (sender, receiver) = unbounded::<Restart>();
@@ -82,7 +82,7 @@ impl FlycheckHandle {
 
 pub enum Message {
     /// Request adding a diagnostic with fixes included to a file
-    AddDiagnostic { workspace_root: PathBuf, diagnostic: Diagnostic },
+    AddDiagnostic { workspace_root: AbsPathBuf, diagnostic: Diagnostic },
 
     /// Request check progress notification to client
     Progress {
@@ -121,7 +121,7 @@ struct FlycheckActor {
     id: usize,
     sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
-    workspace_root: PathBuf,
+    workspace_root: AbsPathBuf,
     /// WatchThread exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
@@ -140,7 +140,7 @@ impl FlycheckActor {
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
-        workspace_root: PathBuf,
+        workspace_root: AbsPathBuf,
     ) -> FlycheckActor {
         FlycheckActor { id, sender, config, workspace_root, cargo_handle: None }
     }
@@ -220,7 +220,7 @@ impl FlycheckActor {
                 cmd.arg(command);
                 cmd.current_dir(&self.workspace_root);
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
-                    .arg(self.workspace_root.join("Cargo.toml"));
+                    .arg(self.workspace_root.join("Cargo.toml").as_os_str());
 
                 if let Some(target) = target_triple {
                     cmd.args(&["--target", target.as_str()]);

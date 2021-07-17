@@ -6,7 +6,7 @@
 //!
 //! Hopefully, one day a reliable file watching/walking crate appears on
 //! crates.io, and we can reduce this to trivial glue code.
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fs};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -123,7 +123,8 @@ impl NotifyActor {
                             .into_iter()
                             .map(|path| AbsPathBuf::try_from(path).unwrap())
                             .filter_map(|path| {
-                                if path.is_dir()
+                                let meta = fs::metadata(&path).ok()?;
+                                if meta.file_type().is_dir()
                                     && self
                                         .watched_entries
                                         .iter()
@@ -133,7 +134,7 @@ impl NotifyActor {
                                     return None;
                                 }
 
-                                if !path.is_file() {
+                                if !meta.file_type().is_file() {
                                     return None;
                                 }
                                 if !self

@@ -28,7 +28,9 @@ pub(crate) fn load_workspace_at(
     progress: &dyn Fn(String),
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
+    eprintln!("root = {:?}", root);
     let root = ProjectManifest::discover_single(&root)?;
+    eprintln!("root = {:?}", root);
     let workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
     load_workspace(workspace, load_config, progress)
@@ -48,7 +50,7 @@ fn load_workspace(
     };
 
     let proc_macro_client = if config.with_proc_macro {
-        let path = std::env::current_exe()?;
+        let path = AbsPathBuf::assert(std::env::current_exe()?);
         Some(ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap())
     } else {
         None
@@ -142,7 +144,7 @@ mod tests {
     use hir::Crate;
 
     #[test]
-    fn test_loading_rust_analyzer() -> Result<()> {
+    fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
         let cargo_config = Default::default();
         let load_cargo_config = LoadCargoConfig {
@@ -152,12 +154,10 @@ mod tests {
             prefill_caches: false,
         };
         let (host, _vfs, _proc_macro) =
-            load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
+            load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();
 
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
-
-        Ok(())
     }
 }

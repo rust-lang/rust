@@ -30,7 +30,7 @@ pub(crate) struct ProcMacroSrv {
 
 impl ProcMacroSrv {
     pub fn expand(&mut self, task: &ExpansionTask) -> Result<ExpansionResult, String> {
-        let expander = self.expander(&task.lib)?;
+        let expander = self.expander(task.lib.as_ref())?;
 
         let mut prev_env = HashMap::new();
         for (k, v) in &task.env {
@@ -54,7 +54,7 @@ impl ProcMacroSrv {
     }
 
     pub fn list_macros(&mut self, task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
-        let expander = self.expander(&task.lib)?;
+        let expander = self.expander(task.lib.as_ref())?;
         Ok(ListMacrosResult { macros: expander.list_macros() })
     }
 

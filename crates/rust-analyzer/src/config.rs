@@ -597,12 +597,14 @@ impl Config {
     pub fn lru_capacity(&self) -> Option<usize> {
         self.data.lruCapacity
     }
-    pub fn proc_macro_srv(&self) -> Option<(PathBuf, Vec<OsString>)> {
+    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, Vec<OsString>)> {
         if !self.data.procMacro_enable {
             return None;
         }
-
-        let path = self.data.procMacro_server.clone().or_else(|| std::env::current_exe().ok())?;
+        let path = match &self.data.procMacro_server {
+            Some(it) => self.root_path.join(it),
+            None => AbsPathBuf::assert(std::env::current_exe().ok()?),
+        };
         Some((path, vec!["proc-macro".into()]))
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
