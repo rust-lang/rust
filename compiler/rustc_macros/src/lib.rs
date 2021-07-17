@@ -13,10 +13,16 @@ mod serialize;
 mod session_diagnostic;
 mod symbols;
 mod type_foldable;
+mod early_declared_functions;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
     query::rustc_queries(input)
+}
+
+#[proc_macro]
+pub fn early_declared_functions(input: TokenStream) -> TokenStream {
+    early_declared_functions::early_declared_functions(input.into()).into()
 }
 
 #[proc_macro]
