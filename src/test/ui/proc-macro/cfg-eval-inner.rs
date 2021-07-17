@@ -2,7 +2,6 @@
 // aux-build:test-macros.rs
 // check-pass
 
-#![feature(cfg_eval)]
 #![feature(custom_inner_attributes)]
 #![feature(stmt_expr_attributes)]
 #![feature(rustc_attrs)]

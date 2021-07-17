@@ -66,11 +66,7 @@ pub use core::prelude::v1::derive;
 #[doc(hidden)]
 pub use core::prelude::v1::cfg_accessible;
 
-#[unstable(
-    feature = "cfg_eval",
-    issue = "82679",
-    reason = "`cfg_eval` is a recently implemented feature"
-)]
+#[stable(feature = "cfg_eval", since = "1.55.0")]
 #[doc(hidden)]
 pub use core::prelude::v1::cfg_eval;
 
