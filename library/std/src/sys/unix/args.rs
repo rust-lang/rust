@@ -14,11 +14,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     imp::init(argc, argv)
 }
 
-/// One-time global cleanup.
-pub unsafe fn cleanup() {
-    imp::cleanup()
-}
-
 /// Returns the command line arguments
 pub fn args() -> Args {
     imp::args()
@@ -127,12 +122,6 @@ mod imp {
         init_wrapper
     };
 
-    pub unsafe fn cleanup() {
-        let _guard = LOCK.lock();
-        ARGC.store(0, Ordering::Relaxed);
-        ARGV.store(ptr::null_mut(), Ordering::Relaxed);
-    }
-
     pub fn args() -> Args {
         Args { iter: clone().into_iter() }
     }
@@ -158,8 +147,6 @@ mod imp {
     use crate::ffi::CStr;
 
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-    pub fn cleanup() {}
 
     #[cfg(target_os = "macos")]
     pub fn args() -> Args {
