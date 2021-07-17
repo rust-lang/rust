@@ -312,7 +312,7 @@ impl ProjectWorkspace {
     ) -> CrateGraph {
         let _p = profile::span("ProjectWorkspace::to_crate_graph");
         let proc_macro_loader = |path: &AbsPath| match proc_macro_client {
-            Some(client) => client.by_dylib_path(path.as_ref()), // TODO
+            Some(client) => client.by_dylib_path(path),
             None => Vec::new(),
         };
 

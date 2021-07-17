@@ -3,11 +3,11 @@
 use std::{
     fs::File,
     io::{self, Read},
-    path::Path,
 };
 
 use memmap2::Mmap;
 use object::read::{File as BinaryFile, Object, ObjectSection};
+use paths::AbsPath;
 use snap::read::FrameDecoder as SnapDecoder;
 
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub struct RustCInfo {
 }
 
 /// Read rustc dylib information
-pub fn read_dylib_info(dylib_path: &Path) -> io::Result<RustCInfo> {
+pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
     macro_rules! err {
         ($e:literal) => {
             io::Error::new(io::ErrorKind::InvalidData, $e)
@@ -96,7 +96,7 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// * [some more bytes that we don really care but still there] :-)
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-analyzer/rust-analyzer/issues/6174>
-fn read_version(dylib_path: &Path) -> io::Result<String> {
+fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let dylib_file = File::open(dylib_path)?;
     let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
 

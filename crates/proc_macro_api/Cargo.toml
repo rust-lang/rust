@@ -18,6 +18,7 @@ memmap2 = "0.3.0"
 object = { version = "0.25.3", default-features = false, features = ["std", "read_core", "elf", "macho", "pe"] }
 snap = "1.0"
 
+paths = { path = "../paths", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
 base_db = { path = "../base_db", version = "0.0.0" }
 stdx = { path = "../stdx", version = "0.0.0" }
