@@ -1,9 +1,9 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
-    Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
-    Visibility,
+    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
+    ItemKind, Lifetime, Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type,
+    TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -35,11 +35,11 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates(()).iter() {
-        externs.push((cnum, cnum.clean(cx)));
+        externs.push(ExternalCrate { crate_num: cnum });
         // Analyze doc-reachability for extern items
         LibEmbargoVisitor::new(cx).visit_lib(cnum);
     }
-    externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+    externs.sort_unstable_by_key(|e| e.crate_num);
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
@@ -61,7 +61,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
         _ => unreachable!(),
     }
 
-    let local_crate = LOCAL_CRATE.clean(cx);
+    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
     let src = local_crate.src(cx.tcx);
     let name = local_crate.name(cx.tcx);
     let primitives = local_crate.primitives(cx.tcx);
