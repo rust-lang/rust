@@ -309,6 +309,7 @@ impl<'a> Tarball<'a> {
         }
 
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
+        cmd.env("RUST_BACKTRACE", "1");
 
         let package_name = self.package_name();
         self.builder.info(&format!("Dist {}", package_name));
