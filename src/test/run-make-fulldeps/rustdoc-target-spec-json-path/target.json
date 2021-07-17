@@ -8,7 +8,6 @@
   "executables": true,
   "has-elf-tls": true,
   "has-rpath": true,
-  "is-builtin": true,
   "linker-is-gnu": true,
   "llvm-target": "x86_64-unknown-linux-gnu",
   "max-atomic-width": 64,

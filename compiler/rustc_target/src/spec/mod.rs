@@ -2015,6 +2015,10 @@ impl Target {
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
 
+        if base.is_builtin {
+            // This can cause unfortunate ICEs later down the line.
+            return Err(format!("may not set is_builtin for targets not built-in"));
+        }
         // Each field should have been read using `Json::remove_key` so any keys remaining are unused.
         let remaining_keys = obj.as_object().ok_or("Expected JSON object for target")?.keys();
         Ok((
