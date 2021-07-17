@@ -1508,11 +1508,33 @@ details.rustdoc-toggle > summary.hideme > span {
 }
 
 details.rustdoc-toggle > summary::before {
-	content: "[+]";
+	content: "Expand";
 	font-weight: 300;
 	font-size: 0.8em;
 	letter-spacing: 1px;
 	cursor: pointer;
+	width: 17px;
+	height: max(17px, 1.1em);
+	background: data-url(plus-17x17.png) no-repeat top left;
+	display: inline-block;
+	vertical-align: middle;
+	opacity: .5;
+	text-indent: 17px;
+	overflow: hidden;
+}
+
+details.rustdoc-toggle > summary.hideme::before {
+	/* "hideme" toggles already have a description when they're contracted */
+	content: " ";
+}
+
+details.rustdoc-toggle > summary:focus::before {
+	outline: dotted 1px;
+}
+
+details.rustdoc-toggle > summary:focus::before,
+details.rustdoc-toggle > summary:hover::before {
+	opacity: 1;
 }
 
 details.rustdoc-toggle.top-doc > summary,
@@ -1560,20 +1582,40 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.rustdoc-toggle[open] > summary::before {
-	content: "[−]";
-	display: inline;
+details.rustdoc-toggle[open] > summary::before,
+details.rustdoc-toggle[open] > summary.hideme::before {
+	width: 17px;
+	height: max(17px, 1.1em);
+	background: data-url(minus-17x17.png) no-repeat top left;
+	display: inline-block;
+	content: "Collapse";
 }
 
 details.undocumented > summary::before {
-	content: "[+] Show hidden undocumented items";
+	padding-left: 17px;
+	height: max(17px, 1.1em);
+	background: data-url(plus-17x17.png) no-repeat top left;
+	content: "Show hidden undocumented items";
 	cursor: pointer;
 	font-size: 16px;
 	font-weight: 300;
+	opacity: .5;
+}
+
+details.undocumented > summary:focus::before {
+	outline: dotted 1px;
+}
+
+details.undocumented > summary:focus::before,
+details.undocumented > summary:hover::before {
+	opacity: 1;
 }
 
 details.undocumented[open] > summary::before {
-	content: "[−] Hide undocumented items";
+	padding-left: 17px;
+	height: max(17px, 1.1em);
+	background: data-url(minus-17x17.png) no-repeat top left;
+	content: "Hide undocumented items";
 }
 
 /* Media Queries */

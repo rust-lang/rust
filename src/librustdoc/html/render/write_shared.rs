@@ -126,13 +126,16 @@ impl Context<'_> {
         emit: &[EmitType],
     ) -> Result<(), Error> {
         let tmp;
+        let contents =
+            contents.replace("data-url(minus-17x17.png)", static_files::MINUS_PNG_DATAURL);
+        let contents = contents.replace("data-url(plus-17x17.png)", static_files::PLUS_PNG_DATAURL);
         let contents = if minify {
             tmp = if resource.extension() == Some(&OsStr::new("css")) {
-                minifier::css::minify(contents).map_err(|e| {
+                minifier::css::minify(&contents).map_err(|e| {
                     Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
                 })?
             } else {
-                minifier::js::minify(contents)
+                minifier::js::minify(&contents)
             };
             tmp.as_bytes()
         } else {
