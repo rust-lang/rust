@@ -46,7 +46,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
+use rustc_session::config::{BorrowckMode, CrateType};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
@@ -67,7 +67,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-use std::sync::Arc;
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -1062,8 +1061,6 @@ pub struct GlobalCtxt<'tcx> {
 
     layout_interner: ShardedHashMap<&'tcx Layout, ()>,
 
-    output_filenames: Arc<OutputFilenames>,
-
     pub(super) vtables_cache:
         Lock<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), AllocId>>,
 }
@@ -1178,7 +1175,6 @@ impl<'tcx> TyCtxt<'tcx> {
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         crate_name: &str,
-        output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
             s.fatal(&err);
@@ -1214,7 +1210,6 @@ impl<'tcx> TyCtxt<'tcx> {
             stability_interner: Default::default(),
             const_stability_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            output_filenames: Arc::new(output_filenames),
             vtables_cache: Default::default(),
         }
     }
@@ -2848,7 +2843,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         |tcx, id| tcx.stability().local_const_stability(id.expect_local());
     providers.lookup_deprecation_entry =
         |tcx, id| tcx.stability().local_deprecation_entry(id.expect_local());
-    providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
