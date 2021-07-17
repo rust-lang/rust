@@ -603,6 +603,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_dump_program_clauses, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_dump_env_program_clauses, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_object_lifetime_default, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_dump_vtable, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/)),
     gated!(
         omit_gdb_pretty_printer_section, AssumedUsed, template!(Word),

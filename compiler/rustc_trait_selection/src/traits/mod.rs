@@ -34,7 +34,7 @@ use rustc_middle::ty::{
     self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
     COMMON_VTABLE_ENTRIES,
 };
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
 use std::fmt::Debug;
@@ -614,6 +614,11 @@ fn prepare_vtable_segments<'tcx, T>(
     }
 }
 
+fn dump_vtable_entries<'tcx>(tcx: TyCtxt<'tcx>, entries: &[VtblEntry<'tcx>]) {
+    let msg = format!("Vtable Entries: {:#?}", entries);
+    tcx.sess.struct_span_err(rustc_span::DUMMY_SP, &msg).emit();
+}
+
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 fn vtable_entries<'tcx>(
@@ -691,6 +696,11 @@ fn vtable_entries<'tcx>(
     };
 
     let _ = prepare_vtable_segments(tcx, trait_ref, vtable_segment_callback);
+
+    if tcx.has_attr(trait_ref.def_id(), sym::rustc_dump_vtable) {
+        dump_vtable_entries(tcx, &entries);
+    }
+
     tcx.arena.alloc_from_iter(entries.into_iter())
 }
 
