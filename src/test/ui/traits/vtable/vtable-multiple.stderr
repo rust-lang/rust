@@ -1,0 +1,44 @@
+error: Vtable Entries: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method(
+        DefId(0:4 ~ vtable_multiple[5246]::A::foo_a),
+        [
+            S,
+        ],
+    ),
+    Method(
+        DefId(0:6 ~ vtable_multiple[5246]::B::foo_b),
+        [
+            S,
+        ],
+    ),
+    TraitVPtr(
+        Binder(
+            B,
+            [],
+        ),
+    ),
+    Method(
+        DefId(0:8 ~ vtable_multiple[5246]::C::foo_c),
+        [
+            S,
+        ],
+    ),
+]
+
+error: Vtable Entries: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method(
+        DefId(0:6 ~ vtable_multiple[5246]::B::foo_b),
+        [
+            S,
+        ],
+    ),
+]
+
+error: aborting due to 2 previous errors
+
