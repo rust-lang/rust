@@ -228,11 +228,11 @@ struct PackageMetadata {
 }
 
 impl CargoWorkspace {
-    pub fn from_cargo_metadata(
+    pub fn fetch_metadata(
         cargo_toml: &AbsPath,
         config: &CargoConfig,
         progress: &dyn Fn(String),
-    ) -> Result<CargoWorkspace> {
+    ) -> Result<cargo_metadata::Metadata> {
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
@@ -262,10 +262,12 @@ impl CargoWorkspace {
             meta.other_options(vec![String::from("--filter-platform"), target]);
         }
 
-        // FIXME: Currently MetadataCommand is not based on parse_stream,
-        // So we just report it as a whole
+        // FIXME: Fetching metadata is a slow process, as it might require
+        // calling crates.io. We should be reporting progress here, but it's
+        // unclear whether cargo itself supports it.
         progress("metadata".to_string());
-        let mut meta = meta.exec().with_context(|| {
+
+        let meta = meta.exec().with_context(|| {
             let cwd: Option<AbsPathBuf> =
                 std::env::current_dir().ok().and_then(|p| p.try_into().ok());
 
@@ -283,6 +285,14 @@ impl CargoWorkspace {
             )
         })?;
 
+        Ok(meta)
+    }
+
+    pub fn new(
+        cargo_toml: &AbsPath,
+        config: &CargoConfig,
+        mut meta: cargo_metadata::Metadata,
+    ) -> CargoWorkspace {
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();
@@ -296,9 +306,10 @@ impl CargoWorkspace {
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
             let is_member = ws_members.contains(id);
-            let edition = edition
-                .parse::<Edition>()
-                .with_context(|| format!("Failed to parse edition {}", edition))?;
+            let edition = edition.parse::<Edition>().unwrap_or_else(|err| {
+                log::error!("Failed to parse edition {}", err);
+                Edition::CURRENT
+            });
 
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
@@ -366,7 +377,16 @@ impl CargoWorkspace {
         let build_data_config =
             BuildDataConfig::new(cargo_toml.to_path_buf(), config.clone(), Arc::new(meta.packages));
 
-        Ok(CargoWorkspace { packages, targets, workspace_root, build_data_config })
+        CargoWorkspace { packages, targets, workspace_root, build_data_config }
+    }
+
+    pub fn from_cargo_metadata3(
+        cargo_toml: &AbsPath,
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> Result<CargoWorkspace> {
+        let meta = CargoWorkspace::fetch_metadata(cargo_toml, config, progress)?;
+        Ok(CargoWorkspace::new(cargo_toml, config, meta))
     }
 
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {

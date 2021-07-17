@@ -126,7 +126,7 @@ impl ProjectWorkspace {
                     cmd
                 })?;
 
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, config, progress)
+                let meta = CargoWorkspace::fetch_metadata(&cargo_toml, config, progress)
                     .with_context(|| {
                         format!(
                             "Failed to read Cargo metadata from Cargo.toml file {}, {}",
@@ -134,6 +134,7 @@ impl ProjectWorkspace {
                             cargo_version
                         )
                     })?;
+                let cargo = CargoWorkspace::new(&cargo_toml, config, meta);
 
                 let sysroot = if config.no_sysroot {
                     Sysroot::default()
@@ -156,15 +157,15 @@ impl ProjectWorkspace {
                     None
                 };
 
-                let rustc = if let Some(rustc_dir) = rustc_dir {
-                    Some(
-                        CargoWorkspace::from_cargo_metadata(&rustc_dir, config, progress)
+                let rustc = match rustc_dir {
+                    Some(rustc_dir) => Some({
+                        let meta = CargoWorkspace::fetch_metadata(&rustc_dir, config, progress)
                             .with_context(|| {
                                 format!("Failed to read Cargo metadata for Rust sources")
-                            })?,
-                    )
-                } else {
-                    None
+                            })?;
+                        CargoWorkspace::new(&rustc_dir, config, meta)
+                    }),
+                    None => None,
                 };
 
                 let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref());
@@ -595,7 +596,7 @@ fn detached_files_to_crate_graph(
             .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_string()));
         let detached_file_crate = crate_graph.add_crate_root(
             file_id,
-            Edition::Edition2018,
+            Edition::CURRENT,
             display_name,
             cfg_options.clone(),
             cfg_options.clone(),
@@ -777,7 +778,7 @@ fn sysroot_to_crate_graph(
             let display_name = CrateDisplayName::from_canonical_name(sysroot[krate].name.clone());
             let crate_id = crate_graph.add_crate_root(
                 file_id,
-                Edition::Edition2018,
+                Edition::CURRENT,
                 Some(display_name),
                 cfg_options.clone(),
                 cfg_options.clone(),

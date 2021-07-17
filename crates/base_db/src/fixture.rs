@@ -156,7 +156,7 @@ impl ChangeFixture {
             let crate_root = default_crate_root.unwrap();
             crate_graph.add_crate_root(
                 crate_root,
-                Edition::Edition2018,
+                Edition::CURRENT,
                 Some(CrateName::new("test").unwrap().into()),
                 default_cfg.clone(),
                 default_cfg,
@@ -227,10 +227,7 @@ impl From<Fixture> for FileMeta {
             krate: f.krate,
             deps: f.deps,
             cfg,
-            edition: f
-                .edition
-                .as_ref()
-                .map_or(Edition::Edition2018, |v| Edition::from_str(v).unwrap()),
+            edition: f.edition.as_ref().map_or(Edition::CURRENT, |v| Edition::from_str(v).unwrap()),
             env: f.env.into_iter().collect(),
             introduce_new_source_root: f.introduce_new_source_root,
         }

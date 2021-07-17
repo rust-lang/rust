@@ -195,6 +195,10 @@ pub enum Edition {
     Edition2021,
 }
 
+impl Edition {
+    pub const CURRENT: Edition = Edition::Edition2018;
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
