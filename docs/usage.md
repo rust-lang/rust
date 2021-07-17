@@ -36,7 +36,7 @@ $ $cg_clif_dir/build/cargo jit
 or
 
 ```bash
-$ $cg_clif_dir/build/bin/cg_clif -Cllvm-args=mode=jit -Cprefer-dynamic my_crate.rs
+$ $cg_clif_dir/build/bin/cg_clif -Zunstable-features -Cllvm-args=mode=jit -Cprefer-dynamic my_crate.rs
 ```
 
 There is also an experimental lazy jit mode. In this mode functions are only compiled once they are
@@ -52,7 +52,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | $cg_clif_dir/build/bin/cg_clif - -Cllvm-args=mode=jit -Cprefer-dynamic
+    echo "$@" | $cg_clif_dir/build/bin/cg_clif - -Zunstable-features -Cllvm-args=mode=jit -Cprefer-dynamic
 }
 
 function jit() {

@@ -184,6 +184,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let config = if let Some(config) = self.config.clone() {
             config
         } else {
+            if !tcx.sess.unstable_options() && !tcx.sess.opts.cg.llvm_args.is_empty() {
+                tcx.sess.fatal("`-Z unstable-options` must be passed to allow configuring cg_clif");
+            }
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.fatal(&err))
         };
