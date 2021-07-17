@@ -1099,6 +1099,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 }
 
 /// Wraps a call to `noop_visit_*` / `noop_flat_map_*`
+/// for an AST node that supports attributes
+/// (see the `Annotatable` enum)
 /// This method assigns a `NodeId`, and sets that `NodeId`
 /// as our current 'lint node id'. If a macro call is found
 /// inside this AST node, we will use this AST node's `NodeId`
@@ -1269,9 +1271,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         match pat.kind {
             PatKind::MacCall(_) => {}
-            _ => {
-                return assign_id!(self, &mut pat.id, || noop_visit_pat(pat, self));
-            }
+            _ => return noop_visit_pat(pat, self),
         }
 
         visit_clobber(pat, |mut pat| match mem::replace(&mut pat.kind, PatKind::Wild) {
@@ -1326,7 +1326,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             &mut self.cx.current_expansion.dir_ownership,
             DirOwnership::UnownedViaBlock,
         );
-        assign_id!(self, &mut block.id, || noop_visit_block(block, self));
+        noop_visit_block(block, self);
         self.cx.current_expansion.dir_ownership = orig_dir_ownership;
     }
 
@@ -1498,7 +1498,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
         match ty.kind {
             ast::TyKind::MacCall(_) => {}
-            _ => return assign_id!(self, &mut ty.id, || noop_visit_ty(ty, self)),
+            _ => return noop_visit_ty(ty, self),
         };
 
         visit_clobber(ty, |mut ty| match mem::replace(&mut ty.kind, ast::TyKind::Err) {

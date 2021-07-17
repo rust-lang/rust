@@ -29,6 +29,9 @@ use std::rc::Rc;
 
 crate use rustc_span::hygiene::MacroKind;
 
+// When adding new variants, make sure to
+// adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
+// to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
