@@ -55,10 +55,26 @@ pub use crate::hash::macros::Hash;
 #[allow(deprecated)]
 #[doc(no_inline)]
 pub use crate::{
-    asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
-    module_path, option_env, stringify, trace_macros,
+    assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
+    format_args_nl, include, include_bytes, include_str, line, llvm_asm, log_syntax, module_path,
+    option_env, stringify, trace_macros,
 };
+
+#[unstable(
+    feature = "asm",
+    issue = "72016",
+    reason = "inline assembly is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use crate::arch::asm;
+
+#[unstable(
+    feature = "global_asm",
+    issue = "35119",
+    reason = "`global_asm!` is not stable enough for use and is subject to change"
+)]
+#[doc(no_inline)]
+pub use crate::arch::global_asm;
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated, deprecated_in_future)]

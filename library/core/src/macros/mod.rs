@@ -1312,27 +1312,6 @@ pub(crate) mod builtin {
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
     }
 
-    /// Inline assembly.
-    ///
-    /// Read the [unstable book] for the usage.
-    ///
-    /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[unstable(
-        feature = "asm",
-        issue = "72016",
-        reason = "inline assembly is not stable enough for use and is subject to change"
-    )]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! asm {
-        ("assembly template",
-            $(operands,)*
-            $(options($(option),*))?
-        ) => {
-            /* compiler built-in */
-        };
-    }
-
     /// LLVM-style inline assembly.
     ///
     /// Read the [unstable book] for the usage.
@@ -1351,23 +1330,6 @@ pub(crate) mod builtin {
                         : $("input"(operand),)*
                         : $("clobbers",)*
                         : $("options",)*) => {
-            /* compiler built-in */
-        };
-    }
-
-    /// Module-level inline assembly.
-    #[unstable(
-        feature = "global_asm",
-        issue = "35119",
-        reason = "`global_asm!` is not stable enough for use and is subject to change"
-    )]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! global_asm {
-        ("assembly template",
-            $(operands,)*
-            $(options($(option),*))?
-        ) => {
             /* compiler built-in */
         };
     }
