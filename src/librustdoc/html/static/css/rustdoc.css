@@ -1508,7 +1508,7 @@ details.rustdoc-toggle > summary.hideme > span {
 }
 
 details.rustdoc-toggle > summary::before {
-	content: " ";
+	content: "";
 	cursor: pointer;
 	width: 17px;
 	height: max(17px, 1.1em);
@@ -1593,7 +1593,7 @@ details.rustdoc-toggle[open] > summary.hideme::before {
 	height: max(17px, 1.1em);
 	background: data-url(minus-17x17.png) no-repeat top left;
 	display: inline-block;
-	content: " ";
+	content: "";
 }
 
 details.rustdoc-toggle[open] > summary::after,
