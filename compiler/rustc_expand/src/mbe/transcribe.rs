@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{pluralize, PResult};
-use rustc_span::hygiene::{ExpnId, Transparency};
+use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
 
@@ -16,7 +16,7 @@ use smallvec::{smallvec, SmallVec};
 use std::mem;
 
 // A Marker adds the given mark to the syntax context.
-struct Marker(ExpnId, Transparency);
+struct Marker(LocalExpnId, Transparency);
 
 impl MutVisitor for Marker {
     fn token_visiting_enabled(&self) -> bool {
@@ -24,7 +24,7 @@ impl MutVisitor for Marker {
     }
 
     fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0, self.1)
+        *span = span.apply_mark(self.0.to_expn_id(), self.1)
     }
 }
 

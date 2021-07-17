@@ -18,11 +18,11 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
+use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
 use rustc_data_structures::sync::Lrc;
-use rustc_span::ExpnId;
 use smallvec::SmallVec;
 use std::any::Any;
 
@@ -526,6 +526,10 @@ impl CrateStore for CStore {
         hash: DefPathHash,
     ) -> Option<DefId> {
         self.get_crate_data(cnum).def_path_hash_to_def_id(cnum, index_guess, hash)
+    }
+
+    fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId {
+        self.get_crate_data(cnum).expn_hash_to_expn_id(index_guess, hash)
     }
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {

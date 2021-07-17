@@ -20,8 +20,7 @@ use rustc_serialize::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnDataDecodeMode, ExpnDataEncodeMode, ExpnId, HygieneDecodeContext, HygieneEncodeContext,
-    SyntaxContext, SyntaxContextData,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
@@ -84,7 +83,7 @@ pub struct OnDiskCache<'sess> {
     // `ExpnData` (e.g `ExpnData.krate` may not be `LOCAL_CRATE`). Alternatively,
     // we could look up the `ExpnData` from the metadata of foreign crates,
     // but it seemed easier to have `OnDiskCache` be independent of the `CStore`.
-    expn_data: FxHashMap<u32, AbsoluteBytePos>,
+    expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
     // Additional information used when decoding hygiene data.
     hygiene_context: HygieneDecodeContext,
     // Maps `DefPathHash`es to their `RawDefId`s from the *previous*
@@ -92,6 +91,8 @@ pub struct OnDiskCache<'sess> {
     // we try to map a `DefPathHash` to its `DefId` in the current compilation
     // session.
     foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
+    // Likewise for ExpnId.
+    foreign_expn_data: UnhashMap<ExpnHash, u32>,
 
     // The *next* compilation sessison's `foreign_def_path_hashes` - at
     // the end of our current compilation session, this will get written
@@ -119,8 +120,9 @@ struct Footer {
     // See `OnDiskCache.syntax_contexts`
     syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
-    expn_data: FxHashMap<u32, AbsoluteBytePos>,
+    expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
+    foreign_expn_data: UnhashMap<ExpnHash, u32>,
 }
 
 pub type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
@@ -218,6 +220,7 @@ impl<'sess> OnDiskCache<'sess> {
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
             syntax_contexts: footer.syntax_contexts,
             expn_data: footer.expn_data,
+            foreign_expn_data: footer.foreign_expn_data,
             hygiene_context: Default::default(),
             foreign_def_path_hashes: footer.foreign_def_path_hashes,
             latest_foreign_def_path_hashes: Default::default(),
@@ -237,7 +240,8 @@ impl<'sess> OnDiskCache<'sess> {
             prev_diagnostics_index: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
             syntax_contexts: FxHashMap::default(),
-            expn_data: FxHashMap::default(),
+            expn_data: UnhashMap::default(),
+            foreign_expn_data: UnhashMap::default(),
             hygiene_context: Default::default(),
             foreign_def_path_hashes: Default::default(),
             latest_foreign_def_path_hashes: Default::default(),
@@ -351,7 +355,8 @@ impl<'sess> OnDiskCache<'sess> {
             };
 
             let mut syntax_contexts = FxHashMap::default();
-            let mut expn_ids = FxHashMap::default();
+            let mut expn_data = UnhashMap::default();
+            let mut foreign_expn_data = UnhashMap::default();
 
             // Encode all hygiene data (`SyntaxContextData` and `ExpnData`) from the current
             // session.
@@ -364,10 +369,14 @@ impl<'sess> OnDiskCache<'sess> {
                     syntax_contexts.insert(index, pos);
                     Ok(())
                 },
-                |encoder, index, expn_data, hash| -> FileEncodeResult {
-                    let pos = AbsoluteBytePos::new(encoder.position());
-                    encoder.encode_tagged(TAG_EXPN_DATA, &(expn_data, hash))?;
-                    expn_ids.insert(index, pos);
+                |encoder, expn_id, data, hash| -> FileEncodeResult {
+                    if expn_id.krate == LOCAL_CRATE {
+                        let pos = AbsoluteBytePos::new(encoder.position());
+                        encoder.encode_tagged(TAG_EXPN_DATA, data)?;
+                        expn_data.insert(hash, pos);
+                    } else {
+                        foreign_expn_data.insert(hash, expn_id.local_id.as_u32());
+                    }
                     Ok(())
                 },
             )?;
@@ -385,7 +394,8 @@ impl<'sess> OnDiskCache<'sess> {
                     diagnostics_index,
                     interpret_alloc_index,
                     syntax_contexts,
-                    expn_data: expn_ids,
+                    expn_data,
+                    foreign_expn_data,
                     foreign_def_path_hashes,
                 },
             )?;
@@ -547,6 +557,7 @@ impl<'sess> OnDiskCache<'sess> {
             alloc_decoding_session: self.alloc_decoding_state.new_decoding_session(),
             syntax_contexts: &self.syntax_contexts,
             expn_data: &self.expn_data,
+            foreign_expn_data: &self.foreign_expn_data,
             hygiene_context: &self.hygiene_context,
         };
         f(&mut decoder)
@@ -641,7 +652,8 @@ pub struct CacheDecoder<'a, 'tcx> {
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
     syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
-    expn_data: &'a FxHashMap<u32, AbsoluteBytePos>,
+    expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
+    foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
 }
 
@@ -792,23 +804,43 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
-        let expn_data = decoder.expn_data;
-        rustc_span::hygiene::decode_expn_id(
-            decoder,
-            ExpnDataDecodeMode::incr_comp(decoder.hygiene_context),
-            |this, index| {
-                // This closure is invoked if we haven't already decoded the data for the `ExpnId` we are deserializing.
-                // We look up the position of the associated `ExpnData` and decode it.
-                let pos = expn_data
-                    .get(&index)
-                    .unwrap_or_else(|| panic!("Bad index {:?} (map {:?})", index, expn_data));
+        let hash = ExpnHash::decode(decoder)?;
+        if hash.is_root() {
+            return Ok(ExpnId::root());
+        }
 
-                this.with_position(pos.to_usize(), |decoder| {
-                    let data: (ExpnData, ExpnHash) = decode_tagged(decoder, TAG_EXPN_DATA)?;
-                    Ok(data)
-                })
-            },
-        )
+        if let Some(expn_id) = ExpnId::from_hash(hash) {
+            return Ok(expn_id);
+        }
+
+        let krate = decoder.cnum_map[&hash.stable_crate_id()];
+
+        let expn_id = if krate == LOCAL_CRATE {
+            // We look up the position of the associated `ExpnData` and decode it.
+            let pos = decoder
+                .expn_data
+                .get(&hash)
+                .unwrap_or_else(|| panic!("Bad hash {:?} (map {:?})", hash, decoder.expn_data));
+
+            let data: ExpnData = decoder
+                .with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA))?;
+            rustc_span::hygiene::register_local_expn_id(data, hash)
+        } else {
+            let index_guess = decoder.foreign_expn_data[&hash];
+            decoder.tcx.untracked_resolutions.cstore.expn_hash_to_expn_id(krate, index_guess, hash)
+        };
+
+        #[cfg(debug_assertions)]
+        {
+            use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+            let mut hcx = decoder.tcx.create_stable_hashing_context();
+            let mut hasher = StableHasher::new();
+            hcx.while_hashing_spans(true, |hcx| expn_id.expn_data().hash_stable(hcx, &mut hasher));
+            let local_hash: u64 = hasher.finish();
+            debug_assert_eq!(hash.local_hash(), local_hash);
+        }
+
+        Ok(expn_id)
     }
 }
 
@@ -983,12 +1015,8 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        rustc_span::hygiene::raw_encode_expn_id(
-            *self,
-            s.hygiene_context,
-            ExpnDataEncodeMode::IncrComp,
-            s,
-        )
+        s.hygiene_context.schedule_expn_data_for_encoding(*self);
+        self.expn_hash().encode(s)
     }
 }
 

@@ -38,7 +38,7 @@ use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnKind, ForLoopLoc, MacroKind};
-pub use hygiene::{ExpnData, ExpnHash, ExpnId, SyntaxContext};
+pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LOCAL_CRATE};
 pub mod lev_distance;

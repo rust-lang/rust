@@ -6,7 +6,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions::*;
-use rustc_span::hygiene::ExpnId;
+use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use tracing::debug;
@@ -14,7 +14,7 @@ use tracing::debug;
 crate fn collect_definitions(
     resolver: &mut Resolver<'_>,
     fragment: &AstFragment,
-    expansion: ExpnId,
+    expansion: LocalExpnId,
 ) {
     let (parent_def, impl_trait_context) = resolver.invocation_parents[&expansion];
     fragment.visit_with(&mut DefCollector { resolver, parent_def, expansion, impl_trait_context });
@@ -25,14 +25,14 @@ struct DefCollector<'a, 'b> {
     resolver: &'a mut Resolver<'b>,
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
-    expansion: ExpnId,
+    expansion: LocalExpnId,
 }
 
 impl<'a, 'b> DefCollector<'a, 'b> {
     fn create_def(&mut self, node_id: NodeId, data: DefPathData, span: Span) -> LocalDefId {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
-        self.resolver.create_def(parent_def, node_id, data, self.expansion, span)
+        self.resolver.create_def(parent_def, node_id, data, self.expansion.to_expn_id(), span)
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
@@ -285,7 +285,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                         item_def,
                         node_id,
                         DefPathData::ImplTrait,
-                        self.expansion,
+                        self.expansion.to_expn_id(),
                         ty.span,
                     ),
                     ImplTraitContext::Existential => {

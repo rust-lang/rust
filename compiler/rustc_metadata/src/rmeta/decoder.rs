@@ -30,13 +30,12 @@ use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnDataDecodeMode;
+use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
+use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::cell::Cell;
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -80,6 +79,8 @@ crate struct CrateMetadata {
     /// `DefIndex`. See `raw_def_id_to_def_id` for more details about how
     /// this is used.
     def_path_hash_map: OnceCell<UnhashMap<DefPathHash, DefIndex>>,
+    /// Likewise for ExpnHash.
+    expn_hash_map: OnceCell<UnhashMap<ExpnHash, ExpnIndex>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
@@ -350,6 +351,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
     }
 }
 
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<ExpnIndex, String> {
+        Ok(ExpnIndex::from_u32(d.read_u32()?))
+    }
+}
+
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<SyntaxContext, String> {
         let cdata = decoder.cdata();
@@ -371,43 +378,35 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<ExpnId, String> {
         let local_cdata = decoder.cdata();
         let sess = decoder.sess.unwrap();
-        let expn_cnum = Cell::new(None);
-        let get_ctxt = |cnum| {
-            expn_cnum.set(Some(cnum));
-            if cnum == LOCAL_CRATE {
-                &local_cdata.hygiene_context
-            } else {
-                &local_cdata.cstore.get_crate_data(cnum).cdata.hygiene_context
-            }
-        };
 
-        rustc_span::hygiene::decode_expn_id(
-            decoder,
-            ExpnDataDecodeMode::Metadata(get_ctxt),
-            |_this, index| {
-                let cnum = expn_cnum.get().unwrap();
-                // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
-                // are stored in the owning crate, to avoid duplication.
-                let crate_data = if cnum == LOCAL_CRATE {
-                    local_cdata
-                } else {
-                    local_cdata.cstore.get_crate_data(cnum)
-                };
-                let expn_data = crate_data
-                    .root
-                    .expn_data
-                    .get(&crate_data, index)
-                    .unwrap()
-                    .decode((&crate_data, sess));
-                let expn_hash = crate_data
-                    .root
-                    .expn_hashes
-                    .get(&crate_data, index)
-                    .unwrap()
-                    .decode((&crate_data, sess));
-                Ok((expn_data, expn_hash))
-            },
-        )
+        let cnum = CrateNum::decode(decoder)?;
+        let index = u32::decode(decoder)?;
+
+        let expn_id = rustc_span::hygiene::decode_expn_id(cnum, index, |expn_id| {
+            let ExpnId { krate: cnum, local_id: index } = expn_id;
+            // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
+            // are stored in the owning crate, to avoid duplication.
+            debug_assert_ne!(cnum, LOCAL_CRATE);
+            let crate_data = if cnum == local_cdata.cnum {
+                local_cdata
+            } else {
+                local_cdata.cstore.get_crate_data(cnum)
+            };
+            let expn_data = crate_data
+                .root
+                .expn_data
+                .get(&crate_data, index)
+                .unwrap()
+                .decode((&crate_data, sess));
+            let expn_hash = crate_data
+                .root
+                .expn_hashes
+                .get(&crate_data, index)
+                .unwrap()
+                .decode((&crate_data, sess));
+            (expn_data, expn_hash)
+        });
+        Ok(expn_id)
     }
 }
 
@@ -1622,6 +1621,41 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.def_path_hash_unlocked(index, &mut def_path_hashes)
     }
 
+    fn expn_hash_to_expn_id(&self, index_guess: u32, hash: ExpnHash) -> ExpnId {
+        debug_assert_eq!(ExpnId::from_hash(hash), None);
+        let index_guess = ExpnIndex::from_u32(index_guess);
+        let old_hash = self.root.expn_hashes.get(self, index_guess).map(|lazy| lazy.decode(self));
+
+        let index = if old_hash == Some(hash) {
+            // Fast path: the expn and its index is unchanged from the
+            // previous compilation session. There is no need to decode anything
+            // else.
+            index_guess
+        } else {
+            // Slow path: We need to find out the new `DefIndex` of the provided
+            // `DefPathHash`, if its still exists. This requires decoding every `DefPathHash`
+            // stored in this crate.
+            let map = self.cdata.expn_hash_map.get_or_init(|| {
+                let end_id = self.root.expn_hashes.size() as u32;
+                let mut map =
+                    UnhashMap::with_capacity_and_hasher(end_id as usize, Default::default());
+                for i in 0..end_id {
+                    let i = ExpnIndex::from_u32(i);
+                    if let Some(hash) = self.root.expn_hashes.get(self, i) {
+                        map.insert(hash.decode(self), i);
+                    } else {
+                        panic!("Missing expn_hash entry for {:?}", i);
+                    }
+                }
+                map
+            });
+            map[&hash]
+        };
+
+        let data = self.root.expn_data.get(self, index).unwrap().decode(self);
+        rustc_span::hygiene::register_expn_id(self.cnum, index, data, hash)
+    }
+
     /// Imports the source_map from an external crate into the source_map of the crate
     /// currently being compiled (the "local crate").
     ///
@@ -1860,6 +1894,7 @@ impl CrateMetadata {
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
             def_path_hash_map: Default::default(),
+            expn_hash_map: Default::default(),
             alloc_decoding_state,
             cnum,
             cnum_map,

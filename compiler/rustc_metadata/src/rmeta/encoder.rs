@@ -31,7 +31,7 @@ use rustc_session::config::CrateType;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_span::{
-    hygiene::{ExpnDataEncodeMode, HygieneEncodeContext, MacroKind},
+    hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind},
     RealFileName,
 };
 use rustc_target::abi::VariantIdx;
@@ -168,6 +168,12 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefIndex {
     }
 }
 
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        s.emit_u32(self.as_u32())
+    }
+}
+
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         rustc_span::hygiene::raw_encode_syntax_context(*self, &s.hygiene_ctxt, s)
@@ -176,12 +182,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        rustc_span::hygiene::raw_encode_expn_id(
-            *self,
-            &s.hygiene_ctxt,
-            ExpnDataEncodeMode::Metadata,
-            s,
-        )
+        if self.krate == LOCAL_CRATE {
+            // We will only write details for local expansions.  Non-local expansions will fetch
+            // data from the corresponding crate's metadata.
+            // FIXME(#43047) FIXME(#74731) We may eventually want to avoid relying on external
+            // metadata from proc-macro crates.
+            s.hygiene_ctxt.schedule_expn_data_for_encoding(*self);
+        }
+        self.krate.encode(s)?;
+        self.local_id.encode(s)
     }
 }
 
@@ -1593,8 +1602,10 @@ impl EncodeContext<'a, 'tcx> {
                 Ok(())
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
-                expn_data_table.set(index, this.lazy(expn_data));
-                expn_hash_table.set(index, this.lazy(hash));
+                if let Some(index) = index.as_local() {
+                    expn_data_table.set(index.as_raw(), this.lazy(expn_data));
+                    expn_hash_table.set(index.as_raw(), this.lazy(hash));
+                }
                 Ok(())
             },
         );

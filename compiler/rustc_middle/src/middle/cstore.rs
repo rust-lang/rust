@@ -6,12 +6,12 @@ use crate::ty::TyCtxt;
 
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, MetadataRef};
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
-use rustc_session::StableCrateId;
+use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::Target;
@@ -207,6 +207,7 @@ pub trait CrateStore: std::fmt::Debug {
         index_guess: u32,
         hash: DefPathHash,
     ) -> Option<DefId>;
+    fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId;
 
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
