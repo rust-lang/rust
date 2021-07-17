@@ -1005,7 +1005,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// of the vector.
     ///
     /// The [`split_off`] method is similar to `truncate`, but causes the
-    /// excess elements to be returned instead of dropped.
+    /// tail elements to be returned as a newly-allocated `Vec` instead
+    /// of being dropped. Note that [`Vec::drain`] can emulate `split_off`
+    /// and avoids this extra allocation by returning an iterator.
     ///
     /// # Examples
     ///
