@@ -49,7 +49,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FunctionItemRefChecker<'a, 'tcx> {
                     // Handle calls to `transmute`
                     if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
                         let arg_ty = args[0].ty(self.body, self.tcx);
-                        for generic_inner_ty in arg_ty.walk() {
+                        for generic_inner_ty in arg_ty.walk(self.tcx) {
                             if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
                                 if let Some((fn_id, fn_substs)) =
                                     FunctionItemRefChecker::is_fn_ref(inner_ty)
@@ -110,7 +110,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
                 let arg_defs = self.tcx.fn_sig(def_id).skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
                     // For all types reachable from the argument type in the fn sig
-                    for generic_inner_ty in arg_def.walk() {
+                    for generic_inner_ty in arg_def.walk(self.tcx) {
                         if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
                             // If the inner type matches the type bound by `Pointer`
                             if TyS::same_type(inner_ty, bound_ty) {

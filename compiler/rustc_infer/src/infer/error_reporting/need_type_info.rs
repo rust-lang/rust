@@ -51,7 +51,7 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
 
     fn node_ty_contains_target(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
         self.node_type_opt(hir_id).map(|ty| self.infcx.resolve_vars_if_possible(ty)).filter(|ty| {
-            ty.walk().any(|inner| {
+            ty.walk(self.infcx.tcx).any(|inner| {
                 inner == self.target
                     || match (inner.unpack(), self.target.unpack()) {
                         (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {

@@ -694,14 +694,15 @@ fn substs_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
+    let tcx = selcx.tcx();
     selcx
         .infcx()
         .resolve_vars_if_possible(substs)
         .skip_binder() // ok because this check doesn't care about regions
         .iter()
         .filter(|arg| arg.has_infer_types_or_consts())
-        .flat_map(|arg| {
-            let mut walker = arg.walk();
+        .flat_map(move |arg| {
+            let mut walker = arg.walk(tcx);
             while let Some(c) = walker.next() {
                 if !c.has_infer_types_or_consts() {
                     walker.visited.remove(&c);
