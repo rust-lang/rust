@@ -55,7 +55,8 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
 }
 
 pub(super) fn ascription(p: &mut Parser) {
-    p.expect(T![:]);
+    assert!(p.at(T![:]));
+    p.bump(T![:]);
     type_(p)
 }
 

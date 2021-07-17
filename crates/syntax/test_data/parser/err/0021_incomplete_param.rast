@@ -30,5 +30,4 @@ SOURCE_FILE@0..22
       WHITESPACE@19..20 "\n"
       R_CURLY@20..21 "}"
   WHITESPACE@21..22 "\n"
-error 16..16: expected COLON
-error 16..16: expected type
+error 16..16: missing type for function parameter

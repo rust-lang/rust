@@ -67,7 +67,11 @@ fn const_param(p: &mut Parser, m: Marker) {
     assert!(p.at(T![const]));
     p.bump(T![const]);
     name(p);
-    types::ascription(p);
+    if p.at(T![:]) {
+        types::ascription(p);
+    } else {
+        p.error("missing type for const parameter");
+    }
 
     // test const_param_defaults
     // struct A<const N: i32 = -1>;
