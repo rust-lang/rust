@@ -1,4 +1,4 @@
-// error-pattern: outside bounds of alloc
+// error-pattern: pointer at offset 32 is out-of-bounds
 
 fn main() {
     let x = Box::into_raw(Box::new(0u32));

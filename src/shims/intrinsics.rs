@@ -71,7 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ty = instance.substs.type_at(0);
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
-                let ptr = this.read_scalar(ptr)?.check_init()?;
+                let ptr = this.read_pointer(ptr)?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
                     err_ub_format!("overflow computing total size of `write_bytes`")

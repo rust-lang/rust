@@ -109,19 +109,17 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
-        new_data: Option<Scalar<Tag>>,
+        new_data: Scalar<Tag>,
+        cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
-                match new_data {
-                    Some(scalar) => {
-                        trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, scalar);
-                        data.insert(thread_id, scalar);
-                    }
-                    None => {
-                        trace!("TLS key {} for thread {:?} removed", key, thread_id);
-                        data.remove(&thread_id);
-                    }
+                if new_data.to_machine_usize(cx)? != 0 {
+                    trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, new_data);
+                    data.insert(thread_id, new_data);
+                } else {
+                    trace!("TLS key {} for thread {:?} removed", key, thread_id);
+                    data.remove(&thread_id);
                 }
                 Ok(())
             }
@@ -250,11 +248,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "thread_local_key",
             "p_thread_callback",
         ])?;
-        let thread_callback = this.memory.get_fn(thread_callback.check_init()?)?.as_instance()?;
+        let thread_callback =
+            this.memory.get_fn(this.scalar_to_ptr(thread_callback))?.as_instance()?;
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_THREAD_DETACH"])?;
-        let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
+        let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
         this.call_function(
             thread_callback,
             Abi::System { unwind: false },
@@ -277,7 +276,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some((instance, data)) = this.machine.tls.macos_thread_dtors.remove(&thread_id) {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(
                 instance,
                 Abi::C { unwind: false },
@@ -315,9 +314,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key =
                 Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
-            assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
+            assert!(
+                !ptr.to_machine_usize(this).unwrap() != 0,
+                "data can't be NULL when dtor is called!"
+            );
 
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(
                 instance,
                 Abi::C { unwind: false },
@@ -349,6 +351,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn schedule_next_tls_dtor_for_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread();
+        trace!("schedule_next_tls_dtor_for_active_thread on thread {:?}", active_thread);
 
         if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
             // This is the first time we got asked to schedule a destructor. The

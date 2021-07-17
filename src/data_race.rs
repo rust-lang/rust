@@ -73,9 +73,9 @@ use rustc_middle::{mir, ty::layout::TyAndLayout};
 use rustc_target::abi::Size;
 
 use crate::{
-    ImmTy, Immediate, InterpResult, MPlaceTy, MemPlaceMeta, MemoryKind, MiriEvalContext,
-    MiriEvalContextExt, MiriMemoryKind, OpTy, Pointer, RangeMap, Scalar, ScalarMaybeUninit, Tag,
-    ThreadId, VClock, VTimestamp, VectorIdx,
+    AllocId, AllocRange, ImmTy, Immediate, InterpResult, MPlaceTy, MemPlaceMeta, MemoryKind,
+    MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, OpTy, Pointer, RangeMap, Scalar,
+    ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp, VectorIdx,
 };
 
 pub type AllocExtra = VClockAlloc;
@@ -561,7 +561,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             if lt { &rhs } else { &old }
         };
 
-        this.allow_data_races_mut(|this| this.write_immediate_to_mplace(**new_val, place))?;
+        this.allow_data_races_mut(|this| this.write_immediate(**new_val, &(*place).into()))?;
 
         this.validate_atomic_rmw(&place, atomic)?;
 
@@ -713,18 +713,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             Ok(())
         }
     }
-
-    fn reset_vector_clocks(&mut self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        if let Some(data_race) = &mut this.memory.extra.data_race {
-            if data_race.multi_threaded.get() {
-                let alloc_meta =
-                    this.memory.get_alloc_extra_mut(ptr.alloc_id)?.0.data_race.as_mut().unwrap();
-                alloc_meta.reset_clocks(ptr.offset, size);
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Vector clock metadata for a logical memory allocation.
@@ -766,14 +754,6 @@ impl VClockAlloc {
                 len,
                 MemoryCellClocks::new(alloc_timestamp, alloc_index),
             )),
-        }
-    }
-
-    fn reset_clocks(&mut self, offset: Size, len: Size) {
-        let alloc_ranges = self.alloc_ranges.get_mut();
-        for (_, range) in alloc_ranges.iter_mut(offset, len) {
-            // Reset the portion of the range
-            *range = MemoryCellClocks::new(0, VectorIdx::MAX_INDEX);
         }
     }
 
@@ -820,8 +800,7 @@ impl VClockAlloc {
         range: &MemoryCellClocks,
         action: &str,
         is_atomic: bool,
-        pointer: Pointer<Tag>,
-        len: Size,
+        ptr_dbg: Pointer<AllocId>,
     ) -> InterpResult<'tcx> {
         let (current_index, current_clocks) = global.current_thread_state();
         let write_clock;
@@ -863,15 +842,12 @@ impl VClockAlloc {
 
         // Throw the data-race detection.
         throw_ub_format!(
-            "Data race detected between {} on {} and {} on {}, memory({:?},offset={},size={})\
-            \n(current vector clock = {:?}, conflicting timestamp = {:?})",
+            "Data race detected between {} on {} and {} on {} at {:?} (current vector clock = {:?}, conflicting timestamp = {:?})",
             action,
             current_thread_info,
             other_action,
             other_thread_info,
-            pointer.alloc_id,
-            pointer.offset.bytes(),
-            len.bytes(),
+            ptr_dbg,
             current_clocks.clock,
             other_clock
         )
@@ -884,17 +860,23 @@ impl VClockAlloc {
     /// atomic read operations.
     pub fn read<'tcx>(
         &self,
-        pointer: Pointer<Tag>,
-        len: Size,
+        alloc_id: AllocId,
+        range: AllocRange,
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
         if global.multi_threaded.get() {
             let (index, clocks) = global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
-            for (_, range) in alloc_ranges.iter_mut(pointer.offset, len) {
+            for (offset, range) in alloc_ranges.iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.read_race_detect(&*clocks, index) {
                     // Report data-race.
-                    return Self::report_data_race(global, range, "Read", false, pointer, len);
+                    return Self::report_data_race(
+                        global,
+                        range,
+                        "Read",
+                        false,
+                        Pointer::new(alloc_id, offset),
+                    );
                 }
             }
             Ok(())
@@ -906,14 +888,14 @@ impl VClockAlloc {
     // Shared code for detecting data-races on unique access to a section of memory
     fn unique_access<'tcx>(
         &mut self,
-        pointer: Pointer<Tag>,
-        len: Size,
+        alloc_id: AllocId,
+        range: AllocRange,
         write_type: WriteType,
         global: &mut GlobalState,
     ) -> InterpResult<'tcx> {
         if global.multi_threaded.get() {
             let (index, clocks) = global.current_thread_state();
-            for (_, range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
+            for (offset, range) in self.alloc_ranges.get_mut().iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.write_race_detect(&*clocks, index, write_type) {
                     // Report data-race
                     return Self::report_data_race(
@@ -921,8 +903,7 @@ impl VClockAlloc {
                         range,
                         write_type.get_descriptor(),
                         false,
-                        pointer,
-                        len,
+                        Pointer::new(alloc_id, offset),
                     );
                 }
             }
@@ -938,11 +919,11 @@ impl VClockAlloc {
     /// operation
     pub fn write<'tcx>(
         &mut self,
-        pointer: Pointer<Tag>,
-        len: Size,
+        alloc_id: AllocId,
+        range: AllocRange,
         global: &mut GlobalState,
     ) -> InterpResult<'tcx> {
-        self.unique_access(pointer, len, WriteType::Write, global)
+        self.unique_access(alloc_id, range, WriteType::Write, global)
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
@@ -951,11 +932,11 @@ impl VClockAlloc {
     /// operation
     pub fn deallocate<'tcx>(
         &mut self,
-        pointer: Pointer<Tag>,
-        len: Size,
+        alloc_id: AllocId,
+        range: AllocRange,
         global: &mut GlobalState,
     ) -> InterpResult<'tcx> {
-        self.unique_access(pointer, len, WriteType::Deallocate, global)
+        self.unique_access(alloc_id, range, WriteType::Deallocate, global)
     }
 }
 
@@ -1002,12 +983,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         result
     }
 
-    /// Generic atomic operation implementation,
-    /// this accesses memory via get_raw instead of
-    /// get_raw_mut, due to issues calling get_raw_mut
-    /// for atomic loads from read-only memory.
-    /// FIXME: is this valid, or should get_raw_mut be used for
-    /// atomic-stores/atomic-rmw?
+    /// Generic atomic operation implementation
     fn validate_atomic_op<A: Debug + Copy>(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
@@ -1023,25 +999,24 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.memory.extra.data_race {
             if data_race.multi_threaded.get() {
+                let size = place.layout.size;
+                let (alloc_id, base_offset, ptr) = this.memory.ptr_get_alloc(place.ptr)?;
                 // Load and log the atomic operation.
                 // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
-                let place_ptr = place.ptr.assert_ptr();
-                let size = place.layout.size;
                 let alloc_meta =
-                    &this.memory.get_alloc_extra(place_ptr.alloc_id)?.data_race.as_ref().unwrap();
+                    &this.memory.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();
                 log::trace!(
-                    "Atomic op({}) with ordering {:?} on memory({:?}, offset={}, size={})",
+                    "Atomic op({}) with ordering {:?} on {:?} (size={})",
                     description,
                     &atomic,
-                    place_ptr.alloc_id,
-                    place_ptr.offset.bytes(),
+                    ptr,
                     size.bytes()
                 );
 
                 // Perform the atomic operation.
                 data_race.maybe_perform_sync_operation(|index, mut clocks| {
-                    for (_, range) in
-                        alloc_meta.alloc_ranges.borrow_mut().iter_mut(place_ptr.offset, size)
+                    for (offset, range) in
+                        alloc_meta.alloc_ranges.borrow_mut().iter_mut(base_offset, size)
                     {
                         if let Err(DataRace) = op(range, &mut *clocks, index, atomic) {
                             mem::drop(clocks);
@@ -1050,8 +1025,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                                 range,
                                 description,
                                 true,
-                                place_ptr,
-                                size,
+                                Pointer::new(alloc_id, offset),
                             )
                             .map(|_| true);
                         }
@@ -1063,12 +1037,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
                 // Log changes to atomic memory.
                 if log::log_enabled!(log::Level::Trace) {
-                    for (_, range) in alloc_meta.alloc_ranges.borrow().iter(place_ptr.offset, size)
+                    for (_offset, range) in alloc_meta.alloc_ranges.borrow().iter(base_offset, size)
                     {
                         log::trace!(
-                            "Updated atomic memory({:?}, offset={}, size={}) to {:#?}",
-                            place.ptr.assert_ptr().alloc_id,
-                            place_ptr.offset.bytes(),
+                            "Updated atomic memory({:?}, size={}) to {:#?}",
+                            ptr,
                             size.bytes(),
                             range.atomic_ops
                         );

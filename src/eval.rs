@@ -164,7 +164,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
-        let mut argvs = Vec::<Scalar<Tag>>::new();
+        let mut argvs = Vec::<Immediate<Tag>>::new();
         for arg in config.args.iter() {
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
@@ -172,7 +172,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
             ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
-            argvs.push(arg_place.ptr);
+            ecx.mark_immutable(&*arg_place);
+            argvs.push(arg_place.to_ref(&ecx));
         }
         // Make an array with all these pointers, in the Miri memory.
         let argvs_layout = ecx.layout_of(
@@ -181,24 +182,26 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into())?;
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.mplace_field(&argvs_place, idx)?;
-            ecx.write_scalar(arg, &place.into())?;
+            ecx.write_immediate(arg, &place.into())?;
         }
-        ecx.memory.mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
+        ecx.mark_immutable(&*argvs_place);
         // A pointer to that place is the 3rd argument for main.
-        let argv = argvs_place.ptr;
+        let argv = argvs_place.to_ref(&ecx);
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
             ecx.write_scalar(argc, &argc_place.into())?;
-            ecx.machine.argc = Some(argc_place.ptr);
+            ecx.mark_immutable(&*argc_place);
+            ecx.machine.argc = Some(*argc_place);
 
             let argv_place = ecx.allocate(
                 ecx.layout_of(tcx.mk_imm_ptr(tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
             )?;
-            ecx.write_scalar(argv, &argv_place.into())?;
-            ecx.machine.argv = Some(argv_place.ptr);
+            ecx.write_immediate(argv, &argv_place.into())?;
+            ecx.mark_immutable(&*argv_place);
+            ecx.machine.argv = Some(*argv_place);
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
         {
@@ -217,12 +220,13 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let cmd_type = tcx.mk_array(tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
             let cmd_place =
                 ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into())?;
-            ecx.machine.cmd_line = Some(cmd_place.ptr);
+            ecx.machine.cmd_line = Some(*cmd_place);
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             for (idx, &c) in cmd_utf16.iter().enumerate() {
                 let place = ecx.mplace_field(&cmd_place, idx)?;
                 ecx.write_scalar(Scalar::from_u16(c), &place.into())?;
             }
+            ecx.mark_immutable(&*cmd_place);
         }
         argv
     };
@@ -233,7 +237,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     ecx.call_function(
         start_instance,
         Abi::Rust,
-        &[main_ptr.into(), argc.into(), argv.into()],
+        &[Scalar::from_pointer(main_ptr, &ecx).into(), argc.into(), argv],
         Some(&ret_place.into()),
         StackPopCleanup::None { cleanup: true },
     )?;
@@ -285,8 +289,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             }
             ecx.process_diagnostics(info);
         }
-        let return_code =
-            ecx.read_scalar(&ret_place.into())?.check_init()?.to_machine_isize(&ecx)?;
+        let return_code = ecx.read_scalar(&ret_place.into())?.to_machine_isize(&ecx)?;
         Ok(return_code)
     })();
 

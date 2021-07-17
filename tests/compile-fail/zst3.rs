@@ -14,5 +14,5 @@ fn main() {
     unsafe { *(x as *mut [u8; 0]) = zst_val; }
     // One byte further is OOB.
     let x = x.wrapping_offset(1);
-    unsafe { *(x as *mut [u8; 0]) = zst_val; } //~ ERROR pointer must be in-bounds
+    unsafe { *(x as *mut [u8; 0]) = zst_val; } //~ ERROR out-of-bounds
 }

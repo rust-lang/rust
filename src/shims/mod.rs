@@ -74,8 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(false);
         }
 
-        let req_align =
-            this.force_bits(this.read_scalar(align_op)?.check_init()?, this.pointer_size())?;
+        let req_align = this.read_scalar(align_op)?.to_machine_usize(this)?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
@@ -83,13 +82,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(true); // nothing left to do
         }
 
-        let ptr_scalar = this.read_scalar(ptr_op)?.check_init()?;
-
-        if let Ok(ptr) = this.force_ptr(ptr_scalar) {
+        let ptr = this.read_pointer(ptr_op)?;
+        if let Ok(ptr) = ptr.into_pointer_or_addr() {
             // Only do anything if we can identify the allocation this goes to.
-            let cur_align =
-                this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes();
-            if u128::from(cur_align) >= req_align {
+            let (_, cur_align) =
+                this.memory.get_size_and_align(ptr.provenance.alloc_id, AllocCheck::MaybeDead)?;
+            if cur_align.bytes() >= req_align {
                 // If the allocation alignment is at least the required alignment we use the
                 // real implementation.
                 return Ok(false);

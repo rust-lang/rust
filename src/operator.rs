@@ -45,9 +45,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
             Lt | Le | Gt | Ge => {
                 // Just compare the integers.
-                // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?
-                let left = self.force_bits(left.to_scalar()?, left.layout.size)?;
-                let right = self.force_bits(right.to_scalar()?, right.layout.size)?;
+                let left = left.to_scalar()?.to_bits(left.layout.size)?;
+                let right = right.to_scalar()?.to_bits(right.layout.size)?;
                 let res = match bin_op {
                     Lt => left < right,
                     Le => left <= right,
@@ -62,11 +61,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 let pointee_ty =
                     left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
                 let ptr = self.ptr_offset_inbounds(
-                    left.to_scalar()?,
+                    self.scalar_to_ptr(left.to_scalar()?),
                     pointee_ty,
                     right.to_scalar()?.to_machine_isize(self)?,
                 )?;
-                (ptr, false, left.layout.ty)
+                (Scalar::from_maybe_pointer(ptr, self), false, left.layout.ty)
             }
 
             _ => bug!("Invalid operator on pointers: {:?}", bin_op),
@@ -76,9 +75,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     fn ptr_eq(&self, left: Scalar<Tag>, right: Scalar<Tag>) -> InterpResult<'tcx, bool> {
         let size = self.pointer_size();
         // Just compare the integers.
-        // TODO: Do we really want to *always* do that, even when comparing two live in-bounds pointers?
-        let left = self.force_bits(left, size)?;
-        let right = self.force_bits(right, size)?;
+        let left = left.to_bits(size)?;
+        let right = right.to_bits(size)?;
         Ok(left == right)
     }
 }

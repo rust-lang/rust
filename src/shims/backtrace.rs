@@ -44,9 +44,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // to reconstruct the needed frame information in `handle_miri_resolve_frame`.
                 // Note that we never actually read or write anything from/to this pointer -
                 // all of the data is represented by the pointer value itself.
-                let mut fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(instance));
-                fn_ptr.offset = Size::from_bytes(pos.0);
-                Scalar::Ptr(fn_ptr)
+                let fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(instance));
+                fn_ptr.wrapping_offset(Size::from_bytes(pos.0), this)
             })
             .collect();
 
@@ -61,11 +60,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.allocate(this.layout_of(array_ty).unwrap(), MiriMemoryKind::Rust.into())?;
         for (i, ptr) in ptrs.into_iter().enumerate() {
             let place = this.mplace_index(&alloc, i as u64)?;
-            this.write_immediate_to_mplace(ptr.into(), &place)?;
+            this.write_pointer(ptr, &place.into())?;
         }
 
         this.write_immediate(
-            Immediate::new_slice(alloc.ptr.into(), len.try_into().unwrap(), this),
+            Immediate::new_slice(
+                Scalar::from_maybe_pointer(alloc.ptr, this),
+                len.try_into().unwrap(),
+                this,
+            ),
             dest,
         )?;
         Ok(())
@@ -87,21 +90,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags);
         }
 
-        let ptr = this.force_ptr(this.read_scalar(ptr)?.check_init()?)?;
+        let ptr = this.read_pointer(ptr)?;
+        // Take apart the pointer, we need its pieces.
+        let (alloc_id, offset, ptr) = this.memory.ptr_get_alloc(ptr)?;
 
-        let fn_instance = if let Some(GlobalAlloc::Function(instance)) =
-            this.tcx.get_global_alloc(ptr.alloc_id)
-        {
-            instance
-        } else {
-            throw_ub_format!("expected function pointer, found {:?}", ptr);
-        };
+        let fn_instance =
+            if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(alloc_id) {
+                instance
+            } else {
+                throw_ub_format!("expected function pointer, found {:?}", ptr);
+            };
 
         // Reconstruct the original function pointer,
         // which we pass to user code.
-        let mut fn_ptr = ptr;
-        fn_ptr.offset = Size::from_bytes(0);
-        let fn_ptr = Scalar::Ptr(fn_ptr);
+        let fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(fn_instance));
 
         let num_fields = dest.layout.layout.fields.count();
 
@@ -113,7 +115,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             );
         }
 
-        let pos = BytePos(ptr.offset.bytes().try_into().unwrap());
+        let pos = BytePos(offset.bytes().try_into().unwrap());
         let name = fn_instance.to_string();
 
         let lo = tcx.sess.source_map().lookup_char_pos(pos);
@@ -139,15 +141,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        this.write_immediate(name_alloc.to_ref(), &this.mplace_field(&dest, 0)?.into())?;
-        this.write_immediate(filename_alloc.to_ref(), &this.mplace_field(&dest, 1)?.into())?;
+        this.write_immediate(name_alloc.to_ref(this), &this.mplace_field(&dest, 0)?.into())?;
+        this.write_immediate(filename_alloc.to_ref(this), &this.mplace_field(&dest, 1)?.into())?;
         this.write_scalar(lineno_alloc, &this.mplace_field(&dest, 2)?.into())?;
         this.write_scalar(colno_alloc, &this.mplace_field(&dest, 3)?.into())?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.
         if num_fields == 5 {
-            this.write_scalar(fn_ptr, &this.mplace_field(&dest, 4)?.into())?;
+            this.write_pointer(fn_ptr, &this.mplace_field(&dest, 4)?.into())?;
         }
 
         Ok(())

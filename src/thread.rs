@@ -218,7 +218,7 @@ pub struct ThreadManager<'mir, 'tcx> {
     pub(crate) sync: SynchronizationState,
     /// A mapping from a thread-local static to an allocation id of a thread
     /// specific allocation.
-    thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), AllocId>>,
+    thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), Pointer<Tag>>>,
     /// A flag that indicates that we should change the active thread.
     yield_active_thread: bool,
     /// Callbacks that are called once the specified time passes.
@@ -247,18 +247,18 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
-    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<AllocId> {
+    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<Pointer<Tag>> {
         self.thread_local_alloc_ids.borrow().get(&(def_id, self.active_thread)).cloned()
     }
 
-    /// Set the allocation id as the allocation id of the given thread local
+    /// Set the pointer for the allocation of the given thread local
     /// static for the active thread.
     ///
     /// Panics if a thread local is initialized twice for the same thread.
-    fn set_thread_local_alloc_id(&self, def_id: DefId, new_alloc_id: AllocId) {
+    fn set_thread_local_alloc(&self, def_id: DefId, ptr: Pointer<Tag>) {
         self.thread_local_alloc_ids
             .borrow_mut()
-            .try_insert((def_id, self.active_thread), new_alloc_id)
+            .try_insert((def_id, self.active_thread), ptr)
             .unwrap();
     }
 
@@ -435,11 +435,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Wakes up threads joining on the active one and deallocates thread-local statics.
-    /// The `AllocId` that can now be freed is returned.
+    /// The `AllocId` that can now be freed are returned.
     fn thread_terminated(
         &mut self,
         mut data_race: Option<&mut data_race::GlobalState>,
-    ) -> Vec<AllocId> {
+    ) -> Vec<Pointer<Tag>> {
         let mut free_tls_statics = Vec::new();
         {
             let mut thread_local_statics = self.thread_local_alloc_ids.borrow_mut();
@@ -557,16 +557,16 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
-    fn get_or_create_thread_local_alloc_id(
+    fn get_or_create_thread_local_alloc(
         &mut self,
         def_id: DefId,
-    ) -> InterpResult<'tcx, AllocId> {
+    ) -> InterpResult<'tcx, Pointer<Tag>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
-        if let Some(new_alloc_id) = this.machine.threads.get_thread_local_alloc_id(def_id) {
+        if let Some(old_alloc) = this.machine.threads.get_thread_local_alloc_id(def_id) {
             // We already have a thread-specific allocation id for this
             // thread-local static.
-            Ok(new_alloc_id)
+            Ok(old_alloc)
         } else {
             // We need to allocate a thread-specific allocation id for this
             // thread-local static.
@@ -576,10 +576,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             let allocation = tcx.eval_static_initializer(def_id)?;
             // Create a fresh allocation with this content.
-            let new_alloc_id =
-                this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into()).alloc_id;
-            this.machine.threads.set_thread_local_alloc_id(def_id, new_alloc_id);
-            Ok(new_alloc_id)
+            let new_alloc =
+                this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into());
+            this.machine.threads.set_thread_local_alloc(def_id, new_alloc);
+            Ok(new_alloc)
         }
     }
 
@@ -761,10 +761,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn thread_terminated(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        for alloc_id in this.machine.threads.thread_terminated(this.memory.extra.data_race.as_mut())
-        {
-            let ptr = this.memory.global_base_pointer(alloc_id.into())?;
-            this.memory.deallocate(ptr, None, MiriMemoryKind::Tls.into())?;
+        for ptr in this.machine.threads.thread_terminated(this.memory.extra.data_race.as_mut()) {
+            this.memory.deallocate(ptr.into(), None, MiriMemoryKind::Tls.into())?;
         }
         Ok(())
     }

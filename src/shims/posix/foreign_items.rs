@@ -28,7 +28,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "getenv" => {
                 let &[ref name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.getenv(name)?;
-                this.write_scalar(result, dest)?;
+                this.write_pointer(result, dest)?;
             }
             "unsetenv" => {
                 let &[ref name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -44,7 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "getcwd" => {
                 let &[ref buf, ref size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.getcwd(buf, size)?;
-                this.write_scalar(result, dest)?;
+                this.write_pointer(result, dest)?;
             }
             "chdir" => {
                 let &[ref path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -68,7 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "read" => {
                 let &[ref fd, ref buf, ref count] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_scalar(buf)?.check_init()?;
+                let buf = this.read_pointer(buf)?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let result = this.read(fd, buf, count)?;
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
@@ -76,7 +76,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "write" => {
                 let &[ref fd, ref buf, ref n] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_scalar(buf)?.check_init()?;
+                let buf = this.read_pointer(buf)?;
                 let count = this.read_scalar(n)?.to_machine_usize(this)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
                 let result = this.write(fd, buf, count)?;
@@ -160,7 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::C.into(),
                     )?;
-                    this.write_scalar(ptr, &ret.into())?;
+                    this.write_pointer(ptr, &ret.into())?;
                 }
                 this.write_null(dest)?;
             }
@@ -169,11 +169,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "dlsym" => {
                 let &[ref handle, ref symbol] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(handle)?.to_machine_usize(this)?;
-                let symbol = this.read_scalar(symbol)?.check_init()?;
+                let symbol = this.read_pointer(symbol)?;
                 let symbol_name = this.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
-                    this.write_scalar(Scalar::from(ptr), dest)?;
+                    this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
                 }
@@ -208,12 +208,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_key_create" => {
                 let &[ref key, ref dtor] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let key_place = this.deref_operand(key)?;
-                let dtor = this.read_scalar(dtor)?.check_init()?;
+                let dtor = this.read_pointer(dtor)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
-                let dtor = match this.test_null(dtor)? {
-                    Some(dtor_ptr) => Some(this.memory.get_fn(dtor_ptr)?.as_instance()?),
-                    None => None,
+                let dtor = if !this.ptr_is_null(dtor)? {
+                    Some(this.memory.get_fn(dtor)?.as_instance()?)
+                } else {
+                    None
                 };
 
                 // Figure out how large a pthread TLS key actually is.
@@ -235,24 +236,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_key_delete" => {
                 let &[ref key] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key = this.force_bits(this.read_scalar(key)?.check_init()?, key.layout.size)?;
+                let key = this.read_scalar(key)?.check_init()?.to_bits(key.layout.size)?;
                 this.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
                 let &[ref key] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key = this.force_bits(this.read_scalar(key)?.check_init()?, key.layout.size)?;
+                let key = this.read_scalar(key)?.check_init()?.to_bits(key.layout.size)?;
                 let active_thread = this.get_active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let &[ref key, ref new_ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key = this.force_bits(this.read_scalar(key)?.check_init()?, key.layout.size)?;
+                let key = this.read_scalar(key)?.check_init()?.to_bits(key.layout.size)?;
                 let active_thread = this.get_active_thread();
-                let new_ptr = this.read_scalar(new_ptr)?.check_init()?;
-                this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
+                let new_data = this.read_scalar(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data.check_init()?, &*this.tcx)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -412,9 +413,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_atfork" => {
                 let &[ref prepare, ref parent, ref child] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.force_bits(this.read_scalar(prepare)?.check_init()?, this.memory.pointer_size())?;
-                this.force_bits(this.read_scalar(parent)?.check_init()?, this.memory.pointer_size())?;
-                this.force_bits(this.read_scalar(child)?.check_init()?, this.memory.pointer_size())?;
+                this.read_pointer(prepare)?;
+                this.read_pointer(parent)?;
+                this.read_pointer(child)?;
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }

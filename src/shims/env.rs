@@ -28,7 +28,7 @@ fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
 pub struct EnvVars<'tcx> {
     /// Stores pointers to the environment variables. These variables must be stored as
     /// null-terminated target strings (c_str or wide_str) with the `"{name}={value}"` format.
-    map: FxHashMap<OsString, Pointer<Tag>>,
+    map: FxHashMap<OsString, Pointer<Option<Tag>>>,
 
     /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
     pub(crate) environ: Option<MPlaceTy<'tcx, Tag>>,
@@ -75,8 +75,8 @@ impl<'tcx> EnvVars<'tcx> {
         }
         // Deallocate environ var list.
         let environ = ecx.machine.env_vars.environ.unwrap();
-        let old_vars_ptr = ecx.read_scalar(&environ.into())?.check_init()?;
-        ecx.memory.deallocate(ecx.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Env.into())?;
+        let old_vars_ptr = ecx.read_pointer(&environ.into())?;
+        ecx.memory.deallocate(old_vars_ptr, None, MiriMemoryKind::Env.into())?;
         Ok(())
     }
 }
@@ -85,7 +85,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
     ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-) -> InterpResult<'tcx, Pointer<Tag>> {
+) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
@@ -96,7 +96,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
     ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-) -> InterpResult<'tcx, Pointer<Tag>> {
+) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
@@ -105,7 +105,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn getenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn getenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
         let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
         assert!(
@@ -113,17 +113,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`getenv` is only available for the UNIX target family"
         );
 
-        let name_ptr = this.read_scalar(name_op)?.check_init()?;
+        let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(name) {
             Some(var_ptr) => {
                 // The offset is used to strip the "{name}=" part of the string.
-                Scalar::from(var_ptr.offset(
+                var_ptr.offset(
                     Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()),
                     this,
-                )?)
+                )?
             }
-            None => Scalar::null_ptr(&*this.tcx),
+            None => Pointer::null(),
         })
     }
 
@@ -139,7 +139,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentVariableW");
 
-        let name_ptr = this.read_scalar(name_op)?.check_init()?;
+        let name_ptr = this.read_pointer(name_op)?;
         let name = this.read_os_str_from_wide_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(&name) {
             Some(var_ptr) => {
@@ -148,11 +148,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name_offset_bytes = u64::try_from(name.len()).unwrap()
                     .checked_add(1).unwrap()
                     .checked_mul(2).unwrap();
-                let var_ptr =
-                    Scalar::from(var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?);
+                let var_ptr = var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?;
                 let var = this.read_os_str_from_wide_str(var_ptr)?;
 
-                let buf_ptr = this.read_scalar(buf_op)?.check_init()?;
+                let buf_ptr = this.read_pointer(buf_op)?;
                 // `buf_size` represents the size in characters.
                 let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
                 windows_check_buffer_size(this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?)
@@ -166,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentStringsW");
 
@@ -174,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // https://docs.microsoft.com/en-us/windows/win32/procthread/environment-variables
         let mut env_vars = std::ffi::OsString::new();
         for &item in this.machine.env_vars.map.values() {
-            let env_var = this.read_os_str_from_wide_str(Scalar::from(item))?;
+            let env_var = this.read_os_str_from_wide_str(item)?;
             env_vars.push(env_var);
             env_vars.push("\0");
         }
@@ -182,7 +181,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Final null terminator(block terminator) is added by `alloc_os_str_to_wide_str`.
         let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::Env.into())?;
         // If the function succeeds, the return value is a pointer to the environment block of the current process.
-        Ok(envblock_ptr.into())
+        Ok(envblock_ptr)
     }
 
     #[allow(non_snake_case)]
@@ -193,12 +192,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "FreeEnvironmentStringsW");
 
-        let env_block_ptr = this.read_scalar(env_block_op)?.check_init()?;
-        let result = this.memory.deallocate(
-            this.force_ptr(env_block_ptr)?,
-            None,
-            MiriMemoryKind::Env.into(),
-        );
+        let env_block_ptr = this.read_pointer(env_block_op)?;
+        let result = this.memory.deallocate(env_block_ptr, None, MiriMemoryKind::Env.into());
         // If the function succeeds, the return value is nonzero.
         Ok(result.is_ok() as i32)
     }
@@ -215,11 +210,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`setenv` is only available for the UNIX target family"
         );
 
-        let name_ptr = this.read_scalar(name_op)?.check_init()?;
-        let value_ptr = this.read_scalar(value_op)?.check_init()?;
+        let name_ptr = this.read_pointer(name_op)?;
+        let value_ptr = this.read_pointer(value_op)?;
 
         let mut new = None;
-        if !this.is_null(name_ptr)? {
+        if !this.ptr_is_null(name_ptr)? {
             let name = this.read_os_str_from_c_str(name_ptr)?;
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
                 let value = this.read_os_str_from_c_str(value_ptr)?;
@@ -250,10 +245,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let mut this = self.eval_context_mut();
         this.assert_target_os("windows", "SetEnvironmentVariableW");
 
-        let name_ptr = this.read_scalar(name_op)?.check_init()?;
-        let value_ptr = this.read_scalar(value_op)?.check_init()?;
+        let name_ptr = this.read_pointer(name_op)?;
+        let value_ptr = this.read_pointer(value_op)?;
 
-        if this.is_null(name_ptr)? {
+        if this.ptr_is_null(name_ptr)? {
             // ERROR CODE is not clearly explained in docs.. For now, throw UB instead.
             throw_ub_format!("pointer to environment variable name is NULL");
         }
@@ -263,7 +258,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("environment variable name is an empty string");
         } else if name.to_string_lossy().contains('=') {
             throw_unsup_format!("environment variable name contains '='");
-        } else if this.is_null(value_ptr)? {
+        } else if this.ptr_is_null(value_ptr)? {
             // Delete environment variable `{name}`
             if let Some(var) = this.machine.env_vars.map.remove(&name) {
                 this.memory.deallocate(var, None, MiriMemoryKind::Env.into())?;
@@ -289,9 +284,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`unsetenv` is only available for the UNIX target family"
         );
 
-        let name_ptr = this.read_scalar(name_op)?.check_init()?;
+        let name_ptr = this.read_pointer(name_op)?;
         let mut success = None;
-        if !this.is_null(name_ptr)? {
+        if !this.ptr_is_null(name_ptr)? {
             let name = this.read_os_str_from_c_str(name_ptr)?.to_owned();
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
                 success = Some(this.machine.env_vars.map.remove(&name));
@@ -315,7 +310,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         buf_op: &OpTy<'tcx, Tag>,
         size_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, Scalar<Tag>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
         let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
         assert!(
@@ -323,14 +318,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`getcwd` is only available for the UNIX target family"
         );
 
+        let buf = this.read_pointer(&buf_op)?;
+        let size = this.read_scalar(&size_op)?.to_machine_usize(&*this.tcx)?;
+
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("getcwd", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(Scalar::null_ptr(&*this.tcx));
+            return Ok(Pointer::null());
         }
 
-        let buf = this.read_scalar(&buf_op)?.check_init()?;
-        let size = this.read_scalar(&size_op)?.to_machine_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
@@ -343,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Err(e) => this.set_last_error_from_io_error(e.kind())?,
         }
 
-        Ok(Scalar::null_ptr(&*this.tcx))
+        Ok(Pointer::null())
     }
 
     #[allow(non_snake_case)]
@@ -355,14 +351,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentDirectoryW");
 
+        let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
+        let buf = this.read_pointer(buf_op)?;
+
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("GetCurrentDirectoryW", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
             return Ok(0);
         }
-
-        let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
-        let buf = this.read_scalar(buf_op)?.check_init()?;
 
         // If we cannot get the current directory, we return 0
         match env::current_dir() {
@@ -381,14 +377,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`getcwd` is only available for the UNIX target family"
         );
 
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("chdir", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
 
             return Ok(-1);
         }
-
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),
@@ -409,14 +405,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetCurrentDirectoryW");
 
+        let path = this.read_path_from_wide_str(this.read_pointer(path_op)?)?;
+
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("SetCurrentDirectoryW", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
 
             return Ok(0);
         }
-
-        let path = this.read_path_from_wide_str(this.read_scalar(path_op)?.check_init()?)?;
 
         match env::set_current_dir(path) {
             Ok(()) => Ok(1),
@@ -433,12 +429,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         // Deallocate the old environ list, if any.
         if let Some(environ) = this.machine.env_vars.environ {
-            let old_vars_ptr = this.read_scalar(&environ.into())?.check_init()?;
-            this.memory.deallocate(
-                this.force_ptr(old_vars_ptr)?,
-                None,
-                MiriMemoryKind::Env.into(),
-            )?;
+            let old_vars_ptr = this.read_pointer(&environ.into())?;
+            this.memory.deallocate(old_vars_ptr, None, MiriMemoryKind::Env.into())?;
         } else {
             // No `environ` allocated yet, let's do that.
             // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
@@ -448,10 +440,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Collect all the pointers to each variable in a vector.
-        let mut vars: Vec<Scalar<Tag>> =
-            this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
+        let mut vars: Vec<Pointer<Option<Tag>>> =
+            this.machine.env_vars.map.values().copied().collect();
         // Add the trailing null pointer.
-        vars.push(Scalar::null_ptr(this));
+        vars.push(Pointer::null());
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
         let vars_layout =
@@ -459,9 +451,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let vars_place = this.allocate(vars_layout, MiriMemoryKind::Env.into())?;
         for (idx, var) in vars.into_iter().enumerate() {
             let place = this.mplace_field(&vars_place, idx)?;
-            this.write_scalar(var, &place.into())?;
+            this.write_pointer(var, &place.into())?;
         }
-        this.write_scalar(vars_place.ptr, &this.machine.env_vars.environ.unwrap().into())?;
+        this.write_pointer(vars_place.ptr, &this.machine.env_vars.environ.unwrap().into())?;
 
         Ok(())
     }

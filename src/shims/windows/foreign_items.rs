@@ -43,7 +43,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "GetEnvironmentStringsW" => {
                 let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetEnvironmentStringsW()?;
-                this.write_scalar(result, dest)?;
+                this.write_pointer(result, dest)?;
             }
             "FreeEnvironmentStringsW" => {
                 let &[ref env_block] =
@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(overlapped)?.to_machine_usize(this)?; // this is a poiner, that we ignore
                 let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
-                let buf = this.read_scalar(buf)?.check_init()?;
+                let buf = this.read_pointer(buf)?;
                 let n = this.read_scalar(n)?.to_u32()?;
                 let written_place = this.deref_operand(written_ptr)?;
                 // Spec says to always write `0` first.
@@ -116,14 +116,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
                 let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap)?;
-                this.write_scalar(res, dest)?;
+                this.write_pointer(res, dest)?;
             }
             "HeapFree" => {
                 let &[ref handle, ref flags, ref ptr] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
-                let ptr = this.read_scalar(ptr)?.check_init()?;
+                let ptr = this.read_pointer(ptr)?;
                 this.free(ptr, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
@@ -132,10 +132,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
-                let ptr = this.read_scalar(ptr)?.check_init()?;
+                let ptr = this.read_pointer(ptr)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
-                this.write_scalar(res, dest)?;
+                this.write_pointer(res, dest)?;
             }
 
             // errno
@@ -189,8 +189,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
-                let new_ptr = this.read_scalar(new_ptr)?.check_init()?;
-                this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
+                let new_data = this.read_scalar(new_ptr)?.check_init()?;
+                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
 
                 // Return success (`1`).
                 this.write_scalar(Scalar::from_i32(1), dest)?;
@@ -199,8 +199,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Access to command-line arguments
             "GetCommandLineW" => {
                 let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.write_scalar(
-                    this.machine.cmd_line.expect("machine must be initialized"),
+                this.write_pointer(
+                    this.machine.cmd_line.expect("machine must be initialized").ptr,
                     dest,
                 )?;
             }
@@ -267,10 +267,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[ref hModule, ref lpProcName] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 this.read_scalar(hModule)?.to_machine_isize(this)?;
-                let name = this.read_c_str(this.read_scalar(lpProcName)?.check_init()?)?;
+                let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
-                    this.write_scalar(Scalar::from(ptr), dest)?;
+                    this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
                 }
@@ -281,7 +281,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This is really 'RtlGenRandom'.
                 let &[ref ptr, ref len] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let ptr = this.read_scalar(ptr)?.check_init()?;
+                let ptr = this.read_pointer(ptr)?;
                 let len = this.read_scalar(len)?.to_u32()?;
                 this.gen_random(ptr, len.into())?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
@@ -290,7 +290,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[ref algorithm, ref ptr, ref len, ref flags] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let algorithm = this.read_scalar(algorithm)?;
-                let ptr = this.read_scalar(ptr)?.check_init()?;
+                let ptr = this.read_pointer(ptr)?;
                 let len = this.read_scalar(len)?.to_u32()?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 if flags != 2 {

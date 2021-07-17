@@ -26,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__errno_location" => {
                 let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
-                this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
+                this.write_scalar(errno_place.to_ref(this).to_scalar()?, dest)?;
             }
 
             // File related shims (but also see "syscall" below for statx)
@@ -231,7 +231,7 @@ fn getrandom<'tcx>(
     flags: &OpTy<'tcx, Tag>,
     dest: &PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
-    let ptr = this.read_scalar(ptr)?.check_init()?;
+    let ptr = this.read_pointer(ptr)?;
     let len = this.read_scalar(len)?.to_machine_usize(this)?;
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,

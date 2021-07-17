@@ -38,55 +38,55 @@ impl Default for GlobalState {
 }
 
 impl<'mir, 'tcx> GlobalState {
-    pub fn int_to_ptr(
-        int: u64,
+    pub fn ptr_from_addr(
+        addr: u64,
         memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx, Pointer<Tag>> {
+    ) -> Pointer<Option<Tag>> {
+        trace!("Casting 0x{:x} to a pointer", addr);
         let global_state = memory.extra.intptrcast.borrow();
-        let pos = global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr);
+        let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
 
-        // The int must be in-bounds after being cast to a pointer, so we error
-        // with `CheckInAllocMsg::InboundsTest`.
-        Ok(match pos {
-            Ok(pos) => {
-                let (_, alloc_id) = global_state.int_to_ptr_map[pos];
-                // `int` is equal to the starting address for an allocation, the offset should be
-                // zero. The pointer is untagged because it was created from a cast
-                Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged)
-            }
-            Err(0) => throw_ub!(DanglingIntPointer(int, CheckInAllocMsg::InboundsTest)),
+        let alloc_id = match pos {
+            Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
+            Err(0) => None,
             Err(pos) => {
                 // This is the largest of the adresses smaller than `int`,
                 // i.e. the greatest lower bound (glb)
                 let (glb, alloc_id) = global_state.int_to_ptr_map[pos - 1];
-                // This never overflows because `int >= glb`
-                let offset = int - glb;
-                // If the offset exceeds the size of the allocation, this access is illegal
-                if offset <= memory.get_size_and_align(alloc_id, AllocCheck::MaybeDead)?.0.bytes() {
-                    // This pointer is untagged because it was created from a cast
-                    Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged)
+                // This never overflows because `addr >= glb`
+                let offset = addr - glb;
+                // If the offset exceeds the size of the allocation, don't use this `alloc_id`.
+                if offset
+                    <= memory.get_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap().0.bytes()
+                {
+                    Some(alloc_id)
                 } else {
-                    throw_ub!(DanglingIntPointer(int, CheckInAllocMsg::InboundsTest))
+                    None
                 }
             }
-        })
+        };
+        // Pointers created from integers are untagged.
+        Pointer::new(
+            alloc_id.map(|alloc_id| Tag { alloc_id, sb: SbTag::Untagged }),
+            Size::from_bytes(addr),
+        )
     }
 
-    pub fn ptr_to_int(
-        ptr: Pointer<Tag>,
+    fn alloc_base_addr(
         memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-    ) -> InterpResult<'tcx, u64> {
+        alloc_id: AllocId,
+    ) -> u64 {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
-        let id = ptr.alloc_id;
 
-        // There is nothing wrong with a raw pointer being cast to an integer only after
-        // it became dangling.  Hence `MaybeDead`.
-        let (size, align) = memory.get_size_and_align(id, AllocCheck::MaybeDead)?;
-
-        let base_addr = match global_state.base_addr.entry(id) {
+        match global_state.base_addr.entry(alloc_id) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
+                // There is nothing wrong with a raw pointer being cast to an integer only after
+                // it became dangling.  Hence `MaybeDead`.
+                let (size, align) =
+                    memory.get_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap();
+
                 // This allocation does not have a base address yet, pick one.
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.
                 let slack = {
@@ -99,11 +99,12 @@ impl<'mir, 'tcx> GlobalState {
                 let base_addr = Self::align_addr(base_addr, align.bytes());
                 entry.insert(base_addr);
                 trace!(
-                    "Assigning base address {:#x} to allocation {:?} (slack: {}, align: {})",
+                    "Assigning base address {:#x} to allocation {:?} (size: {}, align: {}, slack: {})",
                     base_addr,
-                    id,
-                    slack,
+                    alloc_id,
+                    size.bytes(),
                     align.bytes(),
+                    slack,
                 );
 
                 // Remember next base address.  If this allocation is zero-sized, leave a gap
@@ -111,17 +112,37 @@ impl<'mir, 'tcx> GlobalState {
                 global_state.next_base_addr = base_addr.checked_add(max(size.bytes(), 1)).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
-                global_state.int_to_ptr_map.push((base_addr, id));
+                global_state.int_to_ptr_map.push((base_addr, alloc_id));
 
                 base_addr
             }
-        };
+        }
+    }
 
-        // Sanity check that the base address is aligned.
-        debug_assert_eq!(base_addr % align.bytes(), 0);
+    /// Convert a relative (tcx) pointer to an absolute address.
+    pub fn rel_ptr_to_addr(
+        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+        ptr: Pointer<AllocId>,
+    ) -> u64 {
+        let (alloc_id, offset) = ptr.into_parts(); // offset is relative
+        let base_addr = GlobalState::alloc_base_addr(memory, alloc_id);
+
         // Add offset with the right kind of pointer-overflowing arithmetic.
         let dl = memory.data_layout();
-        Ok(dl.overflowing_offset(base_addr, ptr.offset.bytes()).0)
+        dl.overflowing_offset(base_addr, offset.bytes()).0
+    }
+
+    pub fn abs_ptr_to_rel(
+        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+        ptr: Pointer<Tag>,
+    ) -> Size {
+        let (tag, addr) = ptr.into_parts(); // addr is absolute
+        let base_addr = GlobalState::alloc_base_addr(memory, tag.alloc_id);
+
+        // Wrapping "addr - base_addr"
+        let dl = memory.data_layout();
+        let neg_base_addr = (base_addr as i64).wrapping_neg();
+        Size::from_bytes(dl.overflowing_signed_offset(addr.bytes(), neg_base_addr).0)
     }
 
     /// Shifts `addr` to make it aligned with `align` by rounding `addr` to the smallest multiple

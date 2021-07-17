@@ -134,7 +134,7 @@ pub fn report_error<'tcx, 'mir>(
             let helps = match e.kind() {
                 Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
                     vec![(None, format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`"))],
-                Unsupported(UnsupportedOpInfo::ReadBytesAsPointer | UnsupportedOpInfo::ThreadLocalStatic(_) | UnsupportedOpInfo::ReadExternStatic(_)) =>
+                Unsupported(UnsupportedOpInfo::ThreadLocalStatic(_) | UnsupportedOpInfo::ReadExternStatic(_)) =>
                     panic!("Error should never be raised by Miri: {:?}", e.kind()),
                 Unsupported(_) =>
                     vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],

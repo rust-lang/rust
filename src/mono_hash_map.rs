@@ -72,13 +72,29 @@ impl<K: Hash + Eq, V> AllocMap<K, V> for MonoHashMap<K, V> {
     /// returns owned data, that is put into the map and returned.
     #[inline(always)]
     fn get_or<E>(&self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&V, E> {
-        let val: *const V = match self.0.borrow_mut().entry(k) {
-            Entry::Occupied(entry) => &**entry.get(),
-            Entry::Vacant(entry) => &**entry.insert(Box::new(vacant()?)),
-        };
+        // We cannot hold borrow_mut while calling `vacant`, since that might have to do lookups in this very map.
+        if let Some(v) = self.0.borrow().get(&k) {
+            let val: *const V = &**v;
+            // This is safe because `val` points into a `Box`, that we know will not move and
+            // will also not be dropped as long as the shared reference `self` is live.
+            return unsafe { Ok(&*val) };
+        }
+        let new_val = Box::new(vacant()?);
+        let val: *const V = &**self.0.borrow_mut().try_insert(k, new_val).ok().unwrap();
         // This is safe because `val` points into a `Box`, that we know will not move and
         // will also not be dropped as long as the shared reference `self` is live.
         unsafe { Ok(&*val) }
+    }
+
+    /// Read-only lookup (avoid read-acquiring the RefCell).
+    fn get(&self, k: K) -> Option<&V> {
+        let val: *const V = match self.0.borrow().get(&k) {
+            Some(v) => &**v,
+            None => return None,
+        };
+        // This is safe because `val` points into a `Box`, that we know will not move and
+        // will also not be dropped as long as the shared reference `self` is live.
+        unsafe { Some(&*val) }
     }
 
     #[inline(always)]
