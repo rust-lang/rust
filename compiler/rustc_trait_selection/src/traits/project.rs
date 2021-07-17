@@ -19,6 +19,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
@@ -825,7 +826,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
     let cache_result = infcx.inner.borrow_mut().projection_cache().try_start(cache_key);
     match cache_result {
-        Ok(()) => {}
+        Ok(()) => debug!("no cache entry"),
         Err(ProjectionCacheEntry::Ambiguous) => {
             // If we found ambiguity the last time, that means we will continue
             // to do so until some type in the key changes (and we know it
@@ -852,6 +853,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::Recur) => {
+            debug!("found cache entry: recur");
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
@@ -977,6 +979,10 @@ fn prune_cache_value_obligations<'a, 'tcx>(
         })
         .cloned()
         .collect();
+
+    // Filter the cached obligations here.
+    let mut seen = SsoHashSet::default();
+    obligations.retain(|i| seen.insert(i.clone()));
 
     obligations.shrink_to_fit();
 
