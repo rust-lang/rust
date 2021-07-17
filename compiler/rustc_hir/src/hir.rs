@@ -2264,7 +2264,7 @@ pub struct OpaqueTy<'hir> {
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
     FnReturn,
