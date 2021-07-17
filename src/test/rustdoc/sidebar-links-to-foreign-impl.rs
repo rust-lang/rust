@@ -3,7 +3,7 @@
 #![crate_name = "foo"]
 
 // @has foo/trait.Foo.html
-// @has - '//*[@class="sidebar-title"][@href="#foreign-impls"]' 'Implementations on Foreign Types'
+// @has - '//*[@class="sidebar-title"]/a[@href="#foreign-impls"]' 'Implementations on Foreign Types'
 // @has - '//h2[@id="foreign-impls"]' 'Implementations on Foreign Types'
 // @has - '//*[@class="sidebar-links"]/a[@href="#impl-Foo-for-u32"]' 'u32'
 // @has - '//div[@id="impl-Foo-for-u32"]//code' 'impl Foo for u32'
