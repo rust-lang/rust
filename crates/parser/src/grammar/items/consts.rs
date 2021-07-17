@@ -21,8 +21,11 @@ fn const_or_static(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
 
     // test_err static_underscore
     // static _: i32 = 5;
-
-    types::ascription(p);
+    if p.at(T![:]) {
+        types::ascription(p);
+    } else {
+        p.error("missing type for `const` or `static`")
+    }
     if p.eat(T![=]) {
         expressions::expr(p);
     }

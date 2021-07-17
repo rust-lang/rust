@@ -106,7 +106,13 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
             if variadic_param(p) {
                 res = Variadic(true)
             } else {
-                types::ascription(p);
+                if p.at(T![:]) {
+                    types::ascription(p)
+                } else {
+                    // test_err missing_fn_param_type
+                    // fn f(x y: i32, z, t: i32) {}
+                    p.error("missing type for function parameter")
+                }
             }
         }
         // test value_parameters_no_patterns
@@ -126,7 +132,11 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
                 if variadic_param(p) {
                     res = Variadic(true)
                 } else {
-                    types::ascription(p);
+                    if p.at(T![:]) {
+                        types::ascription(p)
+                    } else {
+                        p.error("missing type for function parameter")
+                    }
                 }
             } else {
                 types::type_(p);

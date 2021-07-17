@@ -127,7 +127,6 @@ SOURCE_FILE@0..183
       R_CURLY@181..182 "}"
   WHITESPACE@182..183 "\n"
 error 34..34: expected pattern
-error 34..34: expected COLON
-error 34..34: expected type
+error 34..34: missing type for function parameter
 error 180..180: expected function arguments
 error 180..180: expected a block

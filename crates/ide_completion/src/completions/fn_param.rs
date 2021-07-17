@@ -102,6 +102,20 @@ fn baz(file$0) {}
     }
 
     #[test]
+    fn test_param_completion_first_param() {
+        check(
+            r#"
+fn foo(file_id: FileId) {}
+fn bar(file_id: FileId) {}
+fn baz(file$0 id: u32) {}
+"#,
+            expect![[r#"
+                bn file_id: FileId
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_param_completion_nth_param() {
         check(
             r#"

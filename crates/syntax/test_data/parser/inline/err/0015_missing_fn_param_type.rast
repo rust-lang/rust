@@ -1,0 +1,52 @@
+SOURCE_FILE@0..29
+  FN@0..28
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..25
+      L_PAREN@4..5 "("
+      PARAM@5..6
+        IDENT_PAT@5..6
+          NAME@5..6
+            IDENT@5..6 "x"
+      WHITESPACE@6..7 " "
+      PARAM@7..13
+        IDENT_PAT@7..8
+          NAME@7..8
+            IDENT@7..8 "y"
+        COLON@8..9 ":"
+        WHITESPACE@9..10 " "
+        PATH_TYPE@10..13
+          PATH@10..13
+            PATH_SEGMENT@10..13
+              NAME_REF@10..13
+                IDENT@10..13 "i32"
+      COMMA@13..14 ","
+      WHITESPACE@14..15 " "
+      PARAM@15..16
+        IDENT_PAT@15..16
+          NAME@15..16
+            IDENT@15..16 "z"
+      COMMA@16..17 ","
+      WHITESPACE@17..18 " "
+      PARAM@18..24
+        IDENT_PAT@18..19
+          NAME@18..19
+            IDENT@18..19 "t"
+        COLON@19..20 ":"
+        WHITESPACE@20..21 " "
+        PATH_TYPE@21..24
+          PATH@21..24
+            PATH_SEGMENT@21..24
+              NAME_REF@21..24
+                IDENT@21..24 "i32"
+      R_PAREN@24..25 ")"
+    WHITESPACE@25..26 " "
+    BLOCK_EXPR@26..28
+      L_CURLY@26..27 "{"
+      R_CURLY@27..28 "}"
+  WHITESPACE@28..29 "\n"
+error 6..6: missing type for function parameter
+error 6..6: expected COMMA
+error 16..16: missing type for function parameter
