@@ -475,10 +475,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         res
                     } else {
                         // Associate an HirId to both ids even if there is no resolution.
-                        let _old = self
-                            .node_id_to_hir_id
-                            .insert(new_node_id, hir::HirId::make_owner(new_id));
-                        debug_assert!(_old.is_none());
                         self.owners.ensure_contains_elem(new_id, || hir::MaybeOwner::Phantom);
                         let _old = std::mem::replace(
                             &mut self.owners[new_id],
