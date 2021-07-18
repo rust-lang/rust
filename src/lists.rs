@@ -194,10 +194,7 @@ impl ListItem {
     // Returns `true` if the item causes something to be written.
     fn is_substantial(&self) -> bool {
         fn empty(s: &Option<String>) -> bool {
-            match *s {
-                Some(ref s) if !s.is_empty() => false,
-                _ => true,
-            }
+            !matches!(*s, Some(ref s) if !s.is_empty())
         }
 
         !(empty(&self.pre_comment) && empty(&self.item) && empty(&self.post_comment))
@@ -618,8 +615,8 @@ pub(crate) fn extract_post_comment(
     let post_snippet = post_snippet[..comment_end].trim();
     let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
         post_snippet[1..].trim_matches(white_space)
-    } else if post_snippet.starts_with(separator) {
-        post_snippet[separator.len()..].trim_matches(white_space)
+    } else if let Some(stripped) = post_snippet.strip_prefix(separator) {
+        stripped.trim_matches(white_space)
     }
     // not comment or over two lines
     else if post_snippet.ends_with(',')
@@ -823,7 +820,7 @@ where
 pub(crate) fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..]))
         + comment_len(item.post_comment.as_ref().map(|x| &(*x)[..]))
-        + &item.item.as_ref().map_or(0, |s| unicode_str_width(&s))
+        + item.item.as_ref().map_or(0, |s| unicode_str_width(&s))
 }
 
 fn comment_len(comment: Option<&str>) -> usize {

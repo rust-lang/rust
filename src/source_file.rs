@@ -18,7 +18,7 @@ use rustc_data_structures::sync::Lrc;
 
 // Append a newline to the end of each file.
 pub(crate) fn append_newline(s: &mut String) {
-    s.push_str("\n");
+    s.push('\n');
 }
 
 #[cfg(test)]

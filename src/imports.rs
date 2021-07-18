@@ -374,7 +374,7 @@ impl UseTree {
             UseTreeKind::Nested(ref list) => {
                 // Extract comments between nested use items.
                 // This needs to be done before sorting use items.
-                let items: Vec<_> = itemize_list(
+                let items = itemize_list(
                     context.snippet_provider,
                     list.iter().map(|(tree, _)| tree),
                     "}",
@@ -385,8 +385,8 @@ impl UseTree {
                     context.snippet_provider.span_after(a.span, "{"),
                     a.span.hi(),
                     false,
-                )
-                .collect();
+                );
+
                 // in case of a global path and the nested list starts at the root,
                 // e.g., "::{foo, bar}"
                 if a.prefix.segments.len() == 1 && leading_modsep {
@@ -394,7 +394,7 @@ impl UseTree {
                 }
                 result.path.push(UseSegment::List(
                     list.iter()
-                        .zip(items.into_iter())
+                        .zip(items)
                         .map(|(t, list_item)| {
                             Self::from_ast(context, &t.0, Some(list_item), None, None, None)
                         })
@@ -466,11 +466,8 @@ impl UseTree {
 
         // Normalise foo::self as bar -> foo as bar.
         if let UseSegment::Slf(_) = last {
-            match self.path.last() {
-                Some(UseSegment::Ident(_, None)) => {
-                    aliased_self = true;
-                }
-                _ => {}
+            if let Some(UseSegment::Ident(_, None)) = self.path.last() {
+                aliased_self = true;
             }
         }
 
@@ -572,9 +569,8 @@ impl UseTree {
         match self.path.clone().last().unwrap() {
             UseSegment::List(list) => {
                 if list.len() == 1 && list[0].path.len() == 1 {
-                    match list[0].path[0] {
-                        UseSegment::Slf(..) => return vec![self],
-                        _ => (),
+                    if let UseSegment::Slf(..) = list[0].path[0] {
+                        return vec![self];
                     };
                 }
                 let prefix = &self.path[..self.path.len() - 1];
@@ -790,13 +786,9 @@ fn rewrite_nested_use_tree(
         }
     }
     let has_nested_list = use_tree_list.iter().any(|use_segment| {
-        use_segment
-            .path
-            .last()
-            .map_or(false, |last_segment| match last_segment {
-                UseSegment::List(..) => true,
-                _ => false,
-            })
+        use_segment.path.last().map_or(false, |last_segment| {
+            matches!(last_segment, UseSegment::List(..))
+        })
     });
 
     let remaining_width = if has_nested_list {

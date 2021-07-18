@@ -30,7 +30,6 @@ use std::panic;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use ignore;
 use rustc_ast::ast;
 use rustc_span::symbol;
 use thiserror::Error;
@@ -144,10 +143,7 @@ pub enum ErrorKind {
 
 impl ErrorKind {
     fn is_comment(&self) -> bool {
-        match self {
-            ErrorKind::LostComment => true,
-            _ => false,
-        }
+        matches!(self, ErrorKind::LostComment)
     }
 }
 

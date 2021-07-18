@@ -67,10 +67,7 @@ impl<'a> CommentStyle<'a> {
 
     /// Returns `true` if the commenting style is for documentation.
     pub(crate) fn is_doc_comment(&self) -> bool {
-        match *self {
-            CommentStyle::TripleSlash | CommentStyle::Doc => true,
-            _ => false,
-        }
+        matches!(*self, CommentStyle::TripleSlash | CommentStyle::Doc)
     }
 
     pub(crate) fn opener(&self) -> &'a str {
@@ -689,8 +686,8 @@ impl<'a> CommentRewrite<'a> {
 
         self.code_block_attr = None;
         self.item_block = None;
-        if line.starts_with("```") {
-            self.code_block_attr = Some(CodeBlockAttribute::new(&line[3..]))
+        if let Some(stripped) = line.strip_prefix("```") {
+            self.code_block_attr = Some(CodeBlockAttribute::new(stripped))
         } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(&line) {
             let ib = ItemizedBlock::new(&line);
             self.item_block = Some(ib);
@@ -948,8 +945,8 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle<'_>) -> (&'a s
     {
         (&line[4..], true)
     } else if let CommentStyle::Custom(opener) = *style {
-        if line.starts_with(opener) {
-            (&line[opener.len()..], true)
+        if let Some(ref stripped) = line.strip_prefix(opener) {
+            (stripped, true)
         } else {
             (&line[opener.trim_end().len()..], false)
         }
@@ -968,8 +965,8 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle<'_>) -> (&'a s
         || line.starts_with("**")
     {
         (&line[2..], line.chars().nth(1).unwrap() == ' ')
-    } else if line.starts_with('*') {
-        (&line[1..], false)
+    } else if let Some(stripped) = line.strip_prefix('*') {
+        (stripped, false)
     } else {
         (line, line.starts_with(' '))
     }
@@ -1682,8 +1679,8 @@ impl<'a> Iterator for CommentReducer<'a> {
 fn remove_comment_header(comment: &str) -> &str {
     if comment.starts_with("///") || comment.starts_with("//!") {
         &comment[3..]
-    } else if comment.starts_with("//") {
-        &comment[2..]
+    } else if let Some(ref stripped) = comment.strip_prefix("//") {
+        stripped
     } else if (comment.starts_with("/**") && !comment.starts_with("/**/"))
         || comment.starts_with("/*!")
     {
