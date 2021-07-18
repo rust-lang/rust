@@ -125,11 +125,7 @@ mod imp {
             // Load ARGC and ARGV without a lock. If the store to either ARGV or
             // ARGC isn't visible yet, we'll return an empty argument list.
             let argv = ARGV.load(Ordering::Relaxed);
-            let argc = if argv.is_null() {
-                0
-            } else {
-                ARGC.load(Ordering::Relaxed)
-            };
+            let argc = if argv.is_null() { 0 } else { ARGC.load(Ordering::Relaxed) };
             (0..argc)
                 .map(|i| {
                     let cstr = CStr::from_ptr(*argv.offset(i) as *const libc::c_char);
