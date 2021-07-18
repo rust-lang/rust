@@ -292,9 +292,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary::<LlvmArchiveBuilder<'_>>(sess, &codegen_results, outputs);
-
-        Ok(())
+        link_binary::<LlvmArchiveBuilder<'_>>(sess, &codegen_results, outputs)
     }
 }
 
