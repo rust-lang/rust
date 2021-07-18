@@ -2,6 +2,7 @@
 #![deny(rust_2018_idioms)]
 #![deny(unused_imports)]
 #![warn(unreachable_pub)]
+#![allow(clippy::match_like_matches_macro)]
 
 #[macro_use]
 extern crate derive_new;
