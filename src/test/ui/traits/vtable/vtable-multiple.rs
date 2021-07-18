@@ -1,6 +1,4 @@
 // build-fail
-//~^ error Vtable
-//~^^ error Vtable
 #![feature(rustc_attrs)]
 
 #[rustc_dump_vtable]
@@ -10,11 +8,13 @@ trait A {
 
 #[rustc_dump_vtable]
 trait B {
+    //~^ error Vtable
     fn foo_b(&self) {}
 }
 
 #[rustc_dump_vtable]
 trait C: A + B {
+    //~^ error Vtable
     fn foo_c(&self) {}
 }
 

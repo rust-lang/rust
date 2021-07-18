@@ -614,9 +614,14 @@ fn prepare_vtable_segments<'tcx, T>(
     }
 }
 
-fn dump_vtable_entries<'tcx>(tcx: TyCtxt<'tcx>, entries: &[VtblEntry<'tcx>]) {
-    let msg = format!("Vtable Entries: {:#?}", entries);
-    tcx.sess.struct_span_err(rustc_span::DUMMY_SP, &msg).emit();
+fn dump_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sp: Span,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    entries: &[VtblEntry<'tcx>],
+) {
+    let msg = format!("Vtable entries for `{}`: {:#?}", trait_ref, entries);
+    tcx.sess.struct_span_err(sp, &msg).emit();
 }
 
 /// Given a trait `trait_ref`, iterates the vtable entries
@@ -678,15 +683,19 @@ fn vtable_entries<'tcx>(
                         return VtblEntry::Vacant;
                     }
 
-                    VtblEntry::Method(def_id, substs)
+                    let instance = ty::Instance::resolve_for_vtable(
+                        tcx,
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .expect("resolution failed during building vtable representation");
+                    VtblEntry::Method(instance)
                 });
 
                 entries.extend(own_entries);
 
                 if emit_vptr {
-                    let trait_ref = trait_ref.map_bound(|trait_ref| {
-                        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                    });
                     entries.push(VtblEntry::TraitVPtr(trait_ref));
                 }
             }
@@ -698,7 +707,8 @@ fn vtable_entries<'tcx>(
     let _ = prepare_vtable_segments(tcx, trait_ref, vtable_segment_callback);
 
     if tcx.has_attr(trait_ref.def_id(), sym::rustc_dump_vtable) {
-        dump_vtable_entries(tcx, &entries);
+        let sp = tcx.def_span(trait_ref.def_id());
+        dump_vtable_entries(tcx, sp, trait_ref, &entries);
     }
 
     tcx.arena.alloc_from_iter(entries.into_iter())

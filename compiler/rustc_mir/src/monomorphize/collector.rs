@@ -1120,13 +1120,9 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                         // all super trait items already covered, so skip them.
                         None
                     }
-                    VtblEntry::Method(def_id, substs) => ty::Instance::resolve_for_vtable(
-                        tcx,
-                        ty::ParamEnv::reveal_all(),
-                        *def_id,
-                        substs,
-                    )
-                    .filter(|instance| should_codegen_locally(tcx, instance)),
+                    VtblEntry::Method(instance) => {
+                        Some(*instance).filter(|instance| should_codegen_locally(tcx, instance))
+                    }
                 })
                 .map(|item| create_fn_mono_item(tcx, item, source));
             output.extend(methods);

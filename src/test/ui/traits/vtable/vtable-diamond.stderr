@@ -1,56 +1,35 @@
-error: Vtable Entries: [
+error: Vtable entries for `<S as D>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
-    Method(
-        DefId(0:4 ~ vtable_diamond[4564]::A::foo_a),
-        [
-            S,
-        ],
-    ),
-    Method(
-        DefId(0:6 ~ vtable_diamond[4564]::B::foo_b),
-        [
-            S,
-        ],
-    ),
-    Method(
-        DefId(0:8 ~ vtable_diamond[4564]::C::foo_c),
-        [
-            S,
-        ],
-    ),
-    TraitVPtr(
-        Binder(
-            C,
-            [],
-        ),
-    ),
-    Method(
-        DefId(0:10 ~ vtable_diamond[4564]::D::foo_d),
-        [
-            S,
-        ],
-    ),
+    Method(<S as A>::foo_a),
+    Method(<S as B>::foo_b),
+    Method(<S as C>::foo_c),
+    TraitVPtr(<S as C>),
+    Method(<S as D>::foo_d),
 ]
+  --> $DIR/vtable-diamond.rs:21:1
+   |
+LL | / trait D: B + C {
+LL | |
+LL | |     fn foo_d(&self) {}
+LL | | }
+   | |_^
 
-error: Vtable Entries: [
+error: Vtable entries for `<S as C>`: [
     MetadataDropInPlace,
     MetadataSize,
     MetadataAlign,
-    Method(
-        DefId(0:4 ~ vtable_diamond[4564]::A::foo_a),
-        [
-            S,
-        ],
-    ),
-    Method(
-        DefId(0:8 ~ vtable_diamond[4564]::C::foo_c),
-        [
-            S,
-        ],
-    ),
+    Method(<S as A>::foo_a),
+    Method(<S as C>::foo_c),
 ]
+  --> $DIR/vtable-diamond.rs:15:1
+   |
+LL | / trait C: A {
+LL | |
+LL | |     fn foo_c(&self) {}
+LL | | }
+   | |_^
 
 error: aborting due to 2 previous errors
 
