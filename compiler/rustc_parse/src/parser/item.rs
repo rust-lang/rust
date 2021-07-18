@@ -1731,59 +1731,33 @@ impl<'a> Parser<'a> {
     ///
     /// `check_pub` adds additional `pub` to the checks in case users place it
     /// wrongly, can be used to ensure `pub` never comes after `default`.
-    ///
-    /// This will check until it finds the `fn` keyword or reach the position
-    /// limit such a keyword. It will also fail early if it encounters anything
-    /// else than one of `pub, const, async, unsafe, extern, "<ABI>", fn`.
-    ///
-    /// Ordering is not checked for the keywords except `fn` that is last.
     pub(super) fn check_fn_front_matter(&mut self, check_pub: bool) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceeded by `default` as `default pub` is invalid.
-        //
-        // `extern` and `fn` will be checked separately.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Const, kw::Async, kw::Unsafe]
+            &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {
-            &[kw::Const, kw::Async, kw::Unsafe]
+            &[kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         };
-
-        // 0   1     2     3      4      5       6
-        // pub const async unsafe extern "<ABI>" fn ...
-        let max_look_ahead = 5 + (check_pub as usize);
-        let max_extern_kw = 3 + (check_pub as usize);
-        let mut look_ahead = 0;
-
-        while look_ahead <= max_look_ahead {
-            if self.look_ahead(look_ahead, |t| t.is_keyword(kw::Fn)) {
-                return true;
-            }
-
-            // Checking for `async` here is no problem: the function will either return `false`,
-            // thus ignoring it, or it will proceed and fail on the actual parsing and consuming
-            // in Edition 2015.
-            if self.look_ahead(look_ahead, |t| quals.iter().any(|&kw| t.is_keyword(kw))) {
-                look_ahead += 1;
-                continue;
-            }
-
-            if look_ahead <= max_extern_kw
-                && self.look_ahead(look_ahead, |t| t.is_keyword(kw::Extern))
-            {
-                look_ahead += 1;
-                // `"<ABI>"` is not obligatorily present
-                if self.look_ahead(look_ahead, |t| t.is_lit() && !t.is_bool_lit()) {
-                    look_ahead += 1;
-                }
-                continue;
-            }
-
-            return false;
-        }
-
-        return false;
+        self.check_keyword(kw::Fn) // Definitely an `fn`.
+            // `$qual fn` or `$qual $qual`:
+            || quals.iter().any(|&kw| self.check_keyword(kw))
+                && self.look_ahead(1, |t| {
+                    // `$qual fn`, e.g. `const fn` or `async fn`.
+                    t.is_keyword(kw::Fn)
+                    // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
+                    || t.is_non_raw_ident_where(|i| quals.contains(&i.name)
+                        // Rule out 2015 `const async: T = val`.
+                        && i.is_reserved()
+                        // Rule out unsafe extern block.
+                        && !self.is_unsafe_foreign_mod())
+                })
+            // `extern ABI fn`
+            || self.check_keyword(kw::Extern)
+                && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
+                && self.look_ahead(2, |t| t.is_keyword(kw::Fn))
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
