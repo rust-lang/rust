@@ -1,3 +1,5 @@
+// Test what happens when we read parts of a pointer.
+// Related to <https://github.com/rust-lang/rust/issues/69488>.
 fn main() {
     let x = 13;
     let y = &x;
