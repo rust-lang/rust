@@ -355,7 +355,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;
-                let node_id = self.resolver.next_node_id();
+                let node_id = self.next_node_id();
 
                 // Add a definition for the in-band const def.
                 self.create_def(
@@ -724,7 +724,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // `::std::task::Poll::Ready(result) => break result`
-        let loop_node_id = self.resolver.next_node_id();
+        let loop_node_id = self.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);
