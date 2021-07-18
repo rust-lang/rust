@@ -6,20 +6,19 @@ use std::{collections::VecDeque, fmt, fs, process::Command};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
-use cargo_workspace::DepKind;
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use proc_macro_api::ProcMacroClient;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    build_data::{BuildDataResult, PackageBuildData, WorkspaceBuildData},
-    cargo_workspace,
+    build_scripts::BuildScriptOutput,
+    cargo_workspace::{DepKind, PackageData, RustcSource},
     cfg_flag::CfgFlag,
     rustc_cfg,
     sysroot::SysrootCrate,
-    utf8_stdout, BuildDataCollector, CargoConfig, CargoWorkspace, ProjectJson, ProjectManifest,
-    Sysroot, TargetKind,
+    utf8_stdout, CargoConfig, CargoWorkspace, ProjectJson, ProjectManifest, Sysroot, TargetKind,
+    WorkspaceBuildScripts,
 };
 
 pub type CfgOverrides = FxHashMap<String, CfgDiff>;
@@ -134,7 +133,7 @@ impl ProjectWorkspace {
                             cargo_version
                         )
                     })?;
-                let cargo = CargoWorkspace::new(&cargo_toml, config, meta);
+                let cargo = CargoWorkspace::new(meta);
 
                 let sysroot = if config.no_sysroot {
                     Sysroot::default()
@@ -148,7 +147,6 @@ impl ProjectWorkspace {
                 };
 
                 let rustc_dir = if let Some(rustc_source) = &config.rustc_source {
-                    use cargo_workspace::RustcSource;
                     match rustc_source {
                         RustcSource::Path(path) => Some(path.clone()),
                         RustcSource::Discover => Sysroot::discover_rustc(&cargo_toml),
@@ -163,7 +161,7 @@ impl ProjectWorkspace {
                             .with_context(|| {
                                 format!("Failed to read Cargo metadata for Rust sources")
                             })?;
-                        CargoWorkspace::new(&rustc_dir, config, meta)
+                        CargoWorkspace::new(meta)
                     }),
                     None => None,
                 };
@@ -201,7 +199,7 @@ impl ProjectWorkspace {
     /// Returns the roots for the current `ProjectWorkspace`
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
-    pub fn to_roots(&self, build_data: Option<&BuildDataResult>) -> Vec<PackageRoot> {
+    pub fn to_roots(&self, build_scripts: &WorkspaceBuildScripts) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg: _ } => project
                 .crates()
@@ -229,10 +227,7 @@ impl ProjectWorkspace {
 
                         let mut include = vec![pkg_root.clone()];
                         include.extend(
-                            build_data
-                                .and_then(|it| it.get(cargo.workspace_root()))
-                                .and_then(|map| map.get(&cargo[pkg].id))
-                                .and_then(|it| it.out_dir.clone()),
+                            build_scripts.outputs.get(pkg).and_then(|it| it.out_dir.clone()),
                         );
 
                         // In case target's path is manually set in Cargo.toml to be
@@ -307,7 +302,7 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        build_data: Option<&BuildDataResult>,
+        build_scripts: &WorkspaceBuildScripts,
         proc_macro_client: Option<&ProcMacroClient>,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
@@ -332,13 +327,9 @@ impl ProjectWorkspace {
                     &proc_macro_loader,
                     load,
                     cargo,
-                    build_data.and_then(|it| it.get(cargo.workspace_root())),
+                    build_scripts,
                     sysroot,
                     rustc,
-                    rustc
-                        .as_ref()
-                        .zip(build_data)
-                        .and_then(|(it, map)| map.get(it.workspace_root())),
                 )
             }
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
@@ -351,15 +342,6 @@ impl ProjectWorkspace {
             log::debug!("Did not patch std to depend on cfg-if")
         }
         crate_graph
-    }
-
-    pub fn collect_build_data_configs(&self, collector: &mut BuildDataCollector) {
-        match self {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                collector.add_config(cargo.workspace_root(), cargo.build_data_config().clone());
-            }
-            _ => {}
-        }
     }
 }
 
@@ -435,10 +417,9 @@ fn cargo_to_crate_graph(
     proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     cargo: &CargoWorkspace,
-    build_data_map: Option<&WorkspaceBuildData>,
+    build_scripts: &WorkspaceBuildScripts,
     sysroot: &Sysroot,
     rustc: &Option<CargoWorkspace>,
-    rustc_build_data_map: Option<&WorkspaceBuildData>,
 ) -> CrateGraph {
     let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
@@ -481,7 +462,7 @@ fn cargo_to_crate_graph(
                 let crate_id = add_target_crate_root(
                     &mut crate_graph,
                     &cargo[pkg],
-                    build_data_map.and_then(|it| it.get(&cargo[pkg].id)),
+                    build_scripts.outputs.get(pkg),
                     &cfg_options,
                     proc_macro_loader,
                     file_id,
@@ -555,7 +536,6 @@ fn cargo_to_crate_graph(
                 rustc_workspace,
                 load,
                 &mut crate_graph,
-                rustc_build_data_map,
                 &cfg_options,
                 proc_macro_loader,
                 &mut pkg_to_lib_crate,
@@ -615,7 +595,6 @@ fn handle_rustc_crates(
     rustc_workspace: &CargoWorkspace,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     crate_graph: &mut CrateGraph,
-    rustc_build_data_map: Option<&WorkspaceBuildData>,
     cfg_options: &CfgOptions,
     proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
@@ -651,7 +630,7 @@ fn handle_rustc_crates(
                     let crate_id = add_target_crate_root(
                         crate_graph,
                         &rustc_workspace[pkg],
-                        rustc_build_data_map.and_then(|it| it.get(&rustc_workspace[pkg].id)),
+                        None,
                         cfg_options,
                         proc_macro_loader,
                         file_id,
@@ -706,8 +685,8 @@ fn handle_rustc_crates(
 
 fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
-    pkg: &cargo_workspace::PackageData,
-    build_data: Option<&PackageBuildData>,
+    pkg: &PackageData,
+    build_data: Option<&BuildScriptOutput>,
     cfg_options: &CfgOptions,
     proc_macro_loader: &dyn Fn(&AbsPath) -> Vec<ProcMacro>,
     file_id: FileId,
@@ -726,6 +705,8 @@ fn add_target_crate_root(
     };
 
     let mut env = Env::default();
+    inject_cargo_env(pkg, &mut env);
+
     if let Some(envs) = build_data.map(|it| &it.envs) {
         for (k, v) in envs {
             env.set(k, v.clone());
@@ -811,4 +792,41 @@ fn add_dep(graph: &mut CrateGraph, from: CrateId, name: CrateName, to: CrateId) 
     if let Err(err) = graph.add_dep(from, name, to) {
         log::error!("{}", err)
     }
+}
+
+/// Recreates the compile-time environment variables that Cargo sets.
+///
+/// Should be synced with
+/// <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
+///
+/// FIXME: ask Cargo to provide this data instead of re-deriving.
+fn inject_cargo_env(package: &PackageData, env: &mut Env) {
+    // FIXME: Missing variables:
+    // CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
+
+    let mut manifest_dir = package.manifest.clone();
+    manifest_dir.pop();
+    env.set("CARGO_MANIFEST_DIR".into(), manifest_dir.as_os_str().to_string_lossy().into_owned());
+
+    // Not always right, but works for common cases.
+    env.set("CARGO".into(), "cargo".into());
+
+    env.set("CARGO_PKG_VERSION".into(), package.version.to_string());
+    env.set("CARGO_PKG_VERSION_MAJOR".into(), package.version.major.to_string());
+    env.set("CARGO_PKG_VERSION_MINOR".into(), package.version.minor.to_string());
+    env.set("CARGO_PKG_VERSION_PATCH".into(), package.version.patch.to_string());
+    env.set("CARGO_PKG_VERSION_PRE".into(), package.version.pre.to_string());
+
+    env.set("CARGO_PKG_AUTHORS".into(), String::new());
+
+    env.set("CARGO_PKG_NAME".into(), package.name.clone());
+    // FIXME: This isn't really correct (a package can have many crates with different names), but
+    // it's better than leaving the variable unset.
+    env.set("CARGO_CRATE_NAME".into(), CrateName::normalize_dashes(&package.name).to_string());
+    env.set("CARGO_PKG_DESCRIPTION".into(), String::new());
+    env.set("CARGO_PKG_HOMEPAGE".into(), String::new());
+    env.set("CARGO_PKG_REPOSITORY".into(), String::new());
+    env.set("CARGO_PKG_LICENSE".into(), String::new());
+
+    env.set("CARGO_PKG_LICENSE_FILE".into(), String::new());
 }

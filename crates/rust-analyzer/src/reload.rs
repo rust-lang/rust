@@ -1,11 +1,12 @@
 //! Project loading & configuration updates
 use std::{mem, sync::Arc};
 
+use always_assert::always;
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
 use ide::Change;
 use ide_db::base_db::{CrateGraph, SourceRoot, VfsPath};
-use project_model::{BuildDataCollector, BuildDataResult, ProcMacroClient, ProjectWorkspace};
+use project_model::{ProcMacroClient, ProjectWorkspace, WorkspaceBuildScripts};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -26,7 +27,7 @@ pub(crate) enum ProjectWorkspaceProgress {
 pub(crate) enum BuildDataProgress {
     Begin,
     Report(String),
-    End(anyhow::Result<BuildDataResult>),
+    End(Vec<anyhow::Result<WorkspaceBuildScripts>>),
 }
 
 impl GlobalState {
@@ -144,10 +145,10 @@ impl GlobalState {
     }
 
     pub(crate) fn fetch_workspaces_request(&mut self) {
-        self.fetch_workspaces_queue.request_op(())
+        self.fetch_workspaces_queue.request_op()
     }
     pub(crate) fn fetch_workspaces_if_needed(&mut self) {
-        if self.fetch_workspaces_queue.should_start_op().is_none() {
+        if !self.fetch_workspaces_queue.should_start_op() {
             return;
         }
         log::info!("will fetch workspaces");
@@ -207,14 +208,16 @@ impl GlobalState {
         self.fetch_workspaces_queue.op_completed(workspaces)
     }
 
-    pub(crate) fn fetch_build_data_request(&mut self, build_data_collector: BuildDataCollector) {
-        self.fetch_build_data_queue.request_op(build_data_collector);
+    pub(crate) fn fetch_build_data_request(&mut self) {
+        self.fetch_build_data_queue.request_op();
     }
     pub(crate) fn fetch_build_data_if_needed(&mut self) {
-        let mut build_data_collector = match self.fetch_build_data_queue.should_start_op() {
-            Some(it) => it,
-            None => return,
-        };
+        if !self.fetch_build_data_queue.should_start_op() {
+            return;
+        }
+
+        let workspaces = Arc::clone(&self.workspaces);
+        let config = self.config.cargo();
         self.task_pool.handle.spawn_with_sender(move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
 
@@ -224,15 +227,25 @@ impl GlobalState {
                     sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
                 }
             };
-            let res = build_data_collector.collect(&progress);
+            let mut res = Vec::new();
+            for ws in workspaces.iter() {
+                let ws = match ws {
+                    ProjectWorkspace::Cargo { cargo, .. } => cargo,
+                    ProjectWorkspace::DetachedFiles { .. } | ProjectWorkspace::Json { .. } => {
+                        res.push(Ok(WorkspaceBuildScripts::default()));
+                        continue;
+                    }
+                };
+                res.push(WorkspaceBuildScripts::run(&config, ws, &progress))
+            }
             sender.send(Task::FetchBuildData(BuildDataProgress::End(res))).unwrap();
         });
     }
     pub(crate) fn fetch_build_data_completed(
         &mut self,
-        build_data: anyhow::Result<BuildDataResult>,
+        build_data: Vec<anyhow::Result<WorkspaceBuildScripts>>,
     ) {
-        self.fetch_build_data_queue.op_completed(Some(build_data))
+        self.fetch_build_data_queue.op_completed(build_data)
     }
 
     pub(crate) fn switch_workspaces(&mut self) {
@@ -257,12 +270,22 @@ impl GlobalState {
             .filter_map(|res| res.as_ref().ok().cloned())
             .collect::<Vec<_>>();
 
-        let workspace_build_data = match self.fetch_build_data_queue.last_op_result() {
-            Some(Ok(it)) => Some(it.clone()),
-            None | Some(Err(_)) => None,
-        };
+        let mut build_scripts = self
+            .fetch_build_data_queue
+            .last_op_result()
+            .iter()
+            .map(|res| res.as_ref().ok().cloned().unwrap_or_default())
+            .collect::<Vec<_>>();
 
-        if *self.workspaces == workspaces && self.workspace_build_data == workspace_build_data {
+        // FIXME: This is not even remotely correct. I do hope that this is
+        // eventually consistent though. We need to figure a better way to map
+        // `cargo metadata` to `cargo check` in the future.
+        //
+        // I *think* what we need here is an extra field on `ProjectWorkspace`,
+        // and a workflow to set it, once build data is ready.
+        build_scripts.resize_with(workspaces.len(), WorkspaceBuildScripts::default);
+
+        if *self.workspaces == workspaces && self.workspace_build_data == build_scripts {
             return;
         }
 
@@ -271,7 +294,8 @@ impl GlobalState {
                 let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
                     watchers: workspaces
                         .iter()
-                        .flat_map(|it| it.to_roots(workspace_build_data.as_ref()))
+                        .zip(&build_scripts)
+                        .flat_map(|(ws, bs)| ws.to_roots(bs))
                         .filter(|it| it.is_member)
                         .flat_map(|root| {
                             root.include.into_iter().flat_map(|it| {
@@ -304,7 +328,7 @@ impl GlobalState {
 
         let files_config = self.config.files();
         let project_folders =
-            ProjectFolders::new(&workspaces, &files_config.exclude, workspace_build_data.as_ref());
+            ProjectFolders::new(&workspaces, &build_scripts, &files_config.exclude);
 
         if self.proc_macro_client.is_none() {
             self.proc_macro_client = match self.config.proc_macro_srv() {
@@ -353,9 +377,9 @@ impl GlobalState {
                 }
                 res
             };
-            for ws in workspaces.iter() {
+            for (ws, bs) in workspaces.iter().zip(&build_scripts) {
                 crate_graph.extend(ws.to_crate_graph(
-                    workspace_build_data.as_ref(),
+                    bs,
                     self.proc_macro_client.as_ref(),
                     &mut load,
                 ));
@@ -367,7 +391,7 @@ impl GlobalState {
 
         self.source_root_config = project_folders.source_root_config;
         self.workspaces = Arc::new(workspaces);
-        self.workspace_build_data = workspace_build_data;
+        self.workspace_build_data = build_scripts;
 
         self.analysis_host.apply_change(change);
         self.process_changes();
@@ -392,13 +416,19 @@ impl GlobalState {
     }
 
     fn build_data_error(&self) -> Option<String> {
-        match self.fetch_build_data_queue.last_op_result() {
-            Some(Err(err)) => {
-                Some(format!("rust-analyzer failed to fetch build data: {:#}\n", err))
+        let mut buf = String::new();
+
+        for ws in self.fetch_build_data_queue.last_op_result() {
+            if let Err(err) = ws {
+                stdx::format_to!(buf, "rust-analyzer failed to run custom build: {:#}\n", err);
             }
-            Some(Ok(data)) => data.error(),
-            None => None,
         }
+
+        if buf.is_empty() {
+            return None;
+        }
+
+        Some(buf)
     }
 
     fn reload_flycheck(&mut self) {
@@ -451,14 +481,15 @@ pub(crate) struct ProjectFolders {
 impl ProjectFolders {
     pub(crate) fn new(
         workspaces: &[ProjectWorkspace],
+        build_scripts: &[WorkspaceBuildScripts],
         global_excludes: &[AbsPathBuf],
-        build_data: Option<&BuildDataResult>,
     ) -> ProjectFolders {
+        always!(workspaces.len() == build_scripts.len());
         let mut res = ProjectFolders::default();
         let mut fsc = FileSetConfig::builder();
         let mut local_filesets = vec![];
 
-        for root in workspaces.iter().flat_map(|it| it.to_roots(build_data)) {
+        for root in workspaces.iter().zip(build_scripts).flat_map(|(ws, bs)| ws.to_roots(bs)) {
             let file_set_roots: Vec<VfsPath> =
                 root.include.iter().cloned().map(VfsPath::from).collect();
 

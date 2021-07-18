@@ -68,7 +68,6 @@ impl AnalysisStatsCmd {
         cargo_config.no_sysroot = self.no_sysroot;
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: self.enable_build_scripts,
-            wrap_rustc: false,
             with_proc_macro: self.enable_proc_macros,
             prefill_caches: false,
         };

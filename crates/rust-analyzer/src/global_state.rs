@@ -12,7 +12,7 @@ use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use project_model::{
-    BuildDataCollector, BuildDataResult, CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target,
+    CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target, WorkspaceBuildScripts,
 };
 use rustc_hash::FxHashMap;
 use vfs::AnchoredPathBuf;
@@ -79,12 +79,15 @@ pub(crate) struct GlobalState {
     /// fetch.
     ///
     /// If the fetch (partially) fails, we do not update the values.
+    ///
+    /// Invariant: workspaces.len() == workspace_build_data
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<(), Vec<anyhow::Result<ProjectWorkspace>>>,
-    pub(crate) workspace_build_data: Option<BuildDataResult>,
-    pub(crate) fetch_build_data_queue:
-        OpQueue<BuildDataCollector, Option<anyhow::Result<BuildDataResult>>>,
-    pub(crate) prime_caches_queue: OpQueue<(), ()>,
+    pub(crate) fetch_workspaces_queue: OpQueue<Vec<anyhow::Result<ProjectWorkspace>>>,
+
+    pub(crate) workspace_build_data: Vec<WorkspaceBuildScripts>,
+    pub(crate) fetch_build_data_queue: OpQueue<Vec<anyhow::Result<WorkspaceBuildScripts>>>,
+
+    pub(crate) prime_caches_queue: OpQueue<()>,
 
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
@@ -146,7 +149,7 @@ impl GlobalState {
 
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
-            workspace_build_data: None,
+            workspace_build_data: Vec::new(),
             prime_caches_queue: OpQueue::default(),
 
             fetch_build_data_queue: OpQueue::default(),

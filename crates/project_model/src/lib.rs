@@ -21,7 +21,7 @@ mod project_json;
 mod sysroot;
 mod workspace;
 mod rustc_cfg;
-mod build_data;
+mod build_scripts;
 
 use std::{
     fs::{self, read_dir, ReadDir},
@@ -34,7 +34,7 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashSet;
 
 pub use crate::{
-    build_data::{BuildDataCollector, BuildDataResult},
+    build_scripts::WorkspaceBuildScripts,
     cargo_workspace::{
         CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, RustcSource, Target,
         TargetData, TargetKind,

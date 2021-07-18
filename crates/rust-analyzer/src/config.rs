@@ -628,9 +628,6 @@ impl Config {
     pub fn run_build_scripts(&self) -> bool {
         self.data.cargo_runBuildScripts || self.data.procMacro_enable
     }
-    pub fn wrap_rustc(&self) -> bool {
-        self.data.cargo_useRustcWrapperForBuildScripts
-    }
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustcSource.as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
@@ -648,6 +645,7 @@ impl Config {
             rustc_source,
             no_sysroot: self.data.cargo_noSysroot,
             unset_test_crates: self.data.cargo_unsetTest.clone(),
+            wrap_rustc_in_build_scripts: self.data.cargo_useRustcWrapperForBuildScripts,
         }
     }
 
