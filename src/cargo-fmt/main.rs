@@ -1,6 +1,7 @@
 // Inspired by Paul Woolcock's cargo-fmt (https://github.com/pwoolcoc/cargo-fmt/).
 
 #![deny(warnings)]
+#![allow(clippy::match_like_matches_macro)]
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};

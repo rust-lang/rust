@@ -2,6 +2,7 @@
 #![deny(rust_2018_idioms)]
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]
+#![allow(clippy::match_like_matches_macro)]
 
 #[macro_use]
 extern crate derive_new;
