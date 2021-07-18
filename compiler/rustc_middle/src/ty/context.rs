@@ -1682,7 +1682,7 @@ nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariable
 // This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
 
-CloneLiftImpls! { for<'tcx> { Constness, } }
+CloneLiftImpls! { for<'tcx> { Constness, traits::WellFormedLoc, } }
 
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};

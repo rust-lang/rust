@@ -3,10 +3,10 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::HirId;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::TraitEngine;
+use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, Region, ToPredicate, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_trait_selection::traits;
 
 pub fn provide(providers: &mut Providers) {
@@ -17,21 +17,20 @@ pub fn provide(providers: &mut Providers) {
 // need access to `ItemCtxt`
 fn diagnostic_hir_wf_check<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (predicate, hir_id): (ty::Predicate<'tcx>, HirId),
+    (predicate, loc): (ty::Predicate<'tcx>, WellFormedLoc),
 ) -> Option<ObligationCause<'tcx>> {
     let hir = tcx.hir();
-    // HIR wfcheck should only ever happen as part of improving an existing error
-    tcx.sess.delay_span_bug(hir.span(hir_id), "Performed HIR wfcheck without an existing error!");
 
-    // Currently, we only handle WF checking for items (e.g. associated items).
-    // It would be nice to extend this to handle wf checks inside functions.
-    let def_id = match tcx.hir().opt_local_def_id(hir_id) {
-        Some(def_id) => def_id,
-        None => return None,
+    let def_id = match loc {
+        WellFormedLoc::Ty(def_id) => def_id,
+        WellFormedLoc::Param { function, param_idx: _ } => function,
     };
+    let hir_id = HirId::make_owner(def_id);
 
-    // FIXME - figure out how we want to handle wf-checking for
-    // things inside a function body.
+    // HIR wfcheck should only ever happen as part of improving an existing error
+    tcx.sess
+        .delay_span_bug(tcx.def_span(def_id), "Performed HIR wfcheck without an existing error!");
+
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
     // To perform HIR-based WF checking, we iterate over all HIR types
@@ -72,7 +71,8 @@ fn diagnostic_hir_wf_check<'tcx>(
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             self.tcx.infer_ctxt().enter(|infcx| {
                 let mut fulfill = traits::FulfillmentContext::new();
-                let tcx_ty = self.icx.to_ty(ty);
+                let tcx_ty =
+                    self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
                 let cause = traits::ObligationCause::new(
                     ty.span,
                     self.hir_id,
@@ -119,19 +119,66 @@ fn diagnostic_hir_wf_check<'tcx>(
         depth: 0,
     };
 
-    let ty = match tcx.hir().get(hir_id) {
-        hir::Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::TyAlias(ty) => Some(ty),
-            _ => None,
+    // Get the starting `hir::Ty` using our `WellFormedLoc`.
+    // We will walk 'into' this type to try to find
+    // a more precise span for our predicate.
+    let ty = match loc {
+        WellFormedLoc::Ty(_) => match hir.get(hir_id) {
+            hir::Node::ImplItem(item) => match item.kind {
+                hir::ImplItemKind::TyAlias(ty) => Some(ty),
+                ref item => bug!("Unexpected ImplItem {:?}", item),
+            },
+            hir::Node::TraitItem(item) => match item.kind {
+                hir::TraitItemKind::Type(_, ty) => ty,
+                ref item => bug!("Unexpected TraitItem {:?}", item),
+            },
+            hir::Node::Item(item) => match item.kind {
+                hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _) => Some(ty),
+                hir::ItemKind::Impl(ref impl_) => {
+                    assert!(impl_.of_trait.is_none(), "Unexpected trait impl: {:?}", impl_);
+                    Some(impl_.self_ty)
+                }
+                ref item => bug!("Unexpected item {:?}", item),
+            },
+            ref node => bug!("Unexpected node {:?}", node),
         },
-        hir::Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Type(_, ty) => ty,
-            _ => None,
-        },
-        _ => None,
+        WellFormedLoc::Param { function: _, param_idx } => {
+            let fn_decl = hir.fn_decl_by_hir_id(hir_id).unwrap();
+            // Get return type
+            if param_idx as usize == fn_decl.inputs.len() {
+                match fn_decl.output {
+                    hir::FnRetTy::Return(ty) => Some(ty),
+                    // The unit type `()` is always well-formed
+                    hir::FnRetTy::DefaultReturn(_span) => None,
+                }
+            } else {
+                Some(&fn_decl.inputs[param_idx as usize])
+            }
+        }
     };
     if let Some(ty) = ty {
         visitor.visit_ty(ty);
     }
     visitor.cause
+}
+
+struct EraseAllBoundRegions<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+// Higher ranked regions are complicated.
+// To make matters worse, the HIR WF check can instantiate them
+// outside of a `Binder`, due to the way we (ab)use
+// `ItemCtxt::to_ty`. To make things simpler, we just erase all
+// of them, regardless of depth. At worse, this will give
+// us an inaccurate span for an error message, but cannot
+// lead to unsoundess (we call `delay_span_bug` at the start
+// of `diagnostic_hir_wf_check`).
+impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
+        if let ty::ReLateBound(..) = r { &ty::ReErased } else { r }
+    }
 }
