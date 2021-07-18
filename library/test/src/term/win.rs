@@ -5,9 +5,9 @@
 use std::io;
 use std::io::prelude::*;
 
-use crate::color;
-use crate::Attr;
-use crate::Terminal;
+use super::color;
+use super::Attr;
+use super::Terminal;
 
 /// A Terminal implementation that uses the Win32 Console API.
 pub struct WinConsole<T> {

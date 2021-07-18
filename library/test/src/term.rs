@@ -1,38 +1,18 @@
-//! Terminal formatting library.
+//! Terminal formatting module.
 //!
-//! This crate provides the `Terminal` trait, which abstracts over an [ANSI
+//! This module provides the `Terminal` trait, which abstracts over an [ANSI
 //! Terminal][ansi] to provide color printing, among other things. There are two
 //! implementations, the `TerminfoTerminal`, which uses control characters from
 //! a [terminfo][ti] database, and `WinConsole`, which uses the [Win32 Console
 //! API][win].
 //!
-//! # Examples
-//!
-//! ```no_run
-//! # #![feature(rustc_private)]
-//! extern crate term;
-//! use std::io::prelude::*;
-//!
-//! fn main() {
-//!     let mut t = term::stdout().unwrap();
-//!
-//!     t.fg(term::color::GREEN).unwrap();
-//!     write!(t, "hello, ").unwrap();
-//!
-//!     t.fg(term::color::RED).unwrap();
-//!     writeln!(t, "world!").unwrap();
-//!
-//!     assert!(t.reset().unwrap());
-//! }
 //! ```
 //!
 //! [ansi]: https://en.wikipedia.org/wiki/ANSI_escape_code
 //! [win]: https://docs.microsoft.com/en-us/windows/console/character-mode-applications
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
-#![doc(html_playground_url = "https://play.rust-lang.org/", test(attr(deny(warnings))))]
 #![deny(missing_docs)]
-#![cfg_attr(windows, feature(libc))]
 
 use std::io::prelude::*;
 use std::io::{self, Stderr, Stdout};
