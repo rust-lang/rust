@@ -223,7 +223,7 @@ public:
       /*loop limits*/ std::vector<std::pair<LoopContext, llvm::Value *>>>>
       SubLimitType;
   SubLimitType getSubLimits(bool inForwardPass, llvm::IRBuilder<> *RB,
-                            LimitContext ctx);
+                            LimitContext ctx, llvm::Value *extraSize = nullptr);
 
 private:
   /// Internal data structure used by getSubLimit to avoid computing the same
