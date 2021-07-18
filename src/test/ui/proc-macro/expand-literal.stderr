@@ -1,0 +1,113 @@
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:25:1
+   |
+LL | expand_literal_is!("", file!());
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: assert failed
+           expected: `"\"\""`
+           expanded: `"\"$DIR/expand-literal.rs\""`
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:107:1
+   |
+LL | expand_literal_is!("fail", true);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:108:1
+   |
+LL | expand_literal_is!("fail", false);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:109:1
+   |
+LL | expand_literal_is!("fail", echo_tts!(true));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:110:1
+   |
+LL | expand_literal_is!("fail", echo_tts!(false));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:113:1
+   |
+LL | expand_literal_is!("string", "string"; hello);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: macro expansion ignores token `hello` and any following
+  --> $DIR/expand-literal.rs:117:50
+   |
+LL | expand_literal_is!("string", echo_tts!("string"; hello));
+   |                              --------------------^^^^^-- help: you might be missing a semicolon here: `;`
+   |                              |
+   |                              caused by the macro expansion here
+   |
+   = note: the usage of `echo_tts!` is likely invalid in expression context
+
+error: macro expansion ignores token `;` and any following
+  --> $DIR/expand-literal.rs:118:47
+   |
+LL | expand_literal_is!("string", echo_pm!("string"; hello));
+   |                              -----------------^-------- help: you might be missing a semicolon here: `;`
+   |                              |
+   |                              caused by the macro expansion here
+   |
+   = note: the usage of `echo_pm!` is likely invalid in expression context
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:120:1
+   |
+LL | expand_literal_is!("fail", arbitrary_expression() + "etc");
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:121:1
+   |
+LL | expand_literal_is!("fail", echo_tts!(arbitrary_expression() + "etc"));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:122:1
+   |
+LL | expand_literal_is!("fail", echo_expr!(arbitrary_expression() + "etc"));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: proc macro panicked
+  --> $DIR/expand-literal.rs:123:1
+   |
+LL | expand_literal_is!("fail", echo_pm!(arbitrary_expression() + "etc"));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: expand_literal failed: ExpandLiteralError
+
+error: recursion limit reached while expanding `recursive_expand!`
+  --> $DIR/expand-literal.rs:125:16
+   |
+LL | const _: u32 = recursive_expand!();
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`expand_literal`)
+   = note: this error originates in the macro `recursive_expand` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 13 previous errors
+
