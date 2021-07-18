@@ -1165,7 +1165,7 @@ extern "C" {
     pub fn LLVMBuildLandingPad(
         B: &Builder<'a>,
         Ty: &'a Type,
-        PersFn: &'a Value,
+        PersFn: Option<&'a Value>,
         NumClauses: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
