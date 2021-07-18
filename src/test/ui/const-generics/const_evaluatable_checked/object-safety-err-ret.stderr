@@ -1,8 +1,8 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety-err-ret.rs:17:15
+  --> $DIR/object-safety-err-ret.rs:17:16
    |
 LL | fn use_dyn(v: &dyn Foo) {
-   |               ^^^^^^^^ `Foo` cannot be made into an object
+   |                ^^^^^^^ `Foo` cannot be made into an object
    |
    = help: consider moving `test` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
