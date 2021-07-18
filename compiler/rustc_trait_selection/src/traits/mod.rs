@@ -678,15 +678,19 @@ fn vtable_entries<'tcx>(
                         return VtblEntry::Vacant;
                     }
 
-                    VtblEntry::Method(def_id, substs)
+                    let instance = ty::Instance::resolve_for_vtable(
+                        tcx,
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .expect("resolution failed during building vtable representation");
+                    VtblEntry::Method(instance)
                 });
 
                 entries.extend(own_entries);
 
                 if emit_vptr {
-                    let trait_ref = trait_ref.map_bound(|trait_ref| {
-                        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-                    });
                     entries.push(VtblEntry::TraitVPtr(trait_ref));
                 }
             }
