@@ -431,7 +431,8 @@ impl<'a> Parser<'a> {
         let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
         let limits =
             if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
-        Ok(self.mk_expr(span, self.mk_range(Some(lhs), rhs, limits), AttrVec::new()))
+        let range = self.mk_range(Some(lhs), rhs, limits);
+        Ok(self.mk_expr(span, range, AttrVec::new()))
     }
 
     fn is_at_start_of_range_notation_rhs(&self) -> bool {
@@ -479,7 +480,8 @@ impl<'a> Parser<'a> {
             } else {
                 (lo, None)
             };
-            Ok(this.mk_expr(span, this.mk_range(None, opt_end, limits), attrs.into()))
+            let range = this.mk_range(None, opt_end, limits);
+            Ok(this.mk_expr(span, range, attrs.into()))
         })
     }
 
@@ -2517,13 +2519,13 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_range(
-        &self,
+        &mut self,
         start: Option<P<Expr>>,
         end: Option<P<Expr>>,
         limits: RangeLimits,
     ) -> ExprKind {
         if end.is_none() && limits == RangeLimits::Closed {
-            self.error_inclusive_range_with_no_end(self.prev_token.span);
+            self.inclusive_range_with_incorrect_end(self.prev_token.span);
             ExprKind::Err
         } else {
             ExprKind::Range(start, end, limits)

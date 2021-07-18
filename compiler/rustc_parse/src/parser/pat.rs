@@ -797,15 +797,48 @@ impl<'a> Parser<'a> {
             // Parsing e.g. `X..`.
             if let RangeEnd::Included(_) = re.node {
                 // FIXME(Centril): Consider semantic errors instead in `ast_validation`.
-                // Possibly also do this for `X..=` in *expression* contexts.
-                self.error_inclusive_range_with_no_end(re.span);
+                self.inclusive_range_with_incorrect_end(re.span);
             }
             None
         };
         Ok(PatKind::Range(Some(begin), end, re))
     }
 
-    pub(super) fn error_inclusive_range_with_no_end(&self, span: Span) {
+    pub(super) fn inclusive_range_with_incorrect_end(&mut self, span: Span) {
+        let tok = &self.token;
+
+        // If the user typed "..==" instead of "..=", we want to give them
+        // a specific error message telling them to use "..=".
+        // Otherwise, we assume that they meant to type a half open exclusive
+        // range and give them an error telling them to do that instead.
+        if matches!(tok.kind, token::Eq) && tok.span.lo() == span.hi() {
+            let span_with_eq = span.to(tok.span);
+
+            // Ensure the user doesn't receive unhelpful unexpected token errors
+            self.bump();
+            if self.is_pat_range_end_start(0) {
+                let _ = self.parse_pat_range_end();
+            }
+
+            self.error_inclusive_range_with_extra_equals(span_with_eq);
+        } else {
+            self.error_inclusive_range_with_no_end(span);
+        }
+    }
+
+    fn error_inclusive_range_with_extra_equals(&self, span: Span) {
+        self.struct_span_err(span, "unexpected `=` after inclusive range")
+            .span_suggestion_short(
+                span,
+                "use `..=` instead",
+                "..=".to_string(),
+                Applicability::MaybeIncorrect,
+            )
+            .note("inclusive ranges end with a single equals sign (`..=`)")
+            .emit();
+    }
+
+    fn error_inclusive_range_with_no_end(&self, span: Span) {
         struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
             .span_suggestion_short(
                 span,
