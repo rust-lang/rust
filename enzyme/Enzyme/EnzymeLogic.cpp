@@ -3013,8 +3013,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         for (auto V : unwrapToOrig[newi]) {
           ValueToValueMapTy empty;
           IRBuilder<> lb(cast<Instruction>(V));
+          // This must disallow caching here as otherwise performing the loop in
+          // the wrong order may result in first replacing the later unwrapped
+          // value, caching it, then attempting to reuse it for an earlier
+          // replacement.
           V->replaceAllUsesWith(
-              gutils->unwrapM(nexti, lb, empty, UnwrapMode::LegalFullUnwrap));
+              gutils->unwrapM(nexti, lb, empty, UnwrapMode::LegalFullUnwrap,
+                              /*scope*/ nullptr, /*permitCache*/ false));
           cast<Instruction>(V)->eraseFromParent();
         }
       }

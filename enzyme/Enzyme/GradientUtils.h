@@ -106,7 +106,12 @@ public:
   ScalarEvolution &OrigSE;
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
+
+  // Map of primal block to corresponding block(s) in reverse
   std::map<BasicBlock *, std::vector<BasicBlock *>> reverseBlocks;
+  // Map of block in reverse to corresponding primal block
+  std::map<BasicBlock *, BasicBlock *> reverseBlockToPrimal;
+
   SmallPtrSet<PHINode *, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
   std::vector<CallInst *> originalCalls;
@@ -441,25 +446,23 @@ public:
   BasicBlock *addReverseBlock(BasicBlock *currentBlock, Twine name,
                               bool forkCache = true) {
     assert(reverseBlocks.size());
+    auto found = reverseBlockToPrimal.find(currentBlock);
+    assert(found != reverseBlockToPrimal.end());
 
-    // todo speed this up
-    for (auto &pair : reverseBlocks) {
-      std::vector<BasicBlock *> &vec = pair.second;
-      if (vec.back() == currentBlock) {
+    std::vector<BasicBlock *> &vec = reverseBlocks[found->second];
+    assert(vec.size());
+    assert(vec.back() == currentBlock);
 
-        BasicBlock *rev =
-            BasicBlock::Create(currentBlock->getContext(), name, newFunc);
-        rev->moveAfter(currentBlock);
-        vec.push_back(rev);
-        if (forkCache) {
-          unwrap_cache[rev] = unwrap_cache[currentBlock];
-          lookup_cache[rev] = lookup_cache[currentBlock];
-        }
-        return rev;
-      }
+    BasicBlock *rev =
+        BasicBlock::Create(currentBlock->getContext(), name, newFunc);
+    rev->moveAfter(currentBlock);
+    vec.push_back(rev);
+    reverseBlockToPrimal[rev] = found->second;
+    if (forkCache) {
+      unwrap_cache[rev] = unwrap_cache[currentBlock];
+      lookup_cache[rev] = lookup_cache[currentBlock];
     }
-    assert(0 && "cannot find reverse location to add into");
-    llvm_unreachable("cannot find reverse location to add into");
+    return rev;
   }
 
 public:
@@ -831,19 +834,13 @@ public:
 
 private:
   BasicBlock *originalForReverseBlock(BasicBlock &BB2) const {
-    assert(reverseBlocks.size() != 0);
-    for (auto BB : originalBlocks) {
-      auto it = reverseBlocks.find(BB);
-      assert(it != reverseBlocks.end());
-      if (std::find(it->second.begin(), it->second.end(), &BB2) !=
-          it->second.end()) {
-        return BB;
-      }
+    auto found = reverseBlockToPrimal.find(&BB2);
+    if (found == reverseBlockToPrimal.end()) {
+      llvm::errs() << "newFunc: " << *newFunc << "\n";
+      llvm::errs() << BB2 << "\n";
     }
-    llvm::errs() << *newFunc << "\n";
-    llvm::errs() << BB2 << "\n";
-    assert(0 && "could not find original block for given reverse block");
-    report_fatal_error("could not find original block for given reverse block");
+    assert(found != reverseBlockToPrimal.end());
+    return found->second;
   }
 
 public:
@@ -1264,8 +1261,10 @@ class DiffeGradientUtils : public GradientUtils {
     for (BasicBlock *BB : originalBlocks) {
       if (BB == inversionAllocs)
         continue;
-      reverseBlocks[BB].push_back(BasicBlock::Create(
-          BB->getContext(), "invert" + BB->getName(), newFunc));
+      BasicBlock *RBB = BasicBlock::Create(BB->getContext(),
+                                           "invert" + BB->getName(), newFunc);
+      reverseBlocks[BB].push_back(RBB);
+      reverseBlockToPrimal[RBB] = BB;
     }
     assert(reverseBlocks.size() != 0);
   }
