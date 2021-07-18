@@ -5,7 +5,7 @@
 
 #[repr(align(64))]
 pub struct Align64(i32);
-// CHECK: %Align64 = type { [0 x i32], i32, [15 x i32] }
+// CHECK: %Align64 = type { i32, [15 x i32] }
 
 pub struct Nested64 {
     a: Align64,
@@ -13,20 +13,20 @@ pub struct Nested64 {
     c: i32,
     d: i8,
 }
-// CHECK: %Nested64 = type { [0 x i64], %Align64, [0 x i32], i32, [0 x i32], i32, [0 x i8], i8, [55 x i8] }
+// CHECK: %Nested64 = type { %Align64, i32, i32, i8, [55 x i8] }
 
 pub enum Enum4 {
     A(i32),
     B(i32),
 }
-// CHECK: %"Enum4::A" = type { [1 x i32], i32, [0 x i32] }
+// CHECK: %"Enum4::A" = type { [1 x i32], i32 }
 
 pub enum Enum64 {
     A(Align64),
     B(i32),
 }
-// CHECK: %Enum64 = type { [0 x i32], i32, [31 x i32] }
-// CHECK: %"Enum64::A" = type { [8 x i64], %Align64, [0 x i64] }
+// CHECK: %Enum64 = type { i32, [31 x i32] }
+// CHECK: %"Enum64::A" = type { [8 x i64], %Align64 }
 
 // CHECK-LABEL: @align64
 #[no_mangle]
