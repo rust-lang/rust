@@ -2,7 +2,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_serialize::opaque;
+use rustc_serialize::raw;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
@@ -86,7 +87,9 @@ pub fn save_work_product_index(
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, "work product index", |e| encode_work_product_index(&new_work_products, e));
+    save_in_raw(sess, path, "work product index", |e| {
+        encode_work_product_index(&new_work_products, e)
+    });
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
@@ -115,7 +118,7 @@ pub fn save_work_product_index(
 
 pub(crate) fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
 where
-    F: FnOnce(&mut FileEncoder) -> FileEncodeResult,
+    F: FnOnce(&mut opaque::FileEncoder) -> opaque::FileEncodeResult,
 {
     debug!("save: storing data in {}", path_buf.display());
 
@@ -139,7 +142,7 @@ where
         }
     }
 
-    let mut encoder = match FileEncoder::new(&path_buf) {
+    let mut encoder = match opaque::FileEncoder::new(&path_buf) {
         Ok(encoder) => encoder,
         Err(err) => {
             sess.err(&format!("failed to create {} at `{}`: {}", name, path_buf.display(), err));
@@ -165,10 +168,62 @@ where
     debug!("save: data written to disk successfully");
 }
 
+fn save_in_raw<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
+where
+    F: FnOnce(&mut raw::FileEncoder) -> raw::FileEncodeResult,
+{
+    debug!("save: storing data in {}", path_buf.display());
+
+    // Delete the old file, if any.
+    // Note: It's important that we actually delete the old file and not just
+    // truncate and overwrite it, since it might be a shared hard-link, the
+    // underlying data of which we don't want to modify
+    match fs::remove_file(&path_buf) {
+        Ok(()) => {
+            debug!("save: remove old file");
+        }
+        Err(err) if err.kind() == io::ErrorKind::NotFound => (),
+        Err(err) => {
+            sess.err(&format!(
+                "unable to delete old {} at `{}`: {}",
+                name,
+                path_buf.display(),
+                err
+            ));
+            return;
+        }
+    }
+
+    let mut encoder = match raw::FileEncoder::new(&path_buf) {
+        Ok(encoder) => encoder,
+        Err(err) => {
+            sess.err(&format!("failed to create {} at `{}`: {}", name, path_buf.display(), err));
+            return;
+        }
+    };
+
+    if let Err(err) = file_format::write_file_header_raw(&mut encoder, sess.is_nightly_build()) {
+        sess.err(&format!("failed to write {} header to `{}`: {}", name, path_buf.display(), err));
+        return;
+    }
+
+    if let Err(err) = encode(&mut encoder) {
+        sess.err(&format!("failed to write {} to `{}`: {}", name, path_buf.display(), err));
+        return;
+    }
+
+    if let Err(err) = encoder.flush() {
+        sess.err(&format!("failed to flush {} to `{}`: {}", name, path_buf.display(), err));
+        return;
+    }
+
+    debug!("save: data written to disk successfully");
+}
+
 fn encode_work_product_index(
     work_products: &FxHashMap<WorkProductId, WorkProduct>,
-    encoder: &mut FileEncoder,
-) -> FileEncodeResult {
+    encoder: &mut raw::FileEncoder,
+) -> raw::FileEncodeResult {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {
@@ -180,7 +235,10 @@ fn encode_work_product_index(
     serialized_products.encode(encoder)
 }
 
-fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
+fn encode_query_cache(
+    tcx: TyCtxt<'_>,
+    encoder: &mut opaque::FileEncoder,
+) -> opaque::FileEncodeResult {
     tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
 }
 
@@ -197,7 +255,7 @@ pub fn build_dep_graph(
     // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
     let path_buf = staging_dep_graph_path(sess);
 
-    let mut encoder = match FileEncoder::new(&path_buf) {
+    let mut encoder = match raw::FileEncoder::new(&path_buf) {
         Ok(encoder) => encoder,
         Err(err) => {
             sess.err(&format!(
@@ -209,7 +267,7 @@ pub fn build_dep_graph(
         }
     };
 
-    if let Err(err) = file_format::write_file_header(&mut encoder, sess.is_nightly_build()) {
+    if let Err(err) = file_format::write_file_header_raw(&mut encoder, sess.is_nightly_build()) {
         sess.err(&format!(
             "failed to write dependency graph header to `{}`: {}",
             path_buf.display(),

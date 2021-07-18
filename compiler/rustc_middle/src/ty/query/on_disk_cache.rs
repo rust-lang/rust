@@ -15,8 +15,8 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
-    opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
-    Decodable, Decoder, Encodable, Encoder,
+    opaque::{self, FileEncodeResult, FileEncoder},
+    Decodable, Decoder, Encodable, Encoder, IntEncodedWithFixedSize,
 };
 use rustc_session::Session;
 use rustc_span::hygiene::{

@@ -11,7 +11,7 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
-use rustc_serialize::{opaque::FileEncoder, Encodable};
+use rustc_serialize::{raw::FileEncoder, Encodable};
 use rustc_session::Session;
 
 use std::fmt;

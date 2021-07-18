@@ -1,6 +1,6 @@
-use crate::leb128::{self, max_leb128_len};
 use crate::serialize::{self, Encoder as _};
 use std::borrow::Cow;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
 use std::mem::MaybeUninit;
@@ -32,25 +32,10 @@ impl Encoder {
     }
 }
 
-macro_rules! write_leb128 {
-    ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = max_leb128_len!($int_ty);
-        let old_len = $enc.data.len();
-
-        if MAX_ENCODED_LEN > $enc.data.capacity() - old_len {
-            $enc.data.reserve(MAX_ENCODED_LEN);
-        }
-
-        // SAFETY: The above check and `reserve` ensures that there is enough
-        // room to write the encoded value to the vector's internal buffer.
-        unsafe {
-            let buf = &mut *($enc.data.as_mut_ptr().add(old_len)
-                as *mut [MaybeUninit<u8>; MAX_ENCODED_LEN]);
-            let encoded = leb128::$fun(buf, $value);
-            $enc.data.set_len(old_len + encoded.len());
-        }
-
-        Ok(())
+macro_rules! write_raw {
+    ($enc:expr, $value:expr, $int_ty:ty) => {{
+        let bytes = $value.to_ne_bytes();
+        $enc.emit_raw_bytes(&bytes)
     }};
 }
 
@@ -64,27 +49,27 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_usize(&mut self, v: usize) -> EncodeResult {
-        write_leb128!(self, v, usize, write_usize_leb128)
+        write_raw!(self, v, usize)
     }
 
     #[inline]
     fn emit_u128(&mut self, v: u128) -> EncodeResult {
-        write_leb128!(self, v, u128, write_u128_leb128)
+        write_raw!(self, v, u128)
     }
 
     #[inline]
     fn emit_u64(&mut self, v: u64) -> EncodeResult {
-        write_leb128!(self, v, u64, write_u64_leb128)
+        write_raw!(self, v, u64)
     }
 
     #[inline]
     fn emit_u32(&mut self, v: u32) -> EncodeResult {
-        write_leb128!(self, v, u32, write_u32_leb128)
+        write_raw!(self, v, u32)
     }
 
     #[inline]
     fn emit_u16(&mut self, v: u16) -> EncodeResult {
-        write_leb128!(self, v, u16, write_u16_leb128)
+        write_raw!(self, v, u16)
     }
 
     #[inline]
@@ -95,27 +80,27 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_isize(&mut self, v: isize) -> EncodeResult {
-        write_leb128!(self, v, isize, write_isize_leb128)
+        write_raw!(self, v, isize)
     }
 
     #[inline]
     fn emit_i128(&mut self, v: i128) -> EncodeResult {
-        write_leb128!(self, v, i128, write_i128_leb128)
+        write_raw!(self, v, i128)
     }
 
     #[inline]
     fn emit_i64(&mut self, v: i64) -> EncodeResult {
-        write_leb128!(self, v, i64, write_i64_leb128)
+        write_raw!(self, v, i64)
     }
 
     #[inline]
     fn emit_i32(&mut self, v: i32) -> EncodeResult {
-        write_leb128!(self, v, i32, write_i32_leb128)
+        write_raw!(self, v, i32)
     }
 
     #[inline]
     fn emit_i16(&mut self, v: i16) -> EncodeResult {
-        write_leb128!(self, v, i16, write_i16_leb128)
+        write_raw!(self, v, i16)
     }
 
     #[inline]
@@ -189,12 +174,12 @@ impl FileEncoder {
     pub fn with_capacity<P: AsRef<Path>>(path: P, capacity: usize) -> io::Result<Self> {
         // Require capacity at least as large as the largest LEB128 encoding
         // here, so that we don't have to check or handle this on every write.
-        assert!(capacity >= max_leb128_len());
+        assert!(capacity >= 16);
 
         // Require capacity small enough such that some capacity checks can be
         // done using guaranteed non-overflowing add rather than sub, which
         // shaves an instruction off those code paths (on x86 at least).
-        assert!(capacity <= usize::MAX - max_leb128_len());
+        assert!(capacity <= usize::MAX - 16);
 
         let file = File::create(path)?;
 
@@ -379,34 +364,6 @@ impl Drop for FileEncoder {
     }
 }
 
-macro_rules! file_encoder_write_leb128 {
-    ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = max_leb128_len!($int_ty);
-
-        // We ensure this during `FileEncoder` construction.
-        debug_assert!($enc.capacity() >= MAX_ENCODED_LEN);
-
-        let mut buffered = $enc.buffered;
-
-        // This can't overflow. See assertion in `FileEncoder::with_capacity`.
-        if std::intrinsics::unlikely(buffered + MAX_ENCODED_LEN > $enc.capacity()) {
-            $enc.flush()?;
-            buffered = 0;
-        }
-
-        // SAFETY: The above check and flush ensures that there is enough
-        // room to write the encoded value to the buffer.
-        let buf = unsafe {
-            &mut *($enc.buf.as_mut_ptr().add(buffered) as *mut [MaybeUninit<u8>; MAX_ENCODED_LEN])
-        };
-
-        let encoded = leb128::$fun(buf, $value);
-        $enc.buffered = buffered + encoded.len();
-
-        Ok(())
-    }};
-}
-
 impl serialize::Encoder for FileEncoder {
     type Error = io::Error;
 
@@ -417,27 +374,27 @@ impl serialize::Encoder for FileEncoder {
 
     #[inline]
     fn emit_usize(&mut self, v: usize) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, usize, write_usize_leb128)
+        write_raw!(self, v, usize)
     }
 
     #[inline]
     fn emit_u128(&mut self, v: u128) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, u128, write_u128_leb128)
+        write_raw!(self, v, u128)
     }
 
     #[inline]
     fn emit_u64(&mut self, v: u64) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, u64, write_u64_leb128)
+        write_raw!(self, v, u64)
     }
 
     #[inline]
     fn emit_u32(&mut self, v: u32) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, u32, write_u32_leb128)
+        write_raw!(self, v, u32)
     }
 
     #[inline]
     fn emit_u16(&mut self, v: u16) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, u16, write_u16_leb128)
+        write_raw!(self, v, u16)
     }
 
     #[inline]
@@ -447,27 +404,27 @@ impl serialize::Encoder for FileEncoder {
 
     #[inline]
     fn emit_isize(&mut self, v: isize) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, isize, write_isize_leb128)
+        write_raw!(self, v, isize)
     }
 
     #[inline]
     fn emit_i128(&mut self, v: i128) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, i128, write_i128_leb128)
+        write_raw!(self, v, i128)
     }
 
     #[inline]
     fn emit_i64(&mut self, v: i64) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, i64, write_i64_leb128)
+        write_raw!(self, v, i64)
     }
 
     #[inline]
     fn emit_i32(&mut self, v: i32) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, i32, write_i32_leb128)
+        write_raw!(self, v, i32)
     }
 
     #[inline]
     fn emit_i16(&mut self, v: i16) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, i16, write_i16_leb128)
+        write_raw!(self, v, i16)
     }
 
     #[inline]
@@ -548,10 +505,12 @@ impl<'a> Decoder<'a> {
     }
 }
 
-macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{
-        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
-        $dec.position += bytes_read;
+macro_rules! read_raw {
+    ($dec:expr, $int_ty:ty) => {{
+        const LEN: usize = std::mem::size_of::<$int_ty>();
+        let bytes = $dec.data[$dec.position..$dec.position + LEN].try_into().unwrap();
+        $dec.position += LEN;
+        let value = <$int_ty>::from_ne_bytes(bytes);
         Ok(value)
     }};
 }
@@ -566,22 +525,22 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_u128(&mut self) -> Result<u128, Self::Error> {
-        read_leb128!(self, read_u128_leb128)
+        read_raw!(self, u128)
     }
 
     #[inline]
     fn read_u64(&mut self) -> Result<u64, Self::Error> {
-        read_leb128!(self, read_u64_leb128)
+        read_raw!(self, u64)
     }
 
     #[inline]
     fn read_u32(&mut self) -> Result<u32, Self::Error> {
-        read_leb128!(self, read_u32_leb128)
+        read_raw!(self, u32)
     }
 
     #[inline]
     fn read_u16(&mut self) -> Result<u16, Self::Error> {
-        read_leb128!(self, read_u16_leb128)
+        read_raw!(self, u16)
     }
 
     #[inline]
@@ -593,27 +552,27 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_usize(&mut self) -> Result<usize, Self::Error> {
-        read_leb128!(self, read_usize_leb128)
+        read_raw!(self, usize)
     }
 
     #[inline]
     fn read_i128(&mut self) -> Result<i128, Self::Error> {
-        read_leb128!(self, read_i128_leb128)
+        read_raw!(self, i128)
     }
 
     #[inline]
     fn read_i64(&mut self) -> Result<i64, Self::Error> {
-        read_leb128!(self, read_i64_leb128)
+        read_raw!(self, i64)
     }
 
     #[inline]
     fn read_i32(&mut self) -> Result<i32, Self::Error> {
-        read_leb128!(self, read_i32_leb128)
+        read_raw!(self, i32)
     }
 
     #[inline]
     fn read_i16(&mut self) -> Result<i16, Self::Error> {
-        read_leb128!(self, read_i16_leb128)
+        read_raw!(self, i16)
     }
 
     #[inline]
@@ -625,7 +584,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_isize(&mut self) -> Result<isize, Self::Error> {
-        read_leb128!(self, read_isize_leb128)
+        read_raw!(self, isize)
     }
 
     #[inline]
@@ -661,16 +620,16 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 
     #[inline]
-    fn error(&mut self, err: &str) -> Self::Error {
-        err.to_string()
-    }
-
-    #[inline]
     fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), String> {
         let start = self.position;
         self.position += s.len();
         s.copy_from_slice(&self.data[start..self.position]);
         Ok(())
+    }
+
+    #[inline]
+    fn error(&mut self, err: &str) -> Self::Error {
+        err.to_string()
     }
 }
 

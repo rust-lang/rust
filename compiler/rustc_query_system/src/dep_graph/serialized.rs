@@ -19,8 +19,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
-use rustc_serialize::{Decodable, Decoder, Encodable};
+use rustc_serialize::raw::{self, FileEncodeResult, FileEncoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, IntEncodedWithFixedSize};
 use smallvec::SmallVec;
 use std::convert::TryInto;
 
@@ -96,11 +96,11 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 }
 
-impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<'a>>
+impl<'a, K: DepKind + Decodable<raw::Decoder<'a>>> Decodable<raw::Decoder<'a>>
     for SerializedDepGraph<K>
 {
     #[instrument(skip(d))]
-    fn decode(d: &mut opaque::Decoder<'a>) -> Result<SerializedDepGraph<K>, String> {
+    fn decode(d: &mut raw::Decoder<'a>) -> Result<SerializedDepGraph<K>, String> {
         let start_position = d.position();
 
         // The last 16 bytes are the node count and edge count.

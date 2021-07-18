@@ -9,7 +9,7 @@ use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::unlikely;
 use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_serialize::raw::{FileEncodeResult, FileEncoder};
 
 use parking_lot::{Condvar, Mutex};
 use smallvec::{smallvec, SmallVec};

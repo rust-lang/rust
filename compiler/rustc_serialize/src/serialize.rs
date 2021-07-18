@@ -44,6 +44,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_enum_variant<F>(
         &mut self,
         _v_name: &str,
@@ -99,6 +100,7 @@ pub trait Encoder {
     }
 
     // Specialized types:
+    #[inline]
     fn emit_option<F>(&mut self, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -111,6 +113,7 @@ pub trait Encoder {
         self.emit_enum_variant("None", 0, 0, |_| Ok(()))
     }
 
+    #[inline]
     fn emit_option_some<F>(&mut self, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -118,6 +121,7 @@ pub trait Encoder {
         self.emit_enum_variant("Some", 1, 1, f)
     }
 
+    #[inline]
     fn emit_seq<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -134,6 +138,7 @@ pub trait Encoder {
         f(self)
     }
 
+    #[inline]
     fn emit_map<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -242,6 +247,7 @@ pub trait Decoder {
     }
 
     // Specialized types:
+    #[inline]
     fn read_option<T, F>(&mut self, mut f: F) -> Result<T, Self::Error>
     where
         F: FnMut(&mut Self, bool) -> Result<T, Self::Error>,
@@ -255,6 +261,7 @@ pub trait Decoder {
         })
     }
 
+    #[inline]
     fn read_seq<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self, usize) -> Result<T, Self::Error>,
@@ -271,6 +278,7 @@ pub trait Decoder {
         f(self)
     }
 
+    #[inline]
     fn read_map<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self, usize) -> Result<T, Self::Error>,
@@ -333,12 +341,14 @@ macro_rules! direct_serialize_impls {
     ($($ty:ident $emit_method:ident $read_method:ident),*) => {
         $(
             impl<S: Encoder> Encodable<S> for $ty {
+                #[inline]
                 fn encode(&self, s: &mut S) -> Result<(), S::Error> {
                     s.$emit_method(*self)
                 }
             }
 
             impl<D: Decoder> Decodable<D> for $ty {
+                #[inline]
                 fn decode(d: &mut D) -> Result<$ty, D::Error> {
                     d.$read_method()
                 }
@@ -367,60 +377,70 @@ direct_serialize_impls! {
 }
 
 impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u32(self.get())
     }
 }
 
 impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU32 {
+    #[inline]
     fn decode(d: &mut D) -> Result<Self, D::Error> {
         d.read_u32().map(|d| ::std::num::NonZeroU32::new(d).unwrap())
     }
 }
 
 impl<S: Encoder> Encodable<S> for str {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(self)
     }
 }
 
 impl<S: Encoder> Encodable<S> for &str {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(self)
     }
 }
 
 impl<S: Encoder> Encodable<S> for String {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(&self[..])
     }
 }
 
 impl<D: Decoder> Decodable<D> for String {
+    #[inline]
     fn decode(d: &mut D) -> Result<String, D::Error> {
         Ok(d.read_str()?.into_owned())
     }
 }
 
 impl<S: Encoder> Encodable<S> for () {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_unit()
     }
 }
 
 impl<D: Decoder> Decodable<D> for () {
+    #[inline]
     fn decode(d: &mut D) -> Result<(), D::Error> {
         d.read_nil()
     }
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_unit()
     }
 }
 
 impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<PhantomData<T>, D::Error> {
         d.read_nil()?;
         Ok(PhantomData)
@@ -428,6 +448,7 @@ impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<[T]> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Box<[T]>, D::Error> {
         let v: Vec<T> = Decodable::decode(d)?;
         Ok(v.into_boxed_slice())
@@ -435,12 +456,14 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<[T]> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Rc<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Rc<T>, D::Error> {
         Ok(Rc::new(Decodable::decode(d)?))
     }
@@ -458,6 +481,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         let slice: &[T] = self;
         slice.encode(s)
@@ -477,6 +501,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         let slice: &[T] = self;
         slice.encode(s)
@@ -484,6 +509,7 @@ impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
 }
 
 impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
+    #[inline]
     fn decode(d: &mut D) -> Result<[u8; N], D::Error> {
         d.read_seq(|d, len| {
             assert!(len == N);
@@ -500,6 +526,7 @@ impl<'a, S: Encoder, T: Encodable<S>> Encodable<S> for Cow<'a, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         let slice: &[T] = self;
         slice.encode(s)
@@ -510,6 +537,7 @@ impl<D: Decoder, T: Decodable<D> + ToOwned> Decodable<D> for Cow<'static, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
+    #[inline]
     fn decode(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
         let v: Vec<T> = Decodable::decode(d)?;
         Ok(Cow::Owned(v))
@@ -517,6 +545,7 @@ where
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_option(|s| match *self {
             None => s.emit_option_none(),
@@ -526,12 +555,14 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Option<T>, D::Error> {
         d.read_option(|d, b| if b { Ok(Some(Decodable::decode(d)?)) } else { Ok(None) })
     }
 }
 
 impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1, T2> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_enum(|s| match *self {
             Ok(ref v) => {
@@ -545,6 +576,7 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 }
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Result<T1, T2>, D::Error> {
         d.read_enum(|d| {
             d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
@@ -583,6 +615,7 @@ macro_rules! tuple {
     ( $($name:ident,)+ ) => (
         impl<D: Decoder, $($name: Decodable<D>),+> Decodable<D> for ($($name,)+) {
             #[allow(non_snake_case)]
+            #[inline]
             fn decode(d: &mut D) -> Result<($($name,)+), D::Error> {
                 let len: usize = count!($($name)+);
                 d.read_tuple(len, |d| {
@@ -595,6 +628,7 @@ macro_rules! tuple {
         }
         impl<S: Encoder, $($name: Encodable<S>),+> Encodable<S> for ($($name,)+) {
             #[allow(non_snake_case)]
+            #[inline]
             fn encode(&self, s: &mut S) -> Result<(), S::Error> {
                 let ($(ref $name,)+) = *self;
                 let mut n = 0;
@@ -613,18 +647,21 @@ macro_rules! tuple {
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
 impl<S: Encoder> Encodable<S> for path::Path {
+    #[inline]
     fn encode(&self, e: &mut S) -> Result<(), S::Error> {
         self.to_str().unwrap().encode(e)
     }
 }
 
 impl<S: Encoder> Encodable<S> for path::PathBuf {
+    #[inline]
     fn encode(&self, e: &mut S) -> Result<(), S::Error> {
         path::Path::encode(self, e)
     }
 }
 
 impl<D: Decoder> Decodable<D> for path::PathBuf {
+    #[inline]
     fn decode(d: &mut D) -> Result<path::PathBuf, D::Error> {
         let bytes: String = Decodable::decode(d)?;
         Ok(path::PathBuf::from(bytes))
@@ -632,12 +669,14 @@ impl<D: Decoder> Decodable<D> for path::PathBuf {
 }
 
 impl<S: Encoder, T: Encodable<S> + Copy> Encodable<S> for Cell<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         self.get().encode(s)
     }
 }
 
 impl<D: Decoder, T: Decodable<D> + Copy> Decodable<D> for Cell<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Cell<T>, D::Error> {
         Ok(Cell::new(Decodable::decode(d)?))
     }
@@ -649,35 +688,41 @@ impl<D: Decoder, T: Decodable<D> + Copy> Decodable<D> for Cell<T> {
 // from `encode` when `try_borrow` returns `None`.
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for RefCell<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         self.borrow().encode(s)
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for RefCell<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<RefCell<T>, D::Error> {
         Ok(RefCell::new(Decodable::decode(d)?))
     }
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Arc<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Arc<T>, D::Error> {
         Ok(Arc::new(Decodable::decode(d)?))
     }
 }
 
 impl<S: Encoder, T: ?Sized + Encodable<S>> Encodable<S> for Box<T> {
+    #[inline]
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<T> {
+    #[inline]
     fn decode(d: &mut D) -> Result<Box<T>, D::Error> {
         Ok(box Decodable::decode(d)?)
     }
