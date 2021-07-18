@@ -88,6 +88,7 @@ use crate::time::SystemTime;
 /// [`BufReader<R>`]: io::BufReader
 /// [`sync_all`]: File::sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "File")]
 pub struct File {
     inner: fs_imp::File,
 }
@@ -183,12 +184,14 @@ pub struct Permissions(fs_imp::FilePermissions);
 /// It is returned by [`Metadata::file_type`] method.
 #[stable(feature = "file_type", since = "1.1.0")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FileType")]
 pub struct FileType(fs_imp::FileType);
 
 /// A builder used to create directories in various manners.
 ///
 /// This builder also supports platform-specific options.
 #[stable(feature = "dir_builder", since = "1.6.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "DirBuilder")]
 #[derive(Debug)]
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,

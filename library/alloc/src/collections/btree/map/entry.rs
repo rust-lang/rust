@@ -14,6 +14,7 @@ use Entry::*;
 ///
 /// [`entry`]: BTreeMap::entry
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeEntry")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
