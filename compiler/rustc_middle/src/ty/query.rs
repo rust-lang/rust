@@ -38,14 +38,13 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{ErrorReported, Handler};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
-use rustc_serialize::opaque;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Limits;
@@ -62,9 +61,6 @@ use std::sync::Arc;
 
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
-
-pub mod on_disk_cache;
-pub use self::on_disk_cache::OnDiskCache;
 
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
@@ -235,27 +231,9 @@ macro_rules! define_callbacks {
         }
 
         pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
-            #[cfg(parallel_compiler)]
-            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry);
-
-            fn encode_query_results(
-                &'tcx self,
-                tcx: TyCtxt<'tcx>,
-                encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
-                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
-            ) -> opaque::FileEncodeResult;
-
-            fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>);
+            fn as_any(&'tcx self) -> &'tcx dyn std::any::Any;
 
             fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool;
-
-            fn try_print_query_stack(
-                &'tcx self,
-                tcx: TyCtxt<'tcx>,
-                query: Option<QueryJobId<dep_graph::DepKind>>,
-                handler: &Handler,
-                num_frames: Option<usize>,
-            ) -> usize;
 
             $($(#[$attr])*
             fn $name(

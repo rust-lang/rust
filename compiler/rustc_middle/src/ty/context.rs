@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::DepGraph;
+use crate::dep_graph::{DepGraph, DepNode};
 use crate::hir::place::Place as HirPlace;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
@@ -14,7 +14,7 @@ use crate::mir::interpret::{self, AllocId, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::thir::Thir;
 use crate::traits;
-use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
+use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -52,8 +52,8 @@ use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
-use rustc_span::def_id::StableCrateId;
-use rustc_span::source_map::MultiSpan;
+use rustc_span::def_id::{DefPathHash, StableCrateId};
+use rustc_span::source_map::{MultiSpan, SourceMap};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
@@ -70,6 +70,40 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
+
+pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
+    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
+    fn new(sess: &'tcx Session, data: Vec<u8>, start_pos: usize) -> Self
+    where
+        Self: Sized;
+
+    fn new_empty(source_map: &'tcx SourceMap) -> Self
+    where
+        Self: Sized;
+
+    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
+    /// session, if it still exists. This is used during incremental compilation to
+    /// turn a deserialized `DefPathHash` into its current `DefId`.
+    fn def_path_hash_to_def_id(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        def_path_hash: DefPathHash,
+    ) -> Option<DefId>;
+
+    /// If the given `dep_node`'s hash still exists in the current compilation,
+    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
+    ///
+    /// Normally, `store_foreign_def_id_hash` can be called directly by
+    /// the dependency graph when we construct a `DepNode`. However,
+    /// when we re-use a deserialized `DepNode` from the previous compilation
+    /// session, we only have the `DefPathHash` available. This method is used
+    /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
+    /// out for usage in the next compilation session.
+    fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode);
+    fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash);
+
+    fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
+}
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
@@ -993,7 +1027,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Do not access this directly. It is only meant to be used by
     /// `DepGraph::try_mark_green()` and the query infrastructure.
     /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+    pub on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
@@ -1141,7 +1175,7 @@ impl<'tcx> TyCtxt<'tcx> {
         resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
         dep_graph: DepGraph,
-        on_disk_cache: Option<query::OnDiskCache<'tcx>>,
+        on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         crate_name: &str,
         output_filenames: OutputFilenames,
@@ -1308,10 +1342,16 @@ impl<'tcx> TyCtxt<'tcx> {
         self.untracked_resolutions.cstore.encode_metadata(self)
     }
 
-    // Note that this is *untracked* and should only be used within the query
-    // system if the result is otherwise tracked through queries
-    pub fn cstore_as_any(self) -> &'tcx dyn Any {
-        self.untracked_resolutions.cstore.as_any()
+    /// Note that this is *untracked* and should only be used within the query
+    /// system if the result is otherwise tracked through queries
+    pub fn cstore_untracked(self) -> &'tcx ty::CrateStoreDyn {
+        &*self.untracked_resolutions.cstore
+    }
+
+    /// Note that this is *untracked* and should only be used within the query
+    /// system if the result is otherwise tracked through queries
+    pub fn definitions_untracked(self) -> &'tcx hir::definitions::Definitions {
+        &self.untracked_resolutions.definitions
     }
 
     #[inline(always)]

@@ -724,7 +724,7 @@ rustc_queries! {
         cache_on_disk_if { true }
         load_cached(tcx, id) {
             let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
-                .on_disk_cache.as_ref()
+                .on_disk_cache().as_ref()
                 .and_then(|c| c.try_load_query_result(*tcx, id));
 
             typeck_results.map(|x| &*tcx.arena.alloc(x))

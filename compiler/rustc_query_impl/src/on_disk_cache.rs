@@ -1,9 +1,4 @@
-use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
-use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::mir::{self, interpret};
-use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
-use crate::ty::context::TyCtxt;
-use crate::ty::{self, Ty};
+use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -12,6 +7,11 @@ use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use rustc_middle::mir::{self, interpret};
+use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
@@ -185,9 +185,8 @@ impl EncodedSourceFileId {
     }
 }
 
-impl<'sess> OnDiskCache<'sess> {
-    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    pub fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> Self {
+impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
+    fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrap in a scope so we can borrow `data`.
@@ -228,7 +227,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn new_empty(source_map: &'sess SourceMap) -> Self {
+    fn new_empty(source_map: &'sess SourceMap) -> Self {
         Self {
             serialized_data: Vec::new(),
             file_index_to_stable_id: Default::default(),
@@ -249,11 +248,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        encoder: &mut FileEncoder,
-    ) -> FileEncodeResult {
+    fn serialize(&self, tcx: TyCtxt<'sess>, encoder: &mut FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -288,7 +283,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Do this *before* we clone 'latest_foreign_def_path_hashes', since
             // loading existing queries may cause us to create new DepNodes, which
             // may in turn end up invoking `store_foreign_def_id_hash`
-            tcx.queries.exec_cache_promotions(tcx);
+            tcx.dep_graph.exec_cache_promotions(QueryCtxt::from_tcx(tcx));
 
             let latest_foreign_def_path_hashes = self.latest_foreign_def_path_hashes.lock().clone();
             let hygiene_encode_context = HygieneEncodeContext::default();
@@ -311,7 +306,7 @@ impl<'sess> OnDiskCache<'sess> {
             tcx.sess.time("encode_query_results", || -> FileEncodeResult {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                tcx.queries.encode_query_results(tcx, enc, qri)
+                QueryCtxt::from_tcx(tcx).encode_query_results(enc, qri)
             })?;
 
             // Encode diagnostics.
@@ -411,6 +406,88 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 
+    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, hash: DefPathHash) -> Option<DefId> {
+        let mut cache = self.def_path_hash_to_def_id_cache.lock();
+        match cache.entry(hash) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                debug!("def_path_hash_to_def_id({:?})", hash);
+                // Check if the `DefPathHash` corresponds to a definition in the current
+                // crate
+                if let Some(def_id) =
+                    tcx.definitions_untracked().local_def_path_hash_to_def_id(hash)
+                {
+                    let def_id = def_id.to_def_id();
+                    e.insert(Some(def_id));
+                    return Some(def_id);
+                }
+                // This `raw_def_id` represents the `DefId` of this `DefPathHash` in
+                // the *previous* compliation session. The `DefPathHash` includes the
+                // owning crate, so if the corresponding definition still exists in the
+                // current compilation session, the crate is guaranteed to be the same
+                // (otherwise, we would compute a different `DefPathHash`).
+                let raw_def_id = self.get_raw_def_id(&hash)?;
+                debug!("def_path_hash_to_def_id({:?}): raw_def_id = {:?}", hash, raw_def_id);
+                // If the owning crate no longer exists, the corresponding definition definitely
+                // no longer exists.
+                let krate = self.try_remap_cnum(tcx, hash.stable_crate_id())?;
+                debug!("def_path_hash_to_def_id({:?}): krate = {:?}", hash, krate);
+                // If our `DefPathHash` corresponded to a definition in the local crate,
+                // we should have either found it in `local_def_path_hash_to_def_id`, or
+                // never attempted to load it in the first place. Any query result or `DepNode`
+                // that references a local `DefId` should depend on some HIR-related `DepNode`.
+                // If a local definition is removed/modified such that its old `DefPathHash`
+                // no longer has a corresponding definition, that HIR-related `DepNode` should
+                // end up red. This should prevent us from ever calling
+                // `tcx.def_path_hash_to_def_id`, since we'll end up recomputing any
+                // queries involved.
+                debug_assert_ne!(krate, LOCAL_CRATE);
+                // Try to find a definition in the current session, using the previous `DefIndex`
+                // as an initial guess.
+                let opt_def_id =
+                    tcx.cstore_untracked().def_path_hash_to_def_id(krate, raw_def_id.index, hash);
+                debug!("def_path_to_def_id({:?}): opt_def_id = {:?}", hash, opt_def_id);
+                e.insert(opt_def_id);
+                opt_def_id
+            }
+        }
+    }
+
+    fn register_reused_dep_node(&self, tcx: TyCtxt<'sess>, dep_node: &DepNode) {
+        // For reused dep nodes, we only need to store the mapping if the node
+        // is one whose query key we can reconstruct from the hash. We use the
+        // mapping to aid that reconstruction in the next session. While we also
+        // use it to decode `DefId`s we encoded in the cache as `DefPathHashes`,
+        // they're already registered during `DefId` encoding.
+        if dep_node.kind.can_reconstruct_query_key() {
+            let hash = DefPathHash(dep_node.hash.into());
+
+            // We can't simply copy the `RawDefId` from `foreign_def_path_hashes` to
+            // `latest_foreign_def_path_hashes`, since the `RawDefId` might have
+            // changed in the current compilation session (e.g. we've added/removed crates,
+            // or added/removed definitions before/after the target definition).
+            if let Some(def_id) = self.def_path_hash_to_def_id(tcx, hash) {
+                if !def_id.is_local() {
+                    self.store_foreign_def_id_hash(def_id, hash);
+                }
+            }
+        }
+    }
+
+    fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash) {
+        // We may overwrite an existing entry, but it will have the same value,
+        // so it's fine
+        self.latest_foreign_def_path_hashes
+            .lock()
+            .insert(hash, RawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() });
+    }
+}
+
+impl<'sess> OnDiskCache<'sess> {
+    pub fn as_dyn(&self) -> &dyn rustc_middle::ty::OnDiskCache<'sess> {
+        self as _
+    }
+
     /// Loads a diagnostic emitted during the previous compilation session.
     pub fn load_diagnostics(
         &self,
@@ -447,44 +524,6 @@ impl<'sess> OnDiskCache<'sess> {
         debug!("try_remap_cnum({:?}): cnum_map={:?}", stable_crate_id, cnum_map);
 
         cnum_map.get(&stable_crate_id).copied()
-    }
-
-    pub(crate) fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash) {
-        // We may overwrite an existing entry, but it will have the same value,
-        // so it's fine
-        self.latest_foreign_def_path_hashes
-            .lock()
-            .insert(hash, RawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() });
-    }
-
-    /// If the given `dep_node`'s hash still exists in the current compilation,
-    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
-    ///
-    /// Normally, `store_foreign_def_id_hash` can be called directly by
-    /// the dependency graph when we construct a `DepNode`. However,
-    /// when we re-use a deserialized `DepNode` from the previous compilation
-    /// session, we only have the `DefPathHash` available. This method is used
-    /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
-    /// out for usage in the next compilation session.
-    pub fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
-        // For reused dep nodes, we only need to store the mapping if the node
-        // is one whose query key we can reconstruct from the hash. We use the
-        // mapping to aid that reconstruction in the next session. While we also
-        // use it to decode `DefId`s we encoded in the cache as `DefPathHashes`,
-        // they're already registered during `DefId` encoding.
-        if dep_node.kind.can_reconstruct_query_key() {
-            let hash = DefPathHash(dep_node.hash.into());
-
-            // We can't simply copy the `RawDefId` from `foreign_def_path_hashes` to
-            // `latest_foreign_def_path_hashes`, since the `RawDefId` might have
-            // changed in the current compilation session (e.g. we've added/removed crates,
-            // or added/removed definitions before/after the target definition).
-            if let Some(def_id) = self.def_path_hash_to_def_id(tcx, hash) {
-                if !def_id.is_local() {
-                    self.store_foreign_def_id_hash(def_id, hash);
-                }
-            }
-        }
     }
 
     /// Returns the cached query result if there is something in the cache for
@@ -578,63 +617,6 @@ impl<'sess> OnDiskCache<'sess> {
                 })
                 .collect()
         })
-    }
-
-    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
-    /// session, if it still exists. This is used during incremental compilation to
-    /// turn a deserialized `DefPathHash` into its current `DefId`.
-    pub(crate) fn def_path_hash_to_def_id(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        hash: DefPathHash,
-    ) -> Option<DefId> {
-        let mut cache = self.def_path_hash_to_def_id_cache.lock();
-        match cache.entry(hash) {
-            Entry::Occupied(e) => *e.get(),
-            Entry::Vacant(e) => {
-                debug!("def_path_hash_to_def_id({:?})", hash);
-                // Check if the `DefPathHash` corresponds to a definition in the current
-                // crate
-                if let Some(def_id) =
-                    tcx.untracked_resolutions.definitions.local_def_path_hash_to_def_id(hash)
-                {
-                    let def_id = def_id.to_def_id();
-                    e.insert(Some(def_id));
-                    return Some(def_id);
-                }
-                // This `raw_def_id` represents the `DefId` of this `DefPathHash` in
-                // the *previous* compliation session. The `DefPathHash` includes the
-                // owning crate, so if the corresponding definition still exists in the
-                // current compilation session, the crate is guaranteed to be the same
-                // (otherwise, we would compute a different `DefPathHash`).
-                let raw_def_id = self.get_raw_def_id(&hash)?;
-                debug!("def_path_hash_to_def_id({:?}): raw_def_id = {:?}", hash, raw_def_id);
-                // If the owning crate no longer exists, the corresponding definition definitely
-                // no longer exists.
-                let krate = self.try_remap_cnum(tcx, hash.stable_crate_id())?;
-                debug!("def_path_hash_to_def_id({:?}): krate = {:?}", hash, krate);
-                // If our `DefPathHash` corresponded to a definition in the local crate,
-                // we should have either found it in `local_def_path_hash_to_def_id`, or
-                // never attempted to load it in the first place. Any query result or `DepNode`
-                // that references a local `DefId` should depend on some HIR-related `DepNode`.
-                // If a local definition is removed/modified such that its old `DefPathHash`
-                // no longer has a corresponding definition, that HIR-related `DepNode` should
-                // end up red. This should prevent us from ever calling
-                // `tcx.def_path_hash_to_def_id`, since we'll end up recomputing any
-                // queries involved.
-                debug_assert_ne!(krate, LOCAL_CRATE);
-                // Try to find a definition in the current session, using the previous `DefIndex`
-                // as an initial guess.
-                let opt_def_id = tcx.untracked_resolutions.cstore.def_path_hash_to_def_id(
-                    krate,
-                    raw_def_id.index,
-                    hash,
-                );
-                debug!("def_path_to_def_id({:?}): opt_def_id = {:?}", hash, opt_def_id);
-                e.insert(opt_def_id);
-                opt_def_id
-            }
-        }
     }
 }
 
@@ -776,7 +758,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     }
 }
 
-crate::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
+rustc_middle::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
 
 // This ensures that the `Decodable<opaque::Decoder>::decode` specialization for `Vec<u8>` is used
 // when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt
@@ -827,7 +809,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             rustc_span::hygiene::register_local_expn_id(data, hash)
         } else {
             let index_guess = decoder.foreign_expn_data[&hash];
-            decoder.tcx.untracked_resolutions.cstore.expn_hash_to_expn_id(krate, index_guess, hash)
+            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(krate, index_guess, hash)
         };
 
         #[cfg(debug_assertions)]

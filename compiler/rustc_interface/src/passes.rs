@@ -26,7 +26,7 @@ use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_query_impl::Queries as TcxQueries;
+use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_serialize::json;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
@@ -819,7 +819,9 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = queries.get_or_init(|| TcxQueries::new(local_providers, extern_providers));
+    let queries = queries.get_or_init(|| {
+        TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
+    });
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
@@ -830,7 +832,7 @@ pub fn create_global_ctxt<'tcx>(
                 resolver_outputs,
                 krate,
                 dep_graph,
-                query_result_on_disk_cache,
+                queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
                 &crate_name,
                 outputs,
