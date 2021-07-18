@@ -687,6 +687,12 @@ declare_features! (
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
 
+    /// Allows `for _ in _` loops in const contexts.
+    (active, const_for, "1.55.0", None, None),
+
+    /// Allows the `?` operator in const contexts.
+    (active, const_try, "1.55.0", None, None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
