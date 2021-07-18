@@ -1,0 +1,14 @@
+error[E0271]: type mismatch resolving `<() as Bar>::Foo == ()`
+  --> $DIR/issue-63355.rs:34:20
+   |
+LL | pub type FooImpl = impl Foo;
+   |                    -------- the found opaque type
+LL | pub type BarImpl = impl Bar<Foo = FooImpl>;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
+   |
+   = note: expected unit type `()`
+            found opaque type `impl Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.
