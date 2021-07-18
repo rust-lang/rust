@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/defaults-wf.rs:7:5
+  --> $DIR/defaults-wf.rs:7:15
    |
 LL |     type Ty = Vec<[u8]>;
-   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |               ^^^^^^^^^ doesn't have a size known at compile-time
    | 
   ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
