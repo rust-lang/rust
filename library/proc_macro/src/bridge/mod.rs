@@ -62,6 +62,7 @@ macro_rules! with_api {
                 fn clone($self: &$S::TokenStream) -> $S::TokenStream;
                 fn new() -> $S::TokenStream;
                 fn is_empty($self: &$S::TokenStream) -> bool;
+                fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
                 fn from_str(src: &str) -> $S::TokenStream;
                 fn to_string($self: &$S::TokenStream) -> String;
                 fn from_token_tree(
