@@ -16,7 +16,7 @@
 
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc_ast as ast;
-use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
+use rustc_data_structures::sync::join;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit as hir_visit;
@@ -501,9 +501,7 @@ pub fn check_crate<'tcx, T: LateLintPass<'tcx>>(
         || {
             tcx.sess.time("module_lints", || {
                 // Run per-module lints
-                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    tcx.ensure().lint_mod(module);
-                });
+                tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module));
             });
         },
     );

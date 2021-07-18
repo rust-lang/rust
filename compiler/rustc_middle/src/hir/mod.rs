@@ -17,7 +17,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::DUMMY_SP;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Result of HIR indexing.
 #[derive(Debug)]
@@ -121,6 +121,17 @@ impl<'tcx> AttributeMap<'tcx> {
     }
 }
 
+#[derive(Default, Encodable, Debug, HashStable)]
+pub struct ModuleItems {
+    // Use BTreeSets here so items are in the same order as in the
+    // list of all items in Crate
+    submodules: BTreeSet<LocalDefId>,
+    items: BTreeSet<ItemId>,
+    trait_items: BTreeSet<TraitItemId>,
+    impl_items: BTreeSet<ImplItemId>,
+    foreign_items: BTreeSet<ForeignItemId>,
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> map::Map<'tcx> {
@@ -140,7 +151,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate = |tcx, ()| tcx.untracked_crate;
     providers.index_hir = map::index_hir;
     providers.crate_hash = map::crate_hash;
-    providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
+    providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
         let owner = tcx.index_hir(()).map[id].as_ref()?;
         let node = owner.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;

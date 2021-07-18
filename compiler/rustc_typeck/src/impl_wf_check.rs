@@ -58,9 +58,7 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(module);
-    }
+    tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
 }
 
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {

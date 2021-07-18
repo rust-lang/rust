@@ -8,7 +8,7 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
-use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
+use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
@@ -861,7 +861,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
-                par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                tcx.hir().par_for_each_module(|module| {
                     tcx.ensure().check_mod_loops(module);
                     tcx.ensure().check_mod_attrs(module);
                     tcx.ensure().check_mod_naked_functions(module);
@@ -893,7 +893,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             },
             {
                 sess.time("liveness_and_intrinsic_checking", || {
-                    par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    tcx.hir().par_for_each_module(|module| {
                         // this must run before MIR dump, because
                         // "not all control paths return a value" is reported here.
                         //
@@ -963,7 +963,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             },
             {
                 sess.time("privacy_checking_modules", || {
-                    par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
+                    tcx.hir().par_for_each_module(|module| {
                         tcx.ensure().check_mod_privacy(module);
                     });
                 });

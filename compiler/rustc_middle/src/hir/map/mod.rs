@@ -1,11 +1,12 @@
 use self::collector::NodeCollector;
 
-use crate::hir::{AttributeMap, IndexedHir, Owner};
+use crate::hir::{AttributeMap, IndexedHir, ModuleItems, Owner};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::{self, par_iter};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -19,6 +20,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
+use std::collections::BTreeSet;
 
 pub mod blocks;
 mod collector;
@@ -555,6 +557,31 @@ impl<'hir> Map<'hir> {
 
         for id in &module.foreign_items {
             visitor.visit_foreign_item(self.foreign_item(*id));
+        }
+    }
+
+    pub fn for_each_module(&self, f: impl Fn(LocalDefId)) {
+        let mut queue = BTreeSet::default();
+        queue.insert(CRATE_DEF_ID);
+
+        while let Some(id) = queue.pop_first() {
+            f(id);
+            let items = self.tcx.hir_module_items(id);
+            queue.extend(items.submodules.iter().copied())
+        }
+    }
+
+    pub fn par_for_each_module(&self, f: impl Fn(LocalDefId) + sync::Sync) {
+        use rustc_data_structures::sync::ParallelIterator;
+        par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
+
+        fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
+        where
+            F: Fn(LocalDefId) + sync::Sync,
+        {
+            (*f)(module);
+            let items = tcx.hir_module_items(module);
+            par_iter(&items.submodules).for_each(|&sm| par_iter_submodules(tcx, sm, f));
         }
     }
 
@@ -1116,5 +1143,65 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::Visibility(ref vis)) => format!("visibility {:?}{}", vis, id_str),
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
+    }
+}
+
+pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> ModuleItems {
+    let mut collector = ModuleCollector {
+        tcx,
+        submodules: BTreeSet::default(),
+        items: BTreeSet::default(),
+        trait_items: BTreeSet::default(),
+        impl_items: BTreeSet::default(),
+        foreign_items: BTreeSet::default(),
+    };
+
+    let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);
+    collector.visit_mod(hir_mod, span, hir_id);
+
+    let ModuleCollector { submodules, items, trait_items, impl_items, foreign_items, .. } =
+        collector;
+    return ModuleItems { submodules, items, trait_items, impl_items, foreign_items };
+
+    struct ModuleCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        submodules: BTreeSet<LocalDefId>,
+        items: BTreeSet<ItemId>,
+        trait_items: BTreeSet<TraitItemId>,
+        impl_items: BTreeSet<ImplItemId>,
+        foreign_items: BTreeSet<ForeignItemId>,
+    }
+
+    impl<'hir> Visitor<'hir> for ModuleCollector<'hir> {
+        type Map = Map<'hir>;
+
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::All(self.tcx.hir())
+        }
+
+        fn visit_item(&mut self, item: &'hir Item<'hir>) {
+            self.items.insert(item.item_id());
+            if let ItemKind::Mod(..) = item.kind {
+                // If this declares another module, do not recurse inside it.
+                self.submodules.insert(item.def_id);
+            } else {
+                intravisit::walk_item(self, item)
+            }
+        }
+
+        fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+            self.trait_items.insert(item.trait_item_id());
+            intravisit::walk_trait_item(self, item)
+        }
+
+        fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+            self.impl_items.insert(item.impl_item_id());
+            intravisit::walk_impl_item(self, item)
+        }
+
+        fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+            self.foreign_items.insert(item.foreign_item_id());
+            intravisit::walk_foreign_item(self, item)
+        }
     }
 }
