@@ -838,6 +838,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                              this does nothing because the given bound is not \
                              a default; only `?Sized` is supported",
                         );
+                        return false;
                     }
                 }
             }
