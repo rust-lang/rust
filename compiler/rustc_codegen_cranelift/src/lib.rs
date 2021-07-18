@@ -221,9 +221,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             sess,
             &codegen_results,
             outputs,
-        );
-
-        Ok(())
+        )
     }
 }
 

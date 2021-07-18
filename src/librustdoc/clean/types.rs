@@ -118,7 +118,7 @@ crate struct Crate {
     crate name: Symbol,
     crate src: FileName,
     crate module: Item,
-    crate externs: Vec<(CrateNum, ExternalCrate)>,
+    crate externs: Vec<ExternalCrate>,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
@@ -133,14 +133,14 @@ crate struct TraitWithExtraInfo {
     crate is_notable: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 crate struct ExternalCrate {
     crate crate_num: CrateNum,
 }
 
 impl ExternalCrate {
     #[inline]
-    fn def_id(&self) -> DefId {
+    crate fn def_id(&self) -> DefId {
         DefId { krate: self.crate_num, index: CRATE_DEF_INDEX }
     }
 

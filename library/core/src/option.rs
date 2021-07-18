@@ -356,7 +356,7 @@
 //! // must have the same concrete type.
 //! fn make_iter(do_insert: bool) -> impl Iterator<Item = i32> {
 //!     // Explicit returns to illustrate return types not matching
-//!     match x {
+//!     match do_insert {
 //!         true => return (0..4).chain(once(42)).chain(4..8),
 //!         false => return (0..4).chain(empty()).chain(4..8),
 //!     }
