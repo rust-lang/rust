@@ -48,6 +48,7 @@ mod array_into_iter;
 pub mod builtin;
 mod context;
 mod early;
+mod enum_intrinsics_non_enums;
 mod internal;
 mod late;
 mod levels;
@@ -75,6 +76,7 @@ use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use internal::*;
 use methods::*;
 use non_ascii_idents::*;
@@ -169,6 +171,7 @@ macro_rules! late_lint_passes {
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
                 NonPanicFmt: NonPanicFmt,
                 NoopMethodCall: NoopMethodCall,
+                EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
             ]
         );
     };

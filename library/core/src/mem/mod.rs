@@ -1015,6 +1015,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+#[rustc_diagnostic_item = "mem_discriminant"]
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v))
 }
@@ -1045,6 +1046,7 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 #[inline(always)]
 #[unstable(feature = "variant_count", issue = "73662")]
 #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+#[rustc_diagnostic_item = "mem_variant_count"]
 pub const fn variant_count<T>() -> usize {
     intrinsics::variant_count::<T>()
 }
