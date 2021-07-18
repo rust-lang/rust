@@ -65,17 +65,51 @@ fn generic_arg(p: &mut Parser) {
             m.complete(p, LIFETIME_ARG);
         }
         // test associated_type_bounds
-        // fn print_all<T: Iterator<Item: Display>>(printables: T) {}
-        IDENT if p.nth(1) == T![:] && p.nth(2) != T![:] => {
+        // fn print_all<T: Iterator<Item, Item::Item, Item: Display, Item<'a> = Item>>(printables: T) {}
+        IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) => {
+            let path_ty = p.start();
+            let path = p.start();
+            let path_seg = p.start();
             name_ref(p);
-            type_params::bounds(p);
-            m.complete(p, ASSOC_TYPE_ARG);
-        }
-        IDENT if p.nth(1) == T![=] => {
-            name_ref(p);
-            p.bump_any();
-            types::type_(p);
-            m.complete(p, ASSOC_TYPE_ARG);
+            if p.current() == T![<] {
+                opt_generic_arg_list(p, false);
+            }
+            match p.current() {
+                // NameRef<...> =
+                T![=] => {
+                    p.bump_any();
+                    types::type_(p);
+
+                    path_seg.abandon(p);
+                    path.abandon(p);
+                    path_ty.abandon(p);
+                    m.complete(p, ASSOC_TYPE_ARG);
+                }
+                T![:] if p.nth(1) == T![:] => {
+                    // NameRef::, this is a path type
+                    path_seg.complete(p, PATH_SEGMENT);
+                    let qual = path.complete(p, PATH);
+                    paths::type_path_for_qualifier(p, qual);
+                    path_ty.complete(p, PATH_TYPE);
+                    m.complete(p, TYPE_ARG);
+                }
+                // NameRef<...>:
+                T![:] => {
+                    type_params::bounds(p);
+
+                    path_seg.abandon(p);
+                    path.abandon(p);
+                    path_ty.abandon(p);
+                    m.complete(p, ASSOC_TYPE_ARG);
+                }
+                // NameRef, this is a single segment path type
+                _ => {
+                    path_seg.complete(p, PATH_SEGMENT);
+                    path.complete(p, PATH);
+                    path_ty.complete(p, PATH_TYPE);
+                    m.complete(p, TYPE_ARG);
+                }
+            }
         }
         T!['{'] => {
             expressions::block_expr(p);

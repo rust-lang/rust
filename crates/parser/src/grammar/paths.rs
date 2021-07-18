@@ -27,6 +27,10 @@ pub(super) fn expr_path(p: &mut Parser) {
     path(p, Mode::Expr)
 }
 
+pub(crate) fn type_path_for_qualifier(p: &mut Parser, qual: CompletedMarker) {
+    path_for_qualifier(p, Mode::Type, qual)
+}
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Mode {
     Use,
@@ -37,7 +41,11 @@ enum Mode {
 fn path(p: &mut Parser, mode: Mode) {
     let path = p.start();
     path_segment(p, mode, true);
-    let mut qual = path.complete(p, PATH);
+    let qual = path.complete(p, PATH);
+    path_for_qualifier(p, mode, qual)
+}
+
+fn path_for_qualifier(p: &mut Parser, mode: Mode, mut qual: CompletedMarker) {
     loop {
         let use_tree = matches!(p.nth(2), T![*] | T!['{']);
         if p.at(T![::]) && !use_tree {
