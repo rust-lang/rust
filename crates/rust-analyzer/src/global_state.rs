@@ -74,18 +74,35 @@ pub(crate) struct GlobalState {
     pub(crate) vfs_progress_n_total: usize,
     pub(crate) vfs_progress_n_done: usize,
 
-    /// For both `workspaces` and `workspace_build_data`, the field stores the
-    /// data we actually use, while the `OpQueue` stores the result of the last
-    /// fetch.
+    /// `workspaces` field stores the data we actually use, while the `OpQueue`
+    /// stores the result of the last fetch.
     ///
-    /// If the fetch (partially) fails, we do not update the values.
+    /// If the fetch (partially) fails, we do not update the current value.
     ///
-    /// Invariant: workspaces.len() == workspace_build_data
+    /// The handling of build data is subtle. We fetch workspace in two phases:
+    ///
+    /// *First*, we run `cargo metadata`, which gives us fast results for
+    /// initial analysis.
+    ///
+    /// *Second*, we run `cargo check` which runs build scripts and compiles
+    /// proc macros.
+    ///
+    /// We need both for the precise analysis, but we want rust-analyzer to be
+    /// at least partially available just after the first phase. That's because
+    /// first phase is much faster, and is much less likely to fail.
+    ///
+    /// This creates a complication -- by the time the second phase completes,
+    /// the results of the fist phase could be invalid. That is, while we run
+    /// `cargo check`, the user edits `Cargo.toml`, we notice this, and the new
+    /// `cargo metadata` completes before `cargo check`.
+    ///
+    /// An additional complication is that we want to avoid needless work. When
+    /// the user just adds comments or whitespace to Cargo.toml, we do not want
+    /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) fetch_workspaces_queue: OpQueue<Vec<anyhow::Result<ProjectWorkspace>>>,
-
-    pub(crate) workspace_build_data: Vec<WorkspaceBuildScripts>,
-    pub(crate) fetch_build_data_queue: OpQueue<Vec<anyhow::Result<WorkspaceBuildScripts>>>,
+    pub(crate) fetch_build_data_queue:
+        OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
 
     pub(crate) prime_caches_queue: OpQueue<()>,
 
@@ -149,7 +166,6 @@ impl GlobalState {
 
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
-            workspace_build_data: Vec::new(),
             prime_caches_queue: OpQueue::default(),
 
             fetch_build_data_queue: OpQueue::default(),

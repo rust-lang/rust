@@ -36,7 +36,7 @@ pub(crate) fn load_workspace_at(
 }
 
 fn load_workspace(
-    ws: ProjectWorkspace,
+    mut ws: ProjectWorkspace,
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
@@ -56,22 +56,20 @@ fn load_workspace(
         None
     };
 
-    let build_scripts = match &ws {
-        ProjectWorkspace::Cargo { cargo, .. } if load_config.load_out_dirs_from_check => {
-            WorkspaceBuildScripts::run(cargo_config, cargo, progress)?
-        }
-        _ => WorkspaceBuildScripts::default(),
-    };
+    ws.set_build_scripts(if load_config.load_out_dirs_from_check {
+        ws.run_build_scripts(cargo_config, progress)?
+    } else {
+        WorkspaceBuildScripts::default()
+    });
 
-    let crate_graph =
-        ws.to_crate_graph(&build_scripts, proc_macro_client.as_ref(), &mut |path: &AbsPath| {
-            let contents = loader.load_sync(path);
-            let path = vfs::VfsPath::from(path.to_path_buf());
-            vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
-        });
+    let crate_graph = ws.to_crate_graph(proc_macro_client.as_ref(), &mut |path: &AbsPath| {
+        let contents = loader.load_sync(path);
+        let path = vfs::VfsPath::from(path.to_path_buf());
+        vfs.set_file_contents(path.clone(), contents);
+        vfs.file_id(&path)
+    });
 
-    let project_folders = ProjectFolders::new(&[ws], &[build_scripts], &[]);
+    let project_folders = ProjectFolders::new(&[ws], &[]);
     loader.set_config(vfs::loader::Config {
         load: project_folders.load,
         watch: vec![],

@@ -10,6 +10,7 @@ use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use proc_macro_api::ProcMacroClient;
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::always;
 
 use crate::{
     build_scripts::BuildScriptOutput,
@@ -39,6 +40,7 @@ pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo {
         cargo: CargoWorkspace,
+        build_scripts: WorkspaceBuildScripts,
         sysroot: Sysroot,
         rustc: Option<CargoWorkspace>,
         /// Holds cfg flags for the current target. We get those by running
@@ -69,7 +71,14 @@ impl fmt::Debug for ProjectWorkspace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Make sure this isn't too verbose.
         match self {
-            ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg, cfg_overrides } => f
+            ProjectWorkspace::Cargo {
+                cargo,
+                build_scripts: _,
+                sysroot,
+                rustc,
+                rustc_cfg,
+                cfg_overrides,
+            } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
                 .field("n_packages", &cargo.packages().len())
@@ -169,7 +178,14 @@ impl ProjectWorkspace {
                 let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref());
 
                 let cfg_overrides = config.cfg_overrides();
-                ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg, cfg_overrides }
+                ProjectWorkspace::Cargo {
+                    cargo,
+                    build_scripts: WorkspaceBuildScripts::default(),
+                    sysroot,
+                    rustc,
+                    rustc_cfg,
+                    cfg_overrides,
+                }
             }
         };
 
@@ -196,10 +212,34 @@ impl ProjectWorkspace {
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
+    pub fn run_build_scripts(
+        &self,
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> Result<WorkspaceBuildScripts> {
+        match self {
+            ProjectWorkspace::Cargo { cargo, .. } => {
+                WorkspaceBuildScripts::run(config, cargo, progress)
+            }
+            ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFiles { .. } => {
+                Ok(WorkspaceBuildScripts::default())
+            }
+        }
+    }
+
+    pub fn set_build_scripts(&mut self, bs: WorkspaceBuildScripts) {
+        match self {
+            ProjectWorkspace::Cargo { build_scripts, .. } => *build_scripts = bs,
+            _ => {
+                always!(bs == WorkspaceBuildScripts::default());
+            }
+        }
+    }
+
     /// Returns the roots for the current `ProjectWorkspace`
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
-    pub fn to_roots(&self, build_scripts: &WorkspaceBuildScripts) -> Vec<PackageRoot> {
+    pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg: _ } => project
                 .crates()
@@ -218,7 +258,14 @@ impl ProjectWorkspace {
                     })
                 }))
                 .collect::<Vec<_>>(),
-            ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg: _, cfg_overrides: _ } => {
+            ProjectWorkspace::Cargo {
+                cargo,
+                sysroot,
+                rustc,
+                rustc_cfg: _,
+                cfg_overrides: _,
+                build_scripts,
+            } => {
                 cargo
                     .packages()
                     .map(|pkg| {
@@ -302,7 +349,6 @@ impl ProjectWorkspace {
 
     pub fn to_crate_graph(
         &self,
-        build_scripts: &WorkspaceBuildScripts,
         proc_macro_client: Option<&ProcMacroClient>,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
@@ -320,18 +366,23 @@ impl ProjectWorkspace {
                 project,
                 sysroot,
             ),
-            ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg, cfg_overrides } => {
-                cargo_to_crate_graph(
-                    rustc_cfg.clone(),
-                    cfg_overrides,
-                    &proc_macro_loader,
-                    load,
-                    cargo,
-                    build_scripts,
-                    sysroot,
-                    rustc,
-                )
-            }
+            ProjectWorkspace::Cargo {
+                cargo,
+                sysroot,
+                rustc,
+                rustc_cfg,
+                cfg_overrides,
+                build_scripts,
+            } => cargo_to_crate_graph(
+                rustc_cfg.clone(),
+                cfg_overrides,
+                &proc_macro_loader,
+                load,
+                cargo,
+                build_scripts,
+                sysroot,
+                rustc,
+            ),
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
                 detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot)
             }
