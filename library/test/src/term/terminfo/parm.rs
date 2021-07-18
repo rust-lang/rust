@@ -35,13 +35,12 @@ enum FormatState {
 /// Types of parameters a capability can use
 #[allow(missing_docs)]
 #[derive(Clone)]
-pub enum Param {
-    Words(String),
+pub(crate) enum Param {
     Number(i32),
 }
 
 /// Container for static and dynamic variable arrays
-pub struct Variables {
+pub(crate) struct Variables {
     /// Static variables A-Z
     sta_va: [Param; 26],
     /// Dynamic variables a-z
@@ -50,7 +49,7 @@ pub struct Variables {
 
 impl Variables {
     /// Returns a new zero-initialized Variables
-    pub fn new() -> Variables {
+    pub(crate) fn new() -> Variables {
         Variables {
             sta_va: [
                 Number(0),
@@ -121,7 +120,11 @@ impl Variables {
 ///
 /// To be compatible with ncurses, `vars` should be the same between calls to `expand` for
 /// multiple capabilities for the same terminal.
-pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<u8>, String> {
+pub(crate) fn expand(
+    cap: &[u8],
+    params: &[Param],
+    vars: &mut Variables,
+) -> Result<Vec<u8>, String> {
     let mut state = Nothing;
 
     // expanded cap will only rarely be larger than the cap itself
@@ -168,7 +171,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             Some(Number(0)) => output.push(128u8),
                             // Don't check bounds. ncurses just casts and truncates.
                             Some(Number(c)) => output.push(c as u8),
-                            Some(_) => return Err("a non-char was used with %c".to_string()),
                             None => return Err("stack is empty".to_string()),
                         }
                     }
@@ -178,7 +180,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     '\'' => state = CharConstant,
                     '{' => state = IntConstant(0),
                     'l' => match stack.pop() {
-                        Some(Words(s)) => stack.push(Number(s.len() as i32)),
                         Some(_) => return Err("a non-str was used with %l".to_string()),
                         None => return Err("stack is empty".to_string()),
                     },
@@ -195,9 +196,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                 'm' => x % y,
                                 _ => unreachable!("All cases handled"),
                             })),
-                            (Some(_), Some(_)) => {
-                                return Err(format!("non-numbers on stack with {}", cur));
-                            }
                             _ => return Err("stack is empty".to_string()),
                         }
                     }
@@ -216,9 +214,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                 0
                             },
                         )),
-                        (Some(_), Some(_)) => {
-                            return Err(format!("non-numbers on stack with {}", cur));
-                        }
                         _ => return Err("stack is empty".to_string()),
                     },
                     '!' | '~' => match stack.pop() {
@@ -228,7 +223,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             '~' => !x,
                             _ => unreachable!(),
                         })),
-                        Some(_) => return Err(format!("non-numbers on stack with {}", cur)),
                         None => return Err("stack is empty".to_string()),
                     },
                     'i' => match (&mparams[0], &mparams[1]) {
@@ -236,7 +230,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             mparams[0] = Number(x + 1);
                             mparams[1] = Number(y + 1);
                         }
-                        _ => return Err("first two params not numbers with %i".to_string()),
                     },
 
                     // printf-style support for %doxXs
@@ -271,7 +264,6 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     't' => match stack.pop() {
                         Some(Number(0)) => state = SeekIfElse(0),
                         Some(Number(_)) => (),
-                        Some(_) => return Err("non-number on stack with conditional".to_string()),
                         None => return Err("stack is empty".to_string()),
                     },
                     'e' => state = SeekIfEnd(0),
@@ -480,15 +472,6 @@ impl FormatOp {
             _ => panic!("bad FormatOp char"),
         }
     }
-    fn to_char(self) -> char {
-        match self {
-            FormatOp::Digit => 'd',
-            FormatOp::Octal => 'o',
-            FormatOp::LowerHex => 'x',
-            FormatOp::UpperHex => 'X',
-            FormatOp::String => 's',
-        }
-    }
 }
 
 fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
@@ -533,16 +516,6 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
             }
             .into_bytes()
         }
-        Words(s) => match op {
-            FormatOp::String => {
-                let mut s = s.into_bytes();
-                if flags.precision > 0 && flags.precision < s.len() {
-                    s.truncate(flags.precision);
-                }
-                s
-            }
-            _ => return Err(format!("non-string on stack with %{}", op.to_char())),
-        },
     };
     if flags.width > s.len() {
         let n = flags.width - s.len();
