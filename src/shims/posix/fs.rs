@@ -851,8 +851,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`stat`", reject_with)?;
-            // macos stat never sets "EPERM". Set error code "ENOENT".
-            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
+            let eacc = this.eval_libc("EACCES")?;
+            this.set_last_error(eacc)?;
             return Ok(-1);
         }
 
@@ -872,8 +872,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`lstat`", reject_with)?;
-            // macos lstat never sets "EPERM". Set error code "ENOENT".
-            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
+            let eacc = this.eval_libc("EACCES")?;
+            this.set_last_error(eacc)?;
             return Ok(-1);
         }
 
@@ -916,14 +916,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "statx");
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`statx`", reject_with)?;
-            // statx never sets "EPERM". Set error code "ENOENT".
-            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
-            return Ok(-1);
-        }
 
         let statxbuf_ptr = this.read_pointer(statxbuf_op)?;
         let pathname_ptr = this.read_pointer(pathname_op)?;
@@ -971,6 +963,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 descriptor `AT_FDCWD`, and empty paths with the `AT_EMPTY_PATH` flag set and any \
                 file descriptor"
             )
+        }
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`statx`", reject_with)?;
+            let ecode = if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")? {
+                // since `path` is provided, either absolute or
+                // relative to CWD, `EACCES` is the most relevant.
+                this.eval_libc("EACCES")?
+            } else {
+                // `dirfd` is set to target file, and `path` is
+                // empty. `EACCES` would violate the spec.
+                this.eval_libc("EBADF")?
+            };
+            this.set_last_error(ecode)?;
+            return Ok(-1);
         }
 
         // the `_mask_op` paramter specifies the file information that the caller requested.
@@ -1167,8 +1175,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`opendir`", reject_with)?;
-            // opendir function never sets "EPERM". Set "ENOENT".
-            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
+            let eacc = this.eval_libc("EACCES")?;
+            this.set_last_error(eacc)?;
             return Ok(Scalar::null_ptr(this));
         }
 
@@ -1422,8 +1430,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`ftruncate64`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(-1);
+            // Set error code as "EBADF" (bad fd)
+            return this.handle_not_found();
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -1554,8 +1562,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readlink`", reject_with)?;
-            // readlink never sets "EPERM". Set "ENOENT".
-            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
+            let eacc = this.eval_libc("EACCES")?;
+            this.set_last_error(eacc)?;
             return Ok(-1);
         }
 
