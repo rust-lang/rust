@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io;
 use std::io::Read;
 
-use regex;
 use regex::Regex;
 
 #[derive(Debug)]

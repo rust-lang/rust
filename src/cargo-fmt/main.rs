@@ -405,8 +405,8 @@ fn get_targets_recursive(
                 .packages
                 .iter()
                 .find(|p| p.name == dependency.name && p.source.is_none());
-            let manifest_path = if dependency_package.is_some() {
-                PathBuf::from(&dependency_package.unwrap().manifest_path)
+            let manifest_path = if let Some(dep_pkg) = dependency_package {
+                PathBuf::from(&dep_pkg.manifest_path)
             } else {
                 let mut package_manifest_path = PathBuf::from(&package.manifest_path);
                 package_manifest_path.pop();

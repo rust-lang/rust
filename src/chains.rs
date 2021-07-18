@@ -231,10 +231,7 @@ impl ChainItem {
     }
 
     fn is_comment(&self) -> bool {
-        match self.kind {
-            ChainItemKind::Comment(..) => true,
-            _ => false,
-        }
+        matches!(self.kind, ChainItemKind::Comment(..))
     }
 
     fn rewrite_method_call(
