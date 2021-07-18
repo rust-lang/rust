@@ -11,4 +11,4 @@ extern "C" const fn test() {}
 //~| NOTE expected `fn`
 //~| HELP `const` must come before `extern "C"`
 //~| SUGGESTION const extern "C"
-//~| NOTE keyword order for functions declaration is `<visibility>`, `const`, `async`, `unsafe`, `extern`, `"<ABI>"`
+//~| NOTE keyword order for functions declaration is `default|pub`, `const`, `async`, `unsafe`, `extern`

@@ -11,4 +11,4 @@ unsafe const fn test() {}
 //~| NOTE expected one of `extern` or `fn`
 //~| HELP `const` must come before `unsafe`
 //~| SUGGESTION const unsafe
-//~| NOTE keyword order for functions declaration is `<visibility>`, `const`, `async`, `unsafe`, `extern`, `"<ABI>"`
+//~| NOTE keyword order for functions declaration is `default|pub`, `const`, `async`, `unsafe`, `extern`
