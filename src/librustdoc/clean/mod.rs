@@ -14,7 +14,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
@@ -82,12 +82,6 @@ impl<T: Clean<U>, U> Clean<U> for Rc<T> {
 impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Option<U> {
         self.as_ref().map(|v| v.clean(cx))
-    }
-}
-
-impl Clean<ExternalCrate> for CrateNum {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> ExternalCrate {
-        ExternalCrate { crate_num: *self }
     }
 }
 
