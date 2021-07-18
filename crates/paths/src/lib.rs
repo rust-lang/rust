@@ -187,7 +187,7 @@ impl AbsPath {
         self.0.starts_with(&base.0)
     }
     pub fn ends_with(&self, suffix: &RelPath) -> bool {
-        self.0.starts_with(&suffix.0)
+        self.0.ends_with(&suffix.0)
     }
 
     // region:delegate-methods
