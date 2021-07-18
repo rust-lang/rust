@@ -1,6 +1,7 @@
 error[E0463]: can't find crate for `core`
    |
    = note: the `thumbv7em-none-eabihf` target may not be installed
+   = help: consider downloading the target with `rustup target add thumbv7em-none-eabihf`
 
 error: aborting due to previous error
 

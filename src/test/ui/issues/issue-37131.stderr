@@ -1,6 +1,7 @@
 error[E0463]: can't find crate for `std`
    |
    = note: the `thumbv6m-none-eabi` target may not be installed
+   = help: consider downloading the target with `rustup target add thumbv6m-none-eabi`
 
 error: aborting due to previous error
 
