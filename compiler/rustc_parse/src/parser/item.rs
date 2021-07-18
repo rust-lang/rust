@@ -1794,24 +1794,22 @@ impl<'a> Parser<'a> {
                 Ok(false) => unreachable!(),
                 Err(mut err) => {
                     // Qualifier keywords ordering check
-                    // Extern is not checked since it is the last expected one
-                    let misplaced_qualifier =
-                        [kw::Const, kw::Async, kw::Unsafe].iter().any(|&k| self.check_keyword(k));
 
-                    if misplaced_qualifier {
-                        // This will allow the machine fix to directly place the keyword in the correct place
-                        let current_qual_sp = (if self.check_keyword(kw::Const) {
-                            async_start_sp
-                        } else if self.check_keyword(kw::Async) {
-                            unsafe_start_sp
-                        } else if self.check_keyword(kw::Unsafe) {
-                            ext_start_sp
-                        } else {
-                            // `misplaced_qualifier` checked for exactly those keywords earlier
-                            unreachable!();
-                        })
-                        .to(self.prev_token.span);
+                    // This will allow the machine fix to directly place the keyword in the correct place
+                    let current_qual_sp = if self.check_keyword(kw::Const) {
+                        Some(async_start_sp)
+                    } else if self.check_keyword(kw::Async) {
+                        Some(unsafe_start_sp)
+                    } else if self.check_keyword(kw::Unsafe) {
+                        Some(ext_start_sp)
+                    } else if self.check_keyword(kw::Default) {
+                        Some(sp_start)
+                    } else {
+                        None
+                    };
 
+                    if let Some(current_qual_sp) = current_qual_sp {
+                        let current_qual_sp = current_qual_sp.to(self.prev_token.span);
                         if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
                             let invalid_qual_sp = self.token.uninterpolated_span();
                             let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
@@ -1821,7 +1819,7 @@ impl<'a> Parser<'a> {
                                 &format!("`{}` must come before `{}`", invalid_qual, current_qual),
                                 format!("{} {}", invalid_qual, current_qual),
                                 Applicability::MachineApplicable,
-                            ).note("keyword order for functions declaration is `<visibility>`, `const`, `async`, `unsafe`, `extern`, `\"<ABI>\"`");
+                            ).note("keyword order for functions declaration is `default|pub`, `const`, `async`, `unsafe`, `extern`");
                         }
                     }
                     // Recover incorrect visibility order such as `async pub`.
