@@ -116,11 +116,12 @@ fn struct_llfields<'a, 'tcx>(
         );
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
-        let padding_align = prev_effective_align.min(effective_field_align);
-        assert_eq!(offset.align_to(padding_align) + padding, target_offset);
-        result.push(cx.type_padding_filler(padding, padding_align));
-        debug!("    padding before: {:?}", padding);
-
+        if padding != Size::ZERO {
+            let padding_align = prev_effective_align.min(effective_field_align);
+            assert_eq!(offset.align_to(padding_align) + padding, target_offset);
+            result.push(cx.type_padding_filler(padding, padding_align));
+            debug!("    padding before: {:?}", padding);
+        }
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
@@ -130,14 +131,15 @@ fn struct_llfields<'a, 'tcx>(
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }
         let padding = layout.size - offset;
-        let padding_align = prev_effective_align;
-        assert_eq!(offset.align_to(padding_align) + padding, layout.size);
-        debug!(
-            "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
-            padding, offset, layout.size
-        );
-        result.push(cx.type_padding_filler(padding, padding_align));
-        assert_eq!(result.len(), 1 + field_count * 2);
+        if padding != Size::ZERO {
+            let padding_align = prev_effective_align;
+            assert_eq!(offset.align_to(padding_align) + padding, layout.size);
+            debug!(
+                "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
+                padding, offset, layout.size
+            );
+            result.push(cx.type_padding_filler(padding, padding_align));
+        }
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
@@ -177,7 +179,7 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn llvm_field_index(&self, index: usize) -> u64;
+    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
 
@@ -340,7 +342,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
 
-    fn llvm_field_index(&self, index: usize) -> u64 {
+    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64 {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
@@ -354,7 +356,24 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
+            FieldsShape::Arbitrary { .. } => {
+                let mut llvm_index = 0;
+                let mut offset = Size::ZERO;
+                for i in self.fields.index_by_increasing_offset() {
+                    let target_offset = self.fields.offset(i as usize);
+                    let field = self.field(cx, i);
+                    let padding = target_offset - offset;
+                    if padding != Size::ZERO {
+                        llvm_index += 1;
+                    }
+                    if i == index {
+                        return llvm_index;
+                    }
+                    offset = target_offset + field.size;
+                    llvm_index += 1;
+                }
+                bug!("TyAndLayout::llvm_field_index({:?}): index {} out of range", self, index)
+            }
         }
     }
 
