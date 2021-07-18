@@ -1706,3 +1706,34 @@ pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
 
     matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
 }
+
+macro_rules! op_utils {
+    ($($name:ident $assign:ident)*) => {
+        /// Binary operation traits like `LangItem::Add`
+        pub static BINOP_TRAITS: &[LangItem] = &[$(LangItem::$name,)*];
+
+        /// Operator-Assign traits like `LangItem::AddAssign`
+        pub static OP_ASSIGN_TRAITS: &[LangItem] = &[$(LangItem::$assign,)*];
+
+        /// Converts `BinOpKind::Add` to `(LangItem::Add, LangItem::AddAssign)`, for example
+        pub fn binop_traits(kind: hir::BinOpKind) -> Option<(LangItem, LangItem)> {
+            match kind {
+                $(hir::BinOpKind::$name => Some((LangItem::$name, LangItem::$assign)),)*
+                _ => None,
+            }
+        }
+    };
+}
+
+op_utils! {
+    Add    AddAssign
+    Sub    SubAssign
+    Mul    MulAssign
+    Div    DivAssign
+    Rem    RemAssign
+    BitXor BitXorAssign
+    BitAnd BitAndAssign
+    BitOr  BitOrAssign
+    Shl    ShlAssign
+    Shr    ShrAssign
+}
