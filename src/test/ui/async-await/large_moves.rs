@@ -14,7 +14,6 @@ fn main() {
         dbg!(y);
     };
     let z = (x, 42); //~ ERROR large_assignments
-    //~^ ERROR large_assignments
     let a = z.0; //~ ERROR large_assignments
     let b = z.1;
 }

@@ -1,0 +1,131 @@
+- // MIR for `<impl at $DIR/partial.rs:9:21: 9:31>::partial_cmp` before LowerIntrinsics
++ // MIR for `<impl at $DIR/partial.rs:9:21: 9:31>::partial_cmp` after LowerIntrinsics
+  
+  fn <impl at $DIR/partial.rs:9:21: 9:31>::partial_cmp(_1: &E, _2: &E) -> Option<std::cmp::Ordering> {
+      debug self => _1;                    // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      debug other => _2;                   // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _0: std::option::Option<std::cmp::Ordering>; // return place in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let _3: isize;                       // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _4: &E;                      // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let _5: &E;                          // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _7: &E;                      // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let _8: &E;                          // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _9: bool;                    // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _10: bool;                   // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _11: isize;                  // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _12: isize;                  // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _13: (&E, &E);               // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _14: &E;                     // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _15: &E;                     // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _16: std::cmp::Ordering;     // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _17: &isize;                 // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let _18: &isize;                     // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let mut _19: &isize;                 // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      let _20: &isize;                     // in scope 0 at $DIR/partial.rs:9:21: 9:31
+      scope 1 {
+          debug __self_vi => _3;           // in scope 1 at $DIR/partial.rs:9:21: 9:31
+          let _6: isize;                   // in scope 1 at $DIR/partial.rs:9:21: 9:31
+          scope 2 {
+              debug __arg_1_vi => _6;      // in scope 2 at $DIR/partial.rs:9:21: 9:31
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_4);                 // scope 0 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_5);                 // scope 0 at $DIR/partial.rs:9:21: 9:31
+          _5 = &(*_1);                     // scope 0 at $DIR/partial.rs:9:21: 9:31
+          _4 = &(*_5);                     // scope 0 at $DIR/partial.rs:9:21: 9:31
+-         _3 = discriminant_value::<E>(move _4) -> bb1; // scope 0 at $DIR/partial.rs:9:21: 9:31
+-                                          // mir::Constant
+-                                          // + span: $DIR/partial.rs:9:21: 9:31
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r E) -> <E as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<E>}, val: Value(Scalar(<ZST>)) }
++         _3 = discriminant((*_4));        // scope 0 at $DIR/partial.rs:9:21: 9:31
++         goto -> bb1;                     // scope 0 at $DIR/partial.rs:9:21: 9:31
+      }
+  
+      bb1: {
+          StorageDead(_4);                 // scope 0 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_5);                 // scope 0 at $DIR/partial.rs:9:30: 9:31
+          StorageLive(_6);                 // scope 1 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_7);                 // scope 1 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_8);                 // scope 1 at $DIR/partial.rs:9:21: 9:31
+          _8 = &(*_2);                     // scope 1 at $DIR/partial.rs:9:21: 9:31
+          _7 = &(*_8);                     // scope 1 at $DIR/partial.rs:9:21: 9:31
+-         _6 = discriminant_value::<E>(move _7) -> bb2; // scope 1 at $DIR/partial.rs:9:21: 9:31
+-                                          // mir::Constant
+-                                          // + span: $DIR/partial.rs:9:21: 9:31
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r E) -> <E as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<E>}, val: Value(Scalar(<ZST>)) }
++         _6 = discriminant((*_7));        // scope 1 at $DIR/partial.rs:9:21: 9:31
++         goto -> bb2;                     // scope 1 at $DIR/partial.rs:9:21: 9:31
+      }
+  
+      bb2: {
+          StorageDead(_7);                 // scope 1 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_8);                 // scope 1 at $DIR/partial.rs:9:30: 9:31
+          StorageLive(_9);                 // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_10);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_11);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _11 = _3;                        // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_12);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _12 = _6;                        // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _10 = Eq(move _11, move _12);    // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageDead(_12);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_11);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          _9 = move _10;                   // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageDead(_10);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          switchInt(move _9) -> [false: bb4, otherwise: bb3]; // scope 2 at $DIR/partial.rs:9:21: 9:31
+      }
+  
+      bb3: {
+          StorageLive(_13);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_14);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _14 = &(*_1);                    // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_15);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _15 = &(*_2);                    // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _13 = (move _14, move _15);      // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageDead(_15);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_14);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageLive(_16);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _16 = Equal;                     // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _0 = Option::<std::cmp::Ordering>::Some(move _16); // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageDead(_16);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_13);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          goto -> bb6;                     // scope 2 at $DIR/partial.rs:9:21: 9:31
+      }
+  
+      bb4: {
+          StorageLive(_17);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_18);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _18 = &_3;                       // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _17 = &(*_18);                   // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_19);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          StorageLive(_20);                // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _20 = &_6;                       // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _19 = &(*_20);                   // scope 2 at $DIR/partial.rs:9:21: 9:31
+          _0 = <isize as PartialOrd>::partial_cmp(move _17, move _19) -> bb5; // scope 2 at $DIR/partial.rs:9:21: 9:31
+                                           // mir::Constant
+                                           // + span: $DIR/partial.rs:9:21: 9:31
+                                           // + literal: Const { ty: for<'r, 's> fn(&'r isize, &'s isize) -> std::option::Option<std::cmp::Ordering> {<isize as std::cmp::PartialOrd>::partial_cmp}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb5: {
+          StorageDead(_19);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_17);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_20);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_18);                // scope 2 at $DIR/partial.rs:9:30: 9:31
+          goto -> bb6;                     // scope 2 at $DIR/partial.rs:9:21: 9:31
+      }
+  
+      bb6: {
+          StorageDead(_9);                 // scope 2 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_6);                 // scope 1 at $DIR/partial.rs:9:30: 9:31
+          StorageDead(_3);                 // scope 0 at $DIR/partial.rs:9:30: 9:31
+          return;                          // scope 0 at $DIR/partial.rs:9:31: 9:31
+      }
+  
+      bb7 (cleanup): {
+          resume;                          // scope 0 at $DIR/partial.rs:9:21: 9:31
+      }
+  }
+  

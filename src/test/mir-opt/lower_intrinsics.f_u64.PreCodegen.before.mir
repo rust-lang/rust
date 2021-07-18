@@ -16,7 +16,7 @@ fn f_u64() -> () {
         _1 = const 0_u64;                // scope 0 at $DIR/lower_intrinsics.rs:35:5: 35:21
         StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
         StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
-        _3 = move _1;                    // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        _3 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
         _2 = f_non_zst::<u64>(move _3) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
                                          // mir::Constant
                                          // + span: $DIR/lower_intrinsics.rs:35:5: 35:21

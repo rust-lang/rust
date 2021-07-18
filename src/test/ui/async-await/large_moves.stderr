@@ -17,22 +17,16 @@ LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:16:14
-   |
-LL |     let z = (x, 42);
-   |              ^ value moved from here
-
-error: moving 10024 bytes
   --> $DIR/large_moves.rs:16:13
    |
 LL |     let z = (x, 42);
    |             ^^^^^^^ value moved from here
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:18:13
+  --> $DIR/large_moves.rs:17:13
    |
 LL |     let a = z.0;
    |             ^^^ value moved from here
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
