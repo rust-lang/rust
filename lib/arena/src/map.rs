@@ -62,6 +62,12 @@ impl<T, V> std::ops::Index<Idx<V>> for ArenaMap<Idx<V>, T> {
     }
 }
 
+impl<T, V> std::ops::IndexMut<Idx<V>> for ArenaMap<Idx<V>, T> {
+    fn index_mut(&mut self, idx: Idx<V>) -> &mut T {
+        self.v[Self::to_idx(idx)].as_mut().unwrap()
+    }
+}
+
 impl<T, V> Default for ArenaMap<Idx<V>, T> {
     fn default() -> Self {
         ArenaMap { v: Vec::new(), _ty: PhantomData }

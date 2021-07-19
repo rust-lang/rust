@@ -1181,6 +1181,7 @@ dependencies = [
  "proc_macro_api",
  "profile",
  "rustc-hash",
+ "semver",
  "serde",
  "serde_json",
  "stdx",

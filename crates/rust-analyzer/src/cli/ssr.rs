@@ -5,13 +5,13 @@ use crate::cli::{
     Result,
 };
 use ide_ssr::{MatchFinder, SsrPattern, SsrRule};
+use project_model::CargoConfig;
 
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
-    let cargo_config = Default::default();
+    let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        wrap_rustc: false,
         with_proc_macro: true,
         prefill_caches: false,
     };
@@ -39,10 +39,9 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
 pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<String>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
     use ide_db::symbol_index::SymbolsDatabase;
-    let cargo_config = Default::default();
+    let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        wrap_rustc: true,
         with_proc_macro: true,
         prefill_caches: false,
     };

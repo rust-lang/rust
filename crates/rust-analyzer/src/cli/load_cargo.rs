@@ -8,7 +8,7 @@ use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
 use ide_db::base_db::CrateGraph;
 use project_model::{
-    BuildDataCollector, CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace,
+    CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace, WorkspaceBuildScripts,
 };
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
@@ -16,7 +16,6 @@ use crate::reload::{ProjectFolders, SourceRootConfig};
 
 pub(crate) struct LoadCargoConfig {
     pub(crate) load_out_dirs_from_check: bool,
-    pub(crate) wrap_rustc: bool,
     pub(crate) with_proc_macro: bool,
     pub(crate) prefill_caches: bool,
 }
@@ -28,17 +27,16 @@ pub(crate) fn load_workspace_at(
     progress: &dyn Fn(String),
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
-    eprintln!("root = {:?}", root);
     let root = ProjectManifest::discover_single(&root)?;
-    eprintln!("root = {:?}", root);
     let workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
-    load_workspace(workspace, load_config, progress)
+    load_workspace(workspace, cargo_config, load_config, progress)
 }
 
 fn load_workspace(
-    ws: ProjectWorkspace,
-    config: &LoadCargoConfig,
+    mut ws: ProjectWorkspace,
+    cargo_config: &CargoConfig,
+    load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
@@ -49,33 +47,27 @@ fn load_workspace(
         Box::new(loader)
     };
 
-    let proc_macro_client = if config.with_proc_macro {
+    let proc_macro_client = if load_config.with_proc_macro {
         let path = AbsPathBuf::assert(std::env::current_exe()?);
         Some(ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap())
     } else {
         None
     };
 
-    let build_data = if config.load_out_dirs_from_check {
-        let mut collector = BuildDataCollector::new(config.wrap_rustc);
-        ws.collect_build_data_configs(&mut collector);
-        Some(collector.collect(progress)?)
+    ws.set_build_scripts(if load_config.load_out_dirs_from_check {
+        ws.run_build_scripts(cargo_config, progress)?
     } else {
-        None
-    };
+        WorkspaceBuildScripts::default()
+    });
 
-    let crate_graph = ws.to_crate_graph(
-        build_data.as_ref(),
-        proc_macro_client.as_ref(),
-        &mut |path: &AbsPath| {
-            let contents = loader.load_sync(path);
-            let path = vfs::VfsPath::from(path.to_path_buf());
-            vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
-        },
-    );
+    let crate_graph = ws.to_crate_graph(proc_macro_client.as_ref(), &mut |path: &AbsPath| {
+        let contents = loader.load_sync(path);
+        let path = vfs::VfsPath::from(path.to_path_buf());
+        vfs.set_file_contents(path.clone(), contents);
+        vfs.file_id(&path)
+    });
 
-    let project_folders = ProjectFolders::new(&[ws], &[], build_data.as_ref());
+    let project_folders = ProjectFolders::new(&[ws], &[]);
     loader.set_config(vfs::loader::Config {
         load: project_folders.load,
         watch: vec![],
@@ -86,7 +78,7 @@ fn load_workspace(
     let host =
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
 
-    if config.prefill_caches {
+    if load_config.prefill_caches {
         host.analysis().prime_caches(|_| {})?;
     }
     Ok((host, vfs, proc_macro_client))
@@ -146,10 +138,9 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let cargo_config = Default::default();
+        let cargo_config = CargoConfig::default();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
-            wrap_rustc: false,
             with_proc_macro: false,
             prefill_caches: false,
         };

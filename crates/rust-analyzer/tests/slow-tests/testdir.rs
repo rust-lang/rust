@@ -11,7 +11,18 @@ pub(crate) struct TestDir {
 
 impl TestDir {
     pub(crate) fn new() -> TestDir {
-        let base = std::env::temp_dir().join("testdir");
+        let temp_dir = std::env::temp_dir();
+        // On MacOS builders on GitHub actions, the temp dir is a symlink, and
+        // that causes problems down the line. Specifically:
+        // * Cargo may emit different PackageId depending on the working directory
+        // * rust-analyzer may fail to map LSP URIs to correct paths.
+        //
+        // Work-around this by canonicalizing. Note that we don't want to do this
+        // on *every* OS, as on windows `canonicalize` itself creates problems.
+        #[cfg(target_os = "macos")]
+        let temp_dir = temp_dir.canonicalize().unwrap();
+
+        let base = temp_dir.join("testdir");
         let pid = std::process::id();
 
         static CNT: AtomicUsize = AtomicUsize::new(0);

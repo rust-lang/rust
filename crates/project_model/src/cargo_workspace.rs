@@ -2,7 +2,7 @@
 
 use std::iter;
 use std::path::PathBuf;
-use std::{convert::TryInto, ops, process::Command, sync::Arc};
+use std::{convert::TryInto, ops, process::Command};
 
 use anyhow::{Context, Result};
 use base_db::Edition;
@@ -13,8 +13,8 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
+use crate::utf8_stdout;
 use crate::CfgOverrides;
-use crate::{build_data::BuildDataConfig, utf8_stdout};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -31,7 +31,6 @@ pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
-    build_data_config: BuildDataConfig,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -81,6 +80,8 @@ pub struct CargoConfig {
 
     /// crates to disable `#[cfg(test)]` on
     pub unset_test_crates: Vec<String>,
+
+    pub wrap_rustc_in_build_scripts: bool,
 }
 
 impl CargoConfig {
@@ -103,7 +104,7 @@ pub type Target = Idx<TargetData>;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PackageData {
     /// Version given in the `Cargo.toml`
-    pub version: String,
+    pub version: semver::Version,
     /// Name as given in the `Cargo.toml`
     pub name: String,
     /// Path containing the `Cargo.toml`
@@ -288,11 +289,7 @@ impl CargoWorkspace {
         Ok(meta)
     }
 
-    pub fn new(
-        cargo_toml: &AbsPath,
-        config: &CargoConfig,
-        mut meta: cargo_metadata::Metadata,
-    ) -> CargoWorkspace {
+    pub fn new(mut meta: cargo_metadata::Metadata) -> CargoWorkspace {
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();
@@ -314,7 +311,7 @@ impl CargoWorkspace {
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
                 name: name.clone(),
-                version: version.to_string(),
+                version: version.clone(),
                 manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)),
                 targets: Vec::new(),
                 is_member,
@@ -374,10 +371,8 @@ impl CargoWorkspace {
 
         let workspace_root =
             AbsPathBuf::assert(PathBuf::from(meta.workspace_root.into_os_string()));
-        let build_data_config =
-            BuildDataConfig::new(cargo_toml.to_path_buf(), config.clone(), Arc::new(meta.packages));
 
-        CargoWorkspace { packages, targets, workspace_root, build_data_config }
+        CargoWorkspace { packages, targets, workspace_root }
     }
 
     pub fn from_cargo_metadata3(
@@ -386,7 +381,7 @@ impl CargoWorkspace {
         progress: &dyn Fn(String),
     ) -> Result<CargoWorkspace> {
         let meta = CargoWorkspace::fetch_metadata(cargo_toml, config, progress)?;
-        Ok(CargoWorkspace::new(cargo_toml, config, meta))
+        Ok(CargoWorkspace::new(meta))
     }
 
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
@@ -410,10 +405,6 @@ impl CargoWorkspace {
         } else {
             format!("{}:{}", package.name, package.version)
         }
-    }
-
-    pub(crate) fn build_data_config(&self) -> &BuildDataConfig {
-        &self.build_data_config
     }
 
     fn is_unique(&self, name: &str) -> bool {

@@ -17,6 +17,7 @@ use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
 };
+use project_model::CargoConfig;
 use test_utils::project_root;
 use vfs::{AbsPathBuf, VfsPath};
 
@@ -32,10 +33,9 @@ fn integrated_highlighting_benchmark() {
     let workspace_to_load = project_root();
     let file = "./crates/ide_db/src/apply_change.rs";
 
-    let cargo_config = Default::default();
+    let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        wrap_rustc: false,
         with_proc_macro: false,
         prefill_caches: false,
     };
@@ -87,10 +87,9 @@ fn integrated_completion_benchmark() {
     let workspace_to_load = project_root();
     let file = "./crates/hir/src/lib.rs";
 
-    let cargo_config = Default::default();
+    let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        wrap_rustc: false,
         with_proc_macro: false,
         prefill_caches: true,
     };
