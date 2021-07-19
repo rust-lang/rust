@@ -70,6 +70,10 @@ where
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut V)> {
         self.into_iter()
     }
+
+    pub fn retain(&mut self, f: impl Fn(&(K, V)) -> bool) {
+        self.0.retain(f)
+    }
 }
 
 impl<K, V> Default for VecMap<K, V> {
