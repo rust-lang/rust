@@ -37,6 +37,7 @@ crate use context::*;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
+use std::fs;
 use std::path::PathBuf;
 use std::str;
 use std::string::ToString;
@@ -65,6 +66,8 @@ use crate::html::format::{
     print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
 use crate::html::markdown::{Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::sources;
+use crate::scrape_examples::{CallData, FnCallLocations};
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -169,7 +172,7 @@ crate struct StylePath {
 }
 
 fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
-    if let Some(l) = cx.src_href(item) {
+    if let Some(l) = cx.src_href(item.span(cx.tcx()), true) {
         write!(buf, "<a class=\"srclink\" href=\"{}\" title=\"goto source code\">[src]</a>", l)
     }
 }
@@ -553,6 +556,13 @@ fn document_full_inner(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_
         } else {
             render_markdown(w, cx, &s, item.links(cx));
         }
+    }
+
+    match &*item.kind {
+        clean::ItemKind::FunctionItem(f) | clean::ItemKind::MethodItem(f, _) => {
+            render_call_locations(w, cx, &f.call_locations);
+        }
+        _ => {}
     }
 }
 
@@ -2372,4 +2382,81 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         }
     }
     out
+}
+
+fn render_call_locations(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    call_locations: &Option<FnCallLocations>,
+) {
+    let call_locations = match call_locations.as_ref() {
+        Some(call_locations) => call_locations,
+        None => {
+            return;
+        }
+    };
+
+    let n_examples = call_locations.len();
+    if n_examples == 0 {
+        return;
+    }
+
+    let id = cx.id_map.borrow_mut().derive("scraped-examples");
+    write!(
+        w,
+        r##"<div class="docblock scraped-example-list">
+          <h1 id="scraped-examples" class="small-section-header">
+             <a href="#{}">Uses found in <code>examples/</code></a>
+          </h1>"##,
+        id
+    );
+
+    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| {
+        let mut contents =
+            fs::read_to_string(&path).expect(&format!("Failed to read file: {}", path.display()));
+
+        // Remove the utf-8 BOM if any
+        if contents.starts_with('\u{feff}') {
+            contents.drain(..3);
+        }
+
+        let ex_title = format!(
+            r#"<a href="{root}{url}" target="_blank">{name}</a>"#,
+            root = cx.root_path(),
+            url = call_data.url,
+            name = call_data.display_name
+        );
+        let edition = cx.shared.edition();
+        write!(
+            w,
+            r#"<div class="scraped-example" data-code="{code}" data-locs="{locations}">
+                <strong>{title}</strong>
+                 <div class="code-wrapper">"#,
+            code = contents.replace("\"", "&quot;"),
+            locations = serde_json::to_string(&call_data.locations).unwrap(),
+            title = ex_title,
+        );
+        write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
+        write!(w, r#"<span class="expand">&varr;</span>"#);
+        sources::print_src(w, &contents, edition);
+        write!(w, "</div></div>");
+    };
+
+    let mut it = call_locations.into_iter();
+    write_example(w, it.next().unwrap());
+
+    if n_examples > 1 {
+        write!(
+            w,
+            r#"<details class="rustdoc-toggle more-examples-toggle">
+                  <summary class="hideme">
+                     <span>More examples</span>
+                  </summary>
+                  <div class="more-scraped-examples">"#
+        );
+        it.for_each(|ex| write_example(w, ex));
+        write!(w, "</div></details>");
+    }
+
+    write!(w, "</div>");
 }

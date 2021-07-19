@@ -42,6 +42,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
+use crate::scrape_examples::{self, FnCallLocations};
 
 use self::FnRetTy::*;
 use self::ItemKind::*;
@@ -1299,6 +1300,17 @@ crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
     crate header: hir::FnHeader,
+    crate call_locations: Option<FnCallLocations>,
+}
+
+impl Function {
+    crate fn load_call_locations(&mut self, def_id: hir::def_id::DefId, cx: &DocContext<'_>) {
+        if let Some(call_locations) = cx.render_options.call_locations.as_ref() {
+            let key = scrape_examples::def_id_call_key(cx.tcx, def_id);
+            self.call_locations = call_locations.get(&key).cloned();
+            debug!("call_locations: {:?} -- {:?}", key, self.call_locations);
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

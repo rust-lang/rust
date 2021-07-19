@@ -178,7 +178,7 @@ where
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
+crate fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
     let mut cols = 0;

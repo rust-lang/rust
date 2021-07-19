@@ -20,6 +20,7 @@ use super::write_shared::write_shared;
 use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS};
 
 use crate::clean;
+use crate::clean::types::Span;
 use crate::clean::ExternalCrate;
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
@@ -292,16 +293,16 @@ impl<'tcx> Context<'tcx> {
     /// If `None` is returned, then a source link couldn't be generated. This
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
-    pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        if item.span(self.tcx()).is_dummy() {
+    pub(crate) fn src_href(&self, span: Span, link_lines: bool) -> Option<String> {
+        if span.is_dummy() {
             return None;
         }
         let mut root = self.root_path();
         let mut path = String::new();
-        let cnum = item.span(self.tcx()).cnum(self.sess());
+        let cnum = span.cnum(self.sess());
 
         // We can safely ignore synthetic `SourceFile`s.
-        let file = match item.span(self.tcx()).filename(self.sess()) {
+        let file = match span.filename(self.sess()) {
             FileName::Real(ref path) => path.local_path_if_available().to_path_buf(),
             _ => return None,
         };
@@ -339,16 +340,25 @@ impl<'tcx> Context<'tcx> {
             (&*symbol, &path)
         };
 
-        let loline = item.span(self.tcx()).lo(self.sess()).line;
-        let hiline = item.span(self.tcx()).hi(self.sess()).line;
-        let lines =
-            if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
+        let anchor = if link_lines {
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            let lines = if loline == hiline {
+                loline.to_string()
+            } else {
+                format!("{}-{}", loline, hiline)
+            };
+            format!("#{}", lines)
+        } else {
+            "".into()
+        };
+
         Some(format!(
-            "{root}src/{krate}/{path}#{lines}",
+            "{root}src/{krate}/{path}{anchor}",
             root = Escape(&root),
             krate = krate,
             path = path,
-            lines = lines
+            anchor = anchor
         ))
     }
 }

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -25,6 +26,7 @@ use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
+use crate::scrape_examples::AllCallLocations;
 use crate::theme;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -156,6 +158,10 @@ crate struct Options {
     crate run_check: bool,
     /// Whether doctests should emit unused externs
     crate json_unused_externs: bool,
+
+    /// Path to output file to write JSON of call sites. If this option is Some(..) then
+    /// the compiler will scrape examples and not generate documentation.
+    crate scrape_examples: Option<PathBuf>,
 }
 
 impl fmt::Debug for Options {
@@ -273,6 +279,7 @@ crate struct RenderOptions {
     crate show_type_layout: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
     crate emit: Vec<EmitType>,
+    crate call_locations: Option<AllCallLocations>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -628,6 +635,32 @@ impl Options {
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
 
+        let scrape_examples = matches.opt_str("scrape-examples").map(PathBuf::from);
+        let with_examples = matches.opt_strs("with-examples");
+        let each_call_locations = with_examples
+            .into_iter()
+            .map(|path| {
+                let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
+                let calls: AllCallLocations =
+                    serde_json::from_slice(&bytes).map_err(|e| format!("{}", e))?;
+                Ok(calls)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e: String| {
+                diag.err(&format!("failed to load examples with error: {}", e));
+                1
+            })?;
+        let call_locations = (each_call_locations.len() > 0).then(move || {
+            each_call_locations.into_iter().fold(FxHashMap::default(), |mut acc, map| {
+                for (function, calls) in map.into_iter() {
+                    acc.entry(function)
+                        .or_insert_with(FxHashMap::default)
+                        .extend(calls.into_iter());
+                }
+                acc
+            })
+        });
+
         let (lint_opts, describe_lints, lint_cap, _) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
 
@@ -692,10 +725,12 @@ impl Options {
                     crate_name.as_deref(),
                 ),
                 emit,
+                call_locations,
             },
             crate_name,
             output_format,
             json_unused_externs,
+            scrape_examples,
         })
     }
 

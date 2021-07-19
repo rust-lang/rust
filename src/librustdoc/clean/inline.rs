@@ -235,6 +235,7 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
         decl,
         generics,
         header: hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness },
+        call_locations: None,
     }
 }
 

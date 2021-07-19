@@ -119,6 +119,7 @@ mod json;
 crate mod lint;
 mod markdown;
 mod passes;
+mod scrape_examples;
 mod theme;
 mod visit_ast;
 mod visit_lib;
@@ -604,6 +605,8 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("show-type-layout", |o| {
             o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
         }),
+        unstable("scrape-examples", |o| o.optopt("", "scrape-examples", "", "")),
+        unstable("with-examples", |o| o.optmulti("", "with-examples", "", "")),
     ]
 }
 
@@ -718,6 +721,7 @@ fn main_options(options: config::Options) -> MainResult {
     let externs = options.externs.clone();
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
+    let scrape_examples = options.scrape_examples.clone();
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -753,6 +757,10 @@ fn main_options(options: config::Options) -> MainResult {
                     )
                 });
                 info!("finished with rustc");
+
+                if let Some(example_path) = scrape_examples {
+                    return scrape_examples::run(krate, render_opts, cache, tcx, example_path);
+                }
 
                 cache.crate_version = crate_version;
 
