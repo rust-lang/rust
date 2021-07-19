@@ -539,7 +539,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let sidebar = if let Some(ref version) = self.cache.crate_version {
             format!(
-                "<p class=\"location\">Crate {}</p>\
+                "<h2 class=\"location\">Crate {}</h2>\
                      <div class=\"block version\">\
                          <p>Version {}</p>\
                      </div>\
@@ -567,7 +567,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         page.root_path = "./";
 
         let mut style_files = self.shared.style_files.clone();
-        let sidebar = "<p class=\"location\">Settings</p><div class=\"sidebar-elems\"></div>";
+        let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
         style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
         let v = layout::render(
             &self.shared.templates,
