@@ -105,6 +105,9 @@ pub type usizex4 = SimdUsize<4>;
 /// Vector of eight `usize` values
 pub type usizex8 = SimdUsize<8>;
 
+/// Vector of two `u16` values
+pub type u16x2 = SimdU16<2>;
+
 /// Vector of four `u16` values
 pub type u16x4 = SimdU16<4>;
 
@@ -137,6 +140,9 @@ pub type u64x4 = SimdU64<4>;
 
 /// Vector of eight `u64` values
 pub type u64x8 = SimdU64<8>;
+
+/// Vector of four `u8` values
+pub type u8x4 = SimdU8<4>;
 
 /// Vector of eight `u8` values
 pub type u8x8 = SimdU8<8>;

@@ -136,6 +136,9 @@ pub type isizex4 = SimdIsize<4>;
 /// Vector of eight `isize` values
 pub type isizex8 = SimdIsize<8>;
 
+/// Vector of two `i16` values
+pub type i16x2 = SimdI16<2>;
+
 /// Vector of four `i16` values
 pub type i16x4 = SimdI16<4>;
 
@@ -168,6 +171,9 @@ pub type i64x4 = SimdI64<4>;
 
 /// Vector of eight `i64` values
 pub type i64x8 = SimdI64<8>;
+
+/// Vector of four `i8` values
+pub type i8x4 = SimdI8<4>;
 
 /// Vector of eight `i8` values
 pub type i8x8 = SimdI8<8>;
