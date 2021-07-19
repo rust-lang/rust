@@ -51,11 +51,12 @@ pub struct Docs {
 }
 
 impl Step for Docs {
-    type Output = Option<GeneratedTarball>;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/doc")
+        let default = run.builder.config.docs;
+        run.path("src/doc").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -63,11 +64,8 @@ impl Step for Docs {
     }
 
     /// Builds the `rust-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let host = self.host;
-        if !builder.config.docs {
-            return None;
-        }
         builder.default_doc(&[]);
 
         let dest = "share/doc/rust/html";
@@ -76,7 +74,7 @@ impl Step for Docs {
         tarball.set_product_name("Rust Documentation");
         tarball.add_bulk_dir(&builder.doc_out(host), dest);
         tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
-        Some(tarball.generate())
+        tarball.generate()
     }
 }
 
@@ -1354,6 +1352,10 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
+        if builder.config.docs {
+            tarballs.push(builder.ensure(Docs { host: target }));
+        }
+
         let cargo_installer = builder.ensure(Cargo { compiler, target });
         let rustfmt_installer = builder.ensure(Rustfmt { compiler, target });
         let rust_demangler_installer = builder.ensure(RustDemangler { compiler, target });
@@ -1364,8 +1366,6 @@ impl Step for Extended {
         let miri_installer = builder.ensure(Miri { compiler, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis { compiler, target });
-
-        let docs_installer = builder.ensure(Docs { host: target });
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -1384,9 +1384,6 @@ impl Step for Extended {
         tarballs.extend(llvm_tools_installer);
         if let Some(analysis_installer) = analysis_installer {
             tarballs.push(analysis_installer);
-        }
-        if let Some(docs_installer) = docs_installer {
-            tarballs.push(docs_installer);
         }
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
