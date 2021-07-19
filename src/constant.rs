@@ -193,20 +193,21 @@ pub(crate) fn codegen_const_value<'tcx>(
                     place.to_cvalue(fx)
                 }
             }
-            Scalar::Ptr(ptr) => {
-                let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
+            Scalar::Ptr(ptr, _size) => {
+                let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let alloc_kind = fx.tcx.get_global_alloc(alloc_id);
                 let base_addr = match alloc_kind {
                     Some(GlobalAlloc::Memory(alloc)) => {
                         let data_id = data_id_for_alloc_id(
                             &mut fx.constants_cx,
                             fx.module,
-                            ptr.alloc_id,
+                            alloc_id,
                             alloc.mutability,
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                         if fx.clif_comments.enabled() {
-                            fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
+                            fx.add_comment(local_data_id, format!("{:?}", alloc_id));
                         }
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
@@ -226,10 +227,10 @@ pub(crate) fn codegen_const_value<'tcx>(
                         }
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
-                    None => bug!("missing allocation {:?}", ptr.alloc_id),
+                    None => bug!("missing allocation {:?}", alloc_id),
                 };
-                let val = if ptr.offset.bytes() != 0 {
-                    fx.bcx.ins().iadd_imm(base_addr, i64::try_from(ptr.offset.bytes()).unwrap())
+                let val = if offset.bytes() != 0 {
+                    fx.bcx.ins().iadd_imm(base_addr, i64::try_from(offset.bytes()).unwrap())
                 } else {
                     base_addr
                 };
@@ -406,7 +407,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
-        for &(offset, (_tag, reloc)) in alloc.relocations().iter() {
+        for &(offset, alloc_id) in alloc.relocations().iter() {
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
@@ -417,7 +418,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 read_target_uint(endianness, bytes).unwrap()
             };
 
-            let reloc_target_alloc = tcx.get_global_alloc(reloc).unwrap();
+            let reloc_target_alloc = tcx.get_global_alloc(alloc_id).unwrap();
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function(instance) => {
                     assert_eq!(addend, 0);
@@ -427,7 +428,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     continue;
                 }
                 GlobalAlloc::Memory(target_alloc) => {
-                    data_id_for_alloc_id(cx, module, reloc, target_alloc.mutability)
+                    data_id_for_alloc_id(cx, module, alloc_id, target_alloc.mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
