@@ -11,7 +11,7 @@ LL | |     });
 note: associated function defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-LL |     fn fold<B, F>(mut self, init: B, mut f: F) -> B
+LL |     fn fold<B, F>(self, init: B, f: F) -> B
    |        ^^^^
 
 error: aborting due to previous error

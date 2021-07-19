@@ -1986,17 +1986,13 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x)?;
-        }
-        try { accum }
+        default_try_fold(self, init, f)
     }
 
     /// An iterator method that applies a fallible function to each item in the
@@ -2163,16 +2159,12 @@ pub trait Iterator {
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
-        }
-        accum
+        default_fold(self, init, f)
     }
 
     /// Reduces the elements to a single one, by repeatedly applying a reducing
@@ -3469,6 +3461,33 @@ pub trait Iterator {
     }
 }
 
+#[inline]
+fn default_try_fold<I, B, F, R>(iter: &mut I, init: B, mut f: F) -> R
+where
+    I: Iterator + ?Sized,
+    F: FnMut(B, I::Item) -> R,
+    R: Try<Ok = B>,
+{
+    let mut accum = init;
+    while let Some(x) = iter.next() {
+        accum = f(accum, x)?;
+    }
+    try { accum }
+}
+
+#[inline]
+fn default_fold<I, B, F>(mut iter: I, init: B, mut f: F) -> B
+where
+    I: Iterator,
+    F: FnMut(B, I::Item) -> B,
+{
+    let mut accum = init;
+    while let Some(x) = iter.next() {
+        accum = f(accum, x);
+    }
+    accum
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
@@ -3483,5 +3502,70 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        SpecSizedIterator::try_fold(self, init, f)
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        SpecSizedIterator::fold(self, init, f)
+    }
+}
+
+trait SpecSizedIterator: Iterator {
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>;
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<I: Iterator + ?Sized> SpecSizedIterator for &mut I {
+    #[inline]
+    default fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        default_try_fold(self, init, f)
+    }
+    #[inline]
+    default fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        default_fold(self, init, f)
+    }
+}
+
+impl<I: Iterator + Sized> SpecSizedIterator for &mut I {
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        (**self).try_fold(init, f)
+    }
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<T, U>(mut f: impl FnMut(T, U) -> T) -> impl FnMut(T, U) -> Result<T, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+        self.try_fold(init, ok(f)).unwrap()
     }
 }

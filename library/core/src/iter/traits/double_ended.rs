@@ -215,17 +215,13 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        let mut accum = init;
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x)?;
-        }
-        try { accum }
+        default_try_rfold(self, init, f)
     }
 
     /// An iterator method that reduces the iterator's elements to a single,
@@ -286,16 +282,12 @@ pub trait DoubleEndedIterator: Iterator {
     #[doc(alias = "foldr")]
     #[inline]
     #[stable(feature = "iter_rfold", since = "1.27.0")]
-    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    fn rfold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x);
-        }
-        accum
+        default_rfold(self, init, f)
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.
@@ -357,6 +349,33 @@ pub trait DoubleEndedIterator: Iterator {
     }
 }
 
+#[inline]
+fn default_try_rfold<I, B, F, R>(iter: &mut I, init: B, mut f: F) -> R
+where
+    I: DoubleEndedIterator + ?Sized,
+    F: FnMut(B, I::Item) -> R,
+    R: Try<Ok = B>,
+{
+    let mut accum = init;
+    while let Some(x) = iter.next_back() {
+        accum = f(accum, x)?;
+    }
+    try { accum }
+}
+
+#[inline]
+fn default_rfold<I, B, F>(mut iter: I, init: B, mut f: F) -> B
+where
+    I: DoubleEndedIterator,
+    F: FnMut(B, I::Item) -> B,
+{
+    let mut accum = init;
+    while let Some(x) = iter.next_back() {
+        accum = f(accum, x);
+    }
+    accum
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
@@ -367,5 +386,70 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
+    }
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        SpecSizedDoubleEndedIterator::try_rfold(self, init, f)
+    }
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        SpecSizedDoubleEndedIterator::rfold(self, init, f)
+    }
+}
+
+trait SpecSizedDoubleEndedIterator: DoubleEndedIterator {
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>;
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<I: DoubleEndedIterator + ?Sized> SpecSizedDoubleEndedIterator for &mut I {
+    #[inline]
+    default fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        default_try_rfold(self, init, f)
+    }
+    #[inline]
+    default fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        default_rfold(self, init, f)
+    }
+}
+
+impl<I: DoubleEndedIterator + Sized> SpecSizedDoubleEndedIterator for &mut I {
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        (**self).try_rfold(init, f)
+    }
+    #[inline]
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<T, U>(mut f: impl FnMut(T, U) -> T) -> impl FnMut(T, U) -> Result<T, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+        self.try_rfold(init, ok(f)).unwrap()
     }
 }
