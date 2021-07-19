@@ -1,0 +1,7 @@
+[build]
+rustflags = [
+    "-Zcodegen-backend=/home/bouanto/Ordinateur/Programmation/Rust/Projets/rustc_codegen_gccjit/target/debug/librustc_codegen_gcc.so",
+    "--sysroot",
+    "~/Ordinateur/Programmation/Rust/Projets/rustc_codegen_gccjit/build_sysroot/sysroot_src/",
+    "-Zno-parallel-llvm", # FIXME: still seems parallel with this.
+]

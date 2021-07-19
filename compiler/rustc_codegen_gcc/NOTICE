@@ -1,0 +1,22 @@
+rustc_codegen_gccjit
+Copyright 2020-2021 Antoni Boucher
+
+Portions of this library comes from rustc_codegen_cranelift
+(https://github.com/bjorn3/rustc_codegen_cranelift — commit
+bcd357a0ae1fab1efabf9bed7435cf19e615948f) which is developed by bjorn3 under a
+dual license MIT/Apache-2.0.
+The following files and directories come partially or entirely from rustc_codegen_cranelift:
+
+ * src/lib.rs
+ * src/metadata.rs
+ * cargo.sh
+ * clean_all.sh
+ * config.sh
+ * patches
+ * prepare.sh
+ * Readme.md
+ * rust-toolchain
+ * rustup.sh
+ * test.sh
+ * build_sysroot
+ * .github/workflows
