@@ -1,4 +1,5 @@
 // revisions: min_tait full_tait
+//[full_tait] check-pass
 #![feature(min_type_alias_impl_trait)]
 #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
 //[full_tait]~^ WARN incomplete
@@ -9,7 +10,7 @@ pub trait MyTrait {}
 impl MyTrait for bool {}
 
 struct Blah {
-    //~^ ERROR type aliases of `impl Trait` are not allowed as field types in structs
+    //[min_tait]~^ ERROR type aliases of `impl Trait` are not allowed as field types in structs
     my_foo: Foo,
     my_u8: u8
 }

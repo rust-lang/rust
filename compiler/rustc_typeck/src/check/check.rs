@@ -515,6 +515,10 @@ fn check_fields_for_opaque_types(
         (None, None, None, None)
     }
 
+    if tcx.features().type_alias_impl_trait {
+        return;
+    }
+
     debug!("check_fields_of_opaque_types(adt_def: {:?}, span: {:?})", adt_def, span);
 
     let item_type = tcx.type_of(def_id);

@@ -1,5 +1,5 @@
 error: type aliases of `impl Trait` are not allowed as field types in structs
-  --> $DIR/type-alias-impl-trait-tuple.rs:11:1
+  --> $DIR/type-alias-impl-trait-tuple.rs:12:1
    |
 LL | / struct Blah {
 LL | |

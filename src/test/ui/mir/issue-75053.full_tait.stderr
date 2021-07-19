@@ -16,18 +16,6 @@ LL |     let _pos: Phantom1<DummyT<()>> = Scope::new().my_index();
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
-error: type aliases of `impl Trait` are not allowed as field types in structs
-  --> $DIR/issue-75053.rs:28:1
-   |
-LL | type DummyT<T> = impl F;
-   | ------------------------ type alias defined here
-...
-LL | struct Scope<T>(Phantom2<DummyT<T>>);
-   | ^^^^^^^^^^^^^^^^-------------------^^
-   |                 |        |
-   |                 |        this type is a type alias of an `impl Trait`
-   |                 this field contains a type alias `DummyT` of an `impl Trait`
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

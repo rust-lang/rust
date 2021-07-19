@@ -26,7 +26,7 @@ fn _dummy_t<T>() -> DummyT<T> {}
 struct Phantom1<T>(PhantomData<T>);
 struct Phantom2<T>(PhantomData<T>);
 struct Scope<T>(Phantom2<DummyT<T>>);
-//~^ ERROR type aliases of `impl Trait` are not allowed as field types in structs
+//[min_tait,in_bindings]~^ ERROR type aliases of `impl Trait` are not allowed as field types in structs
 
 impl<T> Scope<T> {
     fn new() -> Self {
