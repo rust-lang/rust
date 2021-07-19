@@ -330,6 +330,7 @@ mod regex;
 mod repeat_once;
 mod returns;
 mod self_assignment;
+mod self_named_constructor;
 mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
@@ -900,6 +901,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         self_assignment::SELF_ASSIGNMENT,
+        self_named_constructor::SELF_NAMED_CONSTRUCTOR,
         semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED,
         serde_api::SERDE_API_MISUSE,
         shadow::SHADOW_REUSE,
@@ -1406,6 +1408,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(returns::LET_AND_RETURN),
         LintId::of(returns::NEEDLESS_RETURN),
         LintId::of(self_assignment::SELF_ASSIGNMENT),
+        LintId::of(self_named_constructor::SELF_NAMED_CONSTRUCTOR),
         LintId::of(serde_api::SERDE_API_MISUSE),
         LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
@@ -1559,6 +1562,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(returns::LET_AND_RETURN),
         LintId::of(returns::NEEDLESS_RETURN),
+        LintId::of(self_named_constructor::SELF_NAMED_CONSTRUCTOR),
         LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(to_digit_is_some::TO_DIGIT_IS_SOME),
@@ -2101,6 +2105,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let scripts = conf.allowed_scripts.clone();
     store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
     store.register_late_pass(|| box strlen_on_c_strings::StrlenOnCStrings);
+    store.register_late_pass(move || box self_named_constructor::SelfNamedConstructor);
+
 }
 
 #[rustfmt::skip]

@@ -25,7 +25,9 @@ async fn all_to_one<'a>(a: &'a str, _b: &'a str) -> &'a str {
 struct Foo;
 impl Foo {
     // ok
-    pub async fn foo(&mut self) {}
+    pub async fn new(&mut self) -> Self {
+        Foo {}
+    }
 }
 
 // rust-lang/rust#61115
