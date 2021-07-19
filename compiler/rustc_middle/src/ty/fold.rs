@@ -213,6 +213,10 @@ pub trait TypeFolder<'tcx>: Sized {
         c.super_fold_with(self)
     }
 
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        p.super_fold_with(self)
+    }
+
     fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
         bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
@@ -1201,6 +1205,42 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
             predicate.super_visit_with(self)
         } else {
             ControlFlow::CONTINUE
+        }
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// This is a HACK(const_generics) and should probably not be needed.
+    /// Might however be perf relevant, so who knows.
+    ///
+    /// FIXME(@lcnr): explain this function a bit more
+    pub fn expose_default_const_substs<T: TypeFoldable<'tcx>>(self, v: T) -> T {
+        v.fold_with(&mut ExposeDefaultConstSubstsFolder { tcx: self })
+    }
+}
+
+struct ExposeDefaultConstSubstsFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<'tcx> for ExposeDefaultConstSubstsFolder<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if ty.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+            ty.super_fold_with(self)
+        } else {
+            ty
+        }
+    }
+
+    fn fold_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if pred.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
+            pred.super_fold_with(self)
+        } else {
+            pred
         }
     }
 }
