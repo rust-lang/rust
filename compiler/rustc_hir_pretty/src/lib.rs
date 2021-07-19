@@ -120,6 +120,7 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(&a),
             Node::MacroDef(_) => panic!("cannot print MacroDef"),
+            Node::NonExportedMacro(..) => panic!("cannot print NonExportedMacro"),
             Node::Crate(..) => panic!("cannot print Crate"),
         }
     }
@@ -169,7 +170,7 @@ pub fn print_crate<'a>(
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.item, s.attrs(hir::CRATE_HIR_ID));
+    s.print_mod(&krate.module(), s.attrs(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
 }

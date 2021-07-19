@@ -25,6 +25,21 @@ LL |         let x = 0;
 LL |         asm!("{}", const const_bar(x));
    |                                    ^ non-constant value
 
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:48:26
+   |
+LL |         asm!("{}", const 0f32);
+   |                          ^^^^ expected integer, found `f32`
+
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:50:26
+   |
+LL |         asm!("{}", const 0 as *mut u8);
+   |                          ^^^^^^^^^^^^ expected integer, found *-ptr
+   |
+   = note:     expected type `{integer}`
+           found raw pointer `*mut u8`
+
 error: invalid asm output
   --> $DIR/type-check-1.rs:10:29
    |
@@ -63,21 +78,6 @@ LL |         asm!("{}", inout(reg) v[..]);
    |
    = help: the trait `Sized` is not implemented for `[u64]`
    = note: all inline asm arguments must have a statically known size
-
-error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:48:26
-   |
-LL |         asm!("{}", const 0f32);
-   |                          ^^^^ expected integer, found `f32`
-
-error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:50:26
-   |
-LL |         asm!("{}", const 0 as *mut u8);
-   |                          ^^^^^^^^^^^^ expected integer, found *-ptr
-   |
-   = note:     expected type `{integer}`
-           found raw pointer `*mut u8`
 
 error[E0308]: mismatched types
   --> $DIR/type-check-1.rs:60:25

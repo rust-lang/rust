@@ -1,12 +1,4 @@
 error: argument to `panic!()` in a const context must have type `&str`
-  --> $DIR/issue-66693.rs:13:5
-   |
-LL |     panic!(&1);
-   |     ^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: argument to `panic!()` in a const context must have type `&str`
   --> $DIR/issue-66693.rs:6:15
    |
 LL | const _: () = panic!(1);
@@ -19,6 +11,14 @@ error: argument to `panic!()` in a const context must have type `&str`
    |
 LL | static _FOO: () = panic!(true);
    |                   ^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: argument to `panic!()` in a const context must have type `&str`
+  --> $DIR/issue-66693.rs:13:5
+   |
+LL |     panic!(&1);
+   |     ^^^^^^^^^^^
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 

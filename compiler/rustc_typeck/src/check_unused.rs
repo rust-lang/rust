@@ -9,8 +9,7 @@ use rustc_span::{Span, Symbol};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let mut used_trait_imports = FxHashSet::default();
-    for &body_id in tcx.hir().krate().bodies.keys() {
-        let item_def_id = tcx.hir().body_owner_def_id(body_id);
+    for item_def_id in tcx.body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
         used_trait_imports.extend(imports.iter());

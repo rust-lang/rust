@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
     }
 }
 
-fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
+fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef]) {
     use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
     use rustc_hir::{Expr, ExprKind, ImplItemKind, QPath};
 

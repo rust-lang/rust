@@ -90,15 +90,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => ParenthesizedGenericArgs::Err,
                     };
 
-                    let num_lifetimes = type_def_id.map_or(0, |def_id| {
-                        if let Some(&n) = self.type_def_lifetime_params.get(&def_id) {
-                            return n;
-                        }
-                        assert!(!def_id.is_local());
-                        let n = self.resolver.item_generics_num_lifetimes(def_id, self.sess);
-                        self.type_def_lifetime_params.insert(def_id, n);
-                        n
-                    });
+                    let num_lifetimes = type_def_id
+                        .map_or(0, |def_id| self.resolver.item_generics_num_lifetimes(def_id));
                     self.lower_path_segment(
                         p.span,
                         segment,
@@ -106,7 +99,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         num_lifetimes,
                         parenthesized_generic_args,
                         itctx.reborrow(),
-                        None,
                     )
                 },
             )),
@@ -152,7 +144,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 0,
                 ParenthesizedGenericArgs::Err,
                 itctx.reborrow(),
-                None,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -183,7 +174,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         res: Res,
         p: &Path,
         param_mode: ParamMode,
-        explicit_owner: Option<NodeId>,
     ) -> &'hir hir::Path<'hir> {
         self.arena.alloc(hir::Path {
             res,
@@ -195,7 +185,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     0,
                     ParenthesizedGenericArgs::Err,
                     ImplTraitContext::disallowed(),
-                    explicit_owner,
                 )
             })),
             span: p.span,
@@ -210,7 +199,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::Path<'hir> {
         let res = self.expect_full_res(id);
         let res = self.lower_res(res);
-        self.lower_path_extra(res, p, param_mode, None)
+        self.lower_path_extra(res, p, param_mode)
     }
 
     crate fn lower_path_segment(
@@ -221,7 +210,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         expected_lifetimes: usize,
         parenthesized_generic_args: ParenthesizedGenericArgs,
         itctx: ImplTraitContext<'_, 'hir>,
-        explicit_owner: Option<NodeId>,
     ) -> hir::PathSegment<'hir> {
         debug!(
             "path_span: {:?}, lower_path_segment(segment: {:?}, expected_lifetimes: {:?})",
@@ -358,11 +346,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let res = self.expect_full_res(segment.id);
-        let id = if let Some(owner) = explicit_owner {
-            self.lower_node_id_with_owner(segment.id, owner)
-        } else {
-            self.lower_node_id(segment.id)
-        };
+        let id = self.lower_node_id(segment.id);
         debug!(
             "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
             segment.ident, segment.id, id,

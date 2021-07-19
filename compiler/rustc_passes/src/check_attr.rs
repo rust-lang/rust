@@ -1645,7 +1645,10 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx };
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut check_attr_visitor.as_deep_visitor());
     tcx.hir().visit_exported_macros_in_krate(check_attr_visitor);
-    check_invalid_macro_level_attr(tcx, tcx.hir().krate().non_exported_macro_attrs);
+    tcx.hir().visit_non_exported_macros_in_krate(|def_id| {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        check_invalid_macro_level_attr(tcx, tcx.hir().attrs(hir_id))
+    });
     if module_def_id.is_top_level_module() {
         check_attr_visitor.check_attributes(CRATE_HIR_ID, &DUMMY_SP, Target::Mod, None);
         check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());

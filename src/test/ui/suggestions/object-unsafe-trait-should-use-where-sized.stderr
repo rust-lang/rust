@@ -1,3 +1,12 @@
+error[E0307]: invalid `self` parameter type: ()
+  --> $DIR/object-unsafe-trait-should-use-where-sized.rs:6:18
+   |
+LL |     fn bar(self: ()) {}
+   |                  ^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/object-unsafe-trait-should-use-where-sized.rs:9:11
    |
@@ -25,15 +34,6 @@ help: consider changing method `bar`'s `self` parameter to be `&self`
    |
 LL |     fn bar(self: &Self) {}
    |                  ^^^^^
-
-error[E0307]: invalid `self` parameter type: ()
-  --> $DIR/object-unsafe-trait-should-use-where-sized.rs:6:18
-   |
-LL |     fn bar(self: ()) {}
-   |                  ^^
-   |
-   = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error: aborting due to 2 previous errors
 

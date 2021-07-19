@@ -100,7 +100,7 @@ fn associated_item_from_trait_item_ref(
 fn associated_item_from_impl_item_ref(
     tcx: TyCtxt<'_>,
     parent_def_id: LocalDefId,
-    impl_item_ref: &hir::ImplItemRef<'_>,
+    impl_item_ref: &hir::ImplItemRef,
 ) -> ty::AssocItem {
     let def_id = impl_item_ref.id.def_id;
     let (kind, has_self) = match impl_item_ref.kind {

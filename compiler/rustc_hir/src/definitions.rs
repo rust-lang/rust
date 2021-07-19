@@ -11,7 +11,7 @@ use crate::hir;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -314,6 +314,12 @@ impl Definitions {
 
     #[inline]
     #[track_caller]
+    pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
+        self.def_id_to_hir_id[id]
+    }
+
+    #[inline]
+    #[track_caller]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
         self.def_id_to_hir_id[id].unwrap()
     }
@@ -406,6 +412,8 @@ impl Definitions {
             .collect();
 
         self.def_id_to_hir_id = mapping;
+        self.def_id_to_hir_id
+            .ensure_contains_elem(LocalDefId::new(self.def_index_count() - 1), || None);
     }
 
     pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
