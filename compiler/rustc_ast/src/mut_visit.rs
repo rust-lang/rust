@@ -1347,12 +1347,6 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::Paren(expr) => {
             vis.visit_expr(expr);
-
-            // Nodes that are equal modulo `Paren` sugar no-ops should have the same IDs.
-            *id = expr.id;
-            vis.visit_span(span);
-            visit_thin_attrs(attrs, vis);
-            return;
         }
         ExprKind::Yield(expr) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
