@@ -1,30 +1,14 @@
-error[E0275]: overflow evaluating the requirement `SalsaStorage: RefUnwindSafe`
-  --> $DIR/cycle-cache-err-60010.rs:69:5
+error[E0275]: overflow evaluating the requirement `RootDatabase: SourceDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:27:13
    |
-LL |     fn parse(&self) {
-   |     --------------- required by `SourceDatabase::parse`
-...
-LL |     SourceDatabase::parse(db);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: required because it appears within the type `*const SalsaStorage`
-   = note: required because it appears within the type `Unique<SalsaStorage>`
-   = note: required because it appears within the type `Box<SalsaStorage>`
-note: required because it appears within the type `Runtime<RootDatabase>`
-  --> $DIR/cycle-cache-err-60010.rs:23:8
+note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
+  --> $DIR/cycle-cache-err-60010.rs:37:10
    |
-LL | struct Runtime<DB: Database> {
-   |        ^^^^^^^
-note: required because it appears within the type `RootDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:20:8
-   |
-LL | struct RootDatabase {
-   |        ^^^^^^^^^^^^
-note: required because of the requirements on the impl of `SourceDatabase` for `RootDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:43:9
-   |
-LL | impl<T> SourceDatabase for T
-   |         ^^^^^^^^^^^^^^     ^
+LL | impl<DB> Query<DB> for ParseQuery
+   |          ^^^^^^^^^     ^^^^^^^^^^
 
 error: aborting due to previous error
 
