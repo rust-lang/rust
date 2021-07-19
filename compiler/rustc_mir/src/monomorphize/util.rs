@@ -1,3 +1,4 @@
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Instance, TyCtxt};
 
@@ -39,23 +40,10 @@ crate fn dump_closure_profile(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx
             .map(|l| format!("{:?}", l.size.bytes()))
             .unwrap_or_else(|e| format!("Failed {:?}", e));
 
-        let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
-        let closure_span = tcx.hir().span(closure_hir_id);
-        let src_file = tcx.sess.source_map().span_to_filename(closure_span);
-        let line_nos = tcx
-            .sess
-            .source_map()
-            .span_to_lines(closure_span)
-            .map(|l| format!("{:?} {:?}", l.lines.first(), l.lines.last()))
-            .unwrap_or_else(|e| format!("{:?}", e));
+        let mut hasher = StableHasher::new();
+        closure_instance.hash_stable(&mut tcx.create_stable_hashing_context(), &mut hasher);
+        let hash = hasher.finalize();
 
-        eprintln!(
-            "SG_CRATER_E239478slkdjf: {}, {}, {}, {}, {:?}",
-            crate_name,
-            old_size,
-            new_size,
-            src_file.prefer_local(),
-            line_nos
-        );
+        eprintln!("SG_CR_Eslkdjf: {}, {:x?}, {}, {}", crate_name, hash, old_size, new_size);
     }
 }
