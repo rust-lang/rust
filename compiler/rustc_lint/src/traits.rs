@@ -37,10 +37,47 @@ declare_lint! {
     "bounds of the form `T: Drop` are useless"
 }
 
+declare_lint! {
+    /// The `dyn_drop` lint checks for trait objects with `std::ops::Drop`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn foo(_x: Box<dyn Drop>) {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A trait object bound of the form `dyn Drop` is most likely misleading
+    /// and not what the programmer intended.
+    ///
+    /// `Drop` bounds do not actually indicate whether a type can be trivially
+    /// dropped or not, because a composite type containing `Drop` types does
+    /// not necessarily implement `Drop` itself. Naïvely, one might be tempted
+    /// to write a deferred drop system, to pull cleaning up memory out of a
+    /// latency-sensitive code path, using `dyn Drop` trait objects. However,
+    /// this breaks down e.g. when `T` is `String`, which does not implement
+    /// `Drop`, but should probably be accepted.
+    ///
+    /// To write a trait object bound that accepts anything, use a placeholder
+    /// trait with a blanket implementation.
+    ///
+    /// ```rust
+    /// trait Placeholder {}
+    /// impl<T> Placeholder for T {}
+    /// fn foo(_x: Box<dyn Placeholder>) {}
+    /// ```
+    pub DYN_DROP,
+    Warn,
+    "trait objects of the form `dyn Drop` are useless"
+}
+
 declare_lint_pass!(
     /// Lint for bounds of the form `T: Drop`, which usually
     /// indicate an attempt to emulate `std::mem::needs_drop`.
-    DropTraitConstraints => [DROP_BOUNDS]
+    DropTraitConstraints => [DROP_BOUNDS, DYN_DROP]
 );
 
 impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
@@ -68,6 +105,30 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         "bounds on `{}` are useless, consider instead \
                          using `{}` to detect if a type has a destructor",
                         predicate,
+                        cx.tcx.def_path_str(needs_drop)
+                    );
+                    lint.build(&msg).emit()
+                });
+            }
+        }
+    }
+
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
+        let bounds = match &ty.kind {
+            hir::TyKind::TraitObject(bounds, _lifetime, _syntax) => bounds,
+            _ => return,
+        };
+        for bound in &bounds[..] {
+            let def_id = bound.trait_ref.trait_def_id();
+            if cx.tcx.lang_items().drop_trait() == def_id {
+                cx.struct_span_lint(DYN_DROP, bound.span, |lint| {
+                    let needs_drop = match cx.tcx.get_diagnostic_item(sym::needs_drop) {
+                        Some(needs_drop) => needs_drop,
+                        None => return,
+                    };
+                    let msg = format!(
+                        "types that do not implement `Drop` can still have drop glue, consider \
+                        instead using `{}` to detect whether a type is trivially dropped",
                         cx.tcx.def_path_str(needs_drop)
                     );
                     lint.build(&msg).emit()
