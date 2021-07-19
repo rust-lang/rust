@@ -73,8 +73,7 @@ mod enum_inline {
     // general; this test is relying on that.)
     two_fifty_six_variant_enum!(Visible2, N8);
 
-    #[repr(no_niche)]
-    two_fifty_six_variant_enum!(Cloaked2, N8);
+    two_fifty_six_variant_enum!(#[repr(no_niche)] Cloaked2, N8);
 }
 
 mod enum_param {
@@ -96,8 +95,7 @@ mod enum_param {
     // here as above (assuming `T` is instantiated with `NonZeroU8`).
     two_fifty_six_variant_enum!(Visible2<T>);
 
-    #[repr(no_niche)]
-    two_fifty_six_variant_enum!(Cloaked2<T>);
+    two_fifty_six_variant_enum!(#[repr(no_niche)] Cloaked2<T>);
 }
 
 fn main() {
@@ -157,8 +155,8 @@ fn main() {
 }
 
 macro two_fifty_six_variant_enum {
-    ($name:ident<$param:ident>) => {
-        #[derive(Debug)]
+    ($(#[$attr:meta])* $name:ident<$param:ident>) => {
+        #[derive(Debug)] $(#[$attr])*
         pub enum $name<$param> {
             _V00($param, u16), _V01(u16, $param), _V02($param, u16), _V03(u16, $param),
             _V04($param, u16), _V05(u16, $param), _V06($param, u16), _V07(u16, $param),
@@ -242,8 +240,8 @@ macro two_fifty_six_variant_enum {
         }
     },
 
-    ($name:ident, $param:ty) => {
-        #[derive(Debug)]
+    ($(#[$attr:meta])* $name:ident, $param:ty) => {
+        #[derive(Debug)] $(#[$attr])*
         pub enum $name {
             _V00($param, u16), _V01(u16, $param), _V02($param, u16), _V03(u16, $param),
             _V04($param, u16), _V05(u16, $param), _V06($param, u16), _V07(u16, $param),
