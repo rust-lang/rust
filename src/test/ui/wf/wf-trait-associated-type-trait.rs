@@ -8,7 +8,7 @@ struct IsCopy<T:Copy> { x: T }
 
 trait SomeTrait {
     type Type1;
-    type Type2 = IsCopy<Self::Type1>;
+    type Type2 = (IsCopy<Self::Type1>, bool);
     //~^ ERROR E0277
 }
 
