@@ -635,9 +635,7 @@ impl<'hir> Map<'hir> {
             MaybeOwner::Owner(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             MaybeOwner::Owner(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
             MaybeOwner::Owner(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            MaybeOwner::Owner(OwnerNode::Crate(_))
-            | MaybeOwner::NonOwner(_)
-            | MaybeOwner::Phantom => {}
+            MaybeOwner::Owner(OwnerNode::Crate(_)) | MaybeOwner::NonOwner(_) => {}
         })
     }
 

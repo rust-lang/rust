@@ -58,7 +58,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{AstOwner, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{AstOwner, DefIdTree, ResolverOutputs, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
@@ -422,56 +422,46 @@ pub fn index_crate(
     }
 }
 
-/// Compute the hash for the HIR of the full crate.
-/// This hash will then be part of the crate_hash which is stored in the metadata.
-fn compute_hir_hash(
-    tcx: TyCtxt<'_>,
-    owners: &IndexVec<LocalDefId, hir::MaybeOwner<&hir::OwnerInfo<'_>>>,
-) -> Fingerprint {
-    let mut hir_body_nodes: Vec<_> = owners
-        .iter_enumerated()
-        .filter_map(|(def_id, info)| {
-            let info = info.as_owner()?;
-            let def_path_hash = tcx.hir().def_path_hash(def_id);
-            Some((def_path_hash, info))
-        })
-        .collect();
-    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
-
-    tcx.with_stable_hashing_context(|mut hcx| {
-        let mut stable_hasher = StableHasher::new();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-        stable_hasher.finish()
-    })
-}
-
-pub fn lower_crate<'hir>(
+pub fn lower_to_hir<'hir>(
     tcx: TyCtxt<'hir>,
+    def_id: LocalDefId,
     nt_to_tokenstream: NtToTokenstream,
-) -> hir::Crate<'hir> {
+) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
     let _prof_timer = tcx.sess.prof.verbose_generic_activity("hir_lowering");
 
     let resolver = tcx.resolutions(());
-    let ast_index = &tcx.untracked_crate;
+    let node = tcx.untracked_crate.get(def_id);
 
-    let mut owners = IndexVec::from_fn_n(
-        |_| hir::MaybeOwner::Phantom,
-        tcx.definitions_untracked().def_index_count(),
-    );
+    let mut item_lowerer = item::ItemLowerer { tcx, resolver, nt_to_tokenstream };
 
-    for def_id in ast_index.indices() {
-        item::ItemLowerer {
-            tcx,
-            resolver,
-            nt_to_tokenstream,
-            ast_index: ast_index,
-            owners: &mut owners,
+    let node = node.map(Steal::steal);
+
+    // The item existed in the AST.
+    let parent_id = match node {
+        Some(AstOwner::Crate(c)) => return item_lowerer.lower_crate(&c),
+        Some(AstOwner::Item(item)) => return item_lowerer.lower_item(&item),
+        Some(AstOwner::AssocItem(item, ctxt)) => {
+            return item_lowerer.lower_assoc_item(&item, ctxt);
         }
-        .lower_node(def_id);
+        Some(AstOwner::ForeignItem(item)) => return item_lowerer.lower_foreign_item(&item),
+        Some(AstOwner::Synthetic(parent_id)) => parent_id,
+        Some(AstOwner::NonOwner) | None => tcx.local_parent(def_id).unwrap(),
+    };
+
+    // The item did not exist in the AST, it was created by its parent.
+    let mut parent_info = tcx.lower_to_hir(parent_id);
+    if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
+        parent_info = tcx.lower_to_hir(hir_id.owner);
     }
 
-    let hir_hash = compute_hir_hash(tcx, &owners);
-    hir::Crate { owners, hir_hash }
+    let parent_info = parent_info.unwrap();
+    *parent_info.children.get(&def_id).unwrap_or_else(|| {
+        panic!(
+            "{:?} does not appear in children of {:?}",
+            def_id,
+            parent_info.nodes.node().def_id()
+        )
+    })
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -552,6 +542,7 @@ impl<'hir> LoweringContext<'hir> {
         let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
+        let current_children = std::mem::take(&mut self.children);
         // Do not reset `next_node_id` and `node_id_to_def_id` as we want to refer to the
         // subdefinitions' nodes.
 
@@ -570,6 +561,8 @@ impl<'hir> LoweringContext<'hir> {
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
+        self.children = current_children;
+        self.children.extend(&info.children);
 
         let _old = self.children.insert(def_id, hir::MaybeOwner::Owner(info));
         debug_assert!(_old.is_none())
@@ -580,6 +573,7 @@ impl<'hir> LoweringContext<'hir> {
         let mut bodies = std::mem::take(&mut self.bodies);
         let local_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let trait_map = std::mem::take(&mut self.trait_map);
+        let children = std::mem::take(&mut self.children);
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
@@ -610,7 +604,7 @@ impl<'hir> LoweringContext<'hir> {
             hir::AttributeMap { map: attrs, hash }
         };
 
-        self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
+        self.tcx.hir_arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map, children })
     }
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate

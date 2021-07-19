@@ -89,25 +89,24 @@ pub fn provide(providers: &mut Providers) {
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners.get(id)?.as_owner()?;
+        let owner = tcx.lower_to_hir(id).as_owner()?;
         let node = owner.node();
         Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
     };
     providers.local_def_id_to_hir_id = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners[id].map(|_| ());
+        let owner = tcx.lower_to_hir(id).map(|_| ());
         match owner {
             MaybeOwner::Owner(_) => HirId::make_owner(id),
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", id),
             MaybeOwner::NonOwner(hir_id) => hir_id,
         }
     };
-    providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.nodes);
+    providers.hir_owner_nodes = |tcx, id| tcx.lower_to_hir(id).map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the def_key is ok since its value is hashed as part of `id`'s DefPathHash.
         tcx.local_parent(id).map_or(CRATE_HIR_ID, |parent| {
             let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
             if let Some(local_id) =
-                tcx.hir_crate(()).owners[parent_hir_id.owner].unwrap().parenting.get(&id)
+                tcx.lower_to_hir(parent_hir_id.owner).unwrap().parenting.get(&id)
             {
                 parent_hir_id.local_id = *local_id;
             }
@@ -115,7 +114,7 @@ pub fn provide(providers: &mut Providers) {
         })
     };
     providers.hir_attrs =
-        |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
+        |tcx, id| tcx.lower_to_hir(id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
     providers.source_span = |tcx, def_id| tcx.definitions_untracked().def_span(def_id);
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {
@@ -140,5 +139,5 @@ pub fn provide(providers: &mut Providers) {
         tcx.definitions_untracked().expansion_that_defined(id)
     };
     providers.in_scope_traits_map =
-        |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map(|owner_info| &owner_info.trait_map);
+        |tcx, id| tcx.lower_to_hir(id).as_owner().map(|owner_info| &owner_info.trait_map);
 }

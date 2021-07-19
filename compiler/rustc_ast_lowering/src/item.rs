@@ -7,13 +7,11 @@ use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::steal::Steal;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{AstOwner, ResolverOutputs, TyCtxt};
+use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_middle::ty::{DefIdTree, ResolverOutputs, TyCtxt};
 use rustc_session::utils::NtToTokenstream;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -24,12 +22,10 @@ use tracing::debug;
 
 use std::iter;
 
-pub(super) struct ItemLowerer<'a, 'hir> {
+pub(super) struct ItemLowerer<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'hir ResolverOutputs,
     pub(super) nt_to_tokenstream: NtToTokenstream,
-    pub(super) ast_index: &'a IndexVec<LocalDefId, Steal<AstOwner>>,
-    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -52,13 +48,13 @@ fn add_ty_alias_where_clause(
     }
 }
 
-impl<'a, 'hir> ItemLowerer<'a, 'hir> {
+impl<'hir> ItemLowerer<'hir> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
-    ) {
-        let next_node_id = self.resolver.next_node_id;
+    ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
+        let current_hir_id_owner = self.resolver.node_id_to_def_id[&owner];
         let mut lctx = LoweringContext {
             // Pseudo-globals.
             tcx: self.tcx,
@@ -71,13 +67,15 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             bodies: Vec::new(),
             attrs: SortedMap::default(),
             children: FxHashMap::default(),
-            current_hir_id_owner: CRATE_DEF_ID,
-            item_local_id_counter: hir::ItemLocalId::new(0),
-            node_id_to_local_id: Default::default(),
             local_id_to_def_id: SortedMap::new(),
             trait_map: Default::default(),
             local_node_id_to_def_id: FxHashMap::default(),
-            next_node_id,
+            next_node_id: self.resolver.next_node_id,
+
+            // HirId management.
+            current_hir_id_owner,
+            node_id_to_local_id: [(owner, hir::ItemLocalId::from_u32(0))].into_iter().collect(),
+            item_local_id_counter: hir::ItemLocalId::from_u32(1), // 0 is `current_hir_id_owner`.
 
             // Lowering state.
             catch_scope: None,
@@ -93,35 +91,15 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             allow_gen_future: Some([sym::gen_future][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
         };
-        lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
-        for (def_id, info) in lctx.children {
-            self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-            debug_assert!(matches!(self.owners[def_id], hir::MaybeOwner::Phantom));
-            self.owners[def_id] = info;
-        }
+        let item = f(&mut lctx);
+        debug_assert_eq!(current_hir_id_owner, item.def_id());
+
+        let info = lctx.make_owner_info(item);
+        hir::MaybeOwner::Owner(self.tcx.hir_arena.alloc(info))
     }
 
-    pub(super) fn lower_node(
-        &mut self,
-        def_id: LocalDefId,
-    ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
-        self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-        if let hir::MaybeOwner::Phantom = self.owners[def_id] {
-            let node = self.ast_index[def_id].steal();
-            match node {
-                AstOwner::NonOwner | AstOwner::Synthetic(..) => {}
-                AstOwner::Crate(c) => self.lower_crate(&c),
-                AstOwner::Item(item) => self.lower_item(&item),
-                AstOwner::AssocItem(item, ctxt) => self.lower_assoc_item(&item, ctxt),
-                AstOwner::ForeignItem(item) => self.lower_foreign_item(&item),
-            }
-        }
-
-        self.owners[def_id]
-    }
-
-    fn lower_crate(&mut self, c: &Crate) {
+    pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
         debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
@@ -130,25 +108,28 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         })
     }
 
-    fn lower_item(&mut self, item: &Item) {
+    pub(super) fn lower_item(
+        &mut self,
+        item: &Item,
+    ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
     }
 
-    fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
+    pub(super) fn lower_assoc_item(
+        &mut self,
+        item: &AssocItem,
+        ctxt: AssocCtxt,
+    ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
         let def_id = self.resolver.node_id_to_def_id[&item.id];
 
-        let parent_id = {
-            let parent = self.tcx.hir().def_key(def_id).parent;
-            let local_def_index = parent.unwrap();
-            LocalDefId { local_def_index }
-        };
+        let parent_id = self.tcx.local_parent(def_id).unwrap();
 
-        let parent_hir = self.lower_node(parent_id).unwrap();
+        let parent_hir = self.tcx.hir().expect_item(parent_id);
         self.with_lctx(item.id, |lctx| {
             // Evaluate with the lifetimes in `params` in-scope.
             // This is used to track which lifetimes have already been defined,
             // and which need to be replicated when lowering an async fn.
-            match parent_hir.node().expect_item().kind {
+            match parent_hir.kind {
                 hir::ItemKind::Impl(hir::Impl { ref of_trait, .. }) => {
                     lctx.is_in_trait_impl = of_trait.is_some();
                 }
@@ -162,7 +143,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         })
     }
 
-    fn lower_foreign_item(&mut self, item: &ForeignItem) {
+    pub(super) fn lower_foreign_item(
+        &mut self,
+        item: &ForeignItem,
+    ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
     }
 }
@@ -545,7 +529,7 @@ impl<'hir> LoweringContext<'hir> {
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(hir::ItemLocalId::new(0), attrs);
+                            this.attrs.insert(hir::ItemLocalId::from_u32(0), attrs);
                         }
 
                         let item = hir::Item {
@@ -619,7 +603,7 @@ impl<'hir> LoweringContext<'hir> {
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, vis_span, &mut ident, attrs);
                         if let Some(attrs) = attrs {
-                            this.attrs.insert(hir::ItemLocalId::new(0), attrs);
+                            this.attrs.insert(hir::ItemLocalId::from_u32(0), attrs);
                         }
 
                         let item = hir::Item {

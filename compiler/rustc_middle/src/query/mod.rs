@@ -35,6 +35,11 @@ rustc_queries! {
         desc { "get the source span" }
     }
 
+    query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<&'tcx hir::OwnerInfo<'tcx>> {
+        eval_always
+        desc { |tcx| "lower HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
     /// we will have to assume that any change means that you need to be recompiled.
