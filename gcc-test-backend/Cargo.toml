@@ -1,0 +1,20 @@
+[package]
+name = "test-rust"
+version = "0.1.0"
+authors = ["Antoni Boucher <bouanto@zoho.com>"]
+edition = "2018"
+
+[dependencies]
+#depth1 = { path = "depth1" }
+#mini_core = { path = "mini_core" }
+#deflate = "0.7.19"
+#backtrace = "0.3.57"
+#mylib = { path = "mylib" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+debug = true
+panic = "abort"
+lto = "off"

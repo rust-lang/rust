@@ -1,0 +1,8 @@
+[package]
+name = "depth2"
+version = "0.1.0"
+authors = ["Antoni Boucher <bouanto@zoho.com>"]
+edition = "2018"
+
+[dependencies]
+mini_core = { path = "../../mini_core" }
