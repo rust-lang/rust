@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{get_trait_def_id, paths, trait_ref_of_method};
+use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -55,135 +55,48 @@ declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_
 
 impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind {
-            match binop.node {
-                hir::BinOpKind::Eq
-                | hir::BinOpKind::Lt
-                | hir::BinOpKind::Le
-                | hir::BinOpKind::Ne
-                | hir::BinOpKind::Ge
-                | hir::BinOpKind::Gt => return,
-                _ => {},
-            }
+        if_chain! {
+            if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind;
+            if let Some((binop_trait_lang, op_assign_trait_lang)) = binop_traits(binop.node);
+            if let Ok(binop_trait_id) = cx.tcx.lang_items().require(binop_trait_lang);
+            if let Ok(op_assign_trait_id) = cx.tcx.lang_items().require(op_assign_trait_lang);
 
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
             let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
-            if_chain! {
-                if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get(parent_fn);
-                if let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind;
-                then {
-                    let body = cx.tcx.hir().body(body_id);
-                    let mut visitor = BinaryExprVisitor { nb_binops: 0 };
-                    walk_expr(&mut visitor, &body.value);
-                    if visitor.nb_binops > 1 {
-                        return;
-                    }
-                }
-            }
-
-            if let Some(impl_trait) = check_binop(
-                cx,
-                expr,
-                binop.node,
-                &[
-                    "Add", "Sub", "Mul", "Div", "Rem", "BitAnd", "BitOr", "BitXor", "Shl", "Shr",
-                ],
-                &[
-                    hir::BinOpKind::Add,
-                    hir::BinOpKind::Sub,
-                    hir::BinOpKind::Mul,
-                    hir::BinOpKind::Div,
-                    hir::BinOpKind::Rem,
-                    hir::BinOpKind::BitAnd,
-                    hir::BinOpKind::BitOr,
-                    hir::BinOpKind::BitXor,
-                    hir::BinOpKind::Shl,
-                    hir::BinOpKind::Shr,
-                ],
-            ) {
+            if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get(parent_fn);
+            if let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind;
+            let body = cx.tcx.hir().body(body_id);
+            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
+            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
+            let trait_id = trait_ref.path.res.def_id();
+            if ![binop_trait_id, op_assign_trait_id].contains(&trait_id);
+            if let Some(&(_, lint)) = [
+                (&BINOP_TRAITS, SUSPICIOUS_ARITHMETIC_IMPL),
+                (&OP_ASSIGN_TRAITS, SUSPICIOUS_OP_ASSIGN_IMPL),
+            ]
+                .iter()
+                .find(|&(ts, _)| ts.iter().any(|&t| Ok(trait_id) == cx.tcx.lang_items().require(t)));
+            if count_binops(&body.value) == 1;
+            then {
                 span_lint(
                     cx,
-                    SUSPICIOUS_ARITHMETIC_IMPL,
+                    lint,
                     binop.span,
-                    &format!("suspicious use of binary operator in `{}` impl", impl_trait),
-                );
-            }
-
-            if let Some(impl_trait) = check_binop(
-                cx,
-                expr,
-                binop.node,
-                &[
-                    "AddAssign",
-                    "SubAssign",
-                    "MulAssign",
-                    "DivAssign",
-                    "BitAndAssign",
-                    "BitOrAssign",
-                    "BitXorAssign",
-                    "RemAssign",
-                    "ShlAssign",
-                    "ShrAssign",
-                ],
-                &[
-                    hir::BinOpKind::Add,
-                    hir::BinOpKind::Sub,
-                    hir::BinOpKind::Mul,
-                    hir::BinOpKind::Div,
-                    hir::BinOpKind::BitAnd,
-                    hir::BinOpKind::BitOr,
-                    hir::BinOpKind::BitXor,
-                    hir::BinOpKind::Rem,
-                    hir::BinOpKind::Shl,
-                    hir::BinOpKind::Shr,
-                ],
-            ) {
-                span_lint(
-                    cx,
-                    SUSPICIOUS_OP_ASSIGN_IMPL,
-                    binop.span,
-                    &format!("suspicious use of binary operator in `{}` impl", impl_trait),
+                    &format!("suspicious use of `{}` in `{}` impl", binop.node.as_str(), cx.tcx.item_name(trait_id)),
                 );
             }
         }
     }
 }
 
-fn check_binop(
-    cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    binop: hir::BinOpKind,
-    traits: &[&'static str],
-    expected_ops: &[hir::BinOpKind],
-) -> Option<&'static str> {
-    let mut trait_ids = vec![];
-    let [krate, module] = paths::OPS_MODULE;
-
-    for &t in traits {
-        let path = [krate, module, t];
-        if let Some(trait_id) = get_trait_def_id(cx, &path) {
-            trait_ids.push(trait_id);
-        } else {
-            return None;
-        }
-    }
-
-    // Get the actually implemented trait
-    let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
-
-    if_chain! {
-        if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
-        if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.res.def_id());
-        if binop != expected_ops[idx];
-        then{
-            return Some(traits[idx])
-        }
-    }
-
-    None
+fn count_binops(expr: &hir::Expr<'_>) -> u32 {
+    let mut visitor = BinaryExprVisitor::default();
+    visitor.visit_expr(expr);
+    visitor.nb_binops
 }
 
+#[derive(Default)]
 struct BinaryExprVisitor {
     nb_binops: u32,
 }
