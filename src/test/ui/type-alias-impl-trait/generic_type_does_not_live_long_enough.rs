@@ -11,7 +11,6 @@ fn main() {
 
 type WrongGeneric<T> = impl 'static;
 //~^ ERROR the parameter type `T` may not live long enough
-//~| ERROR the parameter type `T` may not live long enough
 //~| ERROR: at least one trait must be specified
 
 fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
