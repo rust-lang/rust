@@ -27,9 +27,7 @@ pub(crate) fn load_workspace_at(
     progress: &dyn Fn(String),
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
-    eprintln!("root = {:?}", root);
     let root = ProjectManifest::discover_single(&root)?;
-    eprintln!("root = {:?}", root);
     let workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
     load_workspace(workspace, cargo_config, load_config, progress)
