@@ -57,13 +57,7 @@ pub trait Spanned {
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl<S: Spanned, I: IntoIterator<Item = S>> Spanned for I {
-    // FIXME This _really_ should not be exposed publicly. It may be worthwhile
-    // to wait until `type_alias_impl_trait` is stabilized before exposing this
-    // type parameter.
-    //
-    // This is probably the case for other impls of this trait, but those are
-    // relatively trivial compared to this.
-    type Iter = iter::FlatMap<I::IntoIter, S::Iter, fn(S) -> S::Iter>;
+    type Iter = impl Iterator<Item = Span>;
 
     fn spans(self) -> Self::Iter {
         self.into_iter().flat_map(Spanned::spans)

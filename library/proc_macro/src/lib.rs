@@ -31,6 +31,7 @@
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
 #![feature(panic_update_hook)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
