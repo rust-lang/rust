@@ -5,6 +5,8 @@ use std::{
     iter::once,
 };
 
+mod intra_doc_links;
+
 use itertools::Itertools;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
@@ -21,7 +23,10 @@ use ide_db::{
 };
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
-use crate::{FilePosition, Semantics};
+use crate::{
+    doc_links::intra_doc_links::{parse_intra_doc_link, strip_prefixes_suffixes},
+    FilePosition, Semantics,
+};
 
 pub(crate) type DocumentationLink = String;
 
@@ -396,63 +401,6 @@ fn map_links<'e>(
     })
 }
 
-const TYPES: ([&str; 9], [&str; 0]) =
-    (["type", "struct", "enum", "mod", "trait", "union", "module", "prim", "primitive"], []);
-const VALUES: ([&str; 8], [&str; 1]) =
-    (["value", "function", "fn", "method", "const", "static", "mod", "module"], ["()"]);
-const MACROS: ([&str; 2], [&str; 1]) = (["macro", "derive"], ["!"]);
-
-/// Extract the specified namespace from an intra-doc-link if one exists.
-///
-/// # Examples
-///
-/// * `struct MyStruct` -> ("MyStruct", `Namespace::Types`)
-/// * `panic!` -> ("panic", `Namespace::Macros`)
-/// * `fn@from_intra_spec` -> ("from_intra_spec", `Namespace::Values`)
-fn parse_intra_doc_link(s: &str) -> (&str, Option<hir::Namespace>) {
-    let s = s.trim_matches('`');
-
-    [
-        (hir::Namespace::Types, (TYPES.0.iter(), TYPES.1.iter())),
-        (hir::Namespace::Values, (VALUES.0.iter(), VALUES.1.iter())),
-        (hir::Namespace::Macros, (MACROS.0.iter(), MACROS.1.iter())),
-    ]
-    .iter()
-    .cloned()
-    .find_map(|(ns, (mut prefixes, mut suffixes))| {
-        if let Some(prefix) = prefixes.find(|&&prefix| {
-            s.starts_with(prefix)
-                && s.chars().nth(prefix.len()).map_or(false, |c| c == '@' || c == ' ')
-        }) {
-            Some((&s[prefix.len() + 1..], ns))
-        } else {
-            suffixes.find_map(|&suffix| s.strip_suffix(suffix).zip(Some(ns)))
-        }
-    })
-    .map_or((s, None), |(s, ns)| (s, Some(ns)))
-}
-
-fn strip_prefixes_suffixes(s: &str) -> &str {
-    [
-        (TYPES.0.iter(), TYPES.1.iter()),
-        (VALUES.0.iter(), VALUES.1.iter()),
-        (MACROS.0.iter(), MACROS.1.iter()),
-    ]
-    .iter()
-    .cloned()
-    .find_map(|(mut prefixes, mut suffixes)| {
-        if let Some(prefix) = prefixes.find(|&&prefix| {
-            s.starts_with(prefix)
-                && s.chars().nth(prefix.len()).map_or(false, |c| c == '@' || c == ' ')
-        }) {
-            Some(&s[prefix.len() + 1..])
-        } else {
-            suffixes.find_map(|&suffix| s.strip_suffix(suffix))
-        }
-    })
-    .unwrap_or(s)
-}
-
 /// Get the root URL for the documentation of a crate.
 ///
 /// ```
@@ -537,10 +485,13 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use ide_db::base_db::FileRange;
 
-    use crate::fixture;
+    use crate::{display::TryToNav, fixture};
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    use super::*;
+
+    fn check_external_docs(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let url = analysis.external_docs(position).unwrap().expect("could not find url for symbol");
 
@@ -549,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_doc_url_crate() {
-        check(
+        check_external_docs(
             r#"
 //- /main.rs crate:main deps:test
 use test$0::Foo;
@@ -562,7 +513,7 @@ pub struct Foo;
 
     #[test]
     fn test_doc_url_struct() {
-        check(
+        check_external_docs(
             r#"
 pub struct Fo$0o;
 "#,
@@ -572,7 +523,7 @@ pub struct Fo$0o;
 
     #[test]
     fn test_doc_url_fn() {
-        check(
+        check_external_docs(
             r#"
 pub fn fo$0o() {}
 "#,
@@ -582,7 +533,7 @@ pub fn fo$0o() {}
 
     #[test]
     fn test_doc_url_inherent_method() {
-        check(
+        check_external_docs(
             r#"
 pub struct Foo;
 
@@ -597,7 +548,7 @@ impl Foo {
 
     #[test]
     fn test_doc_url_trait_provided_method() {
-        check(
+        check_external_docs(
             r#"
 pub trait Bar {
     fn met$0hod() {}
@@ -610,7 +561,7 @@ pub trait Bar {
 
     #[test]
     fn test_doc_url_trait_required_method() {
-        check(
+        check_external_docs(
             r#"
 pub trait Foo {
     fn met$0hod();
@@ -623,7 +574,7 @@ pub trait Foo {
 
     #[test]
     fn test_doc_url_field() {
-        check(
+        check_external_docs(
             r#"
 pub struct Foo {
     pub fie$0ld: ()
@@ -636,7 +587,7 @@ pub struct Foo {
 
     #[test]
     fn test_module() {
-        check(
+        check_external_docs(
             r#"
 pub mod foo {
     pub mod ba$0r {}
@@ -655,7 +606,7 @@ pub mod foo {
         //
         // That is, we should point inside the module, rather than at the
         // re-export.
-        check(
+        check_external_docs(
             r#"
 pub mod wrapper {
     pub use module::Item;
@@ -670,6 +621,88 @@ fn foo() {
 }
         "#,
             expect![[r#"https://docs.rs/test/*/test/wrapper/struct.Item.html"#]],
+        )
+    }
+
+    fn check_doc_links(ra_fixture: &str) {
+        fn node_to_def(
+            sema: &Semantics<RootDatabase>,
+            node: &SyntaxNode,
+        ) -> Option<Option<(Option<hir::Documentation>, Definition)>> {
+            Some(match_ast! {
+                match node {
+                    ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+                    ast::Module(it)      => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+                    ast::Fn(it)          => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
+                    ast::Struct(it)      => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
+                    ast::Union(it)       => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
+                    ast::Enum(it)        => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
+                    ast::Variant(it)     => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
+                    ast::Trait(it)       => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
+                    ast::Static(it)      => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
+                    ast::Const(it)       => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
+                    ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
+                    ast::Impl(it)        => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::SelfType(def))),
+                    ast::RecordField(it) => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::Field(def))),
+                    ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::Field(def))),
+                    ast::Macro(it)       => sema.to_def(&it).map(|def| (def.docs(sema.db), Definition::Macro(def))),
+                    // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+                    _ => return None,
+                }
+            })
+        }
+        let key_fn = |&(FileRange { file_id, range }, _): &_| (file_id, range.start());
+
+        let (analysis, position, mut expected) = fixture::annotations(ra_fixture);
+        expected.sort_by_key(key_fn);
+        let sema = &Semantics::new(&*analysis.db);
+        let (docs, cursor_def) = sema
+            .parse(position.file_id)
+            .syntax()
+            .token_at_offset(position.offset)
+            .next()
+            .unwrap()
+            .ancestors()
+            .find_map(|it| node_to_def(sema, &it))
+            .expect("no def found")
+            .unwrap();
+        let docs = docs.expect("no docs found for cursor def");
+        let defs = extract_definitions_from_markdown(docs.as_str());
+        let actual: Vec<_> = defs
+            .into_iter()
+            .map(|(_, link, ns)| {
+                let def = resolve_doc_path_for_def(sema.db, cursor_def, &link, ns)
+                    .unwrap_or_else(|| panic!("Failed to resolve {}", link));
+                let nav_target = def.try_to_nav(sema.db).unwrap();
+                let range = FileRange {
+                    file_id: nav_target.file_id,
+                    range: nav_target.focus_or_full_range(),
+                };
+                (range, link)
+            })
+            .sorted_by_key(key_fn)
+            .collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_trait_items() {
+        check_doc_links(
+            r#"
+/// [`Trait`]
+/// [`Trait::Type`]
+/// [`Trait::CONST`]
+/// [`Trait::func`]
+trait Trait$0 {
+   // ^^^^^ Trait
+    type Type;
+      // ^^^^ Trait::Type
+    const CONST: usize;
+       // ^^^^^ Trait::CONST
+    fn func();
+    // ^^^^ Trait::func
+}
+        "#,
         )
     }
 }
