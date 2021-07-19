@@ -275,6 +275,11 @@ fn get_path_containing_arg_in_pat<'hir>(
 }
 
 pub(super) fn default_anon_const_substs(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
+    let generics = tcx.generics_of(def_id);
+    if let Some(parent) = generics.parent {
+        let _cycle_check = tcx.predicates_of(parent);
+    }
+
     let substs = InternalSubsts::identity_for_item(tcx, def_id);
     // We only expect substs with the following type flags as default substs.
     //
