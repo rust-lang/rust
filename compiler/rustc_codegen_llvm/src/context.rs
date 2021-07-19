@@ -79,6 +79,11 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
+    /// Cache for the mapping from source index to llvm index for struct fields,
+    /// necessary because the mapping depends on padding and thus depens on
+    /// TyAndLayout.
+    pub field_projection_cache: RefCell<FxHashMap<TyAndLayout<'tcx>, Vec<u32>>>,
+
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
@@ -308,6 +313,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
             isize_ty,
+            field_projection_cache: Default::default(),
             coverage_cx,
             dbg_cx,
             eh_personality: Cell::new(None),

@@ -98,6 +98,7 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
+    let mut projection = vec![0; field_count];
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -122,6 +123,7 @@ fn struct_llfields<'a, 'tcx>(
             result.push(cx.type_padding_filler(padding, padding_align));
             debug!("    padding before: {:?}", padding);
         }
+        projection[i] = result.len() as u32;
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
@@ -143,6 +145,7 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
+    cx.field_projection_cache.borrow_mut().insert(layout, projection);
 
     (result, packed)
 }
@@ -356,24 +359,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
-            FieldsShape::Arbitrary { .. } => {
-                let mut llvm_index = 0;
-                let mut offset = Size::ZERO;
-                for i in self.fields.index_by_increasing_offset() {
-                    let target_offset = self.fields.offset(i as usize);
-                    let field = self.field(cx, i);
-                    let padding = target_offset - offset;
-                    if padding != Size::ZERO {
-                        llvm_index += 1;
-                    }
-                    if i == index {
-                        return llvm_index;
-                    }
-                    offset = target_offset + field.size;
-                    llvm_index += 1;
+            FieldsShape::Arbitrary { .. } => match cx.field_projection_cache.borrow().get(self) {
+                Some(projection) => projection[index] as u64,
+                None => {
+                    bug!("TyAndLayout::llvm_field_index({:?}): field projection not cached", self)
                 }
-                bug!("TyAndLayout::llvm_field_index({:?}): index {} out of range", self, index)
-            }
+            },
         }
     }
 
