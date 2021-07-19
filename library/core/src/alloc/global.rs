@@ -46,8 +46,8 @@ use crate::ptr;
 ///         let size = layout.size();
 ///         let align = layout.align();
 ///
-///         // Both align==0 and align not power of 2 will mangle remaining (or panic), causing UB.
-///         // This is allowed by the `GlobalAllocator` and `Layout` contracts.
+///         // `Layout` contract forbids making a `Layout` with align=0, or align not power of 2.
+///         // So we are allowed to write this, even though it can have UB in those cases:
 ///         let align_mask_to_round_down = !(align - 1);
 ///
 ///         let mut allocated = 0;
