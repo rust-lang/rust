@@ -79,7 +79,7 @@
 // cdb-check:    [3]              : 3 [Type: int]
 
 // cdb-command: dx vec,d
-// cdb-check:vec,d [...] : { len=4 } [Type: [...]::Vec<u64, alloc::alloc::Global>]
+// cdb-check:vec,d [...] : { len=4 } [Type: [...]::Vec<u64,alloc::alloc::Global>]
 // cdb-check:    [len]            : 4 [Type: [...]]
 // cdb-check:    [capacity]       : [...] [Type: [...]]
 // cdb-check:    [0]              : 4 [Type: unsigned __int64]

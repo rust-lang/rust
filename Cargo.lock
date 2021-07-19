@@ -3747,6 +3747,7 @@ dependencies = [
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",
+ "smallvec",
  "tempfile",
  "tracing",
 ]

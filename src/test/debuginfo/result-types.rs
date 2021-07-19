@@ -7,11 +7,11 @@
 // cdb-command: g
 
 // cdb-command: dx x,d
-// cdb-check:x,d              : Ok [Type: enum$<core::result::Result<i32, str> >]
+// cdb-check:x,d              : Ok [Type: enum$<core::result::Result<i32,str> >]
 // cdb-check:    [...] __0              : -3 [Type: int]
 
 // cdb-command: dx y
-// cdb-check:y                : Err [Type: enum$<core::result::Result<i32, str> >]
+// cdb-check:y                : Err [Type: enum$<core::result::Result<i32,str> >]
 // cdb-check:    [...] __0              : "Some error message" [Type: str]
 
 fn main()

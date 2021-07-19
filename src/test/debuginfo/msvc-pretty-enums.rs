@@ -87,8 +87,8 @@
 // cdb-check:    [+0x000] discriminant     : 0x[...] [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>::Discriminant$]
 
 // cdb-command: dx -r2 l,!
-// cdb-check:l,!              : $T2 [Type: enum$<core::result::Result<u32, enum$<msvc_pretty_enums::Empty> >, Ok>]
-// cdb-check:    [+0x000] Ok               [Type: enum$<core::result::Result<u32, enum$<msvc_pretty_enums::Empty> >, Ok>::Ok]
+// cdb-check:l,!              : $T2 [Type: enum$<core::result::Result<u32,enum$<msvc_pretty_enums::Empty> >, Ok>]
+// cdb-check:    [+0x000] Ok               [Type: enum$<core::result::Result<u32,enum$<msvc_pretty_enums::Empty> >, Ok>::Ok]
 // cdb-check:        [+0x000] __0              : 0x2a [Type: unsigned int]
 
 pub enum CStyleEnum {

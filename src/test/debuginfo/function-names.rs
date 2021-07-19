@@ -52,21 +52,21 @@
 // cdb-command:x a!function_names::*::impl_function*
 // cdb-check:[...] a!function_names::Mod1::TestStruct2::impl_function (void)
 // cdb-check:[...] a!function_names::TestStruct1::impl_function (void)
-// cdb-check:[...] a!function_names::GenericStruct<i32, i32>::impl_function<i32, i32> (void)
+// cdb-check:[...] a!function_names::GenericStruct<i32,i32>::impl_function<i32,i32> (void)
 
 // Trait implementations
 // cdb-command:x a!function_names::*::trait_function*
 // cdb-check:[...] a!function_names::impl$3::trait_function<i32> (void)
+// cdb-check:[...] a!function_names::impl$6::trait_function<i32,1> (void)
 // cdb-check:[...] a!function_names::impl$1::trait_function (void)
-// cdb-check:[...] a!function_names::impl$6::trait_function<i32, 1> (void)
 // cdb-check:[...] a!function_names::impl$5::trait_function3<function_names::TestStruct1> (void)
 // cdb-check:[...] a!function_names::Mod1::impl$1::trait_function (void)
 
 // Closure
 // cdb-command:x a!function_names::*::closure*
+// cdb-check:[...] a!function_names::impl$2::impl_function::closure$0<i32,i32> (void)
 // cdb-check:[...] a!function_names::main::closure$0 (void)
 // cdb-check:[...] a!function_names::generic_func::closure$0<i32> (void)
-// cdb-check:[...] a!function_names::impl$2::impl_function::closure$0<i32, i32> (void)
 
 // Generator
 // cdb-command:x a!function_names::*::generator*
