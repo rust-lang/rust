@@ -1195,7 +1195,7 @@ impl FromStr for Literal {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Literal {
     fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
+        self.0.to_string()
     }
 }
 

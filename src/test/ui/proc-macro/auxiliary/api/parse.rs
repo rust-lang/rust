@@ -6,8 +6,8 @@ pub fn test() {
 }
 
 fn test_display_literal() {
-    assert_eq!(Literal::isize_unsuffixed(-10).to_string(), "- 10");
-    assert_eq!(Literal::isize_suffixed(-10).to_string(), "- 10isize");
+    assert_eq!(Literal::isize_unsuffixed(-10).to_string(), "-10");
+    assert_eq!(Literal::isize_suffixed(-10).to_string(), "-10isize");
 }
 
 fn test_parse_literal() {
