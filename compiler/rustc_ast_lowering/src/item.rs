@@ -82,15 +82,11 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
             AssocCtxt::Trait => {
                 let hir_item = lctx.lower_trait_item(item);
-                let id = hir_item.trait_item_id();
-                lctx.trait_items.insert(id, hir_item);
-                lctx.modules.entry(lctx.current_module).or_default().trait_items.insert(id);
+                lctx.insert_trait_item(hir_item);
             }
             AssocCtxt::Impl => {
                 let hir_item = lctx.lower_impl_item(item);
-                let id = hir_item.impl_item_id();
-                lctx.impl_items.insert(id, hir_item);
-                lctx.modules.entry(lctx.current_module).or_default().impl_items.insert(id);
+                lctx.insert_impl_item(hir_item);
             }
         });
 
@@ -101,9 +97,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_foreign_item(item);
-            let id = hir_item.foreign_item_id();
-            lctx.foreign_items.insert(id, hir_item);
-            lctx.modules.entry(lctx.current_module).or_default().foreign_items.insert(id);
+            lctx.insert_foreign_item(hir_item);
         });
 
         visit::walk_foreign_item(self, item);
@@ -123,11 +117,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
-        let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
-            hir::ItemKind::Impl(hir::Impl { ref generics, .. })
-            | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
-            _ => &[],
-        };
+        let parent_generics =
+            match self.owners.get(&parent_hir_id.def_id).unwrap().expect_item().kind {
+                hir::ItemKind::Impl(hir::Impl { ref generics, .. })
+                | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
+                _ => &[],
+            };
         let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
             hir::GenericParamKind::Lifetime { .. } => Some(param.name.normalize_to_macros_2_0()),
             _ => None,
@@ -224,7 +219,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let hir_id = self.lower_node_id(i.id);
                 self.lower_attrs(hir_id, &i.attrs);
                 let body = P(self.lower_mac_args(body));
-                self.exported_macros.push(hir::MacroDef {
+                self.insert_macro_def(hir::MacroDef {
                     ident,
                     vis,
                     def_id: hir_id.expect_owner(),
