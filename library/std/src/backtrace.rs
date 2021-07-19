@@ -247,6 +247,8 @@ impl fmt::Debug for BytesOrWide {
     }
 }
 
+static ENABLED: AtomicUsize = AtomicUsize::new(0);
+
 impl Backtrace {
     /// Returns whether backtrace captures are enabled through environment
     /// variables.
@@ -254,7 +256,6 @@ impl Backtrace {
         // Cache the result of reading the environment variables to make
         // backtrace captures speedy, because otherwise reading environment
         // variables every time can be somewhat slow.
-        static ENABLED: AtomicUsize = AtomicUsize::new(0);
         match ENABLED.load(SeqCst) {
             0 => {}
             1 => return false,
@@ -267,8 +268,15 @@ impl Backtrace {
                 Err(_) => false,
             },
         };
-        ENABLED.store(enabled as usize + 1, SeqCst);
+        Self::set_enabled(enabled);
         enabled
+    }
+
+    /// Explicitly enable or disable backtrace capturing, overriding the default
+    /// derived from the `RUST_BACKTRACE` or `RUST_LIB_BACKTRACE` environment
+    /// variables.
+    pub fn set_enabled(enabled: bool) {
+        ENABLED.store(enabled as usize + 1, SeqCst);
     }
 
     /// Capture a stack backtrace of the current thread.
