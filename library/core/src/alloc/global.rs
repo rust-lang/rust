@@ -26,17 +26,17 @@ use crate::ptr;
 /// use std::ptr::null_mut;
 /// use std::sync::atomic::{AtomicUsize, Ordering::{Acquire, SeqCst}};
 ///
-/// const ARENA: usize = 128 * 1024;
-/// #[repr(C, align(131072))] // 131072 == ARENA.
+/// const ARENA_SIZE: usize = 128 * 1024;
+/// #[repr(C, align(131072))] // 131072 == ARENA_SIZE.
 /// struct SimpleAllocator {
-///     arena: UnsafeCell<[u8; ARENA]>,
+///     arena: UnsafeCell<[u8; ARENA_SIZE]>,
 ///     remaining: AtomicUsize, // we allocate from the top, counting down
 /// }
 ///
 /// #[global_allocator]
 /// static ALLOCATOR: SimpleAllocator = SimpleAllocator {
-///     arena: UnsafeCell::new([0x55; ARENA]),
-///     remaining: AtomicUsize::new(ARENA),
+///     arena: UnsafeCell::new([0x55; ARENA_SIZE]),
+///     remaining: AtomicUsize::new(ARENA_SIZE),
 /// };
 ///
 /// unsafe impl Sync for SimpleAllocator { }
@@ -52,7 +52,7 @@ use crate::ptr;
 ///
 ///         let mut allocated = 0;
 ///         if self.remaining.fetch_update(SeqCst, SeqCst, |mut remaining| {
-///             if size > remaining || align > ARENA { // align may be > size !
+///             if size > remaining || align > ARENA_SIZE { // align may be > size !
 ///                 return None
 ///             }
 ///             remaining -= size;
@@ -70,7 +70,7 @@ use crate::ptr;
 /// fn main() {
 ///     let _s = format!("allocating a string!");
 ///     let currently = ALLOCATOR.remaining.load(Acquire);
-///     println!("allocated so far: {}", ARENA - currently);
+///     println!("allocated so far: {}", ARENA_SIZE - currently);
 /// }
 /// ```
 ///
