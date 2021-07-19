@@ -3,11 +3,10 @@
 use std::process::Command;
 
 use anyhow::Result;
-use paths::AbsPath;
 
-use crate::{cfg_flag::CfgFlag, utf8_stdout};
+use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath};
 
-pub(crate) fn get(cargo_toml: Option<&AbsPath>, target: Option<&str>) -> Vec<CfgFlag> {
+pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Vec<CfgFlag> {
     let _p = profile::span("rustc_cfg::get");
     let mut res = Vec::with_capacity(6 * 2 + 1);
 
@@ -27,12 +26,12 @@ pub(crate) fn get(cargo_toml: Option<&AbsPath>, target: Option<&str>) -> Vec<Cfg
     res
 }
 
-fn get_rust_cfgs(cargo_toml: Option<&AbsPath>, target: Option<&str>) -> Result<String> {
+fn get_rust_cfgs(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Result<String> {
     let cargo_rust_cfgs = match cargo_toml {
         Some(cargo_toml) => {
             let mut cargo_config = Command::new(toolchain::cargo());
             cargo_config
-                .current_dir(cargo_toml.parent().unwrap())
+                .current_dir(cargo_toml.parent())
                 .args(&["-Z", "unstable-options", "rustc", "--print", "cfg"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
