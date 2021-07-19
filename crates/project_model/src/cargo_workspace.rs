@@ -229,6 +229,12 @@ impl CargoWorkspace {
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<cargo_metadata::Metadata> {
+        let target = config
+            .target
+            .clone()
+            .or_else(|| cargo_config_build_target(cargo_toml))
+            .or_else(|| rustc_discover_host_triple(cargo_toml));
+
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
@@ -245,13 +251,7 @@ impl CargoWorkspace {
             }
         }
         meta.current_dir(cargo_toml.parent().as_os_str());
-        let target = if let Some(target) = &config.target {
-            Some(target.clone())
-        } else if let stdout @ Some(_) = cargo_config_build_target(cargo_toml) {
-            stdout
-        } else {
-            rustc_discover_host_triple(cargo_toml)
-        };
+
         if let Some(target) = target {
             meta.other_options(vec![String::from("--filter-platform"), target]);
         }
