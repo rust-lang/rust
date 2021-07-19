@@ -292,7 +292,7 @@ impl Person {
 
 **Rationale:** we don't provide public API, it's cheaper to refactor than to pay getters rent.
 Non-local code properties degrade under change, privacy makes invariant local.
-Borrowed own data discloses irrelevant details about origin of data.
+Borrowed owned types (`&String`) disclose irrelevant details about internal representation.
 Irrelevant (neither right nor wrong) things obscure correctness.
 
 ## Useless Types
