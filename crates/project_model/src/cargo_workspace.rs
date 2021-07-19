@@ -1,8 +1,9 @@
 //! See [`CargoWorkspace`].
 
+use std::convert::TryInto;
 use std::iter;
 use std::path::PathBuf;
-use std::{convert::TryInto, ops, process::Command};
+use std::{ops, process::Command};
 
 use anyhow::{Context, Result};
 use base_db::Edition;
@@ -13,8 +14,8 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
-use crate::utf8_stdout;
 use crate::CfgOverrides;
+use crate::{utf8_stdout, ManifestPath};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -108,7 +109,7 @@ pub struct PackageData {
     /// Name as given in the `Cargo.toml`
     pub name: String,
     /// Path containing the `Cargo.toml`
-    pub manifest: AbsPathBuf,
+    pub manifest: ManifestPath,
     /// Targets provided by the crate (lib, bin, example, test, ...)
     pub targets: Vec<Target>,
     /// Is this package a member of the current workspace
@@ -215,12 +216,6 @@ impl TargetKind {
     }
 }
 
-impl PackageData {
-    pub fn root(&self) -> &AbsPath {
-        self.manifest.parent().unwrap()
-    }
-}
-
 #[derive(Deserialize, Default)]
 // Deserialise helper for the cargo metadata
 struct PackageMetadata {
@@ -230,10 +225,16 @@ struct PackageMetadata {
 
 impl CargoWorkspace {
     pub fn fetch_metadata(
-        cargo_toml: &AbsPath,
+        cargo_toml: &ManifestPath,
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<cargo_metadata::Metadata> {
+        let target = config
+            .target
+            .clone()
+            .or_else(|| cargo_config_build_target(cargo_toml))
+            .or_else(|| rustc_discover_host_triple(cargo_toml));
+
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
@@ -249,16 +250,8 @@ impl CargoWorkspace {
                 meta.features(CargoOpt::SomeFeatures(config.features.clone()));
             }
         }
-        if let Some(parent) = cargo_toml.parent() {
-            meta.current_dir(parent.to_path_buf());
-        }
-        let target = if let Some(target) = &config.target {
-            Some(target.clone())
-        } else if let stdout @ Some(_) = cargo_config_build_target(cargo_toml) {
-            stdout
-        } else {
-            rustc_discover_host_triple(cargo_toml)
-        };
+        meta.current_dir(cargo_toml.parent().as_os_str());
+
         if let Some(target) = target {
             meta.other_options(vec![String::from("--filter-platform"), target]);
         }
@@ -269,21 +262,7 @@ impl CargoWorkspace {
         progress("metadata".to_string());
 
         let meta = meta.exec().with_context(|| {
-            let cwd: Option<AbsPathBuf> =
-                std::env::current_dir().ok().and_then(|p| p.try_into().ok());
-
-            let workdir = cargo_toml
-                .parent()
-                .map(|p| p.to_path_buf())
-                .or(cwd)
-                .map(|dir| format!(" in `{}`", dir.display()))
-                .unwrap_or_default();
-
-            format!(
-                "Failed to run `cargo metadata --manifest-path {}`{}",
-                cargo_toml.display(),
-                workdir
-            )
+            format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display(),)
         })?;
 
         Ok(meta)
@@ -312,7 +291,7 @@ impl CargoWorkspace {
                 id: id.repr.clone(),
                 name: name.clone(),
                 version: version.clone(),
-                manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)),
+                manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)).try_into().unwrap(),
                 targets: Vec::new(),
                 is_member,
                 edition,
@@ -376,7 +355,7 @@ impl CargoWorkspace {
     }
 
     pub fn from_cargo_metadata3(
-        cargo_toml: &AbsPath,
+        cargo_toml: &ManifestPath,
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<CargoWorkspace> {
@@ -412,9 +391,9 @@ impl CargoWorkspace {
     }
 }
 
-fn rustc_discover_host_triple(cargo_toml: &AbsPath) -> Option<String> {
+fn rustc_discover_host_triple(cargo_toml: &ManifestPath) -> Option<String> {
     let mut rustc = Command::new(toolchain::rustc());
-    rustc.current_dir(cargo_toml.parent().unwrap()).arg("-vV");
+    rustc.current_dir(cargo_toml.parent()).arg("-vV");
     log::debug!("Discovering host platform by {:?}", rustc);
     match utf8_stdout(rustc) {
         Ok(stdout) => {
@@ -435,10 +414,10 @@ fn rustc_discover_host_triple(cargo_toml: &AbsPath) -> Option<String> {
     }
 }
 
-fn cargo_config_build_target(cargo_toml: &AbsPath) -> Option<String> {
+fn cargo_config_build_target(cargo_toml: &ManifestPath) -> Option<String> {
     let mut cargo_config = Command::new(toolchain::cargo());
     cargo_config
-        .current_dir(cargo_toml.parent().unwrap())
+        .current_dir(cargo_toml.parent())
         .args(&["-Z", "unstable-options", "config", "get", "build.target"])
         .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`

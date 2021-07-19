@@ -2,7 +2,7 @@
 
 use cfg::{CfgAtom, CfgExpr};
 use ide::{FileId, RunnableKind, TestId};
-use project_model::{self, TargetKind};
+use project_model::{self, ManifestPath, TargetKind};
 use vfs::AbsPathBuf;
 
 use crate::{global_state::GlobalStateSnapshot, Result};
@@ -14,7 +14,7 @@ use crate::{global_state::GlobalStateSnapshot, Result};
 #[derive(Clone)]
 pub(crate) struct CargoTargetSpec {
     pub(crate) workspace_root: AbsPathBuf,
-    pub(crate) cargo_toml: AbsPathBuf,
+    pub(crate) cargo_toml: ManifestPath,
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,

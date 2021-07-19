@@ -15,6 +15,7 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
+mod manifest_path;
 mod cargo_workspace;
 mod cfg_flag;
 mod project_json;
@@ -24,12 +25,13 @@ mod rustc_cfg;
 mod build_scripts;
 
 use std::{
+    convert::{TryFrom, TryInto},
     fs::{self, read_dir, ReadDir},
     io,
     process::Command,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, format_err, Context, Result};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashSet;
 
@@ -39,6 +41,7 @@ pub use crate::{
         CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, RustcSource, Target,
         TargetData, TargetKind,
     },
+    manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
     workspace::{CfgOverrides, PackageRoot, ProjectWorkspace},
@@ -48,12 +51,14 @@ pub use proc_macro_api::ProcMacroClient;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ProjectManifest {
-    ProjectJson(AbsPathBuf),
-    CargoToml(AbsPathBuf),
+    ProjectJson(ManifestPath),
+    CargoToml(ManifestPath),
 }
 
 impl ProjectManifest {
     pub fn from_manifest_file(path: AbsPathBuf) -> Result<ProjectManifest> {
+        let path = ManifestPath::try_from(path)
+            .map_err(|path| format_err!("bad manifest path: {}", path.display()))?;
         if path.file_name().unwrap_or_default() == "rust-project.json" {
             return Ok(ProjectManifest::ProjectJson(path));
         }
@@ -83,16 +88,18 @@ impl ProjectManifest {
         return find_cargo_toml(path)
             .map(|paths| paths.into_iter().map(ProjectManifest::CargoToml).collect());
 
-        fn find_cargo_toml(path: &AbsPath) -> io::Result<Vec<AbsPathBuf>> {
+        fn find_cargo_toml(path: &AbsPath) -> io::Result<Vec<ManifestPath>> {
             match find_in_parent_dirs(path, "Cargo.toml") {
                 Some(it) => Ok(vec![it]),
                 None => Ok(find_cargo_toml_in_child_dir(read_dir(path)?)),
             }
         }
 
-        fn find_in_parent_dirs(path: &AbsPath, target_file_name: &str) -> Option<AbsPathBuf> {
+        fn find_in_parent_dirs(path: &AbsPath, target_file_name: &str) -> Option<ManifestPath> {
             if path.file_name().unwrap_or_default() == target_file_name {
-                return Some(path.to_path_buf());
+                if let Ok(manifest) = ManifestPath::try_from(path.to_path_buf()) {
+                    return Some(manifest);
+                }
             }
 
             let mut curr = Some(path);
@@ -100,7 +107,9 @@ impl ProjectManifest {
             while let Some(path) = curr {
                 let candidate = path.join(target_file_name);
                 if fs::metadata(&candidate).is_ok() {
-                    return Some(candidate);
+                    if let Ok(manifest) = ManifestPath::try_from(candidate) {
+                        return Some(manifest);
+                    }
                 }
                 curr = path.parent();
             }
@@ -108,13 +117,14 @@ impl ProjectManifest {
             None
         }
 
-        fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<AbsPathBuf> {
+        fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<ManifestPath> {
             // Only one level down to avoid cycles the easy way and stop a runaway scan with large projects
             entities
                 .filter_map(Result::ok)
                 .map(|it| it.path().join("Cargo.toml"))
                 .filter(|it| it.exists())
                 .map(AbsPathBuf::assert)
+                .filter_map(|it| it.try_into().ok())
                 .collect()
         }
     }
