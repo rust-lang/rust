@@ -220,9 +220,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary::<crate::archive::ArArchiveBuilder<'_>>(sess, &codegen_results, outputs);
-
-        Ok(())
+        link_binary::<crate::archive::ArArchiveBuilder<'_>>(sess, &codegen_results, outputs)
     }
 }
 
