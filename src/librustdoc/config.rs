@@ -156,6 +156,8 @@ crate struct Options {
     crate run_check: bool,
     /// Whether doctests should emit unused externs
     crate json_unused_externs: bool,
+    /// Whether to skip capturing stdout and stderr of tests.
+    crate nocapture: bool,
 }
 
 impl fmt::Debug for Options {
@@ -199,6 +201,7 @@ impl fmt::Debug for Options {
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
+            .field("nocapture", &self.nocapture)
             .finish()
     }
 }
@@ -627,6 +630,7 @@ impl Options {
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
+        let nocapture = matches.opt_present("nocapture");
 
         let (lint_opts, describe_lints, lint_cap, _) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
@@ -665,6 +669,7 @@ impl Options {
             test_builder,
             run_check,
             no_run,
+            nocapture,
             render_options: RenderOptions {
                 output,
                 external_html,

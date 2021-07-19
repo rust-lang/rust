@@ -136,6 +136,9 @@ crate fn test(mut options: Options) -> Result<(), String> {
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 
     options.test_args.insert(0, "rustdoctest".to_string());
+    if options.nocapture {
+        options.test_args.push("--nocapture".to_string());
+    }
     test::test_main(
         &options.test_args,
         collector.tests,
