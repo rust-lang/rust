@@ -1,22 +1,3 @@
-error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:25:9
-   |
-LL | struct X<T>(T);
-   |          - required by this bound in `X`
-...
-LL | struct Struct5<T: ?Sized>{
-   |                - this type parameter needs to be `std::marker::Sized`
-LL |     _t: X<T>,
-   |         ^^^^ doesn't have a size known at compile-time
-   |
-help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
-   |
-LL | struct X<T>(T);
-   |          ^  - ...if indirection were used here: `Box<T>`
-   |          |
-   |          this could be changed to `T: ?Sized`...
-
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:2:19
    |
@@ -91,6 +72,25 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct4<T: ?Sized>{
    |                 ^^^^^^^^
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:25:9
+   |
+LL | struct X<T>(T);
+   |          - required by this bound in `X`
+...
+LL | struct Struct5<T: ?Sized>{
+   |                - this type parameter needs to be `std::marker::Sized`
+LL |     _t: X<T>,
+   |         ^^^^ doesn't have a size known at compile-time
+   |
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
+   |
+LL | struct X<T>(T);
+   |          ^  - ...if indirection were used here: `Box<T>`
+   |          |
+   |          this could be changed to `T: ?Sized`...
 
 error: aborting due to 5 previous errors
 
