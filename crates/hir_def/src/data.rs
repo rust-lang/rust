@@ -10,7 +10,7 @@ use crate::{
     body::Expander,
     db::DefDatabase,
     intern::Interned,
-    item_tree::{AssocItem, FnFlags, ItemTreeId, ModItem, Param},
+    item_tree::{self, AssocItem, FnFlags, ItemTreeId, ModItem, Param},
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -171,7 +171,7 @@ impl TraitData {
             module_id,
             &mut expander,
             tr_def.items.iter().copied(),
-            tr_loc.id.file_id(),
+            tr_loc.id.tree_id(),
             container,
             100,
         );
@@ -228,7 +228,7 @@ impl ImplData {
             module_id,
             &mut expander,
             impl_def.items.iter().copied(),
-            impl_loc.id.file_id(),
+            impl_loc.id.tree_id(),
             container,
             100,
         );
@@ -290,7 +290,7 @@ fn collect_items(
     module: ModuleId,
     expander: &mut Expander,
     assoc_items: impl Iterator<Item = AssocItem>,
-    file_id: crate::HirFileId,
+    tree_id: item_tree::TreeId,
     container: AssocContainerId,
     limit: usize,
 ) -> Vec<(Name, AssocItemId)> {
@@ -298,7 +298,7 @@ fn collect_items(
         return Vec::new();
     }
 
-    let item_tree = db.file_item_tree(file_id);
+    let item_tree = tree_id.item_tree(db);
     let crate_graph = db.crate_graph();
     let cfg_options = &crate_graph[module.krate].cfg_options;
 
@@ -312,7 +312,7 @@ fn collect_items(
         match item {
             AssocItem::Function(id) => {
                 let item = &item_tree[id];
-                let def = FunctionLoc { container, id: ItemTreeId::new(file_id, id) }.intern(db);
+                let def = FunctionLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(db);
                 items.push((item.name.clone(), def.into()));
             }
             AssocItem::Const(id) => {
@@ -321,25 +321,26 @@ fn collect_items(
                     Some(name) => name,
                     None => continue,
                 };
-                let def = ConstLoc { container, id: ItemTreeId::new(file_id, id) }.intern(db);
+                let def = ConstLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(db);
                 items.push((name, def.into()));
             }
             AssocItem::TypeAlias(id) => {
                 let item = &item_tree[id];
-                let def = TypeAliasLoc { container, id: ItemTreeId::new(file_id, id) }.intern(db);
+                let def = TypeAliasLoc { container, id: ItemTreeId::new(tree_id, id) }.intern(db);
                 items.push((item.name.clone(), def.into()));
             }
             AssocItem::MacroCall(call) => {
                 let call = &item_tree[call];
-                let ast_id_map = db.ast_id_map(file_id);
-                let root = db.parse_or_expand(file_id).unwrap();
+                let ast_id_map = db.ast_id_map(tree_id.file_id());
+                let root = db.parse_or_expand(tree_id.file_id()).unwrap();
                 let call = ast_id_map.get(call.ast_id).to_node(&root);
                 let res = expander.enter_expand(db, call);
 
                 if let Ok(res) = res {
                     if let Some((mark, mac)) = res.value {
                         let src: InFile<ast::MacroItems> = expander.to_source(mac);
-                        let item_tree = db.file_item_tree(src.file_id);
+                        let tree_id = item_tree::TreeId::new(src.file_id, None);
+                        let item_tree = tree_id.item_tree(db);
                         let iter =
                             item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
                         items.extend(collect_items(
@@ -347,7 +348,7 @@ fn collect_items(
                             module,
                             expander,
                             iter,
-                            src.file_id,
+                            tree_id,
                             container,
                             limit - 1,
                         ));

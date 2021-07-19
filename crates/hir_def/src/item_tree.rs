@@ -67,6 +67,7 @@ use crate::{
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
+    BlockId,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -374,23 +375,51 @@ impl<N: ItemTreeNode> fmt::Debug for FileItemTreeId<N> {
     }
 }
 
+/// Identifies a particular [`ItemTree`].
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct TreeId {
+    file: HirFileId,
+    block: Option<BlockId>,
+}
+
+impl TreeId {
+    pub(crate) fn new(file: HirFileId, block: Option<BlockId>) -> Self {
+        Self { file, block }
+    }
+
+    pub(crate) fn item_tree(&self, db: &dyn DefDatabase) -> Arc<ItemTree> {
+        match self.block {
+            Some(_) => unreachable!("per-block ItemTrees are not yet implemented"),
+            None => db.file_item_tree(self.file),
+        }
+    }
+
+    pub(crate) fn file_id(self) -> HirFileId {
+        self.file
+    }
+}
+
 #[derive(Debug)]
 pub struct ItemTreeId<N: ItemTreeNode> {
-    file: HirFileId,
+    tree: TreeId,
     pub value: FileItemTreeId<N>,
 }
 
 impl<N: ItemTreeNode> ItemTreeId<N> {
-    pub fn new(file: HirFileId, idx: FileItemTreeId<N>) -> Self {
-        Self { file, value: idx }
+    pub fn new(tree: TreeId, idx: FileItemTreeId<N>) -> Self {
+        Self { tree, value: idx }
     }
 
     pub fn file_id(self) -> HirFileId {
-        self.file
+        self.tree.file
+    }
+
+    pub fn tree_id(self) -> TreeId {
+        self.tree
     }
 
     pub fn item_tree(self, db: &dyn DefDatabase) -> Arc<ItemTree> {
-        db.file_item_tree(self.file)
+        self.tree.item_tree(db)
     }
 }
 
@@ -403,7 +432,7 @@ impl<N: ItemTreeNode> Clone for ItemTreeId<N> {
 
 impl<N: ItemTreeNode> PartialEq for ItemTreeId<N> {
     fn eq(&self, other: &Self) -> bool {
-        self.file == other.file && self.value == other.value
+        self.tree == other.tree && self.value == other.value
     }
 }
 
@@ -411,7 +440,7 @@ impl<N: ItemTreeNode> Eq for ItemTreeId<N> {}
 
 impl<N: ItemTreeNode> Hash for ItemTreeId<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.file.hash(state);
+        self.tree.hash(state);
         self.value.hash(state);
     }
 }
