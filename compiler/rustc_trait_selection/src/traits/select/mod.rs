@@ -598,11 +598,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+                ty::PredicateKind::ConstEvaluatable(uv) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,
-                        def_id,
-                        substs,
+                        uv,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {

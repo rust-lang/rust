@@ -543,11 +543,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+                ty::PredicateKind::ConstEvaluatable(uv) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx(),
-                        def_id,
-                        substs,
+                        uv,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
@@ -555,7 +554,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
                             pending_obligation.stalled_on.extend(
-                                substs.iter().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                                uv.substs(infcx.tcx)
+                                    .iter()
+                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                             );
                             ProcessResult::Unchanged
                         }
