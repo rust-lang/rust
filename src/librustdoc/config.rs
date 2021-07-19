@@ -632,7 +632,7 @@ impl Options {
         let show_type_layout = matches.opt_present("show-type-layout");
         let nocapture = matches.opt_present("nocapture");
 
-        let (lint_opts, describe_lints, lint_cap, _) =
+        let (lint_opts, describe_lints, lint_cap) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
 
         Ok(Options {
