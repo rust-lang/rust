@@ -154,7 +154,9 @@ install!((self, builder, _config),
         }
     };
     Cargo, "cargo", Self::should_build(_config), only_hosts: true, {
-        let tarball = builder.ensure(dist::Cargo { compiler: self.compiler, target: self.target });
+        let tarball = builder
+            .ensure(dist::Cargo { compiler: self.compiler, target: self.target })
+            .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
     Rls, "rls", Self::should_build(_config), only_hosts: true, {
@@ -178,7 +180,9 @@ install!((self, builder, _config),
         }
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
-        let tarball = builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
+        let tarball = builder
+            .ensure(dist::Clippy { compiler: self.compiler, target: self.target })
+            .expect("missing clippy");
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, "miri", Self::should_build(_config), only_hosts: true, {

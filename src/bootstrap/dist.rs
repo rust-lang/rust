@@ -951,7 +951,7 @@ pub struct Cargo {
 }
 
 impl Step for Cargo {
-    type Output = GeneratedTarball;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -969,7 +969,7 @@ impl Step for Cargo {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -994,7 +994,7 @@ impl Step for Cargo {
             }
         }
 
-        tarball.generate()
+        Some(tarball.generate())
     }
 }
 
@@ -1106,7 +1106,7 @@ pub struct Clippy {
 }
 
 impl Step for Clippy {
-    type Output = GeneratedTarball;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1124,7 +1124,7 @@ impl Step for Clippy {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1145,7 +1145,7 @@ impl Step for Clippy {
         tarball.add_file(clippy, "bin", 0o755);
         tarball.add_file(cargoclippy, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/clippy");
-        tarball.generate()
+        Some(tarball.generate())
     }
 }
 
@@ -1374,8 +1374,8 @@ impl Step for Extended {
             return;
         }
 
-        tarballs.push(cargo_installer);
-        tarballs.push(clippy_installer);
+        tarballs.extend(cargo_installer);
+        tarballs.extend(clippy_installer);
         tarballs.extend(rust_demangler_installer.clone());
         tarballs.extend(rls_installer.clone());
         tarballs.extend(rust_analyzer_installer.clone());
