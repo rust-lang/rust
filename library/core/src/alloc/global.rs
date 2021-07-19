@@ -24,7 +24,10 @@ use crate::ptr;
 /// use std::alloc::{GlobalAlloc, Layout};
 /// use std::cell::UnsafeCell;
 /// use std::ptr::null_mut;
-/// use std::sync::atomic::{AtomicUsize, Ordering::{Acquire, SeqCst}};
+/// use std::sync::atomic::{
+///     AtomicUsize,
+///     Ordering::{Acquire, SeqCst},
+/// };
 ///
 /// const ARENA_SIZE: usize = 128 * 1024;
 /// #[repr(C, align(131072))] // 131072 == ARENA_SIZE.
@@ -39,7 +42,7 @@ use crate::ptr;
 ///     remaining: AtomicUsize::new(ARENA_SIZE),
 /// };
 ///
-/// unsafe impl Sync for SimpleAllocator { }
+/// unsafe impl Sync for SimpleAllocator {}
 ///
 /// unsafe impl GlobalAlloc for SimpleAllocator {
 ///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -50,25 +53,30 @@ use crate::ptr;
 ///         // So we are allowed to write this, even though it can have UB in those cases:
 ///         let align_mask_to_round_down = !(align - 1);
 ///
-///         if align > ARENA_SIZE { // align may be > size !
+///         if align > ARENA_SIZE {
+///             // align may be > size !
 ///             return null_mut();
 ///         }
 ///
 ///         let mut allocated = 0;
-///         if self.remaining.fetch_update(SeqCst, SeqCst, |mut remaining| {
-///             if size > remaining {
-///                 return None
-///             }
-///             remaining -= size;
-///             remaining &= align_mask_to_round_down;
-///             allocated = remaining;
-///             Some(remaining)
-///         }).is_err() {
+///         if self
+///             .remaining
+///             .fetch_update(SeqCst, SeqCst, |mut remaining| {
+///                 if size > remaining {
+///                     return None;
+///                 }
+///                 remaining -= size;
+///                 remaining &= align_mask_to_round_down;
+///                 allocated = remaining;
+///                 Some(remaining)
+///             })
+///             .is_err()
+///         {
 ///             return null_mut();
 ///         };
 ///         (self.arena.get() as *mut u8).add(allocated)
 ///     }
-///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) { }
+///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 /// }
 ///
 /// fn main() {
