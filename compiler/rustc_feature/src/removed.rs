@@ -150,7 +150,7 @@ declare_features! (
 
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
-     Some("removed due to being incomplete and unstable")),
+     Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
