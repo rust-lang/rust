@@ -50,9 +50,13 @@ use crate::ptr;
 ///         // So we are allowed to write this, even though it can have UB in those cases:
 ///         let align_mask_to_round_down = !(align - 1);
 ///
+///         if align > ARENA_SIZE { // align may be > size !
+///             return null_mut();
+///         }
+///
 ///         let mut allocated = 0;
 ///         if self.remaining.fetch_update(SeqCst, SeqCst, |mut remaining| {
-///             if size > remaining || align > ARENA_SIZE { // align may be > size !
+///             if size > remaining {
 ///                 return None
 ///             }
 ///             remaining -= size;
