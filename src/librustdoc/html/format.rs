@@ -491,13 +491,18 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
         if shortty == ItemType::Module { &fqp[..] } else { &fqp[..fqp.len() - 1] }
     }
 
-    if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
+    if !did.is_local()
+        && !cache.access_levels.is_public(did)
+        && !cache.document_private
+        && !cache.primitive_locations.values().any(|&id| id == did)
+    {
         return Err(HrefError::Private);
     }
 
     let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp);
+            debug!(?fqp, ?shortty, ?module_fqp);
             href_relative_parts(module_fqp, relative_to)
         }),
         None => {
@@ -522,6 +527,7 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
             }
         }
     };
+    debug!(?url_parts);
     let last = &fqp.last().unwrap()[..];
     let filename;
     match shortty {
@@ -712,7 +718,7 @@ fn fmt_type<'cx>(
     use_absolute: bool,
     cx: &'cx Context<'_>,
 ) -> fmt::Result {
-    debug!("fmt_type(t = {:?})", t);
+    trace!("fmt_type(t = {:?})", t);
 
     match *t {
         clean::Generic(name) => write!(f, "{}", name),

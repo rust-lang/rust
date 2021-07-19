@@ -100,7 +100,7 @@ mod prim_bool {}
 /// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
 /// [`u32`]: prim@u32
-/// [`exit`]: process::exit
+#[doc = concat!("[`exit`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/process_exit.md")))]
 ///
 /// # `!` and generics
 ///
@@ -185,7 +185,7 @@ mod prim_bool {}
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
-/// [`String`]: string::String
+#[doc = concat!("[`String`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/string_string.md")))]
 /// [`FromStr`]: str::FromStr
 ///
 /// # `!` and traits
@@ -261,7 +261,7 @@ mod prim_bool {}
 /// `impl` for this which simply panics, but the same is true for any type (we could `impl
 /// Default` for (eg.) [`File`] by just making [`default()`] panic.)
 ///
-/// [`File`]: fs::File
+#[doc = concat!("[`File`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/fs_file.md")))]
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
@@ -269,7 +269,6 @@ mod prim_bool {}
 mod prim_never {}
 
 #[doc(primitive = "char")]
-//
 /// A character type.
 ///
 /// The `char` type represents a single character. More specifically, since
@@ -301,7 +300,7 @@ mod prim_never {}
 /// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
 /// ```
 ///
-/// [`String`]: string/struct.String.html
+#[doc = concat!("[`String`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/string_string.md")))]
 ///
 /// As always, remember that a human intuition for 'character' may not map to
 /// Unicode's definitions. For example, despite looking similar, the 'é'
@@ -493,7 +492,7 @@ mod prim_unit {}
 /// [`null_mut`]: ptr::null_mut
 /// [`is_null`]: pointer::is_null
 /// [`offset`]: pointer::offset
-/// [`into_raw`]: Box::into_raw
+#[doc = concat!("[`into_raw`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/box_into_raw.md")))]
 /// [`drop`]: mem::drop
 /// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1123,7 +1122,7 @@ mod prim_usize {}
 /// [`std::fmt`]: fmt
 /// ['Pointer`]: fmt::Pointer
 /// [`Hash`]: hash::Hash
-/// [`ToSocketAddrs`]: net::ToSocketAddrs
+#[doc = concat!("[`ToSocketAddrs`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/net_tosocketaddrs.md")))]
 ///
 /// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
 /// implements that trait:
@@ -1144,9 +1143,10 @@ mod prim_usize {}
 ///
 /// [`FusedIterator`]: iter::FusedIterator
 /// [`TrustedLen`]: iter::TrustedLen
-/// [`Seek`]: io::Seek
-/// [`BufRead`]: io::BufRead
-/// [`Read`]: io::Read
+#[doc = concat!("[`Seek`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/io_seek.md")))]
+#[doc = concat!("[`BufRead`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/io_bufread.md")))]
+#[doc = concat!("[`Read`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/io_read.md")))]
+#[doc = concat!("[`io::Write`]: ", include_str!(concat!("../../", env!("CARGO_PKG_NAME"), "/primitive_docs/io_write.md")))]
 ///
 /// Note that due to method call deref coercion, simply calling a trait method will act like they
 /// work on references as well as they do on owned values! The implementations described here are

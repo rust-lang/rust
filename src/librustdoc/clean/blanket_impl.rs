@@ -17,7 +17,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         let param_env = self.cx.tcx.param_env(item_def_id);
         let ty = self.cx.tcx.type_of(item_def_id);
 
-        debug!("get_blanket_impls({:?})", ty);
+        trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
         for &trait_def_id in self.cx.tcx.all_traits(()).iter() {
             if !self.cx.cache.access_levels.is_public(trait_def_id)
@@ -28,9 +28,10 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
             // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
             let trait_impls = self.cx.tcx.trait_impls_of(trait_def_id);
             for &impl_def_id in trait_impls.blanket_impls() {
-                debug!(
+                trace!(
                     "get_blanket_impls: Considering impl for trait '{:?}' {:?}",
-                    trait_def_id, impl_def_id
+                    trait_def_id,
+                    impl_def_id
                 );
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let is_param = matches!(trait_ref.self_ty().kind(), ty::Param(_));
@@ -50,9 +51,11 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         // FIXME(eddyb) ignoring `obligations` might cause false positives.
                         drop(obligations);
 
-                        debug!(
+                        trace!(
                             "invoking predicate_may_hold: param_env={:?}, trait_ref={:?}, ty={:?}",
-                            param_env, trait_ref, ty
+                            param_env,
+                            trait_ref,
+                            ty
                         );
                         let predicates = self
                             .cx

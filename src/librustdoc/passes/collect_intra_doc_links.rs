@@ -14,7 +14,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::{MacroKind, SyntaxContext};
@@ -95,14 +95,10 @@ impl Res {
         }
     }
 
-    fn def_id(self) -> DefId {
-        self.opt_def_id().expect("called def_id() on a primitive")
-    }
-
-    fn opt_def_id(self) -> Option<DefId> {
+    fn def_id(self, tcx: TyCtxt<'_>) -> DefId {
         match self {
-            Res::Def(_, id) => Some(id),
-            Res::Primitive(_) => None,
+            Res::Def(_, id) => id,
+            Res::Primitive(prim) => *PrimitiveType::primitive_locations(tcx).get(&prim).unwrap(),
         }
     }
 
@@ -385,7 +381,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ty::AssocKind::Const => "associatedconstant",
                         ty::AssocKind::Type => "associatedtype",
                     };
-                    let fragment = format!("{}#{}.{}", prim_ty.as_sym(), out, item_name);
+                    let fragment = format!("{}.{}", out, item_name);
                     (Res::Primitive(prim_ty), fragment, Some((kind.as_def_kind(), item.def_id)))
                 })
         })
@@ -472,14 +468,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     return handle_variant(self.cx, res, extra_fragment);
                 }
                 // Not a trait item; just return what we found.
-                Res::Primitive(ty) => {
-                    if extra_fragment.is_some() {
-                        return Err(ErrorKind::AnchorFailure(
-                            AnchorFailure::RustdocAnchorConflict(res),
-                        ));
-                    }
-                    return Ok((res, Some(ty.as_sym().to_string())));
-                }
                 _ => return Ok((res, extra_fragment.clone())),
             }
         }
@@ -1149,7 +1137,7 @@ impl LinkCollector<'_, '_> {
             module_id = DefId { krate, index: CRATE_DEF_INDEX };
         }
 
-        let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
+        let (mut res, fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
                 module_id,
                 dis: disambiguator,
@@ -1171,16 +1159,7 @@ impl LinkCollector<'_, '_> {
             if let Some(prim) = resolve_primitive(path_str, TypeNS) {
                 // `prim@char`
                 if matches!(disambiguator, Some(Disambiguator::Primitive)) {
-                    if fragment.is_some() {
-                        anchor_failure(
-                            self.cx,
-                            diag_info,
-                            AnchorFailure::RustdocAnchorConflict(prim),
-                        );
-                        return None;
-                    }
                     res = prim;
-                    fragment = Some(prim.name(self.cx.tcx).to_string());
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
@@ -1299,12 +1278,17 @@ impl LinkCollector<'_, '_> {
                     }
                 }
 
-                Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
+                Some(ItemLink {
+                    link: ori_link.link,
+                    link_text,
+                    did: res.def_id(self.cx.tcx),
+                    fragment,
+                })
             }
             Res::Def(kind, id) => {
                 verify(kind, id.into())?;
                 let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
-                Some(ItemLink { link: ori_link.link, link_text, did: Some(id.into()), fragment })
+                Some(ItemLink { link: ori_link.link, link_text, did: id.into(), fragment })
             }
         }
     }
@@ -2012,8 +1996,11 @@ fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: A
             diag.span_label(sp, "invalid anchor");
         }
         if let AnchorFailure::RustdocAnchorConflict(Res::Primitive(_)) = failure {
-            diag.note("this restriction may be lifted in a future release");
-            diag.note("see https://github.com/rust-lang/rust/issues/83083 for more information");
+            if let Some(sp) = sp {
+                span_bug!(sp, "anchors should be allowed now");
+            } else {
+                bug!("anchors should be allowed now");
+            }
         }
     });
 }
@@ -2152,7 +2139,7 @@ fn handle_variant(
         return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
     }
     cx.tcx
-        .parent(res.def_id())
+        .parent(res.def_id(cx.tcx))
         .map(|parent| {
             let parent_def = Res::Def(DefKind::Enum, parent);
             let variant = cx.tcx.expect_variant_res(res.as_hir_res().unwrap());

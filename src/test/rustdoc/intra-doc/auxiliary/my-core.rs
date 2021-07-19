@@ -2,6 +2,10 @@
 #![no_core]
 #![crate_type="rlib"]
 
+#[doc(primitive = "char")]
+/// Some char docs
+mod char {}
+
 #[lang = "char"]
 impl char {
     pub fn len_utf8(self) -> usize {
