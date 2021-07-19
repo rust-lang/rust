@@ -1345,7 +1345,15 @@ impl Step for Extended {
 
         builder.info(&format!("Dist extended stage{} ({})", compiler.stage, target));
 
-        let rustc_installer = builder.ensure(Rustc { compiler: builder.compiler(stage, target) });
+        let mut tarballs = Vec::new();
+
+        // When rust-std package split from rustc, we needed to ensure that during
+        // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
+        // the std files during uninstall. To do this ensure that rustc comes
+        // before rust-std in the list below.
+        tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
+        tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
+
         let cargo_installer = builder.ensure(Cargo { compiler, target });
         let rustfmt_installer = builder.ensure(Rustfmt { compiler, target });
         let rust_demangler_installer = builder.ensure(RustDemangler { compiler, target });
@@ -1358,7 +1366,6 @@ impl Step for Extended {
         let analysis_installer = builder.ensure(Analysis { compiler, target });
 
         let docs_installer = builder.ensure(Docs { host: target });
-        let std_installer = builder.ensure(Std { compiler, target });
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -1367,12 +1374,6 @@ impl Step for Extended {
             return;
         }
 
-        // When rust-std package split from rustc, we needed to ensure that during
-        // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
-        // the std files during uninstall. To do this ensure that rustc comes
-        // before rust-std in the list below.
-        let mut tarballs = Vec::new();
-        tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.push(clippy_installer);
         tarballs.extend(rust_demangler_installer.clone());
@@ -1384,7 +1385,6 @@ impl Step for Extended {
         if let Some(analysis_installer) = analysis_installer {
             tarballs.push(analysis_installer);
         }
-        tarballs.push(std_installer.expect("missing std"));
         if let Some(docs_installer) = docs_installer {
             tarballs.push(docs_installer);
         }
