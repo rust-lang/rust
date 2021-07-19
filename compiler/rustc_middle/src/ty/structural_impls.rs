@@ -191,8 +191,8 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
             }
-            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-                write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
+            ty::PredicateKind::ConstEvaluatable(uv) => {
+                write!(f, "ConstEvaluatable({:?}, {:?})", uv.def, uv.substs_)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
@@ -441,8 +441,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 Some(ty::PredicateKind::ObjectSafe(trait_def_id))
             }
-            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-                tcx.lift(substs).map(|substs| ty::PredicateKind::ConstEvaluatable(def_id, substs))
+            ty::PredicateKind::ConstEvaluatable(uv) => {
+                tcx.lift(uv).map(|uv| ty::PredicateKind::ConstEvaluatable(uv))
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 tcx.lift((c1, c2)).map(|(c1, c2)| ty::PredicateKind::ConstEquate(c1, c2))

@@ -547,11 +547,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+                ty::PredicateKind::ConstEvaluatable(uv) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.infcx,
-                        def_id,
-                        substs,
+                        uv,
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
@@ -573,10 +572,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val, c2.val)
                         {
-                            if self.tcx().try_unify_abstract_consts((
-                                (a.def, a.substs(self.tcx())),
-                                (b.def, b.substs(self.tcx())),
-                            )) {
+                            if self.tcx().try_unify_abstract_consts((a, b)) {
                                 return Ok(EvaluatedToOk);
                             }
                         }

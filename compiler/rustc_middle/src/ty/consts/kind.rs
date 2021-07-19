@@ -18,7 +18,7 @@ use super::ScalarInt;
 ///
 /// We check for all possible substs in `fn default_anon_const_substs`,
 /// so refer to that check for more info.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
 pub struct Unevaluated<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,

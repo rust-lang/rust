@@ -2304,11 +2304,8 @@ fn const_evaluatable_predicates_of<'tcx>(
             if let ty::ConstKind::Unevaluated(uv) = ct.val {
                 assert_eq!(uv.promoted, None);
                 let span = self.tcx.hir().span(c.hir_id);
-                self.preds.insert((
-                    ty::PredicateKind::ConstEvaluatable(uv.def, uv.substs(self.tcx))
-                        .to_predicate(self.tcx),
-                    span,
-                ));
+                self.preds
+                    .insert((ty::PredicateKind::ConstEvaluatable(uv).to_predicate(self.tcx), span));
             }
         }
 
