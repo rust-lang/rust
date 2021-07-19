@@ -925,6 +925,9 @@ body.blur > :not(#help) {
 	padding: 0 20px 20px 17px;;
 }
 
+.item-info .stab {
+	display: table;
+}
 .stab {
 	border-width: 1px;
 	border-style: solid;
