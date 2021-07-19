@@ -201,10 +201,6 @@ where
 
 impl_float_vector! { SimdF32, f32, SimdU32, Mask32, SimdI32 }
 
-from_transmute_x86! { unsafe f32x4 => __m128 }
-from_transmute_x86! { unsafe f32x8 => __m256 }
-//from_transmute_x86! { unsafe f32x16 => __m512 }
-
 /// A SIMD vector of containing `LANES` `f64` values.
 #[repr(simd)]
 pub struct SimdF64<const LANES: usize>([f64; LANES])
@@ -212,10 +208,6 @@ where
     Self: crate::LanesAtMost32;
 
 impl_float_vector! { SimdF64, f64, SimdU64, Mask64, SimdI64 }
-
-from_transmute_x86! { unsafe f64x2 => __m128d }
-from_transmute_x86! { unsafe f64x4 => __m256d }
-//from_transmute_x86! { unsafe f64x8 => __m512d }
 
 /// Vector of two `f32` values
 pub type f32x2 = SimdF32<2>;

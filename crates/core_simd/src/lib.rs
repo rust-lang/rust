@@ -1,6 +1,6 @@
 #![no_std]
 #![allow(incomplete_features)]
-#![feature(repr_simd, platform_intrinsics, simd_ffi, const_generics)]
+#![feature(repr_simd, platform_intrinsics, simd_ffi, const_generics, stdsimd)]
 #![warn(missing_docs)]
 //! Portable SIMD module.
 
@@ -8,8 +8,6 @@
 mod first;
 #[macro_use]
 mod permute;
-#[macro_use]
-mod transmute;
 #[macro_use]
 mod reduction;
 
@@ -25,6 +23,7 @@ mod intrinsics;
 mod iter;
 mod ops;
 mod round;
+mod vendor;
 
 mod math;
 

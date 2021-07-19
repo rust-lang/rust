@@ -67,18 +67,6 @@ where
 
 impl_integer_vector! { SimdIsize, isize, MaskSize, SimdIsize }
 
-#[cfg(target_pointer_width = "32")]
-from_transmute_x86! { unsafe isizex4 => __m128i }
-#[cfg(target_pointer_width = "32")]
-from_transmute_x86! { unsafe isizex8 => __m256i }
-
-#[cfg(target_pointer_width = "64")]
-from_transmute_x86! { unsafe isizex2 => __m128i }
-#[cfg(target_pointer_width = "64")]
-from_transmute_x86! { unsafe isizex4 => __m256i }
-//#[cfg(target_pointer_width = "64")]
-//from_transmute_x86! { unsafe isizex8 => __m512i }
-
 /// A SIMD vector of containing `LANES` `i16` values.
 #[repr(simd)]
 pub struct SimdI16<const LANES: usize>([i16; LANES])
@@ -86,10 +74,6 @@ where
     Self: crate::LanesAtMost32;
 
 impl_integer_vector! { SimdI16, i16, Mask16, SimdI16 }
-
-from_transmute_x86! { unsafe i16x8 => __m128i }
-from_transmute_x86! { unsafe i16x16 => __m256i }
-//from_transmute_x86! { unsafe i16x32 => __m512i }
 
 /// A SIMD vector of containing `LANES` `i32` values.
 #[repr(simd)]
@@ -99,10 +83,6 @@ where
 
 impl_integer_vector! { SimdI32, i32, Mask32, SimdI32 }
 
-from_transmute_x86! { unsafe i32x4 => __m128i }
-from_transmute_x86! { unsafe i32x8 => __m256i }
-//from_transmute_x86! { unsafe i32x16 => __m512i }
-
 /// A SIMD vector of containing `LANES` `i64` values.
 #[repr(simd)]
 pub struct SimdI64<const LANES: usize>([i64; LANES])
@@ -111,10 +91,6 @@ where
 
 impl_integer_vector! { SimdI64, i64, Mask64, SimdI64 }
 
-from_transmute_x86! { unsafe i64x2 => __m128i }
-from_transmute_x86! { unsafe i64x4 => __m256i }
-//from_transmute_x86! { unsafe i64x8 => __m512i }
-
 /// A SIMD vector of containing `LANES` `i8` values.
 #[repr(simd)]
 pub struct SimdI8<const LANES: usize>([i8; LANES])
@@ -122,10 +98,6 @@ where
     Self: crate::LanesAtMost32;
 
 impl_integer_vector! { SimdI8, i8, Mask8, SimdI8 }
-
-from_transmute_x86! { unsafe i8x16 => __m128i }
-from_transmute_x86! { unsafe i8x32 => __m256i }
-//from_transmute_x86! { unsafe i8x64 => __m512i }
 
 /// Vector of two `isize` values
 pub type isizex2 = SimdIsize<2>;

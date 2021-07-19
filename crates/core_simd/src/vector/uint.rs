@@ -36,18 +36,6 @@ where
 
 impl_unsigned_vector! { SimdUsize, usize }
 
-#[cfg(target_pointer_width = "32")]
-from_transmute_x86! { unsafe usizex4 => __m128i }
-#[cfg(target_pointer_width = "32")]
-from_transmute_x86! { unsafe usizex8 => __m256i }
-
-#[cfg(target_pointer_width = "64")]
-from_transmute_x86! { unsafe usizex2 => __m128i }
-#[cfg(target_pointer_width = "64")]
-from_transmute_x86! { unsafe usizex4 => __m256i }
-//#[cfg(target_pointer_width = "64")]
-//from_transmute_x86! { unsafe usizex8 => __m512i }
-
 /// A SIMD vector of containing `LANES` `u16` values.
 #[repr(simd)]
 pub struct SimdU16<const LANES: usize>([u16; LANES])
@@ -55,10 +43,6 @@ where
     Self: crate::LanesAtMost32;
 
 impl_unsigned_vector! { SimdU16, u16 }
-
-from_transmute_x86! { unsafe u16x8 => __m128i }
-from_transmute_x86! { unsafe u16x16 => __m256i }
-//from_transmute_x86! { unsafe u16x32 => __m512i }
 
 /// A SIMD vector of containing `LANES` `u32` values.
 #[repr(simd)]
@@ -68,10 +52,6 @@ where
 
 impl_unsigned_vector! { SimdU32, u32 }
 
-from_transmute_x86! { unsafe u32x4 => __m128i }
-from_transmute_x86! { unsafe u32x8 => __m256i }
-//from_transmute_x86! { unsafe u32x16 => __m512i }
-
 /// A SIMD vector of containing `LANES` `u64` values.
 #[repr(simd)]
 pub struct SimdU64<const LANES: usize>([u64; LANES])
@@ -80,10 +60,6 @@ where
 
 impl_unsigned_vector! { SimdU64, u64 }
 
-from_transmute_x86! { unsafe u64x2 => __m128i }
-from_transmute_x86! { unsafe u64x4 => __m256i }
-//from_transmute_x86! { unsafe u64x8 => __m512i }
-
 /// A SIMD vector of containing `LANES` `u8` values.
 #[repr(simd)]
 pub struct SimdU8<const LANES: usize>([u8; LANES])
@@ -91,10 +67,6 @@ where
     Self: crate::LanesAtMost32;
 
 impl_unsigned_vector! { SimdU8, u8 }
-
-from_transmute_x86! { unsafe u8x16 => __m128i }
-from_transmute_x86! { unsafe u8x32 => __m256i }
-//from_transmute_x86! { unsafe u8x64 => __m512i }
 
 /// Vector of two `usize` values
 pub type usizex2 = SimdUsize<2>;
