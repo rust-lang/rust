@@ -909,12 +909,8 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     if is_integer_literal(e, value) {
         return true;
     }
-    let map = cx.tcx.hir();
-    let parent_item = map.get_parent_item(e.hir_id);
-    if let Some((Constant::Int(v), _)) = map
-        .maybe_body_owned_by(parent_item)
-        .and_then(|body_id| constant(cx, cx.tcx.typeck_body(body_id), e))
-    {
+    let enclosing_body = cx.tcx.hir().local_def_id(cx.tcx.hir().enclosing_body_owner(e.hir_id));
+    if let Some((Constant::Int(v), _)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
         value == v
     } else {
         false
@@ -1041,18 +1037,14 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Struct(ref qpath, fields, _) => {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
         },
-        PatKind::TupleStruct(ref qpath, pats, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats)
-        },
+        PatKind::TupleStruct(ref qpath, pats, _) => is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats),
         PatKind::Slice(head, middle, tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 rustc_ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
                 },
-                rustc_ty::Array(..) => {
-                    are_refutable(cx, head.iter().chain(middle).chain(tail.iter()))
-                },
+                rustc_ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter())),
                 _ => {
                     // unreachable!()
                     true
@@ -1709,4 +1701,35 @@ pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
     }
 
     matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
+}
+
+macro_rules! op_utils {
+    ($($name:ident $assign:ident)*) => {
+        /// Binary operation traits like `LangItem::Add`
+        pub static BINOP_TRAITS: &[LangItem] = &[$(LangItem::$name,)*];
+
+        /// Operator-Assign traits like `LangItem::AddAssign`
+        pub static OP_ASSIGN_TRAITS: &[LangItem] = &[$(LangItem::$assign,)*];
+
+        /// Converts `BinOpKind::Add` to `(LangItem::Add, LangItem::AddAssign)`, for example
+        pub fn binop_traits(kind: hir::BinOpKind) -> Option<(LangItem, LangItem)> {
+            match kind {
+                $(hir::BinOpKind::$name => Some((LangItem::$name, LangItem::$assign)),)*
+                _ => None,
+            }
+        }
+    };
+}
+
+op_utils! {
+    Add    AddAssign
+    Sub    SubAssign
+    Mul    MulAssign
+    Div    DivAssign
+    Rem    RemAssign
+    BitXor BitXorAssign
+    BitAnd BitAndAssign
+    BitOr  BitOrAssign
+    Shl    ShlAssign
+    Shr    ShrAssign
 }

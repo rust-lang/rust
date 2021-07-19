@@ -6,7 +6,8 @@
     dead_code,
     clippy::no_effect,
     clippy::if_same_then_else,
-    clippy::needless_return
+    clippy::needless_return,
+    clippy::self_named_constructor
 )]
 
 use std::cell::Cell;

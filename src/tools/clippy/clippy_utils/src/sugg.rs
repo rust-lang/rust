@@ -154,7 +154,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Err => Sugg::NonParen(snippet),
             hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
             hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-            hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
+            hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(op.node.into()), snippet),
             hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
             hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
         }
