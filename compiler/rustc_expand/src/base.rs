@@ -29,6 +29,9 @@ use std::rc::Rc;
 
 crate use rustc_span::hygiene::MacroKind;
 
+// When adding new variants, make sure to
+// adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
+// to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
@@ -869,9 +872,6 @@ pub trait ResolverExpand {
 
     fn check_unused_macros(&mut self);
 
-    /// Some parent node that is close enough to the given macro call.
-    fn lint_node_id(&self, expn_id: LocalExpnId) -> NodeId;
-
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool;
@@ -926,6 +926,8 @@ pub struct ExpansionData {
     pub module: Rc<ModuleData>,
     pub dir_ownership: DirOwnership,
     pub prior_type_ascription: Option<(Span, bool)>,
+    /// Some parent node that is close to this macro call
+    pub lint_node_id: NodeId,
 }
 
 type OnExternModLoaded<'a> =
@@ -971,6 +973,7 @@ impl<'a> ExtCtxt<'a> {
                 module: Default::default(),
                 dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
+                lint_node_id: ast::CRATE_NODE_ID,
             },
             force_mode: false,
             expansions: FxHashMap::default(),

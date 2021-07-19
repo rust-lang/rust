@@ -289,7 +289,6 @@ fn generic_extension<'cx>(
 
                 let mut p = Parser::new(sess, tts, false, None);
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
-                let lint_node_id = cx.resolver.lint_node_id(cx.current_expansion.id);
 
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
@@ -301,7 +300,7 @@ fn generic_extension<'cx>(
                     // macro leaves unparsed tokens.
                     site_span: sp,
                     macro_ident: name,
-                    lint_node_id,
+                    lint_node_id: cx.current_expansion.lint_node_id,
                     arm_span,
                 });
             }
