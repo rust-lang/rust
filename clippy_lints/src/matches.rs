@@ -625,7 +625,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if let PatKind::TupleStruct(
                 QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind;
             if args.len() == 1;
-            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(args[0]).kind;
+            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
             let body = remove_blocks(arms[0].body);
             if path_to_local_id(body, arg);
 
@@ -721,7 +721,7 @@ fn check_single_match_single_pattern(
     expr: &Expr<'_>,
     els: Option<&Expr<'_>>,
 ) {
-    if is_wild(&arms[1].pat) {
+    if is_wild(arms[1].pat) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
@@ -1287,7 +1287,7 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
         if let Some((b1_arm, b0_arms)) = arms.split_last();
         if let Some(b0) = find_bool_lit(&b0_arms[0].body.kind, desugared);
         if let Some(b1) = find_bool_lit(&b1_arm.body.kind, desugared);
-        if is_wild(&b1_arm.pat);
+        if is_wild(b1_arm.pat);
         if b0 != b1;
         let if_guard = &b0_arms[0].guard;
         if if_guard.is_none() || b0_arms.len() == 1;

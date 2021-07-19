@@ -2106,7 +2106,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
     store.register_late_pass(|| box strlen_on_c_strings::StrlenOnCStrings);
     store.register_late_pass(move || box self_named_constructor::SelfNamedConstructor);
-
 }
 
 #[rustfmt::skip]
