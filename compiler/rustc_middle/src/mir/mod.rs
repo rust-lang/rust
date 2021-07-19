@@ -294,11 +294,8 @@ impl<'tcx> Body<'tcx> {
     /// The returned MIR contains no `LocalDecl`s (even for the return place) or source scopes. It
     /// is only useful for testing but cannot be `#[cfg(test)]` because it is used in a different
     /// crate.
-    pub fn new_cfg_only(
-        tcx: TyCtxt<'tcx>,
-        basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-    ) -> Self {
-        let mut body = Body {
+    pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
+        Body {
             phase: MirPhase::Build,
             source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
@@ -314,9 +311,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
-        };
-        body.is_polymorphic = body.has_param_types_or_consts(tcx);
-        body
+        }
     }
 
     #[inline]
