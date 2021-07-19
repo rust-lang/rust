@@ -20,10 +20,10 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocContainerId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LifetimeParamId, LocalModuleId,
-    Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
-    VariantId,
+    AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId,
+    EnumVariantId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LifetimeParamId,
+    LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -144,15 +144,28 @@ impl Resolver {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
     }
 
-    pub fn resolve_module_path_in_trait_items(
+    pub fn resolve_module_path_in_trait_assoc_items(
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
-    ) -> Option<TraitId> {
+    ) -> Option<PerNs> {
         let (item_map, module) = self.module_scope()?;
-        let (module_res, ..) = item_map.resolve_path(db, module, path, BuiltinShadowMode::Module);
+        let (module_res, idx) = item_map.resolve_path(db, module, path, BuiltinShadowMode::Module);
         match module_res.take_types()? {
-            ModuleDefId::TraitId(it) => Some(it),
+            ModuleDefId::TraitId(it) => {
+                let idx = idx?;
+                let unresolved = &path.segments()[idx..];
+                let assoc = match unresolved {
+                    [it] => it,
+                    _ => return None,
+                };
+                let &(_, assoc) = db.trait_data(it).items.iter().find(|(n, _)| n == assoc)?;
+                Some(match assoc {
+                    AssocItemId::FunctionId(it) => PerNs::values(it.into(), Visibility::Public),
+                    AssocItemId::ConstId(it) => PerNs::values(it.into(), Visibility::Public),
+                    AssocItemId::TypeAliasId(it) => PerNs::types(it.into(), Visibility::Public),
+                })
+            }
             _ => None,
         }
     }

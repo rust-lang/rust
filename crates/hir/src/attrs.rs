@@ -114,16 +114,15 @@ fn resolve_doc_path(
     let path = ast::Path::parse(link).ok()?;
     let modpath = ModPath::from_src(db.upcast(), path, &Hygiene::new_unhygienic()).unwrap();
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
-    if resolved == PerNs::none() {
-        if let Some(trait_id) = resolver.resolve_module_path_in_trait_items(db.upcast(), &modpath) {
-            return Some(ModuleDefId::TraitId(trait_id));
-        };
-    }
-    let def = match ns {
-        Some(Namespace::Types) => resolved.take_types()?,
-        Some(Namespace::Values) => resolved.take_values()?,
-        Some(Namespace::Macros) => return None,
-        None => resolved.iter_items().find_map(|it| it.as_module_def_id())?,
+    let resolved = if resolved == PerNs::none() {
+        resolver.resolve_module_path_in_trait_assoc_items(db.upcast(), &modpath)?
+    } else {
+        resolved
     };
-    Some(def)
+    match ns {
+        Some(Namespace::Types) => resolved.take_types(),
+        Some(Namespace::Values) => resolved.take_values(),
+        Some(Namespace::Macros) => None,
+        None => resolved.iter_items().find_map(|it| it.as_module_def_id()),
+    }
 }

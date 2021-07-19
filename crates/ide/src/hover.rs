@@ -2077,6 +2077,7 @@ pub struct B$0ar
             "#]],
         );
     }
+
     #[test]
     fn test_hover_intra_link_reference_to_trait_method() {
         check(
