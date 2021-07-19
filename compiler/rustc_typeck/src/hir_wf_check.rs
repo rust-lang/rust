@@ -121,7 +121,11 @@ fn diagnostic_hir_wf_check<'tcx>(
 
     let ty = match tcx.hir().get(hir_id) {
         hir::Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::TyAlias(ref ty) => Some(ty),
+            hir::ImplItemKind::TyAlias(ty) => Some(ty),
+            _ => None,
+        },
+        hir::Node::TraitItem(item) => match item.kind {
+            hir::TraitItemKind::Type(_, ty) => ty,
             _ => None,
         },
         _ => None,

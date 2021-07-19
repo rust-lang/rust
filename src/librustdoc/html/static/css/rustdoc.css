@@ -342,6 +342,8 @@ nav.sub {
 	margin: 30px 10px 20px 10px;
 	text-align: center;
 	word-wrap: break-word;
+	font-weight: inherit;
+	padding: 0;
 }
 
 .sidebar .version {
@@ -394,6 +396,8 @@ nav.sub {
 	text-align: center;
 	font-size: 17px;
 	margin-bottom: 5px;
+	font-weight: inherit;
+	padding: 0;
 }
 
 .sidebar-links {
@@ -921,6 +925,9 @@ body.blur > :not(#help) {
 	padding: 0 20px 20px 17px;;
 }
 
+.item-info .stab {
+	display: table;
+}
 .stab {
 	border-width: 1px;
 	border-style: solid;

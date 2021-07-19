@@ -316,5 +316,35 @@ pub mod primitive;
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
+#[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
 #[stable(feature = "simd_arch", since = "1.27.0")]
-pub use core_arch::arch;
+pub mod arch {
+    #[stable(feature = "simd_arch", since = "1.27.0")]
+    pub use crate::core_arch::arch::*;
+
+    /// Inline assembly.
+    ///
+    /// Read the [unstable book] for the usage.
+    ///
+    /// [unstable book]: ../../unstable-book/library-features/asm.html
+    #[unstable(
+        feature = "asm",
+        issue = "72016",
+        reason = "inline assembly is not stable enough for use and is subject to change"
+    )]
+    #[rustc_builtin_macro]
+    pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+
+    /// Module-level inline assembly.
+    #[unstable(
+        feature = "global_asm",
+        issue = "35119",
+        reason = "`global_asm!` is not stable enough for use and is subject to change"
+    )]
+    #[rustc_builtin_macro]
+    pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+        /* compiler built-in */
+    }
+}

@@ -1,5 +1,7 @@
 // ignore-tidy-linelength
 
+#![feature(doc_cfg)]
+
 pub mod module {
     pub mod sub_module {
         pub mod sub_sub_module {
@@ -14,6 +16,7 @@ pub fn foobar() {}
 
 pub type Alias = u32;
 
+#[doc(cfg(feature = "foo-method"))]
 pub struct Foo {
     pub x: Alias,
 }
