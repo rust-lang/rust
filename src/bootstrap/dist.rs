@@ -1284,7 +1284,13 @@ impl Step for RustDemangler {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("rust-demangler")
+        // While other tools use `should_build_extended_tool` to decide whether to be run by
+        // default or not, `rust-demangler` must be build when *either* it's enabled as a tool like
+        // the other ones or if `profiler = true`. Because we don't know the target at this stage
+        // we run the step by default when only `extended = true`, and decide whether to actually
+        // run it or not later.
+        let default = run.builder.config.extended;
+        run.path("rust-demangler").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1301,11 +1307,11 @@ impl Step for RustDemangler {
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
-        assert!(builder.config.extended);
 
         // Only build this extended tool if explicitly included in `tools`, or if `profiler = true`
-        let profiler = builder.config.profiler_enabled(target);
-        if !builder.config.tools.as_ref().map_or(profiler, |t| t.contains("rust-demangler")) {
+        let condition = should_build_extended_tool(builder, "rust-demangler")
+            || builder.config.profiler_enabled(target);
+        if builder.config.extended && !condition {
             return None;
         }
 
@@ -1380,6 +1386,15 @@ impl Step for Extended {
             tarballs.push(builder.ensure(Docs { host: target }));
         }
 
+        if builder.config.profiler_enabled(target)
+            || should_build_extended_tool(builder, "rust-demangler")
+        {
+            if let Some(tarball) = builder.ensure(RustDemangler { compiler, target }) {
+                tarballs.push(tarball);
+                built_tools.insert("rust-demangler");
+            }
+        }
+
         add_tool!("cargo" => Cargo { compiler, target });
         add_tool!("rustfmt" => Rustfmt { compiler, target });
         add_tool!("rls" => Rls { compiler, target });
@@ -1389,7 +1404,6 @@ impl Step for Extended {
         add_tool!("miri" => Miri { compiler, target });
         add_tool!("analysis" => Analysis { compiler, target });
 
-        let rust_demangler_installer = builder.ensure(RustDemangler { compiler, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
 
         let etc = builder.src.join("src/etc/installer");
@@ -1398,8 +1412,6 @@ impl Step for Extended {
         if builder.config.dry_run {
             return;
         }
-
-        tarballs.extend(rust_demangler_installer.clone());
 
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
@@ -1447,11 +1459,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            if rust_demangler_installer.is_none() {
-                contents = filter(&contents, "rust-demangler");
-            }
-
-            for tool in &["rls", "rust-analyzer", "miri", "rustfmt"] {
+            for tool in &["rust-demangler", "rls", "rust-analyzer", "miri", "rustfmt"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1492,10 +1500,7 @@ impl Step for Extended {
             prepare("rust-std");
             prepare("rust-analysis");
             prepare("clippy");
-            if rust_demangler_installer.is_some() {
-                prepare("rust-demangler");
-            }
-            for tool in &["rls", "rust-analyzer", "miri"] {
+            for tool in &["rust-demangler", "rls", "rust-analyzer", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1556,10 +1561,7 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
-            if rust_demangler_installer.is_some() {
-                prepare("rust-demangler");
-            }
-            for tool in &["rls", "rust-analyzer", "miri"] {
+            for tool in &["rust-demangler", "rls", "rust-analyzer", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1696,7 +1698,7 @@ impl Step for Extended {
                     .arg("-t")
                     .arg(etc.join("msi/remove-duplicates.xsl")),
             );
-            if rust_demangler_installer.is_some() {
+            if built_tools.contains("rust-demangler") {
                 builder.run(
                     Command::new(&heat)
                         .current_dir(&exe)
@@ -1788,7 +1790,7 @@ impl Step for Extended {
                     .arg(&input);
                 add_env(builder, &mut cmd, target);
 
-                if rust_demangler_installer.is_some() {
+                if built_tools.contains("rust-demangler") {
                     cmd.arg("-dRustDemanglerDir=rust-demangler");
                 }
                 if built_tools.contains("rls") {
@@ -1813,7 +1815,7 @@ impl Step for Extended {
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
             candle("ClippyGroup.wxs".as_ref());
-            if rust_demangler_installer.is_some() {
+            if built_tools.contains("rust-demangler") {
                 candle("RustDemanglerGroup.wxs".as_ref());
             }
             if built_tools.contains("rls") {
@@ -1862,7 +1864,7 @@ impl Step for Extended {
             if built_tools.contains("rust-analyzer") {
                 cmd.arg("RustAnalyzerGroup.wixobj");
             }
-            if rust_demangler_installer.is_some() {
+            if built_tools.contains("rust-demangler") {
                 cmd.arg("RustDemanglerGroup.wixobj");
             }
             if built_tools.contains("miri") {
