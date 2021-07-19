@@ -7,7 +7,7 @@
 struct Foo {}
 
 impl Foo {
-    fn foo() -> Self {
+    fn new() -> Self {
         impl Foo {
             fn bar() {}
         }

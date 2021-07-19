@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
             if macro_with_not_op(&left.kind) || macro_with_not_op(&right.kind) {
                 return;
             }
-            if is_useless_with_eq_exprs(higher::binop(op.node)) && eq_expr_value(cx, left, right) {
+            if is_useless_with_eq_exprs(op.node.into()) && eq_expr_value(cx, left, right) {
                 span_lint(
                     cx,
                     EQ_OP,

@@ -4,7 +4,12 @@
 
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
-#![allow(clippy::should_implement_trait, clippy::upper_case_acronyms, clippy::from_over_into)]
+#![allow(
+    clippy::should_implement_trait,
+    clippy::upper_case_acronyms,
+    clippy::from_over_into,
+    clippy::self_named_constructor
+)]
 
 #[macro_use]
 extern crate proc_macro_derive;
