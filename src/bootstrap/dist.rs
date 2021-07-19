@@ -1386,6 +1386,10 @@ impl Step for Extended {
             tarballs.push(builder.ensure(Docs { host: target }));
         }
 
+        if target.contains("windows-gnu") {
+            tarballs.push(builder.ensure(Mingw { host: target }).expect("missing mingw"));
+        }
+
         if builder.config.profiler_enabled(target)
             || should_build_extended_tool(builder, "rust-demangler")
         {
@@ -1404,17 +1408,11 @@ impl Step for Extended {
         add_tool!("miri" => Miri { compiler, target });
         add_tool!("analysis" => Analysis { compiler, target });
 
-        let mingw_installer = builder.ensure(Mingw { host: target });
-
         let etc = builder.src.join("src/etc/installer");
 
         // Avoid producing tarballs during a dry run.
         if builder.config.dry_run {
             return;
-        }
-
-        if target.contains("pc-windows-gnu") {
-            tarballs.push(mingw_installer.unwrap());
         }
 
         let tarball = Tarball::new(builder, "rust", &target.triple);
