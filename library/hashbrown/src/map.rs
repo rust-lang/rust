@@ -8,8 +8,6 @@ use core::hash::{BuildHasher, Hash};
 use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem;
-#[cfg(feature = "nightly")]
-use core::mem::MaybeUninit;
 use core::ops::Index;
 
 /// Default hasher for `HashMap`.
@@ -1149,16 +1147,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut pairs = self.get_each_inner_mut(ks);
-        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
-        let mut out: [MaybeUninit<Result<&'_ mut V, UnavailableMutError>>; N] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for i in 0..N {
-            out[i] = MaybeUninit::new(
-                mem::replace(&mut pairs[i], Err(UnavailableMutError::Absent)).map(|(_, v)| v),
-            );
-        }
-        unsafe { MaybeUninit::array_assume_init(out) }
+        self.get_each_inner_mut(ks).map(|res| res.map(|(_, v)| v))
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1208,17 +1197,8 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let mut pairs = self.get_each_inner_mut(ks);
-        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
-        let mut out: [MaybeUninit<Result<(&'_ K, &'_ mut V), UnavailableMutError>>; N] =
-            unsafe { MaybeUninit::uninit().assume_init() };
-        for i in 0..N {
-            out[i] = MaybeUninit::new(
-                mem::replace(&mut pairs[i], Err(UnavailableMutError::Absent))
-                    .map(|(k, v)| (&*k, v)),
-            );
-        }
-        unsafe { MaybeUninit::array_assume_init(out) }
+        self.get_each_inner_mut(ks)
+            .map(|res| res.map(|(k, v)| (&*k, v)))
     }
 
     #[cfg(feature = "nightly")]
