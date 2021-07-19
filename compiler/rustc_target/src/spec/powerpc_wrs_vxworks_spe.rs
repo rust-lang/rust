@@ -13,6 +13,7 @@ pub fn target() -> Target {
         data_layout: "E-m:e-p:32:32-i64:64-n32".to_string(),
         arch: "powerpc".to_string(),
         options: TargetOptions {
+            abi: "spe".to_string(),
             endian: Endian::Big,
             // feature msync would disable instruction 'fsync' which is not supported by fsl_p1p2
             features: "+secure-plt,+msync".to_string(),

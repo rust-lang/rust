@@ -1,5 +1,5 @@
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr,
+    ($SelfT:ty, $ActualT:ident, $BITS:expr, $MaxV:expr,
         $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
         $reversed:expr, $le_bytes:expr, $be_bytes:expr,
         $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
@@ -819,7 +819,10 @@ macro_rules! uint_impl {
                         without modifying the original"]
         #[inline]
         pub const fn checked_log10(self) -> Option<Self> {
-            self.checked_log(10)
+            match int_log10::$ActualT(self as $ActualT) {
+                Some(s) => Some(s as Self),
+                None => None,
+            }
         }
 
         /// Checked negation. Computes `-self`, returning `None` unless `self ==

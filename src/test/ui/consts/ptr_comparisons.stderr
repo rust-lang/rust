@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: pointer must be in-bounds at offset $TWO_WORDS, but is outside bounds of alloc2 which has size $WORD
+   |                  pointer arithmetic failed: alloc3 has size $WORD, so pointer to $TWO_WORDS bytes starting at offset 0 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const usize>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    | 
   ::: $DIR/ptr_comparisons.rs:61:34
@@ -16,7 +16,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ptr_comparisons.rs:64:33
    |
 LL |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: alloc3 has size $WORD, so pointer to 1000 bytes starting at offset 0 is out-of-bounds
 
 error: any use of this value will cause an error
   --> $DIR/ptr_comparisons.rs:68:27
@@ -24,7 +24,7 @@ error: any use of this value will cause an error
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
-   |                           cannot cast pointer to integer because it was not created by cast from integer
+   |                           unable to turn pointer into raw bytes
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -36,7 +36,7 @@ error: any use of this value will cause an error
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
-   |                           cannot cast pointer to integer because it was not created by cast from integer
+   |                           unable to turn pointer into raw bytes
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>

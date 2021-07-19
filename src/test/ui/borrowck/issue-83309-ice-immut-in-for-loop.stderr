@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `*v` which is behind a `&` reference
+error[E0594]: cannot assign to `*v`, which is behind a `&` reference
   --> $DIR/issue-83309-ice-immut-in-for-loop.rs:11:9
    |
 LL |     for v in Query.iter_mut() {

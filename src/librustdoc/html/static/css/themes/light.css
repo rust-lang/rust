@@ -1,0 +1,469 @@
+/* General structure and fonts */
+
+body {
+	background-color: white;
+	color: black;
+}
+
+h1, h2, h3, h4 {
+	color: black;
+}
+h1.fqn {
+	border-bottom-color: #D5D5D5;
+}
+h2, h3, h4 {
+	border-bottom-color: #DDDDDD;
+}
+
+.in-band {
+	background-color: white;
+}
+
+.invisible {
+	background: rgba(0, 0, 0, 0);
+}
+
+.docblock code, .docblock-short code {
+	background-color: #F5F5F5;
+}
+pre, .rustdoc.source .example-wrap {
+	background-color: #F5F5F5;
+}
+
+.sidebar {
+	background-color: #F1F1F1;
+}
+
+/* Improve the scrollbar display on firefox */
+* {
+	scrollbar-color: rgba(36, 37, 39, 0.6) #e6e6e6;
+}
+
+.sidebar {
+	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
+}
+
+.logo-container.rust-logo > img {
+	/* No need for a border in here! */
+}
+
+/* Improve the scrollbar display on webkit-based browsers */
+::-webkit-scrollbar-track {
+	background-color: #ecebeb;
+}
+::-webkit-scrollbar-thumb {
+	background-color: rgba(36, 37, 39, 0.6);
+}
+.sidebar::-webkit-scrollbar-track {
+	background-color: #dcdcdc;
+}
+.sidebar::-webkit-scrollbar-thumb {
+	background-color: rgba(36, 37, 39, 0.6);
+}
+
+.sidebar .current {
+	background-color: #fff;
+}
+
+.source .sidebar {
+	background-color: #fff;
+}
+
+.sidebar .location {
+	border-color: #000;
+	background-color: #fff;
+	color: #333;
+}
+
+.sidebar .version {
+	border-bottom-color: #DDD;
+}
+
+.sidebar-title {
+	border-top-color: #777;
+	border-bottom-color: #777;
+}
+
+.block a:hover {
+	background: #F5F5F5;
+}
+
+.line-numbers span { color: #c67e2d; }
+.line-numbers .line-highlighted {
+	background-color: #f6fdb0 !important;
+}
+
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+	border-bottom-color: #ddd;
+}
+
+.docblock table, .docblock table td, .docblock table th {
+	border-color: #ddd;
+}
+
+.content .method .where,
+.content .fn .where,
+.content .where.fmt-newline {
+	color: #4E4C4C;
+}
+
+.search-results a:hover {
+	background-color: #ddd;
+}
+
+.search-results a:focus {
+	color: #000 !important;
+	background-color: #ccc;
+}
+.search-results a:focus span { color: #000 !important; }
+a.result-trait:focus { background-color: #c7b6ff; }
+a.result-traitalias:focus { background-color: #c7b6ff; }
+a.result-mod:focus,
+a.result-externcrate:focus { background-color: #afc6e4; }
+a.result-enum:focus { background-color: #b4d1b9; }
+a.result-struct:focus { background-color: #e7b1a0; }
+a.result-union:focus { background-color: #b7bd49; }
+a.result-fn:focus,
+a.result-method:focus,
+a.result-tymethod:focus { background-color: #c6afb3; }
+a.result-type:focus { background-color: #ffc891; }
+a.result-foreigntype:focus { background-color: #f5c4ff; }
+a.result-attr:focus,
+a.result-derive:focus,
+a.result-macro:focus { background-color: #8ce488; }
+a.result-constant:focus,
+a.result-static:focus { background-color: #c3e0ff; }
+a.result-primitive:focus { background-color: #9aecff; }
+a.result-keyword:focus { background-color: #f99650; }
+
+.content .item-info::before { color: #ccc; }
+
+.content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #ad448e; }
+.content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
+.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #cd00e2; }
+.content span.attr, .content a.attr, .block a.current.attr,
+.content span.derive, .content a.derive, .block a.current.derive,
+.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
+.content span.union, .content a.union, .block a.current.union { color: #767b27; }
+.content span.constant, .content a.constant, .block a.current.constant,
+.content span.static, .content a.static, .block a.current.static { color: #546e8a; }
+.content span.primitive, .content a.primitive, .block a.current.primitive { color: #2c8093; }
+.content span.externcrate,
+.content span.mod, .content a.mod, .block a.current.mod { color: #4d76ae; }
+.content span.trait, .content a.trait, .block a.current.trait { color: #7c5af3; }
+.content span.traitalias, .content a.traitalias, .block a.current.traitalias { color: #6841f1; }
+.content span.fn, .content a.fn, .block a.current.fn,
+.content span.method, .content a.method, .block a.current.method,
+.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
+.content .fnname { color: #9a6e31; }
+.content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
+
+nav:not(.sidebar) {
+	border-bottom-color: #e0e0e0;
+}
+nav.main .current {
+	border-top-color: #000;
+	border-bottom-color: #000;
+}
+nav.main .separator {
+	border: 1px solid #000;
+}
+a {
+	color: #000;
+}
+
+.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
+.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
+#help a {
+	color: #3873AD;
+}
+
+a.test-arrow {
+	color: #f5f5f5;
+}
+
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before {
+	color: #999;
+}
+
+#crate-search {
+	color: #555;
+	background-color: white;
+	border-color: #e0e0e0;
+	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+}
+
+.search-input {
+	color: #555;
+	background-color: white;
+	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+}
+
+.search-input:focus {
+	border-color: #66afe9;
+}
+
+.search-input:disabled {
+	background-color: #e6e6e6;
+}
+
+#crate-search + .search-input:focus {
+	box-shadow: 0 0 8px #078dd8;
+}
+
+.module-item .stab,
+.import-item .stab {
+	color: #000;
+}
+
+.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
+.stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
+.stab.portability { background: #F3DFFF; border-color: #b07bdb; }
+.stab.portability > code { background: none; }
+
+#help > div {
+	background: #e9e9e9;
+	border-color: #bfbfbf;
+}
+
+#help > div > span {
+	border-bottom-color: #bfbfbf;
+}
+
+.since {
+	color: grey;
+}
+
+.result-name .primitive > i, .result-name .keyword > i {
+	color: black;
+}
+
+.line-numbers :target { background-color: transparent; }
+
+/* Code highlighting */
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
+pre.rust .lifetime { color: #B76514; }
+pre.rust .question-mark {
+	color: #ff9011;
+}
+
+.example-wrap > pre.line-number {
+	border-color: #c7c7c7;
+}
+
+a.test-arrow {
+	background-color: rgba(78, 139, 202, 0.2);
+}
+
+a.test-arrow:hover{
+	background-color: #4e8bca;
+}
+
+.toggle-label,
+.code-attribute {
+	color: #999;
+}
+
+:target, :target * {
+	background: #FDFFD3;
+}
+
+:target {
+	border-right: 3px solid #ffb44c;
+}
+
+pre.compile_fail {
+	border-left: 2px solid rgba(255,0,0,.5);
+}
+
+pre.compile_fail:hover, .information:hover + pre.compile_fail {
+	border-left: 2px solid #f00;
+}
+
+pre.should_panic {
+	border-left: 2px solid rgba(255,0,0,.5);
+}
+
+pre.should_panic:hover, .information:hover + pre.should_panic {
+	border-left: 2px solid #f00;
+}
+
+pre.ignore {
+	border-left: 2px solid rgba(255,142,0,.6);
+}
+
+pre.ignore:hover, .information:hover + pre.ignore {
+	border-left: 2px solid #ff9200;
+}
+
+.tooltip.compile_fail {
+	color: rgba(255,0,0,.5);
+}
+
+.information > .compile_fail:hover {
+	color: #f00;
+}
+
+.tooltip.should_panic {
+	color: rgba(255,0,0,.5);
+}
+
+.information > .should_panic:hover {
+	color: #f00;
+}
+
+.tooltip.ignore {
+	color: rgba(255,142,0,.6);
+}
+
+.information > .ignore:hover {
+	color: #ff9200;
+}
+
+.search-failed a {
+	color: #0089ff;
+}
+
+.tooltip::after {
+	background-color: #000;
+	color: #fff;
+}
+
+.tooltip::before {
+	border-color: transparent black transparent transparent;
+}
+
+.notable-traits-tooltiptext {
+	background-color: #eee;
+	border-color: #999;
+}
+
+.notable-traits-tooltiptext .notable {
+	border-bottom-color: #DDDDDD;
+}
+
+#titles > button:not(.selected) {
+	background-color: #e6e6e6;
+	border-top-color: #e6e6e6;
+}
+
+#titles > button:hover, #titles > button.selected {
+	background-color: #ffffff;
+	border-top-color: #0089ff;
+}
+
+#titles > button > div.count {
+	color: #888;
+}
+
+@media (max-width: 700px) {
+	.sidebar-menu {
+		background-color: #F1F1F1;
+		border-bottom-color: #e0e0e0;
+		border-right-color: #e0e0e0;
+	}
+
+	.sidebar-elems {
+		background-color: #F1F1F1;
+		border-right-color: #000;
+	}
+
+	#sidebar-filler {
+		background-color: #F1F1F1;
+		border-bottom-color: #e0e0e0;
+	}
+}
+
+kbd {
+	color: #000;
+	background-color: #fafbfc;
+	border-color: #d1d5da;
+	border-bottom-color: #c6cbd1;
+	box-shadow-color: #c6cbd1;
+}
+
+#theme-picker, #settings-menu, #help-button {
+	border-color: #e0e0e0;
+	background-color: #fff;
+}
+
+#theme-picker:hover, #theme-picker:focus,
+#settings-menu:hover, #settings-menu:focus,
+#help-button:hover, #help-button:focus {
+	border-color: #717171;
+}
+
+#copy-path {
+	color: #999;
+}
+#copy-path > img {
+	filter: invert(50%);
+}
+#copy-path:hover > img {
+	filter: invert(35%);
+}
+
+#theme-choices {
+	border-color: #ccc;
+	background-color: #fff;
+}
+
+#theme-choices > button:not(:first-child) {
+	border-top-color: #e0e0e0;
+}
+
+#theme-choices > button:hover, #theme-choices > button:focus {
+	background-color: #eee;
+}
+
+@media (max-width: 700px) {
+	#theme-picker {
+		background: #fff;
+	}
+}
+
+#all-types {
+	background-color: #fff;
+}
+#all-types:hover {
+	background-color: #f9f9f9;
+}
+
+.search-results .result-name span.alias {
+	color: #000;
+}
+.search-results .result-name span.grey {
+	color: #999;
+}
+
+#sidebar-toggle {
+	background-color: #F1F1F1;
+}
+#sidebar-toggle:hover {
+	background-color: #E0E0E0;
+}
+#source-sidebar {
+	background-color: #F1F1F1;
+}
+#source-sidebar > .title {
+	border-bottom-color: #ccc;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #E0E0E0;
+}
+div.files > .selected {
+	background-color: #fff;
+}
+.setting-line > .title {
+	border-bottom-color: #D5D5D5;
+}

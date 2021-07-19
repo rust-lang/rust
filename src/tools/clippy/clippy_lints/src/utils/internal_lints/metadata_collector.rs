@@ -520,7 +520,9 @@ fn get_lint_group_and_level_or_lint(
     lint_name: &str,
     item: &'hir Item<'_>,
 ) -> Option<(String, &'static str)> {
-    let result = cx.lint_store.check_lint_name(lint_name, Some(sym::clippy));
+    let result = cx
+        .lint_store
+        .check_lint_name(cx.sess(), lint_name, Some(sym::clippy), &[]);
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
         if let Some(group) = get_lint_group(cx, lint_lst[0]) {
             if EXCLUDED_LINT_GROUPS.contains(&group.as_str()) {

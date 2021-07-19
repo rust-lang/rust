@@ -1,6 +1,7 @@
 // run-pass
 
 #![deny(unused_mut)]
+#![allow(dead_code)]
 
 struct Foo {
     pub value: i32

@@ -144,6 +144,10 @@ declare_features! (
     (removed, external_doc, "1.54.0", Some(44732), None,
      Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations")),
 
+     /// Allows casting raw pointers to `usize` during const eval.
+    (removed, const_raw_ptr_to_usize_cast, "1.55.0", Some(51910), None,
+     Some("at compile-time, pointers do not have an integer value, so these casts cannot be properly supported")),
+
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------

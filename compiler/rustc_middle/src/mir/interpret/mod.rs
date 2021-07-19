@@ -99,7 +99,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, NonZeroU64};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_ast::LitKind;
@@ -127,7 +127,7 @@ pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMay
 
 pub use self::allocation::{alloc_range, AllocRange, Allocation, InitMask, Relocations};
 
-pub use self::pointer::{Pointer, PointerArithmetic};
+pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -172,12 +172,11 @@ pub enum LitToConstError {
     /// This is used for graceful error handling (`delay_span_bug`) in
     /// type checking (`Const::from_anon_const`).
     TypeError,
-    UnparseableFloat,
     Reported,
 }
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct AllocId(pub u64);
+pub struct AllocId(pub NonZeroU64);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
@@ -428,7 +427,11 @@ crate struct AllocMap<'tcx> {
 
 impl<'tcx> AllocMap<'tcx> {
     crate fn new() -> Self {
-        AllocMap { alloc_map: Default::default(), dedup: Default::default(), next_id: AllocId(0) }
+        AllocMap {
+            alloc_map: Default::default(),
+            dedup: Default::default(),
+            next_id: AllocId(NonZeroU64::new(1).unwrap()),
+        }
     }
     fn reserve(&mut self) -> AllocId {
         let next = self.next_id;

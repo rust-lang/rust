@@ -10,6 +10,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
+            abi: "eabi".to_string(),
             // ARMv8-M baseline doesn't support unaligned loads/stores so we disable them
             // with +strict-align.
             features: "+strict-align".to_string(),

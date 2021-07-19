@@ -1,0 +1,134 @@
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
+  --> $DIR/multi_diagnostics.rs:23:13
+   |
+LL |     let c = || {
+   |             ^^ in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+...
+LL |         let _f_1 = f1.0;
+   |                    ---- in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+LL |
+LL |         let _f_2 = f2.1;
+   |                    ---- in Rust 2018, closure captures all of `f2`, but in Rust 2021, it only captures `f2.1`
+...
+LL | }
+   | - in Rust 2018, `f2` would be dropped here, but in Rust 2021, only `f2.1` would be dropped here alongside the closure
+   |
+note: the lint level is defined here
+  --> $DIR/multi_diagnostics.rs:2:9
+   |
+LL | #![deny(rust_2021_incompatible_closure_captures)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `f1`, `f2` to be fully captured
+   |
+LL |     let c = || { let _ = (&f1, &f2); 
+LL |
+LL |
+LL |
+LL |
+LL |         let _f_1 = f1.0;
+ ...
+
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
+  --> $DIR/multi_diagnostics.rs:42:13
+   |
+LL |     let c = || {
+   |             ^^ in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+...
+LL |         let _f_1 = f1.0;
+   |                    ---- in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `f1` to be fully captured
+   |
+LL |     let c = || { let _ = &f1; 
+LL |
+LL |
+LL |
+LL |
+LL |         let _f_1 = f1.0;
+ ...
+
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
+  --> $DIR/multi_diagnostics.rs:67:13
+   |
+LL |     let c = || {
+   |             ^^
+   |             |
+   |             in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+   |             in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.2` does not implement `Clone`
+...
+LL |         let _f_0 = f1.0;
+   |                    ---- in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+LL |
+LL |         let _f_2 = f1.2;
+   |                    ---- in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.2`
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `f1` to be fully captured
+   |
+LL |     let c = || { let _ = &f1; 
+LL |
+LL |
+LL |
+LL |
+LL |
+ ...
+
+error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
+  --> $DIR/multi_diagnostics.rs:86:13
+   |
+LL |     let c = || {
+   |             ^^ in Rust 2018, this closure would implement `Clone` as `f1` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f1.0` does not implement `Clone`
+...
+LL |         let _f_0 = f1.0;
+   |                    ---- in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.0`
+LL |
+LL |         let _f_1 = f1.1;
+   |                    ---- in Rust 2018, closure captures all of `f1`, but in Rust 2021, it only captures `f1.1`
+...
+LL | }
+   | -
+   | |
+   | in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.0` would be dropped here alongside the closure
+   | in Rust 2018, `f1` would be dropped here, but in Rust 2021, only `f1.1` would be dropped here alongside the closure
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `f1` to be fully captured
+   |
+LL |     let c = || { let _ = &f1; 
+LL |
+LL |
+LL |
+LL |
+LL |         let _f_0 = f1.0;
+ ...
+
+error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` trait implementation for closure
+  --> $DIR/multi_diagnostics.rs:119:19
+   |
+LL |     thread::spawn(move || unsafe {
+   |                   ^^^^^^^^^^^^^^
+   |                   |
+   |                   in Rust 2018, this closure would implement `Sync`, `Send` as `fptr1` implements `Sync`, `Send`, but in Rust 2021, this closure would no longer implement `Sync`, `Send` as `fptr1.0.0` does not implement `Sync`, `Send`
+   |                   in Rust 2018, this closure would implement `Send` as `fptr2` implements `Send`, but in Rust 2021, this closure would no longer implement `Send` as `fptr2.0` does not implement `Send`
+...
+LL |         *fptr1.0.0 = 20;
+   |         ---------- in Rust 2018, closure captures all of `fptr1`, but in Rust 2021, it only captures `fptr1.0.0`
+LL |
+LL |         *fptr2.0 = 20;
+   |         -------- in Rust 2018, closure captures all of `fptr2`, but in Rust 2021, it only captures `fptr2.0`
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+help: add a dummy let to cause `fptr1`, `fptr2` to be fully captured
+   |
+LL |     thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
+LL |
+LL |
+LL |
+LL |
+LL |
+ ...
+
+error: aborting due to 5 previous errors
+

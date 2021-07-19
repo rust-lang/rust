@@ -1,0 +1,607 @@
+/*
+Based off of the Ayu theme
+Original by Dempfi (https://github.com/dempfi/ayu)
+*/
+
+/* General structure and fonts */
+
+body {
+	background-color: #0f1419;
+	color: #c5c5c5;
+}
+
+h1, h2, h3, h4 {
+	color: white;
+}
+h1.fqn {
+	border-bottom-color: #5c6773;
+}
+h1.fqn  a {
+	color: #fff;
+}
+h2, h3, h4 {
+	border-bottom-color: #5c6773;
+}
+h4 {
+	border: none;
+}
+
+.in-band {
+	background-color: #0f1419;
+}
+
+.invisible {
+	background: rgba(0, 0, 0, 0);
+}
+
+.docblock code {
+	color: #ffb454;
+}
+h3 > code, h4 > code, h5 > code {
+	color: #e6e1cf;
+}
+pre > code {
+	color: #e6e1cf;
+}
+span code {
+	color: #e6e1cf;
+}
+.docblock a > code {
+	color: #39AFD7 !important;
+}
+.docblock code, .docblock-short code {
+	background-color: #191f26;
+}
+pre, .rustdoc.source .example-wrap {
+	color: #e6e1cf;
+	background-color: #191f26;
+}
+
+.sidebar {
+	background-color: #14191f;
+}
+
+.logo-container.rust-logo > img {
+	filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
+}
+
+/* Improve the scrollbar display on firefox */
+* {
+	scrollbar-color: #5c6773 transparent;
+}
+
+.sidebar {
+	scrollbar-color: #5c6773 transparent;
+}
+
+/* Improve the scrollbar display on webkit-based browsers */
+::-webkit-scrollbar-track {
+	background-color: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background-color: #5c6773;
+}
+.sidebar::-webkit-scrollbar-track {
+	background-color: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+	background-color: #5c6773;
+}
+
+.sidebar .current {
+	background-color: transparent;
+	color: #ffb44c;
+}
+
+.source .sidebar {
+	background-color: #0f1419;
+}
+
+.sidebar .location {
+	border-color: #000;
+	background-color: #0f1419;
+	color: #fff;
+}
+
+.sidebar-elems .location {
+	color: #ff7733;
+}
+
+.sidebar-elems .location a {
+	color: #fff;
+}
+
+.sidebar .version {
+	border-bottom-color: #424c57;
+}
+
+.sidebar-title {
+	border-top-color: #5c6773;
+	border-bottom-color: #5c6773;
+}
+
+.block a:hover {
+	background: transparent;
+	color: #ffb44c;
+}
+
+.line-numbers span { color: #5c6773; }
+.line-numbers .line-highlighted {
+	color: #708090;
+	background-color: rgba(255, 236, 164, 0.06);
+	padding-right: 4px;
+	border-right: 1px solid #ffb44c;
+}
+
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+	border-bottom-color: #5c6773;
+}
+
+.docblock table, .docblock table td, .docblock table th {
+	border-color: #5c6773;
+}
+
+.content .method .where,
+.content .fn .where,
+.content .where.fmt-newline {
+	color: #c5c5c5;
+}
+
+.search-results a:hover {
+	background-color: #777;
+}
+
+.search-results a:focus {
+	color: #000 !important;
+	background-color: #c6afb3;
+}
+.search-results a {
+	color: #0096cf;
+}
+.search-results a div.desc {
+	color: #c5c5c5;
+}
+
+.content .item-info::before { color: #ccc; }
+
+.content span.foreigntype, .content a.foreigntype { color: #ef57ff; }
+.content span.union, .content a.union { color: #98a01c; }
+.content span.constant, .content a.constant,
+.content span.static, .content a.static { color: #6380a0; }
+.content span.primitive, .content a.primitive { color: #32889b; }
+.content span.traitalias, .content a.traitalias { color: #57d399; }
+.content span.keyword, .content a.keyword { color: #de5249; }
+
+.content span.externcrate, .content span.mod, .content a.mod {
+	color: #acccf9;
+}
+.content span.struct, .content a.struct {
+	color: #ffa0a5;
+}
+.content span.enum, .content a.enum {
+	color: #99e0c9;
+}
+.content span.trait, .content a.trait {
+	color: #39AFD7;
+}
+.content span.type, .content a.type {
+	color: #cfbcf5;
+}
+.content span.fn, .content a.fn, .content span.method,
+.content a.method, .content span.tymethod,
+.content a.tymethod, .content .fnname {
+	color: #fdd687;
+}
+.content span.attr, .content a.attr, .content span.derive,
+.content a.derive, .content span.macro, .content a.macro {
+	color: #a37acc;
+}
+
+pre.rust .comment { color: #788797; }
+pre.rust .doccomment { color: #a1ac88; }
+
+nav:not(.sidebar) {
+	border-bottom-color: #424c57;
+}
+nav.main .current {
+	border-top-color: #5c6773;
+	border-bottom-color: #5c6773;
+}
+nav.main .separator {
+	border: 1px solid #5c6773;
+}
+a {
+	color: #c5c5c5;
+}
+
+.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
+.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
+#help a {
+	color: #39AFD7;
+}
+
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before {
+	color: #999;
+}
+
+#crate-search {
+	color: #c5c5c5;
+	background-color: #141920;
+	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
+	border-color: #424c57;
+}
+
+.search-input {
+	color: #ffffff;
+	background-color: #141920;
+	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
+	transition: box-shadow 150ms ease-in-out;
+}
+
+#crate-search+.search-input:focus {
+	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
+}
+
+.search-input:disabled {
+	background-color: #3e3e3e;
+}
+
+.module-item .stab,
+.import-item .stab {
+	color: #000;
+}
+
+.stab.unstable,
+.stab.deprecated,
+.stab.portability {
+	color: #c5c5c5;
+	background: #314559 !important;
+	border-style: none !important;
+	border-radius: 4px;
+	padding: 3px 6px 3px 6px;
+}
+
+.stab.portability > code {
+	color: #e6e1cf;
+	background: none;
+}
+
+#help > div {
+	background: #14191f;
+	box-shadow: 0px 6px 20px 0px black;
+	border: none;
+	border-radius: 4px;
+}
+
+#help > div > span {
+	border-bottom-color: #5c6773;
+}
+
+.since {
+	color: grey;
+}
+
+.result-name .primitive > i, .result-name .keyword > i {
+	color: #788797;
+}
+
+.line-numbers :target { background-color: transparent; }
+
+/* Code highlighting */
+pre.rust .number, pre.rust .string { color: #b8cc52; }
+pre.rust .kw, pre.rust .kw-2, pre.rust .prelude-ty,
+pre.rust .bool-val, pre.rust .prelude-val,
+pre.rust .op, pre.rust .lifetime { color: #ff7733; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #a37acc; }
+pre.rust .question-mark {
+	color: #ff9011;
+}
+pre.rust .self {
+	color: #36a3d9;
+	font-style: italic;
+}
+pre.rust .attribute {
+	color: #e6e1cf;
+}
+pre.rust .attribute .ident, pre.rust .attribute .op {
+	color: #e6e1cf;
+}
+
+.example-wrap > pre.line-number {
+	color: #5c67736e;
+	border: none;
+}
+
+a.test-arrow {
+	font-size: 100%;
+	color: #788797;
+	border-radius: 4px;
+	background-color: rgba(57, 175, 215, 0.09);
+}
+
+a.test-arrow:hover {
+	background-color: rgba(57, 175, 215, 0.368);
+	color: #c5c5c5;
+}
+
+.toggle-label,
+.code-attribute {
+	color: #999;
+}
+
+:target, :target * {
+	background: rgba(255, 236, 164, 0.06);
+}
+
+:target {
+	border-right: 3px solid rgba(255, 180, 76, 0.85);
+}
+
+pre.compile_fail {
+	border-left: 2px solid rgba(255,0,0,.4);
+}
+
+pre.compile_fail:hover, .information:hover + pre.compile_fail {
+	border-left: 2px solid #f00;
+}
+
+pre.should_panic {
+	border-left: 2px solid rgba(255,0,0,.4);
+}
+
+pre.should_panic:hover, .information:hover + pre.should_panic {
+	border-left: 2px solid #f00;
+}
+
+pre.ignore {
+	border-left: 2px solid rgba(255,142,0,.6);
+}
+
+pre.ignore:hover, .information:hover + pre.ignore {
+	border-left: 2px solid #ff9200;
+}
+
+.tooltip.compile_fail {
+	color: rgba(255,0,0,.5);
+}
+
+.information > .compile_fail:hover {
+	color: #f00;
+}
+
+.tooltip.should_panic {
+	color: rgba(255,0,0,.5);
+}
+
+.information > .should_panic:hover {
+	color: #f00;
+}
+
+.tooltip.ignore {
+	color: rgba(255,142,0,.6);
+}
+
+.information > .ignore:hover {
+	color: #ff9200;
+}
+
+.search-failed a {
+	color: #39AFD7;
+}
+
+.tooltip::after {
+	background-color: #314559;
+	color: #c5c5c5;
+	border: 1px solid #5c6773;
+}
+
+.tooltip::before {
+	border-color: transparent #314559 transparent transparent;
+}
+
+.notable-traits-tooltiptext {
+	background-color: #314559;
+	border-color: #5c6773;
+}
+
+.notable-traits-tooltiptext .notable {
+	border-bottom-color: #5c6773;
+}
+
+#titles > button.selected {
+	background-color: #141920 !important;
+	border-bottom: 1px solid #ffb44c !important;
+	border-top: none;
+}
+
+#titles > button:not(.selected) {
+	background-color: transparent !important;
+	border: none;
+}
+
+#titles > button:hover {
+	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
+}
+
+#titles > button > div.count {
+	color: #888;
+}
+
+/* rules that this theme does not need to set, here to satisfy the rule checker */
+/* note that a lot of these are partially set in some way (meaning they are set
+individually rather than as a group) */
+/* FIXME: these rules should be at the bottom of the file but currently must be
+above the `@media (max-width: 700px)` rules due to a bug in the css checker */
+/* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
+.search-input:focus {}
+.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
+.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
+.content span.struct,.content a.struct,.block a.current.struct {}
+#titles>button:hover,#titles>button.selected {}
+.content span.type,.content a.type,.block a.current.type {}
+.content span.union,.content a.union,.block a.current.union {}
+pre.rust .lifetime {}
+.stab.unstable {}
+h2,h3:not(.impl):not(.method):not(.type):not(.tymethod),h4:not(.method):not(.type):not(.tymethod) {}
+.content span.enum,.content a.enum,.block a.current.enum {}
+.content span.constant,.content a.constant,.block a.current.constant,.content span.static,
+.content a.static, .block a.current.static {}
+.content span.keyword,.content a.keyword,.block a.current.keyword {}
+pre.rust .comment {}
+.content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
+.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
+.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
+.content .fnname {}
+pre.rust .kw {}
+pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
+pre.rust .attribute .ident {}
+.content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
+pre.rust .doccomment {}
+.stab.deprecated {}
+.content a.attr,.content a.derive,.content a.macro {}
+.stab.portability {}
+.content span.primitive,.content a.primitive,.block a.current.primitive {}
+.content span.externcrate,.content span.mod,.content a.mod,.block a.current.mod {}
+pre.rust .kw-2,pre.rust .prelude-ty {}
+.content span.trait,.content a.trait,.block a.current.trait {}
+
+.search-results a:focus span {}
+a.result-trait:focus {}
+a.result-traitalias:focus {}
+a.result-mod:focus,
+a.result-externcrate:focus {}
+a.result-mod:focus {}
+a.result-externcrate:focus {}
+a.result-enum:focus {}
+a.result-struct:focus {}
+a.result-union:focus {}
+a.result-fn:focus,
+a.result-method:focus,
+a.result-tymethod:focus {}
+a.result-type:focus {}
+a.result-foreigntype:focus {}
+a.result-attr:focus,
+a.result-derive:focus,
+a.result-macro:focus {}
+a.result-constant:focus,
+a.result-static:focus {}
+a.result-primitive:focus {}
+a.result-keyword:focus {}
+
+@media (max-width: 700px) {
+	.sidebar-menu {
+		background-color: #14191f;
+		border-bottom-color: #5c6773;
+		border-right-color: #5c6773;
+	}
+
+	.sidebar-elems {
+		background-color: #14191f;
+		border-right-color: #5c6773;
+	}
+
+	#sidebar-filler {
+		background-color: #14191f;
+		border-bottom-color: #5c6773;
+	}
+}
+
+kbd {
+	color: #c5c5c5;
+	background-color: #314559;
+	border-color: #5c6773;
+	border-bottom-color: #5c6773;
+	box-shadow-color: #c6cbd1;
+}
+
+#theme-picker, #settings-menu, #help-button {
+	border-color: #5c6773;
+	background-color: #0f1419;
+	color: #fff;
+}
+
+#theme-picker > img, #settings-menu > img {
+	filter: invert(100);
+}
+
+#copy-path {
+	color: #fff;
+}
+#copy-path > img {
+	filter: invert(70%);
+}
+#copy-path:hover > img {
+	filter: invert(100%);
+}
+
+#theme-picker:hover, #theme-picker:focus,
+#settings-menu:hover, #settings-menu:focus,
+#help-button:hover, #help-button:focus {
+	border-color: #e0e0e0;
+}
+
+#theme-choices {
+	border-color: #5c6773;
+	background-color: #0f1419;
+}
+
+#theme-choices > button:not(:first-child) {
+	border-top-color: #5c6773;
+}
+
+#theme-choices > button:hover, #theme-choices > button:focus {
+	background-color: rgba(110, 110, 110, 0.33);
+}
+
+@media (max-width: 700px) {
+	#theme-picker {
+		background: #0f1419;
+	}
+}
+
+#all-types {
+	background-color: #14191f;
+}
+#all-types:hover {
+	background-color: rgba(70, 70, 70, 0.33);
+}
+
+.search-results .result-name span.alias {
+	color: #c5c5c5;
+}
+.search-results .result-name span.grey {
+	color: #999;
+}
+
+#sidebar-toggle {
+	background-color: #14191f;
+}
+#sidebar-toggle:hover {
+	background-color: rgba(70, 70, 70, 0.33);
+}
+#source-sidebar {
+	background-color: #14191f;
+}
+#source-sidebar > .title {
+	color: #fff;
+	border-bottom-color: #5c6773;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #14191f;
+	color: #ffb44c;
+}
+div.files > .selected {
+	background-color: #14191f;
+	color: #ffb44c;
+}
+.setting-line > .title {
+	border-bottom-color: #5c6773;
+}
+input:checked + .slider {
+	background-color: #ffb454 !important;
+}

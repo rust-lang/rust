@@ -47,14 +47,12 @@ impl<'a, K, V> LeafRange<marker::Immut<'a>, K, V> {
 
     #[inline]
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        debug_assert!(self.front.is_some());
-        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
+        unsafe { self.front.as_mut().unwrap().next_unchecked() }
     }
 
     #[inline]
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        debug_assert!(self.back.is_some());
-        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
+        unsafe { self.back.as_mut().unwrap().next_back_unchecked() }
     }
 }
 
@@ -71,14 +69,12 @@ impl<'a, K, V> LeafRange<marker::ValMut<'a>, K, V> {
 
     #[inline]
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        debug_assert!(self.front.is_some());
-        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
+        unsafe { self.front.as_mut().unwrap().next_unchecked() }
     }
 
     #[inline]
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        debug_assert!(self.back.is_some());
-        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
+        unsafe { self.back.as_mut().unwrap().next_back_unchecked() }
     }
 }
 
@@ -400,9 +396,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// There must be another KV in the direction travelled.
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
         super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv();
-            debug_assert!(kv.is_ok());
-            let kv = unsafe { kv.ok().unwrap_unchecked() };
+            let kv = leaf_edge.next_kv().ok().unwrap();
             (kv.next_leaf_edge(), kv.into_kv())
         })
     }
@@ -414,9 +408,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// There must be another KV in the direction travelled.
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
         super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv();
-            debug_assert!(kv.is_ok());
-            let kv = unsafe { kv.ok().unwrap_unchecked() };
+            let kv = leaf_edge.next_back_kv().ok().unwrap();
             (kv.next_back_leaf_edge(), kv.into_kv())
         })
     }
@@ -430,9 +422,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     /// There must be another KV in the direction travelled.
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
         let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv();
-            debug_assert!(kv.is_ok());
-            let kv = unsafe { kv.ok().unwrap_unchecked() };
+            let kv = leaf_edge.next_kv().ok().unwrap();
             (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
         });
         // Doing this last is faster, according to benchmarks.
@@ -446,9 +436,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     /// There must be another KV in the direction travelled.
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
         let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv();
-            debug_assert!(kv.is_ok());
-            let kv = unsafe { kv.ok().unwrap_unchecked() };
+            let kv = leaf_edge.next_back_kv().ok().unwrap();
             (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
         });
         // Doing this last is faster, according to benchmarks.
@@ -472,9 +460,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     pub unsafe fn deallocating_next_unchecked(
         &mut self,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        super::mem::replace(self, |leaf_edge| unsafe {
-            leaf_edge.deallocating_next().unwrap_unchecked()
-        })
+        super::mem::replace(self, |leaf_edge| unsafe { leaf_edge.deallocating_next().unwrap() })
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns the key and value
@@ -493,7 +479,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
         &mut self,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
         super::mem::replace(self, |leaf_edge| unsafe {
-            leaf_edge.deallocating_next_back().unwrap_unchecked()
+            leaf_edge.deallocating_next_back().unwrap()
         })
     }
 }

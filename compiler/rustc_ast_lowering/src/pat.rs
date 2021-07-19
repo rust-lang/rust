@@ -10,7 +10,11 @@ use rustc_span::symbol::Ident;
 use rustc_span::{source_map::Spanned, Span};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_pat(&mut self, mut pattern: &Pat) -> &'hir hir::Pat<'hir> {
+    crate fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(self.lower_pat_mut(pattern))
+    }
+
+    crate fn lower_pat_mut(&mut self, mut pattern: &Pat) -> hir::Pat<'hir> {
         ensure_sufficient_stack(|| {
             // loop here to avoid recursion
             let node = loop {
@@ -34,7 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     PatKind::Or(ref pats) => {
                         break hir::PatKind::Or(
-                            self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat(x))),
+                            self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat_mut(x))),
                         );
                     }
                     PatKind::Path(ref qself, ref path) => {
@@ -101,7 +105,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         pats: &[P<Pat>],
         ctx: &str,
-    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<usize>) {
+    ) -> (&'hir [hir::Pat<'hir>], Option<usize>) {
         let mut elems = Vec::with_capacity(pats.len());
         let mut rest = None;
 
@@ -140,7 +144,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
 
             // It was not a sub-tuple pattern so lower it normally.
-            elems.push(self.lower_pat(pat));
+            elems.push(self.lower_pat_mut(pat));
         }
 
         for (_, pat) in iter {
@@ -149,7 +153,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // ...but there was one again, so error.
                 self.ban_extra_rest_pat(pat.span, rest.unwrap().1, ctx);
             } else {
-                elems.push(self.lower_pat(pat));
+                elems.push(self.lower_pat_mut(pat));
             }
         }
 
@@ -189,11 +193,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Record, lower it to `$binding_mode $ident @ _`, and stop here.
                 PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
-                    slice = Some(lower_rest_sub(self, pat, bm, ident, sub));
+                    slice = Some(self.arena.alloc(lower_rest_sub(self, pat, bm, ident, sub)));
                     break;
                 }
                 // It was not a subslice pattern so lower it normally.
-                _ => before.push(self.lower_pat(pat)),
+                _ => before.push(self.lower_pat_mut(pat)),
             }
         }
 
@@ -214,7 +218,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.ban_extra_rest_pat(rest_span, prev_rest_span.unwrap(), "slice");
             } else {
                 // Lower the pattern normally.
-                after.push(self.lower_pat(pat));
+                after.push(self.lower_pat_mut(pat));
             }
         }
 
@@ -268,17 +272,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
-        self.pat_with_node_id_of(p, hir::PatKind::Wild)
+        self.arena.alloc(self.pat_with_node_id_of(p, hir::PatKind::Wild))
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat {
+    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> hir::Pat<'hir> {
+        hir::Pat {
             hir_id: self.lower_node_id(p.id),
             kind,
             span: p.span,
             default_binding_modes: true,
-        })
+        }
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.

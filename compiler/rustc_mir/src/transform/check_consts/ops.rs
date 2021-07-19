@@ -397,6 +397,9 @@ impl NonConstOp for PanicNonStr {
     }
 }
 
+/// Comparing raw pointers for equality.
+/// Not currently intended to ever be allowed, even behind a feature gate: operation depends on
+/// allocation base addresses that are not known at compile-time.
 #[derive(Debug)]
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
@@ -430,20 +433,22 @@ impl NonConstOp for RawPtrDeref {
     }
 }
 
+/// Casting raw pointer or function pointer to an integer.
+/// Not currently intended to ever be allowed, even behind a feature gate: operation depends on
+/// allocation base addresses that are not known at compile-time.
 #[derive(Debug)]
 pub struct RawPtrToIntCast;
 impl NonConstOp for RawPtrToIntCast {
-    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-        Status::Unstable(sym::const_raw_ptr_to_usize_cast)
-    }
-
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_raw_ptr_to_usize_cast,
-            span,
-            &format!("casting pointers to integers in {}s is unstable", ccx.const_kind(),),
-        )
+        let mut err = ccx
+            .tcx
+            .sess
+            .struct_span_err(span, "pointers cannot be cast to integers during const eval.");
+        err.note("at compile-time, pointers do not have an integer value");
+        err.note(
+            "avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior",
+        );
+        err
     }
 }
 

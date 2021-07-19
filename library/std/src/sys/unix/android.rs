@@ -21,7 +21,7 @@
 use libc::{c_int, c_void, sighandler_t, size_t, ssize_t};
 use libc::{ftruncate, pread, pwrite};
 
-use super::{cvt, cvt_r};
+use super::{cvt, cvt_r, weak::weak};
 use crate::io;
 
 // The `log2` and `log2f` functions apparently appeared in android-18, or at

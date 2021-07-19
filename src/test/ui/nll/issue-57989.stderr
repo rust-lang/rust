@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `*x` which is behind a `&` reference
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-57989.rs:5:5
    |
 LL | fn f(x: &i32) {

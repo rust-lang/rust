@@ -12,8 +12,23 @@ use crate::sys::time::SystemTime;
 use crate::sys::{cvt, cvt_r};
 use crate::sys_common::{AsInner, FromInner};
 
+#[cfg(any(
+    all(target_os = "linux", target_env = "gnu"),
+    target_os = "macos",
+    target_os = "ios",
+))]
+use crate::sys::weak::syscall;
+#[cfg(target_os = "macos")]
+use crate::sys::weak::weak;
+
 use libc::{c_int, mode_t};
 
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    all(target_os = "linux", target_env = "gnu")
+))]
+use libc::c_char;
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
 use libc::dirfd;
 #[cfg(any(target_os = "linux", target_os = "emscripten"))]
@@ -92,7 +107,7 @@ cfg_has_statx! {{
     // Default `stat64` contains no creation time.
     unsafe fn try_statx(
         fd: c_int,
-        path: *const libc::c_char,
+        path: *const c_char,
         flags: i32,
         mask: u32,
     ) -> Option<io::Result<FileAttr>> {
@@ -107,7 +122,7 @@ cfg_has_statx! {{
         syscall! {
             fn statx(
                 fd: c_int,
-                pathname: *const libc::c_char,
+                pathname: *const c_char,
                 flags: c_int,
                 mask: libc::c_uint,
                 statxbuf: *mut libc::statx
@@ -756,7 +771,7 @@ impl File {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 fd,
-                b"\0" as *const _ as *const libc::c_char,
+                b"\0" as *const _ as *const c_char,
                 libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {
@@ -1087,15 +1102,28 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let link = cstr(link)?;
     cfg_if::cfg_if! {
         if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android"))] {
-            // VxWorks, Redox, and old versions of Android lack `linkat`, so use
-            // `link` instead. POSIX leaves it implementation-defined whether
-            // `link` follows symlinks, so rely on the `symlink_hard_link` test
-            // in library/std/src/fs/tests.rs to check the behavior.
+            // VxWorks and Redox lack `linkat`, so use `link` instead. POSIX leaves
+            // it implementation-defined whether `link` follows symlinks, so rely on the
+            // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
+            // Android has `linkat` on newer versions, but we happen to know `link`
+            // always has the correct behavior, so it's here as well.
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
+        } else if #[cfg(target_os = "macos")] {
+            // On MacOS, older versions (<=10.9) lack support for linkat while newer
+            // versions have it. We want to use linkat if it is available, so we use weak!
+            // to check. `linkat` is preferable to `link` ecause it gives us a flag to
+            // specify how symlinks should be handled. We pass 0 as the flags argument,
+            // meaning it shouldn't follow symlinks.
+            weak!(fn linkat(c_int, *const c_char, c_int, *const c_char, c_int) -> c_int);
+
+            if let Some(f) = linkat.get() {
+                cvt(unsafe { f(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
+            } else {
+                cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
+            };
         } else {
-            // Use `linkat` with `AT_FDCWD` instead of `link` as `linkat` gives
-            // us a flag to specify how symlinks should be handled. Pass 0 as
-            // the flags argument, meaning don't follow symlinks.
+            // Where we can, use `linkat` instead of `link`; see the comment above
+            // this one for details on why.
             cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
         }
     }
@@ -1278,7 +1306,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         fn fclonefileat(
             srcfd: libc::c_int,
             dst_dirfd: libc::c_int,
-            dst: *const libc::c_char,
+            dst: *const c_char,
             flags: libc::c_int
         ) -> libc::c_int
     }

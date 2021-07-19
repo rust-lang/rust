@@ -19,9 +19,9 @@ use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::MacroKind;
+use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, ExpnData, ExpnId, Span};
+use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use std::marker::PhantomData;
@@ -170,7 +170,8 @@ macro_rules! Lazy {
 }
 
 type SyntaxContextTable = Lazy<Table<u32, Lazy<SyntaxContextData>>>;
-type ExpnDataTable = Lazy<Table<u32, Lazy<ExpnData>>>;
+type ExpnDataTable = Lazy<Table<ExpnIndex, Lazy<ExpnData>>>;
+type ExpnHashTable = Lazy<Table<ExpnIndex, Lazy<ExpnHash>>>;
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 crate struct ProcMacroData {
@@ -226,6 +227,7 @@ crate struct CrateRoot<'tcx> {
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,
+    expn_hashes: ExpnHashTable,
 
     source_map: Lazy<[rustc_span::SourceFile]>,
 
@@ -390,6 +392,7 @@ struct TraitData {
 #[derive(TyEncodable, TyDecodable)]
 struct ImplData {
     polarity: ty::ImplPolarity,
+    constness: hir::Constness,
     defaultness: hir::Defaultness,
     parent_impl: Option<DefId>,
 

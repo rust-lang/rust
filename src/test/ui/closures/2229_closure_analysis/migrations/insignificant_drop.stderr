@@ -1,15 +1,24 @@
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:15:13
    |
-LL |       let c = || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |         let _t2 = t2.0;
-LL | |     };
-   | |_____^
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+LL |
+LL |         let _t1 = t1.0;
+   |                   ---- in Rust 2018, closure captures all of `t1`, but in Rust 2021, it only captures `t1.0`
+LL |
+LL |         let _t2 = t2.0;
+   |                   ---- in Rust 2018, closure captures all of `t2`, but in Rust 2021, it only captures `t2.0`
+...
+LL | }
+   | -
+   | |
+   | in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
+   | in Rust 2018, `t1` would be dropped here, but in Rust 2021, only `t1.0` would be dropped here alongside the closure
+   | in Rust 2018, `t2` would be dropped here, but in Rust 2021, only `t2.0` would be dropped here alongside the closure
    |
 note: the lint level is defined here
   --> $DIR/insignificant_drop.rs:3:9
@@ -27,18 +36,23 @@ LL |
 LL |         let _t = t.0;
  ...
 
-error: drop order will change in Rust 2021
-  --> $DIR/insignificant_drop.rs:35:13
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop.rs:41:13
    |
-LL |       let c = || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |         let _t2 = t2;
-LL | |     };
-   | |_____^
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+LL |
+LL |         let _t1 = t1.0;
+   |                   ---- in Rust 2018, closure captures all of `t1`, but in Rust 2021, it only captures `t1.0`
+...
+LL | }
+   | -
+   | |
+   | in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
+   | in Rust 2018, `t1` would be dropped here, but in Rust 2021, only `t1.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1` to be fully captured
@@ -48,21 +62,20 @@ LL |
 LL |
 LL |
 LL |         let _t = t.0;
-LL |         let _t1 = t1.0;
+LL |
  ...
 
-error: drop order will change in Rust 2021
-  --> $DIR/insignificant_drop.rs:52:13
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop.rs:62:13
    |
-LL |       let c = || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-LL | |         let _t = t.0;
-LL | |         println!("{}", t1.1);
-LL | |     };
-   | |_____^
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+...
+LL | }
+   | - in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
@@ -72,21 +85,20 @@ LL |
 LL |
 LL |
 LL |         let _t = t.0;
-LL |         println!("{}", t1.1);
+LL |
  ...
 
-error: drop order will change in Rust 2021
-  --> $DIR/insignificant_drop.rs:71:13
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop.rs:83:13
    |
-LL |       let c = || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-LL | |         let _t = t.0;
-LL | |         let _t1 = t1.0;
-LL | |     };
-   | |_____^
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+...
+LL | }
+   | - in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
@@ -96,21 +108,20 @@ LL |
 LL |
 LL |
 LL |         let _t = t.0;
-LL |         let _t1 = t1.0;
+LL |
  ...
 
-error: drop order will change in Rust 2021
-  --> $DIR/insignificant_drop.rs:90:13
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop.rs:104:13
    |
-LL |       let c = || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-LL | |         let _t = t.0;
-LL | |         let _s = s.0;
-LL | |     };
-   | |_____^
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+...
+LL | }
+   | - in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
@@ -120,20 +131,25 @@ LL |
 LL |
 LL |
 LL |         let _t = t.0;
-LL |         let _s = s.0;
+LL |
  ...
 
-error: drop order will change in Rust 2021
-  --> $DIR/insignificant_drop.rs:106:13
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop.rs:122:13
    |
-LL |       let c = move || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-LL | |         println!("{} {}", t1.1, t.1);
-LL | |     };
-   | |_____^
+LL |     let c = move || {
+   |             ^^^^^^^
+...
+LL |         println!("{} {}", t1.1, t.1);
+   |                           ----  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.1`
+   |                           |
+   |                           in Rust 2018, closure captures all of `t1`, but in Rust 2021, it only captures `t1.1`
+...
+LL | }
+   | -
+   | |
+   | in Rust 2018, `t1` would be dropped here, but in Rust 2021, only `t1.1` would be dropped here alongside the closure
+   | in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.1` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t1`, `t` to be fully captured
@@ -143,20 +159,20 @@ LL |
 LL |
 LL |
 LL |         println!("{} {}", t1.1, t.1);
-LL |     };
-   |
+LL |
+ ...
 
-error: drop order will change in Rust 2021
-  --> $DIR/insignificant_drop.rs:122:13
+error: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/insignificant_drop.rs:142:13
    |
-LL |       let c = || {
-   |  _____________^
-LL | |
-LL | |
-LL | |
-LL | |         let _t = t.0;
-LL | |     };
-   | |_____^
+LL |     let c = || {
+   |             ^^
+...
+LL |         let _t = t.0;
+   |                  --- in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+...
+LL | }
+   | - in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
@@ -166,8 +182,8 @@ LL |
 LL |
 LL |
 LL |         let _t = t.0;
-LL |     };
-   |
+LL |
+ ...
 
 error: aborting due to 7 previous errors
 

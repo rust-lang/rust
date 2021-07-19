@@ -1,7 +1,6 @@
 use self::collector::NodeCollector;
 
 use crate::hir::{AttributeMap, IndexedHir};
-use crate::middle::cstore::CrateStore;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -9,7 +8,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, Definitions};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -18,7 +17,7 @@ use rustc_index::vec::Idx;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -154,13 +153,9 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_crate(())
     }
 
-    #[inline]
-    pub fn definitions(&self) -> &'hir Definitions {
-        &self.tcx.definitions
-    }
-
     pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
-        self.tcx.definitions.def_key(def_id)
+        // Accessing the DefKey is ok, since it is part of DefPathHash.
+        self.tcx.untracked_resolutions.definitions.def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
@@ -168,7 +163,14 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
-        self.tcx.definitions.def_path(def_id)
+        // Accessing the DefPath is ok, since it is part of DefPathHash.
+        self.tcx.untracked_resolutions.definitions.def_path(def_id)
+    }
+
+    #[inline]
+    pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
+        // Accessing the DefPathHash is ok, it is incr. comp. stable.
+        self.tcx.untracked_resolutions.definitions.def_path_hash(def_id)
     }
 
     #[inline]
@@ -184,16 +186,21 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        self.tcx.definitions.opt_hir_id_to_local_def_id(hir_id)
+        // FIXME(#85914) is this access safe for incr. comp.?
+        self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.tcx.definitions.local_def_id_to_hir_id(def_id)
+        // FIXME(#85914) is this access safe for incr. comp.?
+        self.tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id)
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        self.tcx.definitions.iter_local_def_id()
+        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // definitions change.
+        self.tcx.ensure().hir_crate(());
+        self.tcx.untracked_resolutions.definitions.iter_local_def_id()
     }
 
     pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
@@ -457,6 +464,9 @@ impl<'hir> Map<'hir> {
     /// Returns the `ConstContext` of the body associated with this `LocalDefId`.
     ///
     /// Panics if `LocalDefId` does not have an associated body.
+    ///
+    /// This should only be used for determining the context of a body, a return
+    /// value of `Some` does not always suggest that the owner of the body is `const`.
     pub fn body_const_context(&self, did: LocalDefId) -> Option<ConstContext> {
         let hir_id = self.local_def_id_to_hir_id(did);
         let ccx = match self.body_owner_kind(hir_id) {
@@ -465,6 +475,11 @@ impl<'hir> Map<'hir> {
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(did.to_def_id()) => return None,
             BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(did.to_def_id()) => ConstContext::ConstFn,
+            BodyOwnerKind::Fn
+                if self.tcx.has_attr(did.to_def_id(), sym::default_method_body_is_const) =>
+            {
+                ConstContext::ConstFn
+            }
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
         };
 
@@ -932,9 +947,15 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tcx> {
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
+    // We can access untracked state since we are an eval_always query.
     let hcx = tcx.create_stable_hashing_context();
-    let mut collector =
-        NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
+    let mut collector = NodeCollector::root(
+        tcx.sess,
+        &**tcx.arena,
+        tcx.untracked_crate,
+        &tcx.untracked_resolutions.definitions,
+        hcx,
+    );
     intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
     let map = collector.finalize_and_compute_crate_hash();
@@ -944,6 +965,7 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tc
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     assert_eq!(crate_num, LOCAL_CRATE);
 
+    // We can access untracked state since we are an eval_always query.
     let mut hcx = tcx.create_stable_hashing_context();
 
     let mut hir_body_nodes: Vec<_> = tcx
@@ -951,7 +973,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         .map
         .iter_enumerated()
         .filter_map(|(def_id, hod)| {
-            let def_path_hash = tcx.definitions.def_path_hash(def_id);
+            let def_path_hash = tcx.untracked_resolutions.definitions.def_path_hash(def_id);
             let mut hasher = StableHasher::new();
             hod.as_ref()?.hash_stable(&mut hcx, &mut hasher);
             AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id }
@@ -968,7 +990,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         },
     );
 
-    let upstream_crates = upstream_crates(&*tcx.cstore);
+    let upstream_crates = upstream_crates(tcx);
 
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.
@@ -998,13 +1020,13 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     Svh::new(crate_hash.to_smaller_hash())
 }
 
-fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(StableCrateId, Svh)> {
-    let mut upstream_crates: Vec<_> = cstore
-        .crates_untracked()
+fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
+    let mut upstream_crates: Vec<_> = tcx
+        .crates(())
         .iter()
         .map(|&cnum| {
-            let stable_crate_id = cstore.stable_crate_id_untracked(cnum);
-            let hash = cstore.crate_hash_untracked(cnum);
+            let stable_crate_id = tcx.resolutions(()).cstore.stable_crate_id(cnum);
+            let hash = tcx.crate_hash(cnum);
             (stable_crate_id, hash)
         })
         .collect();

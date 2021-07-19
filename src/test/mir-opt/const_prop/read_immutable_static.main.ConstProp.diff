@@ -16,24 +16,24 @@
           StorageLive(_1);                 // scope 0 at $DIR/read_immutable_static.rs:7:9: 7:10
           StorageLive(_2);                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
           StorageLive(_3);                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
-          _3 = const {alloc0: &u8};        // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
+          _3 = const {alloc1: &u8};        // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
                                            // ty::Const
                                            // + ty: &u8
-                                           // + val: Value(Scalar(alloc0))
+                                           // + val: Value(Scalar(alloc1))
                                            // mir::Constant
                                            // + span: $DIR/read_immutable_static.rs:7:13: 7:16
-                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc0)) }
+                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
 -         _2 = (*_3);                      // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
 +         _2 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
           StorageLive(_4);                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
           StorageLive(_5);                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
-          _5 = const {alloc0: &u8};        // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
+          _5 = const {alloc1: &u8};        // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
                                            // ty::Const
                                            // + ty: &u8
-                                           // + val: Value(Scalar(alloc0))
+                                           // + val: Value(Scalar(alloc1))
                                            // mir::Constant
                                            // + span: $DIR/read_immutable_static.rs:7:19: 7:22
-                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc0)) }
+                                           // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
 -         _4 = (*_5);                      // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
 -         _1 = Add(move _2, move _4);      // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22
 +         _4 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
@@ -48,7 +48,7 @@
       }
   }
   
-  alloc0 (static: FOO, size: 1, align: 1) {
+  alloc1 (static: FOO, size: 1, align: 1) {
       02                                              │ .
   }
   

@@ -133,7 +133,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
         clean::StructItem(ref s) => item_struct(buf, cx, item, s),
         clean::UnionItem(ref s) => item_union(buf, cx, item, s),
         clean::EnumItem(ref e) => item_enum(buf, cx, item, e),
-        clean::TypedefItem(ref t, _) => item_typedef(buf, cx, item, t),
+        clean::TypedefItem(ref t, is_associated) => item_typedef(buf, cx, item, t, is_associated),
         clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
         clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
@@ -837,9 +837,18 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
     render_assoc_items(w, cx, it, it.def_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
+fn item_typedef(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    it: &clean::Item,
+    t: &clean::Typedef,
+    is_associated: bool,
+) {
     w.write_str("<pre class=\"rust typedef\">");
     render_attributes_in_pre(w, it, "");
+    if !is_associated {
+        write!(w, "{}", it.visibility.print_with_space(it.def_id, cx));
+    }
     write!(
         w,
         "type {}{}{where_clause} = {type_};</pre>",

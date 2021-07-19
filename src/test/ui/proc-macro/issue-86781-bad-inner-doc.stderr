@@ -1,0 +1,11 @@
+error[E0753]: expected outer doc comment
+  --> $DIR/issue-86781-bad-inner-doc.rs:6:1
+   |
+LL | //! Inner doc comment
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0753`.

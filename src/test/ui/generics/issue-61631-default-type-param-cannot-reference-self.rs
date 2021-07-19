@@ -11,25 +11,25 @@
 // compatibility concern.
 
 struct Snobound<'a, P = Self> { x: Option<&'a P> }
-//~^ ERROR type parameters cannot use `Self` in their defaults [E0735]
+//~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 
 enum Enobound<'a, P = Self> { A, B(Option<&'a P>) }
-//~^ ERROR type parameters cannot use `Self` in their defaults [E0735]
+//~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 
 union Unobound<'a, P = Self> { x: i32, y: Option<&'a P> }
-//~^ ERROR type parameters cannot use `Self` in their defaults [E0735]
+//~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 
 // Disallowing `Self` in defaults sidesteps need to check the bounds
 // on the defaults in cases like these.
 
 struct Ssized<'a, P: Sized = [Self]> { x: Option<&'a P> }
-//~^ ERROR type parameters cannot use `Self` in their defaults [E0735]
+//~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 
 enum Esized<'a, P: Sized = [Self]> { A, B(Option<&'a P>) }
-//~^ ERROR type parameters cannot use `Self` in their defaults [E0735]
+//~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 
 union Usized<'a, P: Sized = [Self]> { x: i32, y: Option<&'a P> }
-//~^ ERROR type parameters cannot use `Self` in their defaults [E0735]
+//~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 
 fn demo_usages() {
     // An ICE means you only get the error from the first line of the

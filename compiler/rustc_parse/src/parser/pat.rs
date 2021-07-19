@@ -24,6 +24,13 @@ pub enum RecoverComma {
     No,
 }
 
+/// Whether or not to recover a `:` when parsing patterns that were meant to be paths.
+#[derive(PartialEq, Copy, Clone)]
+pub enum RecoverColon {
+    Yes,
+    No,
+}
+
 /// The result of `eat_or_separator`. We want to distinguish which case we are in to avoid
 /// emitting duplicate diagnostics.
 #[derive(Debug, Clone, Copy)]
@@ -58,8 +65,9 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: Expected,
         rc: RecoverComma,
+        ra: RecoverColon,
     ) -> PResult<'a, P<Pat>> {
-        self.parse_pat_allow_top_alt_inner(expected, rc).map(|(pat, _)| pat)
+        self.parse_pat_allow_top_alt_inner(expected, rc, ra).map(|(pat, _)| pat)
     }
 
     /// Returns the pattern and a bool indicating whether we recovered from a trailing vert (true =
@@ -68,6 +76,7 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: Expected,
         rc: RecoverComma,
+        ra: RecoverColon,
     ) -> PResult<'a, (P<Pat>, bool)> {
         // Keep track of whether we recovered from a trailing vert so that we can avoid duplicated
         // suggestions (which bothers rustfix).
@@ -89,6 +98,56 @@ impl<'a> Parser<'a> {
             // If we parsed a leading `|` which should be gated,
             // then we should really gate the leading `|`.
             // This complicated procedure is done purely for diagnostics UX.
+            let mut first_pat = first_pat;
+
+            if let (RecoverColon::Yes, token::Colon) = (ra, &self.token.kind) {
+                if matches!(
+                    first_pat.kind,
+                    PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, None)
+                        | PatKind::Path(..)
+                ) && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+                {
+                    // The pattern looks like it might be a path with a `::` -> `:` typo:
+                    // `match foo { bar:baz => {} }`
+                    let span = self.token.span;
+                    // We only emit "unexpected `:`" error here if we can successfully parse the
+                    // whole pattern correctly in that case.
+                    let snapshot = self.clone();
+
+                    // Create error for "unexpected `:`".
+                    match self.expected_one_of_not_found(&[], &[]) {
+                        Err(mut err) => {
+                            self.bump(); // Skip the `:`.
+                            match self.parse_pat_no_top_alt(expected) {
+                                Err(mut inner_err) => {
+                                    // Carry on as if we had not done anything, callers will emit a
+                                    // reasonable error.
+                                    inner_err.cancel();
+                                    err.cancel();
+                                    *self = snapshot;
+                                }
+                                Ok(pat) => {
+                                    // We've parsed the rest of the pattern.
+                                    err.span_suggestion(
+                                        span,
+                                        "maybe write a path separator here",
+                                        "::".to_string(),
+                                        Applicability::MachineApplicable,
+                                    );
+                                    err.emit();
+                                    first_pat =
+                                        self.mk_pat(first_pat.span.to(pat.span), PatKind::Wild);
+                                }
+                            }
+                        }
+                        _ => {
+                            // Carry on as if we had not done anything. This should be unreachable.
+                            *self = snapshot;
+                        }
+                    };
+                }
+            }
+
             if let Some(leading_vert_span) = leading_vert_span {
                 // If there was a leading vert, treat this as an or-pattern. This improves
                 // diagnostics.
@@ -140,7 +199,8 @@ impl<'a> Parser<'a> {
         // We use `parse_pat_allow_top_alt` regardless of whether we actually want top-level
         // or-patterns so that we can detect when a user tries to use it. This allows us to print a
         // better error message.
-        let (pat, trailing_vert) = self.parse_pat_allow_top_alt_inner(expected, rc)?;
+        let (pat, trailing_vert) =
+            self.parse_pat_allow_top_alt_inner(expected, rc, RecoverColon::No)?;
         let colon = self.eat(&token::Colon);
 
         if let PatKind::Or(pats) = &pat.kind {
@@ -350,7 +410,7 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             // Parse `[pat, pat,...]` as a slice pattern.
             let (pats, _) = self.parse_delim_comma_seq(token::Bracket, |p| {
-                p.parse_pat_allow_top_alt(None, RecoverComma::No)
+                p.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
             })?;
             PatKind::Slice(pats)
         } else if self.check(&token::DotDot) && !self.is_pat_range_end_start(1) {
@@ -563,8 +623,9 @@ impl<'a> Parser<'a> {
 
     /// Parse a tuple or parenthesis pattern.
     fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
-        let (fields, trailing_comma) =
-            self.parse_paren_comma_seq(|p| p.parse_pat_allow_top_alt(None, RecoverComma::No))?;
+        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
+            p.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
+        })?;
 
         // Here, `(pat,)` is a tuple pattern.
         // For backward compatibility, `(..)` is a tuple pattern as well.
@@ -715,7 +776,6 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::DotDotEq) {
             RangeEnd::Included(RangeSyntax::DotDotEq)
         } else if self.eat(&token::DotDot) {
-            self.sess.gated_spans.gate(sym::exclusive_range_pattern, self.prev_token.span);
             RangeEnd::Excluded
         } else {
             return None;
@@ -735,18 +795,50 @@ impl<'a> Parser<'a> {
             Some(self.parse_pat_range_end()?)
         } else {
             // Parsing e.g. `X..`.
-            self.sess.gated_spans.gate(sym::half_open_range_patterns, begin.span.to(re.span));
             if let RangeEnd::Included(_) = re.node {
                 // FIXME(Centril): Consider semantic errors instead in `ast_validation`.
-                // Possibly also do this for `X..=` in *expression* contexts.
-                self.error_inclusive_range_with_no_end(re.span);
+                self.inclusive_range_with_incorrect_end(re.span);
             }
             None
         };
         Ok(PatKind::Range(Some(begin), end, re))
     }
 
-    pub(super) fn error_inclusive_range_with_no_end(&self, span: Span) {
+    pub(super) fn inclusive_range_with_incorrect_end(&mut self, span: Span) {
+        let tok = &self.token;
+
+        // If the user typed "..==" instead of "..=", we want to give them
+        // a specific error message telling them to use "..=".
+        // Otherwise, we assume that they meant to type a half open exclusive
+        // range and give them an error telling them to do that instead.
+        if matches!(tok.kind, token::Eq) && tok.span.lo() == span.hi() {
+            let span_with_eq = span.to(tok.span);
+
+            // Ensure the user doesn't receive unhelpful unexpected token errors
+            self.bump();
+            if self.is_pat_range_end_start(0) {
+                let _ = self.parse_pat_range_end();
+            }
+
+            self.error_inclusive_range_with_extra_equals(span_with_eq);
+        } else {
+            self.error_inclusive_range_with_no_end(span);
+        }
+    }
+
+    fn error_inclusive_range_with_extra_equals(&self, span: Span) {
+        self.struct_span_err(span, "unexpected `=` after inclusive range")
+            .span_suggestion_short(
+                span,
+                "use `..=` instead",
+                "..=".to_string(),
+                Applicability::MaybeIncorrect,
+            )
+            .note("inclusive ranges end with a single equals sign (`..=`)")
+            .emit();
+    }
+
+    fn error_inclusive_range_with_no_end(&self, span: Span) {
         struct_span_err!(self.sess.span_diagnostic, span, E0586, "inclusive range with no end")
             .span_suggestion_short(
                 span,
@@ -875,8 +967,9 @@ impl<'a> Parser<'a> {
 
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
     fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
-        let (fields, _) =
-            self.parse_paren_comma_seq(|p| p.parse_pat_allow_top_alt(None, RecoverComma::No))?;
+        let (fields, _) = self.parse_paren_comma_seq(|p| {
+            p.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
+        })?;
         if qself.is_some() {
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
         }
@@ -1035,7 +1128,7 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat_allow_top_alt(None, RecoverComma::No)?;
+            let pat = self.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {

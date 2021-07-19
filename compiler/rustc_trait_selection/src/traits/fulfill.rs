@@ -167,6 +167,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
+    #[tracing::instrument(level = "debug", skip(self, infcx, param_env, cause))]
     fn normalize_projection_type(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -174,8 +175,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         projection_ty: ty::ProjectionTy<'tcx>,
         cause: ObligationCause<'tcx>,
     ) -> Ty<'tcx> {
-        debug!(?projection_ty, "normalize_projection_type");
-
         debug_assert!(!projection_ty.has_escaping_bound_vars());
 
         // FIXME(#20304) -- cache
@@ -717,6 +716,10 @@ fn substs_infer_vars<'a, 'tcx>(
 fn to_fulfillment_error<'tcx>(
     error: Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>,
 ) -> FulfillmentError<'tcx> {
-    let obligation = error.backtrace.into_iter().next().unwrap().obligation;
-    FulfillmentError::new(obligation, error.error)
+    let mut iter = error.backtrace.into_iter();
+    let obligation = iter.next().unwrap().obligation;
+    // The root obligation is the last item in the backtrace - if there's only
+    // one item, then it's the same as the main obligation
+    let root_obligation = iter.next_back().map_or_else(|| obligation.clone(), |e| e.obligation);
+    FulfillmentError::new(obligation, error.error, root_obligation)
 }

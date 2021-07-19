@@ -209,32 +209,6 @@ impl<T> Cursor<T>
 where
     T: AsRef<[u8]>,
 {
-    /// Returns the remaining length.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(cursor_remaining)]
-    /// use std::io::Cursor;
-    ///
-    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
-    ///
-    /// assert_eq!(buff.remaining(), 5);
-    ///
-    /// buff.set_position(2);
-    /// assert_eq!(buff.remaining(), 3);
-    ///
-    /// buff.set_position(4);
-    /// assert_eq!(buff.remaining(), 1);
-    ///
-    /// buff.set_position(6);
-    /// assert_eq!(buff.remaining(), 0);
-    /// ```
-    #[unstable(feature = "cursor_remaining", issue = "86369")]
-    pub fn remaining(&self) -> u64 {
-        (self.inner.as_ref().len() as u64).checked_sub(self.pos).unwrap_or(0)
-    }
-
     /// Returns the remaining slice.
     ///
     /// # Examples

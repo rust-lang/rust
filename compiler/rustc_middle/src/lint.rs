@@ -223,8 +223,13 @@ pub fn struct_lint_level<'s, 'd>(
         let lint_id = LintId::of(lint);
         let future_incompatible = lint.future_incompatible;
 
-        let has_future_breakage =
-            future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
+        let has_future_breakage = future_incompatible.map_or(
+            // Default allow lints trigger too often for testing.
+            sess.opts.debugging_opts.future_incompat_test && lint.default_level != Level::Allow,
+            |incompat| {
+                matches!(incompat.reason, FutureIncompatibilityReason::FutureReleaseErrorReportNow)
+            },
+        );
 
         let mut err = match (level, span) {
             (Level::Allow, span) => {
@@ -387,7 +392,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
             false
         }
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
-        ExpnKind::Macro { kind: MacroKind::Bang, name: _, proc_macro: _ } => {
+        ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.
             expn_data.def_site.is_dummy() || sess.source_map().is_imported(expn_data.def_site)
         }

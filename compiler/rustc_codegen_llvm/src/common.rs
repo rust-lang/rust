@@ -243,8 +243,9 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     self.const_bitcast(llval, llty)
                 }
             }
-            Scalar::Ptr(ptr) => {
-                let (base_addr, base_addr_space) = match self.tcx.global_alloc(ptr.alloc_id) {
+            Scalar::Ptr(ptr, _size) => {
+                let (alloc_id, offset) = ptr.into_parts();
+                let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         let value = match alloc.mutability {
@@ -252,7 +253,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             _ => self.static_addr_of(init, alloc.align, None),
                         };
                         if !self.sess().fewer_names() {
-                            llvm::set_value_name(value, format!("{:?}", ptr.alloc_id).as_bytes());
+                            llvm::set_value_name(value, format!("{:?}", alloc_id).as_bytes());
                         }
                         (value, AddressSpace::DATA)
                     }
@@ -269,7 +270,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP(
                         self.const_bitcast(base_addr, self.type_i8p_ext(base_addr_space)),
-                        &self.const_usize(ptr.offset.bytes()),
+                        &self.const_usize(offset.bytes()),
                         1,
                     )
                 };

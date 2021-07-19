@@ -453,6 +453,10 @@ impl<'tcx> CPlace<'tcx> {
                     ptr.store(fx, data, MemFlags::trusted());
                     ptr.load(fx, dst_ty, MemFlags::trusted())
                 }
+
+                // `CValue`s should never contain SSA-only types, so if you ended
+                // up here having seen an error like `B1 -> I8`, then before
+                // calling `write_cvalue` you need to add a `bint` instruction.
                 _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
             };
             //fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));

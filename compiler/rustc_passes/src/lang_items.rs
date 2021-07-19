@@ -257,9 +257,6 @@ impl LanguageItemCollector<'tcx> {
             | LangItem::Unpin
             | LangItem::Termination
             | LangItem::Try
-            | LangItem::Send
-            | LangItem::UnwindSafe
-            | LangItem::RefUnwindSafe
                 => Some(0),
 
             // Not a trait

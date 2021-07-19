@@ -20,7 +20,7 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_,
         // LLVM to keep around the reference to the global.
         let indices = [bx.const_i32(0), bx.const_i32(0)];
         let element = bx.inbounds_gep(gdb_debug_scripts_section, &indices);
-        let volative_load_instruction = bx.volatile_load(element);
+        let volative_load_instruction = bx.volatile_load(bx.type_i8(), element);
         unsafe {
             llvm::LLVMSetAlignment(volative_load_instruction, 1);
         }

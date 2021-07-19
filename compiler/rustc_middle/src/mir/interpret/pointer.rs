@@ -83,55 +83,77 @@ pub trait PointerArithmetic: HasDataLayout {
 
 impl<T: HasDataLayout> PointerArithmetic for T {}
 
+/// This trait abstracts over the kind of provenance that is associated with a `Pointer`. It is
+/// mostly opaque; the `Machine` trait extends it with some more operations that also have access to
+/// some global state.
+/// We don't actually care about this `Debug` bound (we use `Provenance::fmt` to format the entire
+/// pointer), but `derive` adds some unecessary bounds.
+pub trait Provenance: Copy + fmt::Debug {
+    /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
+    /// If `true, ptr-to-int casts work by simply discarding the provenance.
+    /// If `false`, ptr-to-int casts are not supported. The offset *must* be relative in that case.
+    const OFFSET_IS_ADDR: bool;
+
+    /// Determines how a pointer should be printed.
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    where
+        Self: Sized;
+
+    /// Provenance must always be able to identify the allocation this ptr points to.
+    /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
+    fn get_alloc_id(self) -> AllocId;
+}
+
+impl Provenance for AllocId {
+    // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
+    // so ptr-to-int casts are not possible (since we do not know the global physical offset).
+    const OFFSET_IS_ADDR: bool = false;
+
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Forward `alternate` flag to `alloc_id` printing.
+        if f.alternate() {
+            write!(f, "{:#?}", ptr.provenance)?;
+        } else {
+            write!(f, "{:?}", ptr.provenance)?;
+        }
+        // Print offset only if it is non-zero.
+        if ptr.offset.bytes() > 0 {
+            write!(f, "+0x{:x}", ptr.offset.bytes())?;
+        }
+        Ok(())
+    }
+
+    fn get_alloc_id(self) -> AllocId {
+        self
+    }
+}
+
 /// Represents a pointer in the Miri engine.
 ///
-/// `Pointer` is generic over the `Tag` associated with each pointer,
-/// which is used to do provenance tracking during execution.
+/// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub struct Pointer<Tag = ()> {
-    pub alloc_id: AllocId,
-    pub offset: Size,
-    pub tag: Tag,
+pub struct Pointer<Tag = AllocId> {
+    pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Tag` type)
+    pub provenance: Tag,
 }
 
 static_assert_size!(Pointer, 16);
 
-/// Print the address of a pointer (without the tag)
-fn print_ptr_addr<Tag>(ptr: &Pointer<Tag>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    // Forward `alternate` flag to `alloc_id` printing.
-    if f.alternate() {
-        write!(f, "{:#?}", ptr.alloc_id)?;
-    } else {
-        write!(f, "{:?}", ptr.alloc_id)?;
-    }
-    // Print offset only if it is non-zero.
-    if ptr.offset.bytes() > 0 {
-        write!(f, "+0x{:x}", ptr.offset.bytes())?;
-    }
-    Ok(())
-}
-
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-// We have to use `Debug` output for the tag, because `()` does not implement
-// `Display` so we cannot specialize that.
-impl<Tag: fmt::Debug> fmt::Debug for Pointer<Tag> {
-    default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        print_ptr_addr(self, f)?;
-        write!(f, "[{:?}]", self.tag)
-    }
-}
-// Specialization for no tag
-impl fmt::Debug for Pointer<()> {
+impl<Tag: Provenance> fmt::Debug for Pointer<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        print_ptr_addr(self, f)
+        Provenance::fmt(self, f)
     }
 }
 
-impl<Tag: fmt::Debug> fmt::Display for Pointer<Tag> {
+impl<Tag: Provenance> fmt::Debug for Pointer<Option<Tag>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        match self.provenance {
+            Some(tag) => Provenance::fmt(&Pointer::new(tag, self.offset), f),
+            None => write!(f, "0x{:x}", self.offset.bytes()),
+        }
     }
 }
 
@@ -143,37 +165,61 @@ impl From<AllocId> for Pointer {
     }
 }
 
-impl Pointer<()> {
+impl<Tag> From<Pointer<Tag>> for Pointer<Option<Tag>> {
     #[inline(always)]
-    pub fn new(alloc_id: AllocId, offset: Size) -> Self {
-        Pointer { alloc_id, offset, tag: () }
+    fn from(ptr: Pointer<Tag>) -> Self {
+        let (tag, offset) = ptr.into_parts();
+        Pointer::new(Some(tag), offset)
     }
+}
 
+impl<Tag> Pointer<Option<Tag>> {
+    pub fn into_pointer_or_addr(self) -> Result<Pointer<Tag>, Size> {
+        match self.provenance {
+            Some(tag) => Ok(Pointer::new(tag, self.offset)),
+            None => Err(self.offset),
+        }
+    }
+}
+
+impl<Tag> Pointer<Option<Tag>> {
     #[inline(always)]
-    pub fn with_tag<Tag>(self, tag: Tag) -> Pointer<Tag> {
-        Pointer::new_with_tag(self.alloc_id, self.offset, tag)
+    pub fn null() -> Self {
+        Pointer { provenance: None, offset: Size::ZERO }
     }
 }
 
 impl<'tcx, Tag> Pointer<Tag> {
     #[inline(always)]
-    pub fn new_with_tag(alloc_id: AllocId, offset: Size, tag: Tag) -> Self {
-        Pointer { alloc_id, offset, tag }
+    pub fn new(provenance: Tag, offset: Size) -> Self {
+        Pointer { provenance, offset }
+    }
+
+    /// Obtain the constituents of this pointer. Not that the meaning of the offset depends on the type `Tag`!
+    /// This function must only be used in the implementation of `Machine::ptr_get_alloc`,
+    /// and when a `Pointer` is taken apart to be stored efficiently in an `Allocation`.
+    #[inline(always)]
+    pub fn into_parts(self) -> (Tag, Size) {
+        (self.provenance, self.offset)
+    }
+
+    pub fn map_provenance(self, f: impl FnOnce(Tag) -> Tag) -> Self {
+        Pointer { provenance: f(self.provenance), ..self }
     }
 
     #[inline]
     pub fn offset(self, i: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        Ok(Pointer::new_with_tag(
-            self.alloc_id,
-            Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
-            self.tag,
-        ))
+        Ok(Pointer {
+            offset: Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
+            ..self
+        })
     }
 
     #[inline]
     pub fn overflowing_offset(self, i: Size, cx: &impl HasDataLayout) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
+        let ptr = Pointer { offset: Size::from_bytes(res), ..self };
+        (ptr, over)
     }
 
     #[inline(always)]
@@ -183,26 +229,21 @@ impl<'tcx, Tag> Pointer<Tag> {
 
     #[inline]
     pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        Ok(Pointer::new_with_tag(
-            self.alloc_id,
-            Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
-            self.tag,
-        ))
+        Ok(Pointer {
+            offset: Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
+            ..self
+        })
     }
 
     #[inline]
     pub fn overflowing_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
+        let ptr = Pointer { offset: Size::from_bytes(res), ..self };
+        (ptr, over)
     }
 
     #[inline(always)]
     pub fn wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
         self.overflowing_signed_offset(i, cx).0
-    }
-
-    #[inline(always)]
-    pub fn erase_tag(self) -> Pointer {
-        Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
 }

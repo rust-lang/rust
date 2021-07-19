@@ -805,6 +805,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let wordsz = sess.target.pointer_width.to_string();
     let os = &sess.target.os;
     let env = &sess.target.env;
+    let abi = &sess.target.abi;
     let vendor = &sess.target.vendor;
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
@@ -814,7 +815,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     });
 
     let mut ret = FxHashSet::default();
-    ret.reserve(6); // the minimum number of insertions
+    ret.reserve(7); // the minimum number of insertions
     // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
     for fam in &sess.target.families {
@@ -829,6 +830,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
     ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
+    ret.insert((sym::target_abi, Some(Symbol::intern(abi))));
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
     if sess.target.has_elf_tls {
         ret.insert((sym::target_thread_local, None));

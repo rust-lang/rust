@@ -1,3 +1,6 @@
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
+
 #![deny(dead_code)]
 
 union U1 {

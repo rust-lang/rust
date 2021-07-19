@@ -4,7 +4,7 @@ set -ex
 
 source shared.sh
 
-LLVM=llvmorg-10.0.0
+LLVM=llvmorg-12.0.1
 
 mkdir llvm-project
 cd llvm-project
@@ -30,7 +30,7 @@ hide_output \
       -DLLVM_ENABLE_PROJECTS="clang;lld" \
       -DC_INCLUDE_DIRS="$INC"
 
-hide_output make -j10
+hide_output make -j$(nproc)
 hide_output make install
 
 cd ../..

@@ -565,6 +565,22 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match &pattern.kind {
+            PatKind::Slice(pats) => {
+                for pat in pats {
+                    let inner_pat = match &pat.kind {
+                        PatKind::Ident(.., Some(pat)) => pat,
+                        _ => pat,
+                    };
+                    if let PatKind::Range(Some(_), None, Spanned { .. }) = inner_pat.kind {
+                        gate_feature_post!(
+                            &self,
+                            half_open_range_patterns,
+                            pat.span,
+                            "`X..` patterns in slices are experimental"
+                        );
+                    }
+                }
+            }
             PatKind::Box(..) => {
                 gate_feature_post!(
                     &self,
@@ -573,7 +589,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "box pattern syntax is experimental"
                 );
             }
-            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
+            PatKind::Range(_, Some(_), Spanned { node: RangeEnd::Excluded, .. }) => {
                 gate_feature_post!(
                     &self,
                     exclusive_range_pattern,

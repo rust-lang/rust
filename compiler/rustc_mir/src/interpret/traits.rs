@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic};
 use rustc_middle::ty::{
     self, Ty, COMMON_VTABLE_ENTRIES, COMMON_VTABLE_ENTRIES_ALIGN,
     COMMON_VTABLE_ENTRIES_DROPINPLACE, COMMON_VTABLE_ENTRIES_SIZE,
@@ -42,23 +42,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// corresponds to the first method declared in the trait of the provided vtable.
     pub fn get_vtable_slot(
         &self,
-        vtable: Scalar<M::PointerTag>,
+        vtable: Pointer<Option<M::PointerTag>>,
         idx: u64,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
-        let vtable_slot = vtable.ptr_offset(ptr_size * idx, self)?;
+        let vtable_slot = vtable.offset(ptr_size * idx, self)?;
         let vtable_slot = self
             .memory
             .get(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
-        let fn_ptr = vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?;
+        let fn_ptr = self.scalar_to_ptr(vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?);
         self.memory.get_fn(fn_ptr)
     }
 
     /// Returns the drop fn instance as well as the actual dynamic type.
     pub fn read_drop_type_from_vtable(
         &self,
-        vtable: Scalar<M::PointerTag>,
+        vtable: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
         let pointer_size = self.pointer_size();
         // We don't care about the pointee type; we just want a pointer.
@@ -77,7 +77,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .check_init()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
-        let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
+        let drop_instance = self.memory.get_fn(self.scalar_to_ptr(drop_fn))?.as_instance()?;
         trace!("Found drop fn: {:?}", drop_instance);
         let fn_sig = drop_instance.ty(*self.tcx, self.param_env).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig);
@@ -93,7 +93,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn read_size_and_align_from_vtable(
         &self,
-        vtable: Scalar<M::PointerTag>,
+        vtable: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
         // We check for `size = 3 * ptr_size`, which covers the drop fn (unused here),
@@ -109,11 +109,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = vtable
             .read_ptr_sized(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_SIZE).unwrap())?
             .check_init()?;
-        let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
+        let size = size.to_machine_usize(self)?;
         let align = vtable
             .read_ptr_sized(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_ALIGN).unwrap())?
             .check_init()?;
-        let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
+        let align = align.to_machine_usize(self)?;
         let align = Align::from_bytes(align).map_err(|e| err_ub!(InvalidVtableAlignment(e)))?;
 
         if size >= self.tcx.data_layout.obj_size_bound() {

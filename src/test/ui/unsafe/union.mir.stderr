@@ -1,0 +1,16 @@
+warning: unnecessary `unsafe` block
+  --> $DIR/union.rs:61:5
+   |
+LL |     unsafe {
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: `#[warn(unused_unsafe)]` on by default
+
+warning: unnecessary `unsafe` block
+  --> $DIR/union.rs:66:5
+   |
+LL |     unsafe {
+   |     ^^^^^^ unnecessary `unsafe` block
+
+warning: 2 warnings emitted
+

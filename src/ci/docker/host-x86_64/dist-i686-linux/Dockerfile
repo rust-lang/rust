@@ -69,8 +69,6 @@ COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
-# Build Python 2.7 needed for Clang 10.
-RUN ./build-python.sh 2.7.12
 # Build Python 3 needed for LLVM 12.
 RUN ./build-python.sh 3.9.1
 
@@ -97,7 +95,7 @@ ENV RUST_CONFIGURE_ARGS \
       --build=i686-unknown-linux-gnu \
       --set llvm.ninja=false \
       --set rust.jemalloc
-ENV SCRIPT python2.7 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
+ENV SCRIPT python3 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
 ENV CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This was added when we switched from gcc to clang. It's not clear why this is

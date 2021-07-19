@@ -30,7 +30,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{self, ExpnData, ExpnId, ExpnKind};
+use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -62,7 +62,7 @@ pub enum MacroRulesScope<'a> {
     Binding(&'a MacroRulesBinding<'a>),
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
-    Invocation(ExpnId),
+    Invocation(LocalExpnId),
 }
 
 /// `macro_rules!` scopes are always kept by reference and inside a cell.
@@ -190,7 +190,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
         });
     }
 
-    fn visit_ast_fragment_with_placeholders(&mut self, expansion: ExpnId, fragment: &AstFragment) {
+    fn visit_ast_fragment_with_placeholders(
+        &mut self,
+        expansion: LocalExpnId,
+        fragment: &AstFragment,
+    ) {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
@@ -216,16 +220,19 @@ impl<'a> ResolverExpand for Resolver<'a> {
         pass: AstPass,
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
-    ) -> ExpnId {
+    ) -> LocalExpnId {
         let parent_module = parent_module_id.map(|module_id| self.local_def_id(module_id));
-        let expn_id = ExpnId::fresh(Some(ExpnData::allow_unstable(
-            ExpnKind::AstPass(pass),
-            call_site,
-            self.session.edition(),
-            features.into(),
-            None,
-            parent_module.map(LocalDefId::to_def_id),
-        )));
+        let expn_id = LocalExpnId::fresh(
+            ExpnData::allow_unstable(
+                ExpnKind::AstPass(pass),
+                call_site,
+                self.session.edition(),
+                features.into(),
+                None,
+                parent_module.map(LocalDefId::to_def_id),
+            ),
+            self.create_stable_hashing_context(),
+        );
 
         let parent_scope = parent_module
             .map_or(self.empty_module, |parent_def_id| self.module_map[&parent_def_id]);
@@ -241,7 +248,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
     fn resolve_macro_invocation(
         &mut self,
         invoc: &Invocation,
-        eager_expansion_root: ExpnId,
+        eager_expansion_root: LocalExpnId,
         force: bool,
     ) -> Result<Lrc<SyntaxExtension>, Indeterminate> {
         let invoc_id = invoc.expansion_data.id;
@@ -287,15 +294,18 @@ impl<'a> ResolverExpand for Resolver<'a> {
         )?;
 
         let span = invoc.span();
-        invoc_id.set_expn_data(ext.expn_data(
-            parent_scope.expansion,
-            span,
-            fast_print_path(path),
-            res.opt_def_id(),
-            res.opt_def_id().map(|macro_def_id| {
-                self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod
-            }),
-        ));
+        invoc_id.set_expn_data(
+            ext.expn_data(
+                parent_scope.expansion,
+                span,
+                fast_print_path(path),
+                res.opt_def_id(),
+                res.opt_def_id().map(|macro_def_id| {
+                    self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod
+                }),
+            ),
+            self.create_stable_hashing_context(),
+        );
 
         if let Res::Def(_, _) = res {
             // Gate macro attributes in `#[derive]` output.
@@ -319,14 +329,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
                         let expn_data = expn_id.expn_data();
                         match expn_data.kind {
                             ExpnKind::Root
-                            | ExpnKind::Macro {
-                                name: _,
-                                kind: MacroKind::Bang | MacroKind::Derive,
-                                proc_macro: _,
-                            } => {
+                            | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
                                 break;
                             }
-                            _ => expn_id = expn_data.parent,
+                            _ => expn_id = expn_data.parent.expect_local(),
                         }
                     }
                 }
@@ -342,7 +348,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         }
     }
 
-    fn lint_node_id(&self, expn_id: ExpnId) -> NodeId {
+    fn lint_node_id(&self, expn_id: LocalExpnId) -> NodeId {
         // FIXME - make this more precise. This currently returns the NodeId of the
         // nearest closing item - we should try to return the closest parent of the ExpnId
         self.invocation_parents
@@ -350,13 +356,13 @@ impl<'a> ResolverExpand for Resolver<'a> {
             .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[id.0])
     }
 
-    fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
+    fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool {
         self.containers_deriving_copy.contains(&expn_id)
     }
 
     fn resolve_derives(
         &mut self,
-        expn_id: ExpnId,
+        expn_id: LocalExpnId,
         force: bool,
         derive_paths: &dyn Fn() -> DeriveResolutions,
     ) -> Result<(), Indeterminate> {
@@ -421,7 +427,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         Ok(())
     }
 
-    fn take_derive_resolutions(&mut self, expn_id: ExpnId) -> Option<DeriveResolutions> {
+    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<DeriveResolutions> {
         self.derive_data.remove(&expn_id).map(|data| data.resolutions)
     }
 
@@ -429,7 +435,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
     // Returns true if the path can certainly be resolved in one of three namespaces,
     // returns false if the path certainly cannot be resolved in any of the three namespaces.
     // Returns `Indeterminate` if we cannot give a certain answer yet.
-    fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate> {
+    fn cfg_accessible(
+        &mut self,
+        expn_id: LocalExpnId,
+        path: &ast::Path,
+    ) -> Result<bool, Indeterminate> {
         let span = path.span;
         let path = &Segment::from_path(path);
         let parent_scope = self.invocation_parent_scopes[&expn_id];
@@ -712,7 +722,8 @@ impl<'a> Resolver<'a> {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let ok = |res, span, arenas| {
                     Ok((
-                        (res, ty::Visibility::Public, span, ExpnId::root()).to_name_binding(arenas),
+                        (res, ty::Visibility::Public, span, LocalExpnId::ROOT)
+                            .to_name_binding(arenas),
                         Flags::empty(),
                     ))
                 };

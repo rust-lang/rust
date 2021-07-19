@@ -255,7 +255,7 @@ pub fn in_macro(span: Span) -> bool {
 }
 
 /// Checks if given pattern is a wildcard (`_`)
-pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
+pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
@@ -953,12 +953,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro {
-                kind: MacroKind::Bang,
-                name: mac_name,
-                proc_macro: _,
-            } = data.kind
-            {
+            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
                 if mac_name.as_str() == name {
                     return Some(new_span);
                 }
@@ -986,12 +981,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro {
-            kind: MacroKind::Bang,
-            name: mac_name,
-            proc_macro: _,
-        } = data.kind
-        {
+        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
             if mac_name.as_str() == name {
                 return Some(new_span);
             }
@@ -1033,8 +1023,8 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         )
     }
 
-    fn are_refutable<'a, I: Iterator<Item = &'a Pat<'a>>>(cx: &LateContext<'_>, mut i: I) -> bool {
-        i.any(|pat| is_refutable(cx, pat))
+    fn are_refutable<'a, I: IntoIterator<Item = &'a Pat<'a>>>(cx: &LateContext<'_>, i: I) -> bool {
+        i.into_iter().any(|pat| is_refutable(cx, pat))
     }
 
     match pat.kind {
@@ -1045,23 +1035,23 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
-            are_refutable(cx, pats.iter().map(|pat| &**pat))
+            are_refutable(cx, pats)
         },
-        PatKind::Tuple(pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
+        PatKind::Tuple(pats, _) => are_refutable(cx, pats),
         PatKind::Struct(ref qpath, fields, _) => {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
         },
         PatKind::TupleStruct(ref qpath, pats, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
+            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats)
         },
-        PatKind::Slice(head, ref middle, tail) => {
+        PatKind::Slice(head, middle, tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 rustc_ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
                 },
                 rustc_ty::Array(..) => {
-                    are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+                    are_refutable(cx, head.iter().chain(middle).chain(tail.iter()))
                 },
                 _ => {
                     // unreachable!()
@@ -1076,7 +1066,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
 /// the function once on the given pattern.
 pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>, mut f: F) {
     if let PatKind::Or(pats) = pat.kind {
-        pats.iter().copied().for_each(f);
+        pats.iter().for_each(f);
     } else {
         f(pat);
     }
@@ -1173,7 +1163,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
 /// Returns `true` if the lint is allowed in the current context
 ///
 /// Useful for skipping long running code when it's unnecessary
-pub fn is_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
+pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
@@ -1539,25 +1529,6 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
         ) => cx.typeck_results().qpath_res(qpath, *path_hir_id).opt_def_id(),
         _ => None,
     }
-}
-
-/// This function checks if any of the lints in the slice is enabled for the provided `HirId`.
-/// A lint counts as enabled with any of the levels: `Level::Forbid` | `Level::Deny` | `Level::Warn`
-///
-/// ```ignore
-/// #[deny(clippy::YOUR_AWESOME_LINT)]
-/// println!("Hello, World!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == true
-///
-/// #[allow(clippy::YOUR_AWESOME_LINT)]
-/// println!("See you soon!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == false
-/// ```
-pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
-    lints.iter().any(|lint| {
-        matches!(
-            cx.tcx.lint_level_at_node(lint, id),
-            (Level::Forbid | Level::Deny | Level::Warn, _)
-        )
-    })
 }
 
 /// Returns Option<String> where String is a textual representation of the type encapsulated in the

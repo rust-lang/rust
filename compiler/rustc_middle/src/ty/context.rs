@@ -1,30 +1,28 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::DepGraph;
-use crate::hir::exports::ExportMap;
+use crate::dep_graph::{DepGraph, DepNode};
 use crate::hir::place::Place as HirPlace;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle;
-use crate::middle::cstore::{CrateStoreDyn, EncodedMetadata};
+use crate::middle::cstore::EncodedMetadata;
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{self, AllocId, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::thir::Thir;
 use crate::traits;
-use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
+use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar,
-    FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
-    MainDefinition, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
-    ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
-    TyVid, TypeAndMut, UintTy, Visibility,
+    FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
+    ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind,
+    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
 };
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -39,7 +37,6 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
-use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -55,8 +52,8 @@ use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
-use rustc_span::def_id::StableCrateId;
-use rustc_span::source_map::MultiSpan;
+use rustc_span::def_id::{DefPathHash, StableCrateId};
+use rustc_span::source_map::{MultiSpan, SourceMap};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
@@ -73,6 +70,40 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
+
+pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
+    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
+    fn new(sess: &'tcx Session, data: Vec<u8>, start_pos: usize) -> Self
+    where
+        Self: Sized;
+
+    fn new_empty(source_map: &'tcx SourceMap) -> Self
+    where
+        Self: Sized;
+
+    /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
+    /// session, if it still exists. This is used during incremental compilation to
+    /// turn a deserialized `DefPathHash` into its current `DefId`.
+    fn def_path_hash_to_def_id(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        def_path_hash: DefPathHash,
+    ) -> Option<DefId>;
+
+    /// If the given `dep_node`'s hash still exists in the current compilation,
+    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
+    ///
+    /// Normally, `store_foreign_def_id_hash` can be called directly by
+    /// the dependency graph when we construct a `DepNode`. However,
+    /// when we re-use a deserialized `DepNode` from the previous compilation
+    /// session, we only have the `DefPathHash` available. This method is used
+    /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
+    /// out for usage in the next compilation session.
+    fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode);
+    fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash);
+
+    fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
+}
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
@@ -966,8 +997,6 @@ pub struct GlobalCtxt<'tcx> {
 
     interners: CtxtInterners<'tcx>,
 
-    pub(crate) cstore: Box<CrateStoreDyn>,
-
     pub sess: &'tcx Session,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
@@ -989,35 +1018,19 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
-    /// Visibilities produced by resolver.
-    pub visibilities: FxHashMap<LocalDefId, Visibility>,
-
-    /// Resolutions of `extern crate` items produced by resolver.
-    extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-
-    /// Export map produced by name resolution.
-    export_map: ExportMap<LocalDefId>,
+    /// Output of the resolver.
+    pub(crate) untracked_resolutions: ty::ResolverOutputs,
 
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
-    pub(crate) definitions: Definitions,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
     /// `DepGraph::try_mark_green()` and the query infrastructure.
     /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+    pub on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
-
-    maybe_unused_trait_imports: FxHashSet<LocalDefId>,
-    maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
-    /// A map of glob use to a set of names it actually imports. Currently only
-    /// used in save-analysis.
-    pub(crate) glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
-    /// Extern prelude entries. The value is `true` if the entry was introduced
-    /// via `extern crate` item and not `--extern` option or compiler built-in.
-    pub extern_prelude: FxHashMap<Symbol, bool>,
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1051,8 +1064,6 @@ pub struct GlobalCtxt<'tcx> {
     layout_interner: ShardedHashMap<&'tcx Layout, ()>,
 
     output_filenames: Arc<OutputFilenames>,
-
-    pub main_def: Option<MainDefinition>,
 
     pub(super) vtables_cache:
         Lock<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), AllocId>>,
@@ -1164,7 +1175,7 @@ impl<'tcx> TyCtxt<'tcx> {
         resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
         dep_graph: DepGraph,
-        on_disk_cache: Option<query::OnDiskCache<'tcx>>,
+        on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         crate_name: &str,
         output_filenames: OutputFilenames,
@@ -1176,28 +1187,19 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
-        let cstore = resolutions.cstore;
 
         GlobalCtxt {
             sess: s,
             lint_store,
-            cstore,
             arena,
             interners,
             dep_graph,
+            untracked_resolutions: resolutions,
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
-            visibilities: resolutions.visibilities,
-            extern_crate_map: resolutions.extern_crate_map,
-            export_map: resolutions.export_map,
-            maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
-            maybe_unused_extern_crates: resolutions.maybe_unused_extern_crates,
-            glob_map: resolutions.glob_map,
-            extern_prelude: resolutions.extern_prelude,
             untracked_crate: krate,
-            definitions: resolutions.definitions,
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
@@ -1212,7 +1214,6 @@ impl<'tcx> TyCtxt<'tcx> {
             const_stability_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
-            main_def: resolutions.main_def,
             vtables_cache: Default::default(),
         }
     }
@@ -1273,7 +1274,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
-        if let Some(id) = id.as_local() { self.hir().def_key(id) } else { self.cstore.def_key(id) }
+        // Accessing the DefKey is ok, since it is part of DefPathHash.
+        if let Some(id) = id.as_local() {
+            self.untracked_resolutions.definitions.def_key(id)
+        } else {
+            self.untracked_resolutions.cstore.def_key(id)
+        }
     }
 
     /// Converts a `DefId` into its fully expanded `DefPath` (every
@@ -1282,19 +1288,21 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that if `id` is not local to this crate, the result will
     ///  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> rustc_hir::definitions::DefPath {
+        // Accessing the DefPath is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.hir().def_path(id)
+            self.untracked_resolutions.definitions.def_path(id)
         } else {
-            self.cstore.def_path(id)
+            self.untracked_resolutions.cstore.def_path(id)
         }
     }
 
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> rustc_hir::definitions::DefPathHash {
+        // Accessing the DefPathHash is ok, it is incr. comp. stable.
         if let Some(def_id) = def_id.as_local() {
-            self.definitions.def_path_hash(def_id)
+            self.untracked_resolutions.definitions.def_path_hash(def_id)
         } else {
-            self.cstore.def_path_hash(def_id)
+            self.untracked_resolutions.cstore.def_path_hash(def_id)
         }
     }
 
@@ -1303,7 +1311,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if crate_num == LOCAL_CRATE {
             self.sess.local_stable_crate_id()
         } else {
-            self.cstore.stable_crate_id_untracked(crate_num)
+            self.untracked_resolutions.cstore.stable_crate_id(crate_num)
         }
     }
 
@@ -1315,10 +1323,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let (crate_name, stable_crate_id) = if def_id.is_local() {
             (self.crate_name, self.sess.local_stable_crate_id())
         } else {
-            (
-                self.cstore.crate_name_untracked(def_id.krate),
-                self.def_path_hash(def_id.krate.as_def_id()).stable_crate_id(),
-            )
+            let cstore = &self.untracked_resolutions.cstore;
+            (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
         };
 
         format!(
@@ -1333,27 +1339,40 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn encode_metadata(self) -> EncodedMetadata {
         let _prof_timer = self.prof.verbose_generic_activity("generate_crate_metadata");
-        self.cstore.encode_metadata(self)
+        self.untracked_resolutions.cstore.encode_metadata(self)
     }
 
-    // Note that this is *untracked* and should only be used within the query
-    // system if the result is otherwise tracked through queries
-    pub fn cstore_as_any(self) -> &'tcx dyn Any {
-        self.cstore.as_any()
+    /// Note that this is *untracked* and should only be used within the query
+    /// system if the result is otherwise tracked through queries
+    pub fn cstore_untracked(self) -> &'tcx ty::CrateStoreDyn {
+        &*self.untracked_resolutions.cstore
+    }
+
+    /// Note that this is *untracked* and should only be used within the query
+    /// system if the result is otherwise tracked through queries
+    pub fn definitions_untracked(self) -> &'tcx hir::definitions::Definitions {
+        &self.untracked_resolutions.definitions
     }
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
         let krate = self.gcx.untracked_crate;
+        let resolutions = &self.gcx.untracked_resolutions;
 
-        StableHashingContext::new(self.sess, krate, &self.definitions, &*self.cstore)
+        StableHashingContext::new(self.sess, krate, &resolutions.definitions, &*resolutions.cstore)
     }
 
     #[inline(always)]
     pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
         let krate = self.gcx.untracked_crate;
+        let resolutions = &self.gcx.untracked_resolutions;
 
-        StableHashingContext::ignore_spans(self.sess, krate, &self.definitions, &*self.cstore)
+        StableHashingContext::ignore_spans(
+            self.sess,
+            krate,
+            &resolutions.definitions,
+            &*resolutions.cstore,
+        )
     }
 
     pub fn serialize_query_result_cache(self, encoder: &mut FileEncoder) -> FileEncodeResult {
@@ -2821,15 +2840,19 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.in_scope_traits_map = |tcx, id| tcx.hir_crate(()).trait_map.get(&id);
-    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).map(|v| &v[..]);
+    providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
+    providers.module_exports = |tcx, id| tcx.resolutions(()).export_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
     };
-    providers.maybe_unused_trait_import = |tcx, id| tcx.maybe_unused_trait_imports.contains(&id);
-    providers.maybe_unused_extern_crates = |tcx, ()| &tcx.maybe_unused_extern_crates[..];
-    providers.names_imported_by_glob_use =
-        |tcx, id| tcx.arena.alloc(tcx.glob_map.get(&id).cloned().unwrap_or_default());
+    providers.maybe_unused_trait_import =
+        |tcx, id| tcx.resolutions(()).maybe_unused_trait_imports.contains(&id);
+    providers.maybe_unused_extern_crates =
+        |tcx, ()| &tcx.resolutions(()).maybe_unused_extern_crates[..];
+    providers.names_imported_by_glob_use = |tcx, id| {
+        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
+    };
 
     providers.lookup_stability = |tcx, id| {
         let id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
@@ -2843,8 +2866,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
         let id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
         tcx.stability().local_deprecation_entry(id)
     };
-    providers.extern_mod_stmt_cnum = |tcx, id| tcx.extern_crate_map.get(&id).cloned();
-    providers.crates = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
+    providers.extern_mod_stmt_cnum =
+        |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {

@@ -26,6 +26,7 @@ use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Spa
 use rustc_span::{sym, FileName, Pos};
 use std::io;
 use std::ops::Range;
+use std::thread;
 use url::Url;
 
 declare_clippy_lint! {
@@ -549,7 +550,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             FootnoteReference(text) | Text(text) => {
                 let (begin, span) = get_current_span(spans, range.start);
                 paragraph_span = paragraph_span.with_hi(span.hi());
-                ticks_unbalanced |= text.contains('`');
+                ticks_unbalanced |= text.contains('`') && !in_code;
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
                     // Which are represented as a link to "http://example.com" with
@@ -584,17 +585,17 @@ fn get_current_span(spans: &[(usize, Span)], idx: usize) -> (usize, Span) {
 }
 
 fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
-    fn has_needless_main(code: &str, edition: Edition) -> bool {
+    fn has_needless_main(code: String, edition: Edition) -> bool {
         rustc_driver::catch_fatal_errors(|| {
-            rustc_span::with_session_globals(edition, || {
-                let filename = FileName::anon_source_code(code);
+            rustc_span::create_session_globals_then(edition, || {
+                let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
                 let handler = Handler::with_emitter(false, None, box emitter);
                 let sess = ParseSess::with_span_handler(handler, sm);
 
-                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
+                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
                         for mut err in errs {
@@ -649,7 +650,13 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
         .unwrap_or_default()
     }
 
-    if has_needless_main(text, edition) {
+    // Because of the global session, we need to create a new session in a different thread with
+    // the edition we need.
+    let text = text.to_owned();
+    if thread::spawn(move || has_needless_main(text, edition))
+        .join()
+        .expect("thread::spawn failed")
+    {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }

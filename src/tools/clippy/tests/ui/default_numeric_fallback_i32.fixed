@@ -1,0 +1,173 @@
+// run-rustfix
+// aux-build:macro_rules.rs
+
+#![warn(clippy::default_numeric_fallback)]
+#![allow(unused)]
+#![allow(clippy::never_loop)]
+#![allow(clippy::no_effect)]
+#![allow(clippy::unnecessary_operation)]
+#![allow(clippy::branches_sharing_code)]
+
+#[macro_use]
+extern crate macro_rules;
+
+mod basic_expr {
+    fn test() {
+        // Should lint unsuffixed literals typed `i32`.
+        let x = 22_i32;
+        let x = [1_i32, 2_i32, 3_i32];
+        let x = if true { (1_i32, 2_i32) } else { (3_i32, 4_i32) };
+        let x = match 1_i32 {
+            1_i32 => 1_i32,
+            _ => 2_i32,
+        };
+
+        // Should NOT lint suffixed literals.
+        let x = 22_i32;
+
+        // Should NOT lint literals in init expr if `Local` has a type annotation.
+        let x: [i32; 3] = [1, 2, 3];
+        let x: (i32, i32) = if true { (1, 2) } else { (3, 4) };
+        let x: _ = 1;
+    }
+}
+
+mod nested_local {
+    fn test() {
+        let x: _ = {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1_i32;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            1
+        };
+
+        let x: _ = if true {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1_i32;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            1
+        } else {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1_i32;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            2
+        };
+    }
+}
+
+mod function_def {
+    fn ret_i32() -> i32 {
+        // Even though the output type is specified,
+        // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
+        1_i32
+    }
+
+    fn test() {
+        // Should lint this because return type is inferred to `i32` and NOT bound to a concrete
+        // type.
+        let f = || -> _ { 1_i32 };
+
+        // Even though the output type is specified,
+        // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
+        let f = || -> i32 { 1_i32 };
+    }
+}
+
+mod function_calls {
+    fn concrete_arg(x: i32) {}
+
+    fn generic_arg<T>(t: T) {}
+
+    fn test() {
+        // Should NOT lint this because the argument type is bound to a concrete type.
+        concrete_arg(1);
+
+        // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
+        generic_arg(1_i32);
+
+        // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
+        let x: _ = generic_arg(1_i32);
+    }
+}
+
+mod struct_ctor {
+    struct ConcreteStruct {
+        x: i32,
+    }
+
+    struct GenericStruct<T> {
+        x: T,
+    }
+
+    fn test() {
+        // Should NOT lint this because the field type is bound to a concrete type.
+        ConcreteStruct { x: 1 };
+
+        // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
+        GenericStruct { x: 1_i32 };
+
+        // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
+        let _ = GenericStruct { x: 1_i32 };
+    }
+}
+
+mod enum_ctor {
+    enum ConcreteEnum {
+        X(i32),
+    }
+
+    enum GenericEnum<T> {
+        X(T),
+    }
+
+    fn test() {
+        // Should NOT lint this because the field type is bound to a concrete type.
+        ConcreteEnum::X(1);
+
+        // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
+        GenericEnum::X(1_i32);
+    }
+}
+
+mod method_calls {
+    struct StructForMethodCallTest {}
+
+    impl StructForMethodCallTest {
+        fn concrete_arg(&self, x: i32) {}
+
+        fn generic_arg<T>(&self, t: T) {}
+    }
+
+    fn test() {
+        let s = StructForMethodCallTest {};
+
+        // Should NOT lint this because the argument type is bound to a concrete type.
+        s.concrete_arg(1);
+
+        // Should lint this because the argument type is bound to a concrete type.
+        s.generic_arg(1_i32);
+    }
+}
+
+mod in_macro {
+    macro_rules! internal_macro {
+        () => {
+            let x = 22_i32;
+        };
+    }
+
+    // Should lint in internal macro.
+    fn internal() {
+        internal_macro!();
+    }
+
+    // Should NOT lint in external macro.
+    fn external() {
+        default_numeric_fallback!();
+    }
+}
+
+fn main() {}

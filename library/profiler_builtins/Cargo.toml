@@ -14,4 +14,4 @@ core = { path = "../core" }
 compiler_builtins = { version = "0.1.0", features = ['rustc-dep-of-std'] }
 
 [build-dependencies]
-cc = "1.0.68"
+cc = "1.0.69"

@@ -1,6 +1,5 @@
 // Check that this program doesn't cause the compiler to error without output.
 
-#![allow(incomplete_features)]
 #![feature(generic_associated_types)]
 
 trait Foo {

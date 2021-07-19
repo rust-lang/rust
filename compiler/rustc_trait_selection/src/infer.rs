@@ -30,8 +30,7 @@ pub trait InferCtxtExt<'tcx> {
 
     fn partially_normalize_associated_types_in<T>(
         &self,
-        span: Span,
-        body_id: hir::HirId,
+        cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> InferOk<'tcx, T>
@@ -79,8 +78,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// new obligations that must further be processed.
     fn partially_normalize_associated_types_in<T>(
         &self,
-        span: Span,
-        body_id: hir::HirId,
+        cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> InferOk<'tcx, T>
@@ -89,7 +87,6 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     {
         debug!("partially_normalize_associated_types_in(value={:?})", value);
         let mut selcx = traits::SelectionContext::new(self);
-        let cause = ObligationCause::misc(span, body_id);
         let traits::Normalized { value, obligations } =
             traits::normalize(&mut selcx, param_env, cause, value);
         debug!(

@@ -14,6 +14,12 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
+    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
+        eval_always
+        no_hash
+        desc { "get the resolver outputs" }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
     /// we will have to assume that any change means that you need to be recompiled.
@@ -207,6 +213,7 @@ rustc_queries! {
     }
 
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
+        // This query reads from untracked data in definitions.
         eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
     }
@@ -717,7 +724,7 @@ rustc_queries! {
         cache_on_disk_if { true }
         load_cached(tcx, id) {
             let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
-                .on_disk_cache.as_ref()
+                .on_disk_cache().as_ref()
                 .and_then(|c| c.try_load_query_result(*tcx, id));
 
             typeck_results.map(|x| &*tcx.arena.alloc(x))
@@ -914,6 +921,10 @@ rustc_queries! {
 
     query lookup_const_stability(def_id: DefId) -> Option<&'tcx attr::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
+    }
+
+    query should_inherit_track_caller(def_id: DefId) -> bool {
+        desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
     }
 
     query lookup_deprecation_entry(def_id: DefId) -> Option<DeprecationEntry> {
@@ -1129,11 +1140,14 @@ rustc_queries! {
 
     query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export<LocalDefId>]> {
         desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
-        eval_always
     }
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
+    }
+
+    query impl_constness(def_id: DefId) -> hir::Constness {
+        desc { |tcx| "looking up whether `{}` is a const impl", tcx.def_path_str(def_id) }
     }
 
     query check_item_well_formed(key: LocalDefId) -> () {
@@ -1319,7 +1333,6 @@ rustc_queries! {
     }
 
     query visibility(def_id: DefId) -> ty::Visibility {
-        eval_always
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1344,8 +1357,6 @@ rustc_queries! {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
-        // This depends on untracked global state (`tcx.extern_crate_map`)
-        eval_always
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1422,16 +1433,12 @@ rustc_queries! {
         eval_always
     }
     query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
-        eval_always
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
-        eval_always
         desc { "looking up all possibly unused extern crates" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId)
-        -> &'tcx FxHashSet<Symbol> {
-        eval_always
+    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1705,5 +1712,19 @@ rustc_queries! {
 
     query limits(key: ()) -> Limits {
         desc { "looking up limits" }
+    }
+
+    /// Performs an HIR-based well-formed check on the item with the given `HirId`. If
+    /// we get an `Umimplemented` error that matches the provided `Predicate`, return
+    /// the cause of the newly created obligation.
+    ///
+    /// This is only used by error-reporting code to get a better cause (in particular, a better
+    /// span) for an *existing* error. Therefore, it is best-effort, and may never handle
+    /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
+    /// because the `ty::Ty`-based wfcheck is always run.
+    query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, hir::HirId)) -> Option<traits::ObligationCause<'tcx>> {
+        eval_always
+        no_hash
+        desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }
     }
 }

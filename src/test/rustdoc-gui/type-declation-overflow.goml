@@ -1,0 +1,8 @@
+// This test ensures that the type declaration content overflow is handled inside the <pre> directly.
+goto: file://|DOC_PATH|/lib2/long_trait/trait.ALongNameBecauseItHelpsTestingTheCurrentProblem.html
+// We set a fixed size so there is no chance of "random" resize.
+size: (1100, 800)
+// Logically, the <body> scroll width should be the width of the window.
+assert-property: ("body", {"scrollWidth": "1100"})
+// However, since there is overflow in the type declaration, its scroll width is bigger.
+assert-property: (".type-decl pre", {"scrollWidth": "1324"})

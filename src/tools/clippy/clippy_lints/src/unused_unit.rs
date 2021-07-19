@@ -24,6 +24,10 @@ declare_clippy_lint! {
     ///     ()
     /// }
     /// ```
+    /// is equivalent to
+    /// ```rust
+    /// fn return_unit() {}
+    /// ```
     pub UNUSED_UNIT,
     style,
     "needless unit expression"

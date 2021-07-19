@@ -48,7 +48,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, DefIdMap, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
@@ -59,7 +59,7 @@ use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::source_map::{respan, DesugaringKind};
+use rustc_span::source_map::{respan, CachingSourceMapView, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
@@ -204,6 +204,8 @@ pub trait ResolverAstLowering {
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId;
 
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
+
     fn create_def(
         &mut self,
         parent: LocalDefId,
@@ -212,6 +214,32 @@ pub trait ResolverAstLowering {
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId;
+}
+
+struct LoweringHasher<'a> {
+    source_map: CachingSourceMapView<'a>,
+    resolver: &'a dyn ResolverAstLowering,
+}
+
+impl<'a> rustc_span::HashStableContext for LoweringHasher<'a> {
+    #[inline]
+    fn hash_spans(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        self.resolver.def_path_hash(def_id)
+    }
+
+    #[inline]
+    fn span_data_to_lines_and_cols(
+        &mut self,
+        span: &rustc_span::SpanData,
+    ) -> Option<(Lrc<rustc_span::SourceFile>, usize, rustc_span::BytePos, usize, rustc_span::BytePos)>
+    {
+        self.source_map.span_data_to_lines_and_cols(span)
+    }
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -565,6 +593,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lowered
     }
 
+    fn create_stable_hashing_context(&self) -> LoweringHasher<'_> {
+        LoweringHasher {
+            source_map: CachingSourceMapView::new(self.sess.source_map()),
+            resolver: self.resolver,
+        }
+    }
+
     fn lower_node_id_generic(
         &mut self,
         ast_node_id: NodeId,
@@ -684,7 +719,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.mark_with_reason(allow_internal_unstable, reason, self.sess.edition())
+        span.mark_with_reason(
+            allow_internal_unstable,
+            reason,
+            self.sess.edition(),
+            self.create_stable_hashing_context(),
+        )
     }
 
     fn with_anonymous_lifetime_mode<R>(
@@ -2537,21 +2577,35 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
+    fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, hir::HirId) {
+        self.pat_ident_binding_mode_mut(span, ident, hir::BindingAnnotation::Unannotated)
+    }
+
     fn pat_ident_binding_mode(
         &mut self,
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
     ) -> (&'hir hir::Pat<'hir>, hir::HirId) {
+        let (pat, hir_id) = self.pat_ident_binding_mode_mut(span, ident, bm);
+        (self.arena.alloc(pat), hir_id)
+    }
+
+    fn pat_ident_binding_mode_mut(
+        &mut self,
+        span: Span,
+        ident: Ident,
+        bm: hir::BindingAnnotation,
+    ) -> (hir::Pat<'hir>, hir::HirId) {
         let hir_id = self.next_id();
 
         (
-            self.arena.alloc(hir::Pat {
+            hir::Pat {
                 hir_id,
                 kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
                 default_binding_modes: true,
-            }),
+            },
             hir_id,
         )
     }
@@ -2569,13 +2623,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat {
-            hir_id: self.next_id(),
-            kind,
-            span,
-            default_binding_modes: false,
-        })
+    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> hir::Pat<'hir> {
+        hir::Pat { hir_id: self.next_id(), kind, span, default_binding_modes: false }
     }
 
     fn ty_path(

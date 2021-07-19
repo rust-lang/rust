@@ -31,7 +31,7 @@ use rustc_session::config::CrateType;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_span::{
-    hygiene::{ExpnDataEncodeMode, HygieneEncodeContext, MacroKind},
+    hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind},
     RealFileName,
 };
 use rustc_target::abi::VariantIdx;
@@ -168,6 +168,12 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefIndex {
     }
 }
 
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
+        s.emit_u32(self.as_u32())
+    }
+}
+
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         rustc_span::hygiene::raw_encode_syntax_context(*self, &s.hygiene_ctxt, s)
@@ -176,12 +182,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        rustc_span::hygiene::raw_encode_expn_id(
-            *self,
-            &s.hygiene_ctxt,
-            ExpnDataEncodeMode::Metadata,
-            s,
-        )
+        if self.krate == LOCAL_CRATE {
+            // We will only write details for local expansions.  Non-local expansions will fetch
+            // data from the corresponding crate's metadata.
+            // FIXME(#43047) FIXME(#74731) We may eventually want to avoid relying on external
+            // metadata from proc-macro crates.
+            s.hygiene_ctxt.schedule_expn_data_for_encoding(*self);
+        }
+        self.krate.encode(s)?;
+        self.local_id.encode(s)
     }
 }
 
@@ -445,7 +454,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.hir().definitions().def_path_table();
+        let table = self.tcx.resolutions(()).definitions.def_path_table();
         if self.is_proc_macro {
             for def_index in std::iter::once(CRATE_DEF_INDEX)
                 .chain(self.tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index))
@@ -653,7 +662,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Therefore, we need to encode the hygiene data last to ensure that we encode
         // any `SyntaxContext`s that might be used.
         i = self.position();
-        let (syntax_contexts, expn_data) = self.encode_hygiene();
+        let (syntax_contexts, expn_data, expn_hashes) = self.encode_hygiene();
         let hygiene_bytes = self.position() - i;
 
         // Encode source_map. This needs to be done last,
@@ -701,6 +710,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             tables,
             syntax_contexts,
             expn_data,
+            expn_hashes,
         });
 
         let total_bytes = self.position();
@@ -1060,10 +1070,7 @@ impl EncodeContext<'a, 'tcx> {
             Lazy::empty()
         };
 
-        let data = ModData {
-            reexports,
-            expansion: tcx.hir().definitions().expansion_that_defined(local_def_id),
-        };
+        let data = ModData { reexports, expansion: tcx.expn_that_defined(local_def_id) };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
         if self.is_proc_macro {
@@ -1412,7 +1419,7 @@ impl EncodeContext<'a, 'tcx> {
                     adt_def.repr,
                 )
             }
-            hir::ItemKind::Impl(hir::Impl { defaultness, .. }) => {
+            hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 let polarity = self.tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
@@ -1437,8 +1444,13 @@ impl EncodeContext<'a, 'tcx> {
                     }
                 });
 
-                let data =
-                    ImplData { polarity, defaultness, parent_impl: parent, coerce_unsized_info };
+                let data = ImplData {
+                    polarity,
+                    defaultness,
+                    constness,
+                    parent_impl: parent,
+                    coerce_unsized_info,
+                };
 
                 EntryKind::Impl(self.lazy(data))
             }
@@ -1569,7 +1581,7 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
         empty_proc_macro!(self);
         let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
-        self.lazy(used_libraries.iter().cloned())
+        self.lazy(used_libraries.iter())
     }
 
     fn encode_foreign_modules(&mut self) -> Lazy<[ForeignModule]> {
@@ -1578,23 +1590,31 @@ impl EncodeContext<'a, 'tcx> {
         self.lazy(foreign_modules.iter().map(|(_, m)| m).cloned())
     }
 
-    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable) {
+    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
         let mut syntax_contexts: TableBuilder<_, _> = Default::default();
         let mut expn_data_table: TableBuilder<_, _> = Default::default();
+        let mut expn_hash_table: TableBuilder<_, _> = Default::default();
 
         let _: Result<(), !> = self.hygiene_ctxt.encode(
-            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table),
-            |(this, syntax_contexts, _), index, ctxt_data| {
+            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
+            |(this, syntax_contexts, _, _), index, ctxt_data| {
                 syntax_contexts.set(index, this.lazy(ctxt_data));
                 Ok(())
             },
-            |(this, _, expn_data_table), index, expn_data| {
-                expn_data_table.set(index, this.lazy(expn_data));
+            |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
+                if let Some(index) = index.as_local() {
+                    expn_data_table.set(index.as_raw(), this.lazy(expn_data));
+                    expn_hash_table.set(index.as_raw(), this.lazy(hash));
+                }
                 Ok(())
             },
         );
 
-        (syntax_contexts.encode(&mut self.opaque), expn_data_table.encode(&mut self.opaque))
+        (
+            syntax_contexts.encode(&mut self.opaque),
+            expn_data_table.encode(&mut self.opaque),
+            expn_hash_table.encode(&mut self.opaque),
+        )
     }
 
     fn encode_proc_macros(&mut self) -> Option<ProcMacroData> {
@@ -1759,7 +1779,7 @@ impl EncodeContext<'a, 'tcx> {
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
                 impls.sort_by_cached_key(|&(index, _)| {
-                    tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
+                    tcx.hir().def_path_hash(LocalDefId { local_def_index: index })
                 });
 
                 TraitImpls {

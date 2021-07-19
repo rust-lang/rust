@@ -21,7 +21,7 @@ compiler_builtins = "0.1.0"
 cfg-if = "0.1.8"
 
 [build-dependencies]
-cc = "1.0.68"
+cc = "1.0.69"
 
 [features]
 

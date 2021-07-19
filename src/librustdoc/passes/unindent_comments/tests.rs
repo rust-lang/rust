@@ -1,7 +1,7 @@
 use super::*;
+use rustc_span::create_default_session_globals_then;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::Symbol;
-use rustc_span::with_default_session_globals;
 
 fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
     vec![DocFragment {
@@ -17,7 +17,7 @@ fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
 
 #[track_caller]
 fn run_test(input: &str, expected: &str) {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let mut s = create_doc_fragment(input);
         unindent_fragments(&mut s);
         assert_eq!(&s.iter().collect::<String>(), expected);

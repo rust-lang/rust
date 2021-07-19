@@ -274,7 +274,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match *elem {
                     mir::ProjectionElem::Deref => {
                         indirect_offsets.push(Size::ZERO);
-                        place = place.project_deref(bx);
+                        place = bx.load_operand(place).deref(bx.cx());
                     }
                     mir::ProjectionElem::Field(field, _) => {
                         let i = field.index();

@@ -33,6 +33,13 @@
 // Generator
 // Generators don't seem to appear in GDB's symbol table.
 
+// Const generic parameter
+// gdb-command:info functions -q function_names::const_generic_fn.*
+// gdb-check:[...]static fn function_names::const_generic_fn_bool();
+// gdb-check:[...]static fn function_names::const_generic_fn_non_int();
+// gdb-check:[...]static fn function_names::const_generic_fn_signed_int();
+// gdb-check:[...]static fn function_names::const_generic_fn_unsigned_int();
+
 // === CDB TESTS ===================================================================================
 
 // Top-level function
@@ -49,9 +56,9 @@
 
 // Trait implementations
 // cdb-command:x a!function_names::*::trait_function*
-// cdb-check:[...] a!function_names::impl$6::trait_function<i32, 0x1> (void)
 // cdb-check:[...] a!function_names::impl$3::trait_function<i32> (void)
 // cdb-check:[...] a!function_names::impl$1::trait_function (void)
+// cdb-check:[...] a!function_names::impl$6::trait_function<i32, 1> (void)
 // cdb-check:[...] a!function_names::impl$5::trait_function3<function_names::TestStruct1> (void)
 // cdb-check:[...] a!function_names::Mod1::impl$1::trait_function (void)
 
@@ -65,10 +72,18 @@
 // cdb-command:x a!function_names::*::generator*
 // cdb-check:[...] a!function_names::main::generator$1 (void)
 
+// Const generic parameter
+// cdb-command:x a!function_names::const_generic_fn*
+// cdb-check:[...] a!function_names::const_generic_fn_bool<false> (void)
+// cdb-check:[...] a!function_names::const_generic_fn_non_int<CONST$fe3cfa0214ac55c7> (void)
+// cdb-check:[...] a!function_names::const_generic_fn_unsigned_int<14> (void)
+// cdb-check:[...] a!function_names::const_generic_fn_signed_int<-7> (void)
+
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(generators, generator_trait)]
+#![feature(const_generics, generators, generator_trait)]
+#![allow(incomplete_features)] // for const_generics
 
 use Mod1::TestTrait2;
 use std::ops::Generator;
@@ -97,6 +112,12 @@ fn main() {
     // Generator
     let mut generator = || { yield; return; };
     Pin::new(&mut generator).resume(());
+
+    // Const generic functions
+    const_generic_fn_bool::<false>();
+    const_generic_fn_non_int::<{()}>();
+    const_generic_fn_signed_int::<-7>();
+    const_generic_fn_unsigned_int::<14>();
 }
 
 struct TestStruct1;
@@ -173,3 +194,8 @@ fn generic_func<T>(value: T) -> T {
 
     value
 }
+
+fn const_generic_fn_bool<const C: bool>() {}
+fn const_generic_fn_non_int<const C: ()>() {}
+fn const_generic_fn_signed_int<const C: i64>() {}
+fn const_generic_fn_unsigned_int<const C: u32>() {}

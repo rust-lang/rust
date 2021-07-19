@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
+use std::fmt::Display;
 use std::fmt::Write as _;
-use std::fmt::{Debug, Display};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer,
+    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -665,12 +665,12 @@ pub fn write_allocations<'tcx>(
     w: &mut dyn Write,
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(alloc: &Allocation) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.relocations().values().map(|(_, id)| *id)
+        alloc.relocations().values().map(|id| *id)
     }
     fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr)) => {
-                Either::Left(Either::Left(std::iter::once(ptr.alloc_id)))
+            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _size)) => {
+                Either::Left(Either::Left(std::iter::once(ptr.provenance)))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
                 Either::Left(Either::Right(std::iter::empty()))
@@ -755,7 +755,7 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints relocations adequately.
-pub fn display_allocation<Tag: Copy + Debug, Extra>(
+pub fn display_allocation<Tag, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &'a Allocation<Tag, Extra>,
 ) -> RenderAllocation<'a, 'tcx, Tag, Extra> {
@@ -768,7 +768,7 @@ pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
     alloc: &'a Allocation<Tag, Extra>,
 }
 
-impl<Tag: Copy + Debug, Extra> std::fmt::Display for RenderAllocation<'a, 'tcx, Tag, Extra> {
+impl<Tag: Provenance, Extra> std::fmt::Display for RenderAllocation<'a, 'tcx, Tag, Extra> {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
         write!(w, "size: {}, align: {})", alloc.size().bytes(), alloc.align.bytes())?;
@@ -811,7 +811,7 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
+fn write_allocation_bytes<Tag: Provenance, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &Allocation<Tag, Extra>,
     w: &mut dyn std::fmt::Write,
@@ -847,7 +847,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&(tag, target_id)) = alloc.relocations().get(&i) {
+        if let Some(&tag) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             let j = i.bytes_usize();
             let offset = alloc
@@ -855,7 +855,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
-            let ptr = Pointer::new_with_tag(target_id, offset, tag);
+            let ptr = Pointer::new(tag, offset);
             let mut target = format!("{:?}", ptr);
             if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.

@@ -74,7 +74,21 @@ LL | |     i: i32,
 LL | | }
    | |_^
 
-error: aborting due to 10 previous errors
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:70:1
+   |
+LL | pub struct S(u16);
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0587]: type has conflicting packed and align representation hints
+  --> $DIR/conflicting-repr-hints.rs:73:1
+   |
+LL | / pub union U {
+LL | |     u: u16
+LL | | }
+   | |_^
+
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0566, E0587, E0634.
 For more information about an error, try `rustc --explain E0566`.

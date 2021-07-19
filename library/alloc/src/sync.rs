@@ -19,7 +19,6 @@ use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
-#[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
@@ -492,6 +491,13 @@ impl<T> Arc<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn pin(data: T) -> Pin<Arc<T>> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
+    }
+
+    /// Constructs a new `Pin<Arc<T>>`, return an error if allocation fails.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {
+        unsafe { Ok(Pin::new_unchecked(Arc::try_new(data)?)) }
     }
 
     /// Constructs a new `Arc<T>`, returning an error if allocation fails.

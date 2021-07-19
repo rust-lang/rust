@@ -101,7 +101,7 @@ LL |     let (ref mut _x0_hold, ..) = tup;
 LL |     *_x0 = U;
    |     -------- immutable borrow later used here
 
-error[E0594]: cannot assign to `*_x0` which is behind a `&` reference
+error[E0594]: cannot assign to `*_x0`, which is behind a `&` reference
   --> $DIR/borrowck-move-ref-pattern.rs:26:5
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
@@ -110,7 +110,7 @@ LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
 LL |     *_x0 = U;
    |     ^^^^^^^^ `_x0` is a `&` reference, so the data it refers to cannot be written
 
-error[E0594]: cannot assign to `*_x2` which is behind a `&` reference
+error[E0594]: cannot assign to `*_x2`, which is behind a `&` reference
   --> $DIR/borrowck-move-ref-pattern.rs:27:5
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;

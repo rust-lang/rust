@@ -2,8 +2,8 @@ use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
 use rustc_session::parse::ParseSess;
+use rustc_span::create_default_session_if_not_set_then;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::with_default_session_globals;
 use rustc_span::{BytePos, MultiSpan, Span};
 
 use rustc_data_structures::sync::Lrc;
@@ -124,7 +124,7 @@ impl<T: Write> Write for Shared<T> {
 }
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
-    with_default_session_globals(|| {
+    create_default_session_if_not_set_then(|_| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));

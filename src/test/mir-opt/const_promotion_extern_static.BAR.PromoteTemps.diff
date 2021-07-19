@@ -16,16 +16,16 @@
 -         StorageLive(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
 -         StorageLive(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
 -         StorageLive(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
--         _5 = const {alloc0: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
+-         _5 = const {alloc1: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
 +         _6 = const BAR::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
                                            // ty::Const
 -                                          // + ty: &i32
--                                          // + val: Value(Scalar(alloc0))
+-                                          // + val: Value(Scalar(alloc1))
 +                                          // + ty: &[&i32; 1]
 +                                          // + val: Unevaluated(BAR, [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
--                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc0)) }
+-                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
 -         _4 = &(*_5);                     // scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
 -         _3 = [move _4];                  // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
 -         _2 = &_3;                        // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
@@ -53,7 +53,7 @@
       }
 - }
 - 
-- alloc0 (static: Y, size: 4, align: 4) {
+- alloc1 (static: Y, size: 4, align: 4) {
 -     2a 00 00 00                                     │ *...
   }
   

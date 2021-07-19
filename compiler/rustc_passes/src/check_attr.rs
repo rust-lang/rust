@@ -98,6 +98,9 @@ impl CheckAttrVisitor<'tcx> {
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
                 sym::cmse_nonsecure_entry => self.check_cmse_nonsecure_entry(attr, span, target),
+                sym::default_method_body_is_const => {
+                    self.check_default_method_body_is_const(attr, span, target)
+                }
                 _ => true,
             };
             // lint-only checks
@@ -1460,6 +1463,29 @@ impl CheckAttrVisitor<'tcx> {
                     .sess
                     .struct_span_err(attr.span, "attribute should be applied to `const fn`")
                     .span_label(*span, "not a `const fn`")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    /// default_method_body_is_const should only be applied to trait methods with default bodies.
+    fn check_default_method_body_is_const(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Method(MethodKind::Trait { body: true }) => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "attribute should be applied to a trait method with body",
+                    )
+                    .span_label(*span, "not a trait method or missing a body")
                     .emit();
                 false
             }

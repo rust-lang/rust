@@ -41,8 +41,8 @@ pub const OFFSET_FROM_NULL: isize = {
 pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
-    unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR any use of this value will cause an error
-    //~| WARN previously accepted
+    unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
+    //~| 0x10 is not a valid pointer
 };
 
 fn main() {}

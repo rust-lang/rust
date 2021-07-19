@@ -19,6 +19,9 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: aarch64-unknown-linux-gnu
 
     steps:
     - uses: actions/checkout@v2
@@ -49,11 +52,19 @@ jobs:
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
         rustup target add x86_64-pc-windows-gnu
 
+    - name: Install AArch64 toolchain and qemu
+      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get install -y gcc-aarch64-linux-gnu qemu-user
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./prepare.sh
+        ./y.rs prepare
+
+    - name: Build
+      run: ./y.rs build --sysroot none
 
     - name: Test
       env:
@@ -87,3 +98,63 @@ jobs:
       with:
         name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
         path: cg_clif.tar.xz
+
+  build_windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@v2
+
+    #- name: Cache cargo installed crates
+    #  uses: actions/cache@v2
+    #  with:
+    #    path: ~/.cargo/bin
+    #    key: ${{ runner.os }}-cargo-installed-crates
+
+    #- name: Cache cargo registry and index
+    #  uses: actions/cache@v2
+    #  with:
+    #    path: |
+    #        ~/.cargo/registry
+    #        ~/.cargo/git
+    #    key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
+
+    #- name: Cache cargo target dir
+    #  uses: actions/cache@v2
+    #  with:
+    #    path: target
+    #    key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        git config --global core.autocrlf false
+        rustup set default-host x86_64-pc-windows-gnu
+        rustc y.rs -o y.exe -g
+        ./y.exe prepare
+
+    - name: Build
+      #name: Test
+      run: |
+        # Enable backtraces for easier debugging
+        #export RUST_BACKTRACE=1
+
+        # Reduce amount of benchmark runs as they are slow
+        #export COMPILE_RUNS=2
+        #export RUN_RUNS=2
+
+        # Enable extra checks
+        #export CG_CLIF_ENABLE_VERIFIER=1
+
+        ./y.exe build
+
+    #- name: Package prebuilt cg_clif
+    #  run: tar cvfJ cg_clif.tar.xz build
+
+    #- name: Upload prebuilt cg_clif
+    #  uses: actions/upload-artifact@v2
+    #  with:
+    #    name: cg_clif-${{ runner.os }}
+    #    path: cg_clif.tar.xz

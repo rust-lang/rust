@@ -23,6 +23,7 @@ pub type GatedCfg = (Symbol, Symbol, GateFn);
 /// `cfg(...)`'s that are feature gated.
 const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
+    (sym::target_abi, sym::cfg_target_abi, cfg_fn!(cfg_target_abi)),
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
@@ -349,6 +350,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(cmse_nonsecure_entry, AssumedUsed, template!(Word), experimental!(cmse_nonsecure_entry)),
+    // RFC 2632
+    gated!(
+        default_method_body_is_const, AssumedUsed, template!(Word), const_trait_impl,
+        "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
+        as `const`, which may be removed or renamed in the future."
+    ),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
@@ -441,7 +448,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word, NameValueStr: "name"), IMPL_DETAIL),
+    rustc_attr!(
+        rustc_builtin_macro, AssumedUsed,
+        template!(Word, List: "name, /*opt*/ attributes(name1, name2, ...)"),
+        IMPL_DETAIL,
+    ),
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
         rustc_macro_transparency, AssumedUsed,

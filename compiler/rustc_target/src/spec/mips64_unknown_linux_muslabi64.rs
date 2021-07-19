@@ -12,6 +12,11 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
         arch: "mips64".to_string(),
-        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".to_string(), ..base },
+        options: TargetOptions {
+            abi: "abi64".to_string(),
+            endian: Endian::Big,
+            mcount: "_mcount".to_string(),
+            ..base
+        },
     }
 }

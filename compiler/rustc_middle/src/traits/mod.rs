@@ -13,6 +13,7 @@ use crate::mir::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -24,7 +25,6 @@ use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
-use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
@@ -87,7 +87,7 @@ pub enum Reveal {
 #[derive(Clone, PartialEq, Eq, Hash, Lift)]
 pub struct ObligationCause<'tcx> {
     /// `None` for `ObligationCause::dummy`, `Some` otherwise.
-    data: Option<Rc<ObligationCauseData<'tcx>>>,
+    data: Option<Lrc<ObligationCauseData<'tcx>>>,
 }
 
 const DUMMY_OBLIGATION_CAUSE_DATA: ObligationCauseData<'static> =
@@ -131,7 +131,7 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { data: Some(Rc::new(ObligationCauseData { span, body_id, code })) }
+        ObligationCause { data: Some(Lrc::new(ObligationCauseData { span, body_id, code })) }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
@@ -148,7 +148,7 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 
     pub fn make_mut(&mut self) -> &mut ObligationCauseData<'tcx> {
-        Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
+        Lrc::make_mut(self.data.get_or_insert_with(|| Lrc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
@@ -326,6 +326,13 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
     OpaqueType,
+
+    /// Well-formed checking. If a `HirId` is provided,
+    /// it is used to perform HIR-based wf checking if an error
+    /// occurs, in order to generate a more precise error message.
+    /// This is purely for diagnostic purposes - it is always
+    /// correct to use `MiscObligation` instead
+    WellFormed(Option<hir::HirId>),
 }
 
 impl ObligationCauseCode<'_> {
@@ -389,7 +396,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_trait_ref: ty::PolyTraitRef<'tcx>,
 
     /// The parent trait had this cause.
-    pub parent_code: Rc<ObligationCauseCode<'tcx>>,
+    pub parent_code: Lrc<ObligationCauseCode<'tcx>>,
 }
 
 #[derive(Clone, Debug, TypeFoldable, Lift)]
@@ -426,10 +433,10 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// impl Clone for i32 { ... }                   // Impl_3
 ///
 /// fn foo<T: Clone>(concrete: Option<Box<i32>>, param: T, mixed: Option<T>) {
-///     // Case A: Vtable points at a specific impl. Only possible when
+///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded
-///     // type parameters, Vtable will carry resolutions for those as well:
-///     concrete.clone(); // Vtable(Impl_1, [Vtable(Impl_2, [Vtable(Impl_3)])])
+///     // type parameters, ImplSource will carry resolutions for those as well:
+///     concrete.clone(); // ImpleSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded

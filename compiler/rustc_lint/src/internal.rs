@@ -2,15 +2,17 @@
 //! Clippy.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::{ImplKind, Item, ItemKind};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
+use rustc_hir::{
+    GenericArg, HirId, Item, ItemKind, MutTy, Mutability, Node, Path, PathSegment, QPath, Ty,
+    TyKind,
+};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -19,43 +21,35 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-pub struct DefaultHashTypes {
-    map: FxHashMap<Symbol, Symbol>,
-}
+declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
-impl DefaultHashTypes {
-    // we are allowed to use `HashMap` and `HashSet` as identifiers for implementing the lint itself
-    #[allow(rustc::default_hash_types)]
-    pub fn new() -> Self {
-        let mut map = FxHashMap::default();
-        map.insert(sym::HashMap, sym::FxHashMap);
-        map.insert(sym::HashSet, sym::FxHashSet);
-        Self { map }
-    }
-}
-
-impl_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
-
-impl EarlyLintPass for DefaultHashTypes {
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
-        if let Some(replace) = self.map.get(&ident.name) {
-            cx.struct_span_lint(DEFAULT_HASH_TYPES, ident.span, |lint| {
-                // FIXME: We can avoid a copy here. Would require us to take String instead of &str.
-                let msg = format!("Prefer {} over {}, it has better performance", replace, ident);
-                lint.build(&msg)
-                    .span_suggestion(
-                        ident.span,
-                        "use",
-                        replace.to_string(),
-                        Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
-                    )
-                    .note(&format!(
-                        "a `use rustc_data_structures::fx::{}` may be necessary",
-                        replace
-                    ))
-                    .emit();
-            });
+impl LateLintPass<'_> for DefaultHashTypes {
+    fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, hir_id: HirId) {
+        let def_id = match path.res {
+            Res::Def(rustc_hir::def::DefKind::Struct, id) => id,
+            _ => return,
+        };
+        if matches!(cx.tcx.hir().get(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
+            // don't lint imports, only actual usages
+            return;
         }
+        let replace = if cx.tcx.is_diagnostic_item(sym::hashmap_type, def_id) {
+            "FxHashMap"
+        } else if cx.tcx.is_diagnostic_item(sym::hashset_type, def_id) {
+            "FxHashSet"
+        } else {
+            return;
+        };
+        cx.struct_span_lint(DEFAULT_HASH_TYPES, path.span, |lint| {
+            let msg = format!(
+                "prefer `{}` over `{}`, it has better performance",
+                replace,
+                cx.tcx.item_name(def_id)
+            );
+            lint.build(&msg)
+                .note(&format!("a `use rustc_data_structures::fx::{}` may be necessary", replace))
+                .emit();
+        });
     }
 }
 
@@ -242,27 +236,17 @@ declare_tool_lint! {
 declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl(box ImplKind { of_trait: Some(lint_pass), .. }) = &item.kind {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        if let ast::ItemKind::Impl(box ast::ImplKind { of_trait: Some(lint_pass), .. }) = &item.kind
+        {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
                     let call_site = expn_data.call_site;
-                    if !matches!(
-                        expn_data.kind,
-                        ExpnKind::Macro {
-                            kind: MacroKind::Bang,
-                            name: sym::impl_lint_pass,
-                            proc_macro: _
-                        }
-                    ) && !matches!(
-                        call_site.ctxt().outer_expn_data().kind,
-                        ExpnKind::Macro {
-                            kind: MacroKind::Bang,
-                            name: sym::declare_lint_pass,
-                            proc_macro: _
-                        }
-                    ) {
+                    if expn_data.kind != ExpnKind::Macro(MacroKind::Bang, sym::impl_lint_pass)
+                        && call_site.ctxt().outer_expn_data().kind
+                            != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
+                    {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,

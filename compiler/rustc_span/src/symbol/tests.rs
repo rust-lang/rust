@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{edition, SessionGlobals};
+use crate::create_default_session_globals_then;
 
 #[test]
 fn interner_tests() {
@@ -18,7 +18,7 @@ fn interner_tests() {
 
 #[test]
 fn without_first_quote_test() {
-    SESSION_GLOBALS.set(&SessionGlobals::new(edition::DEFAULT_EDITION), || {
+    create_default_session_globals_then(|| {
         let i = Ident::from_str("'break");
         assert_eq!(i.without_first_quote().name, kw::Break);
     });

@@ -150,6 +150,59 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
+        fn check_for_self_assign_helper(
+            tcx: TyCtxt<'tcx>,
+            typeck_results: &'tcx ty::TypeckResults<'tcx>,
+            lhs: &'tcx hir::Expr<'tcx>,
+            rhs: &'tcx hir::Expr<'tcx>,
+        ) -> bool {
+            match (&lhs.kind, &rhs.kind) {
+                (hir::ExprKind::Path(ref qpath_l), hir::ExprKind::Path(ref qpath_r)) => {
+                    if let (Res::Local(id_l), Res::Local(id_r)) = (
+                        typeck_results.qpath_res(qpath_l, lhs.hir_id),
+                        typeck_results.qpath_res(qpath_r, rhs.hir_id),
+                    ) {
+                        if id_l == id_r {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                (hir::ExprKind::Field(lhs_l, ident_l), hir::ExprKind::Field(lhs_r, ident_r)) => {
+                    if ident_l == ident_r {
+                        return check_for_self_assign_helper(tcx, typeck_results, lhs_l, lhs_r);
+                    }
+                    return false;
+                }
+                _ => {
+                    return false;
+                }
+            }
+        }
+
+        if let hir::ExprKind::Assign(lhs, rhs, _) = assign.kind {
+            if check_for_self_assign_helper(self.tcx, self.typeck_results(), lhs, rhs)
+                && !assign.span.from_expansion()
+            {
+                let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
+                self.tcx.struct_span_lint_hir(
+                    lint::builtin::DEAD_CODE,
+                    assign.hir_id,
+                    assign.span,
+                    |lint| {
+                        lint.build(&format!(
+                            "useless assignment of {} of type `{}` to itself",
+                            if is_field_assign { "field" } else { "variable" },
+                            self.typeck_results().expr_ty(lhs),
+                        ))
+                        .emit();
+                    },
+                )
+            }
+        }
+    }
+
     fn handle_field_pattern_match(
         &mut self,
         lhs: &hir::Pat<'_>,
@@ -287,6 +340,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::Assign(ref left, ref right, ..) => {
                 self.handle_assign(left);
+                self.check_for_self_assign(expr);
                 self.visit_expr(right);
                 return;
             }

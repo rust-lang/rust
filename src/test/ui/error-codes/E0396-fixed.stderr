@@ -1,14 +1,9 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/E0396-fixed.rs:5:28
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
-   | ---------------------------^^^^^^^^^---
-   |                            |
-   |                            unable to turn bytes into a pointer
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   |                            ^^^^^^^^^ 0x5f3759df is not a valid pointer
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0080`.

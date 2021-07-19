@@ -131,22 +131,20 @@ def write_errors():
             exit_status = 101
 
 
-def rustc(test):
-    rs = test + '.rs'
-    exe = test + '.exe'  # hopefully this makes it work on *nix
-    print("compiling", test)
+def cargo():
+    print("compiling tests")
     sys.stdout.flush()
-    check_call(['rustc', rs, '-o', exe])
+    check_call(['cargo', 'build', '--release'])
 
 
 def run(test):
     global test_name
     test_name = test
 
-    t0 = time.clock()
+    t0 = time.perf_counter()
     msg("setting up supervisor")
-    exe = test + '.exe'
-    proc = Popen(exe, bufsize=1<<20 , stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    command = ['cargo', 'run', '--bin', test, '--release']
+    proc = Popen(command, bufsize=1<<20 , stdin=PIPE, stdout=PIPE, stderr=PIPE)
     done = multiprocessing.Value(ctypes.c_bool)
     queue = multiprocessing.Queue(maxsize=5)#(maxsize=1024)
     workers = []
@@ -166,7 +164,7 @@ def run(test):
         worker.join()
     msg("python is done")
     assert queue.empty(), "did not validate everything"
-    dt = time.clock() - t0
+    dt = time.perf_counter() - t0
     msg("took", round(dt, 3), "seconds")
 
 
@@ -176,7 +174,7 @@ def interact(proc, queue):
         line = proc.stdout.readline()
         if not line:
             continue
-        assert line.endswith('\n'), "incomplete line: " + repr(line)
+        assert line.endswith(b'\n'), "incomplete line: " + repr(line)
         queue.put(line)
         n += 1
         if n % UPDATE_EVERY_N == 0:
@@ -185,7 +183,7 @@ def interact(proc, queue):
     rest, stderr = proc.communicate()
     if stderr:
         msg("rust stderr output:", stderr)
-    for line in rest.split('\n'):
+    for line in rest.split(b'\n'):
         if not line:
             continue
         queue.put(line)
@@ -193,18 +191,19 @@ def interact(proc, queue):
 
 def main():
     global MAILBOX
-    all_tests = [os.path.splitext(f)[0] for f in glob('*.rs') if not f.startswith('_')]
+    files = glob('src/bin/*.rs')
+    basenames = [os.path.basename(i) for i in files]
+    all_tests = [os.path.splitext(f)[0] for f in basenames if not f.startswith('_')]
     args = sys.argv[1:]
     if args:
         tests = [test for test in all_tests if test in args]
-    else
+    else:
         tests = all_tests
     if not tests:
         print("Error: No tests to run")
         sys.exit(1)
     # Compile first for quicker feedback
-    for test in tests:
-        rustc(test)
+    cargo()
     # Set up mailbox once for all tests
     MAILBOX = multiprocessing.Queue()
     mailman = threading.Thread(target=write_errors)
@@ -251,7 +250,7 @@ def do_work(queue):
             else:
                 continue
         bin64, bin32, text = line.rstrip().split()
-        validate(bin64, bin32, text)
+        validate(bin64, bin32, text.decode('utf-8'))
 
 
 def decode_binary64(x):
@@ -331,7 +330,11 @@ SINGLE_ZERO_CUTOFF = MIN_SUBNORMAL_SINGLE / 2
 SINGLE_INF_CUTOFF = MAX_SINGLE + 2 ** (MAX_ULP_SINGLE - 1)
 
 def validate(bin64, bin32, text):
-    double = decode_binary64(bin64)
+    try:
+        double = decode_binary64(bin64)
+    except AssertionError:
+        print(bin64, bin32, text)
+        raise
     single = decode_binary32(bin32)
     real = Fraction(text)
 

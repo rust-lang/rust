@@ -4,11 +4,13 @@ use hir::ItemKind;
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{Ref, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::Underscore;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::check::{
     method::probe::{self, Pick},
@@ -204,6 +206,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // No need to lint if method came from std/core, as that will now be in the prelude
         if matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
             return;
+        }
+
+        // For from_iter, check if the type actually implements FromIterator.
+        // If we know it does not, we don't need to warn.
+        if method_name.name == sym::from_iter {
+            if let Some(trait_def_id) = self.tcx.get_diagnostic_item(sym::FromIterator) {
+                if !self
+                    .infcx
+                    .type_implements_trait(
+                        trait_def_id,
+                        self_ty,
+                        InternalSubsts::empty(),
+                        self.param_env,
+                    )
+                    .may_apply()
+                {
+                    return;
+                }
+            }
         }
 
         // No need to lint if this is an inherent method called on a specific type, like `Vec::foo(...)`,

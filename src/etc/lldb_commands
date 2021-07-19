@@ -1,7 +1,7 @@
 type synthetic add -l lldb_lookup.synthetic_lookup -x ".*" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&str$" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&\\[.+\\]$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?str$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?\\[.+\\]$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::ffi::([a-z_]+::)+)OsString$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Vec<.+>$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)VecDeque<.+>$" --category Rust

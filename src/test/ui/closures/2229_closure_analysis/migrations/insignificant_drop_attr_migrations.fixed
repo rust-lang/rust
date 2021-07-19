@@ -39,10 +39,12 @@ fn significant_drop_needs_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
     };
 
     c();
 }
+//~^ NOTE: in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
 
 // Even if a type implements an insignificant drop, if it's
 // elements have a significant drop then the overall type is
@@ -57,10 +59,12 @@ fn generic_struct_with_significant_drop_needs_migration() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.1;
+        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.1`
     };
 
     c();
 }
+//~^ NOTE: in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.1` would be dropped here alongside the closure
 
 fn main() {
     significant_drop_needs_migration();

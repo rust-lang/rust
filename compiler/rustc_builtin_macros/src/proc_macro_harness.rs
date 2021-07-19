@@ -5,7 +5,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_expand::base::{ExtCtxt, ResolverExpand};
+use rustc_expand::base::{parse_macro_name_and_helper_attrs, ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
@@ -109,86 +109,17 @@ impl<'a> CollectProcMacros<'a> {
     }
 
     fn collect_custom_derive(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
-        // Once we've located the `#[proc_macro_derive]` attribute, verify
-        // that it's of the form `#[proc_macro_derive(Foo)]` or
-        // `#[proc_macro_derive(Foo, attributes(A, ..))]`
-        let list = match attr.meta_item_list() {
-            Some(list) => list,
-            None => return,
-        };
-        if list.len() != 1 && list.len() != 2 {
-            self.handler.span_err(attr.span, "attribute must have either one or two arguments");
-            return;
-        }
-        let trait_attr = match list[0].meta_item() {
-            Some(meta_item) => meta_item,
-            _ => {
-                self.handler.span_err(list[0].span(), "not a meta item");
-                return;
-            }
-        };
-        let trait_ident = match trait_attr.ident() {
-            Some(trait_ident) if trait_attr.is_word() => trait_ident,
-            _ => {
-                self.handler.span_err(trait_attr.span, "must only be one word");
-                return;
-            }
-        };
-
-        if !trait_ident.name.can_be_raw() {
-            self.handler.span_err(
-                trait_attr.span,
-                &format!("`{}` cannot be a name of derive macro", trait_ident),
-            );
-        }
-
-        let attributes_attr = list.get(1);
-        let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
-            if !attr.has_name(sym::attributes) {
-                self.handler.span_err(attr.span(), "second argument must be `attributes`")
-            }
-            attr.meta_item_list()
-                .unwrap_or_else(|| {
-                    self.handler
-                        .span_err(attr.span(), "attribute must be of form: `attributes(foo, bar)`");
-                    &[]
-                })
-                .iter()
-                .filter_map(|attr| {
-                    let attr = match attr.meta_item() {
-                        Some(meta_item) => meta_item,
-                        _ => {
-                            self.handler.span_err(attr.span(), "not a meta item");
-                            return None;
-                        }
-                    };
-
-                    let ident = match attr.ident() {
-                        Some(ident) if attr.is_word() => ident,
-                        _ => {
-                            self.handler.span_err(attr.span, "must only be one word");
-                            return None;
-                        }
-                    };
-                    if !ident.name.can_be_raw() {
-                        self.handler.span_err(
-                            attr.span,
-                            &format!("`{}` cannot be a name of derive helper attribute", ident),
-                        );
-                    }
-
-                    Some(ident.name)
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let (trait_name, proc_attrs) =
+            match parse_macro_name_and_helper_attrs(self.handler, attr, "derive") {
+                Some(name_and_attrs) => name_and_attrs,
+                None => return,
+            };
 
         if self.in_root && item.vis.kind.is_pub() {
             self.macros.push(ProcMacro::Derive(ProcMacroDerive {
                 id: item.id,
                 span: item.span,
-                trait_name: trait_ident.name,
+                trait_name,
                 function_name: item.ident,
                 attrs: proc_attrs,
             }));
@@ -373,7 +304,7 @@ fn mk_decls(
         &[sym::rustc_attrs, sym::proc_macro_internals],
         None,
     );
-    let span = DUMMY_SP.with_def_site_ctxt(expn_id);
+    let span = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
 
     let proc_macro = Ident::new(sym::proc_macro, span);
     let krate = cx.item(span, proc_macro, Vec::new(), ast::ItemKind::ExternCrate(None));

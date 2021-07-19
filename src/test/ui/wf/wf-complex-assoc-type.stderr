@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `bool: MyTrait` is not satisfied
+  --> $DIR/wf-complex-assoc-type.rs:9:28
+   |
+LL | struct AssertMyTrait<T: MyTrait>(T);
+   |                         ------- required by this bound in `AssertMyTrait`
+...
+LL |     type MyItem = Option<((AssertMyTrait<bool>, u8))>;
+   |                            ^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `bool`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,6 +1,6 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::Handler;
+use rustc_errors::{ErrorReported, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::DllImport;
@@ -34,7 +34,6 @@ use object::write::Object;
 use object::{Architecture, BinaryFormat, Endianness, FileFlags, SectionFlags, SectionKind};
 use tempfile::Builder as TempFileBuilder;
 
-use std::cmp::Ordering;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
@@ -54,7 +53,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
     outputs: &OutputFilenames,
-) {
+) -> Result<(), ErrorReported> {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types().iter() {
@@ -95,11 +94,17 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
-                    link_rlib::<B>(sess, codegen_results, RlibFlavor::Normal, &out_filename, &path)
-                        .build();
+                    link_rlib::<B>(
+                        sess,
+                        codegen_results,
+                        RlibFlavor::Normal,
+                        &out_filename,
+                        &path,
+                    )?
+                    .build();
                 }
                 CrateType::Staticlib => {
-                    link_staticlib::<B>(sess, codegen_results, &out_filename, &path);
+                    link_staticlib::<B>(sess, codegen_results, &out_filename, &path)?;
                 }
                 _ => {
                     link_natively::<B>(
@@ -145,6 +150,8 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             }
         }
     });
+
+    Ok(())
 }
 
 pub fn each_linked_rlib(
@@ -220,7 +227,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     flavor: RlibFlavor,
     out_filename: &Path,
     tmpdir: &MaybeTempDir,
-) -> B {
+) -> Result<B, ErrorReported> {
     info!("preparing rlib to {:?}", out_filename);
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
 
@@ -259,7 +266,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     }
 
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(&codegen_results.crate_info.used_libraries)
+        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
     {
         ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
     }
@@ -312,7 +319,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             }
         }
     }
-    return ab;
+    return Ok(ab);
 
     // For rlibs we "pack" rustc metadata into a dummy object file. When rustc
     // creates a dylib crate type it will pass `--whole-archive` (or the
@@ -451,49 +458,43 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 /// then the CodegenResults value contains one NativeLib instance for each block.  However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs(used_libraries: &[NativeLib]) -> Vec<(String, Vec<DllImport>)> {
-    let mut dylib_table: FxHashMap<String, FxHashSet<Symbol>> = FxHashMap::default();
+fn collate_raw_dylibs(
+    sess: &Session,
+    used_libraries: &[NativeLib],
+) -> Result<Vec<(String, Vec<DllImport>)>, ErrorReported> {
+    // Use index maps to preserve original order of imports and libraries.
+    let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
 
     for lib in used_libraries {
         if lib.kind == NativeLibKind::RawDylib {
-            let name = lib.name.unwrap_or_else(||
-                bug!("`link` attribute with kind = \"raw-dylib\" and no name should have caused error earlier")
-            );
-            let name = if matches!(lib.verbatim, Some(true)) {
-                name.to_string()
-            } else {
-                format!("{}.dll", name)
-            };
-            dylib_table
-                .entry(name)
-                .or_default()
-                .extend(lib.dll_imports.iter().map(|import| import.name));
+            let ext = if matches!(lib.verbatim, Some(true)) { "" } else { ".dll" };
+            let name = format!("{}{}", lib.name.expect("unnamed raw-dylib library"), ext);
+            let imports = dylib_table.entry(name.clone()).or_default();
+            for import in &lib.dll_imports {
+                if let Some(old_import) = imports.insert(import.name, import) {
+                    // FIXME: when we add support for ordinals, figure out if we need to do anything
+                    // if we have two DllImport values with the same name but different ordinals.
+                    if import.calling_convention != old_import.calling_convention {
+                        sess.span_err(
+                            import.span,
+                            &format!(
+                                "multiple declarations of external function `{}` from \
+                                 library `{}` have different calling conventions",
+                                import.name, name,
+                            ),
+                        );
+                    }
+                }
+            }
         }
     }
-
-    // FIXME: when we add support for ordinals, fix this to propagate ordinals.  Also figure out
-    // what we should do if we have two DllImport values with the same name but different
-    // ordinals.
-    let mut result = dylib_table
+    sess.compile_status()?;
+    Ok(dylib_table
         .into_iter()
-        .map(|(lib_name, imported_names)| {
-            let mut names = imported_names
-                .iter()
-                .map(|name| DllImport { name: *name, ordinal: None })
-                .collect::<Vec<_>>();
-            names.sort_unstable_by(|a: &DllImport, b: &DllImport| {
-                match a.name.as_str().cmp(&b.name.as_str()) {
-                    Ordering::Equal => a.ordinal.cmp(&b.ordinal),
-                    x => x,
-                }
-            });
-            (lib_name, names)
+        .map(|(name, imports)| {
+            (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
         })
-        .collect::<Vec<_>>();
-    result.sort_unstable_by(|a: &(String, Vec<DllImport>), b: &(String, Vec<DllImport>)| {
-        a.0.cmp(&b.0)
-    });
-    result
+        .collect())
 }
 
 /// Create a static archive.
@@ -512,9 +513,9 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
-) {
+) -> Result<(), ErrorReported> {
     let mut ab =
-        link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir);
+        link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir)?;
     let mut all_native_libs = vec![];
 
     let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
@@ -562,6 +563,8 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
             print_native_static_libs(sess, &all_native_libs);
         }
     }
+
+    Ok(())
 }
 
 fn escape_stdout_stderr_string(s: &[u8]) -> String {
@@ -1931,7 +1934,12 @@ fn add_order_independent_options(
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
     if !sess.link_dead_code() {
-        let keep_metadata = crate_type == CrateType::Dylib;
+        // If PGO is enabled sometimes gc_sections will remove the profile data section
+        // as it appears to be unused. This can then cause the PGO profile file to lose
+        // some functions. If we are generating a profile we shouldn't strip those metadata
+        // sections to ensure we have all the data for PGO.
+        let keep_metadata =
+            crate_type == CrateType::Dylib || sess.opts.cg.profile_generate.enabled();
         cmd.gc_sections(keep_metadata);
     }
 

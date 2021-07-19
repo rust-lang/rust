@@ -11,12 +11,8 @@ fn foo() {
     //~| ERROR range-to patterns with `...` are not allowed
     if let ..5 = 0 {}
     //~^ ERROR half-open range patterns are unstable
-    if let 5.. = 0 {}
-    //~^ ERROR half-open range patterns are unstable
     if let 5..= = 0 {}
-    //~^ ERROR half-open range patterns are unstable
-    //~| ERROR inclusive range with no end
+    //~^ ERROR inclusive range with no end
     if let 5... = 0 {}
-    //~^ ERROR half-open range patterns are unstable
-    //~| ERROR inclusive range with no end
+    //~^ ERROR inclusive range with no end
 }

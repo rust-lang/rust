@@ -1,5 +1,5 @@
 error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/issue-86483.rs:6:1
+  --> $DIR/issue-86483.rs:5:1
    |
 LL |   pub trait IceIce<T>
    |   ^                - help: consider adding an explicit lifetime bound...: `T: 'a`
@@ -14,7 +14,7 @@ LL | | }
    | |_^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/issue-86483.rs:10:5
+  --> $DIR/issue-86483.rs:9:5
    |
 LL | pub trait IceIce<T>
    |                  - help: consider adding an explicit lifetime bound...: `T: 'a`
@@ -23,7 +23,7 @@ LL |     type Ice<'v>: IntoIterator<Item = &'v T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/issue-86483.rs:10:32
+  --> $DIR/issue-86483.rs:9:32
    |
 LL | pub trait IceIce<T>
    |                  - help: consider adding an explicit lifetime bound...: `T: 'v`

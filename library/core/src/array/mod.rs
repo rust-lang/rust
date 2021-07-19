@@ -14,6 +14,7 @@ use crate::mem::{self, MaybeUninit};
 use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
+mod equality;
 mod iter;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
@@ -231,118 +232,6 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
-where
-    A: PartialEq<B>,
-{
-    #[inline]
-    fn eq(&self, other: &[B; N]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &[B; N]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[B]> for [A; N]
-where
-    A: PartialEq<B>,
-{
-    #[inline]
-    fn eq(&self, other: &[B]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &[B]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[A; N]> for [B]
-where
-    B: PartialEq<A>,
-{
-    #[inline]
-    fn eq(&self, other: &[A; N]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &[A; N]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<&[B]> for [A; N]
-where
-    A: PartialEq<B>,
-{
-    #[inline]
-    fn eq(&self, other: &&[B]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &&[B]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[A; N]> for &[B]
-where
-    B: PartialEq<A>,
-{
-    #[inline]
-    fn eq(&self, other: &[A; N]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &[A; N]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<&mut [B]> for [A; N]
-where
-    A: PartialEq<B>,
-{
-    #[inline]
-    fn eq(&self, other: &&mut [B]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &&mut [B]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[A; N]> for &mut [B]
-where
-    B: PartialEq<A>,
-{
-    #[inline]
-    fn eq(&self, other: &[A; N]) -> bool {
-        self[..] == other[..]
-    }
-    #[inline]
-    fn ne(&self, other: &[A; N]) -> bool {
-        self[..] != other[..]
-    }
-}
-
-// NOTE: some less important impls are omitted to reduce code bloat
-// __impl_slice_eq2! { [A; $N], &'b [B; $N] }
-// __impl_slice_eq2! { [A; $N], &'b mut [B; $N] }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq, const N: usize> Eq for [T; N] {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
@@ -407,7 +296,6 @@ impl<T, const N: usize> [T; N] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(array_map)]
     /// let x = [1, 2, 3];
     /// let y = x.map(|v| v + 1);
     /// assert_eq!(y, [2, 3, 4]);
@@ -421,7 +309,7 @@ impl<T, const N: usize> [T; N] {
     /// let y = x.map(|v| v.len());
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
-    #[unstable(feature = "array_map", issue = "75243")]
+    #[stable(feature = "array_map", since = "1.55.0")]
     pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
@@ -488,7 +376,7 @@ impl<T, const N: usize> [T; N] {
     /// array if its elements are not `Copy`.
     ///
     /// ```
-    /// #![feature(array_methods, array_map)]
+    /// #![feature(array_methods)]
     ///
     /// let strings = ["Ferris".to_string(), "♥".to_string(), "Rust".to_string()];
     /// let is_ascii = strings.each_ref().map(|s| s.is_ascii());

@@ -55,6 +55,7 @@ pub fn target() -> Target {
         os: "unknown".into(),
         env: "sgx".into(),
         vendor: "fortanix".into(),
+        abi: "fortanix".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         executables: true,
         linker: Some("rust-lld".to_owned()),

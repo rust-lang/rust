@@ -367,7 +367,7 @@ fn add_query_description_impl(
                     tcx: QueryCtxt<'tcx>,
                     id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
-                    tcx.on_disk_cache.as_ref()?.try_load_query_result(*tcx, id)
+                    tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id)
                 }
             }
         };

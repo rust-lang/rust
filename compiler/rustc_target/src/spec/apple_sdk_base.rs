@@ -14,6 +14,15 @@ pub enum Arch {
     Arm64_sim,
 }
 
+fn target_abi(arch: Arch) -> String {
+    match arch {
+        Armv7 | Armv7s | Arm64 | I386 | X86_64 => "",
+        X86_64_macabi | Arm64_macabi => "macabi",
+        Arm64_sim => "sim",
+    }
+    .to_string()
+}
+
 fn target_cpu(arch: Arch) -> String {
     match arch {
         Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
@@ -39,6 +48,7 @@ fn link_env_remove(arch: Arch) -> Vec<String> {
 
 pub fn opts(os: &str, arch: Arch) -> TargetOptions {
     TargetOptions {
+        abi: target_abi(arch),
         cpu: target_cpu(arch),
         dynamic_linking: false,
         executables: true,

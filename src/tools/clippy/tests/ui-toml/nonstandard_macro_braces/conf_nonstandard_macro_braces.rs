@@ -1,8 +1,16 @@
-// #![warn(clippy::nonstandard_macro_braces)]
+// aux-build:proc_macro_derive.rs
 
+#![warn(clippy::nonstandard_macro_braces)]
+
+extern crate proc_macro_derive;
 extern crate quote;
 
 use quote::quote;
+
+#[derive(proc_macro_derive::DeriveSomething)]
+pub struct S;
+
+proc_macro_derive::foo_bar!();
 
 #[rustfmt::skip]
 macro_rules! test {

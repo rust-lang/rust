@@ -1165,7 +1165,7 @@ extern "C" {
     pub fn LLVMBuildLandingPad(
         B: &Builder<'a>,
         Ty: &'a Type,
-        PersFn: &'a Value,
+        PersFn: Option<&'a Value>,
         NumClauses: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
@@ -1385,7 +1385,12 @@ extern "C" {
         Val: &'a Value,
         Name: *const c_char,
     ) -> &'a Value;
-    pub fn LLVMBuildLoad(B: &Builder<'a>, PointerVal: &'a Value, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildLoad2(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        PointerVal: &'a Value,
+        Name: *const c_char,
+    ) -> &'a Value;
 
     pub fn LLVMBuildStore(B: &Builder<'a>, Val: &'a Value, Ptr: &'a Value) -> &'a Value;
 
@@ -1631,6 +1636,7 @@ extern "C" {
     // Atomic Operations
     pub fn LLVMRustBuildAtomicLoad(
         B: &Builder<'a>,
+        ElementType: &'a Type,
         PointerVal: &'a Value,
         Name: *const c_char,
         Order: AtomicOrdering,

@@ -1,12 +1,14 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
-    Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
+    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
+    ItemKind, Lifetime, Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type,
+    TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
+use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -33,11 +35,11 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates(()).iter() {
-        externs.push((cnum, cnum.clean(cx)));
+        externs.push(ExternalCrate { crate_num: cnum });
         // Analyze doc-reachability for extern items
         LibEmbargoVisitor::new(cx).visit_lib(cnum);
     }
-    externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+    externs.sort_unstable_by_key(|e| e.crate_num);
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
@@ -59,7 +61,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
         _ => unreachable!(),
     }
 
-    let local_crate = LOCAL_CRATE.clean(cx);
+    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
     let src = local_crate.src(cx.tcx);
     let name = local_crate.name(cx.tcx);
     let primitives = local_crate.primitives(cx.tcx);
@@ -258,17 +260,12 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Or(ref pats) => pats
-            .iter()
-            .map(|p| name_from_pat(&**p).to_string())
-            .collect::<Vec<String>>()
-            .join(" | "),
+        PatKind::Or(ref pats) => {
+            pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
+        }
         PatKind::Tuple(ref elts, _) => format!(
             "({})",
-            elts.iter()
-                .map(|p| name_from_pat(&**p).to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
+            elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
         ),
         PatKind::Box(ref p) => return name_from_pat(&**p),
         PatKind::Ref(ref p, _) => return name_from_pat(&**p),
@@ -280,9 +277,9 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         }
         PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(ref begin, ref mid, ref end) => {
-            let begin = begin.iter().map(|p| name_from_pat(&**p).to_string());
+            let begin = begin.iter().map(|p| name_from_pat(p).to_string());
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(&**p).to_string());
+            let end = end.iter().map(|p| name_from_pat(p).to_string());
             format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
         }
     })
@@ -576,4 +573,38 @@ pub(super) fn render_macro_arms<'a>(
 /// as part of an item declaration.
 pub(super) fn render_macro_matcher(matcher: &TokenTree) -> String {
     rustc_ast_pretty::pprust::tt_to_string(matcher)
+}
+
+pub(super) fn display_macro_source(
+    cx: &mut DocContext<'_>,
+    name: Symbol,
+    def: &ast::MacroDef,
+    def_id: DefId,
+    vis: impl Clean<Visibility>,
+) -> String {
+    let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
+    // Extract the spans of all matchers. They represent the "interface" of the macro.
+    let matchers = tts.chunks(4).map(|arm| &arm[0]);
+
+    if def.macro_rules {
+        format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(matchers, ";"))
+    } else {
+        let vis = vis.clean(cx);
+
+        if matchers.len() <= 1 {
+            format!(
+                "{}macro {}{} {{\n    ...\n}}",
+                vis.to_src_with_space(cx.tcx, def_id),
+                name,
+                matchers.map(render_macro_matcher).collect::<String>(),
+            )
+        } else {
+            format!(
+                "{}macro {} {{\n{}}}",
+                vis.to_src_with_space(cx.tcx, def_id),
+                name,
+                render_macro_arms(matchers, ","),
+            )
+        }
+    }
 }

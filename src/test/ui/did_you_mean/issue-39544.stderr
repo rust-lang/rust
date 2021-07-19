@@ -90,7 +90,7 @@ LL |     let _ = &mut z.x;
 LL |     let _ = &mut w.x;
    |             ^^^^^^^^ `w` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0594]: cannot assign to `*x.0` which is behind a `&` reference
+error[E0594]: cannot assign to `*x.0`, which is behind a `&` reference
   --> $DIR/issue-39544.rs:48:5
    |
 LL |     *x.0 = 1;

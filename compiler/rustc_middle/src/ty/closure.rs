@@ -281,11 +281,10 @@ pub struct CaptureInfo<'tcx> {
 }
 
 pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
-    let name = match place.base {
+    let mut curr_string: String = match place.base {
         HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
         _ => bug!("Capture_information should only contain upvars"),
     };
-    let mut curr_string = name;
 
     for (i, proj) in place.projections.iter().enumerate() {
         match proj.kind {
@@ -314,7 +313,7 @@ pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) ->
         }
     }
 
-    curr_string.to_string()
+    curr_string
 }
 
 #[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, TypeFoldable, Copy, HashStable)]
@@ -347,7 +346,7 @@ pub enum BorrowKind {
     /// an `&mut` borrow:
     ///
     /// ```
-    /// struct Env { x: & &mut isize }
+    /// struct Env { x: &mut &mut isize }
     /// let x: &mut isize = ...;
     /// let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
     /// fn fn_ptr(env: &mut Env) { **env.x += 5; }

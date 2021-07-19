@@ -39,7 +39,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
@@ -53,8 +53,8 @@ use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::Spanned;
+use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext, Transparency};
+use rustc_span::source_map::{CachingSourceMapView, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -103,7 +103,7 @@ impl Determinacy {
 /// but not for late resolution yet.
 #[derive(Clone, Copy)]
 enum Scope<'a> {
-    DeriveHelpers(ExpnId),
+    DeriveHelpers(LocalExpnId),
     DeriveHelpersCompat,
     MacroRules(MacroRulesScopeRef<'a>),
     CrateRoot,
@@ -143,7 +143,7 @@ enum ScopeSet<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct ParentScope<'a> {
     module: Module<'a>,
-    expansion: ExpnId,
+    expansion: LocalExpnId,
     macro_rules: MacroRulesScopeRef<'a>,
     derives: &'a [ast::Path],
 }
@@ -154,7 +154,7 @@ impl<'a> ParentScope<'a> {
     pub fn module(module: Module<'a>, resolver: &Resolver<'a>) -> ParentScope<'a> {
         ParentScope {
             module,
-            expansion: ExpnId::root(),
+            expansion: LocalExpnId::ROOT,
             macro_rules: resolver.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty),
             derives: &[],
         }
@@ -249,7 +249,7 @@ enum ResolutionError<'a> {
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
     /// Error E0735: generic parameters with a default cannot use `Self`
-    SelfInTyParamDefault,
+    SelfInGenericParamDefault,
     /// Error E0767: use of unreachable label
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
 }
@@ -515,7 +515,7 @@ pub struct ModuleData<'a> {
     populate_on_access: Cell<bool>,
 
     /// Macro invocations that can expand into items in this module.
-    unexpanded_invocations: RefCell<FxHashSet<ExpnId>>,
+    unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
@@ -645,7 +645,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
-    expansion: ExpnId,
+    expansion: LocalExpnId,
     span: Span,
     vis: ty::Visibility,
 }
@@ -829,7 +829,11 @@ impl<'a> NameBinding<'a> {
     // in some later round and screw up our previously found resolution.
     // See more detailed explanation in
     // https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    fn may_appear_after(&self, invoc_parent_expansion: ExpnId, binding: &NameBinding<'_>) -> bool {
+    fn may_appear_after(
+        &self,
+        invoc_parent_expansion: LocalExpnId,
+        binding: &NameBinding<'_>,
+    ) -> bool {
         // self > max(invoc, binding) => !(self <= invoc || self <= binding)
         // Expansions are partially ordered, so "may appear after" is an inversion of
         // "certainly appears before or simultaneously" and includes unordered cases.
@@ -966,7 +970,7 @@ pub struct Resolver<'a> {
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
-    ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
+    ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
     unused_macros: FxHashMap<LocalDefId, (NodeId, Span)>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
@@ -978,18 +982,18 @@ pub struct Resolver<'a> {
     /// `derive(Copy)` marks items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    containers_deriving_copy: FxHashSet<ExpnId>,
+    containers_deriving_copy: FxHashSet<LocalExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
-    invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
+    invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'a>>,
     /// `macro_rules` scopes *produced* by expanding the macro invocations,
     /// include all the `macro_rules` items and other invocations generated by them.
-    output_macro_rules_scopes: FxHashMap<ExpnId, MacroRulesScopeRef<'a>>,
+    output_macro_rules_scopes: FxHashMap<LocalExpnId, MacroRulesScopeRef<'a>>,
     /// Helper attributes that are in scope for the given expansion.
-    helper_attrs: FxHashMap<ExpnId, Vec<Ident>>,
+    helper_attrs: FxHashMap<LocalExpnId, Vec<Ident>>,
     /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
     /// with the given `ExpnId`.
-    derive_data: FxHashMap<ExpnId, DeriveData>,
+    derive_data: FxHashMap<LocalExpnId, DeriveData>,
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Symbol, Span>,
@@ -1018,7 +1022,7 @@ pub struct Resolver<'a> {
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table,
     /// and how the `impl Trait` fragments were introduced.
-    invocation_parents: FxHashMap<ExpnId, (LocalDefId, ImplTraitContext)>,
+    invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext)>,
 
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
@@ -1149,6 +1153,13 @@ impl ResolverAstLowering for Resolver<'_> {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
     }
 
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        match def_id.as_local() {
+            Some(def_id) => self.definitions.def_path_hash(def_id),
+            None => self.cstore().def_path_hash(def_id),
+        }
+    }
+
     /// Adds a definition with a parent definition.
     fn create_def(
         &mut self,
@@ -1189,6 +1200,32 @@ impl ResolverAstLowering for Resolver<'_> {
         assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
 
         def_id
+    }
+}
+
+struct ExpandHasher<'a, 'b> {
+    source_map: CachingSourceMapView<'a>,
+    resolver: &'a Resolver<'b>,
+}
+
+impl<'a, 'b> rustc_span::HashStableContext for ExpandHasher<'a, 'b> {
+    #[inline]
+    fn hash_spans(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        self.resolver.def_path_hash(def_id)
+    }
+
+    #[inline]
+    fn span_data_to_lines_and_cols(
+        &mut self,
+        span: &rustc_span::SpanData,
+    ) -> Option<(Lrc<rustc_span::SourceFile>, usize, rustc_span::BytePos, usize, rustc_span::BytePos)>
+    {
+        self.source_map.span_data_to_lines_and_cols(span)
     }
 }
 
@@ -1235,7 +1272,7 @@ impl<'a> Resolver<'a> {
         node_id_to_def_id.insert(CRATE_NODE_ID, root);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents.insert(ExpnId::root(), (root, ImplTraitContext::Existential));
+        invocation_parents.insert(LocalExpnId::ROOT, (root, ImplTraitContext::Existential));
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1309,7 +1346,7 @@ impl<'a> Resolver<'a> {
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Res(Res::Err, false),
                 ambiguity: None,
-                expansion: ExpnId::root(),
+                expansion: LocalExpnId::ROOT,
                 span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             }),
@@ -1359,9 +1396,16 @@ impl<'a> Resolver<'a> {
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
-        resolver.invocation_parent_scopes.insert(ExpnId::root(), root_parent_scope);
+        resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
 
         resolver
+    }
+
+    fn create_stable_hashing_context(&self) -> ExpandHasher<'_, 'a> {
+        ExpandHasher {
+            source_map: CachingSourceMapView::new(self.session.source_map()),
+            resolver: self,
+        }
     }
 
     pub fn next_node_id(&mut self) -> NodeId {
@@ -1770,20 +1814,18 @@ impl<'a> Resolver<'a> {
             }
 
             scope = match scope {
-                Scope::DeriveHelpers(expn_id) if expn_id != ExpnId::root() => {
+                Scope::DeriveHelpers(LocalExpnId::ROOT) => Scope::DeriveHelpersCompat,
+                Scope::DeriveHelpers(expn_id) => {
                     // Derive helpers are not visible to code generated by bang or derive macros.
                     let expn_data = expn_id.expn_data();
                     match expn_data.kind {
                         ExpnKind::Root
-                        | ExpnKind::Macro {
-                            kind: MacroKind::Bang | MacroKind::Derive,
-                            name: _,
-                            proc_macro: _,
-                        } => Scope::DeriveHelpersCompat,
-                        _ => Scope::DeriveHelpers(expn_data.parent),
+                        | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
+                            Scope::DeriveHelpersCompat
+                        }
+                        _ => Scope::DeriveHelpers(expn_data.parent.expect_local()),
                     }
                 }
-                Scope::DeriveHelpers(..) => Scope::DeriveHelpersCompat,
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
                 Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
                     MacroRulesScope::Binding(binding) => {
@@ -2605,7 +2647,7 @@ impl<'a> Resolver<'a> {
         if let ForwardGenericParamBanRibKind = all_ribs[rib_index].kind {
             if record_used {
                 let res_error = if rib_ident.name == kw::SelfUpper {
-                    ResolutionError::SelfInTyParamDefault
+                    ResolutionError::SelfInGenericParamDefault
                 } else {
                     ResolutionError::ForwardDeclaredGenericParam
                 };
@@ -3210,7 +3252,7 @@ impl<'a> Resolver<'a> {
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 Some(
-                    (crate_root, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
+                    (crate_root, ty::Visibility::Public, DUMMY_SP, LocalExpnId::ROOT)
                         .to_name_binding(self.arenas),
                 )
             }

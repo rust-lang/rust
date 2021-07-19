@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `t.v` which is behind a `&` reference
+error[E0594]: cannot assign to `t.v`, which is behind a `&` reference
   --> $DIR/suggest-mut-method-for-loop.rs:14:9
    |
 LL |     for mut t in buzz.values() {

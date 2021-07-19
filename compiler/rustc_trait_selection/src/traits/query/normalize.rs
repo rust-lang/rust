@@ -6,6 +6,7 @@ use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::project::needs_normalization;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -49,7 +50,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             value,
             self.param_env,
         );
-        if !value.has_projections() {
+        if !needs_normalization(&value, self.param_env.reveal()) {
             return Ok(Normalized { value, obligations: vec![] });
         }
 
@@ -61,10 +62,11 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             error: false,
             cache: SsoHashMap::new(),
             anon_depth: 0,
+            universes: vec![],
         };
 
         let result = value.fold_with(&mut normalizer);
-        debug!(
+        info!(
             "normalize::<{}>: result={:?} with {} obligations",
             std::any::type_name::<T>(),
             result,
@@ -91,6 +93,7 @@ struct QueryNormalizer<'cx, 'tcx> {
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
     error: bool,
     anon_depth: usize,
+    universes: Vec<Option<ty::UniverseIndex>>,
 }
 
 impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
@@ -98,9 +101,19 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.universes.push(None);
+        let t = t.super_fold_with(self);
+        self.universes.pop();
+        t
+    }
+
     #[instrument(level = "debug", skip(self))]
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_projections() {
+        if !needs_normalization(&ty, self.param_env.reveal()) {
             return ty;
         }
 
@@ -203,6 +216,80 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         ty
                     }
                 }
+            }
+            ty::Projection(data) if !data.trait_ref(self.infcx.tcx).has_escaping_bound_vars() => {
+                // See note in `rustc_trait_selection::traits::project`
+
+                // One other point mentioning: In `traits::project`, if a
+                // projection can't be normalized, we return an inference variable
+                // and register an obligation to later resolve that. Here, the query
+                // will just return ambiguity. In both cases, the effect is the same: we only want
+                // to return `ty` because there are bound vars that we aren't yet handling in a more
+                // complete way.
+
+                // `BoundVarReplacer` can't handle escaping bound vars. Ideally, we want this before even calling
+                // `QueryNormalizer`, but some const-generics tests pass escaping bound vars.
+                // Also, use `ty` so we get that sweet `outer_exclusive_binder` optimization
+                assert!(!ty.has_vars_bound_at_or_above(ty::DebruijnIndex::from_usize(
+                    self.universes.len()
+                )));
+
+                let tcx = self.infcx.tcx;
+                let infcx = self.infcx;
+                let (data, mapped_regions, mapped_types, mapped_consts) =
+                    crate::traits::project::BoundVarReplacer::replace_bound_vars(
+                        infcx,
+                        &mut self.universes,
+                        data,
+                    );
+                let data = data.super_fold_with(self);
+
+                let mut orig_values = OriginalQueryValues::default();
+                // HACK(matthewjasper) `'static` is special-cased in selection,
+                // so we cannot canonicalize it.
+                let c_data = self
+                    .infcx
+                    .canonicalize_hr_query_hack(self.param_env.and(data), &mut orig_values);
+                debug!("QueryNormalizer: c_data = {:#?}", c_data);
+                debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
+                let normalized_ty = match tcx.normalize_projection_ty(c_data) {
+                    Ok(result) => {
+                        // We don't expect ambiguity.
+                        if result.is_ambiguous() {
+                            self.error = true;
+                            return ty;
+                        }
+                        match self.infcx.instantiate_query_response_and_region_obligations(
+                            self.cause,
+                            self.param_env,
+                            &orig_values,
+                            result,
+                        ) {
+                            Ok(InferOk { value: result, obligations }) => {
+                                debug!("QueryNormalizer: result = {:#?}", result);
+                                debug!("QueryNormalizer: obligations = {:#?}", obligations);
+                                self.obligations.extend(obligations);
+                                result.normalized_ty
+                            }
+                            Err(_) => {
+                                self.error = true;
+                                ty
+                            }
+                        }
+                    }
+                    Err(NoSolution) => {
+                        self.error = true;
+                        ty
+                    }
+                };
+                crate::traits::project::PlaceholderReplacer::replace_placeholders(
+                    infcx,
+                    mapped_regions,
+                    mapped_types,
+                    mapped_consts,
+                    &self.universes,
+                    normalized_ty,
+                )
             }
 
             _ => ty,

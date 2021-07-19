@@ -405,7 +405,7 @@ declare_features! (
     (active, in_band_lifetimes, "1.23.0", Some(44524), None),
 
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
-    (incomplete, generic_associated_types, "1.23.0", Some(44265), None),
+    (active, generic_associated_types, "1.23.0", Some(44265), None),
 
     /// Allows defining `trait X = A + B;` alias items.
     (active, trait_alias, "1.24.0", Some(41517), None),
@@ -415,9 +415,6 @@ declare_features! (
 
     /// Allows accessing fields of unions inside `const` functions.
     (active, const_fn_union, "1.27.0", Some(51909), None),
-
-    /// Allows casting raw pointers to `usize` during const eval.
-    (active, const_raw_ptr_to_usize_cast, "1.27.0", Some(51910), None),
 
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
@@ -537,7 +534,7 @@ declare_features! (
     (active, bindings_after_at, "1.41.0", Some(65490), None),
 
     /// Allows `impl const Trait for T` syntax.
-    (incomplete, const_trait_impl, "1.42.0", Some(67792), None),
+    (active, const_trait_impl, "1.42.0", Some(67792), None),
 
     /// Allows `T: ?const Trait` syntax in bounds.
     (incomplete, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
@@ -685,7 +682,10 @@ declare_features! (
     (incomplete, unnamed_fields, "1.53.0", Some(49804), None),
 
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
-    (active, more_qualified_paths, "1.54.0", Some(80080), None),
+    (active, more_qualified_paths, "1.54.0", Some(86935), None),
+
+    /// Allows `cfg(target_abi = "...")`.
+    (active, cfg_target_abi, "1.55.0", Some(80970), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

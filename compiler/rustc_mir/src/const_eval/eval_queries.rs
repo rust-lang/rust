@@ -136,19 +136,19 @@ pub(super) fn op_to_const<'tcx>(
         // by-val is if we are in destructure_const, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
-        op.try_as_mplace(ecx)
+        op.try_as_mplace()
     };
 
-    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr {
-        Scalar::Ptr(ptr) => {
-            let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
-            ConstValue::ByRef { alloc, offset: ptr.offset }
+    // We know `offset` is relative to the allocation, so we can use `into_parts`.
+    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr.into_parts() {
+        (Some(alloc_id), offset) => {
+            let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
+            ConstValue::ByRef { alloc, offset }
         }
-        Scalar::Int(int) => {
+        (None, offset) => {
             assert!(mplace.layout.is_zst());
             assert_eq!(
-                int.assert_bits(ecx.tcx.data_layout.pointer_size)
-                    % u128::from(mplace.layout.align.abi.bytes()),
+                offset.bytes() % mplace.layout.align.abi.bytes(),
                 0,
                 "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
@@ -162,14 +162,15 @@ pub(super) fn op_to_const<'tcx>(
         Err(imm) => match *imm {
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place(ecx)),
+                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
             },
             Immediate::ScalarPair(a, b) => {
-                let (data, start) = match a.check_init().unwrap() {
-                    Scalar::Ptr(ptr) => {
-                        (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
+                // We know `offset` is relative to the allocation, so we can use `into_parts`.
+                let (data, start) = match ecx.scalar_to_ptr(a.check_init().unwrap()).into_parts() {
+                    (Some(alloc_id), offset) => {
+                        (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
                     }
-                    Scalar::Int { .. } => (
+                    (None, _offset) => (
                         ecx.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
                             b"" as &[u8],
                         )),
@@ -369,6 +370,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     inner = true;
                 }
             };
+            let alloc_id = mplace.ptr.provenance.unwrap();
             if let Err(error) = validation {
                 // Validation failed, report an error. This is always a hard error.
                 let err = ConstEvalErr::new(&ecx, error, None);
@@ -381,9 +383,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                             "the raw bytes of the constant ({}",
                             display_allocation(
                                 *ecx.tcx,
-                                ecx.tcx
-                                    .global_alloc(mplace.ptr.assert_ptr().alloc_id)
-                                    .unwrap_memory()
+                                ecx.tcx.global_alloc(alloc_id).unwrap_memory()
                             )
                         ));
                         diag.emit();
@@ -391,7 +391,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 ))
             } else {
                 // Convert to raw constant
-                Ok(ConstAlloc { alloc_id: mplace.ptr.assert_ptr().alloc_id, ty: mplace.layout.ty })
+                Ok(ConstAlloc { alloc_id, ty: mplace.layout.ty })
             }
         }
     }

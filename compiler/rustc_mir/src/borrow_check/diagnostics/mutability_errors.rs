@@ -147,7 +147,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
                         reason = match error_access {
-                            AccessKind::Mutate => format!(" which is behind {}", pointer_type),
+                            AccessKind::Mutate => format!(", which is behind {}", pointer_type),
                             AccessKind::MutableBorrow => {
                                 format!(", as it is behind {}", pointer_type)
                             }
@@ -897,16 +897,32 @@ fn suggest_ampmut<'tcx>(
 ) -> (Span, String) {
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span {
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
+            let is_mutbl = |ty: &str| -> bool {
+                if ty.starts_with("mut") {
+                    let rest = &ty[3..];
+                    match rest.chars().next() {
+                        // e.g. `&mut x`
+                        Some(c) if c.is_whitespace() => true,
+                        // e.g. `&mut(x)`
+                        Some('(') => true,
+                        // e.g. `&mutablevar`
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            };
             if let (true, Some(ws_pos)) =
                 (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
             {
                 let lt_name = &src[1..ws_pos];
-                let ty = &src[ws_pos..];
-                if !ty.trim_start().starts_with("mut") {
+                let ty = src[ws_pos..].trim_start();
+                if !is_mutbl(ty) {
                     return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
                 }
             } else if let Some(stripped) = src.strip_prefix('&') {
-                if !stripped.trim_start().starts_with("mut") {
+                let stripped = stripped.trim_start();
+                if !is_mutbl(stripped) {
                     return (assignment_rhs_span, format!("&mut {}", stripped));
                 }
             }

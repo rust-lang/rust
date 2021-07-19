@@ -22,14 +22,16 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
-use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, Parser, RecoverComma};
+use rustc_parse::parser::{
+    AttemptLocalParseRecovery, ForceCollect, Parser, RecoverColon, RecoverComma,
+};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{ExpnId, FileName, Span};
+use rustc_span::{FileName, LocalExpnId, Span};
 
 use smallvec::{smallvec, SmallVec};
 use std::ops::DerefMut;
@@ -506,7 +508,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 .map(|(path, item, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
-                                    let expn_id = ExpnId::fresh(None);
+                                    let expn_id = LocalExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
                                             kind: InvocationKind::Derive { path, item },
@@ -930,9 +932,11 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => {
-            AstFragment::Pat(this.parse_pat_allow_top_alt(None, RecoverComma::No)?)
-        }
+        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_alt(
+            None,
+            RecoverComma::No,
+            RecoverColon::Yes,
+        )?),
         AstFragmentKind::Arms
         | AstFragmentKind::Fields
         | AstFragmentKind::FieldPats
@@ -989,7 +993,7 @@ struct InvocationCollector<'a, 'b> {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
-        let expn_id = ExpnId::fresh(None);
+        let expn_id = LocalExpnId::fresh_empty();
         let vis = kind.placeholder_visibility();
         self.invocations.push((
             Invocation {

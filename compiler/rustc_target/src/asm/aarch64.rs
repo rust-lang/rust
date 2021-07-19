@@ -7,6 +7,7 @@ def_reg_class! {
         reg,
         vreg,
         vreg_low16,
+        preg,
     }
 }
 
@@ -15,6 +16,7 @@ impl AArch64InlineAsmRegClass {
         match self {
             Self::reg => &['w', 'x'],
             Self::vreg | Self::vreg_low16 => &['b', 'h', 's', 'd', 'q', 'v'],
+            Self::preg => &[],
         }
     }
 
@@ -40,6 +42,7 @@ impl AArch64InlineAsmRegClass {
                 128 => Some(('q', "q0")),
                 _ => None,
             },
+            Self::preg => None,
         }
     }
 
@@ -47,6 +50,7 @@ impl AArch64InlineAsmRegClass {
         match self {
             Self::reg => Some(('x', "x0")),
             Self::vreg | Self::vreg_low16 => Some(('v', "v0")),
+            Self::preg => None,
         }
     }
 
@@ -61,6 +65,7 @@ impl AArch64InlineAsmRegClass {
                     VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
                     VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
+            Self::preg => &[],
         }
     }
 }
@@ -95,38 +100,55 @@ def_regs! {
         x27: reg = ["x27", "w27"],
         x28: reg = ["x28", "w28"],
         x30: reg = ["x30", "w30", "lr", "wlr"],
-        v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0"],
-        v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1"],
-        v2: vreg, vreg_low16 = ["v2", "b2", "h2", "s2", "d2", "q2"],
-        v3: vreg, vreg_low16 = ["v3", "b3", "h3", "s3", "d3", "q3"],
-        v4: vreg, vreg_low16 = ["v4", "b4", "h4", "s4", "d4", "q4"],
-        v5: vreg, vreg_low16 = ["v5", "b5", "h5", "s5", "d5", "q5"],
-        v6: vreg, vreg_low16 = ["v6", "b6", "h6", "s6", "d6", "q6"],
-        v7: vreg, vreg_low16 = ["v7", "b7", "h7", "s7", "d7", "q7"],
-        v8: vreg, vreg_low16 = ["v8", "b8", "h8", "s8", "d8", "q8"],
-        v9: vreg, vreg_low16 = ["v9", "b9", "h9", "s9", "d9", "q9"],
-        v10: vreg, vreg_low16 = ["v10", "b10", "h10", "s10", "d10", "q10"],
-        v11: vreg, vreg_low16 = ["v11", "b11", "h11", "s11", "d11", "q11"],
-        v12: vreg, vreg_low16 = ["v12", "b12", "h12", "s12", "d12", "q12"],
-        v13: vreg, vreg_low16 = ["v13", "b13", "h13", "s13", "d13", "q13"],
-        v14: vreg, vreg_low16 = ["v14", "b14", "h14", "s14", "d14", "q14"],
-        v15: vreg, vreg_low16 = ["v15", "b15", "h15", "s15", "d15", "q15"],
-        v16: vreg = ["v16", "b16", "h16", "s16", "d16", "q16"],
-        v17: vreg = ["v17", "b17", "h17", "s17", "d17", "q17"],
-        v18: vreg = ["v18", "b18", "h18", "s18", "d18", "q18"],
-        v19: vreg = ["v19", "b19", "h19", "s19", "d19", "q19"],
-        v20: vreg = ["v20", "b20", "h20", "s20", "d20", "q20"],
-        v21: vreg = ["v21", "b21", "h21", "s21", "d21", "q21"],
-        v22: vreg = ["v22", "b22", "h22", "s22", "d22", "q22"],
-        v23: vreg = ["v23", "b23", "h23", "s23", "d23", "q23"],
-        v24: vreg = ["v24", "b24", "h24", "s24", "d24", "q24"],
-        v25: vreg = ["v25", "b25", "h25", "s25", "d25", "q25"],
-        v26: vreg = ["v26", "b26", "h26", "s26", "d26", "q26"],
-        v27: vreg = ["v27", "b27", "h27", "s27", "d27", "q27"],
-        v28: vreg = ["v28", "b28", "h28", "s28", "d28", "q28"],
-        v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29"],
-        v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30"],
-        v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31"],
+        v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0", "z0"],
+        v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1", "z1"],
+        v2: vreg, vreg_low16 = ["v2", "b2", "h2", "s2", "d2", "q2", "z2"],
+        v3: vreg, vreg_low16 = ["v3", "b3", "h3", "s3", "d3", "q3", "z3"],
+        v4: vreg, vreg_low16 = ["v4", "b4", "h4", "s4", "d4", "q4", "z4"],
+        v5: vreg, vreg_low16 = ["v5", "b5", "h5", "s5", "d5", "q5", "z5"],
+        v6: vreg, vreg_low16 = ["v6", "b6", "h6", "s6", "d6", "q6", "z6"],
+        v7: vreg, vreg_low16 = ["v7", "b7", "h7", "s7", "d7", "q7", "z7"],
+        v8: vreg, vreg_low16 = ["v8", "b8", "h8", "s8", "d8", "q8", "z8"],
+        v9: vreg, vreg_low16 = ["v9", "b9", "h9", "s9", "d9", "q9", "z9"],
+        v10: vreg, vreg_low16 = ["v10", "b10", "h10", "s10", "d10", "q10", "z10"],
+        v11: vreg, vreg_low16 = ["v11", "b11", "h11", "s11", "d11", "q11", "z11"],
+        v12: vreg, vreg_low16 = ["v12", "b12", "h12", "s12", "d12", "q12", "z12"],
+        v13: vreg, vreg_low16 = ["v13", "b13", "h13", "s13", "d13", "q13", "z13"],
+        v14: vreg, vreg_low16 = ["v14", "b14", "h14", "s14", "d14", "q14", "z14"],
+        v15: vreg, vreg_low16 = ["v15", "b15", "h15", "s15", "d15", "q15", "z15"],
+        v16: vreg = ["v16", "b16", "h16", "s16", "d16", "q16", "z16"],
+        v17: vreg = ["v17", "b17", "h17", "s17", "d17", "q17", "z17"],
+        v18: vreg = ["v18", "b18", "h18", "s18", "d18", "q18", "z18"],
+        v19: vreg = ["v19", "b19", "h19", "s19", "d19", "q19", "z19"],
+        v20: vreg = ["v20", "b20", "h20", "s20", "d20", "q20", "z20"],
+        v21: vreg = ["v21", "b21", "h21", "s21", "d21", "q21", "z21"],
+        v22: vreg = ["v22", "b22", "h22", "s22", "d22", "q22", "z22"],
+        v23: vreg = ["v23", "b23", "h23", "s23", "d23", "q23", "z23"],
+        v24: vreg = ["v24", "b24", "h24", "s24", "d24", "q24", "z24"],
+        v25: vreg = ["v25", "b25", "h25", "s25", "d25", "q25", "z25"],
+        v26: vreg = ["v26", "b26", "h26", "s26", "d26", "q26", "z26"],
+        v27: vreg = ["v27", "b27", "h27", "s27", "d27", "q27", "z27"],
+        v28: vreg = ["v28", "b28", "h28", "s28", "d28", "q28", "z28"],
+        v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29", "z29"],
+        v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30", "z30"],
+        v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31", "z31"],
+        p0: preg = ["p0"],
+        p1: preg = ["p1"],
+        p2: preg = ["p2"],
+        p3: preg = ["p3"],
+        p4: preg = ["p4"],
+        p5: preg = ["p5"],
+        p6: preg = ["p6"],
+        p7: preg = ["p7"],
+        p8: preg = ["p8"],
+        p9: preg = ["p9"],
+        p10: preg = ["p10"],
+        p11: preg = ["p11"],
+        p12: preg = ["p12"],
+        p13: preg = ["p13"],
+        p14: preg = ["p14"],
+        p15: preg = ["p15"],
+        ffr: preg = ["ffr"],
         #error = ["x18", "w18"] =>
             "x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm",
         #error = ["x19", "w19"] =>

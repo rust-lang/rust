@@ -12,7 +12,7 @@ use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME};
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_middle::middle::cstore::DllImport;
+use rustc_middle::middle::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -208,10 +208,12 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         // have any \0 characters
         let import_name_vector: Vec<CString> = dll_imports
             .iter()
-            .map(if self.config.sess.target.arch == "x86" {
-                |import: &DllImport| CString::new(format!("_{}", import.name.to_string())).unwrap()
-            } else {
-                |import: &DllImport| CString::new(import.name.to_string()).unwrap()
+            .map(|import: &DllImport| {
+                if self.config.sess.target.arch == "x86" {
+                    LlvmArchiveBuilder::i686_decorated_name(import)
+                } else {
+                    CString::new(import.name.to_string()).unwrap()
+                }
             })
             .collect();
 
@@ -390,6 +392,21 @@ impl<'a> LlvmArchiveBuilder<'a> {
             }
             ret
         }
+    }
+
+    fn i686_decorated_name(import: &DllImport) -> CString {
+        let name = import.name;
+        // We verified during construction that `name` does not contain any NULL characters, so the
+        // conversion to CString is guaranteed to succeed.
+        CString::new(match import.calling_convention {
+            DllCallingConvention::C => format!("_{}", name),
+            DllCallingConvention::Stdcall(arg_list_size) => format!("_{}@{}", name, arg_list_size),
+            DllCallingConvention::Fastcall(arg_list_size) => format!("@{}@{}", name, arg_list_size),
+            DllCallingConvention::Vectorcall(arg_list_size) => {
+                format!("{}@@{}", name, arg_list_size)
+            }
+        })
+        .unwrap()
     }
 }
 

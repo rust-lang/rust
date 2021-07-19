@@ -55,6 +55,8 @@ fn main() {
     issue_5405();
     manually_drop();
     clone_then_move_cloned();
+    hashmap_neg();
+    false_negative_5707();
 }
 
 #[derive(Clone)]
@@ -205,4 +207,30 @@ fn clone_then_move_cloned() {
     }
     let mut x = S(String::new());
     x.0.clone().chars().for_each(|_| x.m());
+}
+
+fn hashmap_neg() {
+    // issue 5707
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    let p = PathBuf::from("/");
+
+    let mut h: HashMap<&str, &str> = HashMap::new();
+    h.insert("orig-p", p.to_str().unwrap());
+
+    let mut q = p.clone();
+    q.push("foo");
+
+    println!("{:?} {}", h, q.display());
+}
+
+fn false_negative_5707() {
+    fn foo(_x: &Alpha, _y: &mut Alpha) {}
+
+    let x = Alpha;
+    let mut y = Alpha;
+    foo(&x, &mut y);
+    let _z = x.clone(); // pr 7346 can't lint on `x`
+    drop(y);
 }

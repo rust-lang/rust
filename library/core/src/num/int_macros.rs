@@ -1929,7 +1929,10 @@ macro_rules! int_impl {
                         without modifying the original"]
         #[inline]
         pub const fn checked_log10(self) -> Option<Self> {
-            self.checked_log(10)
+            match int_log10::$ActualT(self as $ActualT) {
+                Some(s) => Some(s as Self),
+                None => None,
+            }
         }
 
         /// Computes the absolute value of `self`.

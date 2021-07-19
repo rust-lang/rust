@@ -74,9 +74,10 @@
   </Type>
 
   <Type Name="std::ffi::c_str::CString">
-    <DisplayString>{inner.data_ptr,s}</DisplayString>
+    <DisplayString>{(char*)inner.data_ptr}</DisplayString>
     <Expand>
       <Synthetic Name="[chars]">
+        <DisplayString>{(char*)inner.data_ptr}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>inner.length</Size>
@@ -96,6 +97,21 @@
           <ArrayItems>
             <Size>strlen((char *) inner) + 1</Size>
             <ValuePointer>(char*)inner</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="std::ffi::os_str::OsString">
+    <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer,[inner.inner.bytes.len]}</DisplayString>
+    <Expand>
+      <Synthetic Name="[chars]">
+        <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer,[inner.inner.bytes.len]}</DisplayString>
+        <Expand>
+          <ArrayItems>
+            <Size>inner.inner.bytes.len</Size>
+            <ValuePointer>(char*)inner.inner.bytes.buf.ptr.pointer</ValuePointer>
           </ArrayItems>
         </Expand>
       </Synthetic>

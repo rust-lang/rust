@@ -167,11 +167,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     test_args.insert(0, "rustdoctest".to_string());
 
-    testing::test_main(
-        &test_args,
-        tests,
-        Some(testing::Options::new().display_output(display_warnings)),
-    );
+    test::test_main(&test_args, tests, Some(test::Options::new().display_output(display_warnings)));
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -513,7 +509,7 @@ crate fn make_test(
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
-        rustc_span::with_session_globals(edition, || {
+        rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
@@ -769,7 +765,7 @@ crate trait Tester {
 }
 
 crate struct Collector {
-    crate tests: Vec<testing::TestDescAndFn>,
+    crate tests: Vec<test::TestDescAndFn>,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -930,22 +926,22 @@ impl Tester for Collector {
         };
 
         debug!("creating test {}: {}", name, test);
-        self.tests.push(testing::TestDescAndFn {
-            desc: testing::TestDesc {
-                name: testing::DynTestName(name),
+        self.tests.push(test::TestDescAndFn {
+            desc: test::TestDesc {
+                name: test::DynTestName(name),
                 ignore: match config.ignore {
                     Ignore::All => true,
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
                 },
                 // compiler failures are test failures
-                should_panic: testing::ShouldPanic::No,
+                should_panic: test::ShouldPanic::No,
                 allow_fail: config.allow_fail,
                 compile_fail: config.compile_fail,
                 no_run,
-                test_type: testing::TestType::DocTest,
+                test_type: test::TestType::DocTest,
             },
-            testfn: testing::DynTestFn(box move || {
+            testfn: test::DynTestFn(box move || {
                 let report_unused_externs = |uext| {
                     unused_externs.lock().unwrap().push(uext);
                 };

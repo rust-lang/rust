@@ -8,16 +8,8 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
 
-warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/deafult-generic-associated-type-bound.rs:4:12
-   |
-LL | #![feature(generic_associated_types)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
-
 error[E0277]: can't compare `T` with `T`
-  --> $DIR/deafult-generic-associated-type-bound.rs:19:5
+  --> $DIR/deafult-generic-associated-type-bound.rs:18:5
    |
 LL |     type U<'a>: PartialEq<&'a Self> where Self: 'a;
    |                 ------------------- required by this bound in `X::U`
@@ -31,6 +23,6 @@ help: consider further restricting this bound
 LL | impl<T: 'static + std::cmp::PartialEq> X for T {
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 2 warnings emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.
