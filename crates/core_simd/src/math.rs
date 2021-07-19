@@ -6,6 +6,7 @@ macro_rules! impl_uint_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::MAX;")]
             #[doc = concat!("let x = ", stringify!($name), "::from_array([2, 1, 0, MAX]);")]
@@ -24,6 +25,7 @@ macro_rules! impl_uint_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::MAX;")]
             #[doc = concat!("let x = ", stringify!($name), "::from_array([2, 1, 0, MAX]);")]
@@ -48,6 +50,7 @@ macro_rules! impl_int_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
             #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, 0, 1, MAX]);")]
@@ -66,6 +69,7 @@ macro_rules! impl_int_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
             #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, -1, MAX]);")]
@@ -84,6 +88,7 @@ macro_rules! impl_int_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
             #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, MIN +1, -5, 0]);")]
@@ -101,6 +106,7 @@ macro_rules! impl_int_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
             #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, -2, 0, 3]);")]
@@ -122,6 +128,7 @@ macro_rules! impl_int_arith {
             ///
             /// # Examples
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
             #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, 3, MAX]);")]

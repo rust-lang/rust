@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 use core_simd::SimdU32;
 
 #[cfg(target_arch = "wasm32")]

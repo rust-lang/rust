@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 /// Benchmarks game nbody code
 /// Taken from the `packed_simd` crate
 /// Run this benchmark with `cargo test --example nbody`

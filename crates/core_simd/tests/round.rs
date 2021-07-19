@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 macro_rules! float_rounding_test {
     { $vector:ident, $scalar:tt, $int_scalar:tt } => {
         mod $scalar {

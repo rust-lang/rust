@@ -57,6 +57,7 @@ macro_rules! impl_select {
             /// that lane mask is true, and `false_values` if that lane mask is false.
             ///
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::{Mask32, SimdI32};
             /// let a = SimdI32::from_array([0, 1, 2, 3]);
             /// let b = SimdI32::from_array([4, 5, 6, 7]);
@@ -67,6 +68,7 @@ macro_rules! impl_select {
             ///
             /// `select` can also be used on masks:
             /// ```
+            /// # #![feature(portable_simd)]
             /// # use core_simd::Mask32;
             /// let a = Mask32::from_array([true, true, false, false]);
             /// let b = Mask32::from_array([false, false, true, true]);

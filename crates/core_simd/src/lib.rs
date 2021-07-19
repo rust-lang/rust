@@ -1,7 +1,15 @@
 #![no_std]
 #![allow(incomplete_features)]
-#![feature(repr_simd, platform_intrinsics, simd_ffi, const_generics, stdsimd)]
+#![feature(
+    const_generics, 
+    platform_intrinsics,
+    repr_simd,
+    simd_ffi,
+    staged_api,
+    stdsimd,
+)]
 #![warn(missing_docs)]
+#![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.
 
 #[macro_use]

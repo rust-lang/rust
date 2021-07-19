@@ -25,6 +25,7 @@ where
     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
     /// If an index is out of bounds, that lane instead selects the value from the "or" vector.
     /// ```
+    /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
@@ -42,6 +43,7 @@ where
     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
     /// Out-of-bounds indices instead use the default value for that lane (0).
     /// ```
+    /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
@@ -61,6 +63,7 @@ where
     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
     /// Out-of-bounds or masked indices instead select the value from the "or" vector.
     /// ```
+    /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
@@ -90,6 +93,7 @@ where
     /// Out-of-bounds indices are not written.
     /// `scatter` writes "in order", so if an index receives two writes, only the last is guaranteed.
     /// ```
+    /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 0]);
@@ -107,6 +111,7 @@ where
     /// Out-of-bounds or masked indices are not written.
     /// `scatter_select` writes "in order", so if an index receives two writes, only the last is guaranteed.
     /// ```
+    /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 0]);
