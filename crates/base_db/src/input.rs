@@ -67,7 +67,10 @@ impl SourceRoot {
 /// Note that `CrateGraph` is build-system agnostic: it's a concept of the Rust
 /// language proper, not a concept of the build system. In practice, we get
 /// `CrateGraph` by lowering `cargo metadata` output.
-#[derive(Debug, Clone, Default)]
+///
+/// `CrateGraph` is `!Serialize` by design, see
+/// <https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md#serialization>
+#[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
 pub struct CrateGraph {
     arena: FxHashMap<CrateId, CrateData>,
 }
