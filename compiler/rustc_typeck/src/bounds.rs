@@ -53,17 +53,22 @@ impl<'tcx> Bounds<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_ty: Ty<'tcx>,
+        skip_implicit_sized: bool,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         // If it could be sized, and is, add the `Sized` predicate.
-        let sized_predicate = self.implicitly_sized.and_then(|span| {
-            tcx.lang_items().sized_trait().map(|sized| {
-                let trait_ref = ty::Binder::dummy(ty::TraitRef {
-                    def_id: sized,
-                    substs: tcx.mk_substs_trait(param_ty, &[]),
-                });
-                (trait_ref.without_const().to_predicate(tcx), span)
+        let sized_predicate = if skip_implicit_sized {
+            None
+        } else {
+            self.implicitly_sized.and_then(|span| {
+                tcx.lang_items().sized_trait().map(|sized| {
+                    let trait_ref = ty::Binder::dummy(ty::TraitRef {
+                        def_id: sized,
+                        substs: tcx.mk_substs_trait(param_ty, &[]),
+                    });
+                    (trait_ref.without_const().to_predicate(tcx), span)
+                })
             })
-        });
+        };
 
         sized_predicate
             .into_iter()

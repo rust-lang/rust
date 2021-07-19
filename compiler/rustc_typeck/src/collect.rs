@@ -1170,7 +1170,7 @@ fn super_predicates_that_define_assoc_type(
             )
         };
 
-        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+        let superbounds1 = superbounds1.predicates(tcx, self_param_ty, false);
 
         // Convert any explicit superbounds in the where-clause,
         // e.g., `trait Foo where Self: Bar`.
@@ -1978,6 +1978,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
+    debug!("explicit_predicates_of: node = {:?}", node);
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
@@ -1991,10 +1992,22 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
-    let ast_generics = match node {
-        Node::TraitItem(item) => &item.generics,
+    let mut is_associated_type = false;
 
-        Node::ImplItem(item) => &item.generics,
+    let ast_generics = match node {
+        Node::TraitItem(item) => {
+            if matches!(item.kind, TraitItemKind::Type(..)) {
+                is_associated_type = true;
+            }
+            &item.generics
+        }
+
+        Node::ImplItem(item) => {
+            if matches!(item.kind, ImplItemKind::TyAlias(..)) {
+                is_associated_type = true;
+            }
+            &item.generics
+        }
 
         Node::Item(item) => {
             match item.kind {
@@ -2070,6 +2083,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     if let Some(_trait_ref) = is_trait {
         predicates.extend(tcx.super_predicates_of(def_id).predicates.iter().cloned());
     }
+    debug!("explicit_predicates_of: super predicates = {:?}", predicates);
 
     // In default impls, we can assume that the self type implements
     // the trait. So in:
@@ -2085,6 +2099,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             tcx.def_span(def_id),
         ));
     }
+    debug!("explicit_predicates_of: default impls = {:?}", predicates);
 
     // Collect the region predicates that were declared inline as
     // well. In the case of parameters declared on a fn or method, we
@@ -2113,6 +2128,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         }
     }
 
+    debug!("explicit_predicates_of: region predicates = {:?}", predicates);
+
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
     for param in ast_generics.params {
@@ -2132,7 +2149,34 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     sized,
                     param.span,
                 );
-                predicates.extend(bounds.predicates(tcx, param_ty));
+                debug!("explicit_predicates_of: bounds = {:?}", bounds);
+
+                // We need to skip from the predicate list the implicit Sized
+                // bound for the generic types inside a GAT in order to have recursion (#80626).
+                // For example, in:
+                //
+                // trait Allocator {
+                //     type Allocated<T>;
+                // }
+                //
+                // the GAT implicitly has the bound `Allocated<T>: Sized`, but
+                // this bound generates a bound `T: Sized`, which we don't want
+                // because there are type constructors that can be sized without
+                // a `Sized` restriction on `T` (`Box<T>`, `&T`, `*T`).
+                // However, we can't just remove the predicates with `Sized`, because
+                // if the user explicitly annotates `T` as `Sized`
+                // a trait implementation with `?Sized` could be unsound:
+                //
+                // impl Allocator for () {
+                //     type Allocated<T: ?Sized> = Box<T>;
+                // }
+                //
+                // So we just skip the implicit `Sized` predicate on `predicates()`
+                predicates.extend(bounds.predicates(
+                    tcx,
+                    param_ty,
+                    is_associated_type && bounds.implicitly_sized.is_some(),
+                ));
             }
             GenericParamKind::Const { .. } => {
                 // Bounds on const parameters are currently not possible.
@@ -2141,6 +2185,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             }
         }
     }
+
+    debug!("explicit_predicates_of: inline predicates = {:?}", predicates);
 
     // Add in the bounds that appear in the where-clause.
     let where_clause = &ast_generics.where_clause;
@@ -2194,7 +2240,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                                 &mut bounds,
                                 false,
                             );
-                            predicates.extend(bounds.predicates(tcx, ty));
+                            predicates.extend(bounds.predicates(tcx, ty, false));
                         }
 
                         &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
@@ -2208,7 +2254,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                                 ty,
                                 &mut bounds,
                             );
-                            predicates.extend(bounds.predicates(tcx, ty));
+                            predicates.extend(bounds.predicates(tcx, ty, false));
                         }
 
                         hir::GenericBound::Outlives(lifetime) => {
@@ -2251,8 +2297,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         }
     }
 
+    debug!("explicit_predicates_of: where predicates = {:?}", predicates);
+
     if tcx.features().const_evaluatable_checked {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id.expect_local()));
+        debug!("explicit_predicates_of: const predicates = {:?}", predicates);
     }
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
@@ -2437,7 +2486,7 @@ fn predicates_from_bound<'tcx>(
                 &mut bounds,
                 false,
             );
-            bounds.predicates(astconv.tcx(), param_ty)
+            bounds.predicates(astconv.tcx(), param_ty, false)
         }
         hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
             let mut bounds = Bounds::default();
@@ -2449,7 +2498,7 @@ fn predicates_from_bound<'tcx>(
                 param_ty,
                 &mut bounds,
             );
-            bounds.predicates(astconv.tcx(), param_ty)
+            bounds.predicates(astconv.tcx(), param_ty, false)
         }
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
