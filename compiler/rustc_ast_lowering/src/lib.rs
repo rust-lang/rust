@@ -1466,7 +1466,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             t.span,
                             E0562,
                             "`impl Trait` not allowed outside of {}",
-                            "function and inherent method return types",
+                            "function and method return types",
                         );
                         err.emit();
                         hir::TyKind::Err
