@@ -1,0 +1,13 @@
+// available ubuntu versions: [20, 18]
+// available llvm versions: [7, 8, 9, 10, 11, 12]
+{
+    "name": "Enzyme",
+    "image": "ghcr.io/tgymnich/enzyme-dev-docker/ubuntu-18-llvm-10:latest",
+    "mounts": [
+        "source=enzyme-bashhistory,target=/commandhistory,type=volume",
+        "source=enzyme-extensions,target=/root/.vscode-server/extensions,type=volume",
+        "source=enzyme-extensions-insiders,target=/root/.vscode-server-insiders/extensions,type=volume",
+        "source=enzyme-build,target=${containerWorkspaceFolder}/enzyme/build,type=volume",
+    ],
+    "postCreateCommand": "sudo chown vscode ./enzyme/build"
+}
