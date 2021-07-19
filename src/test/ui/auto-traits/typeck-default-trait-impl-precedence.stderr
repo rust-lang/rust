@@ -7,7 +7,11 @@ LL | fn is_defaulted<T:Defaulted>() { }
 LL |     is_defaulted::<&'static u32>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Signed` is not implemented for `u32`
    |
-   = note: required because of the requirements on the impl of `Defaulted` for `&'static u32`
+note: required because of the requirements on the impl of `Defaulted` for `&'static u32`
+  --> $DIR/typeck-default-trait-impl-precedence.rs:10:19
+   |
+LL | impl<'a,T:Signed> Defaulted for &'a T { }
+   |                   ^^^^^^^^^     ^^^^^
 
 error: aborting due to previous error
 

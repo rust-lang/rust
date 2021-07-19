@@ -9,9 +9,10 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionContext};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, fast_reject, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::iter;
@@ -79,12 +80,11 @@ where
         impl2_ref.iter().flat_map(|tref| tref.substs.types()),
     )
     .any(|(ty1, ty2)| {
-        let t1 = fast_reject::simplify_type(tcx, ty1, false);
-        let t2 = fast_reject::simplify_type(tcx, ty2, false);
+        let t1 = fast_reject::simplify_type(tcx, ty1, SimplifyParams::No, StripReferences::No);
+        let t2 = fast_reject::simplify_type(tcx, ty2, SimplifyParams::No, StripReferences::No);
         if let (Some(t1), Some(t2)) = (t1, t2) {
             // Simplified successfully
-            // Types cannot unify if they differ in their reference mutability or simplify to different types
-            t1 != t2 || ty1.ref_mutability() != ty2.ref_mutability()
+            t1 != t2
         } else {
             // Types might unify
             false

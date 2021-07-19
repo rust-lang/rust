@@ -10,7 +10,12 @@ LL |     is_copy(B { a: 1, b: C });
    |             expected an implementor of trait `Copy`
    |             help: consider borrowing here: `&B { a: 1, b: C }`
    |
-   = note: required because of the requirements on the impl of `Copy` for `B<C>`
+note: required because of the requirements on the impl of `Copy` for `B<C>`
+  --> $DIR/deriving-copyclone.rs:9:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `C: Clone` is not satisfied
   --> $DIR/deriving-copyclone.rs:32:14
@@ -24,7 +29,12 @@ LL |     is_clone(B { a: 1, b: C });
    |              expected an implementor of trait `Clone`
    |              help: consider borrowing here: `&B { a: 1, b: C }`
    |
-   = note: required because of the requirements on the impl of `Clone` for `B<C>`
+note: required because of the requirements on the impl of `Clone` for `B<C>`
+  --> $DIR/deriving-copyclone.rs:9:16
+   |
+LL | #[derive(Copy, Clone)]
+   |                ^^^^^
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `D: Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:35:13
@@ -38,7 +48,12 @@ LL |     is_copy(B { a: 1, b: D });
    |             expected an implementor of trait `Copy`
    |             help: consider borrowing here: `&B { a: 1, b: D }`
    |
-   = note: required because of the requirements on the impl of `Copy` for `B<D>`
+note: required because of the requirements on the impl of `Copy` for `B<D>`
+  --> $DIR/deriving-copyclone.rs:9:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

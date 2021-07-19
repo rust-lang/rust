@@ -1,6 +1,6 @@
 use crate::ich::{self, StableHashingContext};
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject;
+use crate::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
@@ -181,7 +181,10 @@ impl<'tcx> TyCtxt<'tcx> {
         // blanket and non-blanket impls, and compare them separately.
         //
         // I think we'll cross that bridge when we get to it.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
+
+        if let Some(simp) =
+            fast_reject::simplify_type(self, self_ty, SimplifyParams::Yes, StripReferences::No)
+        {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     if let result @ Some(_) = f(impl_def_id) {
@@ -240,7 +243,9 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
             continue;
         }
 
-        if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
+        if let Some(simplified_self_ty) =
+            fast_reject::simplify_type(tcx, impl_self_ty, SimplifyParams::No, StripReferences::No)
+        {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
             impls.blanket_impls.push(impl_def_id);

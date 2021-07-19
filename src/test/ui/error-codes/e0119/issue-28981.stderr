@@ -1,12 +1,12 @@
-error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `&_`
+error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `std::pin::Pin<_>`
   --> $DIR/issue-28981.rs:5:1
    |
 LL | impl<Foo> Deref for Foo { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<T> Deref for &T
-             where T: ?Sized;
+           - impl<P> Deref for Pin<P>
+             where P: Deref;
 
 error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g., `MyStruct<Foo>`)
   --> $DIR/issue-28981.rs:5:6

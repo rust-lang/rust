@@ -2,6 +2,7 @@ use crate::ich::StableHashingContext;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
+use rustc_hir::Mutability;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
@@ -27,9 +28,12 @@ where
     UintSimplifiedType(ty::UintTy),
     FloatSimplifiedType(ty::FloatTy),
     AdtSimplifiedType(D),
+    ForeignSimplifiedType(D),
     StrSimplifiedType,
     ArraySimplifiedType,
-    PtrSimplifiedType,
+    SliceSimplifiedType,
+    RefSimplifiedType(Mutability),
+    PtrSimplifiedType(Mutability),
     NeverSimplifiedType,
     TupleSimplifiedType(usize),
     /// A trait object, all of whose components are markers
@@ -42,7 +46,18 @@ where
     OpaqueSimplifiedType(D),
     FunctionSimplifiedType(usize),
     ParameterSimplifiedType,
-    ForeignSimplifiedType(DefId),
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum SimplifyParams {
+    Yes,
+    No,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum StripReferences {
+    Yes,
+    No,
 }
 
 /// Tries to simplify a type by dropping type parameters, deref'ing away any reference types, etc.
@@ -57,7 +72,8 @@ where
 pub fn simplify_type(
     tcx: TyCtxt<'_>,
     ty: Ty<'_>,
-    can_simplify_params: bool,
+    can_simplify_params: SimplifyParams,
+    strip_references: StripReferences,
 ) -> Option<SimplifiedType> {
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
@@ -67,19 +83,24 @@ pub fn simplify_type(
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
         ty::Str => Some(StrSimplifiedType),
-        ty::Array(..) | ty::Slice(_) => Some(ArraySimplifiedType),
-        ty::RawPtr(_) => Some(PtrSimplifiedType),
+        ty::Array(..) => Some(ArraySimplifiedType),
+        ty::Slice(..) => Some(SliceSimplifiedType),
+        ty::RawPtr(ptr) => Some(PtrSimplifiedType(ptr.mutbl)),
         ty::Dynamic(ref trait_info, ..) => match trait_info.principal_def_id() {
             Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
                 Some(TraitSimplifiedType(principal_def_id))
             }
             _ => Some(MarkerTraitObjectSimplifiedType),
         },
-        ty::Ref(_, ty, _) => {
-            // since we introduce auto-refs during method lookup, we
-            // just treat &T and T as equivalent from the point of
-            // view of possibly unifying
-            simplify_type(tcx, ty, can_simplify_params)
+        ty::Ref(_, ty, mutbl) => {
+            if strip_references == StripReferences::Yes {
+                // For diagnostics, when recommending similar impls we want to
+                // recommend impls even when there is a reference mismatch,
+                // so we treat &T and T equivalently in that case.
+                simplify_type(tcx, ty, can_simplify_params, strip_references)
+            } else {
+                Some(RefSimplifiedType(mutbl))
+            }
         }
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
@@ -90,7 +111,7 @@ pub fn simplify_type(
         ty::Tuple(ref tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(ref f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
         ty::Projection(_) | ty::Param(_) => {
-            if can_simplify_params {
+            if can_simplify_params == SimplifyParams::Yes {
                 // In normalized types, projections don't unify with
                 // anything. when lazy normalization happens, this
                 // will change. It would still be nice to have a way
@@ -120,9 +141,12 @@ impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
             UintSimplifiedType(t) => UintSimplifiedType(t),
             FloatSimplifiedType(t) => FloatSimplifiedType(t),
             AdtSimplifiedType(d) => AdtSimplifiedType(map(d)),
+            ForeignSimplifiedType(d) => ForeignSimplifiedType(map(d)),
             StrSimplifiedType => StrSimplifiedType,
             ArraySimplifiedType => ArraySimplifiedType,
-            PtrSimplifiedType => PtrSimplifiedType,
+            SliceSimplifiedType => SliceSimplifiedType,
+            RefSimplifiedType(m) => RefSimplifiedType(m),
+            PtrSimplifiedType(m) => PtrSimplifiedType(m),
             NeverSimplifiedType => NeverSimplifiedType,
             MarkerTraitObjectSimplifiedType => MarkerTraitObjectSimplifiedType,
             TupleSimplifiedType(n) => TupleSimplifiedType(n),
@@ -133,7 +157,6 @@ impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
             OpaqueSimplifiedType(d) => OpaqueSimplifiedType(map(d)),
             FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
             ParameterSimplifiedType => ParameterSimplifiedType,
-            ForeignSimplifiedType(d) => ForeignSimplifiedType(d),
         }
     }
 }
@@ -149,12 +172,13 @@ where
             | CharSimplifiedType
             | StrSimplifiedType
             | ArraySimplifiedType
-            | PtrSimplifiedType
+            | SliceSimplifiedType
             | NeverSimplifiedType
             | ParameterSimplifiedType
             | MarkerTraitObjectSimplifiedType => {
                 // nothing to do
             }
+            RefSimplifiedType(m) | PtrSimplifiedType(m) => m.hash_stable(hcx, hasher),
             IntSimplifiedType(t) => t.hash_stable(hcx, hasher),
             UintSimplifiedType(t) => t.hash_stable(hcx, hasher),
             FloatSimplifiedType(t) => t.hash_stable(hcx, hasher),

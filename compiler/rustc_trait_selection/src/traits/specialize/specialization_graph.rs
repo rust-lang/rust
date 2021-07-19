@@ -2,7 +2,7 @@ use super::OverlapError;
 
 use crate::traits;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::fast_reject::{self, SimplifiedType};
+use rustc_middle::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 
@@ -48,7 +48,12 @@ impl ChildrenExt for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
+        if let Some(st) = fast_reject::simplify_type(
+            tcx,
+            trait_ref.self_ty(),
+            SimplifyParams::No,
+            StripReferences::No,
+        ) {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.nonblanket_impls.entry(st).or_default().push(impl_def_id)
         } else {
@@ -63,7 +68,12 @@ impl ChildrenExt for Children {
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
-        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
+        if let Some(st) = fast_reject::simplify_type(
+            tcx,
+            trait_ref.self_ty(),
+            SimplifyParams::No,
+            StripReferences::No,
+        ) {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.nonblanket_impls.get_mut(&st).unwrap();
         } else {
@@ -304,7 +314,12 @@ impl GraphExt for Graph {
 
         let mut parent = trait_def_id;
         let mut last_lint = None;
-        let simplified = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false);
+        let simplified = fast_reject::simplify_type(
+            tcx,
+            trait_ref.self_ty(),
+            SimplifyParams::No,
+            StripReferences::No,
+        );
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {
