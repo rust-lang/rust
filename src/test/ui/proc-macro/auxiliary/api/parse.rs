@@ -6,8 +6,8 @@ pub fn test() {
 }
 
 fn test_display_literal() {
-    assert_eq!(Literal::isize_unsuffixed(-10).to_string(), "- 10");
-    assert_eq!(Literal::isize_suffixed(-10).to_string(), "- 10isize");
+    assert_eq!(Literal::isize_unsuffixed(-10).to_string(), "-10");
+    assert_eq!(Literal::isize_suffixed(-10).to_string(), "-10isize");
 }
 
 fn test_parse_literal() {
@@ -18,7 +18,7 @@ fn test_parse_literal() {
     assert_eq!("b\"\"".parse::<Literal>().unwrap().to_string(), "b\"\"");
     assert_eq!("r##\"\"##".parse::<Literal>().unwrap().to_string(), "r##\"\"##");
     assert_eq!("10ulong".parse::<Literal>().unwrap().to_string(), "10ulong");
-    assert_eq!("-10ulong".parse::<Literal>().unwrap().to_string(), "- 10ulong");
+    assert_eq!("-10ulong".parse::<Literal>().unwrap().to_string(), "-10ulong");
 
     assert!("true".parse::<Literal>().is_err());
     assert!(".8".parse::<Literal>().is_err());
