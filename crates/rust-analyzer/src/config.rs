@@ -142,7 +142,9 @@ config_data! {
 
         /// Controls file watching implementation.
         files_watcher: String = "\"client\"",
-        /// These directories will be ignored by rust-analyzer.
+        /// These directories will be ignored by rust-analyzer. They are
+        /// relative to the workspace root, and globs are not supported. You may
+        /// also need to add the folders to Code's 'watcher exclude'.
         files_excludeDirs: Vec<PathBuf> = "[]",
 
         /// Use semantic tokens for strings.
