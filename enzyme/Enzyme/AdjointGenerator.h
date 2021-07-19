@@ -232,6 +232,46 @@ public:
     return B.CreateLoad(alloc);
   }
 
+#if LLVM_VERSION_MAJOR >= 10
+  void visitFreezeInst(llvm::FreezeInst &inst) {
+    eraseIfUnused(inst);
+    if (gutils->isConstantInstruction(&inst))
+      return;
+    Value *orig_op0 = inst.getOperand(0);
+
+    switch (Mode) {
+    case DerivativeMode::ReverseModeCombined:
+    case DerivativeMode::ReverseModeGradient: {
+      IRBuilder<> Builder2(inst.getParent());
+      getReverseBuilder(Builder2);
+
+      Value *idiff = diffe(&inst, Builder2);
+      Value *dif1 = Builder2.CreateFreeze(idiff);
+      setDiffe(&inst, Constant::getNullValue(inst.getType()), Builder2);
+      size_t size = 1;
+      if (inst.getType()->isSized())
+        size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                    orig_op0->getType()) +
+                7) /
+               8;
+      addToDiffe(orig_op0, dif1, Builder2, TR.addingType(size, orig_op0));
+      return;
+    }
+    case DerivativeMode::ForwardMode: {
+      IRBuilder<> BuilderZ(&inst);
+      getForwardBuilder(BuilderZ);
+
+      Value *idiff = diffe(orig_op0, BuilderZ);
+      Value *dif1 = BuilderZ.CreateFreeze(idiff);
+      setDiffe(&inst, dif1, BuilderZ);
+      return;
+    }
+    case DerivativeMode::ReverseModePrimal:
+      return;
+    }
+  }
+#endif
+
   void visitInstruction(llvm::Instruction &inst) {
     // TODO explicitly handle all instructions rather than using the catch all
     // below

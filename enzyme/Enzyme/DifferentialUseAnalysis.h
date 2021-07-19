@@ -70,6 +70,9 @@ static inline bool is_use_directly_needed_in_reverse(
        cast<InsertElementInst>(user)->getOperand(2) != val) ||
       (isa<ExtractElementInst>(user) &&
        cast<ExtractElementInst>(user)->getIndexOperand() != val)
+#if LLVM_VERSION_MAJOR >= 10
+      || isa<FreezeInst>(user)
+#endif
       // isa<ExtractElement>(use) ||
       // isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
       // isa<ExtractValueInst>(use) || isa<AllocaInst>(use)

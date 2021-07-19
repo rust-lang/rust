@@ -282,6 +282,10 @@ public:
 
   void visitBitCastInst(llvm::BitCastInst &I);
 
+#if LLVM_VERSION_MAJOR >= 10
+  void visitFreezeInst(llvm::FreezeInst &I);
+#endif
+
   void visitSelectInst(llvm::SelectInst &I);
 
   void visitExtractElementInst(llvm::ExtractElementInst &I);

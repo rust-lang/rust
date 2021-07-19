@@ -1514,6 +1514,15 @@ void TypeAnalyzer::visitIntToPtrInst(IntToPtrInst &I) {
     updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
+#if LLVM_VERSION_MAJOR >= 10
+void TypeAnalyzer::visitFreezeInst(FreezeInst &I) {
+  if (direction & DOWN)
+    updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & UP)
+    updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
+}
+#endif
+
 void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
   if (I.getType()->isIntOrIntVectorTy() || I.getType()->isFPOrFPVectorTy()) {
     if (direction & DOWN)

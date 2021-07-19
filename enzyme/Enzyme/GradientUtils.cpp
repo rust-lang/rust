@@ -252,6 +252,21 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     return val;
   } else if (isa<AllocaInst>(val)) {
     return val;
+#if LLVM_VERSION_MAJOR >= 10
+  } else if (auto op = dyn_cast<FreezeInst>(val)) {
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateFreeze(op0, op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn)) {
+      newi->copyIRFlags(op);
+      unwrappedLoads[newi] = val;
+    }
+    if (permitCache)
+      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+#endif
   } else if (auto op = dyn_cast<CastInst>(val)) {
     auto op0 = getOp(op->getOperand(0));
     if (op0 == nullptr)
