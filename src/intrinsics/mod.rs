@@ -1122,6 +1122,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             }
 
             let size = fx.layout_of(T).layout.size;
+            // FIXME add and use emit_small_memcmp
             let is_eq_value =
                 if size == Size::ZERO {
                     // No bytes means they're trivially equal
@@ -1137,10 +1138,9 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 } else {
                     // Just call `memcmp` (like slices do in core) when the
                     // size is too large or it's not a power-of-two.
-                    let ptr_ty = pointer_ty(fx.tcx);
                     let signed_bytes = i64::try_from(size.bytes()).unwrap();
-                    let bytes_val = fx.bcx.ins().iconst(ptr_ty, signed_bytes);
-                    let params = vec![AbiParam::new(ptr_ty); 3];
+                    let bytes_val = fx.bcx.ins().iconst(fx.pointer_type, signed_bytes);
+                    let params = vec![AbiParam::new(fx.pointer_type); 3];
                     let returns = vec![AbiParam::new(types::I32)];
                     let args = &[lhs_ref, rhs_ref, bytes_val];
                     let cmp = fx.lib_call("memcmp", params, returns, args)[0];
