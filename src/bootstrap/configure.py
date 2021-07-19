@@ -160,6 +160,7 @@ o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of tw
 o("extended", "build.extended", "build an extended rust tool set")
 
 v("tools", None, "List of extended tools will be installed")
+v("codegen-backends", None, "List of codegen backends to build")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
 v("host", None, "GNUs ./configure syntax LLVM host triples")
 v("target", None, "GNUs ./configure syntax LLVM target triples")
@@ -339,6 +340,8 @@ for key in known_args:
         set('target.{}.llvm-filecheck'.format(build()), value)
     elif option.name == 'tools':
         set('build.tools', value.split(','))
+    elif option.name == 'codegen-backends':
+        set('rust.codegen-backends', value.split(','))
     elif option.name == 'host':
         set('build.host', value.split(','))
     elif option.name == 'target':
