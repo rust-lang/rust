@@ -1179,6 +1179,7 @@ impl<T> Option<T> {
     /// *val = 3;
     /// assert_eq!(opt.unwrap(), 3);
     /// ```
+    #[must_use = "if you intended to set a value, consider assignment instead"]
     #[inline]
     #[stable(feature = "option_insert", since = "1.53.0")]
     pub fn insert(&mut self, value: T) -> &mut T {
