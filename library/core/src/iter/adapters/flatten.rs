@@ -319,12 +319,8 @@ where
             let (lower, upper) = self.iter.size_hint();
 
             let lower = lower.saturating_mul(fixed_size).saturating_add(lo);
-            let upper = upper.and_then(|i| i.checked_mul(fixed_size));
-            let upper = fhi
-                .zip_with(bhi, usize::checked_add)
-                .flatten()
-                .zip_with(upper, usize::checked_add)
-                .flatten();
+            let upper =
+                try { fhi?.checked_add(bhi?)?.checked_add(fixed_size.checked_mul(upper?)?)? };
 
             return (lower, upper);
         }
