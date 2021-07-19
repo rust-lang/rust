@@ -129,6 +129,8 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     where
         R: ConstEquateRelation<'tcx>,
     {
+        let a = self.tcx.expose_default_const_substs(a);
+        let b = self.tcx.expose_default_const_substs(b);
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         if a == b {
             return Ok(a);
