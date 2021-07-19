@@ -1928,12 +1928,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ItemObligation(item_def_id) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by `{}`", item_name);
-                if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
-                    let sp = tcx.sess.source_map().guess_head_span(sp);
-                    err.span_label(sp, &msg);
-                } else {
-                    err.note(&msg);
-                }
+                let sp = tcx
+                    .hir()
+                    .span_if_local(item_def_id)
+                    .unwrap_or_else(|| tcx.def_span(item_def_id));
+                let sp = tcx.sess.source_map().guess_head_span(sp);
+                err.span_note(sp, &msg);
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);
@@ -1952,7 +1952,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if span != DUMMY_SP {
                     err.span_label(span, &msg);
                 } else {
-                    err.note(&msg);
+                    err.span_note(
+                        tcx.def_span(item_def_id),
+                        &format!("required by a bound in `{}`", item_name),
+                    );
                 }
             }
             ObligationCauseCode::ObjectCastObligation(object_ty) => {
@@ -1979,9 +1982,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 if self.tcx.sess.is_nightly_build() && is_const_fn {
                     err.help(
-                        "create an inline `const` block, see RFC \
-                        #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
-                        for more information",
+                        "create an inline `const` block, see RFC #2920 \
+                         <https://github.com/rust-lang/rfcs/pull/2920> for more information",
                     );
                 }
             }
@@ -2168,8 +2170,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.for_each_relevant_impl(
                     parent_def_id,
                     parent_trait_ref.self_ty().skip_binder(),
-                    |impl_def_id| {
-                        candidates.push(impl_def_id);
+                    |impl_def_id| match self.tcx.hir().get_if_local(impl_def_id) {
+                        Some(Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl(hir::Impl { .. }),
+                            ..
+                        })) => {
+                            candidates.push(impl_def_id);
+                        }
+                        _ => {}
                     },
                 );
                 match &candidates[..] {

@@ -365,10 +365,7 @@ pub trait Emitter {
                     continue;
                 }
 
-                if matches!(trace.kind, ExpnKind::Inlined) {
-                    new_labels
-                        .push((trace.call_site, "in the inlined copy of this code".to_string()));
-                } else if always_backtrace {
+                if always_backtrace && !matches!(trace.kind, ExpnKind::Inlined) {
                     new_labels.push((
                         trace.def_site,
                         format!(
@@ -398,13 +395,27 @@ pub trait Emitter {
                 // and it needs an "in this macro invocation" label to match that.
                 let redundant_span = trace.call_site.contains(sp);
 
-                if !redundant_span && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
-                    || always_backtrace
-                {
+                if !redundant_span || always_backtrace {
+                    let msg: Cow<'static, _> = match trace.kind {
+                        ExpnKind::Macro(MacroKind::Attr, _) => {
+                            "this procedural macro expansion".into()
+                        }
+                        ExpnKind::Macro(MacroKind::Derive, _) => {
+                            "this derive macro expansion".into()
+                        }
+                        ExpnKind::Macro(MacroKind::Bang, _) => "this macro invocation".into(),
+                        ExpnKind::Inlined => "the inlined copy of this code".into(),
+                        ExpnKind::Root => "in the crate root".into(),
+                        ExpnKind::AstPass(kind) => kind.descr().into(),
+                        ExpnKind::Desugaring(kind) => {
+                            format!("this {} desugaring", kind.descr()).into()
+                        }
+                    };
                     new_labels.push((
                         trace.call_site,
                         format!(
-                            "in this macro invocation{}",
+                            "in {}{}",
+                            msg,
                             if macro_backtrace.len() > 1 && always_backtrace {
                                 // only specify order when the macro
                                 // backtrace is multiple levels deep

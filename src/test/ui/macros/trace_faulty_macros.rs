@@ -39,5 +39,5 @@ fn main() {
 #[my_macro]
 fn use_bang_macro_as_attr() {}
 
-#[derive(Debug)] //~ ERROR `derive` may only be applied to structs
+#[derive(Debug)] //~ ERROR `derive` may only be applied to `struct`s
 fn use_derive_macro_as_attr() {}

@@ -1,6 +1,9 @@
 error[E0624]: associated function `new` is private
   --> $DIR/static-method-privacy.rs:9:19
    |
+LL |         fn new() -> S { S }
+   |         ------------- private associated function defined here
+...
 LL |     let _ = a::S::new();
    |                   ^^^ private associated function
 

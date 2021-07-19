@@ -84,18 +84,33 @@ error[E0624]: associated function `pub_crate` is private
    |
 LL |     r.pub_crate();
    |       ^^^^^^^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub-and-stability.rs:114:9
+   |
+LL |         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
+   |         ------------------------------------- private associated function defined here
 
 error[E0624]: associated function `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:51:7
    |
 LL |     r.pub_mod();
    |       ^^^^^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub-and-stability.rs:116:9
+   |
+LL |         pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
+   |         ---------------------------------- private associated function defined here
 
 error[E0624]: associated function `private` is private
   --> $DIR/explore-issue-38412.rs:52:7
    |
 LL |     r.private();
    |       ^^^^^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub-and-stability.rs:118:9
+   |
+LL |         fn private(&self) -> i32 { self.d_priv }
+   |         ------------------------ private associated function defined here
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:57:7
@@ -120,18 +135,33 @@ error[E0624]: associated function `pub_crate` is private
    |
 LL |     t.pub_crate();
    |       ^^^^^^^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub-and-stability.rs:129:9
+   |
+LL |         pub(crate) fn pub_crate(&self) -> i32 { self.0 }
+   |         ------------------------------------- private associated function defined here
 
 error[E0624]: associated function `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:64:7
    |
 LL |     t.pub_mod();
    |       ^^^^^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub-and-stability.rs:130:9
+   |
+LL |         pub(in m) fn pub_mod(&self) -> i32 { self.0 }
+   |         ---------------------------------- private associated function defined here
 
 error[E0624]: associated function `private` is private
   --> $DIR/explore-issue-38412.rs:65:7
    |
 LL |     t.private();
    |       ^^^^^^^ private associated function
+   | 
+  ::: $DIR/auxiliary/pub-and-stability.rs:131:9
+   |
+LL |         fn private(&self) -> i32 { self.0 }
+   |         ------------------------ private associated function defined here
 
 error: aborting due to 19 previous errors
 

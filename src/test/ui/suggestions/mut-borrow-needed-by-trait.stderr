@@ -5,7 +5,11 @@ LL |     let fp = BufWriter::new(fp);
    |                             ^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    |
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
-   = note: required by `BufWriter::<W>::new`
+note: required by `BufWriter::<W>::new`
+  --> $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
+   |
+LL |     pub fn new(inner: W) -> BufWriter<W> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
   --> $DIR/mut-borrow-needed-by-trait.rs:17:14

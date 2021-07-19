@@ -1,9 +1,6 @@
 error[E0275]: overflow evaluating the requirement `SalsaStorage: RefUnwindSafe`
   --> $DIR/cycle-cache-err-60010.rs:69:5
    |
-LL |     fn parse(&self) {
-   |     --------------- required by `SourceDatabase::parse`
-...
 LL |     SourceDatabase::parse(db);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
@@ -25,6 +22,11 @@ note: required because of the requirements on the impl of `SourceDatabase` for `
    |
 LL | impl<T> SourceDatabase for T
    |         ^^^^^^^^^^^^^^     ^
+note: required by `SourceDatabase::parse`
+  --> $DIR/cycle-cache-err-60010.rs:14:5
+   |
+LL |     fn parse(&self) {
+   |     ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
