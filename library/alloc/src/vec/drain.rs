@@ -1,6 +1,6 @@
 use crate::alloc::{Allocator, Global};
 use core::fmt;
-use core::iter::{FusedIterator, TrustedLen};
+use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
 use core::mem::{self};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
@@ -89,6 +89,19 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[doc(hidden)]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: `TrustedRandomAccess` requires that `idx` is in bounds and that
+        // each `idx` is only accessed once. Forwarding to the slice iterator's
+        // implementation is thus safe, and reading the value is safe because
+        // `Self: TrustedRandomAccess` implies `T: Copy` so the `Drop` impl below
+        // won't cause each item to be dropped twice.
+        unsafe { ptr::read(self.iter.__iterator_get_unchecked(idx) as *const _) }
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -108,9 +121,11 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
-                // Continue the same loop we have below. If the loop already finished, this does
-                // nothing.
-                self.0.for_each(drop);
+                if mem::needs_drop::<T>() {
+                    // Continue the same loop we have below. If the loop already finished, this does
+                    // nothing.
+                    self.0.for_each(drop);
+                }
 
                 if self.0.tail_len > 0 {
                     unsafe {
@@ -129,11 +144,13 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             }
         }
 
-        // exhaust self first
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
+        // exhaust self first if dropping of the items is required
+        if mem::needs_drop::<T>() {
+            while let Some(item) = self.next() {
+                let guard = DropGuard(self);
+                drop(item);
+                mem::forget(guard);
+            }
         }
 
         // Drop a `DropGuard` to move back the non-drained tail of `self`.
@@ -149,7 +166,24 @@ impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: `Drain` simply forwards to the underlying slice iterator, which implements `TrustedLen`
+// so the required properties are all preserved.
 unsafe impl<T, A: Allocator> TrustedLen for Drain<'_, T, A> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+// SAFETY: `Drain` forwards to the underlying slice iterator, which implements `TrustedRandomAccess`,
+// and then reads the items instead of just returning a reference. As `TrustedRandomAccess`
+// requires each index to be accessed only once, this is safe to do here.
+//
+// T: Copy as approximation for !Drop since get_unchecked does not advance self.iter
+// and as a result the `Drop` impl above would otherwise cause items to be dropped twice.
+unsafe impl<T, A: Allocator> TrustedRandomAccess for Drain<'_, T, A>
+where
+    T: Copy,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
