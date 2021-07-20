@@ -15,12 +15,16 @@ LL |         [&v] => {},
 error[E0529]: expected an array or slice, found `Vec<i32>`
   --> $DIR/match-ergonomics.rs:8:9
    |
+LL |     match x {
+   |           - help: consider slicing here: `x[..]`
 LL |         [&v] => {},
    |         ^^^^ pattern cannot match with input type `Vec<i32>`
 
 error[E0529]: expected an array or slice, found `Vec<i32>`
   --> $DIR/match-ergonomics.rs:20:9
    |
+LL |     match x {
+   |           - help: consider slicing here: `x[..]`
 LL |         [v] => {},
    |         ^^^ pattern cannot match with input type `Vec<i32>`
 
