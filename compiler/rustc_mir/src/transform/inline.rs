@@ -43,7 +43,14 @@ crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
         return enabled;
     }
 
-    tcx.sess.mir_opt_level() >= 3
+    // If you change this optimization level, also change the level in
+    // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
+    // Otherwise you will get an ICE about stolen MIR.
+    match tcx.sess.mir_opt_level() {
+        0 | 1 => false,
+        2 => tcx.sess.opts.incremental == None,
+        _ => true,
+    }
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
@@ -147,7 +154,7 @@ impl Inliner<'tcx> {
         self.check_mir_body(callsite, callee_body, callee_attrs)?;
 
         if !self.tcx.consider_optimizing(|| {
-            format!("Inline {:?} into {}", callee_body.span, callsite.callee)
+            format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
         }) {
             return Err("optimization fuel exhausted");
         }
@@ -287,6 +294,17 @@ impl Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
+        }
+
+        // At mir-opt-level=1, only inline `#[inline(always)]` functions
+        if self.tcx.sess.mir_opt_level() == 1 && callee_attrs.inline != InlineAttr::Always {
+            return Err("at mir-opt-level=1, only inline(always) is inlined");
+        }
+
+        if self.tcx.sess.mir_opt_level() == 1
+            && self.tcx.sess.opts.optimize != rustc_session::config::OptLevel::Aggressive
+        {
+            return Err("at mir-opt-level=1, only inline if -O is specified");
         }
 
         // Only inline local functions if they would be eligible for cross-crate
@@ -470,8 +488,24 @@ impl Inliner<'tcx> {
         }
 
         if let InlineAttr::Always = callee_attrs.inline {
-            debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            Ok(())
+            if self.tcx.sess.mir_opt_level() == 1 {
+                if cost <= 50 {
+                    debug!(
+                        "INLINING {:?} because inline(always) and [cost={} <= threshold=50]",
+                        callsite, cost
+                    );
+                    Ok(())
+                } else {
+                    debug!(
+                        "NOT inlining {:?} because inline(always) but [cost={} > threshold=50]",
+                        callsite, cost
+                    );
+                    Err("cost above threshold")
+                }
+            } else {
+                debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
+                Ok(())
+            }
         } else {
             if cost <= threshold {
                 debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
