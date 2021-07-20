@@ -41,6 +41,6 @@ If dramatically different output is caused by small changes, consider also
 adding them here.
 
 If you're using the stable version of the compiler, you should also check if the
-bug also exists in the beta or nightly versions. The output might also be
-different depending on the Edition.
+bug also exists in the beta or nightly versions. The output might differ depending
+upon the edition.
 -->

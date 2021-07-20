@@ -65,14 +65,14 @@ the rfcbot will ask all the team members to verify they agree with
 stabilization. Once enough members agree and there are no concerns, the final
 comment period begins: this issue will be marked as such and will be listed
 in the next This Week in Rust newsletter. If no blocking concerns are raised in
-that period of 10 days, a stabilzation PR can be opened by anyone.
+that period of 10 days, a stabilization PR can be opened by anyone.
 -->
 
 ### Unresolved Questions
 
 <!--
 Include any open questions that need to be answered before the feature can be
-stabilised. If multiple (unrelated) big questions come up, it can be a good idea
+stabilized. If multiple (unrelated) big questions come up, it can be a good idea
 to open a separate issue for each, to make it easier to keep track of the
 discussions.
 

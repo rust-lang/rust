@@ -8,7 +8,7 @@ labels: C-tracking-issue
 NOTE: For library features, please use the "Library Tracking Issue" template instead.
 
 Thank you for creating a tracking issue! 📜 Tracking issues are for tracking a
-feature from implementation to stabilisation. Make sure to include the relevant
+feature from implementation to stabilization. Make sure to include the relevant
 RFC for the feature if it has one. Otherwise provide a short summary of the
 feature and link any relevant PRs or issues, and remove any sections that are
 not relevant to the feature.
@@ -32,7 +32,7 @@ Instead, open a dedicated issue for the specific matter and add the relevant fea
 ### Steps
 <!--
 Include each step required to complete the feature. Typically this is a PR
-implementing a feature, followed by a PR that stabilises the feature. However
+implementing a feature, followed by a PR that stabilizes the feature. However
 for larger features an implementation could be broken up into multiple PRs.
 -->
 
@@ -47,7 +47,7 @@ for larger features an implementation could be broken up into multiple PRs.
 ### Unresolved Questions
 <!--
 Include any open questions that need to be answered before the feature can be
-stabilised.
+stabilized.
 -->
 
 XXX --- list all the "unresolved questions" found in the RFC to ensure they are
