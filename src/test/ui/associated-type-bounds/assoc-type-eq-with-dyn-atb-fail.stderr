@@ -4,12 +4,6 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |     type Out = Box<dyn Bar<Assoc: Copy>>;
    |                            ^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
 
-error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:30:28
-   |
-LL |     type Out = Box<dyn Bar<Assoc: Copy>>;
-   |                            ^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

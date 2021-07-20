@@ -5,9 +5,9 @@
 #![feature(min_type_alias_impl_trait)]
 
 type X<A: ToString + Clone, B: ToString + Clone> = impl ToString;
-//~^ ERROR could not find defining uses
 
 fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
+    //~^ ERROR concrete type differs from previous defining opaque type
     (a.clone(), a)
 }
 

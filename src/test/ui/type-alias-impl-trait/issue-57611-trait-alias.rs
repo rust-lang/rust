@@ -19,10 +19,6 @@ struct X;
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
     //~^ ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
 
     fn bar(&self) -> Self::Bar {
         |x| x
