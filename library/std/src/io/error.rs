@@ -1,7 +1,9 @@
+#![allow(unreachable_patterns)] // For empty OsWithPath on some platforms.
+
 #[cfg(test)]
 mod tests;
 
-use crate::convert::From;
+use crate::convert::{From, TryInto};
 use crate::error;
 use crate::fmt;
 use crate::result;
@@ -68,9 +70,19 @@ impl fmt::Debug for Error {
 
 enum Repr {
     Os(i32),
+
+    // i16 to make sure the whole Repr remains two words in size.
+    // All known error codes fit in a i16.
+    // If for some reason it wouldn't fit, we just don't add the path and use
+    // Os(code) instead.
+    #[allow(dead_code)]
+    OsWithPath(i16, sys::fs::OsPathBuf),
+
     Simple(ErrorKind),
+
     // &str is a fat pointer, but &&str is a thin pointer.
     SimpleMessage(ErrorKind, &'static &'static str),
+
     Custom(Box<Custom>),
 }
 
@@ -470,6 +482,16 @@ impl Error {
         Error { repr: Repr::Os(code) }
     }
 
+    #[allow(dead_code)]
+    pub(crate) fn with_path(self, path: sys::fs::OsPathBuf) -> Self {
+        if let Repr::Os(code) = self.repr {
+            if let Ok(code) = code.try_into() {
+                return Self { repr: Repr::OsWithPath(code, path) };
+            }
+        }
+        self
+    }
+
     /// Returns the OS error that this error represents (if any).
     ///
     /// If this [`Error`] was constructed via [`last_os_error`] or
@@ -504,6 +526,7 @@ impl Error {
     pub fn raw_os_error(&self) -> Option<i32> {
         match self.repr {
             Repr::Os(i) => Some(i),
+            Repr::OsWithPath(i, _) => Some(i.into()),
             Repr::Custom(..) => None,
             Repr::Simple(..) => None,
             Repr::SimpleMessage(..) => None,
@@ -542,6 +565,7 @@ impl Error {
     pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::OsWithPath(..) => None,
             Repr::Simple(..) => None,
             Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => Some(&*c.error),
@@ -615,6 +639,7 @@ impl Error {
     pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::OsWithPath(..) => None,
             Repr::Simple(..) => None,
             Repr::SimpleMessage(..) => None,
             Repr::Custom(ref mut c) => Some(&mut *c.error),
@@ -653,6 +678,7 @@ impl Error {
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::OsWithPath(..) => None,
             Repr::Simple(..) => None,
             Repr::SimpleMessage(..) => None,
             Repr::Custom(c) => Some(c.error),
@@ -682,6 +708,7 @@ impl Error {
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),
+            Repr::OsWithPath(code, _) => sys::decode_error_kind(code.into()),
             Repr::Custom(ref c) => c.kind,
             Repr::Simple(kind) => kind,
             Repr::SimpleMessage(kind, _) => kind,
@@ -697,6 +724,13 @@ impl fmt::Debug for Repr {
                 .field("code", &code)
                 .field("kind", &sys::decode_error_kind(code))
                 .field("message", &sys::os::error_string(code))
+                .finish(),
+            Repr::OsWithPath(code, ref path) => fmt
+                .debug_struct("Os")
+                .field("code", &code)
+                .field("kind", &sys::decode_error_kind(code.into()))
+                .field("message", &sys::os::error_string(code.into()))
+                .field("path", path)
                 .finish(),
             Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -715,6 +749,9 @@ impl fmt::Display for Error {
                 let detail = sys::os::error_string(code);
                 write!(fmt, "{} (os error {})", detail, code)
             }
+            Repr::OsWithPath(code, _) => {
+                fmt::Display::fmt(&Self::from_raw_os_error(code.into()), fmt)
+            }
             Repr::Custom(ref c) => c.error.fmt(fmt),
             Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
             Repr::SimpleMessage(_, &msg) => msg.fmt(fmt),
@@ -727,7 +764,7 @@ impl error::Error for Error {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         match self.repr {
-            Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
+            Repr::Os(..) | Repr::OsWithPath(..) | Repr::Simple(..) => self.kind().as_str(),
             Repr::SimpleMessage(_, &msg) => msg,
             Repr::Custom(ref c) => c.error.description(),
         }
@@ -737,6 +774,7 @@ impl error::Error for Error {
     fn cause(&self) -> Option<&dyn error::Error> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::OsWithPath(..) => None,
             Repr::Simple(..) => None,
             Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => c.error.cause(),
@@ -746,6 +784,7 @@ impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
+            Repr::OsWithPath(..) => None,
             Repr::Simple(..) => None,
             Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => c.error.source(),

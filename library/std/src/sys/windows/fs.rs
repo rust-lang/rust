@@ -15,6 +15,9 @@ use crate::sys_common::FromInner;
 
 use super::to_u16s;
 
+#[derive(Debug)]
+pub enum OsPathBuf {}
+
 pub struct File {
     handle: Handle,
 }
