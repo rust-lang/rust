@@ -84,12 +84,58 @@ pub struct Ipv4Addr {
 /// IPv6 addresses are defined as 128-bit integers in [IETF RFC 4291].
 /// They are usually represented as eight 16-bit segments.
 ///
-/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
-///
 /// The size of an `Ipv6Addr` struct may vary depending on the target operating
 /// system.
 ///
 /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+///
+/// # Embedding IPv4 Addresses
+///
+/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// To assist in the transition from IPv4 to IPv6 two types of IPv6 addresses that embed an IPv4 address were defined:
+/// IPv4-compatible and IPv4-mapped addresses. Of these IPv4-compatible addresses have been officially deprecated.
+///
+/// Both types of addresses are not assigned any special meaning by this implementation,
+/// other than what the relevant standards prescribe. This means that an address like `::ffff:127.0.0.1`,
+/// while representing an IPv4 loopback address, is not itself an IPv6 loopback address; only `::1` is.
+/// To handle these so called "IPv4-in-IPv6" addresses, they have to first be converted to their canonical IPv4 address.
+///
+/// ### IPv4-Compatible IPv6 Addresses
+///
+/// IPv4-compatible IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.1], and have been officially deprecated.
+/// The RFC describes the format of an "IPv4-Compatible IPv6 address" as follows:
+///
+/// ```text
+/// |                80 bits               | 16 |      32 bits        |
+/// +--------------------------------------+--------------------------+
+/// |0000..............................0000|0000|    IPv4 address     |
+/// +--------------------------------------+----+---------------------+
+/// ```
+/// So `::a.b.c.d` would be an IPv4-compatible IPv6 address representing the IPv4 address `a.b.c.d`.
+///
+/// To convert from an IPv4 address to an IPv4-compatible IPv6 address, use [`Ipv4Addr::to_ipv6_compatible`].
+/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-compatible IPv6 address to the canonical IPv4 address.
+///
+/// [IETF RFC 4291 Section 2.5.5.1]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.1
+///
+/// ### IPv4-Mapped IPv6 Addresses
+///
+/// IPv4-mapped IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.2].
+/// The RFC describes the format of an "IPv4-Mapped IPv6 address" as follows:
+///
+/// ```text
+/// |                80 bits               | 16 |      32 bits        |
+/// +--------------------------------------+--------------------------+
+/// |0000..............................0000|FFFF|    IPv4 address     |
+/// +--------------------------------------+----+---------------------+
+/// ```
+/// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
+///
+/// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
+/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
+///
+/// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
 /// # Textual representation
 ///
@@ -758,13 +804,14 @@ impl Ipv4Addr {
         }
     }
 
-    /// Converts this address to an IPv4-compatible [`IPv6` address].
+    /// Converts this address to an [IPv4-compatible] [`IPv6` address].
     ///
     /// `a.b.c.d` becomes `::a.b.c.d`
     ///
-    /// This isn't typically the method you want; these addresses don't typically
-    /// function on modern systems. Use `to_ipv6_mapped` instead.
+    /// Note that IPv4-compatible addresses have been officially deprecated.
+    /// If you don't explicitly need an IPv4-compatible address for legacy reasons, consider using `to_ipv6_mapped` instead.
     ///
+    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
     /// [`IPv6` address]: Ipv6Addr
     ///
     /// # Examples
@@ -787,10 +834,11 @@ impl Ipv4Addr {
         }
     }
 
-    /// Converts this address to an IPv4-mapped [`IPv6` address].
+    /// Converts this address to an [IPv4-mapped] [`IPv6` address].
     ///
     /// `a.b.c.d` becomes `::ffff:a.b.c.d`
     ///
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
     /// [`IPv6` address]: Ipv6Addr
     ///
     /// # Examples
@@ -1193,11 +1241,13 @@ impl Ipv6Addr {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
     }
 
-    /// Returns [`true`] if this is a loopback address (::1).
+    /// Returns [`true`] if this is the [loopback address] (`::1`),
+    /// as defined in [IETF RFC 4291 section 2.5.3].
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// Contrary to IPv4, in IPv6 there is only one loopback address.
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [loopback address]: Ipv6Addr::LOCALHOST
+    /// [IETF RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
     ///
     /// # Examples
     ///
@@ -1468,13 +1518,14 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
-    /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
-    /// defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
+    /// Converts this address to an [`IPv4` address] if it's an [IPv4-mapped] address,
+    /// as defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
     ///
     /// `::ffff:a.b.c.d` becomes `a.b.c.d`.
     /// All addresses *not* starting with `::ffff` will return `None`.
     ///
     /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4-mapped]: Ipv6Addr
     /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
     ///
     /// # Examples
@@ -1501,12 +1552,19 @@ impl Ipv6Addr {
         }
     }
 
-    /// Converts this address to an [`IPv4` address]. Returns [`None`] if this address is
-    /// neither IPv4-compatible or IPv4-mapped.
+    /// Converts this address to an [`IPv4` address] if it is either
+    /// an [IPv4-compatible] address as defined in [IETF RFC 4291 section 2.5.5.1],
+    /// or an [IPv4-mapped] address as defined in [IETF RFC 4291 section 2.5.5.2],
+    /// otherwise returns [`None`].
     ///
     /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`
+    /// All addresses *not* starting with either all zeroes or `::ffff` will return `None`.
     ///
-    /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4 address]: Ipv4Addr
+    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
+    /// [IETF RFC 4291 section 2.5.5.1]: https://tools.ietf.org/html/rfc4291#section-2.5.5.1
+    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
     ///
     /// # Examples
     ///
