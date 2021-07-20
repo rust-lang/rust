@@ -1161,7 +1161,8 @@ pub trait Iterator {
     ///
     /// let a = [0, 1, 2, -3, 4, 5, -6];
     ///
-    /// let iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let iter = a.iter().map_while(|x| u32::
+    /// try_from(*x).ok());
     /// let vec = iter.collect::<Vec<_>>();
     ///
     /// // We have more elements which could fit in u32 (4, 5), but `map_while` returned `None` for `-3`
@@ -2215,6 +2216,61 @@ pub trait Iterator {
     {
         let first = self.next()?;
         Some(self.fold(first, f))
+    }
+
+    /// Reduces the elements to a single one by repeatedly applying a reducing
+    /// operation. If the closure returns a failure, the error is propagated
+    /// back to the caller immediately.
+    ///
+    /// [`None`] is returned when the iterator is empty.
+    ///
+    /// For iterators with at least one element, this is the same as calling
+    /// [`try_fold()`] with the first element of the iterator as the initial
+    /// accumulator value.
+    ///
+    /// [`try_fold()`]: Iterator::try_fold
+    ///
+    /// # Examples
+    ///
+    /// Safely calculate the sum of a series of numbers:
+    ///
+    /// ```
+    /// #![feature(iterator_try_reduce)]
+    ///
+    /// let numbers: Vec<usize> = vec![10, 20, 5, 23, 0];
+    /// let sum = numbers.into_iter().try_reduce(|x, y| x.checked_add(y));
+    /// assert_eq!(sum, Some(Some(58)));
+    /// ```
+    ///
+    /// Determine when a reduction was short circuited:
+    ///
+    /// ```
+    /// #![feature(iterator_try_reduce)]
+    ///
+    /// let numbers = vec![1, 2, 3, usize::MAX, 4, 5];
+    /// let sum = numbers.into_iter().try_reduce(|x, y| x.checked_add(y));
+    /// assert_eq!(sum, Some(None));
+    /// ```
+    ///
+    /// Determine when a reduction was not performed because there are no elements:
+    ///
+    /// ```
+    /// #![feature(iterator_try_reduce)]
+    ///
+    /// let numbers: Vec<usize> = Vec::new();
+    /// let sum = numbers.into_iter().try_reduce(|x, y| x.checked_add(y));
+    /// assert_eq!(sum, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_try_reduce", reason = "new API", issue = "87053")]
+    fn try_reduce<F, R>(&mut self, f: F) -> Option<R>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item, Self::Item) -> R,
+        R: Try<Output = Self::Item>,
+    {
+        let first = self.next()?;
+        Some(self.try_fold(first, f))
     }
 
     /// Tests if every element of the iterator matches a predicate.
