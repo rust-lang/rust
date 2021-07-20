@@ -50,7 +50,7 @@ cfg_if::cfg_if! {
             raw[bit / 8] |= 1 << (bit % 8);
             return 0;
         }
-    } else if #[cfg(not(target_os = "vxworks"))] {
+    } else {
         pub use libc::{sigemptyset, sigaddset};
     }
 }
