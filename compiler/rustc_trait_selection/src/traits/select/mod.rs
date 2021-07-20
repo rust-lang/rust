@@ -868,7 +868,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
-        cycle.all(|predicate| self.coinductive_predicate(predicate))
+        cycle.all(|predicate| {
+            debug!(?predicate, "coinductive_match");
+            self.coinductive_predicate(predicate)
+        })
     }
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
@@ -1572,8 +1575,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // NOTE: binder moved to (*)
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
+        debug!(?self_ty, "sized_conditions");
 
-        match self_ty.kind() {
+        match *self_ty.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)
