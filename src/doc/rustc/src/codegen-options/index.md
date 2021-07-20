@@ -71,9 +71,11 @@ If not specified, debug assertions are automatically enabled only if the
 This flag controls the generation of debug information. It takes one of the
 following values:
 
-* `0`: no debug info at all (the default).
-* `1`: line tables only.
-* `2`: full debug info.
+* `0` or `none`: no debug info at all (the default).
+* `line-directives-only`: line info directives only.
+* `line-tables-only`: line tables only.
+* `1` or `limited`: debug info without type information.
+* `2` or `full`: full debug info.
 
 Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 

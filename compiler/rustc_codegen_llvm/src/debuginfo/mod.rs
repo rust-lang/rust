@@ -372,7 +372,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         ) -> &'ll DIArray {
-            if cx.sess().opts.debuginfo == DebugInfo::Limited {
+            if cx.sess().opts.debuginfo != DebugInfo::Full {
                 return create_DIArray(DIB(cx), &[]);
             }
 

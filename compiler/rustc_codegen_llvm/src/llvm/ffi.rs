@@ -871,6 +871,7 @@ pub mod debuginfo {
         NoDebug,
         FullDebug,
         LineTablesOnly,
+        DebugDirectivesOnly,
     }
 
     impl DebugEmissionKind {
@@ -878,8 +879,9 @@ pub mod debuginfo {
             use rustc_session::config::DebugInfo;
             match kind {
                 DebugInfo::None => DebugEmissionKind::NoDebug,
-                DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,
-                DebugInfo::Full => DebugEmissionKind::FullDebug,
+                DebugInfo::LineDirectivesOnly => DebugEmissionKind::DebugDirectivesOnly,
+                DebugInfo::LineTablesOnly => DebugEmissionKind::LineTablesOnly,
+                DebugInfo::Limited | DebugInfo::Full => DebugEmissionKind::FullDebug,
             }
         }
     }

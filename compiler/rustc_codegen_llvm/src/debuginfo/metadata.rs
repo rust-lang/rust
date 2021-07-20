@@ -1012,24 +1012,7 @@ pub fn compile_unit_metadata(
     }
     .unwrap_or_default();
     let split_name = split_name.to_str().unwrap();
-
-    // FIXME(#60020):
-    //
-    //    This should actually be
-    //
-    //        let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
-    //
-    //    That is, we should set LLVM's emission kind to `LineTablesOnly` if
-    //    we are compiling with "limited" debuginfo. However, some of the
-    //    existing tools relied on slightly more debuginfo being generated than
-    //    would be the case with `LineTablesOnly`, and we did not want to break
-    //    these tools in a "drive-by fix", without a good idea or plan about
-    //    what limited debuginfo should exactly look like. So for now we keep
-    //    the emission kind as `FullDebug`.
-    //
-    //    See https://github.com/rust-lang/rust/issues/60020 for details.
-    let kind = DebugEmissionKind::FullDebug;
-    assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
+    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
