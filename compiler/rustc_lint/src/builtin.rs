@@ -38,7 +38,7 @@ use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, Att
 use rustc_feature::{GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{LocalDefId, LocalDefIdSet};
 use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, Node};
 use rustc_index::vec::Idx;
@@ -54,6 +54,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_target::abi::{LayoutOf, VariantIdx};
+use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -1205,9 +1206,30 @@ declare_lint! {
 
 declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
+fn get_transmute_from_to<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
+    let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
+        cx.qpath_res(qpath, expr.hir_id)
+    } else {
+        return None;
+    };
+    if let Res::Def(DefKind::Fn, did) = def {
+        if cx.tcx.fn_sig(did).abi() != RustIntrinsic || cx.tcx.item_name(did) != sym::transmute {
+            return None;
+        }
+        let sig = cx.typeck_results().node_type(expr.hir_id).fn_sig(cx.tcx);
+        let from = sig.inputs().skip_binder()[0];
+        let to = sig.output().skip_binder();
+        Some((from, to))
+    } else {
+        None
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        use rustc_target::spec::abi::Abi::RustIntrinsic;
         if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
@@ -1216,32 +1238,6 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
                                consider instead using an UnsafeCell";
                 cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());
             }
-        }
-
-        fn get_transmute_from_to<'tcx>(
-            cx: &LateContext<'tcx>,
-            expr: &hir::Expr<'_>,
-        ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.qpath_res(qpath, expr.hir_id)
-            } else {
-                return None;
-            };
-            if let Res::Def(DefKind::Fn, did) = def {
-                if !def_id_is_transmute(cx, did) {
-                    return None;
-                }
-                let sig = cx.typeck_results().node_type(expr.hir_id).fn_sig(cx.tcx);
-                let from = sig.inputs().skip_binder()[0];
-                let to = sig.output().skip_binder();
-                return Some((from, to));
-            }
-            None
-        }
-
-        fn def_id_is_transmute(cx: &LateContext<'_>, def_id: DefId) -> bool {
-            cx.tcx.fn_sig(def_id).abi() == RustIntrinsic
-                && cx.tcx.item_name(def_id) == sym::transmute
         }
     }
 }
@@ -3095,6 +3091,57 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
                     });
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `const_transmute_ptr_to_number` lint detects transmutes from a
+    /// pointer to a number in a `const` context.
+    ///
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// # #![allow(dead_code)]
+    /// pub const fn x() -> usize {
+    ///     unsafe { std::mem::transmute(&0) }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Transmuting a pointer to a number may be [undefined behavior]. See
+    /// [this issue] for details.
+    ///
+    /// [undefined behavior]: https://github.com/rust-lang/unsafe-code-guidelines/issues/286[
+    /// [this issue]: https://github.com/rust-lang/unsafe-code-guidelines/issues/286
+    pub CONST_TRANSMUTE_PTR_TO_NUMBER,
+    Deny,
+    "detects when a pointer is transmuted into a number in a const context"
+}
+
+declare_lint_pass!(ConstTransmutePtrToNumber => [CONST_TRANSMUTE_PTR_TO_NUMBER]);
+
+impl<'tcx> LateLintPass<'tcx> for ConstTransmutePtrToNumber {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
+        if !cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+            return;
+        }
+
+        if let Some((
+            &ty::RawPtr(..) | &ty::Ref(..),
+            &ty::Int(..) | &ty::Uint(..) | &ty::Float(..),
+        )) = get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
+        {
+            cx.struct_span_lint(CONST_TRANSMUTE_PTR_TO_NUMBER, expr.span, |lint| {
+                lint.build("cast of pointer to number")
+                    .note("this may be undefined behavior")
+                    .help("see <https://github.com/rust-lang/unsafe-code-guidelines/issues/286> for details")
+                    .emit()
+            });
         }
     }
 }

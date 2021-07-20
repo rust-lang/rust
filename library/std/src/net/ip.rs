@@ -1087,7 +1087,7 @@ impl Ipv6Addr {
     ///
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
-    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1149,7 +1149,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
     ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
     /// ```
-    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

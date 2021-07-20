@@ -231,7 +231,7 @@ impl str {
     #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
     #[inline(always)]
     #[allow(unused_attributes)]
-    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
     pub const fn as_bytes(&self) -> &[u8] {
         // SAFETY: const sound because we transmute two types with the same layout
         unsafe { mem::transmute(self) }

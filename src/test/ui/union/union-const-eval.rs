@@ -1,8 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
-#![feature(const_fn_union)]
+// check-pass
 
 union U {
     a: usize,

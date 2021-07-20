@@ -8,9 +8,3 @@ const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static usize 
 //~^ dereferencing raw pointers in constant functions
 
 fn main() {}
-
-const unsafe fn no_union() {
-    union Foo { x: (), y: () }
-    Foo { x: () }.y
-    //~^ unions in const fn
-}

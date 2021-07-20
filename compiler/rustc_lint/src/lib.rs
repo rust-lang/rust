@@ -199,6 +199,7 @@ macro_rules! late_lint_mod_passes {
                 TypeLimits: TypeLimits::new(),
                 NonSnakeCase: NonSnakeCase,
                 InvalidNoMangleItems: InvalidNoMangleItems,
+                ConstTransmutePtrToNumber: ConstTransmutePtrToNumber,
                 // Depends on access levels
                 UnreachablePub: UnreachablePub,
                 ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,

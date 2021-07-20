@@ -1,4 +1,3 @@
-#![feature(const_fn_transmute)]
 #![allow(dead_code)]
 
 extern crate core;

@@ -1,6 +1,5 @@
 // issue-49296: Unsafe shenigans in constants can result in missing errors
 
-#![feature(const_fn_union)]
 #![feature(const_fn_trait_bound)]
 
 const unsafe fn transmute<T: Copy, U: Copy>(t: T) -> U {

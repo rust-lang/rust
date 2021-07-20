@@ -1,4 +1,3 @@
-#![feature(const_fn_transmute)]
 #![warn(clippy::transmute_float_to_int)]
 
 fn float_to_int() {

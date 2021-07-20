@@ -287,6 +287,10 @@ declare_features! (
     (accepted, const_fn_unsize, "1.54.0", Some(64992), None),
     /// Allows `impl Trait` with multiple unrelated lifetimes.
     (accepted, member_constraints, "1.54.0", Some(61997), None),
+    /// Allows calling `transmute` in const fn
+    (accepted, const_fn_transmute, "1.55.0", Some(53605), None),
+    /// Allows accessing fields of unions inside `const` functions.
+    (accepted, const_fn_union, "1.55.0", Some(51909), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
