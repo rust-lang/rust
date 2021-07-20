@@ -1327,8 +1327,9 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
 /// # Example
 ///
 /// ```
+/// # use core::slice::Chunks;
 /// let slice = ['l', 'o', 'r', 'e', 'm'];
-/// let iter = slice.chunks(2);
+/// let iter: Chunks<char> = slice.chunks(2);
 /// ```
 ///
 /// [`chunks`]: slice::chunks
