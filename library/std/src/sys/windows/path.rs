@@ -28,6 +28,24 @@ pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'\\'
 }
 
+/// Gets the final component of a path. Unlike the public `Path::file_name`,
+/// this will not perform any normalization.
+///
+/// If `path` ends with a separator then it will return an empty string.
+/// If `path` is empty then it will return `None`.
+pub(crate) fn parse_filename(path: &OsStr) -> Option<&OsStr> {
+    if path.is_empty() {
+        None
+    } else {
+        let is_verbatim = path.bytes().starts_with(br"\\?\");
+        let is_separator = if is_verbatim { is_verbatim_sep } else { is_sep_byte };
+        let filename = path.bytes().rsplit(|&b| is_separator(b)).next().unwrap_or(&[]);
+        // SAFETY: We are only splitting the string on ASCII characters so it
+        // will remain valid WTF-8.
+        Some(unsafe { bytes_as_os_str(filename) })
+    }
+}
+
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     use Prefix::{DeviceNS, Disk, Verbatim, VerbatimDisk, VerbatimUNC, UNC};
 
