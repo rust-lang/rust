@@ -244,6 +244,11 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_ty(self, t);
     }
 
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        lint_callback!(self, check_infer, inf);
+        hir_visit::walk_inf(self, inf);
+    }
+
     fn visit_name(&mut self, sp: Span, name: Symbol) {
         lint_callback!(self, check_name, sp, name);
     }

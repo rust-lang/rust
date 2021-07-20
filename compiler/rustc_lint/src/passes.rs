@@ -33,6 +33,7 @@ macro_rules! late_lint_methods {
             fn check_expr(a: &$hir hir::Expr<$hir>);
             fn check_expr_post(a: &$hir hir::Expr<$hir>);
             fn check_ty(a: &$hir hir::Ty<$hir>);
+            fn check_infer(a: &$hir hir::InferArg);
             fn check_generic_arg(a: &$hir hir::GenericArg<$hir>);
             fn check_generic_param(a: &$hir hir::GenericParam<$hir>);
             fn check_generics(a: &$hir hir::Generics<$hir>);

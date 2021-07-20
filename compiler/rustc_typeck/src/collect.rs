@@ -130,6 +130,16 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
         }
         intravisit::walk_ty(self, t)
     }
+    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
+        match generic_arg {
+            hir::GenericArg::Infer(inf) => {
+                self.0.push(inf.span);
+                intravisit::walk_inf(self, inf);
+            }
+            hir::GenericArg::Type(t) => self.visit_ty(t),
+            _ => {}
+        }
+    }
 }
 
 struct CollectItemTypesVisitor<'tcx> {
@@ -1673,13 +1683,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
 }
 
 fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
-    generic_args
-        .iter()
-        .filter_map(|arg| match arg {
-            hir::GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        })
-        .any(is_suggestable_infer_ty)
+    generic_args.iter().any(|arg| match arg {
+        hir::GenericArg::Type(ty) => is_suggestable_infer_ty(ty),
+        hir::GenericArg::Infer(_) => true,
+        _ => false,
+    })
 }
 
 /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to

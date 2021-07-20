@@ -622,6 +622,7 @@ symbols! {
         generator,
         generator_state,
         generators,
+        generic_arg_infer,
         generic_associated_types,
         generic_param_attrs,
         get_context,

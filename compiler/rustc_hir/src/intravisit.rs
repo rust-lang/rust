@@ -436,11 +436,15 @@ pub trait Visitor<'v>: Sized {
     fn visit_label(&mut self, label: &'v Label) {
         walk_label(self, label)
     }
+    fn visit_infer(&mut self, inf: &'v InferArg) {
+        walk_inf(self, inf);
+    }
     fn visit_generic_arg(&mut self, generic_arg: &'v GenericArg<'v>) {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             GenericArg::Type(ty) => self.visit_ty(ty),
             GenericArg::Const(ct) => self.visit_anon_const(&ct.value),
+            GenericArg::Infer(inf) => self.visit_infer(inf),
         }
     }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
@@ -744,6 +748,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         TyKind::Typeof(ref expression) => visitor.visit_anon_const(expression),
         TyKind::Infer | TyKind::Err => {}
     }
+}
+
+pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) {
+    visitor.visit_id(inf.hir_id);
 }
 
 pub fn walk_qpath<'v, V: Visitor<'v>>(

@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, walk_inf, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -293,6 +293,14 @@ impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
         }
 
         walk_ty(self, t);
+    }
+
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        if let Some(target) = ImplicitHasherType::new(self.cx, &inf.to_ty()) {
+            self.found.push(target);
+        }
+
+        walk_inf(self, inf);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

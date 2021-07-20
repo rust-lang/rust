@@ -1768,6 +1768,7 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
                         hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                         hir::GenericArg::Type(ty) => GenericArg::Type(ty.clean(cx)),
                         hir::GenericArg::Const(ct) => GenericArg::Const(ct.clean(cx)),
+                        hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                     })
                     .collect(),
                 bindings: self.bindings.clean(cx),

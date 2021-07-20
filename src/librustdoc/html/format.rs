@@ -1424,6 +1424,7 @@ impl clean::GenericArg {
             clean::GenericArg::Lifetime(lt) => fmt::Display::fmt(&lt.print(), f),
             clean::GenericArg::Type(ty) => fmt::Display::fmt(&ty.print(cx), f),
             clean::GenericArg::Const(ct) => fmt::Display::fmt(&ct.print(cx.tcx()), f),
+            clean::GenericArg::Infer => fmt::Display::fmt("_", f),
         })
     }
 }

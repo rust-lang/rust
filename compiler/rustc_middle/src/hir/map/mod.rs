@@ -273,6 +273,7 @@ impl<'hir> Map<'hir> {
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
+            | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
             | Node::Binding(_)
@@ -879,6 +880,7 @@ impl<'hir> Map<'hir> {
                 node: VisibilityKind::Restricted { ref path, .. },
                 ..
             }) => path.span,
+            Node::Infer(i) => i.span,
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
             Node::MacroDef(macro_def) => macro_def.span,
@@ -1113,6 +1115,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::Param(_)) => node_str("param"),
         Some(Node::Arm(_)) => node_str("arm"),
         Some(Node::Block(_)) => node_str("block"),
+        Some(Node::Infer(_)) => node_str("infer"),
         Some(Node::Local(_)) => node_str("local"),
         Some(Node::Ctor(..)) => format!("ctor {}{}", path_str(), id_str),
         Some(Node::Lifetime(_)) => node_str("lifetime"),

@@ -331,6 +331,15 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         let ty = self.resolve(ty, &hir_ty.span);
         self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
     }
+
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        intravisit::walk_inf(self, inf);
+        // Ignore cases where the inference is a const.
+        if let Some(ty) = self.fcx.node_ty_opt(inf.hir_id) {
+            let ty = self.resolve(ty, &inf.span);
+            self.write_ty_to_typeck_results(inf.hir_id, ty);
+        }
+    }
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {

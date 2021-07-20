@@ -1188,6 +1188,14 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
+    fn visit_generic_arg(&mut self, generic_arg: &'tcx hir::GenericArg<'tcx>) {
+        match generic_arg {
+            hir::GenericArg::Type(t) => self.visit_ty(t),
+            hir::GenericArg::Infer(inf) => self.visit_infer(inf),
+            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
+        }
+    }
+
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         self.span = hir_ty.span;
         if let Some(typeck_results) = self.maybe_typeck_results {
@@ -1205,6 +1213,28 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         }
 
         intravisit::walk_ty(self, hir_ty);
+    }
+
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        self.span = inf.span;
+        if let Some(typeck_results) = self.maybe_typeck_results {
+            if let Some(ty) = typeck_results.node_type_opt(inf.hir_id) {
+                if self.visit(ty).is_break() {
+                    return;
+                }
+            }
+        } else {
+            let local_id = self.tcx.hir().local_def_id(inf.hir_id);
+            if self.tcx.opt_const_param_of(local_id).is_some() {
+                todo!();
+            }
+
+            // FIXME see above note for same issue.
+            if self.visit(rustc_typeck::hir_ty_to_ty(self.tcx, &inf.to_ty())).is_break() {
+                return;
+            }
+        }
+        intravisit::walk_inf(self, inf);
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
@@ -1441,6 +1471,14 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
+    }
+
+    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
+        match generic_arg {
+            hir::GenericArg::Type(t) => self.visit_ty(t),
+            hir::GenericArg::Infer(inf) => self.visit_ty(&inf.to_ty()),
+            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
+        }
     }
 
     fn visit_ty(&mut self, ty: &hir::Ty<'_>) {

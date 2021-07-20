@@ -103,6 +103,7 @@ impl<'a> State<'a> {
             Node::TraitRef(a) => self.print_trait_ref(&a),
             Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
             Node::Arm(a) => self.print_arm(&a),
+            Node::Infer(_) => self.s.word("_"),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(INDENT_UNIT);
@@ -437,13 +438,13 @@ impl<'a> State<'a> {
                 self.print_anon_const(e);
                 self.s.word(")");
             }
-            hir::TyKind::Infer => {
-                self.s.word("_");
-            }
             hir::TyKind::Err => {
                 self.popen();
                 self.s.word("/*ERROR*/");
                 self.pclose();
+            }
+            hir::TyKind::Infer => {
+                self.s.word("_");
             }
         }
         self.end()
@@ -1851,6 +1852,7 @@ impl<'a> State<'a> {
                         GenericArg::Lifetime(_) => {}
                         GenericArg::Type(ty) => s.print_type(ty),
                         GenericArg::Const(ct) => s.print_anon_const(&ct.value),
+                        GenericArg::Infer(_inf) => s.word("_"),
                     },
                 );
             }
