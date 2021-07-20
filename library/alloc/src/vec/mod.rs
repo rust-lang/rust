@@ -1001,11 +1001,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// If `len` is greater than the vector's current length, this has no
     /// effect.
     ///
-    /// The [`drain`] method can emulate `truncate`, but causes the excess
-    /// elements to be returned instead of dropped.
-    ///
     /// Note that this method has no effect on the allocated capacity
     /// of the vector.
+    ///
+    /// The [`split_off`] method is similar to `truncate`, but causes the
+    /// tail elements to be returned as a newly-allocated `Vec` instead
+    /// of being dropped. Note that [`Vec::drain`] can emulate `split_off`
+    /// and avoids this extra allocation by returning an iterator.
     ///
     /// # Examples
     ///
@@ -1017,8 +1019,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// No truncation occurs when `len` is greater than the vector's current
-    /// length:
+    /// No truncation or panic occurs when `len` is greater than the vector's
+    /// current length:
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3];
@@ -1036,7 +1038,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     ///
     /// [`clear`]: Vec::clear
-    /// [`drain`]: Vec::drain
+    /// [`split_off`]: Vec::split_off
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
         // This is safe because:
@@ -1835,11 +1837,14 @@ impl<T, A: Allocator> Vec<T, A> {
         self.len() == 0
     }
 
-    /// Splits the collection into two at the given index.
+    /// Splits the collection in two at the given index.
     ///
     /// Returns a newly allocated vector containing the elements in the range
     /// `[at, len)`. After the call, the original vector will be left containing
     /// the elements `[0, at)` with its previous capacity unchanged.
+    ///
+    /// If you do not need to own the tail `Vec`, use [`Vec::drain`] to avoid
+    /// an extra allocation.
     ///
     /// # Panics
     ///
