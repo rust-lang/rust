@@ -1,6 +1,6 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
-use crate::io::{self, Read};
+use crate::io::{self, Read, ReadBuf};
 use crate::mem;
 use crate::sys::cvt;
 use crate::sys::hermit::abi;

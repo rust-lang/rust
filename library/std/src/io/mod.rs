@@ -256,7 +256,6 @@ use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem::replace;
 use crate::ops::{Deref, DerefMut};
-use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys;
@@ -286,12 +285,16 @@ pub use self::stdio::{_eprint, _print};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{empty, repeat, sink, Empty, Repeat, Sink};
 
+#[unstable(feature = "read_buf", issue = "78485")]
+pub use self::readbuf::ReadBuf;
+
 mod buffered;
 pub(crate) mod copy;
 mod cursor;
 mod error;
 mod impls;
 pub mod prelude;
+mod readbuf;
 mod stdio;
 mod util;
 
@@ -372,40 +375,39 @@ where
     R: Read + ?Sized,
     F: FnMut(&R) -> usize,
 {
-    let start_len = buf.len();
-    let mut g = Guard { len: buf.len(), buf };
+    let initial_len = buf.len(); // need to know so we can return how many bytes we read
+
+    let mut initialized = 0; // Extra initalized bytes from previous loop iteration
     loop {
-        if g.len == g.buf.len() {
-            unsafe {
-                // FIXME(danielhenrymantilla): #42788
-                //
-                //   - This creates a (mut) reference to a slice of
-                //     _uninitialized_ integers, which is **undefined behavior**
-                //
-                //   - Only the standard library gets to soundly "ignore" this,
-                //     based on its privileged knowledge of unstable rustc
-                //     internals;
-                g.buf.reserve(reservation_size(r));
-                let capacity = g.buf.capacity();
-                g.buf.set_len(capacity);
-                r.initializer().initialize(&mut g.buf[g.len..]);
-            }
+        if buf.len() == buf.capacity() {
+            buf.reserve(reservation_size(r)); // buf is full, need more space
         }
 
-        let buf = &mut g.buf[g.len..];
-        match r.read(buf) {
-            Ok(0) => return Ok(g.len - start_len),
-            Ok(n) => {
-                // We can't allow bogus values from read. If it is too large, the returned vec could have its length
-                // set past its capacity, or if it overflows the vec could be shortened which could create an invalid
-                // string if this is called via read_to_string.
-                assert!(n <= buf.len());
-                g.len += n;
-            }
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+        let mut read_buf = ReadBuf::uninit(buf.spare_capacity_mut());
+        unsafe {
+            // add back extra initalized bytes, we don't want to reinitalize initalized bytes
+            read_buf.assume_init(initialized);
+        }
+
+        match r.read_buf(&mut read_buf) {
+            Ok(()) => {}
+            Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         }
+
+        if read_buf.filled_len() == 0 {
+            break;
+        }
+
+        // store how much was initialized but not filled
+        initialized = read_buf.initialized_len() - read_buf.filled_len();
+        let new_len = read_buf.filled_len() + buf.len();
+        unsafe {
+            buf.set_len(new_len);
+        }
     }
+
+    Ok(buf.len() - initial_len)
 }
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
@@ -441,6 +443,15 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     } else {
         Ok(())
     }
+}
+
+pub(crate) fn default_read_buf<F>(read: F, buf: &mut ReadBuf<'_>) -> Result<()>
+where
+    F: FnOnce(&mut [u8]) -> Result<usize>,
+{
+    let n = read(buf.initialize_unfilled())?;
+    buf.add_filled(n);
+    Ok(())
 }
 
 /// The `Read` trait allows for reading bytes from a source.
@@ -625,31 +636,6 @@ pub trait Read {
         false
     }
 
-    /// Determines if this `Read`er can work with buffers of uninitialized
-    /// memory.
-    ///
-    /// The default implementation returns an initializer which will zero
-    /// buffers.
-    ///
-    /// If a `Read`er guarantees that it can work properly with uninitialized
-    /// memory, it should call [`Initializer::nop()`]. See the documentation for
-    /// [`Initializer`] for details.
-    ///
-    /// The behavior of this method must be independent of the state of the
-    /// `Read`er - the method only takes `&self` so that it can be used through
-    /// trait objects.
-    ///
-    /// # Safety
-    ///
-    /// This method is unsafe because a `Read`er could otherwise return a
-    /// non-zeroing `Initializer` from another `Read` type without an `unsafe`
-    /// block.
-    #[unstable(feature = "read_initializer", issue = "42788")]
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::zeroing()
-    }
-
     /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
     /// All bytes read from this source will be appended to the specified buffer
@@ -806,6 +792,39 @@ pub trait Read {
     #[stable(feature = "read_exact", since = "1.6.0")]
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         default_read_exact(self, buf)
+    }
+
+    /// Pull some bytes from this source into the specified buffer.
+    ///
+    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to allow use
+    /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
+    ///
+    /// The default implementation delegates to `read`.
+    #[unstable(feature = "read_buf", issue = "78485")]
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+        default_read_buf(|b| self.read(b), buf)
+    }
+
+    /// Read the exact number of bytes required to fill `buf`.
+    ///
+    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to
+    /// allow use with uninitialized buffers.
+    #[unstable(feature = "read_buf", issue = "78485")]
+    fn read_buf_exact(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+        while buf.remaining() > 0 {
+            let prev_filled = buf.filled().len();
+            match self.read_buf(buf) {
+                Ok(()) => {}
+                Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            }
+
+            if buf.filled().len() == prev_filled {
+                return Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill buffer"));
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates a "by reference" adaptor for this instance of `Read`.
@@ -1268,50 +1287,6 @@ impl<'a> Deref for IoSlice<'a> {
     #[inline]
     fn deref(&self) -> &[u8] {
         self.0.as_slice()
-    }
-}
-
-/// A type used to conditionally initialize buffers passed to `Read` methods.
-#[unstable(feature = "read_initializer", issue = "42788")]
-#[derive(Debug)]
-pub struct Initializer(bool);
-
-impl Initializer {
-    /// Returns a new `Initializer` which will zero out buffers.
-    #[unstable(feature = "read_initializer", issue = "42788")]
-    #[inline]
-    pub fn zeroing() -> Initializer {
-        Initializer(true)
-    }
-
-    /// Returns a new `Initializer` which will not zero out buffers.
-    ///
-    /// # Safety
-    ///
-    /// This may only be called by `Read`ers which guarantee that they will not
-    /// read from buffers passed to `Read` methods, and that the return value of
-    /// the method accurately reflects the number of bytes that have been
-    /// written to the head of the buffer.
-    #[unstable(feature = "read_initializer", issue = "42788")]
-    #[inline]
-    pub unsafe fn nop() -> Initializer {
-        Initializer(false)
-    }
-
-    /// Indicates if a buffer should be initialized.
-    #[unstable(feature = "read_initializer", issue = "42788")]
-    #[inline]
-    pub fn should_initialize(&self) -> bool {
-        self.0
-    }
-
-    /// Initializes a buffer if necessary.
-    #[unstable(feature = "read_initializer", issue = "42788")]
-    #[inline]
-    pub fn initialize(&self, buf: &mut [u8]) {
-        if self.should_initialize() {
-            unsafe { ptr::write_bytes(buf.as_mut_ptr(), 0, buf.len()) }
-        }
     }
 }
 
@@ -2371,11 +2346,6 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         }
         self.second.read_vectored(bufs)
     }
-
-    unsafe fn initializer(&self) -> Initializer {
-        let initializer = self.first.initializer();
-        if initializer.should_initialize() { initializer } else { self.second.initializer() }
-    }
 }
 
 #[stable(feature = "chain_bufread", since = "1.9.0")]
@@ -2578,8 +2548,46 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
-    unsafe fn initializer(&self) -> Initializer {
-        self.inner.initializer()
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+        // Don't call into inner reader at all at EOF because it may still block
+        if self.limit == 0 {
+            return Ok(());
+        }
+
+        let prev_filled = buf.filled_len();
+
+        if self.limit <= buf.remaining() as u64 {
+            let extra_init = buf.initialized_len() - buf.filled_len();
+            let ibuf = unsafe { &mut buf.unfilled_mut()[..self.limit as usize] };
+
+            let mut sliced_buf = ReadBuf::uninit(ibuf);
+
+            unsafe {
+                sliced_buf.assume_init(extra_init);
+            }
+
+            self.inner.read_buf(&mut sliced_buf)?;
+
+            let new_init = sliced_buf.initialized_len();
+            let filled = sliced_buf.filled_len();
+
+            // sliced_buf / ibuf must drop here
+
+            unsafe {
+                buf.assume_init(new_init);
+            }
+
+            buf.add_filled(filled);
+
+            self.limit -= filled as u64;
+        } else {
+            self.inner.read_buf(buf)?;
+
+            //inner may unfill
+            self.limit -= buf.filled_len().saturating_sub(prev_filled) as u64;
+        }
+
+        Ok(())
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
