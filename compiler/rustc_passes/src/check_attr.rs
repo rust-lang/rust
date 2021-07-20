@@ -368,11 +368,15 @@ impl CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+
+            // Allow foreign functions for SIMD FFI.
+            Target::ForeignFn => true,
+
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("attribute should be applied to a function")
+                    lint.build("`#[target_feature]` attribute should be applied to a function")
                         .warn(
                             "this was previously accepted by the compiler but is \
                              being phased out; it will become a hard error in \
@@ -394,7 +398,10 @@ impl CheckAttrVisitor<'tcx> {
             _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(attr.span, "attribute should be applied to a function")
+                    .struct_span_err(
+                        attr.span,
+                        "`#[target_feature]` attribute should be applied to a function",
+                    )
                     .span_label(*span, "not a function")
                     .emit();
                 false

@@ -4,53 +4,56 @@
 // cross-compiled standard libraries.
 #![feature(no_core, auto_traits)]
 #![no_core]
-#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
+#![feature(
+    mips_target_feature,
+    repr_simd,
+    simd_ffi,
+    link_llvm_intrinsics,
+    lang_items,
+    rustc_attrs
+)]
 
 #[derive(Copy)]
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct F32x4(f32, f32, f32, f32);
 
 extern "C" {
     #[link_name = "llvm.sqrt.v4f32"]
-    fn vsqrt(x: f32x4) -> f32x4;
+    fn vsqrt(x: F32x4) -> F32x4;
 }
 
-pub fn foo(x: f32x4) -> f32x4 {
+pub fn foo(x: F32x4) -> F32x4 {
     unsafe { vsqrt(x) }
 }
 
 #[derive(Copy)]
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct I32x4(i32, i32, i32, i32);
 
 extern "C" {
     // _mm_sll_epi32
-    #[cfg(any(target_arch = "x86", target_arch = "x86-64"))]
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     #[link_name = "llvm.x86.sse2.psll.d"]
-    fn integer(a: i32x4, b: i32x4) -> i32x4;
+    fn integer(a: I32x4, b: I32x4) -> I32x4;
 
     // vmaxq_s32
     #[cfg(target_arch = "arm")]
     #[link_name = "llvm.arm.neon.vmaxs.v4i32"]
-    fn integer(a: i32x4, b: i32x4) -> i32x4;
+    fn integer(a: I32x4, b: I32x4) -> I32x4;
     // vmaxq_s32
     #[cfg(target_arch = "aarch64")]
     #[link_name = "llvm.aarch64.neon.maxs.v4i32"]
-    fn integer(a: i32x4, b: i32x4) -> i32x4;
+    fn integer(a: I32x4, b: I32x4) -> I32x4;
 
     // just some substitute foreign symbol, not an LLVM intrinsic; so
     // we still get type checking, but not as detailed as (ab)using
     // LLVM.
-    #[cfg(not(any(
-        target_arch = "x86",
-        target_arch = "x86-64",
-        target_arch = "arm",
-        target_arch = "aarch64"
-    )))]
-    fn integer(a: i32x4, b: i32x4) -> i32x4;
+    #[cfg(target_arch = "mips")]
+    #[target_feature(enable = "msa")]
+    fn integer(a: I32x4, b: I32x4) -> I32x4;
 }
 
-pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
+pub fn bar(a: I32x4, b: I32x4) -> I32x4 {
     unsafe { integer(a, b) }
 }
 

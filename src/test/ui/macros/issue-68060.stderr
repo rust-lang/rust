@@ -1,4 +1,4 @@
-error: attribute should be applied to a function
+error: `#[target_feature]` attribute should be applied to a function
   --> $DIR/issue-68060.rs:4:13
    |
 LL |             #[target_feature(enable = "")]
