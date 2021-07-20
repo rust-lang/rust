@@ -156,9 +156,9 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.push(lt.into());
                 stack.extend(obj.iter().rev().flat_map(|predicate| {
                     let (substs, opt_ty) = match predicate.skip_binder() {
-                        ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
-                        ty::ExistentialPredicate::Projection(p) => (p.substs, Some(p.ty)),
-                        ty::ExistentialPredicate::AutoTrait(_) =>
+                        ty::WhereClause::Trait(tr) => (tr.substs, None),
+                        ty::WhereClause::Projection(p) => (p.substs, Some(p.ty)),
+                        ty::WhereClause::AutoTrait(_) =>
                         // Empty iterator
                         {
                             (ty::InternalSubsts::empty(), None)

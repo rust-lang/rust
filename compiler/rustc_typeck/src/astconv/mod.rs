@@ -1389,17 +1389,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        let regular_trait_predicates = existential_trait_refs
-            .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait));
+        let regular_trait_predicates =
+            existential_trait_refs.map(|trait_ref| trait_ref.map_bound(ty::WhereClause::Trait));
         let auto_trait_predicates = auto_traits.into_iter().map(|trait_ref| {
-            ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()))
+            ty::Binder::dummy(ty::WhereClause::AutoTrait(trait_ref.trait_ref().def_id()))
         });
         // N.b. principal, projections, auto traits
         // FIXME: This is actually wrong with multiple principals in regards to symbol mangling
         let mut v = regular_trait_predicates
-            .chain(
-                existential_projections.map(|x| x.map_bound(ty::ExistentialPredicate::Projection)),
-            )
+            .chain(existential_projections.map(|x| x.map_bound(ty::WhereClause::Projection)))
             .chain(auto_trait_predicates)
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
@@ -2485,7 +2483,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
-        existential_predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        existential_predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();

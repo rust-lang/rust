@@ -776,7 +776,7 @@ pub trait PrettyPrinter<'tcx>:
 
     fn pretty_print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         // Generate the main trait ref, including associated types.
         let mut first = true;
@@ -1450,7 +1450,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
     }
@@ -2082,12 +2082,12 @@ impl ty::Binder<'tcx, ty::TraitRef<'tcx>> {
 
 forward_display_to_print! {
     Ty<'tcx>,
-    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     &'tcx ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.
-    ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>,
+    ty::Binder<'tcx, ty::WhereClause<'tcx>>,
     ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     ty::Binder<'tcx, ty::FnSig<'tcx>>,
@@ -2124,11 +2124,11 @@ define_print_and_forward_display! {
         p!(write("{} = ", name), print(self.ty))
     }
 
-    ty::ExistentialPredicate<'tcx> {
+    ty::WhereClause<'tcx> {
         match *self {
-            ty::ExistentialPredicate::Trait(x) => p!(print(x)),
-            ty::ExistentialPredicate::Projection(x) => p!(print(x)),
-            ty::ExistentialPredicate::AutoTrait(def_id) => {
+            ty::WhereClause::Trait(x) => p!(print(x)),
+            ty::WhereClause::Projection(x) => p!(print(x)),
+            ty::WhereClause::AutoTrait(def_id) => {
                 p!(print_def_path(def_id, &[]));
             }
         }

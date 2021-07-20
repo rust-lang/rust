@@ -105,7 +105,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             ty::Dynamic(preds, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
-                        ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
+                        ty::WhereClause::AutoTrait(_) | ty::WhereClause::Projection(_) => {
                             return Err((
                                 span,
                                 "trait bounds other than `Sized` \
@@ -113,7 +113,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
                                     .into(),
                             ));
                         },
-                        ty::ExistentialPredicate::Trait(trait_ref) => {
+                        ty::WhereClause::Trait(trait_ref) => {
                             if Some(trait_ref.def_id) != tcx.lang_items().sized_trait() {
                                 return Err((
                                     span,

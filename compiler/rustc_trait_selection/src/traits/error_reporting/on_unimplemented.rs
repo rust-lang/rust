@@ -225,7 +225,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             if let ty::Dynamic(traits, _) = self_ty.kind() {
                 for t in traits.iter() {
-                    if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
+                    if let ty::WhereClause::Trait(trait_ref) = t.skip_binder() {
                         flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
                     }
                 }

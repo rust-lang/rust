@@ -552,7 +552,7 @@ fn object_ty_for_trait<'tcx>(
 
     let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
 
-    let trait_predicate = ty::Binder::dummy(ty::ExistentialPredicate::Trait(
+    let trait_predicate = ty::Binder::dummy(ty::WhereClause::Trait(
         ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
     ));
 
@@ -572,7 +572,7 @@ fn object_ty_for_trait<'tcx>(
         // We *can* get bound lifetimes here in cases like
         // `trait MyTrait: for<'s> OtherTrait<&'s T, Output=bool>`.
         super_trait_ref.map_bound(|super_trait_ref| {
-            ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+            ty::WhereClause::Projection(ty::ExistentialProjection {
                 ty: tcx.mk_projection(item.def_id, super_trait_ref.substs),
                 item_def_id: item.def_id,
                 substs: super_trait_ref.substs,

@@ -348,17 +348,13 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialTraitRef<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
-    type Lifted = ty::ExistentialPredicate<'tcx>;
+impl<'a, 'tcx> Lift<'tcx> for ty::WhereClause<'a> {
+    type Lifted = ty::WhereClause<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
-            ty::ExistentialPredicate::Trait(x) => tcx.lift(x).map(ty::ExistentialPredicate::Trait),
-            ty::ExistentialPredicate::Projection(x) => {
-                tcx.lift(x).map(ty::ExistentialPredicate::Projection)
-            }
-            ty::ExistentialPredicate::AutoTrait(def_id) => {
-                Some(ty::ExistentialPredicate::AutoTrait(def_id))
-            }
+            ty::WhereClause::Trait(x) => tcx.lift(x).map(ty::WhereClause::Trait),
+            ty::WhereClause::Projection(x) => tcx.lift(x).map(ty::WhereClause::Projection),
+            ty::WhereClause::AutoTrait(def_id) => Some(ty::WhereClause::AutoTrait(def_id)),
         }
     }
 }
@@ -775,7 +771,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<'tcx, T> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_poly_existential_predicates(v))
     }

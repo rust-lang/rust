@@ -706,18 +706,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // See `assemble_candidates_for_unsizing` for more info.
                 let iter = data_a
                     .principal()
-                    .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
+                    .map(|b| b.map_bound(ty::WhereClause::Trait))
                     .into_iter()
                     .chain(
                         data_a
                             .projection_bounds()
-                            .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                            .map(|b| b.map_bound(ty::WhereClause::Projection)),
                     )
                     .chain(
-                        data_b
-                            .auto_traits()
-                            .map(ty::ExistentialPredicate::AutoTrait)
-                            .map(ty::Binder::dummy),
+                        data_b.auto_traits().map(ty::WhereClause::AutoTrait).map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b);

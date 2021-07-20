@@ -168,11 +168,11 @@ impl FlagComputation {
             &ty::Dynamic(obj, r) => {
                 for predicate in obj.iter() {
                     self.bound_computation(predicate, |computation, predicate| match predicate {
-                        ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
-                        ty::ExistentialPredicate::Projection(p) => {
+                        ty::WhereClause::Trait(tr) => computation.add_substs(tr.substs),
+                        ty::WhereClause::Projection(p) => {
                             computation.add_existential_projection(&p);
                         }
-                        ty::ExistentialPredicate::AutoTrait(_) => {}
+                        ty::WhereClause::AutoTrait(_) => {}
                     });
                 }
 

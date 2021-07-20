@@ -723,11 +723,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Dynamic(preds, _) => {
                                 for pred in preds.iter() {
                                     match pred.skip_binder() {
-                                        ty::ExistentialPredicate::Trait(tr) => {
+                                        ty::WhereClause::Trait(tr) => {
                                             bound_spans.push((def_span(tr.def_id), msg.clone()))
                                         }
-                                        ty::ExistentialPredicate::Projection(_)
-                                        | ty::ExistentialPredicate::AutoTrait(_) => {}
+                                        ty::WhereClause::Projection(_)
+                                        | ty::WhereClause::AutoTrait(_) => {}
                                     }
                                 }
                             }

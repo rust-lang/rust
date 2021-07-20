@@ -603,7 +603,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
 }
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>>>
-    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
+    for &'tcx ty::List<ty::ExistentialPredicate<'tcx>>
 {
     fn lower_into(
         self,
@@ -626,7 +626,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
             let (predicate, binders, _named_regions) =
                 collect_bound_vars(interner, interner.tcx, predicate);
             match predicate {
-                ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
+                ty::WhereClause::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
                     chalk_ir::Binders::new(
                         binders.clone(),
                         chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
@@ -638,7 +638,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                         }),
                     )
                 }
-                ty::ExistentialPredicate::Projection(predicate) => chalk_ir::Binders::new(
+                ty::WhereClause::Projection(predicate) => chalk_ir::Binders::new(
                     binders.clone(),
                     chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
                         alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
@@ -651,7 +651,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                         ty: predicate.ty.lower_into(interner),
                     }),
                 ),
-                ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
+                ty::WhereClause::AutoTrait(def_id) => chalk_ir::Binders::new(
                     binders.clone(),
                     chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
                         trait_id: chalk_ir::TraitId(def_id),

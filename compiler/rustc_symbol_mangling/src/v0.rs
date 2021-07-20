@@ -485,7 +485,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         // Okay, so this is a bit tricky. Imagine we have a trait object like
         // `dyn for<'a> Foo<'a, Bar = &'a ()>`. When we mangle this, the
@@ -520,19 +520,19 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 // because of HRTBs (only in the `Self` type). Also, auto traits
                 // could have different bound vars *anyways*.
                 match predicate.as_ref().skip_binder() {
-                    ty::ExistentialPredicate::Trait(trait_ref) => {
+                    ty::WhereClause::Trait(trait_ref) => {
                         // Use a type that can't appear in defaults of type parameters.
                         let dummy_self = cx.tcx.mk_ty_infer(ty::FreshTy(0));
                         let trait_ref = trait_ref.with_self_ty(cx.tcx, dummy_self);
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
                     }
-                    ty::ExistentialPredicate::Projection(projection) => {
+                    ty::WhereClause::Projection(projection) => {
                         let name = cx.tcx.associated_item(projection.item_def_id).ident;
                         cx.push("p");
                         cx.push_ident(&name.as_str());
                         cx = projection.ty.print(cx)?;
                     }
-                    ty::ExistentialPredicate::AutoTrait(def_id) => {
+                    ty::WhereClause::AutoTrait(def_id) => {
                         cx = cx.print_def_path(*def_id, &[])?;
                     }
                 }

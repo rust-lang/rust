@@ -224,9 +224,9 @@ where
                 // and are visited by shallow visitors.
                 for predicate in predicates {
                     let trait_ref = match predicate.skip_binder() {
-                        ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
-                        ty::ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
-                        ty::ExistentialPredicate::AutoTrait(def_id) => {
+                        ty::WhereClause::Trait(trait_ref) => trait_ref,
+                        ty::WhereClause::Projection(proj) => proj.trait_ref(tcx),
+                        ty::WhereClause::AutoTrait(def_id) => {
                             ty::ExistentialTraitRef { def_id, substs: InternalSubsts::empty() }
                         }
                     };

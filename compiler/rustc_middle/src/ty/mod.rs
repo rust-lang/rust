@@ -73,6 +73,7 @@ pub use self::sty::{
     GeneratorSubsts, GeneratorSubstsParts, ParamConst, ParamTy, PolyExistentialProjection,
     PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, ProjectionTy, Region, RegionKind,
     RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo, VarianceDiagMutKind,
+    WhereClause,
 };
 pub use self::trait_def::TraitDef;
 

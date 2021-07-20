@@ -150,7 +150,7 @@ pub enum TyKind<'tcx> {
     FnPtr(PolyFnSig<'tcx>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(&'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
+    Dynamic(&'tcx List<ExistentialPredicate<'tcx>>, ty::Region<'tcx>),
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
@@ -706,7 +706,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
-pub enum ExistentialPredicate<'tcx> {
+pub enum WhereClause<'tcx> {
     /// E.g., `Iterator`.
     Trait(ExistentialTraitRef<'tcx>),
     /// E.g., `Iterator::Item = T`.
@@ -715,11 +715,13 @@ pub enum ExistentialPredicate<'tcx> {
     AutoTrait(DefId),
 }
 
-impl<'tcx> ExistentialPredicate<'tcx> {
+pub type ExistentialPredicate<'tcx> = Binder<'tcx, WhereClause<'tcx>>;
+
+impl<'tcx> WhereClause<'tcx> {
     /// Compares via an ordering that will not change if modules are reordered or other changes are
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
     pub fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
-        use self::ExistentialPredicate::*;
+        use WhereClause::*;
         match (*self, *other) {
             (Trait(_), Trait(_)) => Ordering::Equal,
             (Projection(ref a), Projection(ref b)) => {
@@ -736,17 +738,17 @@ impl<'tcx> ExistentialPredicate<'tcx> {
     }
 }
 
-impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
+impl<'tcx> ExistentialPredicate<'tcx> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => {
+            WhereClause::Trait(tr) => {
                 self.rebind(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
-            ExistentialPredicate::Projection(p) => {
+            WhereClause::Projection(p) => {
                 self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
-            ExistentialPredicate::AutoTrait(did) => {
+            WhereClause::AutoTrait(did) => {
                 let trait_ref = self.rebind(ty::TraitRef {
                     def_id: did,
                     substs: tcx.mk_substs_trait(self_ty, &[]),
@@ -757,7 +759,7 @@ impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
+impl<'tcx> List<ExistentialPredicate<'tcx>> {
     /// Returns the "principal `DefId`" of this set of existential predicates.
     ///
     /// A Rust trait object type consists (in addition to a lifetime bound)
@@ -786,7 +788,7 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
     pub fn principal(&self) -> Option<ty::Binder<'tcx, ExistentialTraitRef<'tcx>>> {
         self[0]
             .map_bound(|this| match this {
-                ExistentialPredicate::Trait(tr) => Some(tr),
+                WhereClause::Trait(tr) => Some(tr),
                 _ => None,
             })
             .transpose()
@@ -803,7 +805,7 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
         self.iter().filter_map(|predicate| {
             predicate
                 .map_bound(|pred| match pred {
-                    ExistentialPredicate::Projection(projection) => Some(projection),
+                    WhereClause::Projection(projection) => Some(projection),
                     _ => None,
                 })
                 .transpose()
@@ -813,7 +815,7 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
     #[inline]
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| match predicate.skip_binder() {
-            ExistentialPredicate::AutoTrait(did) => Some(did),
+            WhereClause::AutoTrait(did) => Some(did),
             _ => None,
         })
     }
