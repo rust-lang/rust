@@ -45,7 +45,7 @@ pub struct CStore {
 
     /// This map is used to verify we get no hash conflicts between
     /// `StableCrateId` values.
-    stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
+    pub(crate) stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,

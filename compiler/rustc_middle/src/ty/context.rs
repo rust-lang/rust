@@ -1316,6 +1316,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Maps a StableCrateId to the corresponding CrateNum. This method assumes
+    /// that the crate in question has already been loaded by the CrateStore.
+    #[inline]
+    pub fn stable_crate_id_to_crate_num(self, stable_crate_id: StableCrateId) -> CrateNum {
+        if stable_crate_id == self.sess.local_stable_crate_id() {
+            LOCAL_CRATE
+        } else {
+            self.untracked_resolutions.cstore.stable_crate_id_to_crate_num(stable_crate_id)
+        }
+    }
+
     pub fn def_path_debug_str(self, def_id: DefId) -> String {
         // We are explicitly not going through queries here in order to get
         // crate name and stable crate id since this code is called from debug!()
