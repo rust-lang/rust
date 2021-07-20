@@ -1,0 +1,13 @@
+error: expected `fn`, found keyword `const`
+  --> $DIR/wrong-const-extern.rs:9:12
+   |
+LL | extern "C" const fn test() {}
+   | -----------^^^^^
+   | |          |
+   | |          expected `fn`
+   | help: `const` must come before `extern "C"`: `const extern "C"`
+   |
+   = note: keyword order for functions declaration is `<visibility>`, `const`, `async`, `unsafe`, `extern`, `"<ABI>"`
+
+error: aborting due to previous error
+
