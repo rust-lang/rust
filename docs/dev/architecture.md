@@ -3,13 +3,8 @@
 This document describes the high-level architecture of rust-analyzer.
 If you want to familiarize yourself with the code base, you are just in the right place!
 
-See also the [guide](./guide.md), which walks through a particular snapshot of rust-analyzer code base.
-
-Yet another resource is this playlist with videos about various parts of the analyzer:
-
-https://www.youtube.com/playlist?list=PL85XCvVPmGQho7MZkdW-wtPtuJcFpzycE
-
-Note that the guide and videos are pretty dated, this document should be, in general, fresher.
+You might also enjoy ["Explaining Rust Analyzer"](https://www.youtube.com/playlist?list=PLhb66M_x9UmrqXhQuIpWC5VgTdrGxMx3y) series on YouTube.
+It goes deeper than what is covered in this document, but will take some time to watch.
 
 See also these implementation-related blog posts:
 
@@ -18,6 +13,9 @@ See also these implementation-related blog posts:
 * https://rust-analyzer.github.io/blog/2020/09/16/challeging-LR-parsing.html
 * https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html
 * https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html
+
+For older, by now mostly outdated stuff, see the [guide](./guide.md) and [another playlist](https://www.youtube.com/playlist?list=PL85XCvVPmGQho7MZkdW-wtPtuJcFpzycE).
+
 
 ## Bird's Eye View
 

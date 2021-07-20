@@ -10,7 +10,7 @@ use always_assert::always;
 use crossbeam_channel::{select, Receiver};
 use ide::{FileId, PrimeCachesProgress};
 use ide_db::base_db::VfsPath;
-use lsp_server::{Connection, Notification, Request, Response};
+use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::ChangeKind;
 
@@ -60,7 +60,7 @@ enum Event {
 
 #[derive(Debug)]
 pub(crate) enum Task {
-    Response(Response),
+    Response(lsp_server::Response),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     PrimeCaches(PrimeCachesProgress),
     FetchWorkspace(ProjectWorkspaceProgress),
@@ -466,7 +466,7 @@ impl GlobalState {
         self.register_request(&req, request_received);
 
         if self.shutdown_requested {
-            self.respond(Response::new_err(
+            self.respond(lsp_server::Response::new_err(
                 req.id,
                 lsp_server::ErrorCode::InvalidRequest as i32,
                 "Shutdown already requested.".to_owned(),
@@ -674,7 +674,7 @@ impl GlobalState {
                     },
                     |this, resp| {
                         log::debug!("config update response: '{:?}", resp);
-                        let Response { error, result, .. } = resp;
+                        let lsp_server::Response { error, result, .. } = resp;
 
                         match (error, result) {
                             (Some(err), _) => {
