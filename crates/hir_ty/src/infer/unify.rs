@@ -302,18 +302,6 @@ impl<'a> InferenceTable<'a> {
         self.resolve_with_fallback(t, |_, _, d, _| d)
     }
 
-    /// This makes a copy of the given `t` where all unbound inference variables
-    /// have been replaced by fresh ones. This is useful for 'speculatively'
-    /// unifying the result with something, without affecting the original types.
-    pub(crate) fn reinstantiate<T>(&mut self, t: T) -> T::Result
-    where
-        T: HasInterner<Interner = Interner> + Fold<Interner>,
-        T::Result: HasInterner<Interner = Interner> + Fold<Interner, Result = T::Result>,
-    {
-        let canonicalized = self.canonicalize(t);
-        self.var_unification_table.instantiate_canonical(&Interner, canonicalized.value)
-    }
-
     /// Unify two types and register new trait goals that arise from that.
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
         let result = if let Ok(r) = self.try_unify(ty1, ty2) {
