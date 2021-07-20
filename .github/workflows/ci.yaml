@@ -57,7 +57,7 @@ jobs:
       run: cargo test --no-run --locked
 
     - name: Test
-      run: cargo test -- --nocapture
+      run: cargo test -- --nocapture --quiet
 
   # Weird targets to catch non-portable code
   rust-cross:
