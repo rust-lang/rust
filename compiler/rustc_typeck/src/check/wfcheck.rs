@@ -199,6 +199,40 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
     check_associated_item(tcx, trait_item.hir_id(), trait_item.span, method_sig);
+
+    let encl_trait_hir_id = tcx.hir().get_parent_item(hir_id);
+    let encl_trait = tcx.hir().expect_item(encl_trait_hir_id);
+    if [tcx.lang_items().fn_trait(), tcx.lang_items().fn_mut_trait()]
+        .contains(&Some(encl_trait.def_id.to_def_id()))
+        && trait_item.ident.name.to_ident_string() == "call"
+    {
+        // We are looking at the `call` function of the `fn` or `fn_mut` lang item.
+        // Do some rudimentary sanity checking to avoid an ICE later (issue #83471).
+        if let Some(method_sig @ hir::FnSig { decl, .. }) = method_sig {
+            if let &[self_ty, _] = &decl.inputs {
+                if !matches!(self_ty.kind, hir::TyKind::Rptr(_, _)) {
+                    tcx.sess.struct_span_err(
+                        self_ty.span,
+                        "first argument of `call` in `fn`/`fn_mut` lang item must be a reference",
+                    ).emit();
+                }
+            } else {
+                tcx.sess
+                    .struct_span_err(
+                        method_sig.span,
+                        "`call` function in `fn`/`fn_mut` lang item takes exactly two arguments",
+                    )
+                    .emit();
+            }
+        } else {
+            tcx.sess
+                .struct_span_err(
+                    trait_item.span,
+                    "`call` trait item in `fn`/`fn_mut` lang item must be a function",
+                )
+                .emit();
+        }
+    }
 }
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
