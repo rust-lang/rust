@@ -95,7 +95,7 @@ use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -123,8 +123,8 @@ rustc_index::newtype_index! {
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum LiveNodeKind {
     UpvarNode(Span),
-    ExprNode(Span),
-    VarDefNode(Span),
+    ExprNode(Span, HirId),
+    VarDefNode(Span, HirId),
     ClosureNode,
     ExitNode,
 }
@@ -133,8 +133,8 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     let sm = tcx.sess.source_map();
     match lnk {
         UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_diagnostic_string(s)),
-        ExprNode(s) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)),
-        VarDefNode(s) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
+        ExprNode(s, _) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)),
+        VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
         ClosureNode => "Closure node".to_owned(),
         ExitNode => "Exit node".to_owned(),
     }
@@ -297,7 +297,7 @@ impl IrMaps<'tcx> {
         }
 
         pat.each_binding(|_, hir_id, _, ident| {
-            self.add_live_node_for_node(hir_id, VarDefNode(ident.span));
+            self.add_live_node_for_node(hir_id, VarDefNode(ident.span, hir_id));
             self.add_variable(Local(LocalInfo {
                 id: hir_id,
                 name: ident.name,
@@ -391,14 +391,14 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
                 if let Res::Local(_var_hir_id) = path.res {
-                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
                 }
                 intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Closure(..) => {
                 // Interesting control flow (for loops can contain labeled
                 // breaks or continues)
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
 
                 // Make a live_node for each captured variable, with the span
                 // being the location that the variable is used.  This results
@@ -426,11 +426,11 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 
             // live nodes required for interesting control flow:
             hir::ExprKind::If(..) | hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
                 intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
                 intravisit::walk_expr(self, expr);
             }
 
@@ -977,32 +977,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-                let succ = if self.ir.tcx.is_ty_uninhabited_from(
-                    m,
-                    self.typeck_results.expr_ty(expr),
-                    self.param_env,
-                ) {
-                    self.exit_ln
-                } else {
-                    succ
-                };
+                let succ = self.check_is_ty_uninhabited(expr, succ);
                 let succ = self.propagate_through_exprs(args, succ);
                 self.propagate_through_expr(&f, succ)
             }
 
             hir::ExprKind::MethodCall(.., ref args, _) => {
-                let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-                let succ = if self.ir.tcx.is_ty_uninhabited_from(
-                    m,
-                    self.typeck_results.expr_ty(expr),
-                    self.param_env,
-                ) {
-                    self.exit_ln
-                } else {
-                    succ
-                };
-
+                let succ = self.check_is_ty_uninhabited(expr, succ);
                 self.propagate_through_exprs(args, succ)
             }
 
@@ -1273,6 +1254,66 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
 
         ln
+    }
+
+    fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
+        let ty = self.typeck_results.expr_ty(expr);
+        let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
+        if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
+            match self.ir.lnks[succ] {
+                LiveNodeKind::ExprNode(succ_span, succ_id) => {
+                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
+                }
+                LiveNodeKind::VarDefNode(succ_span, succ_id) => {
+                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
+                }
+                _ => {}
+            };
+            self.exit_ln
+        } else {
+            succ
+        }
+    }
+
+    fn warn_about_unreachable(
+        &mut self,
+        orig_span: Span,
+        orig_ty: Ty<'tcx>,
+        expr_span: Span,
+        expr_id: HirId,
+        descr: &str,
+    ) {
+        if !orig_ty.is_never() {
+            // Unreachable code warnings are already emitted during type checking.
+            // However, during type checking, full type information is being
+            // calculated but not yet available, so the check for diverging
+            // expressions due to uninhabited result types is pretty crude and
+            // only checks whether ty.is_never(). Here, we have full type
+            // information available and can issue warnings for less obviously
+            // uninhabited types (e.g. empty enums). The check above is used so
+            // that we do not emit the same warning twice if the uninhabited type
+            // is indeed `!`.
+
+            self.ir.tcx.struct_span_lint_hir(
+                lint::builtin::UNREACHABLE_CODE,
+                expr_id,
+                expr_span,
+                |lint| {
+                    let msg = format!("unreachable {}", descr);
+                    lint.build(&msg)
+                        .span_label(expr_span, &msg)
+                        .span_label(orig_span, "any code following this expression is unreachable")
+                        .span_note(
+                            orig_span,
+                            &format!(
+                                "this expression has type `{}`, which is uninhabited",
+                                orig_ty
+                            ),
+                        )
+                        .emit();
+                },
+            );
+        }
     }
 }
 
