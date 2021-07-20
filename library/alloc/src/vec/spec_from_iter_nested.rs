@@ -52,8 +52,11 @@ where
             // (via `with_capacity`) we do the same here.
             _ => panic!("capacity overflow"),
         };
-        // reuse extend specialization for TrustedLen
-        vector.spec_extend(iterator);
+        // Safety: The TrustedLen contract together with the `with_capacity`
+        // above guarantee that no further allocations should be needed to collect the iterator
+        unsafe {
+            vector.extend_prealloc_trusted_len(iterator);
+        }
         vector
     }
 }
