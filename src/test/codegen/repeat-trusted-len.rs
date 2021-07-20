@@ -1,3 +1,4 @@
+// no-system-llvm
 // compile-flags: -O
 //
 

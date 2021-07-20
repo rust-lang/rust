@@ -1,3 +1,4 @@
+// no-system-llvm
 // compile-flags: -C lto -C panic=abort -O
 // no-prefer-dynamic
 
