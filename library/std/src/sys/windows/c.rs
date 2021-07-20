@@ -735,6 +735,9 @@ if #[cfg(not(target_vendor = "uwp"))] {
 // UWP specific functions & types
 cfg_if::cfg_if! {
 if #[cfg(target_vendor = "uwp")] {
+    use use crate::os::raw::c_ulonglong;
+    pub type ULONGLONG = c_ulonglong;
+
     pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
     #[repr(C)]
@@ -744,6 +747,12 @@ if #[cfg(target_vendor = "uwp")] {
         pub NumberOfLinks: DWORD,
         pub DeletePending: BOOLEAN,
         pub Directory: BOOLEAN,
+    }
+
+    #[repr(C)]
+    pub struct FILE_ID_INFO {
+        pub VolumeSerialNumber: ULONGLONG,
+        pub FileId: u128
     }
 
     #[link(name = "bcrypt")]
