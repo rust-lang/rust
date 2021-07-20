@@ -390,7 +390,7 @@ fn test() {
     let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
                                    //^^^^^^^^^ expected [usize], got [usize; 3]
     let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
-                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &Bar<[usize]>, got &Bar<[i32; 3]>
+                                       //^^^^^^^^^ expected [usize], got [usize; 3]
 }
 "#,
     );
@@ -522,8 +522,7 @@ fn main() {
 
 #[test]
 fn coerce_unsize_expected_type_2() {
-    // FIXME: this is wrong, #9560
-    check(
+    check_no_mismatches(
         r#"
 //- minicore: coerce_unsized
 struct InFile<T>;
@@ -540,7 +539,48 @@ fn test() {
     let x: InFile<()> = InFile;
     let n = &RecordField;
     takes_dyn(x.with_value(n));
-           // ^^^^^^^^^^^^^^^ expected InFile<&dyn AstNode>, got InFile<&RecordField>
+}
+        "#,
+    );
+}
+
+#[test]
+fn coerce_unsize_expected_type_3() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+enum Option<T> { Some(T), None }
+struct RecordField;
+trait AstNode {}
+impl AstNode for RecordField {}
+
+fn takes_dyn(it: Option<&dyn AstNode>) {}
+
+fn test() {
+    let x: InFile<()> = InFile;
+    let n = &RecordField;
+    takes_dyn(Option::Some(n));
+}
+        "#,
+    );
+}
+
+#[test]
+fn coerce_unsize_expected_type_4() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+struct B<T: ?Sized>(*const T);
+impl<T: ?Sized> B<T> {
+    fn new(t: T) -> Self { B(&t) }
+}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<B<U>> for B<T> {}
+
+fn test() {
+    let _: B<[isize]> = B::new({ [1, 2, 3] });
 }
         "#,
     );
