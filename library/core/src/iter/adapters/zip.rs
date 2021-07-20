@@ -91,7 +91,7 @@ where
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
-        Self: TrustedRandomAccess,
+        Self: TrustedRandomAccessNoCoerce,
     {
         // SAFETY: `ZipImpl::__iterator_get_unchecked` has same safety
         // requirements as `Iterator::__iterator_get_unchecked`.
@@ -126,7 +126,66 @@ trait ZipImpl<A, B> {
     // This has the same safety requirements as `Iterator::__iterator_get_unchecked`
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
-        Self: Iterator + TrustedRandomAccess;
+        Self: Iterator + TrustedRandomAccessNoCoerce;
+}
+
+// Work around limitations of specialization, requiring `default` impls to be repeated
+// in intermediary impls.
+macro_rules! zip_impl_general_defaults {
+    () => {
+        default fn new(a: A, b: B) -> Self {
+            Zip {
+                a,
+                b,
+                index: 0, // unused
+                len: 0,   // unused
+                a_len: 0, // unused
+            }
+        }
+
+        #[inline]
+        default fn next(&mut self) -> Option<(A::Item, B::Item)> {
+            let x = self.a.next()?;
+            let y = self.b.next()?;
+            Some((x, y))
+        }
+
+        #[inline]
+        default fn nth(&mut self, n: usize) -> Option<Self::Item> {
+            self.super_nth(n)
+        }
+
+        #[inline]
+        default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+        where
+            A: DoubleEndedIterator + ExactSizeIterator,
+            B: DoubleEndedIterator + ExactSizeIterator,
+        {
+            // The function body below only uses `self.a/b.len()` and `self.a/b.next_back()`
+            // and doesn’t call `next_back` too often, so this implementation is safe in
+            // the `TrustedRandomAccessNoCoerce` specialization
+
+            let a_sz = self.a.len();
+            let b_sz = self.b.len();
+            if a_sz != b_sz {
+                // Adjust a, b to equal length
+                if a_sz > b_sz {
+                    for _ in 0..a_sz - b_sz {
+                        self.a.next_back();
+                    }
+                } else {
+                    for _ in 0..b_sz - a_sz {
+                        self.b.next_back();
+                    }
+                }
+            }
+            match (self.a.next_back(), self.b.next_back()) {
+                (Some(x), Some(y)) => Some((x, y)),
+                (None, None) => None,
+                _ => unreachable!(),
+            }
+        }
+    };
 }
 
 // General Zip impl
@@ -137,54 +196,8 @@ where
     B: Iterator,
 {
     type Item = (A::Item, B::Item);
-    default fn new(a: A, b: B) -> Self {
-        Zip {
-            a,
-            b,
-            index: 0, // unused
-            len: 0,   // unused
-            a_len: 0, // unused
-        }
-    }
 
-    #[inline]
-    default fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        let x = self.a.next()?;
-        let y = self.b.next()?;
-        Some((x, y))
-    }
-
-    #[inline]
-    default fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        self.super_nth(n)
-    }
-
-    #[inline]
-    default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-    where
-        A: DoubleEndedIterator + ExactSizeIterator,
-        B: DoubleEndedIterator + ExactSizeIterator,
-    {
-        let a_sz = self.a.len();
-        let b_sz = self.b.len();
-        if a_sz != b_sz {
-            // Adjust a, b to equal length
-            if a_sz > b_sz {
-                for _ in 0..a_sz - b_sz {
-                    self.a.next_back();
-                }
-            } else {
-                for _ in 0..b_sz - a_sz {
-                    self.b.next_back();
-                }
-            }
-        }
-        match (self.a.next_back(), self.b.next_back()) {
-            (Some(x), Some(y)) => Some((x, y)),
-            (None, None) => None,
-            _ => unreachable!(),
-        }
-    }
+    zip_impl_general_defaults! {}
 
     #[inline]
     default fn size_hint(&self) -> (usize, Option<usize>) {
@@ -205,9 +218,32 @@ where
 
     default unsafe fn get_unchecked(&mut self, _idx: usize) -> <Self as Iterator>::Item
     where
-        Self: TrustedRandomAccess,
+        Self: TrustedRandomAccessNoCoerce,
     {
         unreachable!("Always specialized");
+    }
+}
+
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+where
+    A: TrustedRandomAccessNoCoerce + Iterator,
+    B: TrustedRandomAccessNoCoerce + Iterator,
+{
+    zip_impl_general_defaults! {}
+
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = cmp::min(self.a.size(), self.b.size());
+        (size, Some(size))
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
+        let idx = self.index + idx;
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::__iterator_get_unchecked`.
+        unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
     }
 }
 
@@ -330,14 +366,6 @@ where
             None
         }
     }
-
-    #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
-        let idx = self.index + idx;
-        // SAFETY: the caller must uphold the contract for
-        // `Iterator::__iterator_get_unchecked`.
-        unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -354,6 +382,15 @@ unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 where
     A: TrustedRandomAccess,
     B: TrustedRandomAccess,
+{
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNoCoerce for Zip<A, B>
+where
+    A: TrustedRandomAccessNoCoerce,
+    B: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT;
 }
@@ -417,7 +454,9 @@ impl<A: Debug, B: Debug> ZipFmt<A, B> for Zip<A, B> {
     }
 }
 
-impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B> for Zip<A, B> {
+impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoerce> ZipFmt<A, B>
+    for Zip<A, B>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // It's *not safe* to call fmt on the contained iterators, since once
         // we start iterating they're in strange, potentially unsafe, states.
@@ -431,34 +470,70 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///
 /// The iterator's `size_hint` must be exact and cheap to call.
 ///
-/// `size` may not be overridden.
+/// `TrustedRandomAccessNoCoerce::size` may not be overridden.
 ///
-/// `<Self as Iterator>::__iterator_get_unchecked` must be safe to call
-/// provided the following conditions are met.
+/// All subtypes and all supertypes of `Self` must also implement `TrustedRandomAccess`.
+/// In particular, this means that types with non-invariant parameters usually can not have
+/// an impl for `TrustedRandomAccess` that depends on any trait bounds on such parameters, except
+/// for bounds that come from the respective struct/enum definition itself, or bounds involving
+/// traits that themselves come with a guarantee similar to this one.
+///
+/// If `Self: ExactSizeIterator` then `self.len()` must always produce results consistent
+/// with `self.size()`.
+///
+/// If `Self: Iterator`, then `<Self as Iterator>::__iterator_get_unchecked(&mut self, idx)`
+/// must be safe to call provided the following conditions are met.
 ///
 /// 1. `0 <= idx` and `idx < self.size()`.
-/// 2. If `self: !Clone`, then `get_unchecked` is never called with the same
+/// 2. If `Self: !Clone`, then `self.__iterator_get_unchecked(idx)` is never called with the same
 ///    index on `self` more than once.
-/// 3. After `self.get_unchecked(idx)` has been called then `next_back` will
-///    only be called at most `self.size() - idx - 1` times.
-/// 4. After `get_unchecked` is called, then only the following methods will be
-///    called on `self`:
-///     * `std::clone::Clone::clone()`
-///     * `std::iter::Iterator::size_hint()`
-///     * `std::iter::DoubleEndedIterator::next_back()`
-///     * `std::iter::Iterator::__iterator_get_unchecked()`
-///     * `std::iter::TrustedRandomAccess::size()`
+/// 3. After `self.__iterator_get_unchecked(idx)` has been called, then `self.next_back()` will
+///    only be called at most `self.size() - idx - 1` times. If `Self: Clone` and `self` is cloned,
+///    then this number is calculated for `self` and its clone individually,
+///    but `self.next_back()` calls that happened before the cloning count for both `self` and the clone.
+/// 4. After `self.__iterator_get_unchecked(idx)` has been called, then only the following methods
+///    will be called on `self` or on any new clones of `self`:
+///     * `std::clone::Clone::clone`
+///     * `std::iter::Iterator::size_hint`
+///     * `std::iter::DoubleEndedIterator::next_back`
+///     * `std::iter::ExactSizeIterator::len`
+///     * `std::iter::Iterator::__iterator_get_unchecked`
+///     * `std::iter::TrustedRandomAccessNoCoerce::size`
+/// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
+///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
+///    been called, then no methods except for the ones listed under 4. are allowed to be called
+///    on the resulting value of type `T`, either. Multiple such coercion steps are allowed.
+///    Regarding 2. and 3., the number of times `__iterator_get_unchecked(idx)` or `next_back()` is
+///    called on `self` and the resulting value of type `T` (and on further coercion results with
+///    sub-subtypes) are added together and their sums must not exceed the specified bounds.
 ///
 /// Further, given that these conditions are met, it must guarantee that:
 ///
 /// * It does not change the value returned from `size_hint`
 /// * It must be safe to call the methods listed above on `self` after calling
-///   `get_unchecked`, assuming that the required traits are implemented.
-/// * It must also be safe to drop `self` after calling `get_unchecked`.
+///   `self.__iterator_get_unchecked(idx)`, assuming that the required traits are implemented.
+/// * It must also be safe to drop `self` after calling `self.__iterator_get_unchecked(idx)`.
+/// * If `T` is a subtype of `Self`, then it must be safe to coerce `self` to `T`.
+//
+// FIXME: Clarify interaction with SourceIter/InPlaceIterable. Calling `SouceIter::as_inner`
+// after `__iterator_get_unchecked` is supposed to be allowed.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]
-pub unsafe trait TrustedRandomAccess: Sized {
+pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
+
+/// Like [`TrustedRandomAccess`] but without any of the requirements / guarantees around
+/// coercions to subtypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
+/// without the requirement that subtypes / supertypes implement `TrustedRandomAccessNoCoerce`.
+///
+/// This trait was created in PR #85874 to fix soundness issue #85873 without performance regressions.
+/// It is subject to change as we might want to build a more generally useful (for performance
+/// optimizations) and more sophisticated trait or trait hierarchy that replaces or extends
+/// [`TrustedRandomAccess`] and `TrustedRandomAccessNoCoerce`.
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+#[rustc_specialization_trait]
+pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
     // Convenience method.
     fn size(&self) -> usize
     where
@@ -499,7 +574,7 @@ unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
     }
 }
 
-unsafe impl<I: Iterator + TrustedRandomAccess> SpecTrustedRandomAccess for I {
+unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.

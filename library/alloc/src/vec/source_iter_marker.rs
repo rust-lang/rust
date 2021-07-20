@@ -1,4 +1,4 @@
-use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccess};
+use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
@@ -71,6 +71,18 @@ where
         // drop any remaining values at the tail of the source
         // but prevent drop of the allocation itself once IntoIter goes out of scope
         // if the drop panics then we also leak any elements collected into dst_buf
+        //
+        // FIXME: Since `SpecInPlaceCollect::collect_in_place` above might use
+        // `__iterator_get_unchecked` internally, this call might be operating on
+        // a `vec::IntoIter` with incorrect internal state regarding which elements
+        // have already been “consumed”. However, the `TrustedRandomIteratorNoCoerce`
+        // implementation of `vec::IntoIter` is only present if the `Vec` elements
+        // don’t have a destructor, so it doesn’t matter if elements are “dropped multiple times”
+        // in this case.
+        // This argument technically currently lacks justification from the `# Safety` docs for
+        // `SourceIter`/`InPlaceIterable` and/or `TrustedRandomAccess`, so it might be possible that
+        // someone could inadvertently create new library unsoundness
+        // involving this `.forget_allocation_drop_remaining()` call.
         src.forget_allocation_drop_remaining();
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
@@ -101,6 +113,11 @@ fn write_in_place_with_drop<T>(
 trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
     /// Collects an iterator (`self`) into the destination buffer (`dst`) and returns the number of items
     /// collected. `end` is the last writable element of the allocation and used for bounds checks.
+    ///
+    /// This method is specialized and one of its implementations makes use of
+    /// `Iterator::__iterator_get_unchecked` calls with a `TrustedRandomAccessNoCoerce` bound
+    /// on `I` which means the caller of this method must take the safety conditions
+    /// of that trait into consideration.
     fn collect_in_place(&mut self, dst: *mut T, end: *const T) -> usize;
 }
 
@@ -124,7 +141,7 @@ where
 
 impl<T, I> SpecInPlaceCollect<T, I> for I
 where
-    I: Iterator<Item = T> + TrustedRandomAccess,
+    I: Iterator<Item = T> + TrustedRandomAccessNoCoerce,
 {
     #[inline]
     fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {

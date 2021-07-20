@@ -2,7 +2,9 @@ use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
 use core::intrinsics::arith_offset;
-use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
+use core::iter::{
+    FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
+};
 use core::marker::PhantomData;
 use core::mem::{self};
 use core::ptr::{self, NonNull};
@@ -166,7 +168,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
-        Self: TrustedRandomAccess,
+        Self: TrustedRandomAccessNoCoerce,
     {
         // SAFETY: the caller must guarantee that `i` is in bounds of the
         // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
@@ -219,7 +221,10 @@ unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 #[unstable(issue = "none", feature = "std_internals")]
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
 // and thus we can't implement drop-handling
-unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
+//
+// TrustedRandomAccess (without NoCoerce) must not be implemented because
+// subtypes/supertypes of `T` might not be `Copy`
+unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for IntoIter<T, A>
 where
     T: Copy,
 {
