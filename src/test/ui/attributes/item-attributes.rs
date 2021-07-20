@@ -102,6 +102,24 @@ mod test_attr_inner {
         // This is an attribute of mod m
         #![rustc_dummy = "val"]
     }
+
+    pub struct S {
+        #![rustc_dummy = "val"]
+    }
+
+    pub union U {
+        #![rustc_dummy = "val"]
+
+        _private: (),
+    }
+
+    pub enum E {
+        #![rustc_dummy = "val"]
+
+        Variant {
+            #![rustc_dummy = "val"]
+        }
+    }
 }
 
 mod test_attr_inner_then_outer {

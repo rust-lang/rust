@@ -1,6 +1,6 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, SeqSep, TrailingToken};
 
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
@@ -269,14 +269,14 @@ impl<'a> Parser<'a> {
             self.parse_type_alias(def())?
         } else if self.eat_keyword(kw::Enum) {
             // ENUM ITEM
-            self.parse_item_enum()?
+            self.parse_item_enum(attrs)?
         } else if self.eat_keyword(kw::Struct) {
             // STRUCT ITEM
-            self.parse_item_struct()?
+            self.parse_item_struct(attrs)?
         } else if self.is_kw_followed_by_ident(kw::Union) {
             // UNION ITEM
             self.bump(); // `union`
-            self.parse_item_union()?
+            self.parse_item_union(attrs)?
         } else if self.eat_keyword(kw::Macro) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
@@ -1096,13 +1096,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an enum declaration.
-    fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_enum(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
-        let (variants, _) =
-            self.parse_delim_comma_seq(token::Brace, |p| p.parse_enum_variant()).map_err(|e| {
+        self.expect(&token::OpenDelim(token::Brace))?;
+        attrs.append(&mut self.parse_inner_attributes()?);
+        let (variants, _) = self
+            .parse_seq_to_end(
+                &token::CloseDelim(token::Brace),
+                SeqSep::trailing_allowed(token::Comma),
+                |p| p.parse_enum_variant(),
+            )
+            .map_err(|e| {
                 self.recover_stmt();
                 e
             })?;
@@ -1117,7 +1124,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(
             variant_attrs,
             ForceCollect::No,
-            |this, variant_attrs| {
+            |this, mut variant_attrs| {
                 let vlo = this.token.span;
 
                 let vis = this.parse_visibility(FollowedByType::No)?;
@@ -1128,7 +1135,8 @@ impl<'a> Parser<'a> {
 
                 let struct_def = if this.check(&token::OpenDelim(token::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body("struct")?;
+                    let (fields, recovered) =
+                        this.parse_record_struct_body("struct", &mut variant_attrs)?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(token::Paren)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1156,7 +1164,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `struct Foo { ... }`.
-    fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_struct(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
         let mut generics = self.parse_generics()?;
@@ -1182,7 +1190,7 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) = self.parse_record_struct_body("struct")?;
+                let (fields, recovered) = self.parse_record_struct_body("struct", attrs)?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1190,7 +1198,7 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body("struct")?;
+            let (fields, recovered) = self.parse_record_struct_body("struct", attrs)?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
@@ -1213,17 +1221,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `union Foo { ... }`.
-    fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_union(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
         let mut generics = self.parse_generics()?;
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let (fields, recovered) = self.parse_record_struct_body("union", attrs)?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let (fields, recovered) = self.parse_record_struct_body("union", attrs)?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1239,10 +1247,12 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
+        attrs: &mut Vec<Attribute>,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
+            attrs.append(&mut self.parse_inner_attributes()?);
             while self.token != token::CloseDelim(token::Brace) {
                 let field = self.parse_field_def(adt_ty).map_err(|e| {
                     self.consume_block(token::Brace, ConsumeClosingDelim::No);
