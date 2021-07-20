@@ -1223,8 +1223,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         // If we have not found an error yet, we need to recursively descend into fields.
         match &self.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
-            FieldsShape::Array { .. } => {
-                // FIXME(#66151): For now, we are conservative and do not check arrays.
+            FieldsShape::Array { count, .. } => {
+                if *count > 0 && !self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)? {
+                    // Found non empty array with a type that is unhappy about this kind of initialization
+                    return Ok(false);
+                }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
