@@ -255,35 +255,21 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
             };
             (def, Some(format!("structfield.{}", field.name(db))))
         }
-        Definition::Macro(_) => todo!(),
-        Definition::SelfType(_) => todo!(),
+        // FIXME macros
+        Definition::Macro(_) => return None,
+        // FIXME impls
+        Definition::SelfType(_) => return None,
         Definition::Local(_) | Definition::GenericParam(_) | Definition::Label(_) => return None,
     };
 
-    let krate = match definition {
-        // Definition::module gives back the parent module, we don't want that as it fails for root modules
-        Definition::ModuleDef(ModuleDef::Module(module)) => module.krate(),
-        _ => definition.module(db)?.krate(),
-    };
+    let krate = crate_of_def(db, target)?;
+    let mut url = get_doc_base_url(db, &krate)?;
 
-    let mut base = krate.display_name(db)?.to_string();
-    let is_non_root_module = !matches!(
-        definition,
-        Definition::ModuleDef(ModuleDef::Module(module)) if krate.root_module(db) == module
-    );
-    if is_non_root_module {
-        target
-            .canonical_module_path(db)?
-            .flat_map(|it| it.name(db))
-            .for_each(|name| format_to!(base, "/{}", name));
+    if let Some(path) = mod_path_of_def(db, target) {
+        url = url.join(&path).ok()?;
     }
-    base += "/";
 
-    let mut url = get_doc_base_url(db, &krate)?
-        .join(&base)
-        .ok()?
-        .join(&get_symbol_filename(db, &target)?)
-        .ok()?;
+    url = url.join(&get_symbol_filename(db, &target)?).ok()?;
     url.set_fragment(frag.as_deref());
 
     Some(url.into())
@@ -296,31 +282,29 @@ fn rewrite_intra_doc_link(
     title: &str,
 ) -> Option<(String, String)> {
     let (link, ns) = parse_intra_doc_link(target);
+
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
-    let krate = resolved.module(db)?.krate();
-    let mut mod_path = String::new();
-    resolved
-        .canonical_module_path(db)?
-        .flat_map(|it| it.name(db))
-        .for_each(|name| format_to!(mod_path, "{}/", name));
-    let mut new_url = get_doc_base_url(db, &krate)?
-        .join(&format!("{}/", krate.display_name(db)?))
-        .ok()?
-        .join(&mod_path)
-        .ok()?;
-    if let Some(assoc_item) = resolved.as_assoc_item(db) {
+    let krate = crate_of_def(db, resolved)?;
+    let mut url = get_doc_base_url(db, &krate)?;
+
+    if let Some(path) = mod_path_of_def(db, resolved) {
+        url = url.join(&path).ok()?;
+    }
+
+    let (resolved, frag) = if let Some(assoc_item) = resolved.as_assoc_item(db) {
         let resolved = match assoc_item.container(db) {
             AssocItemContainer::Trait(t) => t.into(),
             AssocItemContainer::Impl(i) => i.self_ty(db).as_adt()?.into(),
         };
-        new_url = new_url.join(&get_symbol_filename(db, &resolved)?).ok()?;
         let frag = get_assoc_item_fragment(db, assoc_item)?;
-        new_url.set_fragment(Some(&frag));
+        (resolved, Some(frag))
     } else {
-        new_url = new_url.join(&get_symbol_filename(db, &resolved)?).ok()?;
+        (resolved, None)
     };
+    url = url.join(&get_symbol_filename(db, &resolved)?).ok()?;
+    url.set_fragment(frag.as_deref());
 
-    Some((new_url.into(), strip_prefixes_suffixes(title).to_string()))
+    Some((url.into(), strip_prefixes_suffixes(title).to_string()))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
@@ -329,21 +313,32 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
         return None;
     }
 
-    let module = def.module(db)?;
-    let krate = module.krate();
-    let mut base = krate.display_name(db)?.to_string();
-    let is_non_root_module = !matches!(
-        def,
-        ModuleDef::Module(module) if krate.root_module(db) == module
-    );
-    if is_non_root_module {
-        def.canonical_module_path(db)?
-            .flat_map(|it| it.name(db))
-            .for_each(|name| format_to!(base, "/{}", name));
-    }
-    base += "/";
+    let krate = crate_of_def(db, def)?;
+    let mut url = get_doc_base_url(db, &krate)?;
 
-    get_doc_base_url(db, &krate)?.join(&base).ok()?.join(target).ok().map(Into::into)
+    if let Some(path) = mod_path_of_def(db, def) {
+        url = url.join(&path).ok()?;
+    }
+
+    url = url.join(&get_symbol_filename(db, &def)?).ok()?;
+    url.join(target).ok().map(Into::into)
+}
+
+fn crate_of_def(db: &RootDatabase, def: ModuleDef) -> Option<Crate> {
+    let krate = match def {
+        // Definition::module gives back the parent module, we don't want that as it fails for root modules
+        ModuleDef::Module(module) => module.krate(),
+        _ => def.module(db)?.krate(),
+    };
+    Some(krate)
+}
+
+fn mod_path_of_def(db: &RootDatabase, def: ModuleDef) -> Option<String> {
+    def.canonical_module_path(db).map(|it| {
+        let mut path = String::new();
+        it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name));
+        path
+    })
 }
 
 /// Rewrites a markdown document, applying 'callback' to each link.
@@ -389,6 +384,7 @@ fn map_links<'e>(
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
 fn get_doc_base_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
+    let display_name = krate.display_name(db)?;
     krate
         .get_html_root_url(db)
         .or_else(|| {
@@ -397,9 +393,9 @@ fn get_doc_base_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
             //
             // FIXME: clicking on the link should just open the file in the editor,
             // instead of falling back to external urls.
-            Some(format!("https://docs.rs/{}/*/", krate.display_name(db)?))
+            Some(format!("https://docs.rs/{krate}/*/", krate = display_name))
         })
-        .and_then(|s| Url::parse(&s).ok())
+        .and_then(|s| Url::parse(&s).ok()?.join(&format!("{}/", display_name)).ok())
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.
