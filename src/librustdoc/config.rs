@@ -459,7 +459,9 @@ impl Options {
                 })
                 .collect(),
         ];
-        let default_settings = default_settings.into_iter().flatten()
+        let default_settings = default_settings
+            .into_iter()
+            .flatten()
             .map(
                 // The keys here become part of `data-` attribute names in the generated HTML.  The
                 // browser does a strange mapping when converting them into attributes on the
@@ -479,7 +481,7 @@ impl Options {
                 // `getSettingValue` in `storage.js.`) Converting `-` to `_` is simple in JS.
                 //
                 // The values will be HTML-escaped by the default Tera escaping.
-                |(k, v)| (k.replace('-', "_"), v)
+                |(k, v)| (k.replace('-', "_"), v),
             )
             .collect();
 
