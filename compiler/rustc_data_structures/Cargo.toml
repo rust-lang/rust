@@ -28,6 +28,7 @@ measureme = "9.1.0"
 libc = "0.2"
 stacker = "0.1.12"
 tempfile = "3.2"
+twox-hash = "1.6.0"
 
 [dependencies.parking_lot]
 version = "0.11"

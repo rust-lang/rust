@@ -1,9 +1,9 @@
-use crate::sip128::SipHasher128;
 use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::mem;
+use twox_hash::xxh3::{Hash128, HasherExt};
 
 #[cfg(test)]
 mod tests;
@@ -16,12 +16,12 @@ mod tests;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher {
-    state: SipHasher128,
+    state: Hash128,
 }
 
 impl ::std::fmt::Debug for StableHasher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.state)
+        write!(f, "StableHasher")
     }
 }
 
@@ -32,7 +32,7 @@ pub trait StableHasherResult: Sized {
 impl StableHasher {
     #[inline]
     pub fn new() -> Self {
-        StableHasher { state: SipHasher128::new_with_keys(0, 0) }
+        StableHasher { state: Hash128::with_seed(0) }
     }
 
     #[inline]
@@ -57,7 +57,8 @@ impl StableHasherResult for u64 {
 impl StableHasher {
     #[inline]
     pub fn finalize(self) -> (u64, u64) {
-        self.state.finish128()
+        let val = self.state.finish_ext();
+        (val as u64, (val >> 64) as u64)
     }
 }
 
