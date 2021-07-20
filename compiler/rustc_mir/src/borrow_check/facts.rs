@@ -12,7 +12,7 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 #[derive(Copy, Clone, Debug)]
-crate struct RustcFacts;
+pub struct RustcFacts;
 
 impl polonius_engine::FactTypes for RustcFacts {
     type Origin = RegionVid;
@@ -22,7 +22,7 @@ impl polonius_engine::FactTypes for RustcFacts {
     type Path = MovePathIndex;
 }
 
-crate type AllFacts = PoloniusFacts<RustcFacts>;
+pub type AllFacts = PoloniusFacts<RustcFacts>;
 
 crate trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the

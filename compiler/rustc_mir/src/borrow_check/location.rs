@@ -12,7 +12,7 @@ use rustc_middle::mir::{BasicBlock, Body, Location};
 /// granularity through outlives relations; however, the rich location
 /// table serves another purpose: it compresses locations from
 /// multiple words into a single u32.
-crate struct LocationTable {
+pub struct LocationTable {
     num_points: usize,
     statements_before_block: IndexVec<BasicBlock, usize>,
 }
@@ -24,7 +24,7 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Copy, Clone, Debug)]
-crate enum RichLocation {
+pub enum RichLocation {
     Start(Location),
     Mid(Location),
 }
@@ -48,23 +48,23 @@ impl LocationTable {
         Self { num_points, statements_before_block }
     }
 
-    crate fn all_points(&self) -> impl Iterator<Item = LocationIndex> {
+    pub fn all_points(&self) -> impl Iterator<Item = LocationIndex> {
         (0..self.num_points).map(LocationIndex::new)
     }
 
-    crate fn start_index(&self, location: Location) -> LocationIndex {
+    pub fn start_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
         LocationIndex::new(start_index + statement_index * 2)
     }
 
-    crate fn mid_index(&self, location: Location) -> LocationIndex {
+    pub fn mid_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
         LocationIndex::new(start_index + statement_index * 2 + 1)
     }
 
-    crate fn to_location(&self, index: LocationIndex) -> RichLocation {
+    pub fn to_location(&self, index: LocationIndex) -> RichLocation {
         let point_index = index.index();
 
         // Find the basic block. We have a vector with the
