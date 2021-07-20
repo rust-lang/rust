@@ -30,6 +30,8 @@ pub mod io;
 pub mod net;
 #[path = "../unsupported/os.rs"]
 pub mod os;
+#[path = "../unix/os_str.rs"]
+pub mod os_str;
 #[path = "../unix/path.rs"]
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
@@ -44,8 +46,6 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
-
-pub use crate::sys_common::os_str_bytes as os_str;
 
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
