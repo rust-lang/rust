@@ -689,6 +689,10 @@ impl u8 {
     pub fn escape_ascii(&self) -> ascii::EscapeDefault {
         ascii::escape_default(*self)
     }
+
+    pub(crate) fn is_utf8_char_boundary(self) -> bool {
+        (self as i8) >= -0x40
+    }
 }
 
 #[lang = "u16"]
