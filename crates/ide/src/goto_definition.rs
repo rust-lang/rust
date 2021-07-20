@@ -12,7 +12,7 @@ use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, Text
 
 use crate::{
     display::{ToNav, TryToNav},
-    doc_links::{doc_attributes, extract_definitions_from_markdown, resolve_doc_path_for_def},
+    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -46,7 +46,7 @@ pub(crate) fn goto_definition(
 
         let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
         let (_, link, ns) =
-            extract_definitions_from_markdown(docs.as_str()).into_iter().find(|(range, ..)| {
+            extract_definitions_from_docs(&docs).into_iter().find(|(range, ..)| {
                 doc_mapping.map(*range).map_or(false, |InFile { file_id, value: range }| {
                     file_id == position.file_id.into() && range.contains(position.offset)
                 })
