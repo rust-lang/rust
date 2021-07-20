@@ -13,6 +13,9 @@
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
+#![allow(incomplete_features)] // FIXME: We very much probably want to remove this line whenever possible
+#![feature(const_trait_impl)]
+#![feature(const_num_from_num)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
