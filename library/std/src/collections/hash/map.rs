@@ -2786,15 +2786,7 @@ where
 
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
-        // self.base.extend_reserve(additional);
-        // FIXME: hashbrown should implement this method.
-        // But until then, use the same reservation logic:
-
-        // Reserve the entire hint lower bound if the map is empty.
-        // Otherwise reserve half the hint (rounded up), so the map
-        // will only resize twice in the worst case.
-        let reserve = if self.is_empty() { additional } else { (additional + 1) / 2 };
-        self.base.reserve(reserve);
+        self.base.extend_reserve(additional);
     }
 }
 
