@@ -417,7 +417,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         move_prefix: &str,
     ) {
         let message = format!(
-            "{}move occurs because {} has type `{}`, which does not implement the `Copy` trait",
+            "{}`move`-borrow occurs because {} has type `{}`, which does not implement the `Copy` trait. Try to use `clone()`",
             move_prefix, place_desc, ty,
         );
         if let Some(span) = span {
