@@ -69,6 +69,9 @@ fn main() {
         check!(errors, &compiler_path);
         check!(error_codes_check, &[&src_path, &compiler_path]);
 
+        // Checks for rustdoc.
+        check!(rustdoc_html_ids, &src_path);
+
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);
 
