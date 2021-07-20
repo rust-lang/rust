@@ -22,6 +22,8 @@ function getSettingValue(settingName) {
         return current;
     }
     if (settingsDataset !== null) {
+        // See the comment for `default_settings.into_iter()` etc. in
+        // `Options::from_matches` in `librustdoc/config.rs`.
         var def = settingsDataset[settingName.replace(/-/g,'_')];
         if (def !== undefined) {
             return def;
