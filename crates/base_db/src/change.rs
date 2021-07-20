@@ -3,7 +3,6 @@
 
 use std::{fmt, sync::Arc};
 
-use rustc_hash::FxHashSet;
 use salsa::Durability;
 use vfs::FileId;
 
@@ -52,26 +51,15 @@ impl Change {
 
     pub fn apply(self, db: &mut dyn SourceDatabaseExt) {
         let _p = profile::span("RootDatabase::apply_change");
-        // db.request_cancellation();
-        // log::info!("apply_change {:?}", change);
         if let Some(roots) = self.roots {
-            let mut local_roots = FxHashSet::default();
-            let mut library_roots = FxHashSet::default();
             for (idx, root) in roots.into_iter().enumerate() {
                 let root_id = SourceRootId(idx as u32);
                 let durability = durability(&root);
-                if root.is_library {
-                    library_roots.insert(root_id);
-                } else {
-                    local_roots.insert(root_id);
-                }
                 for file_id in root.iter() {
                     db.set_file_source_root_with_durability(file_id, root_id, durability);
                 }
                 db.set_source_root_with_durability(root_id, Arc::new(root), durability);
             }
-            // db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-            // db.set_library_roots_with_durability(Arc::new(library_roots), Durability::HIGH);
         }
 
         for (file_id, text) in self.files_changed {
