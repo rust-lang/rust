@@ -782,6 +782,56 @@ fn cmp() {
 }
 
 #[test]
+fn in_network_ipv4() {
+    let address = Ipv4Addr::new(1, 2, 3, 4);
+    assert!(address.in_network(&Ipv4Addr::new(0, 0, 0, 0), 0));
+    assert!(address.in_network(&Ipv4Addr::new(1, 0, 0, 0), 8));
+    assert!(address.in_network(&Ipv4Addr::new(1, 2, 0, 0), 16));
+    assert!(address.in_network(&Ipv4Addr::new(1, 2, 3, 0), 24));
+    assert!(address.in_network(&Ipv4Addr::new(1, 2, 3, 4), 32));
+
+    // test a prefix that is not a multiple of 8
+    let network = Ipv4Addr::new(0, 0b01100100, 0, 0);
+    assert_eq!(Ipv4Addr::new(0, 0b01100011, 0, 0).in_network(&network, 14), false);
+    assert_eq!(Ipv4Addr::new(0, 0b01100100, 0, 0).in_network(&network, 14), true);
+    assert_eq!(Ipv4Addr::new(0, 0b01100111, 0, 0).in_network(&network, 14), true);
+    assert_eq!(Ipv4Addr::new(0, 0b01101000, 0, 0).in_network(&network, 14), false);
+}
+
+#[test]
+fn in_network_ipv6() {
+    let address = Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8);
+    assert!(address.in_network(&Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 0));
+    assert!(address.in_network(&Ipv6Addr::new(1, 0, 0, 0, 0, 0, 0, 0), 16));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 0, 0, 0, 0, 0, 0), 32));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 3, 0, 0, 0, 0, 0), 48));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 3, 4, 0, 0, 0, 0), 64));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 3, 4, 5, 0, 0, 0), 80));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 3, 4, 5, 6, 0, 0), 96));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 0), 112));
+    assert!(address.in_network(&Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 128));
+
+    // test a prefix that is not a multiple of 16
+    let network = Ipv6Addr::new(0, 0b01100100_00000000, 0, 0, 0, 0, 0, 0);
+    assert_eq!(
+        Ipv6Addr::new(0, 0b01100011_11111111, 0, 0, 0, 0, 0, 0).in_network(&network, 22),
+        false
+    );
+    assert_eq!(
+        Ipv6Addr::new(0, 0b01100100_00000000, 0, 0, 0, 0, 0, 0).in_network(&network, 22),
+        true
+    );
+    assert_eq!(
+        Ipv6Addr::new(0, 0b01100111_11111111, 0, 0, 0, 0, 0, 0).in_network(&network, 22),
+        true
+    );
+    assert_eq!(
+        Ipv6Addr::new(0, 0b01101000_00000000, 0, 0, 0, 0, 0, 0).in_network(&network, 22),
+        false
+    );
+}
+
+#[test]
 fn is_v4() {
     let ip = IpAddr::V4(Ipv4Addr::new(100, 64, 3, 3));
     assert!(ip.is_ipv4());

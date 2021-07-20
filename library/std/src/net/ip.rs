@@ -444,12 +444,9 @@ impl Ipv4Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_private(&self) -> bool {
-        match self.octets() {
-            [10, ..] => true,
-            [172, b, ..] if b >= 16 && b <= 31 => true,
-            [192, 168, ..] => true,
-            _ => false,
-        }
+        self.in_network(&Ipv4Addr::new(10, 0, 0, 0), 8)
+            || self.in_network(&Ipv4Addr::new(172, 16, 0, 0), 12)
+            || self.in_network(&Ipv4Addr::new(192, 168, 0, 0), 16)
     }
 
     /// Returns [`true`] if the address is link-local (`169.254.0.0/16`).
@@ -471,7 +468,7 @@ impl Ipv4Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_link_local(&self) -> bool {
-        matches!(self.octets(), [169, 254, ..])
+        self.in_network(&Ipv4Addr::new(169, 254, 0, 0), 16)
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -564,7 +561,7 @@ impl Ipv4Addr {
             && !self.is_reserved()
             && !self.is_benchmarking()
             // Make sure the address is not in 0.0.0.0/8
-            && self.octets()[0] != 0
+            && !self.in_network(&Ipv4Addr::UNSPECIFIED, 8)
     }
 
     /// Returns [`true`] if this address is part of the Shared Address Space defined in
@@ -586,7 +583,7 @@ impl Ipv4Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_shared(&self) -> bool {
-        self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
+        self.in_network(&Ipv4Addr::new(100, 64, 0, 0), 10)
     }
 
     /// Returns [`true`] if this address is part of `192.0.0.0/24`, which is reserved to
@@ -620,7 +617,7 @@ impl Ipv4Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_ietf_protocol_assignment(&self) -> bool {
-        self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
+        self.in_network(&Ipv4Addr::new(192, 0, 0, 0), 24)
     }
 
     /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
@@ -645,7 +642,7 @@ impl Ipv4Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_benchmarking(&self) -> bool {
-        self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
+        self.in_network(&Ipv4Addr::new(198, 18, 0, 0), 15)
     }
 
     /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
@@ -679,7 +676,7 @@ impl Ipv4Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_reserved(&self) -> bool {
-        self.octets()[0] & 240 == 240 && !self.is_broadcast()
+        self.in_network(&Ipv4Addr::new(240, 0, 0, 0), 4) && !self.is_broadcast()
     }
 
     /// Returns [`true`] if this is a multicast address (`224.0.0.0/4`).
@@ -702,7 +699,7 @@ impl Ipv4Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_multicast(&self) -> bool {
-        self.octets()[0] >= 224 && self.octets()[0] <= 239
+        self.in_network(&Ipv4Addr::new(224, 0, 0, 0), 4)
     }
 
     /// Returns [`true`] if this is a broadcast address (`255.255.255.255`).
@@ -750,12 +747,9 @@ impl Ipv4Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
-        match self.octets() {
-            [192, 0, 2, _] => true,
-            [198, 51, 100, _] => true,
-            [203, 0, 113, _] => true,
-            _ => false,
-        }
+        self.in_network(&Ipv4Addr::new(192, 0, 2, 0), 24)
+            || self.in_network(&Ipv4Addr::new(198, 51, 100, 0), 24)
+            || self.in_network(&Ipv4Addr::new(203, 0, 113, 0), 24)
     }
 
     /// Converts this address to an IPv4-compatible [`IPv6` address].
@@ -808,6 +802,21 @@ impl Ipv4Addr {
         let [a, b, c, d] = self.octets();
         Ipv6Addr {
             inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d] },
+        }
+    }
+
+    // Internal helper method to check if an IPv4  address is in a network.
+    // Not intended to be made public in it's current form.
+    //
+    // `prefix` must be <=32 and `network` must have all bits not in the prefix set to 0.
+    #[inline]
+    const fn in_network(&self, network: &Self, prefix: u8) -> bool {
+        if prefix == 0 {
+            true
+        } else {
+            // shift will not overflow as prefix > 0, so u32::BITS - prefix < 32
+            let mask: u32 = u32::MAX << (u32::BITS as u8 - prefix);
+            u32::from_be_bytes(self.octets()) & mask == u32::from_be_bytes(network.octets())
         }
     }
 }
@@ -1264,7 +1273,7 @@ impl Ipv6Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unique_local(&self) -> bool {
-        (self.segments()[0] & 0xfe00) == 0xfc00
+        self.in_network(&Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 0), 7)
     }
 
     /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
@@ -1343,7 +1352,7 @@ impl Ipv6Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_link_local(&self) -> bool {
-        (self.segments()[0] & 0xffc0) == 0xfe80
+        self.in_network(&Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10)
     }
 
     /// Returns [`true`] if this is an address reserved for documentation
@@ -1367,7 +1376,7 @@ impl Ipv6Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
-        (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
+        self.in_network(&Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0), 32)
     }
 
     /// Returns [`true`] if the address is a globally routable unicast address.
@@ -1465,7 +1474,7 @@ impl Ipv6Addr {
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_multicast(&self) -> bool {
-        (self.segments()[0] & 0xff00) == 0xff00
+        self.in_network(&Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0), 8)
     }
 
     /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
@@ -1545,6 +1554,21 @@ impl Ipv6Addr {
     #[inline]
     pub const fn octets(&self) -> [u8; 16] {
         self.inner.s6_addr
+    }
+
+    // Internal helper method to check if an IPv6 address is in a network.
+    // Not intended to be made public in it's current form.
+    //
+    // `prefix` must be <=128 and `network` must have all bits not in the prefix set to 0.
+    #[inline]
+    const fn in_network(&self, network: &Self, prefix: u8) -> bool {
+        if prefix == 0 {
+            true
+        } else {
+            // shift will not overflow as prefix > 0, so u128::BITS - prefix < 128
+            let mask: u128 = u128::MAX << (u128::BITS as u8 - prefix);
+            u128::from_be_bytes(self.octets()) & mask == u128::from_be_bytes(network.octets())
+        }
     }
 }
 
