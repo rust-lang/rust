@@ -1297,7 +1297,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return Ok(());
         }
 
-        let infcx = self.infcx;
         let param_env = self.param_env;
         let body = self.body;
         let mir_def_id = body.source.def_id().expect_local();
@@ -1380,7 +1379,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     locations,
                     ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
-                        |_cx| {
+                        |infcx| {
                             infcx.constrain_opaque_type(
                                 opaque_type_key,
                                 &opaque_decl,
