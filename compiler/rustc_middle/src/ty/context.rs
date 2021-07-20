@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepNode};
+use crate::dep_graph::DepGraph;
 use crate::hir::place::Place as HirPlace;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
@@ -88,18 +88,6 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
         tcx: TyCtxt<'tcx>,
         def_path_hash: DefPathHash,
     ) -> Option<DefId>;
-
-    /// If the given `dep_node`'s hash still exists in the current compilation,
-    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
-    ///
-    /// Normally, `store_foreign_def_id_hash` can be called directly by
-    /// the dependency graph when we construct a `DepNode`. However,
-    /// when we re-use a deserialized `DepNode` from the previous compilation
-    /// session, we only have the `DefPathHash` available. This method is used
-    /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
-    /// out for usage in the next compilation session.
-    fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode);
-    fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash);
 
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 

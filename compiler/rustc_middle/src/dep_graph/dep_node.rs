@@ -385,17 +385,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
     }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-        let hash = tcx.def_path_hash(*self);
-        // If this is a foreign `DefId`, store its current value
-        // in the incremental cache. When we decode the cache,
-        // we will use the old DefIndex as an initial guess for
-        // a lookup into the crate metadata.
-        if !self.is_local() {
-            if let Some(cache) = &tcx.on_disk_cache {
-                cache.store_foreign_def_id_hash(*self, hash);
-            }
-        }
-        hash.0
+        tcx.def_path_hash(*self).0
     }
 
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
