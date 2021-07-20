@@ -410,7 +410,24 @@ impl<'a> StripUnconfigured<'a> {
                 );
                 trees.push((bracket_group, Spacing::Alone));
                 let tokens = Some(LazyTokenStream::new(AttrAnnotatedTokenStream::new(trees)));
-                self.process_cfg_attr(attr::mk_attr_from_item(item, tokens, attr.style, span))
+                let attr = attr::mk_attr_from_item(item, tokens, attr.style, span);
+                if attr.has_name(sym::crate_type) {
+                    self.sess.parse_sess.buffer_lint(
+                        rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+                        attr.span,
+                        ast::CRATE_NODE_ID,
+                        "`crate_type` within an `#![cfg_attr] attribute is deprecated`",
+                    );
+                }
+                if attr.has_name(sym::crate_name) {
+                    self.sess.parse_sess.buffer_lint(
+                        rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+                        attr.span,
+                        ast::CRATE_NODE_ID,
+                        "`crate_name` within an `#![cfg_attr] attribute is deprecated`",
+                    );
+                }
+                self.process_cfg_attr(attr)
             })
             .collect()
     }
