@@ -1219,9 +1219,8 @@ checksum = "bcd1163ae48bda72a20ae26d66a04d3094135cadab911cff418ae5e33f253431"
 
 [[package]]
 name = "fs_extra"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
+version = "1.2.0"
+source = "git+https://github.com/webdesus/fs_extra#752fc4d1e6e4eff3e506bffe7196e2a537c6c52b"
 
 [[package]]
 name = "fst"
@@ -4869,9 +4868,9 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "snap"
-version = "1.0.1"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da73c8f77aebc0e40c300b93f0a5f1bece7a248a36eee287d4e095f35c7b7d6e"
+checksum = "dc725476a1398f0480d56cd0ad381f6f32acf2642704456f8f59a35df464b59a"
 
 [[package]]
 name = "socket2"

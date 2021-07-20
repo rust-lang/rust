@@ -137,6 +137,11 @@ impl<'a> ParserAnyMacro<'a> {
                 lint_node_id,
                 "trailing semicolon in macro used in expression position",
             );
+            parser
+                .sess
+                .span_diagnostic
+                .struct_span_err(parser.token.span, "Trailing semicolon in macro")
+                .emit();
             parser.bump();
         }
 
