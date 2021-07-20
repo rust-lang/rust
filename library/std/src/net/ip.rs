@@ -1239,7 +1239,10 @@ impl Ipv6Addr {
     pub const fn is_global(&self) -> bool {
         match self.multicast_scope() {
             Some(Ipv6MulticastScope::Global) => true,
-            None => self.is_unicast_global(),
+            None => {
+                self.has_unicast_global_scope()
+                    && !(self.is_unique_local() || self.is_documentation())
+            }
             _ => false,
         }
     }
@@ -1329,21 +1332,91 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// // The loopback address (`::1`) does not actually have link-local scope.
-    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast_link_local(), false);
+    /// assert_eq!(Ipv6Addr::LOCALHOST.has_unicast_link_local_scope(), false);
     ///
     /// // Only addresses in `fe80::/10` have link-local scope.
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), false);
-    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).has_unicast_link_local_scope(), false);
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).has_unicast_link_local_scope(), true);
     ///
     /// // Addresses outside the stricter `fe80::/64` also have link-local scope.
-    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
-    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).has_unicast_link_local_scope(), true);
+    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).has_unicast_link_local_scope(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
-    pub const fn is_unicast_link_local(&self) -> bool {
+    pub const fn has_unicast_link_local_scope(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
+    }
+
+    /// Returns `true` if the address is a unicast address with global scope,
+    /// as defined in [RFC 4291].
+    ///
+    /// Any unicast address has global scope if it is not:
+    ///  - the [unspecified address] (`::`)
+    ///  - the [loopback address] (`::1`)
+    ///  - a [link-local address] (`fe80::/10`)
+    ///
+    /// Note that an address that has global scope may still not be globally reachable.
+    /// If you want to check if an address appears to be globally reachable, use [`is_global`](Ipv6Addr::is_global).
+    ///
+    /// # Deprecation of Site-Local Addresses
+    ///
+    /// Site-local addresses have been officially deprecated, see [RFC 4291 section 2.5.7].
+    /// It is stated that the special behaviour of site-local unicast addresses must no longer be
+    /// supported, and that implementations must treat these addresses as having global scope.
+    ///
+    /// This method therefore returns [`true`] for any address that had the deprecated site-local scope (`fec0::/10`).
+    ///
+    /// # Stability Guarantees
+    ///
+    /// Note that this method's behavior may be subject to changes in the future,
+    /// as new IETF RFCs are published. Specifically [RFC 4291 section 2.4] mentions:
+    ///
+    /// > "Future specifications may redefine one or more sub-ranges of the Global Unicast space for other purposes"
+    ///
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [RFC 4291 section 2.4]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.4
+    /// [RFC 4291 section 2.5.7]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.7
+    /// [unspecified address]: Ipv6Addr::is_unspecified
+    /// [loopback address]: Ipv6Addr::is_loopback
+    /// [link-local address]: Ipv6Addr::has_unicast_link_local_scope
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// // The unspecified address (`::`) does not have unicast global scope
+    /// assert_eq!(Ipv6Addr::UNSPECIFIED.has_unicast_global_scope(), false);
+    ///
+    /// // The loopback address (`::1`) does not have unicast global scope.
+    /// assert_eq!(Ipv6Addr::LOCALHOST.has_unicast_global_scope(), false);
+    ///
+    /// // A unicast address with link-local scope (`fe80::/10`) does not have global scope.
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).has_unicast_global_scope(), false);
+    ///
+    /// // A unicast address that had the deprecated site-local scope (`fec0::/10`) now has global scope.
+    /// assert_eq!(Ipv6Addr::new(0xfec2, 0, 0, 0, 0, 0, 0, 0).has_unicast_global_scope(), true);
+    ///
+    /// // Any multicast address (`ff00::/8`) does not have unicast global scope;
+    /// // there is a difference between unicast global scope and multicast global scope.
+    /// assert_eq!(Ipv6Addr::new(0xff03, 0, 0, 0, 0, 0, 0, 0).has_unicast_global_scope(), false);
+    /// assert_eq!(Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0).has_unicast_global_scope(), false);
+    ///
+    /// // Any other address is defined as having unicast global scope.
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).has_unicast_global_scope(), true);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[inline]
+    pub const fn has_unicast_global_scope(&self) -> bool {
+        self.is_unicast()
+            && !self.is_unspecified()
+            && !self.is_loopback()
+            && !self.has_unicast_link_local_scope()
     }
 
     /// Returns [`true`] if this is an address reserved for documentation
@@ -1368,48 +1441,6 @@ impl Ipv6Addr {
     #[inline]
     pub const fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
-    }
-
-    /// Returns [`true`] if the address is a globally routable unicast address.
-    ///
-    /// The following return false:
-    ///
-    /// - the loopback address
-    /// - the link-local addresses
-    /// - unique local addresses
-    /// - the unspecified address
-    /// - the address range reserved for documentation
-    ///
-    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]
-    ///
-    /// ```no_rust
-    /// The special behavior of [the site-local unicast] prefix defined in [RFC3513] must no longer
-    /// be supported in new implementations (i.e., new implementations must treat this prefix as
-    /// Global Unicast).
-    /// ```
-    ///
-    /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[inline]
-    pub const fn is_unicast_global(&self) -> bool {
-        self.is_unicast()
-            && !self.is_loopback()
-            && !self.is_unicast_link_local()
-            && !self.is_unique_local()
-            && !self.is_unspecified()
-            && !self.is_documentation()
     }
 
     /// Returns the address's multicast scope if the address is multicast.
