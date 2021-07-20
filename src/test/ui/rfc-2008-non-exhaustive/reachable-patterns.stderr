@@ -1,0 +1,49 @@
+error: missing patterns of non_exhaustive type
+  --> $DIR/reachable-patterns.rs:31:5
+   |
+LL | /     match enumeration {
+LL | |         Bar::A => {},
+LL | |         Bar::B => {},
+LL | |         #[deny(reachable)]
+LL | |         _ => {}
+LL | |     }
+   | |_____^
+   |
+note: the lint level is defined here
+  --> $DIR/reachable-patterns.rs:3:9
+   |
+LL | #![deny(reachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^
+   = help: add `Bar::C` to match all reachable patterns
+
+error: missing patterns of non_exhaustive type
+  --> $DIR/reachable-patterns.rs:46:5
+   |
+LL | /     match NonExhaustiveEnum::Unit {
+LL | |         NonExhaustiveEnum::Unit => {},
+LL | |         NonExhaustiveEnum::Tuple(_) => {},
+LL | |         #[warn(reachable)]
+LL | |         _ => {}
+LL | |     }
+   | |_____^
+   |
+   = help: add `Struct` to match all reachable patterns
+
+error: missing patterns of non_exhaustive type
+  --> $DIR/reachable-patterns.rs:55:9
+   |
+LL |     let Foo { a, b, .. } = structure;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: add `c` to match all reachable patterns
+
+error: missing patterns of non_exhaustive type
+  --> $DIR/reachable-patterns.rs:59:9
+   |
+LL |     let FunctionalRecord { first_field, second_field, .. } = FunctionalRecord::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `third_field` to match all reachable patterns
+
+error: aborting due to 4 previous errors
+

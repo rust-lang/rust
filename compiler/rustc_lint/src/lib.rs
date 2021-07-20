@@ -57,6 +57,7 @@ mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
 mod passes;
+mod reachable_patterns;
 mod redundant_semicolon;
 mod traits;
 mod types;
@@ -81,6 +82,7 @@ use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
+use reachable_patterns::ReachablePattern;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -169,6 +171,7 @@ macro_rules! late_lint_passes {
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
                 NonPanicFmt: NonPanicFmt,
                 NoopMethodCall: NoopMethodCall,
+                ReachablePattern: ReachablePattern,
             ]
         );
     };
