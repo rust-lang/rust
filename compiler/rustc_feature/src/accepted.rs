@@ -287,6 +287,8 @@ declare_features! (
     (accepted, const_fn_unsize, "1.54.0", Some(64992), None),
     /// Allows `impl Trait` with multiple unrelated lifetimes.
     (accepted, member_constraints, "1.54.0", Some(61997), None),
+    /// Allows explicit discriminants on non-unit enum variants.
+    (accepted, arbitrary_enum_discriminant, "1.55.0", Some(60553), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
