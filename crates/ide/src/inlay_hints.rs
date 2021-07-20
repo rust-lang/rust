@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{known, Callable, HirDisplay, Semantics};
+use hir::{known, Callable, HasVisibility, HirDisplay, Semantics};
 use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
@@ -221,7 +221,11 @@ fn hint_iterator(
     let iter_mod = famous_defs.core_iter()?;
 
     // Assert that this struct comes from `core::iter`.
-    iter_mod.visibility_of(db, &strukt.into()).filter(|&vis| vis == hir::Visibility::Public)?;
+    if !(strukt.visibility(db) == hir::Visibility::Public
+        && strukt.module(db).path_to_root(db).contains(&iter_mod))
+    {
+        return None;
+    }
 
     if ty.impls_trait(db, iter_trait, &[]) {
         let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {

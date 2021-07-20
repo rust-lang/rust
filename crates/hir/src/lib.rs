@@ -430,13 +430,6 @@ impl Module {
             .collect()
     }
 
-    /// XXX: this O(N) rather O(1) method, avoid using it if you can.
-    pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
-        let def_map = self.id.def_map(db.upcast());
-        let module_data = &def_map[self.id.local_id];
-        module_data.scope.visibility_of((*def).into())
-    }
-
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))

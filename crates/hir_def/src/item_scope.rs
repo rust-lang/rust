@@ -109,12 +109,6 @@ impl ItemScope {
         self.values.values().copied()
     }
 
-    pub fn visibility_of(&self, def: ModuleDefId) -> Option<Visibility> {
-        self.name_of(ItemInNs::Types(def))
-            .or_else(|| self.name_of(ItemInNs::Values(def)))
-            .map(|(_, v)| v)
-    }
-
     pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
         self.unnamed_consts.iter().copied()
     }
@@ -138,6 +132,7 @@ impl ItemScope {
         }
     }
 
+    /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
     pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
         for (name, per_ns) in self.entries() {
             if let Some(vis) = item.match_with(per_ns) {
