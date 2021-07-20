@@ -1,5 +1,3 @@
-#![warn(clippy::invalid_atomic_ordering)]
-
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 fn main() {
@@ -19,27 +17,43 @@ fn main() {
 
     // AcqRel is always forbidden as a failure ordering
     let _ = x.fetch_update(Ordering::Relaxed, Ordering::AcqRel, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::Acquire, Ordering::AcqRel, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::Release, Ordering::AcqRel, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::AcqRel, Ordering::AcqRel, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::SeqCst, Ordering::AcqRel, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
 
     // Release is always forbidden as a failure ordering
     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Release, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::Acquire, Ordering::Release, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::Release, Ordering::Release, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::AcqRel, Ordering::Release, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
     let _ = x.fetch_update(Ordering::SeqCst, Ordering::Release, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be `Release` or `AcqRel`
 
     // Release success order forbids failure order of Acquire or SeqCst
     let _ = x.fetch_update(Ordering::Release, Ordering::Acquire, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be stronger
     let _ = x.fetch_update(Ordering::Release, Ordering::SeqCst, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be stronger
 
     // Relaxed success order also forbids failure order of Acquire or SeqCst
     let _ = x.fetch_update(Ordering::Relaxed, Ordering::SeqCst, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be stronger
     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Acquire, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be stronger
 
     // Acquire/AcqRel forbids failure order of SeqCst
     let _ = x.fetch_update(Ordering::Acquire, Ordering::SeqCst, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be stronger
     let _ = x.fetch_update(Ordering::AcqRel, Ordering::SeqCst, |old| Some(old + 1));
+    //~^ ERROR fetch_update's failure ordering may not be stronger
 }

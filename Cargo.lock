@@ -269,7 +269,7 @@ dependencies = [
  "crossbeam-utils 0.8.3",
  "curl",
  "curl-sys",
- "env_logger 0.9.0",
+ "env_logger 0.8.1",
  "filetime",
  "flate2",
  "fwdansi",
@@ -435,9 +435,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.69"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e70cc2f62c6ce1868963827bd677764c62d07c3d9a3e1fb1177ee1a9ab199eb2"
+checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
 dependencies = [
  "jobserver",
 ]
@@ -646,9 +646,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.47"
+version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd4ed89e0a5c3e50b15c0045fbe1ff8567b703bc07544faf935ddff0aaa7b65f"
+checksum = "d69484e04eab372f5f345920e3a8c7a06e7dcbb75c0944eccdc3e3160aeee3c7"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1086,19 +1086,6 @@ name = "env_logger"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54532e3223c5af90a6a757c90b5c5521564b07e5e7a958681bcd2afad421cdcd"
-dependencies = [
- "atty",
- "humantime 2.0.1",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
 dependencies = [
  "atty",
  "humantime 2.0.1",
@@ -4004,6 +3991,7 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
+ "if_chain",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -4243,16 +4231,12 @@ version = "0.0.0"
 dependencies = [
  "measureme",
  "rustc-rayon-core",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
- "rustc_index",
- "rustc_macros",
  "rustc_middle",
  "rustc_query_system",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
  "tracing",
 ]

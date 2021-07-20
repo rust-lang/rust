@@ -1,5 +1,3 @@
-#![warn(clippy::invalid_atomic_ordering)]
-
 use std::sync::atomic::{AtomicBool, Ordering};
 
 fn main() {
@@ -12,7 +10,9 @@ fn main() {
 
     // Disallowed load ordering modes
     let _ = x.load(Ordering::Release);
+    //~^ ERROR atomic loads cannot have `Release` or `AcqRel` ordering
     let _ = x.load(Ordering::AcqRel);
+    //~^ ERROR atomic loads cannot have `Release` or `AcqRel` ordering
 
     // Allowed store ordering modes
     x.store(false, Ordering::Release);
@@ -21,5 +21,7 @@ fn main() {
 
     // Disallowed store ordering modes
     x.store(false, Ordering::Acquire);
+    //~^ ERROR atomic stores cannot have `Acquire` or `AcqRel` ordering
     x.store(false, Ordering::AcqRel);
+    //~^ ERROR atomic stores cannot have `Acquire` or `AcqRel` ordering
 }

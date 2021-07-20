@@ -1,5 +1,3 @@
-#![warn(clippy::invalid_atomic_ordering)]
-
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 fn main() {
@@ -14,7 +12,9 @@ fn main() {
 
     // Disallowed load ordering modes
     let _ = x.load(Ordering::Release);
+    //~^ ERROR atomic loads cannot have `Release` or `AcqRel` ordering
     let _ = x.load(Ordering::AcqRel);
+    //~^ ERROR atomic loads cannot have `Release` or `AcqRel` ordering
 
     // Allowed store ordering modes
     x.store(other_ptr, Ordering::Release);
@@ -23,5 +23,7 @@ fn main() {
 
     // Disallowed store ordering modes
     x.store(other_ptr, Ordering::Acquire);
+    //~^ ERROR atomic stores cannot have `Acquire` or `AcqRel` ordering
     x.store(other_ptr, Ordering::AcqRel);
+    //~^ ERROR atomic stores cannot have `Acquire` or `AcqRel` ordering
 }

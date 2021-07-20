@@ -169,6 +169,7 @@ macro_rules! late_lint_passes {
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
                 NonPanicFmt: NonPanicFmt,
                 NoopMethodCall: NoopMethodCall,
+                InvalidAtomicOrdering: InvalidAtomicOrdering,
             ]
         );
     };
