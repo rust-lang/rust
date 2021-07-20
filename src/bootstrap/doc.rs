@@ -669,7 +669,9 @@ macro_rules! tool_doc {
                     cargo.arg("-p").arg($krate);
                 )+
 
-                if !$bin {
+                // cfg(not(bootstrap))
+                // (and please remove the $bin argument at the same time so this is passed unconditionally)
+                if !$bin || compiler.stage > 0 {
                     cargo.rustdocflag("--document-private-items");
                 }
                 cargo.rustdocflag("--enable-index-page");

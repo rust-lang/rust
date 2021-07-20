@@ -396,7 +396,7 @@ fn identify_comment(
 }
 
 /// Attributes for code blocks in rustdoc.
-/// See https://doc.rust-lang.org/rustdoc/print.html#attributes
+/// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>.
 enum CodeBlockAttribute {
     Rust,
     Ignore,

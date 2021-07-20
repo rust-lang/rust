@@ -1420,7 +1420,7 @@ impl MacroBranch {
     }
 }
 
-/// Format `lazy_static!` from https://crates.io/crates/lazy_static.
+/// Format `lazy_static!` from <https://crates.io/crates/lazy_static>.
 ///
 /// # Expected syntax
 ///
