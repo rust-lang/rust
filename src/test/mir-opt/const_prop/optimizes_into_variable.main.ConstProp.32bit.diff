@@ -9,7 +9,7 @@
       let _5: usize;                       // in scope 0 at $DIR/optimizes_into_variable.rs:13:32: 13:33
       let mut _6: usize;                   // in scope 0 at $DIR/optimizes_into_variable.rs:13:13: 13:34
       let mut _7: bool;                    // in scope 0 at $DIR/optimizes_into_variable.rs:13:13: 13:34
-      let mut _9: Point;                   // in scope 0 at $DIR/optimizes_into_variable.rs:14:13: 14:36
+      let mut _9: u32;                     // in scope 0 at $DIR/optimizes_into_variable.rs:14:13: 14:36
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/optimizes_into_variable.rs:12:9: 12:10
           let _3: i32;                     // in scope 1 at $DIR/optimizes_into_variable.rs:13:9: 13:10
@@ -51,12 +51,11 @@
           StorageDead(_5);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:34: 13:35
           StorageDead(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:34: 13:35
           StorageLive(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:9: 14:10
-          StorageLive(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
-          (_9.0: u32) = const 12_u32;      // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
-          (_9.1: u32) = const 42_u32;      // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
--         _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
+          nop;                             // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
+          _9 = const 42_u32;               // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
+-         _8 = _9;                         // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
 +         _8 = const 42_u32;               // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
-          StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:38: 14:39
+          nop;                             // scope 2 at $DIR/optimizes_into_variable.rs:14:38: 14:39
           nop;                             // scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
           StorageDead(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:15:1: 15:2
           StorageDead(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:15:1: 15:2

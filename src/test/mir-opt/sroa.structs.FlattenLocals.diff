@@ -1,0 +1,31 @@
+- // MIR for `structs` before FlattenLocals
++ // MIR for `structs` after FlattenLocals
+  
+  fn structs(_1: f32) -> f32 {
+      debug a => _1;                       // in scope 0 at $DIR/sroa.rs:24:16: 24:17
+      let mut _0: f32;                     // return place in scope 0 at $DIR/sroa.rs:24:27: 24:30
+-     let mut _2: structs::U;              // in scope 0 at $DIR/sroa.rs:30:5: 30:21
+-     let mut _3: f32;                     // in scope 0 at $DIR/sroa.rs:30:18: 30:19
++     let mut _2: f32;                     // in scope 0 at $DIR/sroa.rs:30:18: 30:19
++     let mut _3: f32;                     // in scope 0 at $DIR/sroa.rs:30:5: 30:21
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:30:5: 30:21
+-         StorageLive(_3);                 // scope 0 at $DIR/sroa.rs:30:18: 30:19
+-         _3 = _1;                         // scope 0 at $DIR/sroa.rs:30:18: 30:19
+-         (_2.0: usize) = const 0_usize;   // scope 0 at $DIR/sroa.rs:30:5: 30:21
+-         (_2.1: f32) = move _3;           // scope 0 at $DIR/sroa.rs:30:5: 30:21
+-         StorageDead(_3);                 // scope 0 at $DIR/sroa.rs:30:20: 30:21
+-         _0 = (_2.1: f32);                // scope 0 at $DIR/sroa.rs:30:5: 30:23
+-         StorageDead(_2);                 // scope 0 at $DIR/sroa.rs:31:1: 31:2
++         nop;                             // scope 0 at $DIR/sroa.rs:30:5: 30:21
++         StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:30:18: 30:19
++         _2 = _1;                         // scope 0 at $DIR/sroa.rs:30:18: 30:19
++         _3 = move _2;                    // scope 0 at $DIR/sroa.rs:30:5: 30:21
++         StorageDead(_2);                 // scope 0 at $DIR/sroa.rs:30:20: 30:21
++         _0 = _3;                         // scope 0 at $DIR/sroa.rs:30:5: 30:23
++         nop;                             // scope 0 at $DIR/sroa.rs:31:1: 31:2
+          return;                          // scope 0 at $DIR/sroa.rs:31:2: 31:2
+      }
+  }
+  

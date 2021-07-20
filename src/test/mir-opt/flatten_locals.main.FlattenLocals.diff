@@ -1,0 +1,138 @@
+- // MIR for `main` before FlattenLocals
++ // MIR for `main` after FlattenLocals
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/flatten_locals.rs:9:11: 9:11
+      let _1: u8;                          // in scope 0 at $DIR/flatten_locals.rs:10:15: 10:16
+      let _2: ();                          // in scope 0 at $DIR/flatten_locals.rs:10:18: 10:19
+      let _3: &str;                        // in scope 0 at $DIR/flatten_locals.rs:10:21: 10:22
+      let _4: std::option::Option<isize>;  // in scope 0 at $DIR/flatten_locals.rs:10:24: 10:25
+-     let mut _5: Foo;                     // in scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+-     let mut _6: ();                      // in scope 0 at $DIR/flatten_locals.rs:10:45: 10:47
+-     let mut _7: std::option::Option<isize>; // in scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
+-     let _8: ();                          // in scope 0 at $DIR/flatten_locals.rs:17:5: 17:35
+-     let mut _9: *const u32;              // in scope 0 at $DIR/flatten_locals.rs:17:7: 17:34
+-     let _10: &u32;                       // in scope 0 at $DIR/flatten_locals.rs:17:7: 17:34
+-     let _11: S;                          // in scope 0 at $DIR/flatten_locals.rs:17:8: 17:32
+-     let mut _12: u32;                    // in scope 0 at $DIR/flatten_locals.rs:17:27: 17:30
++     let mut _5: ();                      // in scope 0 at $DIR/flatten_locals.rs:10:45: 10:47
++     let mut _6: std::option::Option<isize>; // in scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
++     let _7: ();                          // in scope 0 at $DIR/flatten_locals.rs:17:5: 17:35
++     let mut _8: *const u32;              // in scope 0 at $DIR/flatten_locals.rs:17:7: 17:34
++     let _9: &u32;                        // in scope 0 at $DIR/flatten_locals.rs:17:7: 17:34
++     let _10: S;                          // in scope 0 at $DIR/flatten_locals.rs:17:8: 17:32
++     let mut _11: u32;                    // in scope 0 at $DIR/flatten_locals.rs:17:27: 17:30
++     let mut _12: u8;                     // in scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++     let mut _13: ();                     // in scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++     let mut _14: &str;                   // in scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++     let mut _15: std::option::Option<isize>; // in scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/flatten_locals.rs:10:15: 10:16
+          debug b => _2;                   // in scope 1 at $DIR/flatten_locals.rs:10:18: 10:19
+          debug c => _3;                   // in scope 1 at $DIR/flatten_locals.rs:10:21: 10:22
+          debug d => _4;                   // in scope 1 at $DIR/flatten_locals.rs:10:24: 10:25
+          scope 2 {
+              scope 3 {
+                  scope 4 {
+                      scope 5 {
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_5);                 // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+-         StorageLive(_6);                 // scope 0 at $DIR/flatten_locals.rs:10:45: 10:47
+-         StorageLive(_7);                 // scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
+-         ((_7 as Some).0: isize) = const -4_isize; // scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
+-         discriminant(_7) = 1;            // scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
+-         (_5.0: u8) = const 5_u8;         // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+-         (_5.1: ()) = move _6;            // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+-         (_5.2: &str) = const "a";        // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++         nop;                             // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++         StorageLive(_5);                 // scope 0 at $DIR/flatten_locals.rs:10:45: 10:47
++         StorageLive(_6);                 // scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
++         ((_6 as Some).0: isize) = const -4_isize; // scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
++         discriminant(_6) = 1;            // scope 0 at $DIR/flatten_locals.rs:10:60: 10:68
++         _12 = const 5_u8;                // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++         _13 = move _5;                   // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
++         _14 = const "a";                 // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+                                           // ty::Const
+                                           // + ty: &str
+                                           // + val: Value(Slice { data: Allocation { bytes: [97], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1], len: Size { raw: 1 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 })
+                                           // mir::Constant
+                                           // + span: $DIR/flatten_locals.rs:10:52: 10:55
+                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [97], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1], len: Size { raw: 1 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
+-         (_5.3: std::option::Option<isize>) = move _7; // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+-         StorageDead(_7);                 // scope 0 at $DIR/flatten_locals.rs:10:69: 10:70
++         _15 = move _6;                   // scope 0 at $DIR/flatten_locals.rs:10:30: 10:70
+          StorageDead(_6);                 // scope 0 at $DIR/flatten_locals.rs:10:69: 10:70
++         StorageDead(_5);                 // scope 0 at $DIR/flatten_locals.rs:10:69: 10:70
+          StorageLive(_1);                 // scope 0 at $DIR/flatten_locals.rs:10:15: 10:16
+-         _1 = (_5.0: u8);                 // scope 0 at $DIR/flatten_locals.rs:10:15: 10:16
++         _1 = _12;                        // scope 0 at $DIR/flatten_locals.rs:10:15: 10:16
+          StorageLive(_2);                 // scope 0 at $DIR/flatten_locals.rs:10:18: 10:19
+-         _2 = (_5.1: ());                 // scope 0 at $DIR/flatten_locals.rs:10:18: 10:19
++         _2 = _13;                        // scope 0 at $DIR/flatten_locals.rs:10:18: 10:19
+          StorageLive(_3);                 // scope 0 at $DIR/flatten_locals.rs:10:21: 10:22
+-         _3 = (_5.2: &str);               // scope 0 at $DIR/flatten_locals.rs:10:21: 10:22
++         _3 = _14;                        // scope 0 at $DIR/flatten_locals.rs:10:21: 10:22
+          StorageLive(_4);                 // scope 0 at $DIR/flatten_locals.rs:10:24: 10:25
+-         _4 = (_5.3: std::option::Option<isize>); // scope 0 at $DIR/flatten_locals.rs:10:24: 10:25
+-         StorageDead(_5);                 // scope 0 at $DIR/flatten_locals.rs:10:70: 10:71
+-         StorageLive(_8);                 // scope 5 at $DIR/flatten_locals.rs:17:5: 17:35
++         _4 = _15;                        // scope 0 at $DIR/flatten_locals.rs:10:24: 10:25
++         nop;                             // scope 0 at $DIR/flatten_locals.rs:10:70: 10:71
++         StorageLive(_7);                 // scope 5 at $DIR/flatten_locals.rs:17:5: 17:35
++         StorageLive(_8);                 // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
+          StorageLive(_9);                 // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
+-         StorageLive(_10);                // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
+-         StorageLive(_11);                // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
+-         StorageLive(_12);                // scope 5 at $DIR/flatten_locals.rs:17:27: 17:30
+-         _12 = g() -> bb1;                // scope 5 at $DIR/flatten_locals.rs:17:27: 17:30
++         StorageLive(_10);                // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
++         StorageLive(_11);                // scope 5 at $DIR/flatten_locals.rs:17:27: 17:30
++         _11 = g() -> bb1;                // scope 5 at $DIR/flatten_locals.rs:17:27: 17:30
+                                           // mir::Constant
+                                           // + span: $DIR/flatten_locals.rs:17:27: 17:28
+                                           // + literal: Const { ty: fn() -> u32 {g}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+-         (_11.0: u32) = const 1_u32;      // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
+-         (_11.1: u32) = const 2_u32;      // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
+-         (_11.2: u32) = move _12;         // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
+-         StorageDead(_12);                // scope 5 at $DIR/flatten_locals.rs:17:31: 17:32
+-         _10 = &(_11.0: u32);             // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
+-         _9 = &raw const (*_10);          // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
+-         _8 = f(move _9) -> bb2;          // scope 5 at $DIR/flatten_locals.rs:17:5: 17:35
++         (_10.0: u32) = const 1_u32;      // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
++         (_10.1: u32) = const 2_u32;      // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
++         (_10.2: u32) = move _11;         // scope 5 at $DIR/flatten_locals.rs:17:8: 17:32
++         StorageDead(_11);                // scope 5 at $DIR/flatten_locals.rs:17:31: 17:32
++         _9 = &(_10.0: u32);              // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
++         _8 = &raw const (*_9);           // scope 5 at $DIR/flatten_locals.rs:17:7: 17:34
++         _7 = f(move _8) -> bb2;          // scope 5 at $DIR/flatten_locals.rs:17:5: 17:35
+                                           // mir::Constant
+                                           // + span: $DIR/flatten_locals.rs:17:5: 17:6
+                                           // + literal: Const { ty: fn(*const u32) {f}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+-         StorageDead(_9);                 // scope 5 at $DIR/flatten_locals.rs:17:34: 17:35
+-         StorageDead(_11);                // scope 5 at $DIR/flatten_locals.rs:17:35: 17:36
++         StorageDead(_8);                 // scope 5 at $DIR/flatten_locals.rs:17:34: 17:35
+          StorageDead(_10);                // scope 5 at $DIR/flatten_locals.rs:17:35: 17:36
+-         StorageDead(_8);                 // scope 5 at $DIR/flatten_locals.rs:17:35: 17:36
++         StorageDead(_9);                 // scope 5 at $DIR/flatten_locals.rs:17:35: 17:36
++         StorageDead(_7);                 // scope 5 at $DIR/flatten_locals.rs:17:35: 17:36
+          _0 = const ();                   // scope 0 at $DIR/flatten_locals.rs:9:11: 18:2
+          StorageDead(_4);                 // scope 0 at $DIR/flatten_locals.rs:18:1: 18:2
+          StorageDead(_3);                 // scope 0 at $DIR/flatten_locals.rs:18:1: 18:2
+          StorageDead(_2);                 // scope 0 at $DIR/flatten_locals.rs:18:1: 18:2
+          StorageDead(_1);                 // scope 0 at $DIR/flatten_locals.rs:18:1: 18:2
+          return;                          // scope 0 at $DIR/flatten_locals.rs:18:2: 18:2
+      }
+  }
+  

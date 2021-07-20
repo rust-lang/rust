@@ -31,6 +31,7 @@ pub mod dest_prop;
 pub mod dump_mir;
 pub mod early_otherwise_branch;
 pub mod elaborate_drops;
+pub mod flatten_locals;
 pub mod function_item_references;
 pub mod generator;
 pub mod inline;
@@ -493,6 +494,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &flatten_locals::FlattenLocals,
         &remove_storage_markers::RemoveStorageMarkers,
         &remove_zsts::RemoveZsts,
         &const_goto::ConstGoto,

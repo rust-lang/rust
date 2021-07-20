@@ -1,0 +1,44 @@
+- // MIR for `enums` before FlattenLocals
++ // MIR for `enums` after FlattenLocals
+  
+  fn enums(_1: usize) -> usize {
+      debug a => _1;                       // in scope 0 at $DIR/sroa.rs:19:14: 19:15
+      let mut _0: usize;                   // return place in scope 0 at $DIR/sroa.rs:19:27: 19:32
+      let mut _2: std::option::Option<usize>; // in scope 0 at $DIR/sroa.rs:20:22: 20:29
+      let mut _3: usize;                   // in scope 0 at $DIR/sroa.rs:20:27: 20:28
+      let mut _4: isize;                   // in scope 0 at $DIR/sroa.rs:20:12: 20:19
+      let _5: usize;                       // in scope 0 at $DIR/sroa.rs:20:17: 20:18
+      scope 1 {
+          debug a => _5;                   // in scope 1 at $DIR/sroa.rs:20:17: 20:18
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:20:22: 20:29
+          StorageLive(_3);                 // scope 0 at $DIR/sroa.rs:20:27: 20:28
+          _3 = _1;                         // scope 0 at $DIR/sroa.rs:20:27: 20:28
+          ((_2 as Some).0: usize) = move _3; // scope 0 at $DIR/sroa.rs:20:22: 20:29
+          discriminant(_2) = 1;            // scope 0 at $DIR/sroa.rs:20:22: 20:29
+          StorageDead(_3);                 // scope 0 at $DIR/sroa.rs:20:28: 20:29
+          _4 = discriminant(_2);           // scope 0 at $DIR/sroa.rs:20:12: 20:19
+          switchInt(move _4) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/sroa.rs:20:12: 20:19
+      }
+  
+      bb1: {
+          _0 = const 0_usize;              // scope 0 at $DIR/sroa.rs:20:43: 20:44
+          goto -> bb3;                     // scope 0 at $DIR/sroa.rs:20:5: 20:46
+      }
+  
+      bb2: {
+          StorageLive(_5);                 // scope 0 at $DIR/sroa.rs:20:17: 20:18
+          _5 = ((_2 as Some).0: usize);    // scope 0 at $DIR/sroa.rs:20:17: 20:18
+          _0 = _5;                         // scope 1 at $DIR/sroa.rs:20:32: 20:33
+          StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:20:34: 20:35
+          goto -> bb3;                     // scope 0 at $DIR/sroa.rs:20:5: 20:46
+      }
+  
+      bb3: {
+          StorageDead(_2);                 // scope 0 at $DIR/sroa.rs:21:1: 21:2
+          return;                          // scope 0 at $DIR/sroa.rs:21:2: 21:2
+      }
+  }
+  

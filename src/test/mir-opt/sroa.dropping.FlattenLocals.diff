@@ -1,0 +1,62 @@
+- // MIR for `dropping` before FlattenLocals
++ // MIR for `dropping` after FlattenLocals
+  
+  fn dropping() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/sroa.rs:14:19: 14:19
+      let _1: Tag;                         // in scope 0 at $DIR/sroa.rs:15:5: 15:32
+      let mut _2: S;                       // in scope 0 at $DIR/sroa.rs:15:5: 15:30
+      let mut _3: Tag;                     // in scope 0 at $DIR/sroa.rs:15:7: 15:13
+      let mut _4: Tag;                     // in scope 0 at $DIR/sroa.rs:15:15: 15:21
+      let mut _5: Tag;                     // in scope 0 at $DIR/sroa.rs:15:23: 15:29
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/sroa.rs:15:5: 15:32
+          StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:15:5: 15:30
+          StorageLive(_3);                 // scope 0 at $DIR/sroa.rs:15:7: 15:13
+          (_3.0: usize) = const 0_usize;   // scope 0 at $DIR/sroa.rs:15:7: 15:13
+          StorageLive(_4);                 // scope 0 at $DIR/sroa.rs:15:15: 15:21
+          (_4.0: usize) = const 1_usize;   // scope 0 at $DIR/sroa.rs:15:15: 15:21
+          StorageLive(_5);                 // scope 0 at $DIR/sroa.rs:15:23: 15:29
+          (_5.0: usize) = const 2_usize;   // scope 0 at $DIR/sroa.rs:15:23: 15:29
+          (_2.0: Tag) = move _3;           // scope 0 at $DIR/sroa.rs:15:5: 15:30
+          (_2.1: Tag) = move _4;           // scope 0 at $DIR/sroa.rs:15:5: 15:30
+          (_2.2: Tag) = move _5;           // scope 0 at $DIR/sroa.rs:15:5: 15:30
+          StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:15:29: 15:30
+          StorageDead(_4);                 // scope 0 at $DIR/sroa.rs:15:29: 15:30
+          StorageDead(_3);                 // scope 0 at $DIR/sroa.rs:15:29: 15:30
+          _1 = move (_2.1: Tag);           // scope 0 at $DIR/sroa.rs:15:5: 15:32
+          drop(_1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/sroa.rs:15:32: 15:33
+      }
+  
+      bb1: {
+          drop((_2.0: Tag)) -> [return: bb6, unwind: bb5]; // scope 0 at $DIR/sroa.rs:15:32: 15:33
+      }
+  
+      bb2 (cleanup): {
+          drop((_2.0: Tag)) -> bb7;        // scope 0 at $DIR/sroa.rs:15:32: 15:33
+      }
+  
+      bb3 (cleanup): {
+          resume;                          // scope 0 at $DIR/sroa.rs:14:1: 16:2
+      }
+  
+      bb4: {
+          StorageDead(_2);                 // scope 0 at $DIR/sroa.rs:15:32: 15:33
+          StorageDead(_1);                 // scope 0 at $DIR/sroa.rs:15:32: 15:33
+          _0 = const ();                   // scope 0 at $DIR/sroa.rs:14:19: 16:2
+          return;                          // scope 0 at $DIR/sroa.rs:16:2: 16:2
+      }
+  
+      bb5 (cleanup): {
+          drop((_2.2: Tag)) -> bb3;        // scope 0 at $DIR/sroa.rs:15:32: 15:33
+      }
+  
+      bb6: {
+          drop((_2.2: Tag)) -> [return: bb4, unwind: bb3]; // scope 0 at $DIR/sroa.rs:15:32: 15:33
+      }
+  
+      bb7 (cleanup): {
+          drop((_2.2: Tag)) -> bb3;        // scope 0 at $DIR/sroa.rs:15:32: 15:33
+      }
+  }
+  
