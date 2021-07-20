@@ -175,17 +175,16 @@ pub fn env() -> Env {
     }
 }
 
-pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    let k = CString::new(k.as_bytes())?;
+pub fn getenv(k: &OsStr) -> Option<OsString> {
+    let k = CString::new(k.as_bytes()).ok()?;
     unsafe {
         let _guard = env_lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
-        let ret = if s.is_null() {
+        if s.is_null() {
             None
         } else {
             Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        };
-        Ok(ret)
+        }
     }
 }
 
