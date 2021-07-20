@@ -183,11 +183,13 @@ impl StepDescription {
     }
 
     fn run(v: &[StepDescription], builder: &Builder<'_>, paths: &[PathBuf]) {
-        let should_runs =
-            v.iter().map(|desc| (desc.should_run)(ShouldRun::new(builder))).collect::<Vec<_>>();
+        let should_runs = v
+            .iter()
+            .map(|desc| (desc, (desc.should_run)(ShouldRun::new(builder))))
+            .collect::<Vec<_>>();
 
         // sanity checks on rules
-        for (desc, should_run) in v.iter().zip(&should_runs) {
+        for (desc, should_run) in should_runs.iter() {
             assert!(
                 !should_run.paths.is_empty(),
                 "{:?} should have at least one pathset",
@@ -196,7 +198,7 @@ impl StepDescription {
         }
 
         if paths.is_empty() || builder.config.include_default_paths {
-            for (desc, should_run) in v.iter().zip(&should_runs) {
+            for (desc, should_run) in should_runs.iter() {
                 if desc.default && should_run.is_really_default() {
                     for pathset in &should_run.paths {
                         desc.maybe_run(builder, pathset);
@@ -213,7 +215,7 @@ impl StepDescription {
             };
 
             let mut attempted_run = false;
-            for (desc, should_run) in v.iter().zip(&should_runs) {
+            for (desc, should_run) in should_runs.iter() {
                 if let Some(suite) = should_run.is_suite_path(path) {
                     attempted_run = true;
                     desc.maybe_run(builder, suite);
