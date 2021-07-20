@@ -291,6 +291,7 @@
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
+#![feature(needle)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -446,6 +447,8 @@ pub use core::iter;
 pub use core::marker;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::mem;
+#[unstable(feature = "needle", issue = "56345")]
+pub use core::needle;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
