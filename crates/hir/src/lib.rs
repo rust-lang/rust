@@ -430,18 +430,6 @@ impl Module {
             .collect()
     }
 
-    pub fn visibility(self, db: &dyn HirDatabase) -> Visibility {
-        let def_map = self.id.def_map(db.upcast());
-        let module_data = &def_map[self.id.local_id];
-        module_data.visibility
-    }
-
-    pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
-        let def_map = self.id.def_map(db.upcast());
-        let module_data = &def_map[self.id.local_id];
-        module_data.scope.visibility_of((*def).into())
-    }
-
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
@@ -646,6 +634,14 @@ impl Module {
     }
 }
 
+impl HasVisibility for Module {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        let def_map = self.id.def_map(db.upcast());
+        let module_data = &def_map[self.id.local_id];
+        module_data.visibility
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Field {
     pub(crate) parent: VariantDef,
@@ -838,6 +834,13 @@ impl Variant {
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+    }
+}
+
+/// Variants inherit visibility from the parent enum.
+impl HasVisibility for Variant {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        self.parent_enum(db).visibility(db)
     }
 }
 

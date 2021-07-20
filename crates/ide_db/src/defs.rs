@@ -52,9 +52,7 @@ impl Definition {
                 ModuleDef::Static(it) => Some(it.visibility(db)),
                 ModuleDef::Trait(it) => Some(it.visibility(db)),
                 ModuleDef::TypeAlias(it) => Some(it.visibility(db)),
-                // NB: Variants don't have their own visibility, and just inherit
-                // one from the parent. Not sure if that's the right thing to do.
-                ModuleDef::Variant(it) => Some(it.parent_enum(db).visibility(db)),
+                ModuleDef::Variant(it) => Some(it.visibility(db)),
                 ModuleDef::BuiltinType(_) => None,
             },
             Definition::Macro(_)
