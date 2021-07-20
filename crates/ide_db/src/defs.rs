@@ -44,17 +44,7 @@ impl Definition {
     pub fn visibility(&self, db: &RootDatabase) -> Option<Visibility> {
         match self {
             Definition::Field(sf) => Some(sf.visibility(db)),
-            Definition::ModuleDef(def) => match def {
-                ModuleDef::Module(it) => Some(it.visibility(db)),
-                ModuleDef::Function(it) => Some(it.visibility(db)),
-                ModuleDef::Adt(it) => Some(it.visibility(db)),
-                ModuleDef::Const(it) => Some(it.visibility(db)),
-                ModuleDef::Static(it) => Some(it.visibility(db)),
-                ModuleDef::Trait(it) => Some(it.visibility(db)),
-                ModuleDef::TypeAlias(it) => Some(it.visibility(db)),
-                ModuleDef::Variant(it) => Some(it.visibility(db)),
-                ModuleDef::BuiltinType(_) => None,
-            },
+            Definition::ModuleDef(def) => Some(def.visibility(db)),
             Definition::Macro(_)
             | Definition::SelfType(_)
             | Definition::Local(_)

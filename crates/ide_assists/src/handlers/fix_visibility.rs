@@ -46,18 +46,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
     let current_module = ctx.sema.scope(path.syntax()).module()?;
     let target_module = def.module(ctx.db())?;
 
-    let vis = match def {
-        hir::ModuleDef::Module(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::Function(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::Adt(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::Variant(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::Const(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::Static(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::Trait(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::TypeAlias(it) => it.visibility(ctx.db()),
-        hir::ModuleDef::BuiltinType(_) => return None,
-    };
-    if vis.is_visible_from(ctx.db(), current_module.into()) {
+    if def.visibility(ctx.db()).is_visible_from(ctx.db(), current_module.into()) {
         return None;
     };
 
