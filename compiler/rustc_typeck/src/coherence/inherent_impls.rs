@@ -139,6 +139,19 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     assoc_items,
                 );
             }
+            ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Not })
+                if matches!(inner.kind(), ty::Str) =>
+            {
+                self.check_primitive_impl(
+                    item.def_id,
+                    lang_items.const_str_ptr_impl(),
+                    None,
+                    "const_str_ptr",
+                    "*const str",
+                    item.span,
+                    assoc_items,
+                );
+            }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Mut })
                 if matches!(inner.kind(), ty::Slice(_)) =>
             {
@@ -148,6 +161,19 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "mut_slice_ptr",
                     "*mut [T]",
+                    item.span,
+                    assoc_items,
+                );
+            }
+            ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Mut })
+                if matches!(inner.kind(), ty::Str) =>
+            {
+                self.check_primitive_impl(
+                    item.def_id,
+                    lang_items.mut_str_ptr_impl(),
+                    None,
+                    "mut_str_ptr",
+                    "*mut str",
                     item.span,
                     assoc_items,
                 );

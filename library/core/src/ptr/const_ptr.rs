@@ -1015,6 +1015,85 @@ impl<T> *const [T] {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[lang = "const_str_ptr"]
+impl *const str {
+    /// Returns the length of a raw string slice.
+    ///
+    /// The returned value is the number of **bytes**, not the number of characters.
+    ///
+    /// This function is safe, even when the raw string slice cannot be cast to a slice
+    /// reference because the pointer is null or unaligned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_len)]
+    /// #![feature(str_from_raw_parts)]
+    ///
+    /// use std::ptr;
+    ///
+    /// let str: *const str = ptr::str_from_raw_parts(ptr::null(), 3);
+    /// assert_eq!(str.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_ptr_len", issue = "none")]
+    #[rustc_const_unstable(feature = "const_str_ptr_len", issue = "none")]
+    pub const fn len(self) -> usize {
+        metadata(self)
+    }
+
+    /// Returns a raw pointer to the string slice's buffer.
+    ///
+    /// This is equivalent to casting `self` to `*const u8`, but more type-safe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_as_ptr)]
+    /// #![feature(str_from_raw_parts)]
+    /// use std::ptr;
+    ///
+    /// let str: *const str = ptr::str_from_raw_parts(ptr::null(), 3);
+    /// assert_eq!(str.as_ptr(), 0 as *const u8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_ptr_as_ptr", issue = "none")]
+    #[rustc_const_unstable(feature = "str_ptr_as_ptr", issue = "none")]
+    pub const fn as_ptr(self) -> *const u8 {
+        self as *const u8
+    }
+
+    /// Returns a raw pointer to an substring, without doing bounds
+    /// checking.
+    ///
+    /// Calling this method with an out-of-bounds index, index that does not lie on an UTF-8 sequence boundaries or when `self` is not dereferencable
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_ptr_get)]
+    ///
+    /// let x = "abc" as *const str;
+    ///
+    /// unsafe {
+    ///     assert_eq!(&*x.get_unchecked(1..), "bc");
+    /// }
+    /// ```
+    #[unstable(feature = "str_ptr_get", issue = "none")]
+    #[inline]
+    pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
+    where
+        I: SliceIndex<str>,
+    {
+        // SAFETY: the caller ensures that `self` is dereferencable, `index` in-bounds and lie on an UTF-8 sequence boundaries.
+        unsafe { index.get_unchecked(self) }
+    }
+}
+
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {

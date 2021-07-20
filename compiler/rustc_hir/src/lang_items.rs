@@ -178,7 +178,9 @@ language_item_table! {
     ConstPtr,                sym::const_ptr,           const_ptr_impl,             Target::Impl;
     MutPtr,                  sym::mut_ptr,             mut_ptr_impl,               Target::Impl;
     ConstSlicePtr,           sym::const_slice_ptr,     const_slice_ptr_impl,       Target::Impl;
+    ConstStrPtr,             sym::const_str_ptr,       const_str_ptr_impl,         Target::Impl;
     MutSlicePtr,             sym::mut_slice_ptr,       mut_slice_ptr_impl,         Target::Impl;
+    MutStrPtr,               sym::mut_str_ptr,         mut_str_ptr_impl,           Target::Impl;
     I8,                      sym::i8,                  i8_impl,                    Target::Impl;
     I16,                     sym::i16,                 i16_impl,                   Target::Impl;
     I32,                     sym::i32,                 i32_impl,                   Target::Impl;

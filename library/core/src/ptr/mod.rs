@@ -294,6 +294,69 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data.cast(), len)
 }
 
+/// Forms a raw string slice from a pointer and a length.
+///
+/// The `len` argument is the number of **bytes**, not the number of characters.
+///
+/// This function is safe, but actually using the return value is unsafe.
+/// See the documentation of [`slice::from_raw_parts`] for slice safety requirements and [`str::from_utf8`] for string safety requirements.
+///
+/// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
+/// [`str::from_utf8`]: crate::str::from_utf8
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(str_from_raw_parts)]
+/// use std::ptr;
+///
+/// // create a string slice pointer when starting out with a pointer to the first element
+/// let x = "abc";
+/// let raw_pointer = x.as_ptr();
+/// let str = ptr::str_from_raw_parts(raw_pointer, 3);
+/// assert_eq!(unsafe { &*str }, x);
+/// ```
+#[inline]
+#[unstable(feature = "str_from_raw_parts", issue = "none")]
+#[rustc_const_unstable(feature = "const_str_from_raw_parts", issue = "none")]
+pub const fn str_from_raw_parts(data: *const u8, len: usize) -> *const str {
+    from_raw_parts(data.cast(), len)
+}
+
+/// Performs the same functionality as [`str_from_raw_parts`], except that a
+/// raw mutable string slice is returned, as opposed to a raw immutable string slice.
+///
+/// See the documentation of [`slice_from_raw_parts`] for more details.
+///
+/// This function is safe, but actually using the return value is unsafe.
+/// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements and [`str::from_utf8_mut`] for string safety requirements.
+///
+/// [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
+/// [`str::from_utf8_mut`]: crate::str::from_utf8_mut
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(str_from_raw_parts)]
+/// use std::ptr;
+///
+/// let mut x = [b'a', b'b', b'c'];
+/// let raw_pointer = x.as_mut_ptr();
+/// let str = ptr::str_from_raw_parts_mut(raw_pointer, 3);
+///
+/// unsafe {
+///     (*(str as *mut [u8]))[2] = b'z'; // assign a value at an index in the string slice
+/// };
+///
+/// assert_eq!(unsafe { &*str }, "abz");
+/// ```
+#[inline]
+#[unstable(feature = "str_from_raw_parts", issue = "none")]
+#[rustc_const_unstable(feature = "const_str_from_raw_parts", issue = "none")]
+pub const fn str_from_raw_parts_mut(data: *mut u8, len: usize) -> *mut str {
+    from_raw_parts_mut(data.cast(), len)
+}
+
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///

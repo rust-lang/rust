@@ -682,16 +682,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl }) => {
-                let (lang_def_id1, lang_def_id2) = match mutbl {
-                    hir::Mutability::Not => {
-                        (lang_items.const_ptr_impl(), lang_items.const_slice_ptr_impl())
-                    }
-                    hir::Mutability::Mut => {
-                        (lang_items.mut_ptr_impl(), lang_items.mut_slice_ptr_impl())
-                    }
+                let (lang_def_id1, lang_def_id2, lang_def_id3) = match mutbl {
+                    hir::Mutability::Not => (
+                        lang_items.const_ptr_impl(),
+                        lang_items.const_slice_ptr_impl(),
+                        lang_items.const_str_ptr_impl(),
+                    ),
+                    hir::Mutability::Mut => (
+                        lang_items.mut_ptr_impl(),
+                        lang_items.mut_slice_ptr_impl(),
+                        lang_items.mut_str_ptr_impl(),
+                    ),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id1);
                 self.assemble_inherent_impl_for_primitive(lang_def_id2);
+                self.assemble_inherent_impl_for_primitive(lang_def_id3);
             }
             ty::Int(i) => {
                 let lang_def_id = match i {
