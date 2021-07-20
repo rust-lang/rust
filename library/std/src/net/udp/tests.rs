@@ -364,3 +364,59 @@ fn set_nonblocking() {
         }
     })
 }
+
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+#[test]
+fn ancillary() {
+    use crate::io::{IoSlice, IoSliceMut};
+    use crate::iter::FromIterator;
+    use crate::net::udp::SocketAncillary;
+    use crate::os::unix::net::AncillaryData;
+
+    let addr1 = next_test_ip4();
+    let addr2 = next_test_ip4();
+
+    let socket1 = t!(UdpSocket::bind(&addr1));
+    let socket2 = t!(UdpSocket::bind(&addr2));
+
+    t!(socket2.set_recvttl(true));
+
+    let buf1 = [1; 8];
+    let bufs_send = &[IoSlice::new(&buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 64];
+    let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
+    assert!(ancillary1.add_ipttl(20));
+
+    let usize = t!(socket1.send_vectored_with_ancillary_to(&bufs_send, &mut ancillary1, &addr2));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 64];
+    let mut ancillary2 = SocketAncillary::new(&mut ancillary2_buffer[..]);
+
+    let (usize, truncated, addr) =
+        t!(socket2.recv_vectored_with_ancillary_from(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(usize, 8);
+    assert_eq!(truncated, false);
+    assert_eq!(addr1, addr);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    if let AncillaryData::IpTtl(ttl) = ancillary_data_vec.pop().unwrap().unwrap() {
+        assert_eq!(ttl, 20);
+    } else {
+        unreachable!("must be IpTtl");
+    }
+}

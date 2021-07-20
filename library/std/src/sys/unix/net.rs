@@ -387,6 +387,15 @@ impl Socket {
         Ok(passcred != 0)
     }
 
+    pub fn set_recvttl(&self, recvttl: bool) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_IP, libc::IP_RECVTTL, recvttl as libc::c_int)
+    }
+
+    pub fn recvttl(&self) -> io::Result<bool> {
+        let recvttl: libc::c_int = getsockopt(self, libc::IPPROTO_IP, libc::IP_RECVTTL)?;
+        Ok(recvttl != 0)
+    }
+
     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;

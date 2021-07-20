@@ -8,7 +8,7 @@
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
+use super::SocketAncillary;
 use super::{sockaddr_un, SocketAddr};
 #[cfg(any(
     target_os = "android",
@@ -378,7 +378,8 @@ impl UnixDatagram {
         bufs: &mut [IoSliceMut<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<(usize, bool, SocketAddr)> {
-        let (count, truncated, addr) = recv_vectored_with_ancillary_from(&self.0, bufs, ancillary)?;
+        let (count, truncated, addr) =
+            self.0.recv_vectored_with_ancillary_from_unix(bufs, ancillary)?;
         let addr = addr?;
 
         Ok((count, truncated, addr))
@@ -435,7 +436,8 @@ impl UnixDatagram {
         bufs: &mut [IoSliceMut<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<(usize, bool)> {
-        let (count, truncated, addr) = recv_vectored_with_ancillary_from(&self.0, bufs, ancillary)?;
+        let (count, truncated, addr) =
+            self.0.recv_vectored_with_ancillary_from_unix(bufs, ancillary)?;
         addr?;
 
         Ok((count, truncated))
@@ -543,7 +545,7 @@ impl UnixDatagram {
         ancillary: &mut SocketAncillary<'_>,
         path: P,
     ) -> io::Result<usize> {
-        send_vectored_with_ancillary_to(&self.0, Some(path.as_ref()), bufs, ancillary)
+        self.0.send_vectored_with_ancillary_to_unix(Some(path.as_ref()), bufs, ancillary)
     }
 
     /// Sends data and ancillary data on the socket.
@@ -591,7 +593,7 @@ impl UnixDatagram {
         bufs: &[IoSlice<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<usize> {
-        send_vectored_with_ancillary_to(&self.0, None, bufs, ancillary)
+        self.0.send_vectored_with_ancillary_to_unix(None, bufs, ancillary)
     }
 
     /// Sets the read timeout for the socket.

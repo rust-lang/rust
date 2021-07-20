@@ -3,7 +3,27 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+use crate::io::{IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+use crate::os::unix::net::SocketAncillary;
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
@@ -118,6 +138,165 @@ impl UdpSocket {
         self.0.recv_from(buf)
     }
 
+    /// Sets the value of the `IP_RECVTTL` option for this socket.
+    ///
+    /// If enabled, received packets will come with ancillary data ([`SocketAncillary`]) providing
+    /// the time-to-live (TTL) value of the packet.
+    ///
+    /// # Examples
+    ///
+    ///```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::net::UdpSocket;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    ///     socket.set_recvttl(true).expect("set_recvttl function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    pub fn set_recvttl(&self, recvttl: bool) -> io::Result<()> {
+        self.0.set_recvttl(recvttl)
+    }
+
+    /// Get the current value of the socket for receiving TTL in [`SocketAncillary`].
+    /// This value can be change by [`set_recvttl`].
+    ///
+    /// Get the socket option `IP_RECVTTL`.
+    ///
+    /// [`set_recvttl`]: UdpSocket::set_recvttl
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn recvttl(&self) -> io::Result<bool> {
+        self.0.recvttl()
+    }
+
+    /// Receives data and ancillary data from socket.
+    ///
+    /// On success, returns the number of bytes read.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::io::IoSliceMut;
+    /// use std::net::UdpSocket;
+    /// use std::os::unix::net::{SocketAncillary, AncillaryData};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    ///     socket.set_recvttl(true).expect("set_recvttl function failed");
+    ///     let mut buf1 = [1; 8];
+    ///     let mut buf2 = [2; 16];
+    ///     let mut buf3 = [3; 8];
+    ///     let mut bufs = &mut [
+    ///         IoSliceMut::new(&mut buf1),
+    ///         IoSliceMut::new(&mut buf2),
+    ///         IoSliceMut::new(&mut buf3),
+    ///     ][..];
+    ///     let mut ancillary_buffer = [0; 128];
+    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     let (size, truncated) = socket.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
+    ///     println!("received {} truncated {}", size, truncated);
+    ///     for ancillary_result in ancillary.messages() {
+    ///         if let AncillaryData::IpTtl(ttl) = ancillary_result.unwrap() {
+    ///             println!("UDP packet has a TTL of {}", ttl);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn recv_vectored_with_ancillary(
+        &self,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool)> {
+        self.0.recv_vectored_with_ancillary(bufs, ancillary)
+    }
+
+    /// Receives data and ancillary data from socket.
+    ///
+    /// On success, returns the number of bytes read, if the data was truncated and the address
+    /// from whence the msg came.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::io::IoSliceMut;
+    /// use std::net::UdpSocket;
+    /// use std::os::unix::net::{SocketAncillary, AncillaryData};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    ///     socket.set_recvttl(true).expect("set_recvttl function failed");
+    ///     let mut buf1 = [1; 8];
+    ///     let mut buf2 = [2; 16];
+    ///     let mut buf3 = [3; 8];
+    ///     let mut bufs = &mut [
+    ///         IoSliceMut::new(&mut buf1),
+    ///         IoSliceMut::new(&mut buf2),
+    ///         IoSliceMut::new(&mut buf3),
+    ///     ][..];
+    ///     let mut ancillary_buffer = [0; 128];
+    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     let (size, truncated, addr) =
+    ///         socket.recv_vectored_with_ancillary_from(bufs, &mut ancillary)?;
+    ///     println!("received {} truncated {} from {}", size, truncated, addr);
+    ///     for ancillary_result in ancillary.messages() {
+    ///         if let AncillaryData::IpTtl(ttl) = ancillary_result.unwrap() {
+    ///             println!("UDP packet has a TTL of {}", ttl);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn recv_vectored_with_ancillary_from(
+        &self,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool, SocketAddr)> {
+        self.0.recv_vectored_with_ancillary_from(bufs, ancillary)
+    }
+
     /// Receives a single datagram message on the socket, without removing it from the
     /// queue. On success, returns the number of bytes read and the origin.
     ///
@@ -176,6 +355,107 @@ impl UdpSocket {
         match addr.to_socket_addrs()?.next() {
             Some(addr) => self.0.send_to(buf, &addr),
             None => Err(Error::new_const(ErrorKind::InvalidInput, &"no addresses to send data to")),
+        }
+    }
+
+    /// Sends data and ancillary data on the socket.
+    ///
+    /// On success, returns the number of bytes written.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::io::IoSlice;
+    /// use std::net::UdpSocket;
+    /// use std::os::unix::net::SocketAncillary;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    ///     socket.connect("127.0.0.1:41203").expect("couldn't connect to address");
+    ///     let buf1 = [1; 8];
+    ///     let buf2 = [2; 16];
+    ///     let buf3 = [3; 8];
+    ///     let bufs = &[
+    ///         IoSlice::new(&buf1),
+    ///         IoSlice::new(&buf2),
+    ///         IoSlice::new(&buf3),
+    ///     ][..];
+    ///     let mut ancillary_buffer = [0; 128];
+    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     ancillary.add_ipttl(20);
+    ///     socket.send_vectored_with_ancillary(bufs, &mut ancillary)
+    ///         .expect("send_vectored_with_ancillary function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn send_vectored_with_ancillary(
+        &self,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<usize> {
+        self.0.send_vectored_with_ancillary(bufs, ancillary)
+    }
+
+    /// Sends data and ancillary data on the socket to the specified address.
+    ///
+    /// On success, returns the number of bytes written.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::io::IoSlice;
+    /// use std::net::UdpSocket;
+    /// use std::os::unix::net::SocketAncillary;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    ///     let buf1 = [1; 8];
+    ///     let buf2 = [2; 16];
+    ///     let buf3 = [3; 8];
+    ///     let bufs = &[
+    ///         IoSlice::new(&buf1),
+    ///         IoSlice::new(&buf2),
+    ///         IoSlice::new(&buf3),
+    ///     ][..];
+    ///     let mut ancillary_buffer = [0; 128];
+    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     ancillary.add_ipttl(20);
+    ///     socket.send_vectored_with_ancillary_to(bufs, &mut ancillary, "127.0.0.1:4242")
+    ///         .expect("send_vectored_with_ancillary function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn send_vectored_with_ancillary_to<A: ToSocketAddrs>(
+        &self,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+        addr: A,
+    ) -> io::Result<usize> {
+        match addr.to_socket_addrs()?.next() {
+            Some(addr) => self.0.send_vectored_with_ancillary_to(bufs, ancillary, &addr),
+            None => Err(Error::new(ErrorKind::InvalidInput, "no addresses to send data to")),
         }
     }
 

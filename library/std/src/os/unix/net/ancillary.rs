@@ -1,13 +1,16 @@
-use super::{sockaddr_un, SocketAddr};
+use super::{sockaddr_un as sockaddr_unix, SocketAddr as SocketAddrUnix};
 use crate::convert::TryFrom;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed};
+use crate::net::SocketAddr as SocketAddrNet;
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
 use crate::ptr::{eq, read_unaligned};
-use crate::slice::from_raw_parts;
+use crate::slice::{from_raw_parts, from_ref};
 use crate::sys::net::Socket;
+use crate::sys_common::net::sockaddr_to_addr as sockaddr_net_to_addr;
+use crate::sys_common::IntoInner;
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(all(doc, not(target_os = "linux"), not(target_os = "android")))]
@@ -21,16 +24,55 @@ mod libc {
     pub type uid_t = u32;
 }
 
-pub(super) fn recv_vectored_with_ancillary_from(
-    socket: &Socket,
-    bufs: &mut [IoSliceMut<'_>],
-    ancillary: &mut SocketAncillary<'_>,
-) -> io::Result<(usize, bool, io::Result<SocketAddr>)> {
-    unsafe {
-        let mut msg_name: libc::sockaddr_un = zeroed();
+impl Socket {
+    pub fn recv_vectored_with_ancillary_from_unix(
+        &self,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool, io::Result<SocketAddrUnix>)> {
+        unsafe {
+            let mut msg_name: libc::sockaddr_un = zeroed();
+            let (count, truncated, msg_namelen) = self.recv_vectored_with_ancillary_from(
+                &mut msg_name as *mut _ as *mut libc::c_void,
+                size_of::<libc::sockaddr_un>() as libc::socklen_t,
+                bufs,
+                ancillary,
+            )?;
+            let addr = SocketAddrUnix::from_parts(msg_name, msg_namelen);
+
+            Ok((count, truncated, addr))
+        }
+    }
+
+    pub fn recv_vectored_with_ancillary_from_udp(
+        &self,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool, io::Result<SocketAddrNet>)> {
+        unsafe {
+            let mut msg_name: libc::sockaddr_storage = zeroed();
+            let (count, truncated, msg_namelen) = self.recv_vectored_with_ancillary_from(
+                &mut msg_name as *mut _ as *mut libc::c_void,
+                size_of::<libc::sockaddr_storage>() as libc::socklen_t,
+                bufs,
+                ancillary,
+            )?;
+            let addr = sockaddr_net_to_addr(&msg_name, msg_namelen as usize);
+
+            Ok((count, truncated, addr))
+        }
+    }
+
+    unsafe fn recv_vectored_with_ancillary_from(
+        &self,
+        msg_name: *mut libc::c_void,
+        msg_namelen: libc::socklen_t,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool, libc::socklen_t)> {
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = &mut msg_name as *mut _ as *mut _;
-        msg.msg_namelen = size_of::<libc::sockaddr_un>() as libc::socklen_t;
+        msg.msg_name = msg_name;
+        msg.msg_namelen = msg_namelen;
         msg.msg_iov = bufs.as_mut_ptr().cast();
         msg.msg_iovlen = bufs.len() as _;
         msg.msg_controllen = ancillary.buffer.len() as _;
@@ -39,30 +81,61 @@ pub(super) fn recv_vectored_with_ancillary_from(
             msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         }
 
-        let count = socket.recv_msg(&mut msg)?;
+        let count = self.recv_msg(&mut msg)?;
 
         ancillary.length = msg.msg_controllen as usize;
         ancillary.truncated = msg.msg_flags & libc::MSG_CTRUNC == libc::MSG_CTRUNC;
 
         let truncated = msg.msg_flags & libc::MSG_TRUNC == libc::MSG_TRUNC;
-        let addr = SocketAddr::from_parts(msg_name, msg.msg_namelen);
 
-        Ok((count, truncated, addr))
+        Ok((count, truncated, msg.msg_namelen))
     }
-}
 
-pub(super) fn send_vectored_with_ancillary_to(
-    socket: &Socket,
-    path: Option<&Path>,
-    bufs: &[IoSlice<'_>],
-    ancillary: &mut SocketAncillary<'_>,
-) -> io::Result<usize> {
-    unsafe {
-        let (mut msg_name, msg_namelen) =
-            if let Some(path) = path { sockaddr_un(path)? } else { (zeroed(), 0) };
+    pub(super) fn send_vectored_with_ancillary_to_unix(
+        &self,
+        path: Option<&Path>,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<usize> {
+        unsafe {
+            let (mut msg_name, msg_namelen) =
+                if let Some(path) = path { sockaddr_unix(path)? } else { (zeroed(), 0) };
+            self.send_vectored_with_ancillary_to(
+                &mut msg_name as *mut _ as *mut libc::c_void,
+                msg_namelen,
+                bufs,
+                ancillary,
+            )
+        }
+    }
 
+    pub(crate) fn send_vectored_with_ancillary_to_udp(
+        &self,
+        dst: Option<&SocketAddrNet>,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<usize> {
+        unsafe {
+            let (msg_name, msg_namelen) =
+                if let Some(dst) = dst { dst.into_inner() } else { (zeroed(), 0) };
+            self.send_vectored_with_ancillary_to(
+                msg_name as *mut libc::c_void,
+                msg_namelen,
+                bufs,
+                ancillary,
+            )
+        }
+    }
+
+    unsafe fn send_vectored_with_ancillary_to(
+        &self,
+        msg_name: *mut libc::c_void,
+        msg_namelen: libc::socklen_t,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<usize> {
         let mut msg: libc::msghdr = zeroed();
-        msg.msg_name = &mut msg_name as *mut _ as *mut _;
+        msg.msg_name = msg_name;
         msg.msg_namelen = msg_namelen;
         msg.msg_iov = bufs.as_ptr() as *mut _;
         msg.msg_iovlen = bufs.len() as _;
@@ -74,7 +147,7 @@ pub(super) fn send_vectored_with_ancillary_to(
 
         ancillary.truncated = false;
 
-        socket.send_msg(&mut msg)
+        self.send_msg(&mut msg)
     }
 }
 
@@ -276,6 +349,7 @@ pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]
     ScmCredentials(ScmCredentials<'a>),
+    IpTtl(u8),
 }
 
 impl<'a> AncillaryData<'a> {
@@ -304,6 +378,27 @@ impl<'a> AncillaryData<'a> {
         AncillaryData::ScmCredentials(scm_credentials)
     }
 
+    /// Convert the a `libc::c_int` to `u8`
+    ///
+    /// # Safety
+    ///
+    /// `data` must contain at least one `libc::c_int`.
+    unsafe fn as_u8(data: &'a [u8]) -> u8 {
+        let mut ancillary_data_iter = AncillaryDataIter::<libc::c_int>::new(data);
+        if let Some(u) = ancillary_data_iter.next() { u as u8 } else { 0 }
+    }
+
+    /// Create a `AncillaryData::IpTtl` variant.
+    ///
+    /// # Safety
+    ///
+    /// `data` must contain a valid control message and the control message must be type of
+    /// `IPPROTO_IP` and level of `IP_TTL`.
+    unsafe fn as_ipttl(data: &'a [u8]) -> Self {
+        let ttl = AncillaryData::as_u8(data);
+        AncillaryData::IpTtl(ttl)
+    }
+
     fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
@@ -312,6 +407,12 @@ impl<'a> AncillaryData<'a> {
             let data = from_raw_parts(data, data_len);
 
             match (*cmsg).cmsg_level {
+                libc::IPPROTO_IP => match (*cmsg).cmsg_type {
+                    libc::IP_TTL => Ok(AncillaryData::as_ipttl(data)),
+                    cmsg_type => {
+                        Err(AncillaryError::Unknown { cmsg_level: libc::IPPROTO_IP, cmsg_type })
+                    }
+                },
                 libc::SOL_SOCKET => match (*cmsg).cmsg_type {
                     libc::SCM_RIGHTS => Ok(AncillaryData::as_rights(data)),
                     #[cfg(any(target_os = "android", target_os = "linux",))]
@@ -532,6 +633,51 @@ impl<'a> SocketAncillary<'a> {
             creds,
             libc::SOL_SOCKET,
             libc::SCM_CREDENTIALS,
+        )
+    }
+
+    /// Add TTL to the ancillary data.
+    ///
+    /// The function returns `true` if there was enough space in the buffer.
+    /// If there was not enough space then no file descriptors was appended.
+    /// Technically, that means this operation adds a control message with the level `IPPROTO_IP`
+    /// and type `IP_TTL`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::io::IoSlice;
+    /// use std::net::UdpSocket;
+    /// use std::os::unix::net::SocketAncillary;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    ///     socket.connect("127.0.0.1:41203").expect("couldn't connect to address");
+    ///     let buf1 = [1; 8];
+    ///     let buf2 = [2; 16];
+    ///     let buf3 = [3; 8];
+    ///     let bufs = &[
+    ///         IoSlice::new(&buf1),
+    ///         IoSlice::new(&buf2),
+    ///         IoSlice::new(&buf3),
+    ///     ][..];
+    ///     let mut ancillary_buffer = [0; 128];
+    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     ancillary.add_ipttl(20);
+    ///     socket.send_vectored_with_ancillary(bufs, &mut ancillary)
+    ///         .expect("send_vectored_with_ancillary function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn add_ipttl(&mut self, ttl: u8) -> bool {
+        let ttl: libc::c_int = ttl as libc::c_int;
+        add_to_ancillary_data(
+            &mut self.buffer,
+            &mut self.length,
+            from_ref(&ttl),
+            libc::IPPROTO_IP,
+            libc::IP_TTL,
         )
     }
 

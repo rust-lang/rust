@@ -8,6 +8,16 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+#[cfg(any(
+    target_os = "android",
+    target_os = "dragonfly",
+    target_os = "emscripten",
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_os = "openbsd",
+))]
+use crate::os::unix::net::SocketAncillary;
 use crate::ptr;
 use crate::sys::net::netc as c;
 use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
@@ -497,6 +507,75 @@ impl UdpSocket {
         self.inner.recv_from(buf)
     }
 
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    pub fn set_recvttl(&self, recvttl: bool) -> io::Result<()> {
+        self.inner.set_recvttl(recvttl)
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    pub fn recvttl(&self) -> io::Result<bool> {
+        self.inner.recvttl()
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn recv_vectored_with_ancillary(
+        &self,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool)> {
+        let (count, truncated, _) =
+            self.inner.recv_vectored_with_ancillary_from_udp(bufs, ancillary)?;
+
+        Ok((count, truncated))
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn recv_vectored_with_ancillary_from(
+        &self,
+        bufs: &mut [IoSliceMut<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<(usize, bool, SocketAddr)> {
+        let (count, truncated, addr) =
+            self.inner.recv_vectored_with_ancillary_from_udp(bufs, ancillary)?;
+        let addr = addr?;
+
+        Ok((count, truncated, addr))
+    }
+
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.inner.peek_from(buf)
     }
@@ -515,6 +594,43 @@ impl UdpSocket {
             )
         })?;
         Ok(ret as usize)
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn send_vectored_with_ancillary(
+        &self,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+    ) -> io::Result<usize> {
+        self.inner.send_vectored_with_ancillary_to_udp(None, bufs, ancillary)
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "dragonfly",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ))]
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn send_vectored_with_ancillary_to(
+        &self,
+        bufs: &[IoSlice<'_>],
+        ancillary: &mut SocketAncillary<'_>,
+        dst: &SocketAddr,
+    ) -> io::Result<usize> {
+        self.inner.send_vectored_with_ancillary_to_udp(Some(dst), bufs, ancillary)
     }
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {

@@ -8,7 +8,7 @@
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
+use super::SocketAncillary;
 use super::{sockaddr_un, SocketAddr};
 use crate::fmt;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut};
@@ -516,7 +516,7 @@ impl UnixStream {
         bufs: &mut [IoSliceMut<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<usize> {
-        let (count, _, _) = recv_vectored_with_ancillary_from(&self.0, bufs, ancillary)?;
+        let (count, _, _) = self.0.recv_vectored_with_ancillary_from_unix(bufs, ancillary)?;
 
         Ok(count)
     }
@@ -566,7 +566,7 @@ impl UnixStream {
         bufs: &[IoSlice<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<usize> {
-        send_vectored_with_ancillary_to(&self.0, None, bufs, ancillary)
+        self.0.send_vectored_with_ancillary_to_unix(None, bufs, ancillary)
     }
 }
 
