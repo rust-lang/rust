@@ -14,8 +14,8 @@ core = { path = "../core" }
 compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
-rand = "0.7"
-rand_xorshift = "0.2"
+rand = "0.8"
+rand_xorshift = "0.3"
 
 [[test]]
 name = "collectionstests"

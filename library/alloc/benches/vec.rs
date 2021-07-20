@@ -1,4 +1,4 @@
-use rand::RngCore;
+use rand::{thread_rng, RngCore};
 use std::iter::{repeat, FromIterator};
 use test::{black_box, Bencher};
 
@@ -476,7 +476,7 @@ fn bench_in_place_recycle(b: &mut Bencher) {
 #[bench]
 fn bench_in_place_zip_recycle(b: &mut Bencher) {
     let mut data = vec![0u8; 1000];
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let mut subst = vec![0u8; 1000];
     rng.fill_bytes(&mut subst[..]);
 
@@ -495,7 +495,7 @@ fn bench_in_place_zip_recycle(b: &mut Bencher) {
 #[bench]
 fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     let mut data = vec![0u8; 256];
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let mut subst = vec![0u8; 1000];
     rng.fill_bytes(&mut subst[..]);
 

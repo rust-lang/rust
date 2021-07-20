@@ -395,8 +395,11 @@ fn test_sort() {
     for len in (2..25).chain(500..510) {
         for &modulus in &[5, 10, 100, 1000] {
             for _ in 0..10 {
-                let orig: Vec<_> =
-                    rng.sample_iter::<i32, _>(&Standard).map(|x| x % modulus).take(len).collect();
+                let orig: Vec<_> = (&mut rng)
+                    .sample_iter::<i32, _>(Standard)
+                    .map(|x| x % modulus)
+                    .take(len)
+                    .collect();
 
                 // Sort in default order.
                 let mut v = orig.clone();

@@ -34,7 +34,7 @@ default-features = false
 features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive']
 
 [dev-dependencies]
-rand = "0.7"
+rand = "0.8"
 
 [target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.1", features = ['rustc-dep-of-std'] }
