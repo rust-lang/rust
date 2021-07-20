@@ -102,20 +102,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         )
     }
 
-    /// A hacky variant of `canonicalize_query` that does not
-    /// canonicalize `'static`. Unfortunately, the existing leak
-    /// check treats `'static` differently in some cases (see also
-    /// #33684), so if we are performing an operation that may need to
-    /// prove "leak-check" related things, we leave `'static`
-    /// alone.
-    ///
-    /// `'static` is also special cased when winnowing candidates when
-    /// selecting implementation candidates, so we also have to leave `'static`
-    /// alone for queries that do selection.
-    //
-    // FIXME(#48536): once the above issues are resolved, we can remove this
-    // and just use `canonicalize_query`.
-    pub fn canonicalize_hr_query_hack<V>(
+    /// A variant of `canonicalize_query` that does not
+    /// canonicalize `'static`. This is useful when
+    /// the query implementation can perform more efficient
+    /// handling of `'static` regions (e.g. trait evaluation).
+    pub fn canonicalize_query_keep_static<V>(
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
