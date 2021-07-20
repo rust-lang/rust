@@ -99,6 +99,7 @@ fn struct_llfields<'a, 'tcx>(
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     let mut projection = vec![0; field_count];
+    let mut padding_used = false;
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -118,6 +119,7 @@ fn struct_llfields<'a, 'tcx>(
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         if padding != Size::ZERO {
+            padding_used = true;
             let padding_align = prev_effective_align.min(effective_field_align);
             assert_eq!(offset.align_to(padding_align) + padding, target_offset);
             result.push(cx.type_padding_filler(padding, padding_align));
@@ -145,7 +147,9 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    cx.field_projection_cache.borrow_mut().insert(layout, projection);
+    if padding_used {
+        cx.field_projection_cache.borrow_mut().insert(layout, projection);
+    }
 
     (result, packed)
 }
@@ -361,9 +365,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Arbitrary { .. } => match cx.field_projection_cache.borrow().get(self) {
                 Some(projection) => projection[index] as u64,
-                None => {
-                    bug!("TyAndLayout::llvm_field_index({:?}): field projection not cached", self)
-                }
+                None => self.fields.memory_index(index) as u64,
             },
         }
     }
