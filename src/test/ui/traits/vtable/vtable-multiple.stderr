@@ -1,0 +1,19 @@
+error: Vtable Entries: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method: <S as A>::foo_a,
+    Method: <S as B>::foo_b,
+    TraitVPtr: <S as B>,
+    Method: <S as C>::foo_c,
+]
+
+error: Vtable Entries: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method: <S as B>::foo_b,
+]
+
+error: aborting due to 2 previous errors
+
