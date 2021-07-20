@@ -1070,9 +1070,12 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
     // both executables and dynamic shared objects. Everywhere else the runtimes
     // are currently distributed as static liraries which should be linked to
     // executables only.
+    // On Windows there are both static and dynamic runtimes available.
     let needs_runtime = match crate_type {
         CrateType::Executable => true,
-        CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => sess.target.is_like_osx,
+        CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
+            sess.target.is_like_osx || sess.target.is_like_windows
+        }
         CrateType::Rlib | CrateType::Staticlib => false,
     };
 
@@ -1082,23 +1085,28 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
 
     let sanitizer = sess.opts.debugging_opts.sanitizer;
     if sanitizer.contains(SanitizerSet::ADDRESS) {
-        link_sanitizer_runtime(sess, linker, "asan");
+        link_sanitizer_runtime(sess, crate_type, linker, "asan");
     }
     if sanitizer.contains(SanitizerSet::LEAK) {
-        link_sanitizer_runtime(sess, linker, "lsan");
+        link_sanitizer_runtime(sess, crate_type, linker, "lsan");
     }
     if sanitizer.contains(SanitizerSet::MEMORY) {
-        link_sanitizer_runtime(sess, linker, "msan");
+        link_sanitizer_runtime(sess, crate_type, linker, "msan");
     }
     if sanitizer.contains(SanitizerSet::THREAD) {
-        link_sanitizer_runtime(sess, linker, "tsan");
+        link_sanitizer_runtime(sess, crate_type, linker, "tsan");
     }
     if sanitizer.contains(SanitizerSet::HWADDRESS) {
-        link_sanitizer_runtime(sess, linker, "hwasan");
+        link_sanitizer_runtime(sess, crate_type, linker, "hwasan");
     }
 }
 
-fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
+fn link_sanitizer_runtime(
+    sess: &Session,
+    crate_type: CrateType,
+    linker: &mut dyn Linker,
+    name: &str,
+) {
     fn find_sanitizer_runtime(sess: &Session, filename: &String) -> PathBuf {
         let session_tlib =
             filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
@@ -1119,7 +1127,26 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         .map(|channel| format!("-{}", channel))
         .unwrap_or_default();
 
-    if sess.target.is_like_osx {
+    if sess.target.is_like_windows {
+        let arch = &sess.target.arch;
+        if sess.crt_static(Some(crate_type)) {
+            if crate_type == CrateType::Executable {
+                linker.link_whole_rlib(&PathBuf::from(format!("clang_rt.{}-{}.lib", name, arch)));
+            } else {
+                linker.link_whole_rlib(&PathBuf::from(format!(
+                    "clang_rt.{}_dll_thunk-{}.lib",
+                    name, arch
+                )));
+            }
+        } else {
+            linker
+                .link_whole_rlib(&PathBuf::from(format!("clang_rt.{}_dynamic-{}.lib", name, arch)));
+            linker.link_whole_rlib(&PathBuf::from(format!(
+                "clang_rt.{}_dynamic_runtime_thunk-{}.lib",
+                name, arch
+            )));
+        }
+    } else if sess.target.is_like_osx {
         // On Apple platforms, the sanitizer is always built as a dylib, and
         // LLVM will link to `@rpath/*.dylib`, so we need to specify an
         // rpath to the library as well (the rpath should be absolute, see
