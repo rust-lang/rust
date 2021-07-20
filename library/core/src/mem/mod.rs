@@ -622,6 +622,7 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
+#[track_caller]
 pub unsafe fn zeroed<T>() -> T {
     // SAFETY: the caller must guarantee that an all-zero value is valid for `T`.
     unsafe {
@@ -657,6 +658,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
+#[track_caller]
 pub unsafe fn uninitialized<T>() -> T {
     // SAFETY: the caller must guarantee that an unitialized value is valid for `T`.
     unsafe {
