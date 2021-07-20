@@ -463,7 +463,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_doc_url_crate() {
+    fn external_docs_doc_url_crate() {
         check_external_docs(
             r#"
 //- /main.rs crate:main deps:test
@@ -476,7 +476,7 @@ pub struct Foo;
     }
 
     #[test]
-    fn test_doc_url_struct() {
+    fn external_docs_doc_url_struct() {
         check_external_docs(
             r#"
 pub struct Fo$0o;
@@ -486,7 +486,19 @@ pub struct Fo$0o;
     }
 
     #[test]
-    fn test_doc_url_fn() {
+    fn external_docs_doc_url_struct_field() {
+        check_external_docs(
+            r#"
+pub struct Foo {
+    field$0: ()
+}
+"#,
+            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#structfield.field"##]],
+        );
+    }
+
+    #[test]
+    fn external_docs_doc_url_fn() {
         check_external_docs(
             r#"
 pub fn fo$0o() {}
@@ -496,73 +508,119 @@ pub fn fo$0o() {}
     }
 
     #[test]
-    fn test_doc_url_inherent_method() {
+    fn external_docs_doc_url_impl_assoc() {
         check_external_docs(
             r#"
 pub struct Foo;
 impl Foo {
-    pub fn met$0hod() {}
+    pub fn method$0() {}
 }
 "#,
             expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#method.method"##]],
         );
+        check_external_docs(
+            r#"
+pub struct Foo;
+impl Foo {
+    const CONST$0: () = ();
+}
+"#,
+            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#associatedconstant.CONST"##]],
+        );
     }
 
     #[test]
-    fn test_doc_url_impl_trait_method() {
+    fn external_docs_doc_url_impl_trait_assoc() {
         check_external_docs(
             r#"
 pub struct Foo;
 pub trait Trait {
-    fn met hod();
+    fn method() {}
 }
 impl Trait for Foo {
-    pub fn met$0hod() {}
+    pub fn method$0() {}
 }
 "#,
             expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#method.method"##]],
         );
+        check_external_docs(
+            r#"
+pub struct Foo;
+pub trait Trait {
+    const CONST: () = ();
+}
+impl Trait for Foo {
+    const CONST$0: () = ();
+}
+"#,
+            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#associatedconstant.CONST"##]],
+        );
+        check_external_docs(
+            r#"
+pub struct Foo;
+pub trait Trait {
+    type Type;
+}
+impl Trait for Foo {
+    type Type$0 = ();
+}
+"#,
+            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#associatedtype.Type"##]],
+        );
     }
 
     #[test]
-    fn test_doc_url_trait_required_method() {
+    fn external_docs_doc_url_trait_assoc() {
         check_external_docs(
             r#"
 pub trait Foo {
-    fn met$0hod();
+    fn method$0();
 }
 "#,
             expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#tymethod.method"##]],
         );
-    }
-
-    #[test]
-    fn test_doc_url_field() {
         check_external_docs(
             r#"
-pub struct Foo {
-    pub fie$0ld: ()
+pub trait Foo {
+    const CONST$0: ();
 }
-
 "#,
-            expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#structfield.field"##]],
+            expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#associatedconstant.CONST"##]],
+        );
+        check_external_docs(
+            r#"
+pub trait Foo {
+    type Type$0;
+}
+"#,
+            expect![[r##"https://docs.rs/test/*/test/trait.Foo.html#associatedtype.Type"##]],
         );
     }
 
     #[test]
-    fn test_module() {
+    fn external_docs_trait() {
+        check_external_docs(
+            r#"
+trait Trait$0 {}
+"#,
+            expect![[r#"https://docs.rs/test/*/test/trait.Trait.html"#]],
+        )
+    }
+
+    #[test]
+    fn external_docs_module() {
         check_external_docs(
             r#"
 pub mod foo {
     pub mod ba$0r {}
 }
-        "#,
+"#,
             expect![[r#"https://docs.rs/test/*/test/foo/bar/index.html"#]],
         )
     }
 
     #[test]
-    fn test_reexport_order() {
+    fn external_docs_reexport_order() {
         check_external_docs(
             r#"
 pub mod wrapper {
@@ -603,7 +661,7 @@ trait Trait$0 {
     }
 
     #[test]
-    fn test_rewrite_html_root_url() {
+    fn rewrite_html_root_url() {
         check_rewrite(
             r#"
 #![doc(arbitrary_attribute = "test", html_root_url = "https:/example.com", arbitrary_attribute2)]
@@ -619,7 +677,7 @@ pub struct B$0ar
     }
 
     #[test]
-    fn test_rewrite_on_field() {
+    fn rewrite_on_field() {
         // FIXME: Should be
         //  [Foo](https://docs.rs/test/*/test/struct.Foo.html)
         check_rewrite(
@@ -634,7 +692,7 @@ pub struct Foo {
     }
 
     #[test]
-    fn test_rewrite_struct() {
+    fn rewrite_struct() {
         check_rewrite(
             r#"
 /// [Foo]
@@ -672,22 +730,6 @@ pub struct $0Foo;
 "#,
             expect![[r#"[my Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
         );
-    }
-
-    #[test]
-    fn test_rewrite() {
-        check_rewrite(
-            r#"
-pub trait Foo {
-    fn buzz() -> usize;
-}
-/// [Foo][buzz]
-///
-/// [buzz]: Foo::buzz
-pub struct Bar$0;
-"#,
-            expect![[r###"[Foo](https://docs.rs/test/*/test/trait.Foo.html#tymethod.buzz)"###]],
-        )
     }
 
     fn check_external_docs(ra_fixture: &str, expect: Expect) {
