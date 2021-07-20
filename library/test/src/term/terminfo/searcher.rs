@@ -11,7 +11,7 @@ mod tests;
 
 /// Return path to database entry for `term`
 #[allow(deprecated)]
-pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
+pub(crate) fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();
     let first_char = term.chars().next()?;
 

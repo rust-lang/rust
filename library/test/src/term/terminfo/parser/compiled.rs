@@ -13,7 +13,7 @@ mod tests;
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
 
 #[rustfmt::skip]
-pub static boolfnames: &[&str] = &["auto_left_margin", "auto_right_margin",
+pub(crate) static boolfnames: &[&str] = &["auto_left_margin", "auto_right_margin",
     "no_esc_ctlc", "ceol_standout_glitch", "eat_newline_glitch", "erase_overstrike", "generic_type",
     "hard_copy", "has_meta_key", "has_status_line", "insert_null_glitch", "memory_above",
     "memory_below", "move_insert_mode", "move_standout_mode", "over_strike", "status_line_esc_ok",
@@ -26,13 +26,13 @@ pub static boolfnames: &[&str] = &["auto_left_margin", "auto_right_margin",
     "return_does_clr_eol"];
 
 #[rustfmt::skip]
-pub static boolnames: &[&str] = &["bw", "am", "xsb", "xhp", "xenl", "eo",
+pub(crate) static boolnames: &[&str] = &["bw", "am", "xsb", "xhp", "xenl", "eo",
     "gn", "hc", "km", "hs", "in", "db", "da", "mir", "msgr", "os", "eslok", "xt", "hz", "ul", "xon",
     "nxon", "mc5i", "chts", "nrrmc", "npc", "ndscr", "ccc", "bce", "hls", "xhpa", "crxm", "daisy",
     "xvpa", "sam", "cpix", "lpix", "OTbs", "OTns", "OTnc", "OTMT", "OTNL", "OTpt", "OTxr"];
 
 #[rustfmt::skip]
-pub static numfnames: &[&str] = &[ "columns", "init_tabs", "lines",
+pub(crate) static numfnames: &[&str] = &[ "columns", "init_tabs", "lines",
     "lines_of_memory", "magic_cookie_glitch", "padding_baud_rate", "virtual_terminal",
     "width_status_line", "num_labels", "label_height", "label_width", "max_attributes",
     "maximum_windows", "max_colors", "max_pairs", "no_color_video", "buffer_capacity",
@@ -43,13 +43,13 @@ pub static numfnames: &[&str] = &[ "columns", "init_tabs", "lines",
     "new_line_delay", "backspace_delay", "horizontal_tab_delay", "number_of_function_keys"];
 
 #[rustfmt::skip]
-pub static numnames: &[&str] = &[ "cols", "it", "lines", "lm", "xmc", "pb",
+pub(crate) static numnames: &[&str] = &[ "cols", "it", "lines", "lm", "xmc", "pb",
     "vt", "wsl", "nlab", "lh", "lw", "ma", "wnum", "colors", "pairs", "ncv", "bufsz", "spinv",
     "spinh", "maddr", "mjump", "mcs", "mls", "npins", "orc", "orl", "orhi", "orvi", "cps", "widcs",
     "btns", "bitwin", "bitype", "UTug", "OTdC", "OTdN", "OTdB", "OTdT", "OTkn"];
 
 #[rustfmt::skip]
-pub static stringfnames: &[&str] = &[ "back_tab", "bell", "carriage_return",
+pub(crate) static stringfnames: &[&str] = &[ "back_tab", "bell", "carriage_return",
     "change_scroll_region", "clear_all_tabs", "clear_screen", "clr_eol", "clr_eos",
     "column_address", "command_character", "cursor_address", "cursor_down", "cursor_home",
     "cursor_invisible", "cursor_left", "cursor_mem_address", "cursor_normal", "cursor_right",
@@ -123,7 +123,7 @@ pub static stringfnames: &[&str] = &[ "back_tab", "bell", "carriage_return",
     "acs_plus", "memory_lock", "memory_unlock", "box_chars_1"];
 
 #[rustfmt::skip]
-pub static stringnames: &[&str] = &[ "cbt", "_", "cr", "csr", "tbc", "clear",
+pub(crate) static stringnames: &[&str] = &[ "cbt", "_", "cr", "csr", "tbc", "clear",
     "_", "_", "hpa", "cmdch", "cup", "cud1", "home", "civis", "cub1", "mrcup", "cnorm", "cuf1",
     "ll", "cuu1", "cvvis", "dch1", "dl1", "dsl", "hd", "smacs", "blink", "bold", "smcup", "smdc",
     "dim", "smir", "invis", "prot", "rev", "smso", "smul", "ech", "rmacs", "sgr0", "rmcup", "rmdc",
@@ -178,7 +178,7 @@ fn read_byte(r: &mut dyn io::Read) -> io::Result<u8> {
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames`
 /// is true
-pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, String> {
+pub(crate) fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, String> {
     macro_rules! t( ($e:expr) => (
         match $e {
             Ok(e) => e,
@@ -317,7 +317,7 @@ pub fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo, Strin
 }
 
 /// Creates a dummy TermInfo struct for msys terminals
-pub fn msys_terminfo() -> TermInfo {
+pub(crate) fn msys_terminfo() -> TermInfo {
     let mut strings = HashMap::new();
     strings.insert("sgr0".to_string(), b"\x1B[0m".to_vec());
     strings.insert("bold".to_string(), b"\x1B[1m".to_vec());

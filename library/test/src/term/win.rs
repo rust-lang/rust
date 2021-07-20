@@ -5,12 +5,11 @@
 use std::io;
 use std::io::prelude::*;
 
-use crate::color;
-use crate::Attr;
-use crate::Terminal;
+use super::color;
+use super::Terminal;
 
 /// A Terminal implementation that uses the Win32 Console API.
-pub struct WinConsole<T> {
+pub(crate) struct WinConsole<T> {
     buf: T,
     def_foreground: color::Color,
     def_background: color::Color,
@@ -115,7 +114,7 @@ impl<T: Write + Send + 'static> WinConsole<T> {
     }
 
     /// Returns `None` whenever the terminal cannot be created for some reason.
-    pub fn new(out: T) -> io::Result<WinConsole<T>> {
+    pub(crate) fn new(out: T) -> io::Result<WinConsole<T>> {
         use std::mem::MaybeUninit;
 
         let fg;
@@ -154,45 +153,11 @@ impl<T: Write> Write for WinConsole<T> {
 }
 
 impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
-    type Output = T;
-
     fn fg(&mut self, color: color::Color) -> io::Result<bool> {
         self.foreground = color;
         self.apply();
 
         Ok(true)
-    }
-
-    fn bg(&mut self, color: color::Color) -> io::Result<bool> {
-        self.background = color;
-        self.apply();
-
-        Ok(true)
-    }
-
-    fn attr(&mut self, attr: Attr) -> io::Result<bool> {
-        match attr {
-            Attr::ForegroundColor(f) => {
-                self.foreground = f;
-                self.apply();
-                Ok(true)
-            }
-            Attr::BackgroundColor(b) => {
-                self.background = b;
-                self.apply();
-                Ok(true)
-            }
-            _ => Ok(false),
-        }
-    }
-
-    fn supports_attr(&self, attr: Attr) -> bool {
-        // it claims support for underscore and reverse video, but I can't get
-        // it to do anything -cmr
-        match attr {
-            Attr::ForegroundColor(_) | Attr::BackgroundColor(_) => true,
-            _ => false,
-        }
     }
 
     fn reset(&mut self) -> io::Result<bool> {
@@ -201,20 +166,5 @@ impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
         self.apply();
 
         Ok(true)
-    }
-
-    fn get_ref(&self) -> &T {
-        &self.buf
-    }
-
-    fn get_mut(&mut self) -> &mut T {
-        &mut self.buf
-    }
-
-    fn into_inner(self) -> T
-    where
-        Self: Sized,
-    {
-        self.buf
     }
 }
