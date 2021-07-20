@@ -1,0 +1,21 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+// This test ensures that the correct font is applied on the modules listed items.
+
+// modules
+assert: ("#modules + table td > a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert: ("#modules + table td.docblock-short", {"font-family": '"Source Serif 4", serif'})
+// structs
+assert: ("#structs + table td > a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert: ("#structs + table td.docblock-short", {"font-family": '"Source Serif 4", serif'})
+// enums
+assert: ("#enums + table td > a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert: ("#enums + table td.docblock-short", {"font-family": '"Source Serif 4", serif'})
+// traits
+assert: ("#traits + table td > a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert: ("#traits + table td.docblock-short", {"font-family": '"Source Serif 4", serif'})
+// functions
+assert: ("#functions + table td > a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert: ("#functions + table td.docblock-short", {"font-family": '"Source Serif 4", serif'})
+// keywords
+assert: ("#keywords + table td > a", {"font-family": '"Fira Sans", Arial, sans-serif'})
+assert: ("#keywords + table td.docblock-short", {"font-family": '"Source Serif 4", serif'})
