@@ -92,7 +92,7 @@ pub enum ProjectionCacheEntry<'tcx> {
     Ambiguous,
     Recur,
     Error,
-    NormalizedTy(NormalizedTy<'tcx>),
+    NormalizedTy { value: NormalizedTy<'tcx>, full_obligations: Vec<PredicateObligation<'tcx>> },
 }
 
 impl<'tcx> ProjectionCacheStorage<'tcx> {
@@ -139,7 +139,12 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     }
 
     /// Indicates that `key` was normalized to `value`.
-    pub fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: NormalizedTy<'tcx>) {
+    pub fn insert_ty(
+        &mut self,
+        key: ProjectionCacheKey<'tcx>,
+        value: NormalizedTy<'tcx>,
+        full_obligations: Vec<PredicateObligation<'tcx>>,
+    ) {
         debug!(
             "ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
             key, value
@@ -149,7 +154,8 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             debug!("Not overwriting Recur");
             return;
         }
-        let fresh_key = map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
+        let fresh_key =
+            map.insert(key, ProjectionCacheEntry::NormalizedTy { value, full_obligations });
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 
@@ -160,7 +166,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>) {
         let mut map = self.map();
         let ty = match map.get(&key) {
-            Some(&ProjectionCacheEntry::NormalizedTy(ref ty)) => {
+            Some(&ProjectionCacheEntry::NormalizedTy { value: ref ty, .. }) => {
                 debug!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 ty.value
             }
@@ -174,7 +180,10 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
 
         map.insert(
             key,
-            ProjectionCacheEntry::NormalizedTy(Normalized { value: ty, obligations: vec![] }),
+            ProjectionCacheEntry::NormalizedTy {
+                value: Normalized { value: ty, obligations: vec![] },
+                full_obligations: vec![],
+            },
         );
     }
 
@@ -186,10 +195,10 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
         if !ty.obligations.is_empty() {
             self.map().insert(
                 key,
-                ProjectionCacheEntry::NormalizedTy(Normalized {
-                    value: ty.value,
-                    obligations: vec![],
-                }),
+                ProjectionCacheEntry::NormalizedTy {
+                    value: Normalized { value: ty.value, obligations: vec![] },
+                    full_obligations: vec![],
+                },
             );
         }
     }

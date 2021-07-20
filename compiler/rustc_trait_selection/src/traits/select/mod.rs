@@ -133,6 +133,7 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
     query_mode: TraitQueryMode,
+    skip_projection_cache: bool,
 }
 
 // A stack that walks back up the stack frame.
@@ -221,6 +222,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode: TraitQueryMode::Standard,
+            skip_projection_cache: false,
         }
     }
 
@@ -232,6 +234,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode: TraitQueryMode::Standard,
+            skip_projection_cache: false,
         }
     }
 
@@ -247,6 +250,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
             query_mode: TraitQueryMode::Standard,
+            skip_projection_cache: false,
         }
     }
 
@@ -262,7 +266,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode,
+            skip_projection_cache: false,
         }
+    }
+
+    pub fn skip_projection_cache(&self) -> bool {
+        self.skip_projection_cache
     }
 
     /// Enables tracking of intercrate ambiguity causes. These are
@@ -379,12 +388,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        self.evaluation_probe(|this| {
+        let old = std::mem::replace(&mut self.skip_projection_cache, true);
+        let res = self.evaluation_probe(|this| {
             this.evaluate_predicate_recursively(
                 TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                 obligation.clone(),
             )
-        })
+        });
+        self.skip_projection_cache = old;
+        res
     }
 
     fn evaluation_probe(
