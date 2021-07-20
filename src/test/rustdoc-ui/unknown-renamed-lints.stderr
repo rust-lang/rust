@@ -14,7 +14,7 @@ error: unknown lint: `rustdoc::x`
   --> $DIR/unknown-renamed-lints.rs:7:9
    |
 LL | #![deny(rustdoc::x)]
-   |         ^^^^^^^^^^
+   |         ^^^^^^^^^^ help: did you mean: `rustdoc::all`
 
 error: lint `intra_doc_link_resolution_failure` has been renamed to `rustdoc::broken_intra_doc_links`
   --> $DIR/unknown-renamed-lints.rs:9:9
