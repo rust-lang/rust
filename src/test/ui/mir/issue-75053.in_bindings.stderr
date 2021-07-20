@@ -8,7 +8,7 @@ LL | #![cfg_attr(in_bindings, feature(impl_trait_in_bindings))]
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-75053.rs:52:38
+  --> $DIR/issue-75053.rs:53:38
    |
 LL |     type O;
    |     ------- `<Self as MyIndex<T>>::O` defined here
@@ -19,6 +19,18 @@ LL |     let _pos: Phantom1<DummyT<()>> = Scope::new().my_index();
    |                                      this method call resolves to `<Self as MyIndex<T>>::O`
    |                                      cannot infer type for type parameter `T`
 
-error: aborting due to previous error; 1 warning emitted
+error: type aliases of `impl Trait` are not allowed as field types in structs
+  --> $DIR/issue-75053.rs:28:1
+   |
+LL | type DummyT<T> = impl F;
+   | ------------------------ type alias defined here
+...
+LL | struct Scope<T>(Phantom2<DummyT<T>>);
+   | ^^^^^^^^^^^^^^^^-------------------^^
+   |                 |        |
+   |                 |        this type is a type alias of an `impl Trait`
+   |                 this field contains a type alias `DummyT` of an `impl Trait`
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0282`.

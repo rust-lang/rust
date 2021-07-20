@@ -1,5 +1,5 @@
 warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/type-alias-impl-trait-tuple.rs:5:32
+  --> $DIR/type-alias-impl-trait-tuple.rs:4:32
    |
 LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    |                                ^^^^^^^^^^^^^^^^^^^^^

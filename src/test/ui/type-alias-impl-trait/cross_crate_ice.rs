@@ -1,9 +1,9 @@
 // aux-build:cross_crate_ice.rs
-// build-pass (FIXME(62277): could be check-pass?)
 
 extern crate cross_crate_ice;
 
 struct Bar(cross_crate_ice::Foo);
+//~^ type alias impl traits are not allowed as field types in structs
 
 impl Bar {
     fn zero(&self) -> &cross_crate_ice::Foo {
