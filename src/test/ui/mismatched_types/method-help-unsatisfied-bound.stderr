@@ -9,6 +9,7 @@ LL |     a.unwrap();
    |
    = note: the following trait bounds were not satisfied:
            `Foo: Debug`
+   = help: Consider annotating Foo with #[derive(Debug)] for a default implementation
 
 error: aborting due to previous error
 

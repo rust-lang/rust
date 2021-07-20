@@ -833,6 +833,72 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&format!(
                             "the following trait bounds were not satisfied:\n{bound_list}"
                         ));
+
+                        let derivables = [
+                            sym::Eq,
+                            sym::PartialEq,
+                            sym::Ord,
+                            sym::PartialOrd,
+                            sym::Clone,
+                            sym::Copy,
+                            sym::Hash,
+                            sym::Default,
+                            sym::debug_trait,
+                        ];
+                        let mut derives = unsatisfied_predicates
+                            .iter()
+                            .filter_map(|(pred, _)| {
+                                if let ty::PredicateKind::Trait(trait_pred, _) =
+                                    pred.kind().skip_binder()
+                                {
+                                    let trait_ref = trait_pred.trait_ref;
+                                    let self_ty = trait_ref.self_ty();
+                                    if let ty::Adt(adt_def, _) = self_ty.kind() {
+                                        if adt_def.did.is_local() {
+                                            let diagnostic_items =
+                                                self.tcx.diagnostic_items(trait_ref.def_id.krate);
+                                            return derivables.iter().find_map(|trait_derivable| {
+                                                if let Some(item_def_id) =
+                                                    diagnostic_items.get(trait_derivable)
+                                                {
+                                                    if item_def_id == &trait_ref.def_id
+                                                        && !(adt_def.is_enum()
+                                                            && *trait_derivable == sym::Default)
+                                                    {
+                                                        return Some((
+                                                            format!("{}", self_ty),
+                                                            format!(
+                                                                "{}",
+                                                                trait_ref.print_only_trait_path()
+                                                            ),
+                                                        ));
+                                                    }
+                                                }
+                                                None
+                                            });
+                                        }
+                                    }
+                                }
+                                None
+                            })
+                            .collect::<Vec<(String, String)>>();
+                        derives.sort();
+                        let derives_grouped = derives.into_iter().fold(
+                            Vec::<(String, String)>::new(),
+                            |mut acc, (self_name, trait_name)| {
+                                if let Some((acc_self_name, ref mut traits)) = acc.last_mut() {
+                                    if acc_self_name == &self_name {
+                                        traits.push_str(format!(", {}", trait_name).as_str());
+                                        return acc;
+                                    }
+                                }
+                                acc.push((self_name, trait_name));
+                                acc
+                            },
+                        );
+                        for (self_name, traits) in &derives_grouped {
+                            err.help(&format!("Consider annotating {} with #[derive({})] for a default implementation", self_name, traits));
+                        }
                         unsatisfied_bounds = true;
                     }
                 }

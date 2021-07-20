@@ -29,6 +29,7 @@ LL |     let w = u.clone();
    = note: the following trait bounds were not satisfied:
            `CloneNoCopy: Copy`
            which is required by `U5<CloneNoCopy>: Clone`
+   = help: Consider annotating CloneNoCopy with #[derive(Copy)] for a default implementation
 
 error: aborting due to 2 previous errors
 

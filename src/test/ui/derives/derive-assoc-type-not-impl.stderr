@@ -16,6 +16,7 @@ LL |     Bar::<NotClone> { x: 1 }.clone();
    = note: the following trait bounds were not satisfied:
            `NotClone: Clone`
            which is required by `Bar<NotClone>: Clone`
+   = help: Consider annotating NotClone with #[derive(Clone)] for a default implementation
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`
