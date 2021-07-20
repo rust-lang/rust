@@ -70,12 +70,24 @@ function parseOptions(args) {
     return null;
 }
 
+function print_test_successful() {
+    process.stdout.write(".");
+}
+
+function print_test_erroneous() {
+    process.stderr.write("F");
+}
+
 async function main(argv) {
     let opts = parseOptions(argv.slice(2));
     if (opts === null) {
         process.exit(1);
     }
 
+    // Print successful tests too
+    let debug = false;
+    // Run tests in sequentially
+    let no_headless = false;
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
@@ -84,6 +96,7 @@ async function main(argv) {
             "--variable", "DOC_PATH", opts["doc_folder"],
         ];
         if (opts["debug"]) {
+            debug = true;
             args.push("--debug");
         }
         if (opts["show_text"]) {
@@ -91,6 +104,7 @@ async function main(argv) {
         }
         if (opts["no_headless"]) {
             args.push("--no-headless");
+            no_headless = true;
         }
         options.parseArguments(args);
     } catch (error) {
@@ -101,25 +115,81 @@ async function main(argv) {
     let failed = false;
     let files;
     if (opts["files"].length === 0) {
-        files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
+        files = fs.readdirSync(opts["tests_folder"]);
     } else {
-        files = opts["files"].filter(file => path.extname(file) == ".goml");
+        files = opts["files"];
     }
-
+    files = files.filter(file => path.extname(file) == ".goml");
+    if (files.length === 0) {
+        console.error("rustdoc-gui: No test selected");
+        process.exit(2);
+    }
     files.sort();
-    for (var i = 0; i < files.length; ++i) {
+
+    console.log(`Running ${files.length} rustdoc-gui tests...`);
+    process.setMaxListeners(files.length + 1);
+    let tests = [];
+    let results = new Array(files.length);
+    // poormans enum
+    const RUN_SUCCESS = 42, RUN_FAILED = 23, RUN_ERRORED = 13;
+    for (let i = 0; i < files.length; ++i) {
         const testPath = path.join(opts["tests_folder"], files[i]);
-        await runTest(testPath, options).then(out => {
-            const [output, nb_failures] = out;
-            console.log(output);
-            if (nb_failures > 0) {
+        tests.push(
+            runTest(testPath, options)
+            .then(out => {
+                const [output, nb_failures] = out;
+                results[i] = {
+                    status: nb_failures === 0 ? RUN_SUCCESS : RUN_FAILED,
+                    output: output,
+                };
+                if (nb_failures > 0) {
+                    print_test_erroneous()
+                    failed = true;
+                } else {
+                    print_test_successful()
+                }
+            })
+            .catch(err => {
+                results[i] = {
+                    status: RUN_ERRORED,
+                    output: err,
+                };
+                print_test_erroneous();
                 failed = true;
-            }
-        }).catch(err => {
-            console.error(err);
-            failed = true;
-        });
+            })
+        );
+        if (no_headless) {
+            await tests[i];
+        }
     }
+    await Promise.all(tests);
+    // final \n after the tests
+    console.log("\n");
+
+    results.forEach(r => {
+        switch (r.status) {
+            case RUN_SUCCESS:
+                if (debug === false) {
+                    break;
+                }
+            case RUN_FAILED:
+                console.log(r.output);
+                break;
+            case RUN_ERRORED:
+                // skip
+                break;
+            default:
+                console.error(`unexpected status = ${r.status}`);
+                process.exit(4);
+        }
+    });
+    // print run errors on the bottom so developers see them better
+    results.forEach(r => {
+        if (r.status === RUN_ERRORED) {
+            console.error(r.output);
+        }
+    });
+
     if (failed) {
         process.exit(1);
     }
