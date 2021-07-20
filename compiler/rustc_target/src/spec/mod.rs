@@ -780,6 +780,8 @@ supported_targets! {
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
+    ("i386-unknown-linux-gnu", i386_unknown_linux_gnu),
+    ("i486-unknown-linux-gnu", i486_unknown_linux_gnu),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
     ("mips64-unknown-linux-muslabi64", mips64_unknown_linux_muslabi64),
