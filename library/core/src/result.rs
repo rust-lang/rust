@@ -1870,6 +1870,25 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     }
 }
 
+//FIXME: Figure out how to mark this as unstable without x.py refusing to run any tests
+#[stable(feature = "tuple_from_result_iter", since = "1.53.0")]
+impl<T, E, U, V> FromIterator<Result<T, E>> for (U, V)
+where
+    U: Default + Extend<T>,
+    V: Default + Extend<E>,
+{
+    fn from_iter<I: IntoIterator<Item = Result<T, E>>>(iter: I) -> (U, V) {
+        let (mut oks, mut errs) = (U::default(), V::default());
+        for result in iter {
+            match result {
+                Ok(ok) => oks.extend_one(ok),
+                Err(err) => errs.extend_one(err),
+            }
+        }
+        (oks, errs)
+    }
+}
+
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E> ops::TryV2 for Result<T, E> {
     type Output = T;

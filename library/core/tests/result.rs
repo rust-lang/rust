@@ -402,3 +402,21 @@ fn result_try_trait_v2_branch() {
     assert_eq!(Ok::<NonZeroU32, ()>(one).branch(), Continue(one));
     assert_eq!(Err::<NonZeroU32, ()>(()).branch(), Break(Err(())));
 }
+
+#[test]
+fn tuple_from_result_iter() {
+    let results = [Ok(1), Err(false), Ok(3), Ok(4), Err(true)];
+    let (oks, errs) = IntoIterator::into_iter(results).collect::<(Vec<_>, Vec<bool>)>();
+    assert_eq!(oks, [1, 3, 4]);
+    assert_eq!(errs, [false, true]);
+    // All `Ok`s
+    let results = [Ok(5), Ok(6), Ok(7)];
+    let (oks, errs) = IntoIterator::into_iter(results).collect::<(Vec<_>, Vec<String>)>();
+    assert_eq!(oks, [5, 6, 7]);
+    assert_eq!(errs, [] as [String; 0]);
+    // All `Errs`s
+    let results: [Result<i32, _>; 2] = [Err("hello"), Err("world")];
+    let (oks, errs) = IntoIterator::into_iter(results).collect::<(Vec<i32>, Vec<_>)>();
+    assert_eq!(oks, [] as [i32; 0]);
+    assert_eq!(errs, ["hello", "world"]);
+}
