@@ -274,7 +274,7 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
 }
 
 // Duplicated from rustc_session::config::ExternDepSpec to avoid cyclic dependency
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq)]
 pub enum ExternDepSpec {
     Json(Json),
     Raw(String),
@@ -282,7 +282,7 @@ pub enum ExternDepSpec {
 
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq)]
 pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),
@@ -305,6 +305,7 @@ pub enum BuiltinLintDiagnostics {
     ReservedPrefix(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
+    NamedAsmLabel(String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

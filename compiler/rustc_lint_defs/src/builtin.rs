@@ -2471,6 +2471,38 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `named_asm_labels` lint detects the use of named labels in the
+    /// inline `asm!` macro.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// fn main() {
+    ///     unsafe {
+    ///         asm!("foo: bar");
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// LLVM's assembler is allowed to duplicate inline assembly blocks for any
+    /// reason, for example when it is in a function that gets inlined. Because
+    /// of this, GNU assembler [local labels] *must* be used instead of labels
+    /// with a name. Using named labels might cause assembler or linker errors.
+    ///
+    /// See the [unstable book] for more details.
+    ///
+    /// [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+    /// [unstable book]: https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels
+    pub NAMED_ASM_LABELS,
+    Deny,
+    "named labels in inline assembly",
+}
+
+declare_lint! {
     /// The `unsafe_op_in_unsafe_fn` lint detects unsafe operations in unsafe
     /// functions without an explicit unsafe block.
     ///
