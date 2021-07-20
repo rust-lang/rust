@@ -153,6 +153,24 @@ impl<T: Idx> BitSet<T> {
         bitwise(&mut self.words, &other.words, |a, b| a & b)
     }
 
+    pub fn intersect_dest(&mut self, a: &BitSet<T>, b: &BitSet<T>) {
+        assert_eq!(self.domain_size, a.domain_size);
+        assert_eq!(self.words.len(), a.words.len());
+        assert_eq!(self.domain_size, b.domain_size);
+        assert_eq!(self.words.len(), b.words.len());
+        for (dest, (a, b)) in iter::zip(&mut self.words, iter::zip(&a.words, &b.words)) {
+            *dest = *a & *b;
+        }
+    }
+
+    pub fn intersect_no_change(&mut self, other: &BitSet<T>) {
+        assert_eq!(self.domain_size, other.domain_size);
+        assert_eq!(self.words.len(), other.words.len());
+        for (out_elem, in_elem) in iter::zip(&mut self.words, &other.words) {
+            *out_elem &= *in_elem;
+        }
+    }
+
     /// Gets a slice of the underlying words.
     pub fn words(&self) -> &[Word] {
         &self.words
@@ -162,6 +180,31 @@ impl<T: Idx> BitSet<T> {
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
         BitIter::new(&self.words)
+    }
+
+    #[inline]
+    pub fn next_after(&self, start: T) -> Option<T> {
+        assert!(start.index() < self.domain_size);
+        let (word_index, mask) = word_index_and_mask(start);
+        let mut words = self.words.iter().enumerate().skip(word_index);
+        let mut idx;
+        let mut word;
+        let next = words.next()?;
+        idx = next.0;
+        word = *next.1;
+        word &= !mask; // clear out start, if set
+        loop {
+            if word != 0 {
+                // Get the position of the next set bit in the current word,
+                // then clear the bit.
+                let bit_pos = word.trailing_zeros() as usize;
+                return Some(T::new(bit_pos + idx * WORD_BITS));
+            }
+
+            let next = words.next()?;
+            idx = next.0;
+            word = *next.1;
+        }
     }
 
     /// Duplicates the set as a hybrid set.
