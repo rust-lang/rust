@@ -1,0 +1,71 @@
+error: lifetime in trait object type must be followed by `+`
+  --> $DIR/issue-85350.rs:3:26
+   |
+LL | impl FnMut(&Context) for 'tcx {
+   |                          ^^^^
+
+error[E0407]: method `print` is not a member of trait `FnMut`
+  --> $DIR/issue-85350.rs:12:5
+   |
+LL |     fn print () -> Self :: Output{ }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `FnMut`
+
+error[E0412]: cannot find type `Context` in this scope
+  --> $DIR/issue-85350.rs:3:13
+   |
+LL | impl FnMut(&Context) for 'tcx {
+   |             ^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL | use std::task::Context;
+   |
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-85350.rs:3:26
+   |
+LL | impl FnMut(&Context) for 'tcx {
+   |                          ^^^^ help: use `dyn`: `dyn 'tcx`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
+
+error[E0601]: `main` function not found in crate `issue_85350`
+  --> $DIR/issue-85350.rs:3:1
+   |
+LL | / impl FnMut(&Context) for 'tcx {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^ consider adding a `main` function to `$DIR/issue-85350.rs`
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-85350.rs:3:26
+   |
+LL | impl FnMut(&Context) for 'tcx {
+   |                          ^^^^
+
+error[E0261]: use of undeclared lifetime name `'tcx`
+  --> $DIR/issue-85350.rs:3:26
+   |
+LL | impl FnMut(&Context) for 'tcx {
+   |     -                    ^^^^ undeclared lifetime
+   |     |
+   |     help: consider introducing lifetime `'tcx` here: `<'tcx>`
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-85350.rs:3:6
+   |
+LL | impl FnMut(&Context) for 'tcx {
+   |      ^^^^^^^^^^^^^^^ associated type not allowed here
+
+error: aborting due to 7 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0224, E0229, E0261, E0407, E0412, E0601.
+For more information about an error, try `rustc --explain E0224`.

@@ -1683,6 +1683,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
             (_, Res::SelfTy(Some(_), Some((impl_def_id, _)))) => {
+                match qself_ty.kind() {
+                    ty::Error(_) => return Err(ErrorReported),
+                    _ => {}
+                }
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
