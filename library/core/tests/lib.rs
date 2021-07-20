@@ -8,7 +8,6 @@
 #![feature(cfg_panic)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_assume)]
-#![feature(const_cell_into_inner)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
