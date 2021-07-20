@@ -54,12 +54,23 @@ pub(crate) fn replace_qualified_name_with_use(
         _ => return None,
     };
 
+    let starts_with_name_ref = !matches!(
+        path.first_segment().and_then(|it| it.kind()),
+        Some(
+            ast::PathSegmentKind::CrateKw
+                | ast::PathSegmentKind::SuperKw
+                | ast::PathSegmentKind::SelfKw
+        )
+    );
+    let path_to_qualifier = starts_with_name_ref
+        .then(|| {
+            ctx.sema.scope(path.syntax()).module().and_then(|m| {
+                m.find_use_path_prefixed(ctx.sema.db, module, ctx.config.insert_use.prefix_kind)
+            })
+        })
+        .flatten();
+
     let scope = ImportScope::find_insert_use_container_with_macros(path.syntax(), &ctx.sema)?;
-    let path_to_qualifier = ctx.sema.scope(path.syntax()).module()?.find_use_path_prefixed(
-        ctx.sema.db,
-        module,
-        ctx.config.insert_use.prefix_kind,
-    )?;
     let target = path.syntax().text_range();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
@@ -74,7 +85,7 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
             };
             // stick the found import in front of the to be replaced path
-            let path = match mod_path_to_ast(&path_to_qualifier).qualifier() {
+            let path = match path_to_qualifier.and_then(|it| mod_path_to_ast(&it).qualifier()) {
                 Some(qualifier) => make::path_concat(qualifier, path),
                 None => path,
             };
@@ -323,7 +334,7 @@ fn main() {
             replace_qualified_name_with_use,
             r"
 pub mod foo {
-    struct Foo;
+    pub struct Foo;
 }
 
 mod bar {
@@ -338,7 +349,7 @@ fn main() {
 use foo::Foo;
 
 pub mod foo {
-    struct Foo;
+    pub struct Foo;
 }
 
 mod bar {
