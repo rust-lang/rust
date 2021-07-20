@@ -93,11 +93,11 @@ use core::mem::size_of;
 use core::ptr;
 
 use crate::alloc::Allocator;
-#[cfg(not(no_global_oom_handling))]
 use crate::alloc::Global;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
+use crate::collections::TryReserveError;
 use crate::vec::Vec;
 
 #[unstable(feature = "slice_range", issue = "76393")]
@@ -153,6 +153,7 @@ mod hack {
     use core::alloc::Allocator;
 
     use crate::boxed::Box;
+    use crate::collections::TryReserveError;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
@@ -172,9 +173,23 @@ mod hack {
         T::to_vec(s, alloc)
     }
 
+    #[inline]
+    pub fn try_to_vec<T: TryConvertVec, A: Allocator>(
+        s: &[T],
+        alloc: A,
+    ) -> Result<Vec<T, A>, TryReserveError> {
+        T::try_to_vec(s, alloc)
+    }
+
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            Self: Sized;
+    }
+
+    pub trait TryConvertVec {
+        fn try_to_vec<A: Allocator>(s: &[Self], alloc: A) -> Result<Vec<Self, A>, TryReserveError>
         where
             Self: Sized;
     }
@@ -229,6 +244,45 @@ mod hack {
                 v.set_len(s.len());
             }
             v
+        }
+    }
+
+    impl<T: Clone> TryConvertVec for T {
+        #[inline]
+        default fn try_to_vec<A: Allocator>(
+            s: &[Self],
+            alloc: A,
+        ) -> Result<Vec<Self, A>, TryReserveError> {
+            struct DropGuard<'a, T, A: Allocator> {
+                vec: &'a mut Vec<T, A>,
+                num_init: usize,
+            }
+            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
+                #[inline]
+                fn drop(&mut self) {
+                    // SAFETY:
+                    // items were marked initialized in the loop below
+                    unsafe {
+                        self.vec.set_len(self.num_init);
+                    }
+                }
+            }
+            let mut vec = Vec::try_with_capacity_in(s.len(), alloc)?;
+            let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
+            let slots = guard.vec.spare_capacity_mut();
+            // .take(slots.len()) is necessary for LLVM to remove bounds checks
+            // and has better codegen than zip.
+            for (i, b) in s.iter().enumerate().take(slots.len()) {
+                guard.num_init = i;
+                slots[i].write(b.clone());
+            }
+            core::mem::forget(guard);
+            // SAFETY:
+            // the vec was allocated and initialized above to at least this length.
+            unsafe {
+                vec.set_len(s.len());
+            }
+            Ok(vec)
         }
     }
 }
@@ -470,6 +524,24 @@ impl<T> [T] {
         self.to_vec_in(Global)
     }
 
+    /// Tries to copy `self` into a new `Vec`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = [10, 40, 30];
+    /// let x = s.try_to_vec().unwrap();
+    /// // Here, `s` and `x` can be modified independently.
+    /// ```
+    #[inline]
+    #[unstable(feature = "more_fallible_allocation_methods", issue = "86942")]
+    pub fn try_to_vec(&self) -> Result<Vec<T>, TryReserveError>
+    where
+        T: Clone,
+    {
+        self.try_to_vec_in(Global)
+    }
+
     /// Copies `self` into a new `Vec` with an allocator.
     ///
     /// # Examples
@@ -492,6 +564,29 @@ impl<T> [T] {
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
+    }
+
+    /// Tries to copy `self` into a new `Vec` with an allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let s = [10, 40, 30];
+    /// let x = s.try_to_vec_in(System).unwrap();
+    /// // Here, `s` and `x` can be modified independently.
+    /// ```
+    #[inline]
+    #[unstable(feature = "more_fallible_allocation_methods", issue = "86942")]
+    pub fn try_to_vec_in<A: Allocator>(&self, alloc: A) -> Result<Vec<T, A>, TryReserveError>
+    where
+        T: Clone,
+    {
+        // N.B., see the `hack` module in this file for more details.
+        hack::try_to_vec(self, alloc)
     }
 
     /// Converts `self` into a vector without clones or allocation.

@@ -52,7 +52,11 @@ pub use linked_list::LinkedList;
 #[doc(no_inline)]
 pub use vec_deque::VecDeque;
 
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::handle_alloc_error;
 use crate::alloc::{Layout, LayoutError};
+#[cfg(not(no_global_oom_handling))]
+use crate::raw_vec::capacity_overflow;
 use core::fmt::Display;
 
 /// The error type for `try_reserve` methods.
@@ -79,6 +83,19 @@ pub enum TryReserveError {
         )]
         non_exhaustive: (),
     },
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl TryReserveError {
+    /// Panic, or worse, according to the global handlers for each case.
+    pub(crate) fn handle(self) -> ! {
+        match self {
+            TryReserveError::CapacityOverflow => capacity_overflow(),
+            TryReserveError::AllocError { layout, non_exhaustive: () } => {
+                handle_alloc_error(layout)
+            }
+        }
+    }
 }
 
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
