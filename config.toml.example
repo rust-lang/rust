@@ -38,7 +38,7 @@ changelog-seen = 2
 # This is false by default so that distributions don't unexpectedly download
 # LLVM from the internet.
 #
-# All tier 1 targets are currently supported; set this to `"if-supported"` if
+# All tier 1 targets are currently supported; set this to `"if-available"` if
 # you are not sure whether you're on a tier 1 target.
 #
 # We also currently only support this when building LLVM for the build triple.
