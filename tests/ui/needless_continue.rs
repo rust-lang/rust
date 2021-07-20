@@ -49,6 +49,9 @@ fn main() {
 
         println!("bleh");
     }
+    loop {
+        continue;
+    }
 }
 
 mod issue_2329 {

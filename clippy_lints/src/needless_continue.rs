@@ -273,6 +273,8 @@ struct LintData<'a> {
     block_stmts: &'a [ast::Stmt],
 }
 
+const MSG_REDUNDANT_CONTINUE_EXPRESSION: &str = "this `continue` expression is redundant";
+
 const MSG_REDUNDANT_ELSE_BLOCK: &str = "this `else` block is redundant";
 
 const MSG_ELSE_BLOCK_NOT_NEEDED: &str = "there is no need for an explicit `else` block for this `if` \
@@ -282,6 +284,8 @@ const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "consider dropping the `else` clause
                                              follows (in the loop) with the `if` block";
 
 const DROP_ELSE_BLOCK_MSG: &str = "consider dropping the `else` clause";
+
+const DROP_CONTINUE_EXPRESSION_MSG: &str = "consider dropping the `continue` expression";
 
 fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
@@ -364,6 +368,22 @@ fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: 
 }
 
 fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
+    if_chain! {
+        if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind;
+        if loop_block.stmts.len() == 1;
+        if let ast::StmtKind::Semi(ref statement) = loop_block.stmts.first().unwrap().kind;
+        if let ast::ExprKind::Continue(_) = statement.kind;
+        then {
+            span_lint_and_help(
+                cx,
+                NEEDLESS_CONTINUE,
+                loop_block.stmts.first().unwrap().span,
+                MSG_REDUNDANT_CONTINUE_EXPRESSION,
+                None,
+                DROP_CONTINUE_EXPRESSION_MSG,
+            );
+        }
+    }
     with_loop_block(expr, |loop_block, label| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
