@@ -15,9 +15,9 @@ crate enum DefPathHashMap<'tcx> {
 
 impl DefPathHashMap<'tcx> {
     #[inline]
-    pub fn def_path_hash_to_def_index(&self, def_path_hash: &DefPathHash) -> Option<DefIndex> {
+    pub fn def_path_hash_to_def_index(&self, def_path_hash: &DefPathHash) -> DefIndex {
         match *self {
-            DefPathHashMap::OwnedFromMetadata(ref map) => map.get(def_path_hash),
+            DefPathHashMap::OwnedFromMetadata(ref map) => map.get(def_path_hash).unwrap(),
             DefPathHashMap::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }

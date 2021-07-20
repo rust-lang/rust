@@ -336,7 +336,11 @@ impl DepNodeExt for DepNode {
     /// has been removed.
     fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
         if self.kind.can_reconstruct_query_key() {
-            tcx.on_disk_cache.as_ref()?.def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into()))
+            Some(
+                tcx.on_disk_cache
+                    .as_ref()?
+                    .def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into())),
+            )
         } else {
             None
         }
