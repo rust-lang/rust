@@ -29,7 +29,10 @@ fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
         Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
         | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
         | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(&sig.decl),
-        Node::Expr(Expr { kind: ExprKind::Closure(_, fn_decl, ..), .. }) => Some(fn_decl),
+        Node::Expr(Expr { kind: ExprKind::Closure(_, fn_decl, ..), .. })
+        | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, ..), .. }) => {
+            Some(fn_decl)
+        }
         _ => None,
     }
 }

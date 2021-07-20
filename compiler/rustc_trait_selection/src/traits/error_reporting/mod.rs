@@ -242,11 +242,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             SelectionError::Unimplemented => {
                 // If this obligation was generated as a result of well-formed checking, see if we
                 // can get a better error message by performing HIR-based well formed checking.
-                if let ObligationCauseCode::WellFormed(Some(wf_hir_id)) =
+                if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
                     root_obligation.cause.code.peel_derives()
                 {
                     if let Some(cause) =
-                        self.tcx.diagnostic_hir_wf_check((obligation.predicate, *wf_hir_id))
+                        self.tcx.diagnostic_hir_wf_check((obligation.predicate, wf_loc.clone()))
                     {
                         obligation.cause = cause;
                         span = obligation.cause.span;

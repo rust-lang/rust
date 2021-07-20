@@ -1722,7 +1722,7 @@ rustc_queries! {
     /// span) for an *existing* error. Therefore, it is best-effort, and may never handle
     /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
     /// because the `ty::Ty`-based wfcheck is always run.
-    query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, hir::HirId)) -> Option<traits::ObligationCause<'tcx>> {
+    query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, traits::WellFormedLoc)) -> Option<traits::ObligationCause<'tcx>> {
         eval_always
         no_hash
         desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }
