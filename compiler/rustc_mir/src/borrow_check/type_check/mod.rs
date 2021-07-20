@@ -182,25 +182,13 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let mut opaque_type_values = cx.opaque_type_values;
 
             for (_, revealed_ty) in &mut opaque_type_values {
-                // FIXME(oli-obk): Instead of looping, implement a visitor like
-                // FullTypeResolver. We can't use FullTypeResolver here, as that will
-                // resolve lifetimes lexically, which it can't because we didn't do old
-                // borrowck stuff. We want to use MIR borrowck information instead.
-
-                while revealed_ty.has_infer_types_or_consts() {
-                    let prev = *revealed_ty;
-                    trace!(prev=?prev.kind());
-                    let type_resolved = infcx.shallow_resolve(prev);
-                    trace!(type_resolved=?type_resolved.kind());
-                    if prev == type_resolved {
-                        infcx.tcx.sess.delay_span_bug(
-                            body.span,
-                            &format!("could not resolve {:#?}", type_resolved.kind()),
-                        );
-                        *revealed_ty = infcx.tcx.ty_error();
-                        break;
-                    }
-                    *revealed_ty = type_resolved;
+                *revealed_ty = infcx.resolve_vars_if_possible(*revealed_ty);
+                if revealed_ty.has_infer_types_or_consts() {
+                    infcx.tcx.sess.delay_span_bug(
+                        body.span,
+                        &format!("could not resolve {:#?}", revealed_ty.kind()),
+                    );
+                    *revealed_ty = infcx.tcx.ty_error();
                 }
             }
 
