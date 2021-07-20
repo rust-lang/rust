@@ -1188,6 +1188,7 @@ crate fn required_region_bounds(
             match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::ImplicitSizedTrait(_)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)

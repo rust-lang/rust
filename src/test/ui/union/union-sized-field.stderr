@@ -8,6 +8,10 @@ LL |     value: T,
    |
    = note: no field of a union may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | union Foo<T> {
+   |           --
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
@@ -27,6 +31,10 @@ LL |     value: T,
    |
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | struct Foo2<T> {
+   |             --
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
@@ -46,6 +54,10 @@ LL |     Value(T),
    |
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | enum Foo3<T> {
+   |           --
 help: borrowed types always have a statically known size
    |
 LL |     Value(&T),

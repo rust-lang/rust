@@ -458,6 +458,11 @@ pub enum PredicateKind<'tcx> {
     /// `const fn foobar<Foo: Bar>() {}`).
     Trait(TraitPredicate<'tcx>, Constness),
 
+    /// Equivalent to `Trait(SizedTraitPredicate, Constness::NotConst)` that type parameters and
+    /// associated types implicitly have. Used to differentiate them when giving trait bound
+    /// errors.
+    ImplicitSizedTrait(TraitPredicate<'tcx>),
+
     /// `where 'a: 'b`
     RegionOutlives(RegionOutlivesPredicate<'tcx>),
 
@@ -750,6 +755,15 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for ImplicitSized<ConstnessAnd<Binder<'tcx, TraitRef<'tcx>>>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::ImplicitSizedTrait(ty::TraitPredicate {
+            trait_ref: self.0.value.skip_binder(),
+        })
+        .to_predicate(tcx)
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.value
@@ -791,6 +805,10 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Trait(t, constness) => {
                 Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
+            PredicateKind::ImplicitSizedTrait(t) => Some(ConstnessAnd {
+                constness: Constness::NotConst,
+                value: predicate.rebind(t.trait_ref),
+            }),
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::RegionOutlives(..)
@@ -809,6 +827,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::TypeOutlives(data) => Some(predicate.rebind(data)),
             PredicateKind::Trait(..)
+            | PredicateKind::ImplicitSizedTrait(..)
             | PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::RegionOutlives(..)
@@ -1286,7 +1305,17 @@ pub trait WithConstness: Sized {
     }
 }
 
+pub struct ImplicitSized<T>(T);
+
+pub trait WithImplicitSized: Sized {
+    #[inline]
+    fn with_implicit(self) -> ImplicitSized<Self> {
+        ImplicitSized(self)
+    }
+}
+
 impl<T> WithConstness for T {}
+impl<T> WithImplicitSized for T {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ParamEnvAnd<'tcx, T> {

@@ -16,13 +16,13 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
    |
 LL |    Pin::new(&mut gen).resume(());
    |                       ^^^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/ops/generator.rs:LL:COL
-   |
-LL | pub enum GeneratorState<Y, R> {
-   |                         - required by this bound in `GeneratorState`
    |
    = help: the trait `Sized` is not implemented for `str`
+note: type parameters have an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/ops/generator.rs:LL:COL
+   |
+LL | pub enum GeneratorState<Y, R> {
+   |                         ^ required by this bound in `GeneratorState`
 
 error: aborting due to 2 previous errors
 

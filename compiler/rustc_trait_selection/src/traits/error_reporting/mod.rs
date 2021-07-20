@@ -276,7 +276,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(trait_predicate, _) => {
+                    ty::PredicateKind::ImplicitSizedTrait(trait_predicate)
+                    | ty::PredicateKind::Trait(trait_predicate, _) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
@@ -1147,9 +1148,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         // FIXME: It should be possible to deal with `ForAll` in a cleaner way.
         let bound_error = error.kind();
         let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
-            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error, _)) => {
-                (cond, bound_error.rebind(error))
-            }
+            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error, _))
+            | (ty::PredicateKind::ImplicitSizedTrait(..), ty::PredicateKind::Trait(error, _))
+            | (ty::PredicateKind::Trait(..), ty::PredicateKind::ImplicitSizedTrait(error))
+            | (
+                ty::PredicateKind::ImplicitSizedTrait(..),
+                ty::PredicateKind::ImplicitSizedTrait(error),
+            ) => (cond, bound_error.rebind(error)),
             _ => {
                 // FIXME: make this work in other cases too.
                 return false;
@@ -1158,7 +1163,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
             let bound_predicate = obligation.predicate.kind();
-            if let ty::PredicateKind::Trait(implication, _) = bound_predicate.skip_binder() {
+            if let ty::PredicateKind::Trait(implication, _)
+            | ty::PredicateKind::ImplicitSizedTrait(implication) = bound_predicate.skip_binder()
+            {
                 let error = error.to_poly_trait_ref();
                 let implication = bound_predicate.rebind(implication.trait_ref);
                 // FIXME: I'm just not taking associated types at all here.
@@ -1271,6 +1278,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.cause.code.peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
+                        | ObligationCauseCode::ImplicitSizedObligation(_, _)
                         | ObligationCauseCode::ObjectCastObligation(_)
                         | ObligationCauseCode::OpaqueType
                 );
@@ -1302,7 +1310,46 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     "type mismatch resolving `{}`",
                     predicate
                 );
-                self.note_type_err(&mut diag, &obligation.cause, None, values, err);
+                let secondary_span = match predicate.kind().skip_binder() {
+                    ty::PredicateKind::Projection(proj) => self
+                        .tcx
+                        .opt_associated_item(proj.projection_ty.item_def_id)
+                        .and_then(|trait_assoc_item| {
+                            self.tcx
+                                .trait_of_item(proj.projection_ty.item_def_id)
+                                .map(|id| (trait_assoc_item, id))
+                        })
+                        .and_then(|(trait_assoc_item, id)| {
+                            self.tcx.find_map_relevant_impl(
+                                id,
+                                proj.projection_ty.self_ty(),
+                                |did| {
+                                    self.tcx
+                                        .associated_items(did)
+                                        .in_definition_order()
+                                        .filter(|assoc| assoc.ident == trait_assoc_item.ident)
+                                        .next()
+                                },
+                            )
+                        })
+                        .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
+                            Some(
+                                hir::Node::TraitItem(hir::TraitItem {
+                                    kind: hir::TraitItemKind::Type(_, Some(ty)),
+                                    ..
+                                })
+                                | hir::Node::ImplItem(hir::ImplItem {
+                                    kind: hir::ImplItemKind::TyAlias(ty),
+                                    ..
+                                }),
+                            ) => {
+                                Some((ty.span, format!("type mismatch resolving `{}`", predicate)))
+                            }
+                            _ => None,
+                        }),
+                    _ => None,
+                };
+                self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
                 self.note_obligation_cause(&mut diag, obligation);
                 diag.emit();
             }
@@ -1535,9 +1582,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data, _) => {
+            ty::PredicateKind::ImplicitSizedTrait(data) | ty::PredicateKind::Trait(data, _) => {
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!("trait_ref {:?}", trait_ref);
 
                 if predicate.references_error() {
                     return;
@@ -1596,7 +1642,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
                     Ok(ref snippet),
-                    ObligationCauseCode::BindingObligation(ref def_id, _),
+                    ObligationCauseCode::BindingObligation(ref def_id, _)
+                    | ObligationCauseCode::ImplicitSizedObligation(ref def_id, _),
                 ) =
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
@@ -1800,8 +1847,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             match (obligation.predicate.kind().skip_binder(), obligation.cause.code.peel_derives())
             {
                 (
-                    ty::PredicateKind::Trait(pred, _),
-                    &ObligationCauseCode::BindingObligation(item_def_id, span),
+                    ty::PredicateKind::Trait(pred, _) | ty::PredicateKind::ImplicitSizedTrait(pred),
+                    &ObligationCauseCode::BindingObligation(item_def_id, span)
+                    | &ObligationCauseCode::ImplicitSizedObligation(item_def_id, span),
                 ) => (pred, item_def_id, span),
                 _ => return,
             };
@@ -1896,9 +1944,20 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> bool {
         if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
             let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
-
-            if obligated_types.iter().any(|ot| ot == &parent_trait_ref.skip_binder().self_ty()) {
+            let self_ty = parent_trait_ref.skip_binder().self_ty();
+            if obligated_types.iter().any(|ot| ot == &self_ty) {
                 return true;
+            }
+            if let ty::Adt(def, substs) = self_ty.kind() {
+                if let [arg] = &substs[..] {
+                    if let ty::subst::GenericArgKind::Type(ty) = arg.unpack() {
+                        if let ty::Adt(inner_def, _) = ty.kind() {
+                            if inner_def == def {
+                                return true;
+                            }
+                        }
+                    }
+                }
             }
         }
         false

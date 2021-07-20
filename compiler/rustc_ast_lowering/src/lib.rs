@@ -2150,12 +2150,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         tpb: &GenericBound,
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::GenericBound<'hir> {
-        match *tpb {
-            GenericBound::Trait(ref ty, modifier) => hir::GenericBound::Trait(
-                self.lower_poly_trait_ref(ty, itctx),
-                self.lower_trait_bound_modifier(modifier),
+        match tpb {
+            GenericBound::Trait(p, modifier) => hir::GenericBound::Trait(
+                self.lower_poly_trait_ref(p, itctx),
+                self.lower_trait_bound_modifier(*modifier),
             ),
-            GenericBound::Outlives(ref lifetime) => {
+            GenericBound::Outlives(lifetime) => {
                 hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
             }
         }

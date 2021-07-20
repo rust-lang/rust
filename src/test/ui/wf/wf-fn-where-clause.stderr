@@ -17,11 +17,13 @@ error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
    |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
-...
-LL | struct Vec<T> {
-   |            - required by this bound in `Vec`
    |
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/wf-fn-where-clause.rs:16:12
+   |
+LL | struct Vec<T> {
+   |            ^ required by this bound in `Vec`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/wf-fn-where-clause.rs:16:12
    |

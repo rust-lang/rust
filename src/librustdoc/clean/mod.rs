@@ -128,6 +128,7 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::Unsized(_) => GenericBound::maybe_sized(cx),
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
@@ -323,7 +324,9 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(pred, _) => Some(bound_predicate.rebind(pred).clean(cx)),
+            ty::PredicateKind::ImplicitSizedTrait(pred) | ty::PredicateKind::Trait(pred, _) => {
+                Some(bound_predicate.rebind(pred).clean(cx))
+            }
             ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
@@ -562,13 +565,19 @@ impl Clean<Generics> for hir::Generics<'_> {
                 WherePredicate::BoundPredicate {
                     ty: Generic(ref name), ref mut bounds, ..
                 } => {
-                    if bounds.is_empty() {
+                    if let [] | [GenericBound::TraitBound(_, hir::TraitBoundModifier::Maybe)] =
+                        &bounds[..]
+                    {
                         for param in &mut generics.params {
                             match param.kind {
                                 GenericParamDefKind::Lifetime => {}
                                 GenericParamDefKind::Type { bounds: ref mut ty_bounds, .. } => {
                                     if &param.name == name {
                                         mem::swap(bounds, ty_bounds);
+                                        // We now keep track of `?Sized` obligations in the HIR.
+                                        // If we don't clear `ty_bounds` we end up with
+                                        // `fn foo<X: ?Sized>(_: X) where X: ?Sized`.
+                                        ty_bounds.clear();
                                         break;
                                     }
                                 }
@@ -629,7 +638,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 let param_idx = (|| {
                     let bound_p = p.kind();
                     match bound_p.skip_binder() {
-                        ty::PredicateKind::Trait(pred, _constness) => {
+                        ty::PredicateKind::ImplicitSizedTrait(pred)
+                        | ty::PredicateKind::Trait(pred, _) => {
                             if let ty::Param(param) = pred.self_ty().kind() {
                                 return Some(param.index);
                             }
@@ -1548,8 +1558,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .filter_map(|bound| {
                         let bound_predicate = bound.kind();
                         let trait_ref = match bound_predicate.skip_binder() {
-                            ty::PredicateKind::Trait(tr, _constness) => {
-                                bound_predicate.rebind(tr.trait_ref)
+                            ty::PredicateKind::ImplicitSizedTrait(pred)
+                            | ty::PredicateKind::Trait(pred, _) => {
+                                bound_predicate.rebind(pred.trait_ref)
                             }
                             ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
                                 if let Some(r) = reg.clean(cx) {

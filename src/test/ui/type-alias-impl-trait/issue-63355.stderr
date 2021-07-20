@@ -1,10 +1,13 @@
 error[E0271]: type mismatch resolving `<() as Bar>::Foo == ()`
   --> $DIR/issue-63355.rs:34:20
    |
+LL |     type Foo = FooImpl;
+   |                ------- expected this to be `()`
+...
 LL | pub type FooImpl = impl Foo;
    |                    -------- the found opaque type
 LL | pub type BarImpl = impl Bar<Foo = FooImpl>;
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Bar>::Foo == ()`
    |
    = note: expected unit type `()`
             found opaque type `impl Foo`

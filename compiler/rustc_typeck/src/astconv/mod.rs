@@ -897,7 +897,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false,
                     );
                 }
-                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+                hir::GenericBound::Unsized(_)
+                | hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
@@ -1293,7 +1294,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(pred, _) => {
+                    ty::PredicateKind::ImplicitSizedTrait(pred)
+                    | ty::PredicateKind::Trait(pred, _) => {
                         let pred = bound_predicate.rebind(pred);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())

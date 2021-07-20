@@ -52,13 +52,15 @@ LL |     [u8; size_of::<T>() + 1]: ,
 error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
   --> $DIR/issue-80742.rs:31:15
    |
-LL | struct Inline<T>
-   |               - required by this bound in `Inline`
-...
 LL |     let dst = Inline::<dyn Debug>::new(0);
    |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/issue-80742.rs:13:15
+   |
+LL | struct Inline<T>
+   |               ^ required by this bound in `Inline`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Inline<T: ?Sized>

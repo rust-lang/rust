@@ -9,13 +9,13 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0277]: the trait bound `str: Clone` is not satisfied
-  --> $DIR/deafult-associated-type-bound-1.rs:19:5
+  --> $DIR/deafult-associated-type-bound-1.rs:19:22
    |
 LL |     type U: Clone;
    |             ----- required by this bound in `X::U`
 ...
 LL |     default type U = str;
-   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
+   |                      ^^^ the trait `Clone` is not implemented for `str`
 
 error: aborting due to previous error; 1 warning emitted
 

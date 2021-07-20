@@ -229,9 +229,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             let predicate = predicate.kind();
             let p = p.kind();
             match (predicate.skip_binder(), p.skip_binder()) {
-                (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _)) => {
-                    relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
-                }
+                (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _))
+                | (ty::PredicateKind::Trait(a, _), ty::PredicateKind::ImplicitSizedTrait(b))
+                | (ty::PredicateKind::ImplicitSizedTrait(a), ty::PredicateKind::Trait(b, _))
+                | (
+                    ty::PredicateKind::ImplicitSizedTrait(a),
+                    ty::PredicateKind::ImplicitSizedTrait(b),
+                ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
                 (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
                     relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
                 }

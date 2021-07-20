@@ -2658,7 +2658,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let obligations = predicates.predicates.iter().filter_map(|&(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(data, _) => {
+                    ty::PredicateKind::ImplicitSizedTrait(data)
+                    | ty::PredicateKind::Trait(data, _) => {
                         // The order here needs to match what we would get from `subst_supertrait`
                         let pred_bound_vars = bound_predicate.bound_vars();
                         let mut all_bound_vars = bound_vars.clone();

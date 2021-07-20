@@ -1,8 +1,8 @@
 error[E0277]: `T` doesn't implement `std::fmt::Display`
-  --> $DIR/generic-associated-types-where.rs:20:5
+  --> $DIR/generic-associated-types-where.rs:20:22
    |
 LL |     type Assoc2<T> = Vec<T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |                      ^^^^^^ `T` cannot be formatted with the default formatter
    |
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 help: consider restricting type parameter `T`

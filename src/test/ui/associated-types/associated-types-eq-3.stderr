@@ -16,17 +16,23 @@ LL | fn foo2<I: Foo<A = Bar>>(x: I) {
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:38:5
    |
+LL |     type A = usize;
+   |              ----- expected this to be `Bar`
+...
 LL | fn foo1<I: Foo<A=Bar>>(x: I) {
    |                ----- required by this bound in `foo1`
 ...
 LL |     foo1(a);
-   |     ^^^^ expected struct `Bar`, found `usize`
+   |     ^^^^ type mismatch resolving `<isize as Foo>::A == Bar`
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
-  --> $DIR/associated-types-eq-3.rs:41:9
+  --> $DIR/associated-types-eq-3.rs:40:9
    |
+LL |     type A = usize;
+   |              ----- expected this to be `Bar`
+...
 LL |     baz(&a);
-   |         ^^ expected struct `Bar`, found `usize`
+   |         ^^ type mismatch resolving `<isize as Foo>::A == Bar`
    |
    = note: required for the cast to the object type `dyn Foo<A = Bar>`
 

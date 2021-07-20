@@ -408,6 +408,7 @@ impl Validator<'mir, 'tcx> {
             for (predicate, _) in predicates.predicates {
                 match predicate.kind().skip_binder() {
                     ty::PredicateKind::RegionOutlives(_)
+                    | ty::PredicateKind::ImplicitSizedTrait(_)
                     | ty::PredicateKind::TypeOutlives(_)
                     | ty::PredicateKind::WellFormed(_)
                     | ty::PredicateKind::Projection(_)
@@ -423,7 +424,7 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, _constness) => {
+                    ty::PredicateKind::Trait(pred, _) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }

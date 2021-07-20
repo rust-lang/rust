@@ -1,13 +1,15 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-mut-idx.rs:4:15
    |
-LL | fn bot<T>() -> T { loop {} }
-   |        - required by this bound in `bot`
-...
 LL |     s[1..2] = bot();
    |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/str-mut-idx.rs:1:8
+   |
+LL | fn bot<T>() -> T { loop {} }
+   |        ^ required by this bound in `bot`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn bot<T: ?Sized>() -> T { loop {} }

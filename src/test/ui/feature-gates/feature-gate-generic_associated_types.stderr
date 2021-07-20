@@ -62,10 +62,10 @@ LL |     type Assoc where Self: Sized = Foo;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `U32: Clone` is not satisfied
-  --> $DIR/feature-gate-generic_associated_types.rs:16:5
+  --> $DIR/feature-gate-generic_associated_types.rs:16:26
    |
 LL |     type Pointer2<U32> = Box<U32>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `U32`
+   |                          ^^^^^^^^ the trait `Clone` is not implemented for `U32`
    |
 help: consider restricting type parameter `U32`
    |

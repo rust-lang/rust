@@ -122,7 +122,8 @@ where
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
+            ty::PredicateKind::ImplicitSizedTrait(ty::TraitPredicate { trait_ref })
+            | ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
                 self.visit_trait(trait_ref)
             }
             ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {

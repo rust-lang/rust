@@ -424,7 +424,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .predicates
             .into_iter()
         {
-            if let ty::PredicateKind::Trait(..) = super_trait.kind().skip_binder() {
+            if let ty::PredicateKind::Trait(..) | ty::PredicateKind::ImplicitSizedTrait(..) =
+                super_trait.kind().skip_binder()
+            {
                 let normalized_super_trait = normalize_with_depth_to(
                     self,
                     obligation.param_env,

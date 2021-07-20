@@ -793,8 +793,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             } else {
                 return try_borrowing(new_mut_trait_ref, expected_trait_ref, true, &[]);
             }
-        } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(_) = &obligation.cause.code
+        } else if let ObligationCauseCode::BindingObligation(..)
+        | ObligationCauseCode::ItemObligation(_)
+        | ObligationCauseCode::ImplicitSizedObligation(..) = &obligation.cause.code
         {
             if try_borrowing(
                 ty::TraitRef::new(trait_ref.def_id, imm_substs),
@@ -1387,7 +1388,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // bound was introduced. At least one generator should be present for this diagnostic to be
         // modified.
         let (mut trait_ref, mut target_ty) = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(p, _) => (Some(p.trait_ref), Some(p.self_ty())),
+            ty::PredicateKind::ImplicitSizedTrait(p) | ty::PredicateKind::Trait(p, _) => {
+                (Some(p.trait_ref), Some(p.self_ty()))
+            }
             _ => (None, None),
         };
         let mut generator = None;
@@ -1935,6 +1938,62 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let sp = tcx.sess.source_map().guess_head_span(sp);
                 err.span_note(sp, &msg);
             }
+            ObligationCauseCode::ImplicitSizedObligation(item_def_id, span) => {
+                let item_name = tcx.def_path_str(item_def_id);
+                let mut sp: MultiSpan = span.into();
+                match self.tcx.hir().get_if_local(item_def_id) {
+                    Some(hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Type(bounds, _),
+                        ident,
+                        ..
+                    })) => {
+                        sp.push_span_label(
+                            span,
+                            format!("required by associated type `{}`", item_name),
+                        );
+                        err.span_note(sp, "associated types have an implicit `Sized` obligation");
+
+                        let sized_trait = self.tcx.lang_items().sized_trait();
+                        if bounds.len() == 0 {
+                            err.span_suggestion_verbose(
+                                ident.span.shrink_to_hi(),
+                                "consider relaxing the `Sized` obligation",
+                                ": ?Sized".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else if bounds.iter().all(|bound| {
+                            bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait
+                        }) {
+                            err.span_suggestion_verbose(
+                                bounds.iter().last().unwrap().span().shrink_to_hi(),
+                                "consider relaxing the `Sized` obligation",
+                                " + ?Sized".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                    Some(hir::Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::TyAlias(_),
+                        ..
+                    })) => {
+                        let msg = "associated types on `impl` blocks for types, have an implicit \
+                            mandatory `Sized` obligation; associated types from `trait`s can be \
+                            relaxed to `?Sized`";
+                        sp.push_span_label(
+                            span,
+                            format!("required by associated type `{}`", item_name),
+                        );
+                        err.span_note(sp, msg);
+                    }
+                    _ => {
+                        sp.push_span_label(
+                            span,
+                            format!("required by this bound in `{}`", item_name),
+                        );
+                        err.span_note(sp, "type parameters have an implicit `Sized` obligation");
+                    }
+                }
+            }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by this bound in `{}`", item_name);
@@ -2152,6 +2211,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err,
                             &parent_predicate,
                             &data.parent_code,
+                            obligated_types,
+                            seen_requirements,
+                        )
+                    });
+                } else {
+                    ensure_sufficient_stack(|| {
+                        self.note_obligation_cause_code(
+                            err,
+                            &parent_predicate,
+                            &cause_code.peel_derives(),
                             obligated_types,
                             seen_requirements,
                         )

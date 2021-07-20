@@ -373,6 +373,7 @@ fn compare_predicate_entailment<'tcx>(
                     found: impl_fty,
                 })),
                 &terr,
+                false,
             );
             diag.emit();
             return Err(ErrorReported);
@@ -747,8 +748,7 @@ fn compare_number_of_method_arguments<'tcx>(
             tcx.sess,
             impl_span,
             E0050,
-            "method `{}` has {} but the declaration in \
-                                        trait `{}` has {}",
+            "method `{}` has {} but the declaration in trait `{}` has {}",
             trait_m.ident,
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
@@ -1084,6 +1084,7 @@ crate fn compare_const_impl<'tcx>(
                     found: impl_ty,
                 })),
                 &terr,
+                false,
             );
             diag.emit();
         }
@@ -1113,7 +1114,8 @@ crate fn compare_ty_impl<'tcx>(
     let _: Result<(), ErrorReported> = (|| {
         compare_number_of_generics(tcx, impl_ty, impl_ty_span, trait_ty, trait_item_span)?;
 
-        compare_type_predicate_entailment(tcx, impl_ty, impl_ty_span, trait_ty, impl_trait_ref)?;
+        let sp = tcx.def_span(impl_ty.def_id);
+        compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
 
         check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
     })();
@@ -1298,11 +1300,16 @@ pub fn check_type_bounds<'tcx>(
 
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-        let mk_cause = |span| {
+        let mk_cause = |bound, span| {
             ObligationCause::new(
                 impl_ty_span,
                 impl_ty_hir_id,
-                ObligationCauseCode::BindingObligation(trait_ty.def_id, span),
+                match bound {
+                    ty::PredicateKind::ImplicitSizedTrait(_) => {
+                        traits::ImplicitSizedObligation(trait_ty.def_id, span)
+                    }
+                    _ => ObligationCauseCode::BindingObligation(trait_ty.def_id, span),
+                },
             )
         };
 
@@ -1313,7 +1320,11 @@ pub fn check_type_bounds<'tcx>(
                 let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
-                traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+                traits::Obligation::new(
+                    mk_cause(bound.kind().skip_binder(), span),
+                    param_env,
+                    concrete_ty_bound,
+                )
             })
             .collect();
         debug!("check_type_bounds: item_bounds={:?}", obligations);

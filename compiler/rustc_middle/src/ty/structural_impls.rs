@@ -180,6 +180,7 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
                 }
                 a.fmt(f)
             }
+            ty::PredicateKind::ImplicitSizedTrait(ref a) => a.fmt(f),
             ty::PredicateKind::Subtype(ref pair) => pair.fmt(f),
             ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
@@ -421,6 +422,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
         match self {
             ty::PredicateKind::Trait(data, constness) => {
                 tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness))
+            }
+            ty::PredicateKind::ImplicitSizedTrait(data) => {
+                tcx.lift(data).map(|data| ty::PredicateKind::ImplicitSizedTrait(data))
             }
             ty::PredicateKind::Subtype(data) => tcx.lift(data).map(ty::PredicateKind::Subtype),
             ty::PredicateKind::RegionOutlives(data) => {

@@ -75,12 +75,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
    |
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+note: type parameters have an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider further restricting `Self`
    |
 LL | trait Foo<T>: Sized {
@@ -91,12 +91,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
    |
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+note: type parameters have an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider further restricting `Self`
    |
 LL | trait Bar: std::fmt::Display + Sized {
@@ -107,12 +107,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
    |
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+note: type parameters have an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider further restricting `Self`
    |
 LL | trait Baz: Sized where Self: std::fmt::Display {
@@ -123,12 +123,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
    |
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+note: type parameters have an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider further restricting `Self`
    |
 LL | trait Qux<T>: Sized where Self: std::fmt::Display {
@@ -139,12 +139,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
    |
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+note: type parameters have an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
-   |                      - required by this bound in `std::mem::size_of`
-   |
+   |                      ^ required by this bound in `std::mem::size_of`
 help: consider further restricting `Self`
    |
 LL | trait Bat<T>: std::fmt::Display + Sized {

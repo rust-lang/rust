@@ -27,6 +27,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
         for (predicate, _) in predicates.predicates {
             match predicate.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(_)
+                | ty::PredicateKind::ImplicitSizedTrait(_)
                 | ty::PredicateKind::TypeOutlives(_)
                 | ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::Projection(_)

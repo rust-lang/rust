@@ -2228,6 +2228,9 @@ impl<'a> State<'a> {
                 GenericBound::Outlives(lt) => {
                     self.print_lifetime(lt);
                 }
+                GenericBound::Unsized(_) => {
+                    self.s.word("?Sized");
+                }
             }
         }
     }

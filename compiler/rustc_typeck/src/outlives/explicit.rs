@@ -51,6 +51,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                     }
 
                     ty::PredicateKind::Trait(..)
+                    | ty::PredicateKind::ImplicitSizedTrait(..)
                     | ty::PredicateKind::Projection(..)
                     | ty::PredicateKind::WellFormed(..)
                     | ty::PredicateKind::ObjectSafe(..)
