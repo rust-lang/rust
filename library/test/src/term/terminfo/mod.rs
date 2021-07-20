@@ -8,9 +8,8 @@ use std::fs::File;
 use std::io::{self, prelude::*, BufReader};
 use std::path::Path;
 
-use crate::color;
-use crate::Attr;
-use crate::Terminal;
+use super::color;
+use super::Terminal;
 
 use parm::{expand, Param, Variables};
 use parser::compiled::{msys_terminfo, parse};
@@ -18,20 +17,20 @@ use searcher::get_dbpath_for_term;
 
 /// A parsed terminfo database entry.
 #[derive(Debug)]
-pub struct TermInfo {
+pub(crate) struct TermInfo {
     /// Names for the terminal
-    pub names: Vec<String>,
+    pub(crate) names: Vec<String>,
     /// Map of capability name to boolean value
-    pub bools: HashMap<String, bool>,
+    pub(crate) bools: HashMap<String, bool>,
     /// Map of capability name to numeric value
-    pub numbers: HashMap<String, u32>,
+    pub(crate) numbers: HashMap<String, u32>,
     /// Map of capability name to raw (unexpanded) string
-    pub strings: HashMap<String, Vec<u8>>,
+    pub(crate) strings: HashMap<String, Vec<u8>>,
 }
 
 /// A terminfo creation error.
 #[derive(Debug)]
-pub enum Error {
+pub(crate) enum Error {
     /// TermUnset Indicates that the environment doesn't include enough information to find
     /// the terminfo entry.
     TermUnset,
@@ -64,7 +63,7 @@ impl fmt::Display for Error {
 
 impl TermInfo {
     /// Creates a TermInfo based on current environment.
-    pub fn from_env() -> Result<TermInfo, Error> {
+    pub(crate) fn from_env() -> Result<TermInfo, Error> {
         let term = match env::var("TERM") {
             Ok(name) => TermInfo::from_name(&name),
             Err(..) => return Err(Error::TermUnset),
@@ -79,7 +78,7 @@ impl TermInfo {
     }
 
     /// Creates a TermInfo for the named terminal.
-    pub fn from_name(name: &str) -> Result<TermInfo, Error> {
+    pub(crate) fn from_name(name: &str) -> Result<TermInfo, Error> {
         get_dbpath_for_term(name)
             .ok_or_else(|| {
                 Error::IoError(io::Error::new(io::ErrorKind::NotFound, "terminfo file not found"))
@@ -88,7 +87,7 @@ impl TermInfo {
     }
 
     /// Parse the given TermInfo.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<TermInfo, Error> {
+    pub(crate) fn from_path<P: AsRef<Path>>(path: P) -> Result<TermInfo, Error> {
         Self::_from_path(path.as_ref())
     }
     // Keep the metadata small
@@ -99,75 +98,30 @@ impl TermInfo {
     }
 }
 
-pub mod searcher;
+pub(crate) mod searcher;
 
 /// TermInfo format parsing.
-pub mod parser {
+pub(crate) mod parser {
     //! ncurses-compatible compiled terminfo format parsing (term(5))
-    pub mod compiled;
+    pub(crate) mod compiled;
 }
-pub mod parm;
-
-fn cap_for_attr(attr: Attr) -> &'static str {
-    match attr {
-        Attr::Bold => "bold",
-        Attr::Dim => "dim",
-        Attr::Italic(true) => "sitm",
-        Attr::Italic(false) => "ritm",
-        Attr::Underline(true) => "smul",
-        Attr::Underline(false) => "rmul",
-        Attr::Blink => "blink",
-        Attr::Standout(true) => "smso",
-        Attr::Standout(false) => "rmso",
-        Attr::Reverse => "rev",
-        Attr::Secure => "invis",
-        Attr::ForegroundColor(_) => "setaf",
-        Attr::BackgroundColor(_) => "setab",
-    }
-}
+pub(crate) mod parm;
 
 /// A Terminal that knows how many colors it supports, with a reference to its
 /// parsed Terminfo database record.
-pub struct TerminfoTerminal<T> {
+pub(crate) struct TerminfoTerminal<T> {
     num_colors: u32,
     out: T,
     ti: TermInfo,
 }
 
 impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
-    type Output = T;
     fn fg(&mut self, color: color::Color) -> io::Result<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             return self.apply_cap("setaf", &[Param::Number(color as i32)]);
         }
         Ok(false)
-    }
-
-    fn bg(&mut self, color: color::Color) -> io::Result<bool> {
-        let color = self.dim_if_necessary(color);
-        if self.num_colors > color {
-            return self.apply_cap("setab", &[Param::Number(color as i32)]);
-        }
-        Ok(false)
-    }
-
-    fn attr(&mut self, attr: Attr) -> io::Result<bool> {
-        match attr {
-            Attr::ForegroundColor(c) => self.fg(c),
-            Attr::BackgroundColor(c) => self.bg(c),
-            _ => self.apply_cap(cap_for_attr(attr), &[]),
-        }
-    }
-
-    fn supports_attr(&self, attr: Attr) -> bool {
-        match attr {
-            Attr::ForegroundColor(_) | Attr::BackgroundColor(_) => self.num_colors > 0,
-            _ => {
-                let cap = cap_for_attr(attr);
-                self.ti.strings.get(cap).is_some()
-            }
-        }
     }
 
     fn reset(&mut self) -> io::Result<bool> {
@@ -182,26 +136,11 @@ impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
         };
         self.out.write_all(&cmd).and(Ok(true))
     }
-
-    fn get_ref(&self) -> &T {
-        &self.out
-    }
-
-    fn get_mut(&mut self) -> &mut T {
-        &mut self.out
-    }
-
-    fn into_inner(self) -> T
-    where
-        Self: Sized,
-    {
-        self.out
-    }
 }
 
 impl<T: Write + Send> TerminfoTerminal<T> {
     /// Creates a new TerminfoTerminal with the given TermInfo and Write.
-    pub fn new_with_terminfo(out: T, terminfo: TermInfo) -> TerminfoTerminal<T> {
+    pub(crate) fn new_with_terminfo(out: T, terminfo: TermInfo) -> TerminfoTerminal<T> {
         let nc = if terminfo.strings.contains_key("setaf") && terminfo.strings.contains_key("setab")
         {
             terminfo.numbers.get("colors").map_or(0, |&n| n)
@@ -215,7 +154,7 @@ impl<T: Write + Send> TerminfoTerminal<T> {
     /// Creates a new TerminfoTerminal for the current environment with the given Write.
     ///
     /// Returns `None` when the terminfo cannot be found or parsed.
-    pub fn new(out: T) -> Option<TerminfoTerminal<T>> {
+    pub(crate) fn new(out: T) -> Option<TerminfoTerminal<T>> {
         TermInfo::from_env().map(move |ti| TerminfoTerminal::new_with_terminfo(out, ti)).ok()
     }
 

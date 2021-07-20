@@ -13,7 +13,7 @@ use super::{
     formatters::{JsonFormatter, JunitFormatter, OutputFormatter, PrettyFormatter, TerseFormatter},
     helpers::{concurrency::get_concurrency, metrics::MetricMap},
     options::{Options, OutputFormat},
-    run_tests,
+    run_tests, term,
     test_result::TestResult,
     time::{TestExecTime, TestSuiteExecTime},
     types::{NamePadding, TestDesc, TestDescAndFn},

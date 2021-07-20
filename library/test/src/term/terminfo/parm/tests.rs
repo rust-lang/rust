@@ -51,7 +51,10 @@ fn test_param_stack_failure_conditions() {
     for &cap in caps.iter() {
         let res = get_res("", cap, &[], vars);
         assert!(res.is_err(), "Op {} succeeded incorrectly with 0 stack entries", cap);
-        let p = if cap == "%s" || cap == "%l" { Words("foo".to_string()) } else { Number(97) };
+        if cap == "%s" || cap == "%l" {
+            continue;
+        }
+        let p = Number(97);
         let res = get_res("%p1", cap, &[p], vars);
         assert!(res.is_ok(), "Op {} failed with 1 stack entry: {}", cap, res.unwrap_err());
     }
@@ -109,23 +112,6 @@ fn test_conditionals() {
 fn test_format() {
     let mut varstruct = Variables::new();
     let vars = &mut varstruct;
-    assert_eq!(
-        expand(
-            b"%p1%s%p2%2s%p3%2s%p4%.2s",
-            &[
-                Words("foo".to_string()),
-                Words("foo".to_string()),
-                Words("f".to_string()),
-                Words("foo".to_string())
-            ],
-            vars
-        ),
-        Ok("foofoo ffo".bytes().collect::<Vec<_>>())
-    );
-    assert_eq!(
-        expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
-        Ok("fo  ".bytes().collect::<Vec<_>>())
-    );
 
     assert_eq!(
         expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
