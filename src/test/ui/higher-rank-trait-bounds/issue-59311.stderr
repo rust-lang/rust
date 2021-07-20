@@ -1,8 +1,10 @@
-error: higher-ranked subtype error
+error: higher-ranked lifetime error
   --> $DIR/issue-59311.rs:17:9
    |
 LL |     v.t(|| {});
    |         ^^^^^
+   |
+   = note: could not prove for<'a> &'a V: 'static
 
 error: aborting due to previous error
 

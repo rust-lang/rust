@@ -27,23 +27,33 @@ LL |     a(x, y, z);
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'r, 's, 't0, 't1, 't2, 't3> fn(&'r mut &'s isize, &'t0 mut &'t1 isize, &'t2 mut &'t3 isize)`
+              found fn pointer `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)`
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'r, 's, 't0, 't1, 't2, 't3> fn(&'r mut &'s isize, &'t0 mut &'t1 isize, &'t2 mut &'t3 isize)`
+              found fn pointer `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)`
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'r, 's, 't0, 't1, 't2, 't3> fn(&'r mut &'s isize, &'t0 mut &'t1 isize, &'t2 mut &'t3 isize)`
+              found fn pointer `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)`
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

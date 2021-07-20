@@ -1,14 +1,21 @@
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/hr-fn-aaa-as-aba.rs:14:58
    |
 LL |     let a: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
-   |                                                          ^^^^^^^^^
+   |                                                          ^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'r, 's> fn(&'r u32, &'s u32) -> &'r u32`
+              found fn pointer `for<'a> fn(&'a u32, &'a u32) -> &'a u32`
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/hr-fn-aaa-as-aba.rs:22:12
    |
 LL |     let _: for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 = make_it();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32`
+              found fn pointer `for<'r> fn(&'r u32, &'r u32) -> &'r u32`
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

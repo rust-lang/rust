@@ -445,6 +445,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.var_infos[vid].universe
     }
 
+    /// Returns the origin for the given variable.
+    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
+        self.var_infos[vid].origin
+    }
+
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
         debug!("RegionConstraintCollector: add_constraint({:?})", constraint);

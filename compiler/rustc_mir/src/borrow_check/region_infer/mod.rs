@@ -21,7 +21,7 @@ use crate::borrow_check::{
     constraints::{
         graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
     },
-    diagnostics::{RegionErrorKind, RegionErrors},
+    diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo},
     member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
     nll::{PoloniusOutput, ToRegionVid},
     region_infer::reverse_sccs::ReverseSccGraph,
@@ -83,6 +83,9 @@ pub struct RegionInferenceContext<'tcx> {
     /// Map closure bounds to a `Span` that should be used for error reporting.
     closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
+
+    /// Map universe indexes to information on why we created it.
+    universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -253,6 +256,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Location,
             FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
         >,
+        universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
@@ -293,6 +297,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             member_constraints,
             member_constraints_applied: Vec::new(),
             closure_bounds_mapping,
+            universe_causes,
             scc_universes,
             scc_representatives,
             scc_values,
@@ -1632,7 +1637,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
             longer_fr,
             error_element,
-            fr_origin: NllRegionVariableOrigin::Placeholder(placeholder),
+            placeholder,
         });
     }
 
@@ -1918,8 +1923,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Get the region outlived by `longer_fr` and live at `element`.
-    crate fn region_from_element(&self, longer_fr: RegionVid, element: RegionElement) -> RegionVid {
-        match element {
+    crate fn region_from_element(
+        &self,
+        longer_fr: RegionVid,
+        element: &RegionElement,
+    ) -> RegionVid {
+        match *element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
             RegionElement::PlaceholderRegion(error_placeholder) => self
@@ -2137,6 +2146,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("`: sorted_path={:#?}", categorized_path);
 
         categorized_path.remove(0)
+    }
+
+    crate fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
+        self.universe_causes[universe].clone()
     }
 }
 

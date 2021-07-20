@@ -1,4 +1,5 @@
 pub use self::freshen::TypeFreshener;
+pub use self::lexical_region_resolve::RegionResolutionError;
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
@@ -1065,7 +1066,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// etc) this is the root universe U0. For inference variables or
     /// placeholders, however, it will return the universe which which
     /// they are associated.
-    fn universe_of_region(&self, r: ty::Region<'tcx>) -> ty::UniverseIndex {
+    pub fn universe_of_region(&self, r: ty::Region<'tcx>) -> ty::UniverseIndex {
         self.inner.borrow_mut().unwrap_region_constraints().universe(r)
     }
 
@@ -1241,6 +1242,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> R {
         let mut inner = self.inner.borrow_mut();
         op(inner.unwrap_region_constraints().data())
+    }
+
+    pub fn region_var_origin(&self, vid: ty::RegionVid) -> RegionVariableOrigin {
+        let mut inner = self.inner.borrow_mut();
+        let inner = &mut *inner;
+        inner
+            .region_constraint_storage
+            .as_mut()
+            .expect("regions already resolved")
+            .with_log(&mut inner.undo_log)
+            .var_origin(vid)
     }
 
     /// Takes ownership of the list of variable regions. This implies
@@ -1460,7 +1472,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.inner.borrow_mut().projection_cache().clear();
     }
 
-    fn universe(&self) -> ty::UniverseIndex {
+    pub fn universe(&self) -> ty::UniverseIndex {
         self.universe.get()
     }
 

@@ -44,7 +44,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Instantiate the canonicalized variables from
                     // user-provided signature (e.g., the `_` in the code
                     // above) with fresh variables.
-                    let (poly_sig, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                    let poly_sig = self.instantiate_canonical_with_fresh_inference_vars(
                         body.span,
                         &user_provided_poly_sig,
                     );

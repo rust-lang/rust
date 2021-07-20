@@ -3,7 +3,7 @@ use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::Fallible;
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
+#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct ImpliedOutlivesBounds<'tcx> {
     pub ty: Ty<'tcx>,
 }

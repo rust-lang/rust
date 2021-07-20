@@ -12,5 +12,5 @@ fn make_foo<'a>() -> Box<dyn Foo<'a>> {
 
 fn main() {
     let x: Box<dyn Foo<'static>> = make_foo();
-    let y: Box<dyn for<'a> Foo<'a>> = x; //~ ERROR higher-ranked subtype error
+    let y: Box<dyn for<'a> Foo<'a>> = x; //~ ERROR mismatched types [E0308]
 }
