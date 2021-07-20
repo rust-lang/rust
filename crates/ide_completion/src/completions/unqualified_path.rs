@@ -24,6 +24,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
     std::array::IntoIter::new(["self", "super", "crate"]).for_each(|kw| acc.add_keyword(ctx, kw));
+    if let Some(ImmediateLocation::Visibility(_)) = ctx.completion_location {
+        return;
+    }
 
     if ctx.expects_item() || ctx.expects_assoc_item() {
         // only show macros in {Assoc}ItemList

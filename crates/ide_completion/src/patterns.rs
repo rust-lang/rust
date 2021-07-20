@@ -41,6 +41,7 @@ pub(crate) enum ImmediateLocation {
     Attribute(ast::Attr),
     // Fake file ast node
     ModDeclaration(ast::Module),
+    Visibility(ast::Visibility),
     // Original file ast node
     MethodCall {
         receiver: Option<ast::Expr>,
@@ -246,6 +247,8 @@ pub(crate) fn determine_location(
                     .and_then(|r| find_node_with_range(original_file, r)),
                 has_parens: it.arg_list().map_or(false, |it| it.l_paren_token().is_some())
             },
+            ast::Visibility(it) => it.pub_token()
+                .and_then(|t| (t.text_range().end() < offset).then(|| ImmediateLocation::Visibility(it)))?,
             _ => return None,
         }
     };
