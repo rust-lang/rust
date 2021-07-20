@@ -1,0 +1,16 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-85735.rs:9:8
+   |
+LL |     T: FnMut(&'a ()),
+   |        ^^^^^^^^^^^^^ cannot infer type for type parameter `T`
+   | 
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait FnMut<Args>: FnOnce<Args> {
+   | ----------------------------------- required by this bound in `FnMut`
+   |
+   = note: cannot satisfy `T: FnMut<(&'a (),)>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.
