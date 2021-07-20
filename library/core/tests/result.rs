@@ -1,3 +1,4 @@
+use core::convert::Infallible;
 use core::ops::DerefMut;
 use core::option::*;
 
@@ -208,8 +209,12 @@ pub fn test_into_ok() {
     fn infallible_op() -> Result<isize, !> {
         Ok(666)
     }
+    fn infallible_op_enum() -> Result<isize, Infallible> {
+        Ok(666)
+    }
 
     assert_eq!(infallible_op().into_ok(), 666);
+    assert_eq!(infallible_op_enum().into_ok(), 666);
 
     enum MyNeverToken {}
     impl From<MyNeverToken> for ! {
@@ -230,8 +235,12 @@ pub fn test_into_err() {
     fn until_error_op() -> Result<!, isize> {
         Err(666)
     }
+    fn until_error_op_enum() -> Result<Infallible, isize> {
+        Err(666)
+    }
 
     assert_eq!(until_error_op().into_err(), 666);
+    assert_eq!(until_error_op_enum().into_err(), 666);
 
     enum MyNeverToken {}
     impl From<MyNeverToken> for ! {
