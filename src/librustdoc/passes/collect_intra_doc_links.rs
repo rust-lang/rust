@@ -19,7 +19,7 @@ use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::{MacroKind, SyntaxContext};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{BytePos, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use pulldown_cmark::LinkType;
@@ -1202,7 +1202,7 @@ impl LinkCollector<'_, '_> {
                     specified.descr()
                 );
                 diag.note(&note);
-                suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
+                suggest_disambiguator(resolved, diag, path_str, sp);
             };
             report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
         };
@@ -1732,7 +1732,16 @@ fn report_diagnostic(
     tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs);
+        let span =
+            super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs).map(|sp| {
+                if dox.bytes().nth(link_range.start) == Some(b'`')
+                    && dox.bytes().nth(link_range.end - 1) == Some(b'`')
+                {
+                    sp.with_lo(sp.lo() + BytePos(1)).with_hi(sp.hi() - BytePos(1))
+                } else {
+                    sp
+                }
+            });
 
         if let Some(sp) = span {
             diag.set_span(sp);
@@ -1934,14 +1943,7 @@ fn resolution_failure(
                     ResolutionFailure::WrongNamespace { res, expected_ns } => {
                         if let Res::Def(kind, _) = res {
                             let disambiguator = Disambiguator::Kind(kind);
-                            suggest_disambiguator(
-                                disambiguator,
-                                diag,
-                                path_str,
-                                diag_info.dox,
-                                sp,
-                                &diag_info.link_range,
-                            )
+                            suggest_disambiguator(disambiguator, diag, path_str, sp)
                         }
 
                         format!(
@@ -2007,7 +2009,7 @@ fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: A
             if let Some((fragment_offset, _)) =
                 diag_info.ori_link.char_indices().filter(|(_, x)| *x == '#').nth(anchor_idx)
             {
-                sp = sp.with_lo(sp.lo() + rustc_span::BytePos(fragment_offset as _));
+                sp = sp.with_lo(sp.lo() + BytePos(fragment_offset as _));
             }
             diag.span_label(sp, "invalid anchor");
         }
@@ -2075,14 +2077,7 @@ fn ambiguity_error(
 
         for res in candidates {
             let disambiguator = Disambiguator::from_res(res);
-            suggest_disambiguator(
-                disambiguator,
-                diag,
-                path_str,
-                diag_info.dox,
-                sp,
-                &diag_info.link_range,
-            );
+            suggest_disambiguator(disambiguator, diag, path_str, sp);
         }
     });
 }
@@ -2093,21 +2088,18 @@ fn suggest_disambiguator(
     disambiguator: Disambiguator,
     diag: &mut DiagnosticBuilder<'_>,
     path_str: &str,
-    dox: &str,
     sp: Option<rustc_span::Span>,
-    link_range: &Range<usize>,
 ) {
     let suggestion = disambiguator.suggestion();
     let help = format!("to link to the {}, {}", disambiguator.descr(), suggestion.descr());
 
     if let Some(sp) = sp {
-        let msg = if dox.bytes().nth(link_range.start) == Some(b'`') {
-            format!("`{}`", suggestion.as_help(path_str))
-        } else {
-            suggestion.as_help(path_str)
-        };
-
-        diag.span_suggestion(sp, &help, msg, Applicability::MaybeIncorrect);
+        diag.span_suggestion(
+            sp,
+            &help,
+            suggestion.as_help(path_str),
+            Applicability::MaybeIncorrect,
+        );
     } else {
         diag.help(&format!("{}: {}", help, suggestion.as_help(path_str)));
     }
