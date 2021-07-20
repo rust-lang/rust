@@ -55,7 +55,7 @@ macro_rules! with_api {
             FreeFunctions {
                 fn drop($self: $S::FreeFunctions);
                 fn track_env_var(var: &str, value: Option<&str>);
-                fn track_path(path: &str);
+                fn track_fs_path(path: &str);
             },
             TokenStream {
                 fn drop($self: $S::TokenStream);
