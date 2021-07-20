@@ -53,7 +53,7 @@ fn main() {
         ].clone();
     });
 
-    assert!(result.is_err());
+    assert!(child.is_err());
     assert_eq!(
         1,
         Rc::strong_count(&counter)
