@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     #[inline]
-    fn def_path_hash_to_def_index(&self, hash: DefPathHash) -> Option<DefIndex> {
+    fn def_path_hash_to_def_index(&self, hash: DefPathHash) -> DefIndex {
         self.def_path_hash_map.def_path_hash_to_def_index(&hash)
     }
 

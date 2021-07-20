@@ -361,7 +361,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         })
     }
 
-    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, hash: DefPathHash) -> Option<DefId> {
+    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, hash: DefPathHash) -> DefId {
         debug!("def_path_hash_to_def_id({:?})", hash);
 
         let stable_crate_id = hash.stable_crate_id();
@@ -369,9 +369,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == tcx.sess.local_stable_crate_id() {
-            tcx.definitions_untracked()
-                .local_def_path_hash_to_def_id(hash)
-                .map(LocalDefId::to_def_id)
+            tcx.definitions_untracked().local_def_path_hash_to_def_id(hash).to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
@@ -779,12 +777,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        Ok(d.tcx()
-            .on_disk_cache
-            .as_ref()
-            .unwrap()
-            .def_path_hash_to_def_id(d.tcx(), def_path_hash)
-            .unwrap())
+        Ok(d.tcx().on_disk_cache.as_ref().unwrap().def_path_hash_to_def_id(d.tcx(), def_path_hash))
     }
 }
 

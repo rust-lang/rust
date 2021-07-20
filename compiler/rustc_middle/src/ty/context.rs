@@ -83,11 +83,7 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
     /// session, if it still exists. This is used during incremental compilation to
     /// turn a deserialized `DefPathHash` into its current `DefId`.
-    fn def_path_hash_to_def_id(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        def_path_hash: DefPathHash,
-    ) -> Option<DefId>;
+    fn def_path_hash_to_def_id(&self, tcx: TyCtxt<'tcx>, def_path_hash: DefPathHash) -> DefId;
 
     fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
 
