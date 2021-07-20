@@ -103,6 +103,28 @@ pub use core::time::Duration;
 /// > structure cannot represent the new point in time.
 ///
 /// [`add`]: Instant::add
+///
+/// ## Reliability
+///
+/// On platforms where the underlying system call's API contract guarantees monotonicity
+/// Instant may rely on that property. Otherwise it will add its own synchronization
+/// to ensure monotonicity. Sometimes operating system guarantees are broken by hardware
+/// or virtualization bugs. This can manifest in Duration between an older and newer Instant
+/// appearing to be negative which results in a panic.
+///
+/// On windows and some unix systems you can override rust's choice to add
+/// its own synchronization or rely on the operating system by setting the environment variable
+/// `RUST_CLOCK_ASSUME_MONOTONIC` to `1` (trust the system-provided time) or `0`
+/// (apply additional synchronization). The value of the variable is only read
+/// the first time an Instant is created. Altering it later will have no effect.
+///
+/// > Note: The environment variable is experimental and meant to diagnose bugs.
+/// > It is not part of the normal Rust stability guarantees.
+///
+/// If you encounter a case where additional synchronization is necessary please
+/// [file an issue]
+///
+/// [file an issue]: https://github.com/rust-lang/rust/issues
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -327,7 +349,9 @@ impl Instant {
     ///
     /// This function may panic if the current time is earlier than this
     /// instant, which is something that can happen if an `Instant` is
-    /// produced synthetically.
+    /// produced synthetically or due to [hardware bugs]
+    ///
+    /// [hardware bugs]: Instant#reliability
     ///
     /// # Examples
     ///

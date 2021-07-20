@@ -3,6 +3,7 @@ use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem;
 use crate::sys::c;
+use crate::sys::common::time::{instant_reliability_override, InstantReliability};
 use crate::time::Duration;
 
 use core::hash::{Hash, Hasher};
@@ -42,7 +43,11 @@ impl Instant {
     }
 
     pub fn actually_monotonic() -> bool {
-        false
+        match instant_reliability_override() {
+            InstantReliability::Default => false,
+            InstantReliability::AssumeMonotonic => true,
+            InstantReliability::AssumeBroken => false,
+        }
     }
 
     pub const fn zero() -> Instant {
