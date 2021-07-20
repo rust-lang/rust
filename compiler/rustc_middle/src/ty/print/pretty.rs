@@ -927,20 +927,21 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.val {
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
-                if let Some(promoted) = promoted {
-                    p!(print_value_path(def.did, substs));
+            ty::ConstKind::Unevaluated(uv) => {
+                if let Some(promoted) = uv.promoted {
+                    let substs = uv.substs_.unwrap();
+                    p!(print_value_path(uv.def.did, substs));
                     p!(write("::{:?}", promoted));
                 } else {
-                    match self.tcx().def_kind(def.did) {
+                    let tcx = self.tcx();
+                    match tcx.def_kind(uv.def.did) {
                         DefKind::Static | DefKind::Const | DefKind::AssocConst => {
-                            p!(print_value_path(def.did, substs))
+                            p!(print_value_path(uv.def.did, uv.substs(tcx)))
                         }
                         _ => {
-                            if def.is_local() {
-                                let span = self.tcx().def_span(def.did);
-                                if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
-                                {
+                            if uv.def.is_local() {
+                                let span = tcx.def_span(uv.def.did);
+                                if let Ok(snip) = tcx.sess.source_map().span_to_snippet(span) {
                                     p!(write("{}", snip))
                                 } else {
                                     print_underscore!()
@@ -1200,7 +1201,9 @@ pub trait PrettyPrinter<'tcx>:
             //
             // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
             // correct `ty::ParamEnv` to allow printing *all* constant values.
-            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..))
+                if !ty.has_potential_param_types_or_consts() =>
+            {
                 let contents = self.tcx().destructure_const(
                     ty::ParamEnv::reveal_all()
                         .and(self.tcx().mk_const(ty::Const { val: ty::ConstKind::Value(ct), ty })),
@@ -1949,12 +1952,17 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         debug!("prepare_late_bound_region_info(value: {:?})", value);
 
         struct LateBoundRegionNameCollector<'a, 'tcx> {
+            tcx: TyCtxt<'tcx>,
             used_region_names: &'a mut FxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
             type BreakTy = ();
+
+            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                Some(self.tcx)
+            }
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 debug!("LateBoundRegionNameCollector::visit_region(r: {:?}, address: {:p})", r, &r);
@@ -1979,6 +1987,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
         self.used_region_names.clear();
         let mut collector = LateBoundRegionNameCollector {
+            tcx: self.tcx,
             used_region_names: &mut self.used_region_names,
             type_collector: SsoHashSet::new(),
         };
@@ -2211,8 +2220,8 @@ define_print_and_forward_display! {
                 print_value_path(closure_def_id, &[]),
                 write("` implements the trait `{}`", kind))
             }
-            ty::PredicateKind::ConstEvaluatable(def, substs) => {
-                p!("the constant `", print_value_path(def.did, substs), "` can be evaluated")
+            ty::PredicateKind::ConstEvaluatable(uv) => {
+                p!("the constant `", print_value_path(uv.def.did, uv.substs_.map_or(&[], |x| x)), "` can be evaluated")
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")

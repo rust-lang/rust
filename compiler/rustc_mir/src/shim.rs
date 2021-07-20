@@ -163,7 +163,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     let source = MirSource::from_instance(ty::InstanceDef::DropGlue(def_id, ty));
     let mut body =
-        new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
+        new_body(tcx, source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
     if ty.is_some() {
         // The first argument (index 0), but add 1 for the return value.
@@ -202,6 +202,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 }
 
 fn new_body<'tcx>(
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -209,6 +210,7 @@ fn new_body<'tcx>(
     span: Span,
 ) -> Body<'tcx> {
     Body::new(
+        tcx,
         source,
         basic_blocks,
         IndexVec::from_elem_n(
@@ -353,7 +355,14 @@ impl CloneShimBuilder<'tcx> {
             self.def_id,
             self.sig.inputs_and_output[0],
         ));
-        new_body(source, self.blocks, self.local_decls, self.sig.inputs().len(), self.span)
+        new_body(
+            self.tcx,
+            source,
+            self.blocks,
+            self.local_decls,
+            self.sig.inputs().len(),
+            self.span,
+        )
     }
 
     fn source_info(&self) -> SourceInfo {
@@ -851,8 +860,14 @@ fn build_call_shim<'tcx>(
         block(&mut blocks, vec![], TerminatorKind::Resume, true);
     }
 
-    let mut body =
-        new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span);
+    let mut body = new_body(
+        tcx,
+        MirSource::from_instance(instance),
+        blocks,
+        local_decls,
+        sig.inputs().len(),
+        span,
+    );
 
     if let Abi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
@@ -917,6 +932,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let source = MirSource::item(ctor_id);
     let body = new_body(
+        tcx,
         source,
         IndexVec::from_elem_n(start_block, 1),
         local_decls,

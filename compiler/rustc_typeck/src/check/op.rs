@@ -428,7 +428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 if let Some(missing_trait) = missing_trait {
-                    let mut visitor = TypeParamVisitor(vec![]);
+                    let mut visitor = TypeParamVisitor(self.tcx, vec![]);
                     visitor.visit_ty(lhs_ty);
 
                     if op.node == hir::BinOpKind::Add
@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // This has nothing here because it means we did string
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
-                    } else if let [ty] = &visitor.0[..] {
+                    } else if let [ty] = &visitor.1[..] {
                         if let ty::Param(p) = *ty.kind() {
                             // Check if the method would be found if the type param wasn't
                             // involved. If so, it means that adding a trait bound to the param is
@@ -1003,12 +1003,15 @@ fn suggest_constraining_param(
     }
 }
 
-struct TypeParamVisitor<'tcx>(Vec<Ty<'tcx>>);
+struct TypeParamVisitor<'tcx>(TyCtxt<'tcx>, Vec<Ty<'tcx>>);
 
 impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.0)
+    }
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if let ty::Param(_) = ty.kind() {
-            self.0.push(ty);
+            self.1.push(ty);
         }
         ty.super_visit_with(self)
     }

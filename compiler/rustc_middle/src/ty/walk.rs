@@ -1,8 +1,8 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-use crate::ty;
 use crate::ty::subst::{GenericArg, GenericArgKind};
+use crate::ty::{self, TyCtxt};
 use rustc_data_structures::sso::SsoHashSet;
 use smallvec::{self, SmallVec};
 
@@ -11,6 +11,7 @@ use smallvec::{self, SmallVec};
 type TypeWalkerStack<'tcx> = SmallVec<[GenericArg<'tcx>; 8]>;
 
 pub struct TypeWalker<'tcx> {
+    expose_default_const_substs: Option<TyCtxt<'tcx>>,
     stack: TypeWalkerStack<'tcx>,
     last_subtree: usize,
     pub visited: SsoHashSet<GenericArg<'tcx>>,
@@ -25,8 +26,13 @@ pub struct TypeWalker<'tcx> {
 /// It maintains a set of visited types and
 /// skips any types that are already there.
 impl<'tcx> TypeWalker<'tcx> {
-    pub fn new(root: GenericArg<'tcx>) -> Self {
-        Self { stack: smallvec![root], last_subtree: 1, visited: SsoHashSet::new() }
+    fn new(expose_default_const_substs: Option<TyCtxt<'tcx>>, root: GenericArg<'tcx>) -> Self {
+        Self {
+            expose_default_const_substs,
+            stack: smallvec![root],
+            last_subtree: 1,
+            visited: SsoHashSet::new(),
+        }
     }
 
     /// Skips the subtree corresponding to the last type
@@ -55,7 +61,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
             let next = self.stack.pop()?;
             self.last_subtree = self.stack.len();
             if self.visited.insert(next) {
-                push_inner(&mut self.stack, next);
+                push_inner(self.expose_default_const_substs, &mut self.stack, next);
                 debug!("next: stack={:?}", self.stack);
                 return Some(next);
             }
@@ -74,8 +80,8 @@ impl GenericArg<'tcx> {
     /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
     /// [isize] => { [isize], isize }
     /// ```
-    pub fn walk(self) -> TypeWalker<'tcx> {
-        TypeWalker::new(self)
+    pub fn walk(self, tcx: TyCtxt<'tcx>) -> TypeWalker<'tcx> {
+        TypeWalker::new(Some(tcx), self)
     }
 
     /// Iterator that walks the immediate children of `self`. Hence
@@ -87,16 +93,21 @@ impl GenericArg<'tcx> {
     /// and skips any types that are already there.
     pub fn walk_shallow(
         self,
+        tcx: TyCtxt<'tcx>,
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> impl Iterator<Item = GenericArg<'tcx>> {
         let mut stack = SmallVec::new();
-        push_inner(&mut stack, self);
+        push_inner(Some(tcx), &mut stack, self);
         stack.retain(|a| visited.insert(*a));
         stack.into_iter()
     }
 }
 
 impl<'tcx> super::TyS<'tcx> {
+    pub fn walk_ignoring_default_const_substs(&'tcx self) -> TypeWalker<'tcx> {
+        TypeWalker::new(None, self.into())
+    }
+
     /// Iterator that walks `self` and any types reachable from
     /// `self`, in depth-first order. Note that just walks the types
     /// that appear in `self`, it does not descend into the fields of
@@ -107,18 +118,22 @@ impl<'tcx> super::TyS<'tcx> {
     /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
     /// [isize] => { [isize], isize }
     /// ```
-    pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
-        TypeWalker::new(self.into())
+    pub fn walk(&'tcx self, tcx: TyCtxt<'tcx>) -> TypeWalker<'tcx> {
+        TypeWalker::new(Some(tcx), self.into())
     }
 }
 
-// We push `GenericArg`s on the stack in reverse order so as to
-// maintain a pre-order traversal. As of the time of this
-// writing, the fact that the traversal is pre-order is not
-// known to be significant to any code, but it seems like the
-// natural order one would expect (basically, the order of the
-// types as they are written).
-fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>) {
+/// We push `GenericArg`s on the stack in reverse order so as to
+/// maintain a pre-order traversal. As of the time of this
+/// writing, the fact that the traversal is pre-order is not
+/// known to be significant to any code, but it seems like the
+/// natural order one would expect (basically, the order of the
+/// types as they are written).
+fn push_inner<'tcx>(
+    expose_default_const_substs: Option<TyCtxt<'tcx>>,
+    stack: &mut TypeWalkerStack<'tcx>,
+    parent: GenericArg<'tcx>,
+) {
     match parent.unpack() {
         GenericArgKind::Type(parent_ty) => match *parent_ty.kind() {
             ty::Bool
@@ -196,7 +211,11 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Error(_) => {}
 
                 ty::ConstKind::Unevaluated(ct) => {
-                    stack.extend(ct.substs.iter().rev());
+                    if let Some(tcx) = expose_default_const_substs {
+                        stack.extend(ct.substs(tcx).iter().rev());
+                    } else if let Some(substs) = ct.substs_ {
+                        stack.extend(substs.iter().rev());
+                    }
                 }
             }
         }

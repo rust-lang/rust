@@ -361,7 +361,7 @@ fn well_formed_types_in_env<'tcx>(
         // constituents are well-formed.
         NodeKind::InherentImpl => {
             let self_ty = tcx.type_of(def_id);
-            inputs.extend(self_ty.walk());
+            inputs.extend(self_ty.walk(tcx));
         }
 
         // In an fn, we assume that the arguments and all their constituents are
@@ -370,7 +370,7 @@ fn well_formed_types_in_env<'tcx>(
             let fn_sig = tcx.fn_sig(def_id);
             let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
 
-            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
+            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk(tcx)));
         }
 
         NodeKind::Other => (),

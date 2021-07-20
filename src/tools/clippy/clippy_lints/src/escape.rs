@@ -53,7 +53,7 @@ fn is_non_trait_box(ty: Ty<'_>) -> bool {
 struct EscapeDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     set: HirIdSet,
-    trait_self_ty: Option<Ty<'a>>,
+    trait_self_ty: Option<Ty<'tcx>>,
     too_large_for_stack: u64,
 }
 
@@ -171,7 +171,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 // skip if there is a `self` parameter binding to a type
                 // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
                 if let Some(trait_self_ty) = self.trait_self_ty {
-                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(cmt.place.ty(), trait_self_ty) {
+                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(self.cx.tcx, cmt.place.ty(), trait_self_ty) {
                         return;
                     }
                 }
