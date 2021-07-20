@@ -11,3 +11,8 @@ use proc_macro::TokenStream;
 pub fn derive_a(_input: TokenStream) -> TokenStream {
     "struct A { inner }".parse().unwrap()
 }
+
+#[proc_macro_derive(B)]
+pub fn derive_b(_input: TokenStream) -> TokenStream {
+    "const _: () = (); { HEY! }".parse().unwrap()
+}

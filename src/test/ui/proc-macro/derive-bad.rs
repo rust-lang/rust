@@ -8,4 +8,8 @@ extern crate derive_bad;
 //~| ERROR expected `:`, found `}`
 struct A; //~ ERROR the name `A` is defined multiple times
 
+#[derive(B)]
+//~^ ERROR proc-macro derive produced unparseable tokens
+struct B;
+
 fn main() {}
