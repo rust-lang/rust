@@ -445,7 +445,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let default_counts = gen_params.own_defaults();
         let param_counts = gen_params.own_counts();
-        let named_type_param_count = param_counts.types - has_self as usize;
+        let synth_type_param_count = if tcx.features().explicit_generic_args_with_impl_trait {
+            gen_params
+                .params
+                .iter()
+                .filter(|param| {
+                    matches!(
+                        param.kind,
+                        ty::GenericParamDefKind::Type {
+                            synthetic: Some(
+                                hir::SyntheticTyParamKind::ImplTrait
+                                    | hir::SyntheticTyParamKind::FromAttr
+                            ),
+                            ..
+                        }
+                    )
+                })
+                .count()
+        } else {
+            0
+        };
+        let named_type_param_count =
+            param_counts.types - has_self as usize - synth_type_param_count;
         let arg_counts = gen_args.own_counts();
         let infer_lifetimes = gen_pos != GenericArgPosition::Type && arg_counts.lifetimes == 0;
 
@@ -574,6 +595,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 param_counts.consts + named_type_param_count
                     - default_counts.types
                     - default_counts.consts
+                    - synth_type_param_count
             };
             debug!("expected_min: {:?}", expected_min);
             debug!("arg_counts.lifetimes: {:?}", arg_counts.lifetimes);
@@ -603,7 +625,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         seg: &hir::PathSegment<'_>,
         generics: &ty::Generics,
     ) -> bool {
-        let explicit = !seg.infer_args;
+        if seg.infer_args || tcx.features().explicit_generic_args_with_impl_trait {
+            return false;
+        }
+
         let impl_trait = generics.params.iter().any(|param| {
             matches!(
                 param.kind,
@@ -616,7 +641,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
         });
 
-        if explicit && impl_trait {
+        if impl_trait {
             let spans = seg
                 .args()
                 .args

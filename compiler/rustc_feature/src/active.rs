@@ -684,6 +684,9 @@ declare_features! (
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
 
+    /// Allows explicit generic arguments specification with `impl Trait` present.
+    (active, explicit_generic_args_with_impl_trait, "1.54.0", Some(83701), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
