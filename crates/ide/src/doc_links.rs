@@ -603,6 +603,78 @@ trait Trait$0 {
     }
 
     #[test]
+    fn test_rewrite_html_root_url() {
+        check_rewrite(
+            r#"
+#![doc(arbitrary_attribute = "test", html_root_url = "https:/example.com", arbitrary_attribute2)]
+
+pub mod foo {
+    pub struct Foo;
+}
+/// [Foo](foo::Foo)
+pub struct B$0ar
+"#,
+            expect![[r#"[Foo](https://example.com/test/foo/struct.Foo.html)"#]],
+        );
+    }
+
+    #[test]
+    fn test_rewrite_on_field() {
+        // FIXME: Should be
+        //  [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+        check_rewrite(
+            r#"
+pub struct Foo {
+    /// [Foo](struct.Foo.html)
+    fie$0ld: ()
+}
+"#,
+            expect![[r#"[Foo](struct.Foo.html)"#]],
+        );
+    }
+
+    #[test]
+    fn test_rewrite_struct() {
+        check_rewrite(
+            r#"
+/// [Foo]
+pub struct $0Foo;
+"#,
+            expect![[r#"[Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+        );
+        check_rewrite(
+            r#"
+/// [`Foo`]
+pub struct $0Foo;
+"#,
+            expect![[r#"[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+        );
+        check_rewrite(
+            r#"
+/// [Foo](struct.Foo.html)
+pub struct $0Foo;
+"#,
+            expect![[r#"[Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+        );
+        check_rewrite(
+            r#"
+/// [struct Foo](struct.Foo.html)
+pub struct $0Foo;
+"#,
+            expect![[r#"[struct Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+        );
+        check_rewrite(
+            r#"
+/// [my Foo][foo]
+///
+/// [foo]: Foo
+pub struct $0Foo;
+"#,
+            expect![[r#"[my Foo](https://docs.rs/test/*/test/struct.Foo.html)"#]],
+        );
+    }
+
+    #[test]
     fn test_rewrite() {
         check_rewrite(
             r#"
