@@ -959,6 +959,13 @@ fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_tra
                 "an implementation of `{}` might be missing for `{}`",
                 missing_trait, ty
             ));
+            // This checks if the missing trait is PartialEq to suggest adding a derive
+            if missing_trait.ends_with("PartialEq") {
+                err.note(&format!(
+                    "add `#[derive(PartialEq)]` or manually implement `PartialEq` for `{}`",
+                    ty
+                ));
+            }
         }
     }
 }
