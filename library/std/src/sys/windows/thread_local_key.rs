@@ -197,6 +197,9 @@ unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: 
     if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
         run_dtors();
     }
+    if dwReason == c::DLL_PROCESS_DETACH {
+        free_tls_slots();
+    }
 
     // See comments above for what this is doing. Note that we don't need this
     // trickery on GNU windows, just on MSVC.
@@ -232,5 +235,14 @@ unsafe fn run_dtors() {
 
             cur = (*cur).next;
         }
+    }
+}
+
+#[allow(dead_code)] // actually called above
+unsafe fn free_tls_slots() {
+    let mut cur = DTORS.load(SeqCst);
+    while !cur.is_null() {
+        c::TlsFree((*cur).key);
+        cur = (*cur).next;
     }
 }
