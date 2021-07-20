@@ -556,12 +556,7 @@ where
     };
 
     if let Some(result) = result {
-        // If `-Zincremental-verify-ich` is specified, re-hash results from
-        // the cache and make sure that they have the expected fingerprint.
-        if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
-            incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
-        }
-
+        incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
         result
     } else {
         // We could not load a result from the on-disk cache, so
@@ -596,12 +591,6 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 ) where
     CTX: QueryContext,
 {
-    assert!(
-        tcx.dep_graph().is_green(dep_node),
-        "fingerprint for green query instance not loaded from cache: {:?}",
-        dep_node,
-    );
-
     debug!("BEGIN verify_ich({:?})", dep_node);
     let mut hcx = tcx.create_stable_hashing_context();
 
