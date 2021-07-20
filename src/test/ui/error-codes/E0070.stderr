@@ -22,13 +22,6 @@ LL |     some_other_func() = 4;
    |     |
    |     cannot assign to this expression
 
-error[E0308]: mismatched types
-  --> $DIR/E0070.rs:8:25
-   |
-LL |     some_other_func() = 4;
-   |                         ^ expected `()`, found integer
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0070, E0308.
-For more information about an error, try `rustc --explain E0070`.
+For more information about this error, try `rustc --explain E0070`.

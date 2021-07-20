@@ -7,6 +7,9 @@ LL |     a = c + b * 5;
 error[E0308]: mismatched types
   --> $DIR/issue-81293.rs:6:9
    |
+LL |     let a: u16;
+   |            --- expected due to this type
+...
 LL |     a = c + b * 5;
    |         ^^^^^^^^^ expected `u16`, found `usize`
 

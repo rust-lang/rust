@@ -7,6 +7,9 @@ LL |     length = { foo(&length) };
 error[E0308]: mismatched types
   --> $DIR/issue-84976.rs:17:14
    |
+LL |     let mut length = 0;
+   |                      - expected due to this value
+...
 LL |     length = foo(&length);
    |              ^^^^^^^^^^^^ expected `u32`, found `i32`
 
@@ -19,6 +22,9 @@ LL |     float_length = { bar(&float_length) };
 error[E0308]: mismatched types
   --> $DIR/issue-84976.rs:23:20
    |
+LL |     let mut float_length = 0.0;
+   |                            --- expected due to this value
+...
 LL |     float_length = bar(&float_length);
    |                    ^^^^^^^^^^^^^^^^^^ expected `f32`, found `f64`
 
