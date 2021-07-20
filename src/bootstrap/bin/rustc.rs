@@ -145,6 +145,10 @@ fn main() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
+    // This check is currently too expensive to have on by default.
+    // For now, just enable it when building compiler-related crates.
+    cmd.arg("-Z").arg("incremental-verify-ich");
+
     let is_test = args.iter().any(|a| a == "--test");
     if verbose > 1 {
         let rust_env_vars =
