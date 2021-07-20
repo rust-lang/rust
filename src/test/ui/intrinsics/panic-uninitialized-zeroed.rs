@@ -105,7 +105,7 @@ fn main() {
         // Types that do not like zero-initialziation
         test_panic_msg(
             || mem::uninitialized::<fn()>(),
-            "attempted to leave type `fn()` uninitialized, which is invalid"
+            "attempted to zero-initialize type `fn()`, which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<fn()>(),
@@ -114,7 +114,7 @@ fn main() {
 
         test_panic_msg(
             || mem::uninitialized::<*const dyn Send>(),
-            "attempted to leave type `*const dyn std::marker::Send` uninitialized, which is invalid"
+            "attempted to zero-initialize type `*const dyn std::marker::Send`, which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<*const dyn Send>(),
@@ -145,7 +145,7 @@ fn main() {
 
         test_panic_msg(
             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
-            "attempted to leave type `(std::ptr::NonNull<u32>, u32, u32)` uninitialized, \
+            "attempted to zero-initialize type `(std::ptr::NonNull<u32>, u32, u32)`, \
                 which is invalid"
         );
         test_panic_msg(
@@ -156,7 +156,7 @@ fn main() {
 
         test_panic_msg(
             || mem::uninitialized::<OneVariant_NonZero>(),
-            "attempted to leave type `OneVariant_NonZero` uninitialized, \
+            "attempted to zero-initialize type `OneVariant_NonZero`, \
                 which is invalid"
         );
         test_panic_msg(
@@ -167,27 +167,13 @@ fn main() {
 
         test_panic_msg(
             || mem::uninitialized::<NoNullVariant>(),
-            "attempted to leave type `NoNullVariant` uninitialized, \
+            "attempted to zero-initialize type `NoNullVariant`, \
                 which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<NoNullVariant>(),
             "attempted to zero-initialize type `NoNullVariant`, \
                 which is invalid"
-        );
-
-        // Types that can be zero, but not uninit.
-        test_panic_msg(
-            || mem::uninitialized::<bool>(),
-            "attempted to leave type `bool` uninitialized, which is invalid"
-        );
-        test_panic_msg(
-            || mem::uninitialized::<LR>(),
-            "attempted to leave type `LR` uninitialized, which is invalid"
-        );
-        test_panic_msg(
-            || mem::uninitialized::<ManuallyDrop<LR>>(),
-            "attempted to leave type `std::mem::ManuallyDrop<LR>` uninitialized, which is invalid"
         );
 
         // Some things that should work.
