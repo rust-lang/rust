@@ -736,7 +736,7 @@ fn sanitize_witness<'tcx>(
         }
     };
 
-    let param_env = tcx.param_env(did);
+    let param_env = tcx.param_env_reveal_all_normalized(did);
 
     for (local, decl) in body.local_decls.iter_enumerated() {
         // Ignore locals which are internal or not saved between yields.

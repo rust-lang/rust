@@ -47,6 +47,7 @@ pub mod remove_storage_markers;
 pub mod remove_unneeded_drops;
 pub mod remove_zsts;
 pub mod required_consts;
+pub mod reveal_all;
 pub mod rustc_peek;
 pub mod simplify;
 pub mod simplify_branches;
@@ -480,6 +481,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // to them. We run some optimizations before that, because they may be harder to do on the state
     // machine than on MIR with async primitives.
     let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
+        &reveal_all::RevealAll, // has to be done before inlining, since inlined code is in RevealAll mode.
         &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
         &unreachable_prop::UnreachablePropagation,
         &uninhabited_enum_branching::UninhabitedEnumBranching,
