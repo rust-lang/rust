@@ -327,8 +327,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
 
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let value = self.selcx.infcx().resolve_vars_if_possible(value);
-        debug!(?value);
-
+        debug!(?value, "fold");
         assert!(
             !value.has_escaping_bound_vars(),
             "Normalizing {:?} without wrapping in a `Binder`",

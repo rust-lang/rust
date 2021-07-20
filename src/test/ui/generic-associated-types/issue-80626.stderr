@@ -1,0 +1,27 @@
+error[E0275]: overflow evaluating the requirement `<A as Allocator>::Allocated<LinkedList<A>>: Sized`
+  --> $DIR/issue-80626.rs:11:14
+   |
+LL |     Next(u8, A::Allocated<Self>),
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = note: detected recursive derive for `Sized` in a generic associated type
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Allocated<T: ?Sized>;
+   |                     ^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<A as Allocator>::Allocated<LinkedList2<A>>: Sized`
+  --> $DIR/issue-80626.rs:16:10
+   |
+LL |     Next(A::Allocated<Self>, u8),
+   |          ^^^^^^^^^^^^^^^^^^
+   |
+   = note: detected recursive derive for `Sized` in a generic associated type
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Allocated<T: ?Sized>;
+   |                     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

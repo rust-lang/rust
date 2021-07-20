@@ -55,6 +55,12 @@ pub trait InferCtxtExt<'tcx> {
 
     fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> !;
 
+    fn maybe_report_recursive_gat(
+        &self,
+        begin: &PredicateObligation<'tcx>,
+        end: &PredicateObligation<'tcx>,
+    ) -> bool;
+
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
     /// then it should be the same as `obligation`.
@@ -213,6 +219,103 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         bug!();
     }
 
+    fn maybe_report_recursive_gat(
+        &self,
+        begin: &PredicateObligation<'tcx>,
+        end: &PredicateObligation<'tcx>,
+    ) -> bool {
+        let (head, tail) =
+            match (begin.predicate.kind().skip_binder(), end.predicate.kind().skip_binder()) {
+                (ty::PredicateKind::Trait(head, ..), ty::PredicateKind::Trait(tail, ..)) => {
+                    (head, tail)
+                }
+                _ => return false,
+            };
+
+        if Some(head.clone().def_id()) != self.tcx.lang_items().sized_trait() {
+            return false;
+        }
+
+        let head_ty = head.self_ty();
+        let tail_ty = tail.self_ty();
+        debug!("report_overflow_error_cycle: head_ty = {:?}, tail_ty = {:?}", head_ty, tail_ty);
+
+        let head_kind = head_ty.kind();
+        let tail_kind = tail_ty.kind();
+        debug!(
+            "report_overflow_error_cycle: head_kind = {:?}, tail_kind = {:?}",
+            head_kind, tail_kind
+        );
+
+        let (substs, item_def_id) = match head_kind {
+            ty::Projection(ty::ProjectionTy { substs, item_def_id }) => (substs, item_def_id),
+            _ => return false,
+        };
+
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
+        let node = self.tcx.hir().get(hir_id);
+        debug!("report_overflow_error_cycle: node = {:?}", node);
+
+        let (assoc_generics, _assoc_span) = match node {
+            Node::TraitItem(hir::TraitItem {
+                generics,
+                kind: hir::TraitItemKind::Type(..),
+                span,
+                ..
+            }) => (generics, span),
+            _ => return false,
+        };
+
+        let parameter_size = assoc_generics.params.len();
+        if parameter_size == 0 {
+            return false;
+        }
+
+        assert!(substs.len() >= parameter_size);
+
+        let index = match substs
+            .get(substs.len() - parameter_size..)
+            .map(|gens| {
+                gens.iter()
+                    .enumerate()
+                    .find_map(|(i, param)| if param == &tail_ty.into() { Some(i) } else { None })
+            })
+            .flatten()
+        {
+            Some(index) => index,
+            None => return false,
+        };
+        debug!("report_overflow_error_cycle: index = {:?}", index);
+
+        let param = &assoc_generics.params[index];
+        debug!("report_overflow_error_cycle: param = {:?}", param);
+
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            begin.cause.span,
+            E0275,
+            "overflow evaluating the requirement `{}`",
+            head
+        );
+
+        err.note("detected recursive derive for `Sized` in a generic associated type");
+
+        let (span, separator) = match param.bounds {
+            [] => (param.span.shrink_to_hi(), ":"),
+            [.., bound] => (bound.span().shrink_to_hi(), " +"),
+        };
+        err.span_suggestion_verbose(
+            span,
+            "consider relaxing the implicit `Sized` restriction",
+            format!("{} ?Sized", separator),
+            Applicability::MachineApplicable,
+        );
+
+        err.emit();
+        self.tcx.sess.abort_if_errors();
+        true
+    }
+
     /// Reports that a cycle was detected which led to overflow and halts
     /// compilation. This is equivalent to `report_overflow_error` except
     /// that we can give a more helpful error message (and, in particular,
@@ -224,7 +327,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
-        self.report_overflow_error(&cycle[0], false);
+        let begin = &cycle[0];
+        let end = &cycle[cycle.len() - 1];
+
+        if !self.maybe_report_recursive_gat(begin, end) {
+            self.report_overflow_error(begin, false);
+        }
+        bug!()
     }
 
     fn report_selection_error(

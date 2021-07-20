@@ -130,8 +130,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let tcx = self.tcx();
 
             let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
+            debug!(?trait_predicate);
+
             let placeholder_trait_predicate =
                 self.infcx().replace_bound_vars_with_placeholders(trait_predicate);
+            debug!(?placeholder_trait_predicate);
+
             let placeholder_self_ty = placeholder_trait_predicate.self_ty();
             let (def_id, substs) = match *placeholder_self_ty.kind() {
                 ty::Projection(proj) => (proj.item_def_id, proj.substs),
@@ -140,9 +144,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             };
 
             let candidate_predicate = tcx.item_bounds(def_id)[idx].subst(tcx, substs);
+            debug!("candidate predicate before poly trait = {:?}", candidate_predicate);
+
             let candidate = candidate_predicate
                 .to_opt_poly_trait_ref()
                 .expect("projection candidate is not a trait predicate");
+            debug!("candidate predicate after poly trait = {:?}", candidate_predicate);
+
             let mut obligations = Vec::new();
             let candidate = normalize_with_depth_to(
                 self,
@@ -162,7 +170,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })?);
 
             if let ty::Projection(..) = placeholder_self_ty.kind() {
-                for predicate in tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates {
+                let predicates = tcx.predicates_of(def_id);
+                debug!(?predicates);
+                let instantiated_predicates = predicates.instantiate_own(tcx, substs);
+                debug!(?instantiated_predicates);
+                for predicate in instantiated_predicates.predicates {
                     let normalized = normalize_with_depth_to(
                         self,
                         obligation.param_env,
@@ -179,6 +191,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ));
                 }
             }
+            debug!(?obligations);
 
             Ok(obligations)
         })
