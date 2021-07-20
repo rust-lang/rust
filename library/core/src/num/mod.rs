@@ -797,12 +797,14 @@ pub enum FpCategory {
 
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
-    fn min_value() -> Self;
-    fn max_value() -> Self;
+    const MIN: Self;
     fn from_u32(u: u32) -> Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;
+    unsafe fn unchecked_mul(&self, other: u32) -> Self;
+    unsafe fn unchecked_sub(&self, other: u32) -> Self;
+    unsafe fn unchecked_add(&self, other: u32) -> Self;
 }
 
 macro_rules! from_str_radix_int_impl {
@@ -820,10 +822,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 macro_rules! doit {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
-        #[inline]
-        fn min_value() -> Self { Self::MIN }
-        #[inline]
-        fn max_value() -> Self { Self::MAX }
+        const MIN: Self = Self::MIN;
         #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
         #[inline]
@@ -837,6 +836,27 @@ macro_rules! doit {
         #[inline]
         fn checked_add(&self, other: u32) -> Option<Self> {
             Self::checked_add(*self, other as Self)
+        }
+        #[inline]
+        unsafe fn unchecked_mul(&self, other: u32) -> Self {
+            // SAFETY:  Conditions of `Self::unchecked_mul` must be upheld by the caller.
+            unsafe {
+                Self::unchecked_mul(*self, other as Self)
+            }
+        }
+        #[inline]
+        unsafe fn unchecked_sub(&self, other: u32) -> Self {
+            // SAFETY:  Conditions of `Self::unchecked_sub` must be upheld by the caller.
+            unsafe {
+                Self::unchecked_sub(*self, other as Self)
+            }
+        }
+        #[inline]
+        unsafe fn unchecked_add(&self, other: u32) -> Self {
+            // SAFETY: Conditions of `Self::unchecked_add` must be upheld by the caller.
+            unsafe {
+                Self::unchecked_add(*self, other as Self)
+            }
         }
     })*)
 }
@@ -856,7 +876,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         return Err(PIE { kind: Empty });
     }
 
-    let is_signed_ty = T::from_u32(0) > T::min_value();
+    let is_signed_ty = T::from_u32(0) > T::MIN;
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
@@ -874,37 +894,45 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     };
 
     let mut result = T::from_u32(0);
-    if is_positive {
-        // The number is positive
-        for &c in digits {
-            let x = match (c as char).to_digit(radix) {
-                Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
-            };
-            result = match result.checked_mul(radix) {
-                Some(result) => result,
-                None => return Err(PIE { kind: PosOverflow }),
-            };
-            result = match result.checked_add(x) {
-                Some(result) => result,
-                None => return Err(PIE { kind: PosOverflow }),
-            };
+
+    if radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize {
+        // SAFETY: If the len of the str is short compared to the range of the type
+        // we are parsing into, then we can be certain that an overflow will not occur.
+        // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
+        // above is a faster (conservative) approximation of this.
+        //
+        // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
+        // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
+        // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
+        unsafe {
+            let unchecked_additive_op =
+                if is_positive { T::unchecked_add } else { T::unchecked_sub };
+
+            for &c in digits {
+                result = result.unchecked_mul(radix);
+                let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                result = unchecked_additive_op(&result, x);
+            }
         }
     } else {
-        // The number is negative
+        let additive_op = if is_positive { T::checked_add } else { T::checked_sub };
+        let overflow_err = || PIE { kind: if is_positive { PosOverflow } else { NegOverflow } };
+
         for &c in digits {
-            let x = match (c as char).to_digit(radix) {
-                Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
-            };
-            result = match result.checked_mul(radix) {
-                Some(result) => result,
-                None => return Err(PIE { kind: NegOverflow }),
-            };
-            result = match result.checked_sub(x) {
-                Some(result) => result,
-                None => return Err(PIE { kind: NegOverflow }),
-            };
+            // When `radix` is passed in as a literal, rather than doing a slow `imul`
+            // the compiler can use shifts if `radix` can be expressed as a
+            // sum of powers of 2 (x*10 can be written as x*8 + x*2).
+            // When the compiler can't use these optimisations,
+            // the latency of the multiplication can be hidden by issuing it
+            // before the result is needed to improve performance on
+            // modern out-of-order CPU as multiplication here is slower
+            // than the other instructions, we can get the end result faster
+            // doing multiplication first and let the CPU spends other cycles
+            // doing other computation and get multiplication result later.
+            let mul = result.checked_mul(radix);
+            let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+            result = mul.ok_or_else(overflow_err)?;
+            result = additive_op(&result, x).ok_or_else(overflow_err)?;
         }
     }
     Ok(result)
