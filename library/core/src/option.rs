@@ -1972,7 +1972,8 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T> ops::TryV2 for Option<T> {
+#[rustc_const_unstable(feature = "const_identity_convert", issue = "none")]
+impl<T> const ops::TryV2 for Option<T> {
     type Output = T;
     type Residual = Option<convert::Infallible>;
 
@@ -1991,7 +1992,8 @@ impl<T> ops::TryV2 for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T> ops::FromResidual for Option<T> {
+#[rustc_const_unstable(feature = "const_identity_convert", issue = "none")]
+impl<T> const ops::FromResidual for Option<T> {
     #[inline]
     fn from_residual(residual: Option<convert::Infallible>) -> Self {
         match residual {

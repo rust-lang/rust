@@ -100,6 +100,9 @@
 #![feature(const_size_of_val)]
 #![feature(const_swap)]
 #![feature(const_align_of_val)]
+#![allow(incomplete_features)] // FIXME: We very much probably want to remove this line whenever possible
+#![feature(const_trait_impl)]
+#![feature(const_identity_convert)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_likely)]

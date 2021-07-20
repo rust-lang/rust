@@ -429,6 +429,7 @@ symbols! {
         const_trait_bound_opt_out,
         const_trait_impl,
         const_transmute,
+        const_try,
         constant,
         constructor,
         contents,
