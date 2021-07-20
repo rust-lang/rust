@@ -236,3 +236,40 @@ fn test_mutex_unsized() {
     let comp: &[i32] = &[4, 2, 5];
     assert_eq!(&*mutex.lock().unwrap(), comp);
 }
+
+#[bench]
+fn bench_lock_uncontended(b: &mut test::Bencher) {
+    let mutex = Mutex::new(0u64);
+
+    b.iter(|| {
+        for _i in 0..10_000 {
+            let mut guard = mutex.lock().unwrap();
+            *guard += 1;
+        }
+    });
+}
+
+#[bench]
+fn bench_lock_contended(b: &mut test::Bencher) {
+    b.iter(|| {
+        let mutex = Arc::new(Mutex::new(0));
+        let mutex2 = Arc::clone(&mutex);
+        thread::spawn(move || {
+            loop {
+                let mut guard = mutex2.lock().unwrap();
+                *guard += 1;
+                if *guard > 10_000 {
+                    return;
+                }
+            }
+        });
+
+        loop {
+            let mut guard = mutex.lock().unwrap();
+            *guard += 1;
+            if *guard > 10_000 {
+                return;
+            }
+        }
+    });
+}
