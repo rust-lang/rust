@@ -433,6 +433,16 @@ fn test_range_inclusive_size_hint() {
 }
 
 #[test]
+fn test_range_trusted_random_access() {
+    let mut range = 0..10;
+    unsafe {
+        assert_eq!(range.next(), Some(0));
+        assert_eq!(range.__iterator_get_unchecked(0), 1);
+        assert_eq!(range.__iterator_get_unchecked(1), 2);
+    }
+}
+
+#[test]
 fn test_double_ended_range() {
     assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
     for _ in (10..0).rev() {

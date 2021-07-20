@@ -1,5 +1,5 @@
-use crate::iter::adapters::{zip::try_get_unchecked, TrustedRandomAccess};
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::ops::Try;
 
 /// An iterator that clones the elements of an underlying iterator.
@@ -135,3 +135,22 @@ where
     T: Clone,
 {
 }
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<S, I> SourceIter for Cloned<I>
+where
+    Self: Iterator,
+    I: SourceIter<Source = S>,
+    S: Iterator,
+{
+    type Source = S;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.it) }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable> InPlaceIterable for Cloned<I> where Self: Iterator {}

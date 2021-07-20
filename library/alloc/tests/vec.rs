@@ -993,10 +993,14 @@ fn test_from_iter_partially_drained_in_place_specialization() {
 #[test]
 fn test_from_iter_specialization_with_iterator_adapters() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
-    let src: Vec<usize> = vec![0usize; 256];
+    let owned: Vec<usize> = vec![0usize; 256];
+    let refd: Vec<&usize> = owned.iter().collect();
+    let src: Vec<&&usize> = refd.iter().collect();
     let srcptr = src.as_ptr();
     let iter = src
         .into_iter()
+        .copied()
+        .cloned()
         .enumerate()
         .map(|i| i.0 + i.1)
         .zip(std::iter::repeat(1usize))
@@ -1007,7 +1011,7 @@ fn test_from_iter_specialization_with_iterator_adapters() {
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr as *const usize);
+    assert_eq!(srcptr as *const usize, sinkptr as *const usize);
 }
 
 #[test]

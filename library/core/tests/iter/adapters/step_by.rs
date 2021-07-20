@@ -222,7 +222,8 @@ fn test_iterator_step_by_size_hint() {
     assert_eq!(it.len(), 3);
 
     // Cannot be TrustedLen as a step greater than one makes an iterator
-    // with (usize::MAX, None) no longer meet the safety requirements
+    // with (usize::MAX, None) no longer meet the safety requirements.
+    // Exception: The inner iterator is known to have a len() <= usize::MAX
     trait TrustedLenCheck {
         fn test(self) -> bool;
     }
@@ -237,7 +238,9 @@ fn test_iterator_step_by_size_hint() {
         }
     }
     assert!(TrustedLenCheck::test(a.iter()));
-    assert!(!TrustedLenCheck::test(a.iter().step_by(1)));
+    assert!(TrustedLenCheck::test(a.iter().step_by(1)));
+    assert!(TrustedLenCheck::test(a.iter().chain(a.iter())));
+    assert!(!TrustedLenCheck::test(a.iter().chain(a.iter()).step_by(1)));
 }
 
 #[test]

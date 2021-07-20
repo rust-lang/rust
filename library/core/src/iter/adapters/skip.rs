@@ -1,5 +1,8 @@
 use crate::intrinsics::unlikely;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::{
+    adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen, TrustedRandomAccess,
+};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that skips over `n` elements of `iter`.
@@ -114,6 +117,31 @@ where
         }
         self.iter.fold(init, fold)
     }
+
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::__iterator_get_unchecked`.
+        //
+        // Dropping the skipped prefix when index 0 is passed is safe
+        // since
+        // * the caller passing index 0 means that the inner iterator has more items than `self.n`
+        // * TRA contract requires that get_unchecked will only be called once
+        //   (unless elements are copyable)
+        // * it does not conflict with in-place iteration since index 0 must be accessed
+        //   before something is written into the storage used by the prefix
+        unsafe {
+            if Self::MAY_HAVE_SIDE_EFFECT && idx == 0 {
+                for skipped_idx in 0..self.n {
+                    drop(try_get_unchecked(&mut self.iter, skipped_idx));
+                }
+            }
+
+            try_get_unchecked(&mut self.iter, idx + self.n)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -195,3 +223,19 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Skip<I> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccess for Skip<I>
+where
+    I: TrustedRandomAccess,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+}
+
+// SAFETY: This adapter is shortening. TrustedLen requires the upper bound to be calculated correctly.
+// These requirements can only be satisfied when the upper bound of the inner iterator's upper
+// bound is never `None`. I: TrustedRandomAccess happens to provide this guarantee while
+// I: TrustedLen would not.
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I> TrustedLen for Skip<I> where I: Iterator + TrustedRandomAccess {}

@@ -1,3 +1,4 @@
+use crate::iter::{TrustedLen, TrustedRandomAccess};
 use crate::{intrinsics, iter::from_fn, ops::Try};
 
 /// An iterator for stepping iterators by a custom amount.
@@ -233,3 +234,10 @@ where
 // StepBy can only make the iterator shorter, so the len will still fit.
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+// SAFETY: This adapter is shortening. TrustedLen requires the upper bound to be calculated correctly.
+// These requirements can only be satisfied when the upper bound of the inner iterator's upper
+// bound is never `None`. I: TrustedRandomAccess happens to provide this guarantee while
+// I: TrustedLen would not.
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I> TrustedLen for StepBy<I> where I: Iterator + TrustedRandomAccess {}
