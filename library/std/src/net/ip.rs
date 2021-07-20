@@ -59,7 +59,8 @@ pub enum IpAddr {
 ///
 /// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
 /// notation, divided by `.` (this is called "dot-decimal notation").
-/// Notably, octal numbers and hexadecimal numbers are not allowed per [IETF RFC 6943].
+/// Notably, octal numbers (which are indicated with a leading `0`) and hexadecimal numbers (which
+/// are indicated with a leading `0x`) are not allowed per [IETF RFC 6943].
 ///
 /// [IETF RFC 6943]: https://tools.ietf.org/html/rfc6943#section-3.1.1
 /// [`FromStr`]: crate::str::FromStr
@@ -72,6 +73,9 @@ pub enum IpAddr {
 /// let localhost = Ipv4Addr::new(127, 0, 0, 1);
 /// assert_eq!("127.0.0.1".parse(), Ok(localhost));
 /// assert_eq!(localhost.is_loopback(), true);
+/// assert!("012.004.002.000".parse::<Ipv4Addr>().is_err()); // all octets are in octal
+/// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
+/// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]

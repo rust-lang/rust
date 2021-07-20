@@ -20,6 +20,14 @@ fn test_from_str_ipv4() {
     // no number between dots
     let none: Option<Ipv4Addr> = "255.0..1".parse().ok();
     assert_eq!(None, none);
+    // octal
+    let none: Option<Ipv4Addr> = "255.0.0.01".parse().ok();
+    assert_eq!(None, none);
+    // octal zero
+    let none: Option<Ipv4Addr> = "255.0.0.00".parse().ok();
+    assert_eq!(None, none);
+    let none: Option<Ipv4Addr> = "255.0.00.0".parse().ok();
+    assert_eq!(None, none);
 }
 
 #[test]
