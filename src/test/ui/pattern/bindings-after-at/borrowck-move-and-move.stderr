@@ -1,5 +1,5 @@
 error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:13:9
+  --> $DIR/borrowck-move-and-move.rs:11:9
    |
 LL |     let a @ b = U;
    |         ^^^^-   - move occurs because value has type `U`, which does not implement the `Copy` trait
@@ -8,7 +8,7 @@ LL |     let a @ b = U;
    |         value used here after move
 
 error[E0382]: use of partially moved value
-  --> $DIR/borrowck-move-and-move.rs:15:9
+  --> $DIR/borrowck-move-and-move.rs:13:9
    |
 LL |     let a @ (b, c) = (U, U);
    |         ^^^^^^^^-^
@@ -19,7 +19,7 @@ LL |     let a @ (b, c) = (U, U);
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of partially moved value
-  --> $DIR/borrowck-move-and-move.rs:17:9
+  --> $DIR/borrowck-move-and-move.rs:15:9
    |
 LL |     let a @ (b, c) = (u(), u());
    |         ^^^^^^^^-^
@@ -30,7 +30,7 @@ LL |     let a @ (b, c) = (u(), u());
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:20:16
+  --> $DIR/borrowck-move-and-move.rs:18:16
    |
 LL |     match Ok(U) {
    |           ----- move occurs because value has type `Result<U, U>`, which does not implement the `Copy` trait
@@ -41,7 +41,7 @@ LL |         a @ Ok(b) | a @ Err(b) => {}
    |         value moved here
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:20:29
+  --> $DIR/borrowck-move-and-move.rs:18:29
    |
 LL |     match Ok(U) {
    |           ----- move occurs because value has type `Result<U, U>`, which does not implement the `Copy` trait
@@ -52,7 +52,7 @@ LL |         a @ Ok(b) | a @ Err(b) => {}
    |                     value moved here
 
 error[E0382]: use of partially moved value
-  --> $DIR/borrowck-move-and-move.rs:27:9
+  --> $DIR/borrowck-move-and-move.rs:25:9
    |
 LL |         xs @ [a, .., b] => {}
    |         ^^^^^^^^^^^^^-^
@@ -63,7 +63,7 @@ LL |         xs @ [a, .., b] => {}
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of partially moved value
-  --> $DIR/borrowck-move-and-move.rs:31:9
+  --> $DIR/borrowck-move-and-move.rs:29:9
    |
 LL |         xs @ [_, ys @ .., _] => {}
    |         ^^^^^^^^^-------^^^^
@@ -74,7 +74,7 @@ LL |         xs @ [_, ys @ .., _] => {}
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:24:12
+  --> $DIR/borrowck-move-and-move.rs:22:12
    |
 LL |     fn fun(a @ b: U) {}
    |            ^^^^-

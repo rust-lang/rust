@@ -4,8 +4,6 @@
 
 // check-pass
 
-#![feature(bindings_after_at)]
-
 fn main() {
     return;
 

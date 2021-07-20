@@ -1,7 +1,5 @@
 // Test that moving on both sides of an `@` pattern is not allowed.
 
-#![feature(bindings_after_at)]
-
 fn main() {
     struct U; // Not copy!
 
