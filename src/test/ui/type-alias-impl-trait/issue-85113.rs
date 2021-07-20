@@ -2,18 +2,18 @@
 #![feature(impl_trait_in_bindings)]
 #![allow(incomplete_features)]
 
+// failure-status: 101
+
 type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-//~^ ERROR: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-//~| ERROR: the type `&'<empty> str` does not fulfill the required lifetime
-//~| ERROR: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
 
 trait Output<'a> {}
 
 impl<'a> Output<'a> for &'a str {}
 
 fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
-    //~^ ERROR: concrete type differs from previous defining opaque type use
+    //~^ ERROR Non-defining use
     let out: OpaqueOutputImpl<'a> = arg;
+    //~^ ERROR not a universal region
     arg
 }
 

@@ -10,7 +10,8 @@ use std::fmt::Debug;
 fn main() {
     type Opaque = impl Debug;
     fn _unused() -> Opaque { String::new() }
-    let null = || -> Opaque { 0 }; //[min_tait]~ ERROR: not permitted here
-    //~^ ERROR: concrete type differs from previous defining opaque type use
+    let null = || -> Opaque { 0 }; //[min_tait]~ ERROR: concrete type differs from previous defining opaque type use
+    //[full_tait]~^ ERROR: concrete type differs from previous defining opaque type use
+    //[min_tait]~^^ ERROR: type alias impl trait is not permitted here
     println!("{:?}", null());
 }

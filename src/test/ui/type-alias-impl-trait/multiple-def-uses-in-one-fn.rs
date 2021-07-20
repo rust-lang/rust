@@ -8,6 +8,7 @@ type X<A, B> = impl Into<&'static A>;
 //~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied
 
 fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
+    //~^ ERROR concrete type differs from previous defining opaque type use
     (a, a)
 }
 

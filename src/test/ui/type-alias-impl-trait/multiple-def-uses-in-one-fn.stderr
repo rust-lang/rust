@@ -10,6 +10,18 @@ help: consider introducing a `where` bound, but there might be an alternative be
 LL | fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) where &'static B: From<&A> {
    |                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/multiple-def-uses-in-one-fn.rs:10:1
+   |
+LL | fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'static A`, got `&'static B`
+   |
+note: previous use here
+  --> $DIR/multiple-def-uses-in-one-fn.rs:10:1
+   |
+LL | fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -1,60 +1,36 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-85113.rs:5:29
+error: internal compiler error: Non-defining use of DefId(0:5 ~ issue_85113[86c2]::OpaqueOutputImpl::{opaque#0}) with revealed type
+  --> $DIR/issue-85113.rs:13:1
    |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                             ^^^^^^^^^^^^^^^^^^^^
+LL | / fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
+LL | |
+LL | |     let out: OpaqueOutputImpl<'a> = arg;
+LL | |
+LL | |     arg
+LL | | }
+   | |_^
    |
-note: hidden type `&'<empty> str` captures lifetime smaller than the function body
-  --> $DIR/issue-85113.rs:5:29
-   |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                             ^^^^^^^^^^^^^^^^^^^^
+   = note: delayed at compiler/rustc_mir/src/borrow_check/type_check/mod.rs:1353:46
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-85113.rs:14:1
+error: internal compiler error: member constraint for `DefId(0:5 ~ issue_85113[86c2]::OpaqueOutputImpl::{opaque#0})` has an option region `'_#7r` that is not a universal region
+  --> $DIR/issue-85113.rs:15:37
    |
-LL | fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'<empty> str`, got `&'a str`
+LL |     let out: OpaqueOutputImpl<'a> = arg;
+   |                                     ^^^
    |
-note: previous use here
-  --> $DIR/issue-85113.rs:14:1
-   |
-LL | fn cool_fn<'a>(arg: &'a str) -> OpaqueOutputImpl<'a> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: delayed at compiler/rustc_mir/src/borrow_check/region_infer/mod.rs:697:22
 
-error[E0477]: the type `&'<empty> str` does not fulfill the required lifetime
-  --> $DIR/issue-85113.rs:5:29
-   |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                             ^^^^^^^^^^^^^^^^^^^^
-   |
-note: type must outlive the lifetime `'a` as defined on the item at 5:23
-  --> $DIR/issue-85113.rs:5:23
-   |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                       ^^
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', compiler/rustc_errors/src/lib.rs:1051:13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/issue-85113.rs:5:29
-   |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                             ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: first, the lifetime cannot outlive the empty lifetime...
-note: ...but the lifetime must also be valid for the lifetime `'a` as defined on the item at 5:23...
-  --> $DIR/issue-85113.rs:5:23
-   |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                       ^^
-note: ...so that the types are compatible
-  --> $DIR/issue-85113.rs:5:29
-   |
-LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
-   |                             ^^^^^^^^^^^^^^^^^^^^
-   = note: expected `Output<'a>`
-              found `Output<'_>`
+error: internal compiler error: unexpected panic
 
-error: aborting due to 4 previous errors
+note: the compiler unexpectedly panicked. this is a bug.
 
-Some errors have detailed explanations: E0477, E0495, E0700.
-For more information about an error, try `rustc --explain E0477`.
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.55.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z threads=1 -Z ui-testing -Z deduplicate-diagnostics=no -Z emit-future-incompat-report -C codegen-units=1 -C prefer-dynamic -C rpath -C debuginfo=0
+
+query stack during panic:
+end of query stack

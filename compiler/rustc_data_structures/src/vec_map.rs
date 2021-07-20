@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::slice::{Iter, IterMut};
 use std::vec::IntoIter;
@@ -12,7 +13,8 @@ pub struct VecMap<K, V>(Vec<(K, V)>);
 
 impl<K, V> VecMap<K, V>
 where
-    K: PartialEq,
+    K: Debug + PartialEq,
+    V: Debug,
 {
     pub fn new() -> Self {
         VecMap(Default::default())
@@ -37,12 +39,29 @@ where
         self.0.iter().find(|(key, _)| k == key.borrow()).map(|elem| &elem.1)
     }
 
-    /// Returns the value corresponding to the supplied predicate filter.
+    /// Returns the any value corresponding to the supplied predicate filter.
     ///
     /// The supplied predicate will be applied to each (key, value) pair and it will return a
     /// reference to the values where the predicate returns `true`.
-    pub fn get_by(&self, mut predicate: impl FnMut(&(K, V)) -> bool) -> Option<&V> {
+    pub fn any_value_matching(&self, mut predicate: impl FnMut(&(K, V)) -> bool) -> Option<&V> {
         self.0.iter().find(|kv| predicate(kv)).map(|elem| &elem.1)
+    }
+
+    /// Returns the value corresponding to the supplied predicate filter. It crashes if there's
+    /// more than one matching element.
+    ///
+    /// The supplied predicate will be applied to each (key, value) pair and it will return a
+    /// reference to the value where the predicate returns `true`.
+    pub fn get_value_matching(&self, mut predicate: impl FnMut(&(K, V)) -> bool) -> Option<&V> {
+        let mut filter = self.0.iter().filter(|kv| predicate(kv));
+        let (_, value) = filter.next()?;
+        // This should return just one element, otherwise it's a bug
+        assert!(
+            filter.next().is_none(),
+            "Collection {:?} should have just one matching element",
+            self
+        );
+        Some(value)
     }
 
     /// Returns `true` if the map contains a value for the specified key.
@@ -127,7 +146,7 @@ impl<K, V> IntoIterator for VecMap<K, V> {
     }
 }
 
-impl<K: PartialEq, V> Extend<(K, V)> for VecMap<K, V> {
+impl<K: PartialEq + Debug, V: Debug> Extend<(K, V)> for VecMap<K, V> {
     fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         for (k, v) in iter {
             self.insert(k, v);

@@ -8,6 +8,13 @@ LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<
    |                                           |                     this `async fn` implicitly returns an `impl Future<Output = impl Trait<'a>>`
    |                                           this parameter and the returned future are declared with different lifetimes...
 
-error: aborting due to previous error
+error[E0720]: cannot resolve opaque type
+  --> $DIR/ret-impl-trait-one.rs:17:65
+   |
+LL | async fn async_ret_impl_trait2<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a>
+   |                                                                 ^^^^^^^^^^^^^^ cannot resolve opaque type
 
-For more information about this error, try `rustc --explain E0623`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0623, E0720.
+For more information about an error, try `rustc --explain E0623`.

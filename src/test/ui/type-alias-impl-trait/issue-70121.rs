@@ -7,7 +7,7 @@
 
 pub type Successors<'a> = impl Iterator<Item = &'a ()>;
 
-pub fn f<'a>() -> Successors<'a> {
+pub fn f<'b>() -> Successors<'b> {
     None.into_iter()
 }
 
@@ -15,11 +15,11 @@ pub trait Tr {
     type Item;
 }
 
-impl<'a> Tr for &'a () {
-    type Item = Successors<'a>;
+impl<'c> Tr for &'c () {
+    type Item = Successors<'c>;
 }
 
-pub fn kazusa<'a>() -> <&'a () as Tr>::Item {
+pub fn kazusa<'d>() -> <&'d () as Tr>::Item {
     None.into_iter()
 }
 

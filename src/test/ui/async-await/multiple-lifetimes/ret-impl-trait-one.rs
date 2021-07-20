@@ -15,6 +15,7 @@ async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
 // As above, but `'b: 'a`, so return type can be inferred to `(&'a u8,
 // &'a u8)`.
 async fn async_ret_impl_trait2<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a>
+//~^ ERROR cannot resolve opaque type
 where
     'b: 'a,
 {
