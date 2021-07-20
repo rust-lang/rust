@@ -6,7 +6,7 @@ LL |         5
    |
    = note: expected type `Result<{integer}, _>`
               found type `{integer}`
-note: return type inferred to be `Result<{integer}, _>` here
+note: type inferred to be `Result<{integer}, _>` here
   --> $DIR/type-mismatch-signature-deduction.rs:8:20
    |
 LL |             return Ok(6);
