@@ -27,7 +27,7 @@
                                            // + literal: Const { ty: fn() {f}, val: Value(Scalar(<ZST>)) }
 +         StorageLive(_3);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageLive(_4);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
-+         _4 = move _2;                    // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         _4 = _2;                         // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageLive(_5);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         _5 = const ();                   // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         _3 = move _4() -> bb1;           // scope 2 at $DIR/inline-cycle.rs:49:5: 49:12

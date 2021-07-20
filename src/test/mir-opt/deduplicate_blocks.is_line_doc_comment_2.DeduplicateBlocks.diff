@@ -22,7 +22,7 @@
           StorageLive(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
           _3 = _1;                         // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
           StorageLive(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          _8 = _3;                         // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          _8 = _1;                         // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
 -         _2 = transmute::<&str, &[u8]>(move _8) -> bb14; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
 +         _2 = transmute::<&str, &[u8]>(move _8) -> bb12; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
                                            // mir::Constant
@@ -49,8 +49,8 @@
   
       bb5: {
           _4 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
-          _5 = Ge(move _4, const 3_usize); // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
-          switchInt(move _5) -> [false: bb9, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+          _5 = Ge(_4, const 3_usize);      // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+          switchInt(_5) -> [false: bb9, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
       }
   
       bb6: {
@@ -100,8 +100,8 @@
           StorageDead(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           StorageDead(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:22: 3:23
           _6 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
-          _7 = Ge(move _6, const 4_usize); // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
-          switchInt(move _7) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+          _7 = Ge(_6, const 4_usize);      // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+          switchInt(_7) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       }
   }
   
