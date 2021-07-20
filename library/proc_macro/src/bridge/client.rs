@@ -2,6 +2,8 @@
 
 use super::*;
 
+use std::rc::Rc;
+
 macro_rules! define_handles {
     (
         'owned: $($oty:ident,)*
@@ -143,7 +145,7 @@ macro_rules! define_handles {
                 for Marked<S::$ity, $ity>
             {
                 fn encode(self, w: &mut Writer, s: &mut HandleStore<server::MarkedTypes<S>>) {
-                    s.$ity.alloc(self).encode(w, s);
+                    s.$ity.alloc(&self).encode(w, s);
                 }
             }
 
@@ -159,17 +161,11 @@ define_handles! {
     'owned:
     FreeFunctions,
     TokenStream,
-    TokenStreamBuilder,
-    TokenStreamIter,
-    Group,
-    Literal,
     SourceFile,
     MultiSpan,
     Diagnostic,
 
     'interned:
-    Punct,
-    Ident,
     Span,
 }
 
@@ -185,46 +181,112 @@ impl Clone for TokenStream {
     }
 }
 
-impl Clone for TokenStreamIter {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl Clone for Group {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl Clone for Literal {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl fmt::Debug for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Literal")
-            // format the kind without quotes, as in `kind: Float`
-            .field("kind", &format_args!("{}", &self.debug_kind()))
-            .field("symbol", &self.symbol())
-            // format `Some("...")` on one line even in {:#?} mode
-            .field("suffix", &format_args!("{:?}", &self.suffix()))
-            .field("span", &self.span())
-            .finish()
-    }
-}
-
 impl Clone for SourceFile {
     fn clone(&self) -> Self {
         self.clone()
     }
 }
 
+impl Span {
+    pub(crate) fn def_site() -> Span {
+        Bridge::with(|bridge| bridge.context.def_site)
+    }
+
+    pub(crate) fn call_site() -> Span {
+        Bridge::with(|bridge| bridge.context.call_site)
+    }
+
+    pub(crate) fn mixed_site() -> Span {
+        Bridge::with(|bridge| bridge.context.mixed_site)
+    }
+}
+
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.debug())
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Symbol(handle::Handle);
+
+impl Symbol {
+    /// Intern a new `Symbol`
+    pub(crate) fn new(string: &str) -> Self {
+        Symbol(Bridge::with(|bridge| bridge.symbols.alloc(string)))
+    }
+
+    /// Create a new `Symbol` for an identifier.
+    ///
+    /// Validates and normalizes before converting it to a symbol.
+    pub(crate) fn new_ident(string: &str, is_raw: bool) -> Self {
+        Symbol(Bridge::with(|bridge| {
+            let mut normalized = Buffer::new();
+            if !(bridge.validate_ident)(string.as_bytes().into(), &mut normalized) {
+                panic!("`{:?}` is not a valid identifier", string)
+            }
+            let string = if normalized.len() > 0 {
+                std::str::from_utf8(&normalized[..]).unwrap()
+            } else {
+                string
+            };
+            if is_raw && !Self::can_be_raw(string) {
+                panic!("`{}` cannot be a raw identifier", string);
+            }
+            bridge.symbols.alloc(string)
+        }))
+    }
+
+    // Mimics the behaviour of `Symbol::can_be_raw` from `rustc_span`
+    fn can_be_raw(string: &str) -> bool {
+        match string {
+            "" | "_" | "super" | "self" | "Self" | "crate" | "$crate" | "{{root}}" => false,
+            _ => true,
+        }
+    }
+}
+
+impl !Send for Symbol {}
+impl !Sync for Symbol {}
+
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Bridge::with(|bridge| fmt::Debug::fmt(&bridge.symbols[self.0], f))
+    }
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Bridge::with(|bridge| fmt::Display::fmt(&bridge.symbols[self.0], f))
+    }
+}
+
+impl Encode<Bridge<'_>> for Symbol {
+    fn encode(self, w: &mut Writer, s: &mut Bridge<'_>) {
+        s.symbols[self.0][..].encode(w, &mut ());
+    }
+}
+
+impl<S: server::Types + server::Context> DecodeMut<'_, '_, HandleStore<server::MarkedTypes<S>>>
+    for Marked<S::Symbol, Symbol>
+{
+    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
+        Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
+    }
+}
+
+impl<S: server::Types + server::Context> Encode<HandleStore<server::MarkedTypes<S>>>
+    for Marked<S::Symbol, Symbol>
+{
+    fn encode(self, w: &mut Writer, s: &mut HandleStore<server::MarkedTypes<S>>) {
+        S::with_symbol_string(&self.unmark(), |sym| sym.encode(w, s))
+    }
+}
+
+impl DecodeMut<'_, '_, Bridge<'_>> for Symbol {
+    fn decode(r: &mut Reader<'_>, s: &mut Bridge<'_>) -> Self {
+        Symbol(s.symbols.alloc(<&str>::decode(r, &mut ())))
     }
 }
 
@@ -239,11 +301,11 @@ macro_rules! define_client_side {
 
                     b.clear();
                     api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
-                    reverse_encode!(b; $($arg),*);
+                    reverse_encode!(b, bridge; $($arg),*);
 
                     b = bridge.dispatch.call(b);
 
-                    let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
+                    let r = Result::<_, PanicMessage>::decode(&mut &b[..], bridge);
 
                     bridge.cached_buffer = b;
 
@@ -254,6 +316,27 @@ macro_rules! define_client_side {
     }
 }
 with_api!(self, self, define_client_side);
+
+struct Bridge<'a> {
+    /// Reusable buffer (only `clear`-ed, never shrunk), primarily
+    /// used for making requests.
+    cached_buffer: Buffer<u8>,
+
+    /// Server-side function that the client uses to make requests.
+    dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+
+    /// Server-side function to validate and normalize an ident.
+    validate_ident: extern "C" fn(buffer::Slice<'_, u8>, &mut Buffer<u8>) -> bool,
+
+    /// Interned store for storing symbols within the client.
+    symbols: handle::InternedStore<Rc<str>>,
+
+    /// Provided context for this macro expansion.
+    context: ExpnContext<Span>,
+}
+
+impl<'a> !Send for Bridge<'a> {}
+impl<'a> !Sync for Bridge<'a> {}
 
 enum BridgeState<'a> {
     /// No server is currently connected to this client.
@@ -297,34 +380,6 @@ impl BridgeState<'_> {
 }
 
 impl Bridge<'_> {
-    pub(crate) fn is_available() -> bool {
-        BridgeState::with(|state| match state {
-            BridgeState::Connected(_) | BridgeState::InUse => true,
-            BridgeState::NotConnected => false,
-        })
-    }
-
-    fn enter<R>(self, f: impl FnOnce() -> R) -> R {
-        let force_show_panics = self.force_show_panics;
-        // Hide the default panic output within `proc_macro` expansions.
-        // NB. the server can't do this because it may use a different libstd.
-        static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
-        HIDE_PANICS_DURING_EXPANSION.call_once(|| {
-            let prev = panic::take_hook();
-            panic::set_hook(Box::new(move |info| {
-                let show = BridgeState::with(|state| match state {
-                    BridgeState::NotConnected => true,
-                    BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
-                });
-                if show {
-                    prev(info)
-                }
-            }));
-        });
-
-        BRIDGE_STATE.with(|state| state.set(BridgeState::Connected(self), f))
-    }
-
     fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
         BridgeState::with(|state| match state {
             BridgeState::NotConnected => {
@@ -336,6 +391,13 @@ impl Bridge<'_> {
             BridgeState::Connected(bridge) => f(bridge),
         })
     }
+}
+
+pub(crate) fn is_available() -> bool {
+    BridgeState::with(|state| match state {
+        BridgeState::Connected(_) | BridgeState::InUse => true,
+        BridgeState::NotConnected => false,
+    })
 }
 
 /// A client-side "global object" (usually a function pointer),
@@ -352,44 +414,73 @@ pub struct Client<F> {
     // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
+    pub(super) run: extern "C" fn(BridgeConfig<'_>, F) -> Buffer<u8>,
     pub(super) f: F,
 }
+
+fn maybe_install_panic_hook(force_show_panics: bool) {
+    // Hide the default panic output within `proc_macro` expansions.
+    // NB. the server can't do this because it may use a different libstd.
+    static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
+    HIDE_PANICS_DURING_EXPANSION.call_once(|| {
+        let prev = panic::take_hook();
+        panic::set_hook(Box::new(move |info| {
+            let show = BridgeState::with(|state| match state {
+                BridgeState::NotConnected => true,
+                BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
+            });
+            if show {
+                prev(info)
+            }
+        }));
+    });
+}
+
+static SYMBOL_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
-    mut bridge: Bridge<'_>,
+    config: BridgeConfig<'_>,
     f: impl FnOnce(A) -> R,
 ) -> Buffer<u8> {
-    // The initial `cached_buffer` contains the input.
-    let mut b = bridge.cached_buffer.take();
+    let BridgeConfig { input: mut b, dispatch, validate_ident, force_show_panics } = config;
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        bridge.enter(|| {
-            let reader = &mut &b[..];
-            let input = A::decode(reader, &mut ());
+        maybe_install_panic_hook(force_show_panics);
 
-            // Put the `cached_buffer` back in the `Bridge`, for requests.
-            Bridge::with(|bridge| bridge.cached_buffer = b.take());
+        let reader = &mut &b[..];
+        let (input, context) = <(A, ExpnContext<Span>)>::decode(reader, &mut ());
 
-            let output = f(input);
+        // Put the buffer we used for input back in the `Bridge` for requests.
+        let new_state = BridgeState::Connected(Bridge {
+            cached_buffer: b.take(),
+            dispatch,
+            validate_ident,
+            symbols: handle::InternedStore::new(&SYMBOL_COUNTER),
+            context,
+        });
 
-            // Take the `cached_buffer` back out, for the output value.
-            b = Bridge::with(|bridge| bridge.cached_buffer.take());
+        BRIDGE_STATE.with(|state| {
+            state.set(new_state, || {
+                let output = f(input);
 
-            // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-            // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-            // having handles outside the `bridge.enter(|| ...)` scope, and
-            // to catch panics that could happen while encoding the success.
-            //
-            // Note that panics should be impossible beyond this point, but
-            // this is defensively trying to avoid any accidental panicking
-            // reaching the `extern "C"` (which should `abort` but may not
-            // at the moment, so this is also potentially preventing UB).
-            b.clear();
-            Ok::<_, ()>(output).encode(&mut b, &mut ());
+                // Take the `cached_buffer` back out, for the output value.
+                b = Bridge::with(|bridge| bridge.cached_buffer.take());
+
+                // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
+                // from encoding a panic (`Err(e: PanicMessage)`) to avoid
+                // having handles outside the `bridge.enter(|| ...)` scope, and
+                // to catch panics that could happen while encoding the success.
+                //
+                // Note that panics should be impossible beyond this point, but
+                // this is defensively trying to avoid any accidental panicking
+                // reaching the `extern "C"` (which should `abort` but may not
+                // at the moment, so this is also potentially preventing UB).
+                b.clear();
+                Ok::<_, ()>(output).encode(&mut b, &mut ());
+            })
         })
     }))
     .map_err(PanicMessage::from)
@@ -404,10 +495,14 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         extern "C" fn run(
-            bridge: Bridge<'_>,
+            bridge: BridgeConfig<'_>,
             f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
-            run_client(bridge, |input| f(crate::TokenStream(input)).0)
+            run_client(bridge, |input| {
+                f(crate::TokenStream(Some(input)))
+                    .0
+                    .unwrap_or_else(|| TokenStream::concat_streams(None, vec![]))
+            })
         }
         Client { get_handle_counters: HandleCounters::get, run, f }
     }
@@ -419,11 +514,13 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
         f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
         extern "C" fn run(
-            bridge: Bridge<'_>,
+            bridge: BridgeConfig<'_>,
             f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |(input, input2)| {
-                f(crate::TokenStream(input), crate::TokenStream(input2)).0
+                f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2)))
+                    .0
+                    .unwrap_or_else(|| TokenStream::concat_streams(None, vec![]))
             })
         }
         Client { get_handle_counters: HandleCounters::get, run, f }

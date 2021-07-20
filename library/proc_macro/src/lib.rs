@@ -31,6 +31,7 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
+#![feature(hash_raw_entry)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -46,7 +47,7 @@ use std::cmp::Ordering;
 use std::ops::RangeBounds;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::{error, fmt, iter, mem};
+use std::{error, fmt, iter};
 
 /// Determines whether proc_macro has been made accessible to the currently
 /// running program.
@@ -63,7 +64,7 @@ use std::{error, fmt, iter, mem};
 /// inside of a procedural macro, false if invoked from any other binary.
 #[unstable(feature = "proc_macro_is_available", issue = "71436")]
 pub fn is_available() -> bool {
-    bridge::Bridge::is_available()
+    bridge::client::is_available()
 }
 
 /// The main type provided by this crate, representing an abstract stream of
@@ -75,7 +76,7 @@ pub fn is_available() -> bool {
 /// and `#[proc_macro_derive]` definitions.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Clone)]
-pub struct TokenStream(bridge::client::TokenStream);
+pub struct TokenStream(Option<bridge::client::TokenStream>);
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for TokenStream {}
@@ -113,13 +114,13 @@ impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new() -> TokenStream {
-        TokenStream(bridge::client::TokenStream::new())
+        TokenStream(None)
     }
 
     /// Checks if this `TokenStream` is empty.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.0.as_ref().map(|h| h.is_empty()).unwrap_or(true)
     }
 }
 
@@ -135,7 +136,7 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        Ok(TokenStream(bridge::client::TokenStream::from_str(src)))
+        Ok(TokenStream(Some(bridge::client::TokenStream::from_str(src))))
     }
 }
 
@@ -144,7 +145,7 @@ impl FromStr for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
     fn to_string(&self) -> String {
-        self.0.to_string()
+        self.0.as_ref().map(|t| t.to_string()).unwrap_or_default()
     }
 }
 
@@ -177,16 +178,22 @@ impl Default for TokenStream {
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub use quote::{quote, quote_span};
 
+fn tree_to_bridge_tree(
+    tree: TokenTree,
+) -> bridge::TokenTree<bridge::client::TokenStream, bridge::client::Span, bridge::client::Symbol> {
+    match tree {
+        TokenTree::Group(tt) => bridge::TokenTree::Group(tt.0),
+        TokenTree::Punct(tt) => bridge::TokenTree::Punct(tt.0),
+        TokenTree::Ident(tt) => bridge::TokenTree::Ident(tt.0),
+        TokenTree::Literal(tt) => bridge::TokenTree::Literal(tt.0),
+    }
+}
+
 /// Creates a token stream containing a single token tree.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
-        TokenStream(bridge::client::TokenStream::from_token_tree(match tree {
-            TokenTree::Group(tt) => bridge::TokenTree::Group(tt.0),
-            TokenTree::Punct(tt) => bridge::TokenTree::Punct(tt.0),
-            TokenTree::Ident(tt) => bridge::TokenTree::Ident(tt.0),
-            TokenTree::Literal(tt) => bridge::TokenTree::Literal(tt.0),
-        }))
+        TokenStream(Some(bridge::client::TokenStream::from_token_tree(tree_to_bridge_tree(tree))))
     }
 }
 
@@ -194,7 +201,10 @@ impl From<TokenTree> for TokenStream {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
-        trees.into_iter().map(TokenStream::from).collect()
+        TokenStream(Some(bridge::client::TokenStream::concat_trees(
+            None,
+            trees.into_iter().map(tree_to_bridge_tree).collect(),
+        )))
     }
 }
 
@@ -203,24 +213,30 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
-        let mut builder = bridge::client::TokenStreamBuilder::new();
-        streams.into_iter().for_each(|stream| builder.push(stream.0));
-        TokenStream(builder.build())
+        TokenStream(Some(bridge::client::TokenStream::concat_streams(
+            None,
+            streams.into_iter().filter_map(|stream| stream.0).collect(),
+        )))
     }
 }
 
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenTree> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
-        self.extend(trees.into_iter().map(TokenStream::from));
+        *self = TokenStream(Some(bridge::client::TokenStream::concat_trees(
+            self.0.take(),
+            trees.into_iter().map(|tree| tree_to_bridge_tree(tree)).collect(),
+        )));
     }
 }
 
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
-        // FIXME(eddyb) Use an optimized implementation if/when possible.
-        *self = iter::once(mem::replace(self, Self::new())).chain(streams).collect();
+        *self = TokenStream(Some(bridge::client::TokenStream::concat_streams(
+            self.0.take(),
+            streams.into_iter().filter_map(|stream| stream.0).collect(),
+        )));
     }
 }
 
@@ -234,7 +250,15 @@ pub mod token_stream {
     /// and returns whole groups as token trees.
     #[derive(Clone)]
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    pub struct IntoIter(bridge::client::TokenStreamIter);
+    pub struct IntoIter(
+        std::vec::IntoIter<
+            bridge::TokenTree<
+                bridge::client::TokenStream,
+                bridge::client::Span,
+                bridge::client::Symbol,
+            >,
+        >,
+    );
 
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     impl Iterator for IntoIter {
@@ -256,7 +280,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(self.0.into_iter())
+            IntoIter(self.0.map(|v| v.into_iter()).unwrap_or_default().into_iter())
         }
     }
 }
@@ -633,7 +657,7 @@ impl fmt::Display for TokenTree {
 /// A `Group` internally contains a `TokenStream` which is surrounded by `Delimiter`s.
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Group(bridge::client::Group);
+pub struct Group(bridge::Group<bridge::client::TokenStream, bridge::client::Span>);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Group {}
@@ -670,13 +694,17 @@ impl Group {
     /// method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(delimiter: Delimiter, stream: TokenStream) -> Group {
-        Group(bridge::client::Group::new(delimiter, stream.0))
+        Group(bridge::Group {
+            delimiter,
+            stream: stream.0,
+            span: bridge::DelimSpan::from_single(Span::call_site().0),
+        })
     }
 
     /// Returns the delimiter of this `Group`
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn delimiter(&self) -> Delimiter {
-        self.0.delimiter()
+        self.0.delimiter
     }
 
     /// Returns the `TokenStream` of tokens that are delimited in this `Group`.
@@ -685,7 +713,7 @@ impl Group {
     /// returned above.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn stream(&self) -> TokenStream {
-        TokenStream(self.0.stream())
+        TokenStream(self.0.stream.clone())
     }
 
     /// Returns the span for the delimiters of this token stream, spanning the
@@ -697,7 +725,7 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span.entire)
     }
 
     /// Returns the span pointing to the opening delimiter of this group.
@@ -708,7 +736,7 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_open(&self) -> Span {
-        Span(self.0.span_open())
+        Span(self.0.span.open)
     }
 
     /// Returns the span pointing to the closing delimiter of this group.
@@ -719,7 +747,7 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_close(&self) -> Span {
-        Span(self.0.span_close())
+        Span(self.0.span.close)
     }
 
     /// Configures the span for this `Group`'s delimiters, but not its internal
@@ -730,7 +758,7 @@ impl Group {
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.set_span(span.0);
+        self.0.span = bridge::DelimSpan::from_single(span.0);
     }
 }
 
@@ -770,7 +798,7 @@ impl fmt::Debug for Group {
 /// forms of `Spacing` returned.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Clone)]
-pub struct Punct(bridge::client::Punct);
+pub struct Punct(bridge::Punct<bridge::client::Span>);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Punct {}
@@ -803,13 +831,20 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        Punct(bridge::client::Punct::new(ch, spacing))
+        const LEGAL_CHARS: &[char] = &[
+            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
+            ':', '#', '$', '?', '\'',
+        ];
+        if !LEGAL_CHARS.contains(&ch) {
+            panic!("unsupported character `{:?}`", ch);
+        }
+        Punct(bridge::Punct { ch, joint: spacing == Spacing::Joint, span: Span::call_site().0 })
     }
 
     /// Returns the value of this punctuation character as `char`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn as_char(&self) -> char {
-        self.0.as_char()
+        self.0.ch
     }
 
     /// Returns the spacing of this punctuation character, indicating whether it's immediately
@@ -818,28 +853,19 @@ impl Punct {
     /// (`Alone`) so the operator has certainly ended.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn spacing(&self) -> Spacing {
-        self.0.spacing()
+        if self.0.joint { Spacing::Joint } else { Spacing::Alone }
     }
 
     /// Returns the span for this punctuation character.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span)
     }
 
     /// Configure the span for this punctuation character.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0 = self.0.with_span(span.0);
-    }
-}
-
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Punct {
-    fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
+        self.0.span = span.0;
     }
 }
 
@@ -848,7 +874,7 @@ impl ToString for Punct {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Punct {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        write!(f, "{}", self.as_char())
     }
 }
 
@@ -880,7 +906,7 @@ impl PartialEq<Punct> for char {
 /// An identifier (`ident`).
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Ident(bridge::client::Ident);
+pub struct Ident(bridge::Ident<bridge::client::Span, bridge::client::Symbol>);
 
 impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
@@ -904,7 +930,11 @@ impl Ident {
     /// tokens, requires a `Span` to be specified at construction.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
-        Ident(bridge::client::Ident::new(string, span.0, false))
+        Ident(bridge::Ident {
+            sym: bridge::client::Symbol::new_ident(string, false),
+            is_raw: false,
+            span: span.0,
+        })
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
@@ -913,29 +943,24 @@ impl Ident {
     /// (e.g. `self`, `super`) are not supported, and will cause a panic.
     #[stable(feature = "proc_macro_raw_ident", since = "1.47.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
-        Ident(bridge::client::Ident::new(string, span.0, true))
+        Ident(bridge::Ident {
+            sym: bridge::client::Symbol::new_ident(string, true),
+            is_raw: true,
+            span: span.0,
+        })
     }
 
     /// Returns the span of this `Ident`, encompassing the entire string returned
-    /// by [`to_string`](Self::to_string).
+    /// by [`to_string`](ToString::to_string).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span)
     }
 
     /// Configures the span of this `Ident`, possibly changing its hygiene context.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0 = self.0.with_span(span.0);
-    }
-}
-
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Ident {
-    fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
+        self.0.span = span.0;
     }
 }
 
@@ -944,7 +969,7 @@ impl ToString for Ident {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        if self.0.is_raw { write!(f, "r#{}", self.0.sym) } else { write!(f, "{}", self.0.sym) }
     }
 }
 
@@ -964,7 +989,7 @@ impl fmt::Debug for Ident {
 /// Boolean literals like `true` and `false` do not belong here, they are `Ident`s.
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Literal(bridge::client::Literal);
+pub struct Literal(bridge::Literal<bridge::client::Span, bridge::client::Symbol>);
 
 macro_rules! suffixed_int_literals {
     ($($name:ident => $kind:ident,)*) => ($(
@@ -981,7 +1006,12 @@ macro_rules! suffixed_int_literals {
         /// below.
         #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
         pub fn $name(n: $kind) -> Literal {
-            Literal(bridge::client::Literal::typed_integer(&n.to_string(), stringify!($kind)))
+            Literal(bridge::Literal {
+                kind: bridge::LitKind::Integer,
+                symbol: bridge::client::Symbol::new(&n.to_string()),
+                suffix: Some(bridge::client::Symbol::new(stringify!($kind))),
+                span: Span::call_site().0,
+            })
         }
     )*)
 }
@@ -1003,12 +1033,26 @@ macro_rules! unsuffixed_int_literals {
         /// below.
         #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
         pub fn $name(n: $kind) -> Literal {
-            Literal(bridge::client::Literal::integer(&n.to_string()))
+            Literal(bridge::Literal {
+                kind: bridge::LitKind::Integer,
+                symbol: bridge::client::Symbol::new(&n.to_string()),
+                suffix: None,
+                span: Span::call_site().0,
+            })
         }
     )*)
 }
 
 impl Literal {
+    fn new(kind: bridge::LitKind, value: &str, suffix: Option<&str>) -> Self {
+        Literal(bridge::Literal {
+            kind,
+            symbol: bridge::client::Symbol::new(value),
+            suffix: suffix.map(bridge::client::Symbol::new),
+            span: Span::call_site().0,
+        })
+    }
+
     suffixed_int_literals! {
         u8_suffixed => u8,
         u16_suffixed => u16,
@@ -1056,7 +1100,7 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        Literal(bridge::client::Literal::float(&n.to_string()))
+        Literal::new(bridge::LitKind::Float, &n.to_string(), None)
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1077,7 +1121,7 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        Literal(bridge::client::Literal::f32(&n.to_string()))
+        Literal::new(bridge::LitKind::Float, &n.to_string(), Some("f32"))
     }
 
     /// Creates a new unsuffixed floating-point literal.
@@ -1097,7 +1141,7 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        Literal(bridge::client::Literal::float(&n.to_string()))
+        Literal::new(bridge::LitKind::Float, &n.to_string(), None)
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1118,37 +1162,49 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        Literal(bridge::client::Literal::f64(&n.to_string()))
+        Literal::new(bridge::LitKind::Float, &n.to_string(), Some("f64"))
     }
 
     /// String literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn string(string: &str) -> Literal {
-        Literal(bridge::client::Literal::string(string))
+        let mut escaped = String::new();
+        for ch in string.chars() {
+            escaped.extend(ch.escape_debug());
+        }
+        Literal::new(bridge::LitKind::Str, &escaped, None)
     }
 
     /// Character literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn character(ch: char) -> Literal {
-        Literal(bridge::client::Literal::character(ch))
+        let mut escaped = String::new();
+        escaped.extend(ch.escape_unicode());
+        Literal::new(bridge::LitKind::Char, &escaped, None)
     }
 
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {
-        Literal(bridge::client::Literal::byte_string(bytes))
+        let string = bytes
+            .iter()
+            .cloned()
+            .flat_map(std::ascii::escape_default)
+            .map(Into::<char>::into)
+            .collect::<String>();
+        Literal::new(bridge::LitKind::ByteStr, &string, None)
     }
 
     /// Returns the span encompassing this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span)
     }
 
     /// Configures the span associated for this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.set_span(span.0);
+        self.0.span = span.0;
     }
 
     /// Returns a `Span` that is a subset of `self.span()` containing only the
@@ -1164,7 +1220,12 @@ impl Literal {
     // was 'c' or whether it was '\u{63}'.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        self.0.subspan(range.start_bound().cloned(), range.end_bound().cloned()).map(Span)
+        bridge::client::FreeFunctions::literal_subspan(
+            self.0.clone(),
+            range.start_bound().cloned(),
+            range.end_bound().cloned(),
+        )
+        .map(Span)
     }
 }
 
@@ -1183,19 +1244,10 @@ impl FromStr for Literal {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<Self, LexError> {
-        match bridge::client::Literal::from_str(src) {
+        match bridge::client::FreeFunctions::literal_from_str(src) {
             Ok(literal) => Ok(Literal(literal)),
             Err(()) => Err(LexError::new()),
         }
-    }
-}
-
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Literal {
-    fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
     }
 }
 
@@ -1204,14 +1256,44 @@ impl ToString for Literal {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        // Based on `literal_to_string` from `pprust/state.rs`
+        match self.0.kind {
+            bridge::LitKind::Byte => write!(f, "b'{}'", self.0.symbol)?,
+            bridge::LitKind::Char => write!(f, "'{}'", self.0.symbol)?,
+            bridge::LitKind::Str => write!(f, "\"{}\"", self.0.symbol)?,
+            bridge::LitKind::StrRaw(n) => write!(
+                f,
+                "r{delim}\"{string}\"{delim}",
+                delim = "#".repeat(n as usize),
+                string = self.0.symbol
+            )?,
+            bridge::LitKind::ByteStr => write!(f, "b\"{}\"", self.0.symbol)?,
+            bridge::LitKind::ByteStrRaw(n) => write!(
+                f,
+                "br{delim}\"{string}\"{delim}",
+                delim = "#".repeat(n as usize),
+                string = self.0.symbol
+            )?,
+            _ => write!(f, "{}", self.0.symbol)?,
+        }
+        if let Some(suffix) = self.0.suffix {
+            write!(f, "{}", suffix)?;
+        }
+        Ok(())
     }
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+        f.debug_struct("Literal")
+            // format the kind on one line even in {:#?} mode
+            .field("kind", &format_args!("{:?}", &self.0.kind))
+            .field("symbol", &self.0.symbol)
+            // format `Some("...")` on one line even in {:#?} mode
+            .field("suffix", &format_args!("{:?}", &self.0.suffix))
+            .field("span", &self.0.span)
+            .finish()
     }
 }
 

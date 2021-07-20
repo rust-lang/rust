@@ -43,15 +43,17 @@ macro_rules! rpc_encode_decode {
             }
         }
     };
-    (struct $name:ident { $($field:ident),* $(,)? }) => {
-        impl<S> Encode<S> for $name {
+    (struct $name:ident $(<$($T:ident),+>)? { $($field:ident),* $(,)? }) => {
+        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 $(self.$field.encode(w, s);)*
             }
         }
 
-        impl<S> DecodeMut<'_, '_, S> for $name {
-            fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+        impl<S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
+            for $name $(<$($T),+>)?
+        {
+            fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
                 $name {
                     $($field: DecodeMut::decode(r, s)),*
                 }
@@ -126,6 +128,7 @@ impl<S> DecodeMut<'_, '_, S> for u8 {
     }
 }
 
+rpc_encode_decode!(le u16);
 rpc_encode_decode!(le u32);
 rpc_encode_decode!(le usize);
 
@@ -243,6 +246,26 @@ impl<S> Encode<S> for String {
 impl<S> DecodeMut<'_, '_, S> for String {
     fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         <&str>::decode(r, s).to_string()
+    }
+}
+
+impl<S, T: Encode<S>> Encode<S> for Vec<T> {
+    fn encode(self, w: &mut Writer, s: &mut S) {
+        self.len().encode(w, s);
+        for x in self {
+            x.encode(w, s);
+        }
+    }
+}
+
+impl<S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T> {
+    fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
+        let len = usize::decode(r, s);
+        let mut vec = Vec::with_capacity(len);
+        for _ in 0..len {
+            vec.push(T::decode(r, s));
+        }
+        vec
     }
 }
 

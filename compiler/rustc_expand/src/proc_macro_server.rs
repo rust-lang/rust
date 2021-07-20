@@ -3,25 +3,23 @@ use crate::base::{ExtCtxt, ResolverExpand};
 use rustc_ast as ast;
 use rustc_ast::token::{self, Nonterminal, NtIdent, TokenKind};
 use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens};
-use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
+use rustc_ast::tokenstream::{Spacing::*, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
-use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::hygiene::ExpnKind;
-use rustc_span::symbol::{self, kw, sym, Symbol};
+use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
 
-use pm::bridge::{server, TokenTree};
-use pm::{Delimiter, Level, LineColumn, Spacing};
+use pm::bridge::{server, DelimSpan, Group, Ident, LitKind, Literal, Punct, TokenTree};
+use pm::{Delimiter, Level, LineColumn};
 use std::ops::Bound;
-use std::{ascii, panic};
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -53,166 +51,226 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
-    for TokenTree<Group, Punct, Ident, Literal>
-{
-    fn from_internal(
-        ((tree, spacing), stack, rustc): (TreeAndSpacing, &mut Vec<Self>, &mut Rustc<'_>),
-    ) -> Self {
-        use rustc_ast::token::*;
-
-        let joint = spacing == Joint;
-        let Token { kind, span } = match tree {
-            tokenstream::TokenTree::Delimited(span, delim, tts) => {
-                let delimiter = Delimiter::from_internal(delim);
-                return TokenTree::Group(Group { delimiter, stream: tts, span, flatten: false });
-            }
-            tokenstream::TokenTree::Token(token) => token,
-        };
-
-        macro_rules! tt {
-            ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
-                TokenTree::$ty(self::$ty {
-                    $($field $(: $value)*,)+
-                    span,
-                })
-            );
-            ($ty:ident::$method:ident($($value:expr),*)) => (
-                TokenTree::$ty(self::$ty::$method($($value,)* span))
-            );
-        }
-        macro_rules! op {
-            ($a:expr) => {
-                tt!(Punct::new($a, joint))
-            };
-            ($a:expr, $b:expr) => {{
-                stack.push(tt!(Punct::new($b, joint)));
-                tt!(Punct::new($a, true))
-            }};
-            ($a:expr, $b:expr, $c:expr) => {{
-                stack.push(tt!(Punct::new($c, joint)));
-                stack.push(tt!(Punct::new($b, true)));
-                tt!(Punct::new($a, true))
-            }};
-        }
-
+impl FromInternal<token::LitKind> for LitKind {
+    fn from_internal(kind: token::LitKind) -> Self {
         match kind {
-            Eq => op!('='),
-            Lt => op!('<'),
-            Le => op!('<', '='),
-            EqEq => op!('=', '='),
-            Ne => op!('!', '='),
-            Ge => op!('>', '='),
-            Gt => op!('>'),
-            AndAnd => op!('&', '&'),
-            OrOr => op!('|', '|'),
-            Not => op!('!'),
-            Tilde => op!('~'),
-            BinOp(Plus) => op!('+'),
-            BinOp(Minus) => op!('-'),
-            BinOp(Star) => op!('*'),
-            BinOp(Slash) => op!('/'),
-            BinOp(Percent) => op!('%'),
-            BinOp(Caret) => op!('^'),
-            BinOp(And) => op!('&'),
-            BinOp(Or) => op!('|'),
-            BinOp(Shl) => op!('<', '<'),
-            BinOp(Shr) => op!('>', '>'),
-            BinOpEq(Plus) => op!('+', '='),
-            BinOpEq(Minus) => op!('-', '='),
-            BinOpEq(Star) => op!('*', '='),
-            BinOpEq(Slash) => op!('/', '='),
-            BinOpEq(Percent) => op!('%', '='),
-            BinOpEq(Caret) => op!('^', '='),
-            BinOpEq(And) => op!('&', '='),
-            BinOpEq(Or) => op!('|', '='),
-            BinOpEq(Shl) => op!('<', '<', '='),
-            BinOpEq(Shr) => op!('>', '>', '='),
-            At => op!('@'),
-            Dot => op!('.'),
-            DotDot => op!('.', '.'),
-            DotDotDot => op!('.', '.', '.'),
-            DotDotEq => op!('.', '.', '='),
-            Comma => op!(','),
-            Semi => op!(';'),
-            Colon => op!(':'),
-            ModSep => op!(':', ':'),
-            RArrow => op!('-', '>'),
-            LArrow => op!('<', '-'),
-            FatArrow => op!('=', '>'),
-            Pound => op!('#'),
-            Dollar => op!('$'),
-            Question => op!('?'),
-            SingleQuote => op!('\''),
-
-            Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
-            Ident(name, is_raw) => tt!(Ident::new(rustc.sess, name, is_raw)),
-            Lifetime(name) => {
-                let ident = symbol::Ident::new(name, span).without_first_quote();
-                stack.push(tt!(Ident::new(rustc.sess, ident.name, false)));
-                tt!(Punct::new('\'', true))
-            }
-            Literal(lit) => tt!(Literal { lit }),
-            DocComment(_, attr_style, data) => {
-                let mut escaped = String::new();
-                for ch in data.as_str().chars() {
-                    escaped.extend(ch.escape_debug());
-                }
-                let stream = vec![
-                    Ident(sym::doc, false),
-                    Eq,
-                    TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
-                ]
-                .into_iter()
-                .map(|kind| tokenstream::TokenTree::token(kind, span))
-                .collect();
-                stack.push(TokenTree::Group(Group {
-                    delimiter: Delimiter::Bracket,
-                    stream,
-                    span: DelimSpan::from_single(span),
-                    flatten: false,
-                }));
-                if attr_style == ast::AttrStyle::Inner {
-                    stack.push(tt!(Punct::new('!', false)));
-                }
-                tt!(Punct::new('#', false))
-            }
-
-            Interpolated(nt) => {
-                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, rustc) {
-                    TokenTree::Ident(Ident::new(rustc.sess, name.name, is_raw, name.span))
-                } else {
-                    let stream = nt_to_tokenstream(&nt, rustc.sess, CanSynthesizeMissingTokens::No);
-                    TokenTree::Group(Group {
-                        delimiter: Delimiter::None,
-                        stream,
-                        span: DelimSpan::from_single(span),
-                        flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess),
-                    })
-                }
-            }
-
-            OpenDelim(..) | CloseDelim(..) => unreachable!(),
-            Eof => unreachable!(),
+            token::Byte => LitKind::Byte,
+            token::Char => LitKind::Char,
+            token::Integer => LitKind::Integer,
+            token::Float => LitKind::Float,
+            token::Str => LitKind::Str,
+            token::StrRaw(n) => LitKind::StrRaw(n),
+            token::ByteStr => LitKind::ByteStr,
+            token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
+            token::Err => LitKind::Err,
+            token::Bool => unreachable!(),
         }
     }
 }
 
-impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
+impl ToInternal<token::LitKind> for LitKind {
+    fn to_internal(self) -> token::LitKind {
+        match self {
+            LitKind::Byte => token::Byte,
+            LitKind::Char => token::Char,
+            LitKind::Integer => token::Integer,
+            LitKind::Float => token::Float,
+            LitKind::Str => token::Str,
+            LitKind::StrRaw(n) => token::StrRaw(n),
+            LitKind::ByteStr => token::ByteStr,
+            LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
+            LitKind::Err => token::Err,
+        }
+    }
+}
+
+impl FromInternal<(TokenStream, &mut Rustc<'_>)> for Vec<TokenTree<TokenStream, Span, Symbol>> {
+    fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_>)) -> Self {
+        use rustc_ast::token::*;
+
+        let mut cursor = stream.into_trees();
+        let mut trees = Vec::new();
+
+        while let Some((tree, spacing)) = cursor.next_with_spacing() {
+            let joint = spacing == Joint;
+            let Token { kind, span } = match tree {
+                tokenstream::TokenTree::Delimited(span, delim, tts) => {
+                    let delimiter = Delimiter::from_internal(delim);
+                    trees.push(TokenTree::Group(Group {
+                        delimiter,
+                        stream: Some(tts),
+                        span: DelimSpan {
+                            open: span.open,
+                            close: span.close,
+                            entire: span.entire(),
+                        },
+                    }));
+                    continue;
+                }
+                tokenstream::TokenTree::Token(token) => token,
+            };
+
+            macro_rules! tt {
+                ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
+                    trees.push(TokenTree::$ty(self::$ty {
+                        $($field $(: $value)*,)+
+                        span,
+                    }))
+                );
+                ($ty:ident::$method:ident($($value:expr),*)) => (
+                    trees.push(TokenTree::$ty(self::$ty::$method($($value,)* span)))
+                );
+            }
+            macro_rules! op {
+                ($a:expr) => {{
+                    tt!(Punct { ch: $a, joint });
+                }};
+                ($a:expr, $b:expr) => {{
+                    tt!(Punct { ch: $a, joint: true });
+                    tt!(Punct { ch: $b, joint });
+                }};
+                ($a:expr, $b:expr, $c:expr) => {{
+                    tt!(Punct { ch: $a, joint: true });
+                    tt!(Punct { ch: $b, joint: true });
+                    tt!(Punct { ch: $c, joint });
+                }};
+            }
+
+            match kind {
+                Eq => op!('='),
+                Lt => op!('<'),
+                Le => op!('<', '='),
+                EqEq => op!('=', '='),
+                Ne => op!('!', '='),
+                Ge => op!('>', '='),
+                Gt => op!('>'),
+                AndAnd => op!('&', '&'),
+                OrOr => op!('|', '|'),
+                Not => op!('!'),
+                Tilde => op!('~'),
+                BinOp(Plus) => op!('+'),
+                BinOp(Minus) => op!('-'),
+                BinOp(Star) => op!('*'),
+                BinOp(Slash) => op!('/'),
+                BinOp(Percent) => op!('%'),
+                BinOp(Caret) => op!('^'),
+                BinOp(And) => op!('&'),
+                BinOp(Or) => op!('|'),
+                BinOp(Shl) => op!('<', '<'),
+                BinOp(Shr) => op!('>', '>'),
+                BinOpEq(Plus) => op!('+', '='),
+                BinOpEq(Minus) => op!('-', '='),
+                BinOpEq(Star) => op!('*', '='),
+                BinOpEq(Slash) => op!('/', '='),
+                BinOpEq(Percent) => op!('%', '='),
+                BinOpEq(Caret) => op!('^', '='),
+                BinOpEq(And) => op!('&', '='),
+                BinOpEq(Or) => op!('|', '='),
+                BinOpEq(Shl) => op!('<', '<', '='),
+                BinOpEq(Shr) => op!('>', '>', '='),
+                At => op!('@'),
+                Dot => op!('.'),
+                DotDot => op!('.', '.'),
+                DotDotDot => op!('.', '.', '.'),
+                DotDotEq => op!('.', '.', '='),
+                Comma => op!(','),
+                Semi => op!(';'),
+                Colon => op!(':'),
+                ModSep => op!(':', ':'),
+                RArrow => op!('-', '>'),
+                LArrow => op!('<', '-'),
+                FatArrow => op!('=', '>'),
+                Pound => op!('#'),
+                Dollar => op!('$'),
+                Question => op!('?'),
+                SingleQuote => op!('\''),
+
+                Ident(sym, is_raw) => tt!(Ident { sym, is_raw }),
+                Lifetime(name) => {
+                    let ident = symbol::Ident::new(name, span).without_first_quote();
+                    tt!(Punct { ch: '\'', joint: true });
+                    tt!(Ident { sym: ident.name, is_raw: false });
+                }
+                Literal(token::Lit { kind, symbol, suffix }) => {
+                    tt!(Literal { kind: FromInternal::from_internal(kind), symbol, suffix });
+                }
+                DocComment(_, attr_style, data) => {
+                    let mut escaped = String::new();
+                    for ch in data.as_str().chars() {
+                        escaped.extend(ch.escape_debug());
+                    }
+                    let stream = vec![
+                        Ident(sym::doc, false),
+                        Eq,
+                        TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
+                    ]
+                    .into_iter()
+                    .map(|kind| tokenstream::TokenTree::token(kind, span))
+                    .collect();
+                    tt!(Punct { ch: '#', joint: false });
+                    if attr_style == ast::AttrStyle::Inner {
+                        tt!(Punct { ch: '!', joint: false });
+                    }
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: Delimiter::Bracket,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }));
+                }
+
+                Interpolated(nt) => {
+                    if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, rustc) {
+                        trees.push(TokenTree::Ident(Ident {
+                            sym: name.name,
+                            is_raw,
+                            span: name.span,
+                        }));
+                    } else {
+                        let stream =
+                            nt_to_tokenstream(&nt, rustc.sess, CanSynthesizeMissingTokens::No);
+                        if crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess) {
+                            cursor.append(stream);
+                        } else {
+                            trees.push(TokenTree::Group(Group {
+                                delimiter: Delimiter::None,
+                                stream: Some(stream),
+                                span: DelimSpan::from_single(span),
+                            }))
+                        }
+                    }
+                }
+
+                OpenDelim(..) | CloseDelim(..) => unreachable!(),
+                Eof => unreachable!(),
+            }
+        }
+        trees
+    }
+}
+
+impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_>) {
     fn to_internal(self) -> TokenStream {
         use rustc_ast::token::*;
 
-        let (ch, joint, span) = match self {
+        let (tree, rustc) = self;
+        let (ch, joint, span) = match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
-            TokenTree::Group(Group { delimiter, stream, span, .. }) => {
-                return tokenstream::TokenTree::Delimited(span, delimiter.to_internal(), stream)
-                    .into();
+            TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
+                return tokenstream::TokenTree::Delimited(
+                    tokenstream::DelimSpan { open, close },
+                    delimiter.to_internal(),
+                    stream.unwrap_or_default(),
+                )
+                .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+                rustc.sess.symbol_gallery.insert(sym, span);
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
             }
             TokenTree::Literal(self::Literal {
-                lit: token::Lit { kind: token::Integer, symbol, suffix },
+                kind: self::LitKind::Integer,
+                symbol,
+                suffix,
                 span,
             }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
@@ -223,7 +281,9 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
-                lit: token::Lit { kind: token::Float, symbol, suffix },
+                kind: self::LitKind::Float,
+                symbol,
+                suffix,
                 span,
             }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
@@ -233,8 +293,12 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let b = tokenstream::TokenTree::token(float, span);
                 return vec![a, b].into_iter().collect();
             }
-            TokenTree::Literal(self::Literal { lit, span }) => {
-                return tokenstream::TokenTree::token(Literal(lit), span).into();
+            TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
+                return tokenstream::TokenTree::token(
+                    TokenKind::lit(kind.to_internal(), symbol, suffix),
+                    span,
+                )
+                .into();
             }
         };
 
@@ -283,77 +347,6 @@ impl ToInternal<rustc_errors::Level> for Level {
 
 pub struct FreeFunctions;
 
-#[derive(Clone)]
-pub struct TokenStreamIter {
-    cursor: tokenstream::Cursor,
-    stack: Vec<TokenTree<Group, Punct, Ident, Literal>>,
-}
-
-#[derive(Clone)]
-pub struct Group {
-    delimiter: Delimiter,
-    stream: TokenStream,
-    span: DelimSpan,
-    /// A hack used to pass AST fragments to attribute and derive macros
-    /// as a single nonterminal token instead of a token stream.
-    /// FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
-    flatten: bool,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Punct {
-    ch: char,
-    // NB. not using `Spacing` here because it doesn't implement `Hash`.
-    joint: bool,
-    span: Span,
-}
-
-impl Punct {
-    fn new(ch: char, joint: bool, span: Span) -> Punct {
-        const LEGAL_CHARS: &[char] = &[
-            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
-            ':', '#', '$', '?', '\'',
-        ];
-        if !LEGAL_CHARS.contains(&ch) {
-            panic!("unsupported character `{:?}`", ch)
-        }
-        Punct { ch, joint, span }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Ident {
-    sym: Symbol,
-    is_raw: bool,
-    span: Span,
-}
-
-impl Ident {
-    fn new(sess: &ParseSess, sym: Symbol, is_raw: bool, span: Span) -> Ident {
-        let sym = nfc_normalize(&sym.as_str());
-        let string = sym.as_str();
-        if !rustc_lexer::is_ident(&string) {
-            panic!("`{:?}` is not a valid identifier", string)
-        }
-        if is_raw && !sym.can_be_raw() {
-            panic!("`{}` cannot be a raw identifier", string);
-        }
-        sess.symbol_gallery.insert(sym, span);
-        Ident { sym, is_raw, span }
-    }
-    fn dollar_crate(span: Span) -> Ident {
-        // `$crate` is accepted as an ident only if it comes from the compiler.
-        Ident { sym: kw::DollarCrate, is_raw: false, span }
-    }
-}
-
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
-#[derive(Clone, Debug)]
-pub struct Literal {
-    lit: token::Lit,
-    span: Span,
-}
-
 pub(crate) struct Rustc<'a> {
     resolver: &'a dyn ResolverExpand,
     sess: &'a ParseSess,
@@ -379,25 +372,16 @@ impl<'a> Rustc<'a> {
             rebased_spans: FxHashMap::default(),
         }
     }
-
-    fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
-        Literal { lit: token::Lit::new(kind, symbol, suffix), span: server::Span::call_site(self) }
-    }
 }
 
 impl server::Types for Rustc<'_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type TokenStreamBuilder = tokenstream::TokenStreamBuilder;
-    type TokenStreamIter = TokenStreamIter;
-    type Group = Group;
-    type Punct = Punct;
-    type Ident = Ident;
-    type Literal = Literal;
     type SourceFile = Lrc<SourceFile>;
     type MultiSpan = Vec<Span>;
     type Diagnostic = Diagnostic;
     type Span = Span;
+    type Symbol = Symbol;
 }
 
 impl server::FreeFunctions for Rustc<'_> {
@@ -408,135 +392,8 @@ impl server::FreeFunctions for Rustc<'_> {
     fn track_path(&mut self, path: &str) {
         self.sess.file_depinfo.borrow_mut().insert(Symbol::intern(path));
     }
-}
 
-impl server::TokenStream for Rustc<'_> {
-    fn new(&mut self) -> Self::TokenStream {
-        TokenStream::default()
-    }
-    fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
-        stream.is_empty()
-    }
-    fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse_stream_from_source_str(
-            FileName::proc_macro_source_code(src),
-            src.to_string(),
-            self.sess,
-            Some(self.call_site),
-        )
-    }
-    fn to_string(&mut self, stream: &Self::TokenStream) -> String {
-        pprust::tts_to_string(stream)
-    }
-    fn from_token_tree(
-        &mut self,
-        tree: TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>,
-    ) -> Self::TokenStream {
-        tree.to_internal()
-    }
-    fn into_iter(&mut self, stream: Self::TokenStream) -> Self::TokenStreamIter {
-        TokenStreamIter { cursor: stream.trees(), stack: vec![] }
-    }
-}
-
-impl server::TokenStreamBuilder for Rustc<'_> {
-    fn new(&mut self) -> Self::TokenStreamBuilder {
-        tokenstream::TokenStreamBuilder::new()
-    }
-    fn push(&mut self, builder: &mut Self::TokenStreamBuilder, stream: Self::TokenStream) {
-        builder.push(stream);
-    }
-    fn build(&mut self, builder: Self::TokenStreamBuilder) -> Self::TokenStream {
-        builder.build()
-    }
-}
-
-impl server::TokenStreamIter for Rustc<'_> {
-    fn next(
-        &mut self,
-        iter: &mut Self::TokenStreamIter,
-    ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
-        loop {
-            let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_with_spacing()?;
-                Some(TokenTree::from_internal((next, &mut iter.stack, self)))
-            })?;
-            // A hack used to pass AST fragments to attribute and derive macros
-            // as a single nonterminal token instead of a token stream.
-            // Such token needs to be "unwrapped" and not represented as a delimited group.
-            // FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
-            if let TokenTree::Group(ref group) = tree {
-                if group.flatten {
-                    iter.cursor.append(group.stream.clone());
-                    continue;
-                }
-            }
-            return Some(tree);
-        }
-    }
-}
-
-impl server::Group for Rustc<'_> {
-    fn new(&mut self, delimiter: Delimiter, stream: Self::TokenStream) -> Self::Group {
-        Group {
-            delimiter,
-            stream,
-            span: DelimSpan::from_single(server::Span::call_site(self)),
-            flatten: false,
-        }
-    }
-    fn delimiter(&mut self, group: &Self::Group) -> Delimiter {
-        group.delimiter
-    }
-    fn stream(&mut self, group: &Self::Group) -> Self::TokenStream {
-        group.stream.clone()
-    }
-    fn span(&mut self, group: &Self::Group) -> Self::Span {
-        group.span.entire()
-    }
-    fn span_open(&mut self, group: &Self::Group) -> Self::Span {
-        group.span.open
-    }
-    fn span_close(&mut self, group: &Self::Group) -> Self::Span {
-        group.span.close
-    }
-    fn set_span(&mut self, group: &mut Self::Group, span: Self::Span) {
-        group.span = DelimSpan::from_single(span);
-    }
-}
-
-impl server::Punct for Rustc<'_> {
-    fn new(&mut self, ch: char, spacing: Spacing) -> Self::Punct {
-        Punct::new(ch, spacing == Spacing::Joint, server::Span::call_site(self))
-    }
-    fn as_char(&mut self, punct: Self::Punct) -> char {
-        punct.ch
-    }
-    fn spacing(&mut self, punct: Self::Punct) -> Spacing {
-        if punct.joint { Spacing::Joint } else { Spacing::Alone }
-    }
-    fn span(&mut self, punct: Self::Punct) -> Self::Span {
-        punct.span
-    }
-    fn with_span(&mut self, punct: Self::Punct, span: Self::Span) -> Self::Punct {
-        Punct { span, ..punct }
-    }
-}
-
-impl server::Ident for Rustc<'_> {
-    fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
-        Ident::new(self.sess, Symbol::intern(string), is_raw, span)
-    }
-    fn span(&mut self, ident: Self::Ident) -> Self::Span {
-        ident.span
-    }
-    fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
-        Ident { span, ..ident }
-    }
-}
-
-impl server::Literal for Rustc<'_> {
-    fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
         let override_span = None;
         let stream = parse_stream_from_source_str(
             FileName::proc_macro_source_code(s),
@@ -557,66 +414,21 @@ impl server::Literal for Rustc<'_> {
             // There is a comment or whitespace adjacent to the literal.
             return Err(());
         }
-        let lit = match token.kind {
+        let token::Lit { kind, symbol, suffix } = match token.kind {
             TokenKind::Literal(lit) => lit,
             _ => return Err(()),
         };
-        Ok(Literal { lit, span: self.call_site })
+        Ok(Literal {
+            kind: FromInternal::from_internal(kind),
+            symbol,
+            suffix,
+            span: self.call_site,
+        })
     }
-    fn debug_kind(&mut self, literal: &Self::Literal) -> String {
-        format!("{:?}", literal.lit.kind)
-    }
-    fn symbol(&mut self, literal: &Self::Literal) -> String {
-        literal.lit.symbol.to_string()
-    }
-    fn suffix(&mut self, literal: &Self::Literal) -> Option<String> {
-        literal.lit.suffix.as_ref().map(Symbol::to_string)
-    }
-    fn integer(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Integer, Symbol::intern(n), None)
-    }
-    fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
-        self.lit(token::Integer, Symbol::intern(n), Some(Symbol::intern(kind)))
-    }
-    fn float(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), None)
-    }
-    fn f32(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), Some(sym::f32))
-    }
-    fn f64(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), Some(sym::f64))
-    }
-    fn string(&mut self, string: &str) -> Self::Literal {
-        let mut escaped = String::new();
-        for ch in string.chars() {
-            escaped.extend(ch.escape_debug());
-        }
-        self.lit(token::Str, Symbol::intern(&escaped), None)
-    }
-    fn character(&mut self, ch: char) -> Self::Literal {
-        let mut escaped = String::new();
-        escaped.extend(ch.escape_unicode());
-        self.lit(token::Char, Symbol::intern(&escaped), None)
-    }
-    fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
-        let string = bytes
-            .iter()
-            .cloned()
-            .flat_map(ascii::escape_default)
-            .map(Into::<char>::into)
-            .collect::<String>();
-        self.lit(token::ByteStr, Symbol::intern(&string), None)
-    }
-    fn span(&mut self, literal: &Self::Literal) -> Self::Span {
-        literal.span
-    }
-    fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
-        literal.span = span;
-    }
-    fn subspan(
+
+    fn literal_subspan(
         &mut self,
-        literal: &Self::Literal,
+        literal: Literal<Self::Span, Self::Symbol>,
         start: Bound<usize>,
         end: Bound<usize>,
     ) -> Option<Self::Span> {
@@ -649,6 +461,63 @@ impl server::Literal for Rustc<'_> {
         let new_lo = span.lo() + BytePos::from_usize(start);
         let new_hi = span.lo() + BytePos::from_usize(end);
         Some(span.with_lo(new_lo).with_hi(new_hi))
+    }
+}
+
+impl server::TokenStream for Rustc<'_> {
+    fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
+        stream.is_empty()
+    }
+    fn from_str(&mut self, src: &str) -> Self::TokenStream {
+        parse_stream_from_source_str(
+            FileName::proc_macro_source_code(src),
+            src.to_string(),
+            self.sess,
+            Some(self.call_site),
+        )
+    }
+    fn to_string(&mut self, stream: &Self::TokenStream) -> String {
+        pprust::tts_to_string(stream)
+    }
+    fn from_token_tree(
+        &mut self,
+        tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
+    ) -> Self::TokenStream {
+        (tree, self).to_internal()
+    }
+    fn concat_trees(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
+    ) -> Self::TokenStream {
+        let mut builder = tokenstream::TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for tree in trees {
+            builder.push((tree, &mut *self).to_internal());
+        }
+        builder.build()
+    }
+    fn concat_streams(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        streams: Vec<Self::TokenStream>,
+    ) -> Self::TokenStream {
+        let mut builder = tokenstream::TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for stream in streams {
+            builder.push(stream);
+        }
+        builder.build()
+    }
+    fn into_iter(
+        &mut self,
+        stream: Self::TokenStream,
+    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
+        FromInternal::from_internal((stream, self))
     }
 }
 
@@ -708,15 +577,6 @@ impl server::Span for Rustc<'_> {
         } else {
             format!("{:?} bytes({}..{})", span.ctxt(), span.lo().0, span.hi().0)
         }
-    }
-    fn def_site(&mut self) -> Self::Span {
-        self.def_site
-    }
-    fn call_site(&mut self) -> Self::Span {
-        self.call_site
-    }
-    fn mixed_site(&mut self) -> Self::Span {
-        self.mixed_site
     }
     fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
         self.sess.source_map().lookup_char_pos(span.lo()).file
@@ -785,6 +645,40 @@ impl server::Span for Rustc<'_> {
             // replace it with a def-site context until we are encoding it properly.
             resolver.get_proc_macro_quoted_span(krate, id).with_ctxt(def_site.ctxt())
         })
+    }
+}
+
+impl server::Context for Rustc<'_> {
+    fn def_site(&mut self) -> Self::Span {
+        self.def_site
+    }
+    fn call_site(&mut self) -> Self::Span {
+        self.call_site
+    }
+    fn mixed_site(&mut self) -> Self::Span {
+        self.mixed_site
+    }
+
+    // NOTE: May be run on any thread, so cannot use `nfc_normalize`
+    fn validate_ident(s: &str) -> Result<Option<String>, ()> {
+        use unicode_normalization::{is_nfc_quick, IsNormalized, UnicodeNormalization};
+        let normalized: Option<String> = match is_nfc_quick(s.chars()) {
+            IsNormalized::Yes => None,
+            _ => Some(s.chars().nfc().collect()),
+        };
+        if rustc_lexer::is_ident(normalized.as_ref().map(|s| &s[..]).unwrap_or(s)) {
+            Ok(normalized)
+        } else {
+            Err(())
+        }
+    }
+
+    fn intern_symbol(string: &str) -> Self::Symbol {
+        Symbol::intern(string)
+    }
+
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        f(&symbol.as_str())
     }
 }
 

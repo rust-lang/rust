@@ -25,3 +25,4 @@ rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
+unicode-normalization = "0.1.11"
