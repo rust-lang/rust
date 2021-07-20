@@ -171,6 +171,25 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     inner(s.as_ref())
 }
 
+pub fn compare_case_insensitive<A: AsRef<OsStr>, B: AsRef<OsStr>>(
+    a: A,
+    b: B,
+) -> crate::io::Result<crate::cmp::Ordering> {
+    let a = crate::sys::to_u16s(a.as_ref())?;
+    let b = crate::sys::to_u16s(b.as_ref())?;
+
+    let result = unsafe {
+        c::CompareStringOrdinal(a.as_ptr(), a.len() as _, b.as_ptr(), b.len() as _, c::TRUE)
+    };
+
+    match result {
+        c::CSTR_LESS_THAN => Ok(crate::cmp::Ordering::Less),
+        c::CSTR_EQUAL => Ok(crate::cmp::Ordering::Equal),
+        c::CSTR_GREATER_THAN => Ok(crate::cmp::Ordering::Greater),
+        _ => Err(crate::io::Error::last_os_error()),
+    }
+}
+
 // Many Windows APIs follow a pattern of where we hand a buffer and then they
 // will report back to us how large the buffer should be or how many bytes
 // currently reside in the buffer. This function is an abstraction over these

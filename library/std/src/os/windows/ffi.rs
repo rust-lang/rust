@@ -52,7 +52,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::cmp::Ordering;
 use crate::ffi::{OsStr, OsString};
+use crate::io;
 use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
 use crate::sys_common::wtf8::Wtf8Buf;
@@ -124,11 +126,99 @@ pub trait OsStrExt: Sealed {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn encode_wide(&self) -> EncodeWide<'_>;
+
+    /// Compares two `OsStr` by using the Windows system implementation.
+    /// This performs a case-insensitive comparison of UTF-16 code units using the system case mappings.
+    /// The comparison is locale-independent, but exact results may depend on the Windows version,
+    /// file system, and system settings.
+    ///
+    /// This is the correct way to compare various strings on Windows:
+    /// environment variable keys, registry keys and resource handle names are all case-insensitive.
+    /// Note that this does not include file names or paths; those can be case-sensitive depending on
+    /// the system, file system or directory settings.
+    ///
+    /// Note that this operation requires encoding both strings to UTF-16 and potentially performing system calls.
+    /// This operation is thus more computationally expensive than a normal comparison using [`Ord`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in the following situations, but is not limited to just these cases:
+    ///  - If the string contains any null characters.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(windows_case_insensitive)]
+    ///
+    /// use std::ffi::OsString;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let list = [ OsString::from("A"), OsString::from("Z"), OsString::from("a") ];
+    ///
+    /// let mut sorted = list.clone();
+    /// sorted.sort();
+    ///
+    /// let mut sorted_with_system_cmp = list.clone();
+    /// sorted_with_system_cmp.sort_by(|a, b| a.system_cmp(b).unwrap());
+    ///
+    /// assert_eq!(sorted, list); // unchanged, since `Z` < `a`
+    /// assert_eq!(sorted_with_system_cmp, [ OsString::from("A"), OsString::from("a"), OsString::from("Z") ]);
+    /// ```
+    #[unstable(feature = "windows_case_insensitive", issue = "86007")]
+    fn system_cmp(&self, other: &Self) -> io::Result<Ordering>;
+
+    /// Checks two `OsStr` for equality by using the Windows system implementation.
+    /// This performs a case-insensitive comparison of UTF-16 code units using the system case mappings.
+    /// The comparison is locale-independent, but exact results may depend on the Windows version,
+    /// file system, and system settings.
+    ///
+    /// This is the correct way to compare various strings on Windows:
+    /// environment variable keys, registry keys and resource handle names are all case-insensitive.
+    /// Note that this does not include file names or paths; those can be case-sensitive depending on
+    /// the system, file system or directory settings.
+    ///
+    /// Note that this operation requires encoding both strings to UTF-16 and potentially performing system calls.
+    /// This operation is thus more computationally expensive than a normal comparison using [`Eq`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in the following situations, but is not limited to just these cases:
+    ///  - If the string contains any null characters.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(windows_case_insensitive)]
+    ///
+    /// use std::ffi::OsString;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// let a = OsString::from("Path");
+    /// let b = OsString::from("PATH");
+    ///
+    /// assert!(a.eq(&b) == false);
+    /// assert!(a.system_eq(&b).unwrap() == true);
+    #[unstable(feature = "windows_case_insensitive", issue = "86007")]
+    fn system_eq(&self, other: &Self) -> io::Result<bool>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStrExt for OsStr {
     fn encode_wide(&self) -> EncodeWide<'_> {
         self.as_inner().inner.encode_wide()
+    }
+
+    fn system_cmp(&self, other: &Self) -> io::Result<Ordering> {
+        crate::sys::compare_case_insensitive(self, other)
+    }
+
+    fn system_eq(&self, other: &Self) -> io::Result<bool> {
+        if self.len() == other.len() {
+            Ok(crate::sys::compare_case_insensitive(self, other)? == Ordering::Equal)
+        } else {
+            // The system implementation performs an "ordinal" check, so directly comparing every
+            // code unit in the same position in the two strings. As a consequence, two strings
+            // with different lengths can never be equal, even if they contain characters that
+            // change length when changing case according to Unicode.
+            Ok(false)
+        }
     }
 }
