@@ -5,7 +5,7 @@ enum Color {
     Green = 0x00ff00,
     Blue = 0x0000ff,
     Black = 0x000000,
-    White = 0x000000, //~ ERROR discriminant value `0` already exists
+    White = 0x000000, //~ ERROR discriminant value 0 already exists
 }
 
 fn main() { }
