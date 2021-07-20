@@ -400,10 +400,7 @@ fn module_def_doctest(db: &RootDatabase, def: hir::ModuleDef) -> Option<Runnable
     let def_name = def.name(db)?;
     let path = (|| {
         let mut path = String::new();
-        def.module(db)?
-            .path_to_root(db)
-            .into_iter()
-            .rev()
+        def.canonical_module_path(db)?
             .flat_map(|it| it.name(db))
             .for_each(|name| format_to!(path, "{}::", name));
         // This probably belongs to canonical_path?

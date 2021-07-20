@@ -1,3 +1,5 @@
+//! Helper tools for intra doc links.
+
 const TYPES: ([&str; 9], [&str; 0]) =
     (["type", "struct", "enum", "mod", "trait", "union", "module", "prim", "primitive"], []);
 const VALUES: ([&str; 8], [&str; 1]) =

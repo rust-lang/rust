@@ -2103,7 +2103,7 @@ pub struct B$0ar
 
                 ---
 
-                [Foo](https://docs.rs/test/*/test/trait.Foo.html#method.buzz)
+                [Foo](https://docs.rs/test/*/test/trait.Foo.html#tymethod.buzz)
             "##]],
         );
     }

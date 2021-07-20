@@ -303,6 +303,13 @@ impl ModuleDef {
         Some(segments.into_iter().join("::"))
     }
 
+    pub fn canonical_module_path(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<impl Iterator<Item = Module>> {
+        self.module(db).map(|it| it.path_to_root(db).into_iter().rev())
+    }
+
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         match self {
             ModuleDef::Adt(it) => Some(it.name(db)),
