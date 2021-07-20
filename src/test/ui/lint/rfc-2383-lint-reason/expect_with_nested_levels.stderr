@@ -1,0 +1,34 @@
+warning: variable does not need to be mutable
+  --> $DIR/expect_with_nested_levels.rs:23:13
+   |
+LL |         let mut v = 0;
+   |             ----^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: We no longer expect it in this scope
+note: the lint level is defined here
+  --> $DIR/expect_with_nested_levels.rs:20:12
+   |
+LL |     #[warn(unused_mut, reason = "We no longer expect it in this scope")]
+   |            ^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_with_nested_levels.rs:5:1
+   |
+LL | #[expect(unused_mut, reason = "This should trigger because `unused_mut` was allow")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectation)]` on by default
+   = note: This should trigger because `unused_mut` was allow
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_with_nested_levels.rs:16:1
+   |
+LL | #[expect(unused_mut, reason = "This should trigger because `unused_mut` is no longer expected")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: This should trigger because `unused_mut` is no longer expected
+
+warning: 3 warnings emitted
+

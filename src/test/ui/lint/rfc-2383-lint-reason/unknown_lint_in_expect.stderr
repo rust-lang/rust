@@ -1,0 +1,10 @@
+warning: unknown lint: `this_lint_does_not_exist`
+  --> $DIR/unknown_lint_in_expect.rs:5:11
+   |
+LL | #![expect(this_lint_does_not_exist)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: 1 warning emitted
+

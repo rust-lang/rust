@@ -30,10 +30,15 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, MultiSpan, Span};
 
 use std::borrow::Cow;
+use std::clone::Clone;
+use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
+use std::iter::Iterator;
+use std::mem::take;
 use std::num::NonZeroUsize;
 use std::panic;
 use std::path::Path;
+use std::result::Result::Ok;
 use std::{error, fmt};
 
 use termcolor::{Color, ColorSpec};
@@ -332,6 +337,10 @@ struct HandlerInner {
     /// twice.
     emitted_diagnostics: FxHashSet<u128>,
 
+    /// This contains all lint emission information from this compiling session
+    /// with the emission level `Expect`.
+    expected_lint_emissions: Vec<LintEmission>,
+
     /// Stashed diagnostics emitted in one stage of the compiler that may be
     /// stolen by other stages (e.g. to improve them and add more information).
     /// The stashed diagnostics count towards the total error count.
@@ -454,6 +463,7 @@ impl Handler {
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
                 emitted_diagnostics: Default::default(),
+                expected_lint_emissions: Vec::new(),
                 stashed_diagnostics: Default::default(),
                 future_breakage_diagnostics: Vec::new(),
             }),
@@ -587,6 +597,11 @@ impl Handler {
     /// Construct a builder at the `Allow` level with the `msg`.
     pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
+    }
+
+    /// Construct a builder at the `Expect` level with the `msg`.
+    pub fn struct_expect(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Expect, msg)
     }
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
@@ -800,6 +815,14 @@ impl Handler {
     pub fn delay_as_bug(&self, diagnostic: Diagnostic) {
         self.inner.borrow_mut().delay_as_bug(diagnostic)
     }
+
+    /// This method takes all lint emission information that have been issued from
+    /// by `HandlerInner` in this session. This will steal the collection from the
+    /// internal handler and should therefore only be used to check for expected
+    /// lints. (RFC 2383)
+    pub fn steal_expect_lint_emissions(&self) -> Vec<LintEmission> {
+        take(&mut self.inner.borrow_mut().expected_lint_emissions)
+    }
 }
 
 impl HandlerInner {
@@ -856,6 +879,14 @@ impl HandlerInner {
         // Only emit the diagnostic if we've been asked to deduplicate and
         // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
+            if diagnostic.level == Level::Expect {
+                if let Ok(emission) = LintEmission::try_from(diagnostic) {
+                    self.expected_lint_emissions.push(emission);
+                }
+                // Diagnostics with the level `Expect` shouldn't be emitted or effect internal counters.
+                return;
+            }
+
             self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
@@ -1090,6 +1121,70 @@ impl DelayedDiagnostic {
     }
 }
 
+/// Used to track all emitted lints to later evaluate if expected lints have been
+/// emitted.
+#[must_use]
+#[derive(Clone, Debug, PartialEq, Hash)]
+pub struct LintEmission {
+    /// The lint name that was emitted.
+    pub lint_name: String,
+
+    /// The spans of the emission.
+    ///
+    /// FIXME: We should define which span is taken from the diagnostic, this simply takes all spans
+    // until that is defined (xFrednet 2021-06-03)
+    pub lint_span: MultiSpan,
+}
+
+impl TryFrom<&Diagnostic> for LintEmission {
+    type Error = ();
+
+    fn try_from(diagnostic: &Diagnostic) -> Result<Self, Self::Error> {
+        if let Some(DiagnosticId::Lint { name, .. }) = &diagnostic.code {
+            Ok(LintEmission { lint_name: name.clone(), lint_span: extract_all_spans(diagnostic) })
+        } else {
+            Err(())
+        }
+    }
+}
+
+fn extract_all_spans(source: &Diagnostic) -> MultiSpan {
+    let mut result = Vec::new();
+
+    result.append(&mut extract_spans_from_multispan(&source.span));
+
+    // Some lints only have a suggestion span. Example: unused_variables
+    for sugg in &source.suggestions {
+        for substitution in &sugg.substitutions {
+            for part in &substitution.parts {
+                result.push(part.span);
+            }
+        }
+    }
+
+    // Some lints only have `SubDiagnostic`s. Example: const_item_mutation
+    for sub in &source.children {
+        result.append(&mut extract_spans_from_multispan(&sub.span));
+    }
+
+    MultiSpan::from_spans(result)
+}
+
+fn extract_spans_from_multispan(source: &MultiSpan) -> Vec<Span> {
+    let mut result: Vec<Span> = source.primary_spans().into();
+
+    // Some lints only have span_lints for notes. Example: clashing_extern_declarations
+    result.extend(
+        source
+            .span_labels()
+            .iter()
+            .filter(|span| span.is_primary)
+            .map(|span_label| span_label.span),
+    );
+
+    result
+}
+
 #[derive(Copy, PartialEq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
     Bug,
@@ -1101,6 +1196,7 @@ pub enum Level {
     Cancelled,
     FailureNote,
     Allow,
+    Expect,
 }
 
 impl fmt::Display for Level {
@@ -1126,7 +1222,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow | Cancelled => unreachable!(),
+            Allow | Expect | Cancelled => unreachable!(),
         }
         spec
     }
@@ -1141,6 +1237,7 @@ impl Level {
             FailureNote => "failure-note",
             Cancelled => panic!("Shouldn't call on cancelled error"),
             Allow => panic!("Shouldn't call on allowed error"),
+            Expect => panic!("Shouldn't call on expected error"),
         }
     }
 

@@ -1,0 +1,15 @@
+error[E0452]: malformed lint attribute input
+  --> $DIR/invalid_expect_attribute.rs:3:11
+   |
+LL | #![expect(reason = "This should trigger because `unused_mut` was allow", unused_mut)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/invalid_expect_attribute.rs:3:11
+   |
+LL | #![expect(reason = "This should trigger because `unused_mut` was allow", unused_mut)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0452`.

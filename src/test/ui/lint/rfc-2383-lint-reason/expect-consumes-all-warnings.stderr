@@ -1,0 +1,11 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect-consumes-all-warnings.rs:5:1
+   |
+LL | #[expect(unused_variables, reason = "All emissions should be consumed by the nested expect")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectation)]` on by default
+   = note: All emissions should be consumed by the nested expect
+
+warning: 1 warning emitted
+

@@ -1,0 +1,14 @@
+error: `Expect` is not allowed as an initial level for lints
+  --> $DIR/declare-lint-deny-expect.rs:16:1
+   |
+LL | / declare_lint! {
+LL | |     pub TEST_LINT_EXPECT,
+LL | |     Expect,
+LL | |     "test"
+LL | | }
+   | |_^
+   |
+   = note: this error originates in the macro `$crate::validate_lint_level` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

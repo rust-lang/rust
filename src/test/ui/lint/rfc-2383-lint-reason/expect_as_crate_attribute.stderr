@@ -1,0 +1,10 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_as_crate_attribute.rs:5:1
+   |
+LL | #![expect(unused_mut)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectation)]` on by default
+
+warning: 1 warning emitted
+

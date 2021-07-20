@@ -507,4 +507,13 @@ pub fn check_crate<'tcx, T: LateLintPass<'tcx>>(
             });
         },
     );
+
+    // This check has to be run after all lints are done processing for this crate
+    //
+    // This could most likely be optimized by checking the lint expectations on a module
+    // level instead, as rustc runs the analysis in `lint_mod` on this level. However this
+    // would require that the tracked lint emissions can be linked to a specific module in
+    // the diagnostic emission. This is not possible to my knowledge and would also not coder
+    // the lints that are validated on the crate level.
+    tcx.sess.time("check_expect_lint", || tcx.check_expect_lint(()));
 }
