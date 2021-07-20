@@ -1,8 +1,7 @@
-#![feature(unwind_attributes)]
+#![feature(c_unwind)]
 #![allow(unused_assignments)]
 
-#[unwind(aborts)]
-fn might_abort(should_abort: bool) {
+extern "C" fn might_abort(should_abort: bool) {
     if should_abort {
         println!("aborting...");
         panic!("panics and aborts");
@@ -18,11 +17,16 @@ fn main() -> Result<(), u8> {
             might_abort(false);
         }
         // See discussion (below the `Notes` section) on coverage results for the closing brace.
-        if countdown < 5 { might_abort(false); } // Counts for different regions on one line.
+        if countdown < 5 {
+            might_abort(false);
+        }
+        // Counts for different regions on one line.
         // For the following example, the closing brace is the last character on the line.
         // This shows the character after the closing brace is highlighted, even if that next
         // character is a newline.
-        if countdown < 5 { might_abort(false); }
+        if countdown < 5 {
+            might_abort(false);
+        }
         countdown -= 1;
     }
     Ok(())

@@ -4,7 +4,7 @@
 
 #![crate_type = "lib"]
 #![feature(c_variadic)]
-#![feature(unwind_attributes)]
+#![feature(c_unwind)]
 #![no_std]
 use core::ffi::VaList;
 
@@ -13,7 +13,6 @@ extern "C" {
     fn foreign_c_variadic_1(_: VaList, ...);
 }
 
-#[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_0() {
     // Ensure that we correctly call foreign C-variadic functions.
     // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM:i32( signext)?]] 0)
@@ -28,24 +27,20 @@ pub unsafe extern "C" fn use_foreign_c_variadic_0() {
 
 // Ensure that we do not remove the `va_list` passed to the foreign function when
 // removing the "spoofed" `VaListImpl` that is used by Rust defined C-variadics.
-#[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_0(ap: VaList) {
     // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap)
     foreign_c_variadic_1(ap);
 }
 
-#[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_1(ap: VaList) {
     // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 42)
     foreign_c_variadic_1(ap, 42i32);
 }
-#[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_2(ap: VaList) {
     // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 2, [[PARAM]] 42)
     foreign_c_variadic_1(ap, 2i32, 42i32);
 }
 
-#[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_3(ap: VaList) {
     // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 2, [[PARAM]] 42, [[PARAM]] 0)
     foreign_c_variadic_1(ap, 2i32, 42i32, 0i32);

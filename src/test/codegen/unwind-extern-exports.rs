@@ -2,19 +2,15 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![crate_type = "lib"]
-#![feature(unwind_attributes)]
+#![feature(c_unwind)]
 
 // Make sure these all do *not* get the attribute.
 // We disable optimizations to prevent LLVM from infering the attribute.
 // CHECK-NOT: nounwind
 
 // "C" ABI
-// pub extern fn foo() {} // FIXME right now we don't abort-on-panic but add `nounwind` nevertheless
-#[unwind(allowed)]
-pub extern "C" fn foo_allowed() {}
+pub extern "C-unwind" fn foo_unwind() {}
 
 // "Rust"
 // (`extern "Rust"` could be removed as all `fn` get it implicitly; we leave it in for clarity.)
-pub extern "Rust" fn bar() {}
-#[unwind(allowed)]
-pub extern "Rust" fn bar_allowed() {}
+pub fn bar() {}

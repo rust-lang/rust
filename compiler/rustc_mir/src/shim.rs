@@ -16,7 +16,7 @@ use std::fmt;
 use std::iter;
 
 use crate::transform::{
-    add_call_guards, add_moves_for_packed_drops, no_landing_pads, remove_noop_landing_pads,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, remove_noop_landing_pads,
     run_passes, simplify,
 };
 use crate::util::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
@@ -81,10 +81,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         MirPhase::Const,
         &[&[
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            &no_landing_pads::NoLandingPads,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,
+            &abort_unwinding_calls::AbortUnwindingCalls,
         ]],
     );
 

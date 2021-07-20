@@ -87,50 +87,6 @@ pub enum OptimizeAttr {
     Size,
 }
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum UnwindAttr {
-    Allowed,
-    Aborts,
-}
-
-/// Determine what `#[unwind]` attribute is present in `attrs`, if any.
-pub fn find_unwind_attr(sess: &Session, attrs: &[Attribute]) -> Option<UnwindAttr> {
-    attrs.iter().fold(None, |ia, attr| {
-        if sess.check_name(attr, sym::unwind) {
-            if let Some(meta) = attr.meta() {
-                if let MetaItemKind::List(items) = meta.kind {
-                    if items.len() == 1 {
-                        if items[0].has_name(sym::allowed) {
-                            return Some(UnwindAttr::Allowed);
-                        } else if items[0].has_name(sym::aborts) {
-                            return Some(UnwindAttr::Aborts);
-                        }
-                    }
-
-                    struct_span_err!(
-                        sess.diagnostic(),
-                        attr.span,
-                        E0633,
-                        "malformed `unwind` attribute input"
-                    )
-                    .span_label(attr.span, "invalid argument")
-                    .span_suggestions(
-                        attr.span,
-                        "the allowed arguments are `allowed` and `aborts`",
-                        (vec!["allowed", "aborts"])
-                            .into_iter()
-                            .map(|s| format!("#[unwind({})]", s)),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                }
-            }
-        }
-
-        ia
-    })
-}
-
 /// Represents the following attributes:
 ///
 /// - `#[stable]`

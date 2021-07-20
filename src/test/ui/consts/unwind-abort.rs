@@ -1,10 +1,9 @@
 // check-pass
 
-#![feature(unwind_attributes, const_panic)]
+#![feature(c_unwind, const_panic, const_extern_fn)]
 
-// `#[unwind(aborts)]` is okay for a `const fn`. We don't unwind in const-eval anyways.
-#[unwind(aborts)]
-const fn foo() {
+// We don't unwind in const-eval anyways.
+const extern "C" fn foo() {
     panic!()
 }
 

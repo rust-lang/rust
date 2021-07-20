@@ -13,6 +13,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
+pub mod abort_unwinding_calls;
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
@@ -39,7 +40,6 @@ pub mod lower_intrinsics;
 pub mod lower_slice_len;
 pub mod match_branches;
 pub mod multiple_return_terminators;
-pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
 pub mod remove_noop_landing_pads;
@@ -448,7 +448,6 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
         // Remove all things only needed by analysis
-        &no_landing_pads::NoLandingPads,
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
@@ -456,7 +455,10 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
-        &no_landing_pads::NoLandingPads,
+        // This will remove extraneous landing pads which are no longer
+        // necessary as well as well as forcing any call in a non-unwinding
+        // function calling a possibly-unwinding function to abort the process.
+        &abort_unwinding_calls::AbortUnwindingCalls,
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,

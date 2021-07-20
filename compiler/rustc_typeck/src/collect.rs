@@ -2701,8 +2701,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
         } else if tcx.sess.check_name(attr, sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
-        } else if tcx.sess.check_name(attr, sym::unwind) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
         } else if tcx.sess.check_name(attr, sym::ffi_returns_twice) {
             if tcx.is_foreign_item(id) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
@@ -2754,7 +2752,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 .emit();
             }
         } else if tcx.sess.check_name(attr, sym::rustc_allocator_nounwind) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
         } else if tcx.sess.check_name(attr, sym::naked) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
         } else if tcx.sess.check_name(attr, sym::no_mangle) {
@@ -3123,6 +3121,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // also applies to weak symbols where they all have known symbol names.
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+    }
+
+    // Any linkage to LLVM intrinsics for now forcibly marks them all as never
+    // unwinds since LLVM sometimes can't handle codegen which `invoke`s
+    // intrinsic functions.
+    if let Some(name) = &codegen_fn_attrs.link_name {
+        if name.as_str().starts_with("llvm.") {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
+        }
     }
 
     codegen_fn_attrs

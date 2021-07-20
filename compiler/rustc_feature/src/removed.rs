@@ -148,6 +148,11 @@ declare_features! (
     (removed, const_raw_ptr_to_usize_cast, "1.55.0", Some(51910), None,
      Some("at compile-time, pointers do not have an integer value, so these casts cannot be properly supported")),
 
+    /// Allows `#[unwind(..)]`.
+    ///
+    /// Permits specifying whether a function should permit unwinding or abort on unwind.
+    (removed, unwind_attributes, "1.55.0", Some(58760), None, Some("use the C-unwind ABI instead")),
+
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------
