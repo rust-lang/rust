@@ -107,6 +107,9 @@ mod imp {
     #[cfg(unix)]
     pub mod unix;
 
+    #[cfg(target_os = "solid-asp3")]
+    pub mod solid;
+
     #[cfg(target_os = "vxworks")]
     pub mod vxworks;
 
