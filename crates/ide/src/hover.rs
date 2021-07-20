@@ -19,7 +19,7 @@ use syntax::{
 use crate::{
     display::{macro_label, TryToNav},
     doc_links::{
-        doc_attributes, extract_definitions_from_markdown, remove_links, resolve_doc_path_for_def,
+        doc_attributes, extract_definitions_from_docs, remove_links, resolve_doc_path_for_def,
         rewrite_links,
     },
     markdown_remove::remove_markdown,
@@ -119,7 +119,7 @@ pub(crate) fn hover(
                     let (attributes, def) = doc_attributes(&sema, &node)?;
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
-                        extract_definitions_from_markdown(docs.as_str()).into_iter().find_map(|(range, link, ns)| {
+                        extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
                             let hir::InFile { file_id, value: range } = doc_mapping.map(range)?;
                             if file_id == position.file_id.into() && range.contains(position.offset) {
                                 Some((range, link, ns))
@@ -369,7 +369,7 @@ fn process_markup(
     let markup = if !config.markdown() {
         remove_markdown(markup)
     } else if config.links_in_hover {
-        rewrite_links(db, markup, &def)
+        rewrite_links(db, markup, def)
     } else {
         remove_links(markup)
     };
@@ -2090,7 +2090,7 @@ pub trait Foo {
 /// [buzz]: Foo::buzz
 pub struct B$0ar
 "#,
-            expect![[r#"
+            expect![[r##"
                 *Bar*
 
                 ```rust
@@ -2103,8 +2103,8 @@ pub struct B$0ar
 
                 ---
 
-                [Foo](https://docs.rs/test/*/test/trait.Foo.html#tymethod.buzz)
-            "#]],
+                [Foo](https://docs.rs/test/*/test/trait.Foo.html#method.buzz)
+            "##]],
         );
     }
 

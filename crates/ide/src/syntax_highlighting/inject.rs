@@ -11,7 +11,7 @@ use syntax::{
 };
 
 use crate::{
-    doc_links::{doc_attributes, extract_definitions_from_markdown, resolve_doc_path_for_def},
+    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
 
@@ -104,7 +104,7 @@ pub(super) fn doc_comment(
     let mut string;
 
     if let Some((docs, doc_mapping)) = attributes.docs_with_rangemap(sema.db) {
-        extract_definitions_from_markdown(docs.as_str())
+        extract_definitions_from_docs(&docs)
             .into_iter()
             .filter_map(|(range, link, ns)| {
                 let def = resolve_doc_path_for_def(sema.db, def, &link, ns)?;
