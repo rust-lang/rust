@@ -4,6 +4,7 @@ pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 pub type FxIndexSet<V> = indexmap::IndexSet<V, BuildHasherDefault<FxHasher>>;
+pub type FxLinkedHashSet<V> = linked_hash_set::LinkedHashSet<V, BuildHasherDefault<FxHasher>>;
 
 #[macro_export]
 macro_rules! define_id_collections {

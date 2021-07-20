@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDequ
 use std::rc::Rc;
 use std::sync::Arc;
 
+use linked_hash_set::LinkedHashSet;
 use smallvec::{Array, SmallVec};
 
 impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
@@ -190,6 +191,21 @@ where
     }
 }
 
+impl<E: Encoder, T, S> Encodable<E> for LinkedHashSet<T, S>
+where
+    T: Encodable<E> + Eq + Hash,
+    S: BuildHasher,
+{
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_seq(self.len(), |s| {
+            for (i, e) in self.iter().enumerate() {
+                s.emit_seq_elt(i, |s| e.encode(s))?;
+            }
+            Ok(())
+        })
+    }
+}
+
 impl<E: Encoder, T, S> Encodable<E> for &HashSet<T, S>
 where
     T: Encodable<E> + Eq,
@@ -211,6 +227,23 @@ where
             let mut set = HashSet::with_capacity_and_hasher(len, state);
             for _ in 0..len {
                 set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
+            }
+            Ok(set)
+        })
+    }
+}
+
+impl<D: Decoder, T, S> Decodable<D> for LinkedHashSet<T, S>
+where
+    T: Decodable<D> + Hash + Eq + Hash,
+    S: BuildHasher + Default,
+{
+    fn decode(d: &mut D) -> Result<LinkedHashSet<T, S>, D::Error> {
+        d.read_seq(|d, len| {
+            let state = Default::default();
+            let mut set = LinkedHashSet::with_capacity_and_hasher(len, state);
+            for i in 0..len {
+                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d))?);
             }
             Ok(set)
         })

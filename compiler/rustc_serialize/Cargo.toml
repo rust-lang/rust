@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 indexmap = "1"
+linked_hash_set = "0.1.4"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 
 [dev-dependencies]

@@ -1,5 +1,5 @@
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxLinkedHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{self, Sharded};
@@ -12,7 +12,6 @@ use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 
 use parking_lot::{Condvar, Mutex};
-use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -125,7 +124,7 @@ impl<K: DepKind> DepGraph<K> {
         let _green_node_index = current.intern_new_node(
             profiler,
             DepNode { kind: DepKind::NULL, hash: current.anon_id_seed.into() },
-            smallvec![],
+            Default::default(),
             Fingerprint::ZERO,
         );
         debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
@@ -216,13 +215,10 @@ impl<K: DepKind> DepGraph<K> {
             arg,
             task,
             |_key| {
-                Some(TaskDeps {
+                Some(TaskDeps::new(
                     #[cfg(debug_assertions)]
-                    node: Some(_key),
-                    reads: SmallVec::new(),
-                    read_set: Default::default(),
-                    phantom_data: PhantomData,
-                })
+                    Some(_key),
+                ))
             },
             hash_result,
         )
@@ -241,7 +237,8 @@ impl<K: DepKind> DepGraph<K> {
             let dcx = cx.dep_context();
             let task_deps = create_task(key).map(Lock::new);
             let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
-            let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
+            let edges =
+                task_deps.map_or_else(|| Default::default(), |lock| lock.into_inner().read_set);
 
             let mut hcx = dcx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
@@ -293,10 +290,13 @@ impl<K: DepKind> DepGraph<K> {
         debug_assert!(!dep_kind.is_eval_always());
 
         if let Some(ref data) = self.data {
-            let task_deps = Lock::new(TaskDeps::default());
+            let task_deps = Lock::new(TaskDeps::new(
+                #[cfg(debug_assertions)]
+                None,
+            ));
             let result = K::with_deps(Some(&task_deps), op);
             let task_deps = task_deps.into_inner();
-            let task_deps = task_deps.reads;
+            let task_deps = task_deps.read_set;
 
             let dep_node_index = match task_deps.len() {
                 0 => {
@@ -309,7 +309,7 @@ impl<K: DepKind> DepGraph<K> {
                 }
                 1 => {
                     // When there is only one dependency, don't bother creating a node.
-                    task_deps[0]
+                    task_deps.into_iter().next().unwrap()
                 }
                 _ => {
                     // The dep node indices are hashed here instead of hashing the dep nodes of the
@@ -318,7 +318,10 @@ impl<K: DepKind> DepGraph<K> {
                     // combining it with the per session random number `anon_id_seed`. This hash only need
                     // to map the dependencies to a single value on a per session basis.
                     let mut hasher = StableHasher::new();
-                    task_deps.hash(&mut hasher);
+                    task_deps.len().hash(&mut hasher);
+                    for edge in task_deps.iter() {
+                        edge.hash(&mut hasher);
+                    }
 
                     let target_dep_node = DepNode {
                         kind: dep_kind,
@@ -367,21 +370,8 @@ impl<K: DepKind> DepGraph<K> {
                         data.current.total_read_count.fetch_add(1, Relaxed);
                     }
 
-                    // As long as we only have a low number of reads we can avoid doing a hash
-                    // insert and potentially allocating/reallocating the hashmap
-                    let new_read = if task_deps.reads.len() < TASK_DEPS_READS_CAP {
-                        task_deps.reads.iter().all(|other| *other != dep_node_index)
-                    } else {
-                        task_deps.read_set.insert(dep_node_index)
-                    };
+                    let new_read = task_deps.read_set.insert_if_absent(dep_node_index);
                     if new_read {
-                        task_deps.reads.push(dep_node_index);
-                        if task_deps.reads.len() == TASK_DEPS_READS_CAP {
-                            // Fill `read_set` with what we have so far so we can use the hashset
-                            // next time
-                            task_deps.read_set.extend(task_deps.reads.iter().copied());
-                        }
-
                         #[cfg(debug_assertions)]
                         {
                             if let Some(target) = task_deps.node {
@@ -983,7 +973,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         &self,
         profiler: &SelfProfilerRef,
         key: DepNode<K>,
-        edges: EdgesVec,
+        edges: FxLinkedHashSet<DepNodeIndex>,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
         match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key) {
@@ -1004,7 +994,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         profiler: &SelfProfilerRef,
         prev_graph: &SerializedDepGraph<K>,
         key: DepNode<K>,
-        edges: EdgesVec,
+        edges: FxLinkedHashSet<DepNodeIndex>,
         fingerprint: Option<Fingerprint>,
         print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
@@ -1145,23 +1135,23 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
 /// The capacity of the `reads` field `SmallVec`
 const TASK_DEPS_READS_CAP: usize = 8;
-type EdgesVec = SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>;
 
 pub struct TaskDeps<K> {
     #[cfg(debug_assertions)]
     node: Option<DepNode<K>>,
-    reads: EdgesVec,
-    read_set: FxHashSet<DepNodeIndex>,
+    read_set: FxLinkedHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode<K>>,
 }
 
-impl<K> Default for TaskDeps<K> {
-    fn default() -> Self {
+impl<K> TaskDeps<K> {
+    fn new(#[cfg(debug_assertions)] node: Option<DepNode<K>>) -> Self {
         Self {
             #[cfg(debug_assertions)]
-            node: None,
-            reads: EdgesVec::new(),
-            read_set: FxHashSet::default(),
+            node,
+            read_set: FxLinkedHashSet::with_capacity_and_hasher(
+                TASK_DEPS_READS_CAP,
+                Default::default(),
+            ),
             phantom_data: PhantomData,
         }
     }
