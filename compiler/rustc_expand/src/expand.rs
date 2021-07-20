@@ -12,7 +12,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AstLike, Block, Inline, ItemKind, Local, MacArgs};
+use rustc_ast::{AstLike, Block, Inline, ItemKind, Local, MacArgs, MacCall};
 use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
 use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
@@ -26,7 +26,7 @@ use rustc_parse::parser::{
     AttemptLocalParseRecovery, ForceCollect, Parser, RecoverColon, RecoverComma,
 };
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
@@ -1070,7 +1070,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
-    fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
+    fn check_attributes(&mut self, attrs: &[ast::Attribute], call: &MacCall) {
         let features = self.cx.ecfg.features.unwrap();
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -1085,14 +1085,31 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 continue;
             }
 
-            if attr.doc_str().is_some() {
+            if attr.is_doc_comment() {
                 self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
                     &UNUSED_DOC_COMMENTS,
                     current_span,
-                    ast::CRATE_NODE_ID,
+                    self.cx.current_expansion.lint_node_id,
                     "unused doc comment",
                     BuiltinLintDiagnostics::UnusedDocComment(attr.span),
                 );
+            } else if rustc_attr::is_builtin_attr(attr) {
+                let attr_name = attr.ident().unwrap().name;
+                // `#[cfg]` and `#[cfg_attr]` are special - they are
+                // eagerly evaluated.
+                if attr_name != sym::cfg && attr_name != sym::cfg_attr {
+                    self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
+                        &UNUSED_ATTRIBUTES,
+                        attr.span,
+                        self.cx.current_expansion.lint_node_id,
+                        &format!("unused attribute `{}`", attr_name),
+                        BuiltinLintDiagnostics::UnusedBuiltinAttribute {
+                            attr_name,
+                            macro_name: pprust::path_to_string(&call.path),
+                            invoc_span: call.path.span,
+                        },
+                    );
+                }
             }
         }
     }
@@ -1152,7 +1169,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
 
             if let ast::ExprKind::MacCall(mac) = expr.kind {
-                self.check_attributes(&expr.attrs);
+                self.check_attributes(&expr.attrs, &mac);
                 self.collect_bang(mac, expr.span, AstFragmentKind::Expr).make_expr().into_inner()
             } else {
                 assign_id!(self, &mut expr.id, || {
@@ -1253,7 +1270,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
 
             if let ast::ExprKind::MacCall(mac) = expr.kind {
-                self.check_attributes(&expr.attrs);
+                self.check_attributes(&expr.attrs, &mac);
                 self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
                     .make_opt_expr()
                     .map(|expr| expr.into_inner())
@@ -1296,7 +1313,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         if let StmtKind::MacCall(mac) = stmt.kind {
             let MacCallStmt { mac, style, attrs, tokens: _ } = mac.into_inner();
-            self.check_attributes(&attrs);
+            self.check_attributes(&attrs, &mac);
             let mut placeholder =
                 self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts).make_stmts();
 
@@ -1344,9 +1361,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         let span = item.span;
 
         match item.kind {
-            ast::ItemKind::MacCall(..) => {
+            ast::ItemKind::MacCall(ref mac) => {
+                self.check_attributes(&attrs, &mac);
                 item.attrs = attrs;
-                self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
                     ItemKind::MacCall(mac) => {
                         self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
@@ -1455,8 +1472,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::AssocItemKind::MacCall(..) => {
-                self.check_attributes(&item.attrs);
+            ast::AssocItemKind::MacCall(ref mac) => {
+                self.check_attributes(&item.attrs, &mac);
                 item.and_then(|item| match item.kind {
                     ast::AssocItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::TraitItems)
@@ -1480,8 +1497,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::AssocItemKind::MacCall(..) => {
-                self.check_attributes(&item.attrs);
+            ast::AssocItemKind::MacCall(ref mac) => {
+                self.check_attributes(&item.attrs, &mac);
                 item.and_then(|item| match item.kind {
                     ast::AssocItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ImplItems)
@@ -1526,8 +1543,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match foreign_item.kind {
-            ast::ForeignItemKind::MacCall(..) => {
-                self.check_attributes(&foreign_item.attrs);
+            ast::ForeignItemKind::MacCall(ref mac) => {
+                self.check_attributes(&foreign_item.attrs, &mac);
                 foreign_item.and_then(|item| match item.kind {
                     ast::ForeignItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ForeignItems)
