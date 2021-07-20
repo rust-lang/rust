@@ -607,13 +607,9 @@ impl Inliner<'tcx> {
                 }
 
                 // Insert all of the (mapped) parts of the callee body into the caller.
-                caller_body.local_decls.extend(
-                    // FIXME(eddyb) make `Range<Local>` iterable so that we can use
-                    // `callee_body.local_decls.drain(callee_body.vars_and_temps())`
-                    callee_body
-                        .vars_and_temps_iter()
-                        .map(|local| callee_body.local_decls[local].clone()),
-                );
+                caller_body
+                    .local_decls
+                    .extend(callee_body.local_decls.drain(callee_body.arg_count + 1..)); // vars and temps
                 caller_body.source_scopes.extend(callee_body.source_scopes.drain(..));
                 caller_body.var_debug_info.extend(callee_body.var_debug_info.drain(..));
                 caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
