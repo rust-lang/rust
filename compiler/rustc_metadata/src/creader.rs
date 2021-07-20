@@ -4,7 +4,7 @@ use crate::dynamic_lib::DynamicLibrary;
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
@@ -1065,8 +1065,7 @@ fn global_allocator_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
     }
     impl<'ast, 'a> visit::Visitor<'ast> for Finder<'a> {
         fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name
-                && self.sess.contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+            if item.ident.name == self.name && self.sess.contains_name(&item.attrs, sym::no_mangle)
             {
                 self.spans.push(item.span);
             }
@@ -1074,7 +1073,7 @@ fn global_allocator_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
         }
     }
 
-    let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::alloc));
+    let name = Symbol::intern(&global_fn_name(sym::alloc));
     let mut f = Finder { sess, name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans

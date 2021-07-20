@@ -1,7 +1,7 @@
 use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast::expand::allocator::{
-    AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
+    global_fn_name, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
@@ -43,7 +43,7 @@ pub fn expand(
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
-    let f = AllocFnFactory { span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
+    let f = AllocFnFactory { span, global: item.ident, cx: ecx };
 
     // Generate item statements for the allocator methods.
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
@@ -64,7 +64,6 @@ pub fn expand(
 
 struct AllocFnFactory<'a, 'b> {
     span: Span,
-    kind: AllocatorKind,
     global: Ident,
     cx: &'b ExtCtxt<'a>,
 }
@@ -82,14 +81,24 @@ impl AllocFnFactory<'_, '_> {
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
-        let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
+        let header = FnHeader {
+            unsafety: Unsafe::Yes(self.span),
+            ext: ast::Extern::from_abi(Some(ast::StrLit {
+                style: ast::StrStyle::Cooked,
+                symbol: sym::C,
+                suffix: None,
+                span: self.span,
+                symbol_unescaped: sym::C,
+            })),
+            ..FnHeader::default()
+        };
         let sig = FnSig { decl, header, span: self.span };
         let block = Some(self.cx.block_expr(output_expr));
         let kind =
             ItemKind::Fn(box FnKind(ast::Defaultness::Final, sig, Generics::default(), block));
         let item = self.cx.item(
             self.span,
-            Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),
+            Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
@@ -108,7 +117,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn attrs(&self) -> Vec<Attribute> {
-        let special = sym::rustc_std_internal_symbol;
+        let special = sym::no_mangle;
         let special = self.cx.meta_word(self.span, special);
         vec![self.cx.attribute(special)]
     }
