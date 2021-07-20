@@ -124,6 +124,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(auto_traits)]
+#![feature(pin_deref_mut)]
 #![feature(prelude_import)]
 #![feature(ptr_metadata)]
 #![feature(repr_simd, platform_intrinsics)]
