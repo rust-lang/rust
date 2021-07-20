@@ -9,7 +9,8 @@ The tracking issue for this feature is: [#58713]
 The `raw_dylib` feature allows you to link against the implementations of functions in an `extern`
 block without, on Windows, linking against an import library.
 
-```rust
+<!-- NOTE(ignore) this example is specific to the windows targets and requires an external library -->
+```rust,ignore
 #![feature(raw_dylib)]
 
 #[link(name="library", kind="raw-dylib")]
