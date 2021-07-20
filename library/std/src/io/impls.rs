@@ -367,18 +367,26 @@ impl Write for &mut [u8] {
 
 /// Write is implemented for `Vec<u8>` by appending to the vector.
 /// The vector will grow as needed.
+///
+/// # Panics
+///
+/// In case of allocation error or capacity overflow, write operations will panic.
+/// The panicking behavior is not guaranteed. In the future, it may become
+/// a regular `io::Error`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        fallible_reserve(self, buf.len());
         self.extend_from_slice(buf);
         Ok(buf.len())
     }
 
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len = bufs.iter().map(|b| b.len()).sum();
-        self.reserve(len);
+        let len =
+            bufs.iter().try_fold(0usize, |len, b| len.checked_add(b.len())).expect("out of memory");
+        fallible_reserve(self, len);
         for buf in bufs {
             self.extend_from_slice(buf);
         }
@@ -392,6 +400,7 @@ impl<A: Allocator> Write for Vec<u8, A> {
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        fallible_reserve(self, buf.len());
         self.extend_from_slice(buf);
         Ok(())
     }
@@ -399,5 +408,19 @@ impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+#[inline]
+fn fallible_reserve<T, A: Allocator>(vec: &mut Vec<T, A>, len: usize) {
+    if len > vec.capacity().wrapping_sub(vec.len()) {
+        do_reserve_and_handle(vec, len);
+    }
+}
+
+#[cold]
+fn do_reserve_and_handle<T, A: Allocator>(vec: &mut Vec<T, A>, len: usize) {
+    if let Err(_) = vec.try_reserve(len) {
+        panic!("out of memory");
     }
 }
