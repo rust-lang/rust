@@ -2493,9 +2493,6 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
                 TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() => {
                     Error0644("closure/generator type that references itself")
                 }
-                TypeError::IntrinsicCast => {
-                    Error0308("cannot coerce intrinsics to function pointers")
-                }
                 TypeError::ObjectUnsafeCoercion(did) => Error0038(*did),
                 _ => Error0308("mismatched types"),
             },

@@ -16,8 +16,8 @@ use std::fmt;
 use std::iter;
 
 use crate::transform::{
-    add_call_guards, add_moves_for_packed_drops, no_landing_pads, remove_noop_landing_pads,
-    run_passes, simplify,
+    add_call_guards, add_moves_for_packed_drops, lower_intrinsics, no_landing_pads,
+    remove_noop_landing_pads, run_passes, simplify,
 };
 use crate::util::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use crate::util::expand_aggregate;
@@ -83,6 +83,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &no_landing_pads::NoLandingPads,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
+            &lower_intrinsics::LowerIntrinsics,
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,
         ]],
