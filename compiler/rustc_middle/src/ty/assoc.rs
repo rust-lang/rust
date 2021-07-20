@@ -124,7 +124,7 @@ impl<'tcx> AssocItems<'tcx> {
         &self,
         name: Symbol,
     ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.items.get_by_key(&name).copied()
+        self.items.get_by_key(name).copied()
     }
 
     /// Returns an iterator over all associated items with the given name.
