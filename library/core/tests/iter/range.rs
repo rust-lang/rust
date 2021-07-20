@@ -286,6 +286,29 @@ fn test_range_step() {
 }
 
 #[test]
+fn test_range_advance_by() {
+    let mut r = 0..usize::MAX;
+    r.advance_by(0).unwrap();
+    r.advance_back_by(0).unwrap();
+
+    assert_eq!(r.len(), usize::MAX);
+
+    r.advance_by(1).unwrap();
+    r.advance_back_by(1).unwrap();
+
+    assert_eq!((r.start, r.end), (1, usize::MAX - 1));
+
+    assert_eq!(r.advance_by(usize::MAX), Err(usize::MAX - 2));
+
+    let mut r = 0u128..u128::MAX;
+
+    r.advance_by(usize::MAX).unwrap();
+    r.advance_back_by(usize::MAX).unwrap();
+
+    assert_eq!((r.start, r.end), (0u128 + usize::MAX as u128, u128::MAX - usize::MAX as u128));
+}
+
+#[test]
 fn test_range_inclusive_step() {
     assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
     assert_eq!((0..=5).step_by(1).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
