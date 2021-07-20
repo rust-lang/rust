@@ -99,7 +99,7 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
         if let Some(snip) = snippet_opt(cx, span.ctxt().outer_expn_data().call_site);
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
-        if snip.starts_with(name);
+        if snip.starts_with(&format!("{}!", name));
         // make formatting consistent
         let c = snip.replace(" ", "");
         if !c.starts_with(&format!("{}!{}", name, braces.0));
