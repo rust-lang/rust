@@ -897,16 +897,19 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                                 permitted = true;
                             }
                         }
-                        let mut const_impls = true;
-                        tcx.for_each_relevant_impl(trait_id, substs.type_at(0), |imp| {
-                            if const_impls {
-                                if let hir::Constness::NotConst = tcx.impl_constness(imp) {
-                                    const_impls = false;
+                        if !permitted {
+                            // if trait's impls are all const, permit the call.
+                            let mut const_impls = true;
+                            tcx.for_each_relevant_impl(trait_id, substs.type_at(0), |imp| {
+                                if const_impls {
+                                    if let hir::Constness::NotConst = tcx.impl_constness(imp) {
+                                        const_impls = false;
+                                    }
                                 }
+                            });
+                            if const_impls {
+                                permitted = true;
                             }
-                        });
-                        if const_impls {
-                            permitted = true;
                         }
                     }
 

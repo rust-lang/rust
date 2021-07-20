@@ -15,7 +15,6 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
@@ -175,13 +174,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn default_constness_for_trait_bounds(&self) -> hir::Constness {
-        // FIXME: refactor this into a method
-        let node = self.tcx.hir().get(self.body_id);
-        if let Some(fn_like) = FnLikeNode::from_node(node) {
-            fn_like.constness()
-        } else {
-            hir::Constness::NotConst
-        }
+        self.tcx.hir().get(self.body_id).constness()
     }
 
     fn get_type_parameter_bounds(
