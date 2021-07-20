@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-85945-check-where-clause-before-suggesting-unsized.rs:4:16
+   |
+LL | fn foo<T>(_: &T) where T: Sized {}
+   |        - required by this bound in `foo`
+LL | fn bar() { foo(""); }
+   |                ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
