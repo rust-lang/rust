@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
-use crate::dep_graph::{DepNode, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeIndex, HasDepContext, SerializedDepNodeIndex, TaskDeps};
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -94,6 +94,7 @@ pub trait QueryContext: HasDepContext {
         &self,
         token: QueryJobId<Self::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        deps: Option<&Lock<TaskDeps<Self::DepKind>>>,
         compute: impl FnOnce() -> R,
     ) -> R;
 }

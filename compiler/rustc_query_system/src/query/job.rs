@@ -143,6 +143,8 @@ impl<D> QueryJobId<D>
 where
     D: Copy + Clone + Eq + Hash,
 {
+    #[cold]
+    #[inline(never)]
     pub(super) fn find_cycle_in_stack(
         &self,
         query_map: QueryMap<D>,

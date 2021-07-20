@@ -55,7 +55,7 @@ use std::io::{BufWriter, Write};
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
-            tcx.dep_graph.with_query(dump_graph);
+            tcx.dep_graph.with_debug(dump_graph);
         }
 
         if !tcx.sess.opts.debugging_opts.query_dep_graph {
@@ -201,7 +201,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
         }
         return;
     }
-    tcx.dep_graph.with_query(|query| {
+    tcx.dep_graph.with_debug(|query| {
         for &(_, source_def_id, ref source_dep_node) in if_this_changed {
             let dependents = query.transitive_predecessors(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
