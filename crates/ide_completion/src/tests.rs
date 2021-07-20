@@ -9,10 +9,10 @@ mod item_list;
 mod item;
 mod pattern;
 mod predicate;
+mod sourcegen;
 mod type_pos;
 mod use_tree;
-
-mod sourcegen;
+mod visibility;
 
 use std::mem;
 

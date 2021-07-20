@@ -39,10 +39,16 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     let has_block_expr_parent = ctx.has_block_expr_parent();
     let expects_item = ctx.expects_item();
 
+    if let Some(ImmediateLocation::Visibility(vis)) = &ctx.completion_location {
+        if vis.in_token().is_none() {
+            add_keyword("in", "in");
+        }
+        return;
+    }
     if ctx.has_impl_or_trait_prev_sibling() {
-        add_keyword("where", "where ");
+        add_keyword("where", "where");
         if ctx.has_impl_prev_sibling() {
-            add_keyword("for", "for ");
+            add_keyword("for", "for");
         }
         return;
     }
@@ -62,12 +68,12 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if !ctx.has_visibility_prev_sibling()
         && (expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_field())
     {
-        add_keyword("pub(crate)", "pub(crate) ");
-        add_keyword("pub", "pub ");
+        add_keyword("pub(crate)", "pub(crate)");
+        add_keyword("pub", "pub");
     }
 
     if expects_item || expects_assoc_item || has_block_expr_parent {
-        add_keyword("unsafe", "unsafe ");
+        add_keyword("unsafe", "unsafe");
         add_keyword("fn", "fn $1($2) {\n    $0\n}");
         add_keyword("const", "const $0");
         add_keyword("type", "type $0");
@@ -110,7 +116,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || has_block_expr_parent {
-        add_keyword("let", "let ");
+        add_keyword("let", "let");
     }
 
     if ctx.after_if() {
