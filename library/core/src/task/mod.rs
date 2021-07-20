@@ -10,6 +10,6 @@ mod wake;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use self::wake::{Context, RawWaker, RawWakerVTable, Waker};
 
-mod ready;
-#[unstable(feature = "ready_macro", issue = "70922")]
-pub use ready::ready;
+mod if_ready;
+#[stable(feature = "ready_macro", since = "1.55.0")]
+pub use if_ready::if_ready;

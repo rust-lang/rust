@@ -304,7 +304,6 @@
 #![feature(pin_static_ref)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
-#![feature(ready_macro)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
