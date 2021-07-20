@@ -468,51 +468,58 @@ public:
       }
     }
 
-    bool isfloat = type->isFPOrFPVectorTy();
-    if (!isfloat && type->isIntOrIntVectorTy()) {
-      auto LoadSize = DL.getTypeSizeInBits(type) / 8;
-      ConcreteType vd = BaseType::Unknown;
-      if (!OrigOffset)
-        vd = TR.firstPointer(LoadSize, I.getOperand(0),
-                             /*errifnotfound*/ false, /*pointerIntSame*/ true);
-      if (vd.isKnown())
-        isfloat = vd.isFloat();
-      else
-        isfloat = TR.intType(LoadSize, &I, /*errIfNotFound*/ !looseTypeAnalysis)
-                      .isFloat();
-    }
-
-    if (isfloat) {
-
-      switch (Mode) {
-      case DerivativeMode::ForwardMode: {
-        IRBuilder<> Builder2(&I);
-        getForwardBuilder(Builder2);
-
-        if (!gutils->isConstantValue(&I)) {
-          auto diff = Builder2.CreateLoad(
-              gutils->invertPointerM(I.getOperand(0), Builder2));
-          setDiffe(&I, diff, Builder2);
-        }
-        break;
+    // Only propagate if instruction is active. The value can be active and not
+    // the instruction if the value is a potential pointer. This may not be
+    // caught by type analysis is the result does not have a known type.
+    if (!gutils->isConstantInstruction(&I)) {
+      bool isfloat = type->isFPOrFPVectorTy();
+      if (!isfloat && type->isIntOrIntVectorTy()) {
+        auto LoadSize = DL.getTypeSizeInBits(type) / 8;
+        ConcreteType vd = BaseType::Unknown;
+        if (!OrigOffset)
+          vd =
+              TR.firstPointer(LoadSize, I.getOperand(0),
+                              /*errifnotfound*/ false, /*pointerIntSame*/ true);
+        if (vd.isKnown())
+          isfloat = vd.isFloat();
+        else
+          isfloat =
+              TR.intType(LoadSize, &I, /*errIfNotFound*/ !looseTypeAnalysis)
+                  .isFloat();
       }
-      case DerivativeMode::ReverseModeGradient:
-      case DerivativeMode::ReverseModeCombined: {
-        IRBuilder<> Builder2(parent);
-        getReverseBuilder(Builder2);
 
-        auto prediff = diffe(&I, Builder2);
-        setDiffe(&I, Constant::getNullValue(type), Builder2);
+      if (isfloat) {
 
-        if (!gutils->isConstantValue(I.getOperand(0))) {
-          ((DiffeGradientUtils *)gutils)
-              ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
-                                      alignment, OrigOffset);
+        switch (Mode) {
+        case DerivativeMode::ForwardMode: {
+          IRBuilder<> Builder2(&I);
+          getForwardBuilder(Builder2);
+
+          if (!gutils->isConstantValue(&I)) {
+            auto diff = Builder2.CreateLoad(
+                gutils->invertPointerM(I.getOperand(0), Builder2));
+            setDiffe(&I, diff, Builder2);
+          }
+          break;
         }
-        break;
-      }
-      case DerivativeMode::ReverseModePrimal:
-        break;
+        case DerivativeMode::ReverseModeGradient:
+        case DerivativeMode::ReverseModeCombined: {
+          IRBuilder<> Builder2(parent);
+          getReverseBuilder(Builder2);
+
+          auto prediff = diffe(&I, Builder2);
+          setDiffe(&I, Constant::getNullValue(type), Builder2);
+
+          if (!gutils->isConstantValue(I.getOperand(0))) {
+            ((DiffeGradientUtils *)gutils)
+                ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
+                                        alignment, OrigOffset);
+          }
+          break;
+        }
+        case DerivativeMode::ReverseModePrimal:
+          break;
+        }
       }
     }
   }
@@ -4479,9 +4486,10 @@ public:
     }
 
     if (funcName == "julia.pointer_from_objref") {
-      eraseIfUnused(*orig);
-      if (gutils->isConstantValue(orig))
+      if (gutils->isConstantValue(orig)) {
+        eraseIfUnused(*orig);
         return;
+      }
 
       Value *ptrshadow =
           gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
@@ -4494,6 +4502,7 @@ public:
       gutils->invertedPointers[orig] = val;
       gutils->replaceAWithB(placeholder, val);
       gutils->erase(placeholder);
+      eraseIfUnused(*orig);
       return;
     }
 

@@ -3134,6 +3134,26 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         funcName.startswith("_ZN4core3fmt")) {
       return;
     }
+    /// GEMM
+    if (funcName == "dgemm_64" || funcName == "dgemm_64_" ||
+        funcName == "dgemm" || funcName == "dgemm_") {
+      TypeTree ptrint;
+      ptrint.insert({-1}, BaseType::Pointer);
+      ptrint.insert({-1, 0}, BaseType::Integer);
+      // transa, transb, m, n, k, lda, ldb, ldc
+      for (int i : {0, 1, 2, 3, 4, 7, 9, 12})
+        updateAnalysis(call.getArgOperand(i), ptrint, &call);
+
+      TypeTree ptrdbl;
+      ptrdbl.insert({-1}, BaseType::Pointer);
+      ptrdbl.insert({-1, 0}, Type::getDoubleTy(call.getContext()));
+
+      // alpha, a, b, beta, c
+      for (int i : {5, 6, 8, 10, 11})
+        updateAnalysis(call.getArgOperand(i), ptrdbl, &call);
+      return;
+    }
+
     /// MPI
     if (funcName == "MPI_Init") {
       TypeTree ptrint;

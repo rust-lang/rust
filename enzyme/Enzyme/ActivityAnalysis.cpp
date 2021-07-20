@@ -283,6 +283,14 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     return false;
   }
 
+  if (!TR.isBlockAnalyzed(I->getParent())) {
+    if (EnzymePrintActivity)
+      llvm::errs() << " constant instruction as dominates unreachable " << *I
+                   << "\n";
+    InsertConstantInstruction(TR, I);
+    return true;
+  }
+
   /// A store into all integral memory is inactive
   if (auto SI = dyn_cast<StoreInst>(I)) {
     auto StoreSize = SI->getParent()
@@ -429,7 +437,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       if (directions == DOWN && !isa<PHINode>(I)) {
         if (isValueInactiveFromUsers(TR, I, UseActivity::None)) {
           if (EnzymePrintActivity)
-            llvm::errs() << " constant instruction[" << directions
+            llvm::errs() << " constant instruction[" << (int)directions
                          << "] from users instruction " << *I << "\n";
           InsertConstantInstruction(TR, I);
           return true;
@@ -441,7 +449,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
         if (DownHypothesis->isValueInactiveFromUsers(TR, I,
                                                      UseActivity::None)) {
           if (EnzymePrintActivity)
-            llvm::errs() << " constant instruction[" << directions
+            llvm::errs() << " constant instruction[" << (int)directions
                          << "] from users instruction " << *I << "\n";
           InsertConstantInstruction(TR, I);
           insertConstantsFrom(TR, *DownHypothesis);
@@ -1804,6 +1812,13 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     // if its return is used in an active way, therefore add this to
     // the list of users to analyze
     if (auto I = dyn_cast<Instruction>(a)) {
+      if (!TR.isBlockAnalyzed(I->getParent())) {
+        if (EnzymePrintActivity) {
+          llvm::errs() << "Value found constant unreachable inst use:" << *val
+                       << " user " << *I << "\n";
+        }
+        continue;
+      }
       if (ConstantInstructions.count(I) &&
           (I->getType()->isVoidTy() || ConstantValues.count(I))) {
         if (EnzymePrintActivity) {
