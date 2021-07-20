@@ -430,12 +430,6 @@ impl Module {
             .collect()
     }
 
-    pub fn visibility(self, db: &dyn HirDatabase) -> Visibility {
-        let def_map = self.id.def_map(db.upcast());
-        let module_data = &def_map[self.id.local_id];
-        module_data.visibility
-    }
-
     /// XXX: this O(N) rather O(1) method, avoid using it if you can.
     pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
         let def_map = self.id.def_map(db.upcast());
@@ -644,6 +638,14 @@ impl Module {
         prefix_kind: PrefixKind,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path_prefixed(db, item.into(), self.into(), prefix_kind)
+    }
+}
+
+impl HasVisibility for Module {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        let def_map = self.id.def_map(db.upcast());
+        let module_data = &def_map[self.id.local_id];
+        module_data.visibility
     }
 }
 
