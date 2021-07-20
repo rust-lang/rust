@@ -5,6 +5,7 @@ mod chain;
 mod cloned;
 mod copied;
 mod cycle;
+mod dedup;
 mod enumerate;
 mod filter;
 mod filter_map;
@@ -54,7 +55,10 @@ pub use self::zip::TrustedRandomAccess;
 #[unstable(feature = "iter_zip", issue = "83574")]
 pub use self::zip::zip;
 
-/// This trait provides transitive access to source-stage in an iterator-adapter pipeline
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+pub use self::dedup::{ByKey, ByPartialEq, Dedup};
+
+/// This trait provides transitive access to source-stage in an interator-adapter pipeline
 /// under the conditions that
 /// * the iterator source `S` itself implements `SourceIter<Source = S>`
 /// * there is a delegating implementation of this trait for each adapter in the pipeline between

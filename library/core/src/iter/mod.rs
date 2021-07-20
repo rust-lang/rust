@@ -407,6 +407,8 @@ pub use self::adapters::SourceIter;
 pub use self::adapters::StepBy;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccess;
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+pub use self::adapters::{ByKey, ByPartialEq, Dedup};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{
     Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
