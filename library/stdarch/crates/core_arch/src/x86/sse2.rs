@@ -2642,14 +2642,7 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(
-    all(test, any(not(target_os = "windows"), target_arch = "x86")),
-    cfg_attr(test, assert_instr(shufps, MASK = 2)) // FIXME shufpd expected
-)]
-#[cfg_attr(
-    all(test, all(target_os = "windows", target_arch = "x86_64")),
-    cfg_attr(test, assert_instr(shufpd, MASK = 1))
-)]
+#[cfg_attr(test, assert_instr(shufps, MASK = 2))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_pd<const MASK: i32>(a: __m128d, b: __m128d) -> __m128d {
@@ -2664,14 +2657,7 @@ pub unsafe fn _mm_shuffle_pd<const MASK: i32>(a: __m128d, b: __m128d) -> __m128d
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_move_sd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(
-    all(test, any(not(target_os = "windows"), target_arch = "x86")),
-    assert_instr(movsd)
-)]
-#[cfg_attr(
-    all(test, all(target_os = "windows", target_arch = "x86_64")),
-    assert_instr(movlps)
-)]
+#[cfg_attr(test, assert_instr(movsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_move_sd(a: __m128d, b: __m128d) -> __m128d {
     _mm_setr_pd(simd_extract(b, 0), simd_extract(a, 1))
