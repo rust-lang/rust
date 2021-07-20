@@ -1486,25 +1486,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let kind = key.descr();
                     let mut returned_async_output_error = false;
                     for sp in values {
-                        err.span_label(
-                            *sp,
-                            format!(
-                                "{}{}{} {}{}",
-                                if sp.is_desugaring(DesugaringKind::Async)
-                                    && !returned_async_output_error
-                                {
-                                    "checked the `Output` of this `async fn`, "
-                                } else if count == 1 {
-                                    "the "
-                                } else {
-                                    ""
-                                },
-                                if count > 1 { "one of the " } else { "" },
-                                target,
-                                kind,
-                                pluralize!(count),
-                            ),
-                        );
+                        if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
+                            err.span_label(
+                                *sp,
+                                format!("{}", "calling an async function returns a future"),
+                            );
+                        } else {
+                            err.span_label(
+                                *sp,
+                                format!(
+                                    "{}{}{} {}{}",
+                                    if count == 1 { "the " } else { "" },
+                                    if count > 1 { "one of the " } else { "" },
+                                    target,
+                                    kind,
+                                    pluralize!(count),
+                                ),
+                            );
+                        }
                         if sp.is_desugaring(DesugaringKind::Async)
                             && returned_async_output_error == false
                         {
@@ -1768,7 +1767,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let ObligationCauseCode::CompareImplMethodObligation { .. } = &cause.code {
             return;
         }
-
         match (
             self.get_impl_future_output_ty(exp_found.expected),
             self.get_impl_future_output_ty(exp_found.found),

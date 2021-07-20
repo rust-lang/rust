@@ -17,7 +17,7 @@ LL | |     }
   ::: $DIR/auxiliary/issue-81839.rs:6:49
    |
 LL |       pub async fn answer_str(&self, _s: &str) -> Test {
-   |                                                   ---- checked the `Output` of this `async fn`, found opaque type
+   |                                                   ---- calling an async function returns a future
    |
    = note: while checking the return type of the `async fn`
    = note:     expected type `()`
