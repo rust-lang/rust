@@ -294,6 +294,7 @@ dependencies = [
  "openssl",
  "percent-encoding 2.1.0",
  "pretty_env_logger",
+ "regex",
  "rustc-workspace-hack",
  "rustfix 0.6.0",
  "semver 1.0.3",
