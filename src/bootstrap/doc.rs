@@ -22,8 +22,17 @@ use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
 use crate::util::symlink_dir;
 
+macro_rules! submodule_helper {
+    ($path:expr, submodule) => {
+        $path
+    };
+    ($path:expr, submodule = $submodule:literal) => {
+        $submodule
+    };
+}
+
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr $(, submodule $(= $submodule:literal)? )? ;)+) => {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -46,6 +55,10 @@ macro_rules! book {
             }
 
             fn run(self, builder: &Builder<'_>) {
+                $(
+                    let path = Path::new(submodule_helper!( $path, submodule $( = $submodule )? ));
+                    builder.update_submodule(&path);
+                )?
                 builder.ensure(RustbookSrc {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
@@ -59,13 +72,16 @@ macro_rules! book {
 
 // NOTE: When adding a book here, make sure to ALSO build the book by
 // adding a build step in `src/bootstrap/builder.rs`!
+// NOTE: Make sure to add the corresponding submodule when adding a new book.
+// FIXME: Make checking for a submodule automatic somehow (maybe by having a list of all submodules
+// and checking against it?).
 book!(
-    CargoBook, "src/tools/cargo/src/doc", "cargo";
-    EditionGuide, "src/doc/edition-guide", "edition-guide";
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book";
-    Nomicon, "src/doc/nomicon", "nomicon";
-    Reference, "src/doc/reference", "reference";
-    RustByExample, "src/doc/rust-by-example", "rust-by-example";
+    CargoBook, "src/tools/cargo/src/doc", "cargo", submodule = "src/tools/cargo";
+    EditionGuide, "src/doc/edition-guide", "edition-guide", submodule;
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", submodule;
+    Nomicon, "src/doc/nomicon", "nomicon", submodule;
+    Reference, "src/doc/reference", "reference", submodule;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", submodule;
     RustdocBook, "src/doc/rustdoc", "rustdoc";
 );
 
@@ -197,6 +213,9 @@ impl Step for TheBook {
     /// * Index page
     /// * Redirect pages
     fn run(self, builder: &Builder<'_>) {
+        let relative_path = Path::new("src").join("doc").join("book");
+        builder.update_submodule(&relative_path);
+
         let compiler = self.compiler;
         let target = self.target;
 
@@ -204,7 +223,7 @@ impl Step for TheBook {
         builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_str("book"),
-            src: INTERNER.intern_path(builder.src.join("src/doc/book")),
+            src: INTERNER.intern_path(builder.src.join(&relative_path)),
         });
 
         // building older edition redirects
@@ -212,7 +231,7 @@ impl Step for TheBook {
             builder.ensure(RustbookSrc {
                 target,
                 name: INTERNER.intern_string(format!("book/{}", edition)),
-                src: INTERNER.intern_path(builder.src.join("src/doc/book").join(edition)),
+                src: INTERNER.intern_path(builder.src.join(&relative_path).join(edition)),
             });
         }
 
@@ -221,7 +240,7 @@ impl Step for TheBook {
 
         // build the redirect pages
         builder.info(&format!("Documenting book redirect pages ({})", target));
-        for file in t!(fs::read_dir(builder.src.join("src/doc/book/redirects"))) {
+        for file in t!(fs::read_dir(builder.src.join(&relative_path).join("redirects"))) {
             let file = t!(file);
             let path = file.path();
             let path = path.to_str().unwrap();

@@ -989,21 +989,30 @@ class RustBuild(object):
         slow_submodules = self.get_toml('fast-submodules') == "false"
         start_time = time()
         if slow_submodules:
-            print('Unconditionally updating all submodules')
+            print('Unconditionally updating submodules')
         else:
             print('Updating only changed submodules')
         default_encoding = sys.getdefaultencoding()
-        submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
-            ["git", "config", "--file",
-             os.path.join(self.rust_root, ".gitmodules"),
-             "--get-regexp", "path"]
-        ).decode(default_encoding).splitlines()]
+        # Only update submodules that are needed to build bootstrap.  These are needed because Cargo
+        # currently requires everything in a workspace to be "locally present" when starting a
+        # build, and will give a hard error if any Cargo.toml files are missing.
+        # FIXME: Is there a way to avoid cloning these eagerly? Bootstrap itself doesn't need to
+        #   share a workspace with any tools - maybe it could be excluded from the workspace?
+        #   That will still require cloning the submodules the second you check the standard
+        #   library, though...
+        # FIXME: Is there a way to avoid hard-coding the submodules required?
+        # WARNING: keep this in sync with the submodules hard-coded in bootstrap/lib.rs
+        submodules = [
+            "src/tools/rust-installer",
+            "src/tools/cargo",
+            "src/tools/rls",
+            "src/tools/miri",
+            "library/backtrace",
+            "library/stdarch"
+        ]
         filtered_submodules = []
         submodules_names = []
         for module in submodules:
-            # This is handled by native::Llvm in rustbuild, not here
-            if module.endswith("llvm-project"):
-                continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)

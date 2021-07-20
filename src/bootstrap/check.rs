@@ -7,7 +7,7 @@ use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::INTERNER;
 use crate::{Compiler, Mode, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -72,6 +72,8 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        builder.update_submodule(&Path::new("library").join("stdarch"));
+
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
 

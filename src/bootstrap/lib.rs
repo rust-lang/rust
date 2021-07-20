@@ -477,17 +477,116 @@ impl Build {
         slice::from_ref(&self.build.triple)
     }
 
+    // modified from `check_submodule` and `update_submodule` in bootstrap.py
+    /// Given a path to the directory of a submodule, update it.
+    ///
+    /// `relative_path` should be relative to the root of the git repository, not an absolute path.
+    pub(crate) fn update_submodule(&self, relative_path: &Path) {
+        fn dir_is_empty(dir: &Path) -> bool {
+            t!(std::fs::read_dir(dir)).next().is_none()
+        }
+
+        if !self.config.submodules {
+            return;
+        }
+
+        let absolute_path = self.config.src.join(relative_path);
+
+        // NOTE: The check for the empty directory is here because when running x.py the first time,
+        // the submodule won't be checked out. Check it out now so we can build it.
+        if !channel::GitInfo::new(false, relative_path).is_git() && !dir_is_empty(&absolute_path) {
+            return;
+        }
+
+        // check_submodule
+        if self.config.fast_submodules {
+            let checked_out_hash = output(
+                Command::new("git").args(&["rev-parse", "HEAD"]).current_dir(&absolute_path),
+            );
+            // update_submodules
+            let recorded = output(
+                Command::new("git")
+                    .args(&["ls-tree", "HEAD"])
+                    .arg(relative_path)
+                    .current_dir(&self.config.src),
+            );
+            let actual_hash = recorded
+                .split_whitespace()
+                .nth(2)
+                .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+
+            // update_submodule
+            if actual_hash == checked_out_hash.trim_end() {
+                // already checked out
+                return;
+            }
+        }
+
+        println!("Updating submodule {}", relative_path.display());
+        self.run(
+            Command::new("git")
+                .args(&["submodule", "-q", "sync"])
+                .arg(relative_path)
+                .current_dir(&self.config.src),
+        );
+
+        // Try passing `--progress` to start, then run git again without if that fails.
+        let update = |progress: bool| {
+            let mut git = Command::new("git");
+            git.args(&["submodule", "update", "--init", "--recursive"]);
+            if progress {
+                git.arg("--progress");
+            }
+            git.arg(relative_path).current_dir(&self.config.src);
+            git
+        };
+        // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
+        if !update(true).status().map_or(false, |status| status.success()) {
+            self.run(&mut update(false));
+        }
+
+        self.run(Command::new("git").args(&["reset", "-q", "--hard"]).current_dir(&absolute_path));
+        self.run(Command::new("git").args(&["clean", "-qdfx"]).current_dir(absolute_path));
+    }
+
+    /// If any submodule has been initialized already, sync it unconditionally.
+    /// This avoids contributors checking in a submodule change by accident.
+    pub fn maybe_update_submodules(&self) {
+        // WARNING: keep this in sync with the submodules hard-coded in bootstrap.py
+        const BOOTSTRAP_SUBMODULES: &[&str] = &[
+            "src/tools/rust-installer",
+            "src/tools/cargo",
+            "src/tools/rls",
+            "src/tools/miri",
+            "library/backtrace",
+            "library/stdarch",
+        ];
+        let output = output(
+            Command::new("git")
+                .args(&["config", "--file"])
+                .arg(&self.config.src.join(".gitmodules"))
+                .args(&["--get-regexp", "path"]),
+        );
+        for line in output.lines() {
+            // Look for `submodule.$name.path = $path`
+            // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
+            let submodule = Path::new(line.splitn(2, ' ').nth(1).unwrap());
+            // avoid updating submodules twice
+            if !BOOTSTRAP_SUBMODULES.iter().any(|&p| Path::new(p) == submodule)
+                && channel::GitInfo::new(false, submodule).is_git()
+            {
+                self.update_submodule(submodule);
+            }
+        }
+    }
+
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
             job::setup(self);
         }
 
-        // If the LLVM submodule has been initialized already, sync it unconditionally. This avoids
-        // contributors checking in a submodule change by accident.
-        if self.in_tree_llvm_info.is_git() {
-            native::update_llvm_submodule(self);
-        }
+        self.maybe_update_submodules();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
             return format::format(self, *check, &paths);
