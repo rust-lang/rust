@@ -1085,3 +1085,15 @@ mod test_drain_filter {
         assert_eq!(map.len(), 2);
     }
 }
+
+#[test]
+fn from_array() {
+    let map = HashMap::from([(1, 2), (3, 4)]);
+    let unordered_duplicates = HashMap::from([(3, 4), (1, 2), (1, 2)]);
+    assert_eq!(map, unordered_duplicates);
+
+    // This next line must infer the hasher type parameter.
+    // If you make a change that causes this line to no longer infer,
+    // that's a problem!
+    let _must_not_require_type_annotation = HashMap::from([(1, 2)]);
+}
