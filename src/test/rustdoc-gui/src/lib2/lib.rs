@@ -57,3 +57,10 @@ pub mod long_trait {
     pub trait ALongNameBecauseItHelpsTestingTheCurrentProblem: DerefMut<Target = u32>
         + From<u128> + Send + Sync + AsRef<str> + 'static {}
 }
+
+pub mod summary_table {
+    /// | header 1 | header 2 |
+    /// | -------- | -------- |
+    /// | content | content |
+    pub struct Foo;
+}
