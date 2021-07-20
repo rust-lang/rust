@@ -489,6 +489,7 @@ symbols! {
         deref_mut,
         deref_target,
         derive,
+        derive_default_enum,
         destructuring_assignment,
         diagnostic,
         direct,

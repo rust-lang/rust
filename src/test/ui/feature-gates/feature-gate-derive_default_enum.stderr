@@ -1,0 +1,13 @@
+error[E0658]: deriving `Default` on enums is experimental
+  --> $DIR/feature-gate-derive_default_enum.rs:1:10
+   |
+LL | #[derive(Default)]
+   |          ^^^^^^^
+   |
+   = note: see issue #86985 <https://github.com/rust-lang/rust/issues/86985> for more information
+   = help: add `#![feature(derive_default_enum)]` to the crate attributes to enable
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
