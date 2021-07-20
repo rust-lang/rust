@@ -23,7 +23,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::TargetSelection;
+use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
@@ -105,6 +105,17 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
+        // A hack to workaround missing _Unwind_* symbol issue from libstd.so
+        // This libunwind.a is built without hiding its symbol
+        if builder.config.llvm_libunwind == LlvmLibunwind::InTree
+            && (target.contains("linux") || target.contains("fuchsia"))
+        {
+            let libunwind_path = builder.ensure(native::Libunwind { target, visibility: true });
+            let libunwind_source = libunwind_path.join("libunwind.a");
+            let libunwind_target = builder.sysroot_libdir(compiler, target).join("libunwind.a");
+            builder.copy(&libunwind_source, &libunwind_target);
+        }
+
         builder.info(&format!(
             "Building stage{} std artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
@@ -117,6 +128,16 @@ impl Step for Std {
             target_deps,
             false,
         );
+
+        // copy the normal libunwind back
+        if builder.config.llvm_libunwind == LlvmLibunwind::InTree
+            && (target.contains("linux") || target.contains("fuchsia"))
+        {
+            let libunwind_path = builder.ensure(native::Libunwind { target, visibility: false });
+            let libunwind_source = libunwind_path.join("libunwind.a");
+            let libunwind_target = builder.sysroot_libdir(compiler, target).join("libunwind.a");
+            builder.copy(&libunwind_source, &libunwind_target);
+        }
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
@@ -230,6 +251,27 @@ fn copy_self_contained_objects(
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
+    }
+
+    if target.contains("musl")
+        || target.contains("x86_64-fortanix-unknown-sgx")
+        || builder.config.llvm_libunwind == LlvmLibunwind::InTree
+            && (target.contains("linux") || target.contains("fuchsia"))
+    {
+        let libunwind_path = builder.ensure(native::Libunwind { target, visibility: false });
+        let libunwind_source = libunwind_path.join("libunwind.a");
+        let libunwind_target = if builder.config.llvm_libunwind == LlvmLibunwind::InTree {
+            builder.sysroot_libdir(*compiler, target).join("libunwind.a")
+        } else {
+            libdir_self_contained.join("libunwind.a")
+        };
+        builder.copy(&libunwind_source, &libunwind_target);
+        let dep_type = if builder.config.llvm_libunwind == LlvmLibunwind::InTree {
+            DependencyType::Target
+        } else {
+            DependencyType::TargetSelfContained
+        };
+        target_deps.push((libunwind_target, dep_type));
     }
 
     target_deps

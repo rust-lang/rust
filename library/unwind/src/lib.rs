@@ -1,10 +1,12 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(link_cfg)]
+#![feature(native_link_modifiers)]
+#![feature(native_link_modifiers_bundle)]
 #![feature(nll)]
 #![feature(staged_api)]
-#![feature(unwind_attributes)]
 #![feature(static_nobundle)]
+#![feature(unwind_attributes)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 
 cfg_if::cfg_if! {
@@ -36,19 +38,19 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(target_env = "musl")]
+#[cfg(all(target_os = "linux", target_env = "musl"))]
 cfg_if::cfg_if! {
     if #[cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind"))] {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
     } else if #[cfg(feature = "llvm-libunwind")] {
-        #[link(name = "unwind", kind = "static")]
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
         extern "C" {}
     } else if #[cfg(feature = "system-llvm-libunwind")] {
-        #[link(name = "unwind", kind = "static-nobundle", cfg(target_feature = "crt-static"))]
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     } else {
-        #[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     }
@@ -57,29 +59,31 @@ cfg_if::cfg_if! {
 // When building with crt-static, we get `gcc_eh` from the `libc` crate, since
 // glibc needs it, and needs it listed later on the linker command line. We
 // don't want to duplicate it here.
-#[cfg(all(
-    target_os = "linux",
-    target_env = "gnu",
-    not(feature = "llvm-libunwind"),
-    not(feature = "system-llvm-libunwind")
-))]
-#[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
-
-#[cfg(all(
-    target_os = "linux",
-    target_env = "gnu",
-    not(feature = "llvm-libunwind"),
-    feature = "system-llvm-libunwind"
-))]
-#[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind"))] {
+        compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
+    } else if #[cfg(feature = "llvm-libunwind")] {
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    } else if #[cfg(feature = "system-llvm-libunwind")]{
+        #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    } else {
+        #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    }
+}
 
 #[cfg(target_os = "redox")]
-#[link(name = "gcc_eh", kind = "static-nobundle", cfg(target_feature = "crt-static"))]
+#[link(name = "gcc_eh", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-#[link(name = "unwind", kind = "static")]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
+extern "C" {}
+
+#[cfg(all(feature = "llvm-libunwind", target_os = "fuchsia"))]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}
