@@ -12,6 +12,7 @@ pub struct LowerIntrinsics;
 
 impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let param_env = tcx.param_env(body.source.def_id()).with_reveal_all_normalized(tcx);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for block in basic_blocks {
             let terminator = block.terminator.as_mut().unwrap();
@@ -44,22 +45,36 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::copy_nonoverlapping => {
                         let target = destination.unwrap().1;
                         let mut args = args.drain(..);
-                        block.statements.push(Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::CopyNonOverlapping(
-                                box rustc_middle::mir::CopyNonOverlapping {
-                                    src: args.next().unwrap(),
-                                    dst: args.next().unwrap(),
-                                    count: args.next().unwrap(),
-                                },
-                            ),
-                        });
+                        let src = args.next().unwrap();
+                        let dst = args.next().unwrap();
+                        let count = args.next().unwrap();
+
                         assert_eq!(
                             args.next(),
                             None,
                             "Extra argument for copy_non_overlapping intrinsic"
                         );
                         drop(args);
+
+                        let stmt = if let (Some(1), Some(src), Some(dst)) = (
+                            eval_operand_to_usize(tcx, param_env, &count),
+                            src.place(),
+                            dst.place(),
+                        ) {
+                            StatementKind::Assign(box (
+                                tcx.mk_place_deref(dst),
+                                Rvalue::Use(Operand::Copy(tcx.mk_place_deref(src))),
+                            ))
+                        } else {
+                            StatementKind::CopyNonOverlapping(
+                                box rustc_middle::mir::CopyNonOverlapping { src, dst, count },
+                            )
+                        };
+
+                        block
+                            .statements
+                            .push(Statement { source_info: terminator.source_info, kind: stmt });
+
                         terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
@@ -128,6 +143,15 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
             }
         }
     }
+}
+
+fn eval_operand_to_usize(
+    tcx: TyCtxt<'tcx>,
+    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    operand: &Operand<'tcx>,
+) -> Option<u64> {
+    let constant = operand.constant()?;
+    Some(constant.literal.try_eval_usize(tcx, param_env)?)
 }
 
 fn resolve_rust_intrinsic(
