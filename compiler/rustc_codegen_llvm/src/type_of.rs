@@ -98,6 +98,8 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
+    let mut projection = vec![0; field_count];
+    let mut padding_used = false;
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -116,11 +118,14 @@ fn struct_llfields<'a, 'tcx>(
         );
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
-        let padding_align = prev_effective_align.min(effective_field_align);
-        assert_eq!(offset.align_to(padding_align) + padding, target_offset);
-        result.push(cx.type_padding_filler(padding, padding_align));
-        debug!("    padding before: {:?}", padding);
-
+        if padding != Size::ZERO {
+            padding_used = true;
+            let padding_align = prev_effective_align.min(effective_field_align);
+            assert_eq!(offset.align_to(padding_align) + padding, target_offset);
+            result.push(cx.type_padding_filler(padding, padding_align));
+            debug!("    padding before: {:?}", padding);
+        }
+        projection[i] = result.len() as u32;
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
@@ -130,16 +135,20 @@ fn struct_llfields<'a, 'tcx>(
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }
         let padding = layout.size - offset;
-        let padding_align = prev_effective_align;
-        assert_eq!(offset.align_to(padding_align) + padding, layout.size);
-        debug!(
-            "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
-            padding, offset, layout.size
-        );
-        result.push(cx.type_padding_filler(padding, padding_align));
-        assert_eq!(result.len(), 1 + field_count * 2);
+        if padding != Size::ZERO {
+            let padding_align = prev_effective_align;
+            assert_eq!(offset.align_to(padding_align) + padding, layout.size);
+            debug!(
+                "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
+                padding, offset, layout.size
+            );
+            result.push(cx.type_padding_filler(padding, padding_align));
+        }
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
+    }
+    if padding_used {
+        cx.field_projection_cache.borrow_mut().insert(layout, projection);
     }
 
     (result, packed)
@@ -177,7 +186,7 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn llvm_field_index(&self, index: usize) -> u64;
+    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
 
@@ -340,7 +349,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
 
-    fn llvm_field_index(&self, index: usize) -> u64 {
+    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64 {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
@@ -354,7 +363,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
+            FieldsShape::Arbitrary { .. } => match cx.field_projection_cache.borrow().get(self) {
+                Some(projection) => projection[index] as u64,
+                None => self.fields.memory_index(index) as u64,
+            },
         }
     }
 
