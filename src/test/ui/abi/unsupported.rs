@@ -5,6 +5,7 @@
 // [i686] needs-llvm-components: x86
 // [i686]compile-flags: --target=i686-unknown-linux-gnu --crate-type=rlib
 // [aarch64] needs-llvm-components: aarch64
+// [aarch64] min-llvm-version: 12.0
 // [aarch64]compile-flags: --target=aarch64-unknown-linux-gnu --crate-type=rlib
 #![no_core]
 #![feature(
