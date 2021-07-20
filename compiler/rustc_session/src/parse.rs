@@ -228,20 +228,12 @@ impl ParseSess {
 
     /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
     /// parser to continue parsing the following operation as part of the same expression.
-    pub fn expr_parentheses_needed(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        span: Span,
-        alt_snippet: Option<String>,
-    ) {
-        if let Some(snippet) = self.source_map().span_to_snippet(span).ok().or(alt_snippet) {
-            err.span_suggestion(
-                span,
-                "parentheses are required to parse this as an expression",
-                format!("({})", snippet),
-                Applicability::MachineApplicable,
-            );
-        }
+    pub fn expr_parentheses_needed(&self, err: &mut DiagnosticBuilder<'_>, span: Span) {
+        err.multipart_suggestion(
+            "parentheses are required to parse this as an expression",
+            vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), ")".to_string())],
+            Applicability::MachineApplicable,
+        );
     }
 
     pub fn save_proc_macro_span(&self, span: Span) -> usize {
