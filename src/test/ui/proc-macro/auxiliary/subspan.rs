@@ -19,7 +19,7 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
         }
 
         if !spans.is_empty() {
-            Err(Span::call_site().error("found 'hi's").span_note(spans, "here"))
+            Err(Span::call_site().error("found 'hi's").with_note("here").mark_all(spans))
         } else {
             Ok(())
         }

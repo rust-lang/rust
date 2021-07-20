@@ -1,171 +1,227 @@
 use crate::Span;
+use std::iter;
 
 /// An enum representing a diagnostic level.
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+#[doc(hidden)]
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Copy, Clone, Debug)]
 #[non_exhaustive]
 pub enum Level {
     /// An error.
     Error,
-    /// A warning.
-    Warning,
+    // /// A warning.
+    // Warning,
     /// A note.
     Note,
     /// A help message.
     Help,
 }
 
-/// Trait implemented by types that can be converted into a set of `Span`s.
+/// Trait implemented by types that can be converted into an iterator of [`Span`]s.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub trait MultiSpan {
-    /// Converts `self` into a `Vec<Span>`.
-    fn into_spans(self) -> Vec<Span>;
-}
+pub trait Spanned {
+    /// The concrete iterator type returned by `spans`.
+    type Iter: Iterator<Item = Span>;
 
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl MultiSpan for Span {
-    fn into_spans(self) -> Vec<Span> {
-        vec![self]
+    /// Converts `self` into an iterator of `Span`.
+    fn spans(self) -> Self::Iter;
+
+    /// Best-effort join of all `Span`s in the iterator.
+    fn span(self) -> Span
+    where
+        Self: Sized,
+    {
+        self.spans()
+            .reduce(|a, b| match a.join(b) {
+                Some(joined) => joined,
+                // Skip any bad joins.
+                None => a,
+            })
+            .unwrap_or_else(Span::call_site)
+    }
+
+    /// Create an error attached to the `Span`.
+    fn error(self, msg: &str) -> Diagnostic
+    where
+        Self: Sized,
+    {
+        Diagnostic::error(msg).mark_all(self.spans())
+    }
+
+    // FIXME lint-associated warnings
+    // /// Create a warning attached to the `Span`.
+    // fn warning(self, lint: &Lint, msg: &str) -> Diagnostic {
+    //     Diagnostic::warning(lint, msg).mark(self.span())
+    // }
+
+    /// Create an note attached to the `Span`.
+    fn note(self, msg: &str) -> Diagnostic
+    where
+        Self: Sized,
+    {
+        Diagnostic::note(msg).mark_all(self.spans())
     }
 }
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl MultiSpan for Vec<Span> {
-    fn into_spans(self) -> Vec<Span> {
+impl<S: Spanned, I: IntoIterator<Item = S>> Spanned for I {
+    type Iter = impl Iterator<Item = Span>;
+
+    fn spans(self) -> Self::Iter {
+        self.into_iter().flat_map(Spanned::spans)
+    }
+}
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+impl Spanned for Span {
+    type Iter = iter::Once<Self>;
+
+    fn spans(self) -> Self::Iter {
+        iter::once(self)
+    }
+
+    fn span(self) -> Span {
         self
     }
 }
 
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl<'a> MultiSpan for &'a [Span] {
-    fn into_spans(self) -> Vec<Span> {
-        self.to_vec()
-    }
+macro_rules! impl_span_passthrough {
+    ($($type:ty)*) => {$(
+        #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+        impl Spanned for $type {
+            type Iter = iter::Once<Span>;
+
+            fn spans(self) -> Self::Iter {
+                iter::once(self.span())
+            }
+
+            fn span(self) -> Span {
+                Self::span(&self)
+            }
+        }
+    )*}
 }
+
+impl_span_passthrough![
+    crate::Group
+    crate::Ident
+    crate::Literal
+    crate::Punct
+    crate::TokenTree
+];
 
 /// A structure representing a diagnostic message and associated children
 /// messages.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+#[must_use = "diagnostics do nothing unless emitted"]
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
     level: Level,
     message: String,
     spans: Vec<Span>,
+    labels: Vec<(Span, String)>,
     children: Vec<Diagnostic>,
-}
-
-macro_rules! diagnostic_child_methods {
-    ($spanned:ident, $regular:ident, $level:expr) => {
-        /// Adds a new child diagnostic message to `self` with the level
-        /// identified by this method's name with the given `spans` and
-        /// `message`.
-        #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-        pub fn $spanned<S, T>(mut self, spans: S, message: T) -> Diagnostic
-        where
-            S: MultiSpan,
-            T: Into<String>,
-        {
-            self.children.push(Diagnostic::spanned(spans, $level, message));
-            self
-        }
-
-        /// Adds a new child diagnostic message to `self` with the level
-        /// identified by this method's name with the given `message`.
-        #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-        pub fn $regular<T: Into<String>>(mut self, message: T) -> Diagnostic {
-            self.children.push(Diagnostic::new($level, message));
-            self
-        }
-    };
-}
-
-/// Iterator over the children diagnostics of a `Diagnostic`.
-#[derive(Debug, Clone)]
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub struct Children<'a>(std::slice::Iter<'a, Diagnostic>);
-
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl<'a> Iterator for Children<'a> {
-    type Item = &'a Diagnostic;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
 }
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 impl Diagnostic {
-    /// Creates a new diagnostic with the given `level` and `message`.
-    #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
-        Diagnostic { level, message: message.into(), spans: vec![], children: vec![] }
+    /// Obtain a mutable reference to the last message.
+    fn last_message_mut(&mut self) -> &mut Diagnostic {
+        if self.children.is_empty() { self } else { self.children.last_mut().unwrap() }
     }
 
-    /// Creates a new diagnostic with the given `level` and `message` pointing to
-    /// the given set of `spans`.
+    /// Creates a new error diagnostic with the provided message.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn spanned<S, T>(spans: S, level: Level, message: T) -> Diagnostic
-    where
-        S: MultiSpan,
-        T: Into<String>,
-    {
-        Diagnostic { level, message: message.into(), spans: spans.into_spans(), children: vec![] }
+    pub fn error(message: &str) -> Self {
+        Diagnostic {
+            level: Level::Error,
+            message: message.into(),
+            spans: vec![],
+            labels: vec![],
+            children: vec![],
+        }
     }
 
-    diagnostic_child_methods!(span_error, error, Level::Error);
-    diagnostic_child_methods!(span_warning, warning, Level::Warning);
-    diagnostic_child_methods!(span_note, note, Level::Note);
-    diagnostic_child_methods!(span_help, help, Level::Help);
+    // FIXME Add lint-associated warnings
 
-    /// Returns the diagnostic `level` for `self`.
+    /// Creates a new note diagnostic with the provided message.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn level(&self) -> Level {
-        self.level
+    pub fn note(message: &str) -> Self {
+        Diagnostic {
+            level: Level::Note,
+            message: message.into(),
+            spans: vec![],
+            labels: vec![],
+            children: vec![],
+        }
     }
 
-    /// Sets the level in `self` to `level`.
+    /// Adds a help message to the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn set_level(&mut self, level: Level) {
-        self.level = level;
+    pub fn with_help(mut self, message: &str) -> Self {
+        self.children.push(Self {
+            level: Level::Help,
+            message: message.into(),
+            spans: vec![],
+            labels: vec![],
+            children: vec![],
+        });
+        self
     }
 
-    /// Returns the message in `self`.
+    /// Adds a note message to the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn message(&self) -> &str {
-        &self.message
+    pub fn with_note(mut self, message: &str) -> Self {
+        self.children.push(Self {
+            level: Level::Note,
+            message: message.into(),
+            spans: vec![],
+            labels: vec![],
+            children: vec![],
+        });
+        self
     }
 
-    /// Sets the message in `self` to `message`.
+    /// Adds one mark with the given `item.span()` to the last message. The mark
+    /// is "primary" if no other mark or label has been applied to the previous
+    /// message and "secondary" otherwise.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn set_message<T: Into<String>>(&mut self, message: T) {
-        self.message = message.into();
+    pub fn mark<S: Spanned>(mut self, item: S) -> Self {
+        self.last_message_mut().spans.push(item.span());
+        self
     }
 
-    /// Returns the `Span`s in `self`.
+    /// Adds a spanned mark for every span in `item.spans()` to the last
+    /// message. The marks are "primary" if no other mark or label has been
+    /// applied to the previous message and "secondary" otherwise.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn spans(&self) -> &[Span] {
-        &self.spans
+    pub fn mark_all<S: Spanned>(mut self, item: S) -> Self {
+        self.last_message_mut().spans.extend(item.spans());
+        self
     }
 
-    /// Sets the `Span`s in `self` to `spans`.
+    /// Adds one spanned mark with a label `msg` with the given `item.span()` to
+    /// the last message. The mark is "primary" if no other mark or label has
+    /// been applied to the previous message and "secondary" otherwise.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn set_spans<S: MultiSpan>(&mut self, spans: S) {
-        self.spans = spans.into_spans();
-    }
-
-    /// Returns an iterator over the children diagnostics of `self`.
-    #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-    pub fn children(&self) -> Children<'_> {
-        Children(self.children.iter())
+    pub fn label<S: Spanned>(mut self, item: S, message: &str) -> Self {
+        self.last_message_mut().labels.push((item.span(), message.into()));
+        self
     }
 
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
-        fn to_internal(spans: Vec<Span>) -> crate::bridge::client::MultiSpan {
+        fn to_internal(
+            spans: Vec<Span>,
+            labels: Vec<(Span, String)>,
+        ) -> crate::bridge::client::MultiSpan {
             let mut multi_span = crate::bridge::client::MultiSpan::new();
             for span in spans {
-                multi_span.push(span.0);
+                multi_span.push_primary_span(span.0);
+            }
+            for (span, label) in labels {
+                multi_span.push_span_label(span.0, label);
             }
             multi_span
         }
@@ -173,10 +229,10 @@ impl Diagnostic {
         let mut diag = crate::bridge::client::Diagnostic::new(
             self.level,
             &self.message[..],
-            to_internal(self.spans),
+            to_internal(self.spans, self.labels),
         );
         for c in self.children {
-            diag.sub(c.level, &c.message[..], to_internal(c.spans));
+            diag.sub(c.level, &c.message[..], to_internal(c.spans, c.labels));
         }
         diag.emit();
     }

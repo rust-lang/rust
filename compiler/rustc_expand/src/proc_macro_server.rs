@@ -273,7 +273,6 @@ impl ToInternal<rustc_errors::Level> for Level {
     fn to_internal(self) -> rustc_errors::Level {
         match self {
             Level::Error => rustc_errors::Level::Error,
-            Level::Warning => rustc_errors::Level::Warning,
             Level::Note => rustc_errors::Level::Note,
             Level::Help => rustc_errors::Level::Help,
             _ => unreachable!("unknown proc_macro::Level variant: {:?}", self),
@@ -395,7 +394,7 @@ impl server::Types for Rustc<'_> {
     type Ident = Ident;
     type Literal = Literal;
     type SourceFile = Lrc<SourceFile>;
-    type MultiSpan = Vec<Span>;
+    type MultiSpan = MultiSpan;
     type Diagnostic = Diagnostic;
     type Span = Span;
 }
@@ -674,17 +673,20 @@ impl server::SourceFile for Rustc<'_> {
 
 impl server::MultiSpan for Rustc<'_> {
     fn new(&mut self) -> Self::MultiSpan {
-        vec![]
+        MultiSpan::new()
     }
-    fn push(&mut self, spans: &mut Self::MultiSpan, span: Self::Span) {
-        spans.push(span)
+    fn push_primary_span(&mut self, multispan: &mut Self::MultiSpan, span: Self::Span) {
+        multispan.push_primary_span(span)
+    }
+    fn push_span_label(&mut self, spans: &mut Self::MultiSpan, span: Self::Span, label: String) {
+        spans.push_span_label(span, label)
     }
 }
 
 impl server::Diagnostic for Rustc<'_> {
     fn new(&mut self, level: Level, msg: &str, spans: Self::MultiSpan) -> Self::Diagnostic {
         let mut diag = Diagnostic::new(level.to_internal(), msg);
-        diag.set_span(MultiSpan::from_spans(spans));
+        diag.set_span(spans);
         diag
     }
     fn sub(
@@ -694,7 +696,7 @@ impl server::Diagnostic for Rustc<'_> {
         msg: &str,
         spans: Self::MultiSpan,
     ) {
-        diag.sub(level.to_internal(), msg, MultiSpan::from_spans(spans), None);
+        diag.sub(level.to_internal(), msg, spans, None);
     }
     fn emit(&mut self, diag: Self::Diagnostic) {
         self.sess.span_diagnostic.emit_diagnostic(&diag);

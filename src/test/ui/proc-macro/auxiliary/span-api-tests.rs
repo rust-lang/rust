@@ -6,7 +6,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::*;
+use proc_macro::{Literal, TokenStream, TokenTree};
 
 // Re-emits the input tokens by parsing them from strings
 #[proc_macro]

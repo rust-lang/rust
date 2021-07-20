@@ -7,7 +7,7 @@
 
 extern crate proc_macro;
 use std::str::FromStr;
-use proc_macro::*;
+use proc_macro::{Delimiter, Group, TokenStream, TokenTree};
 
 #[proc_macro]
 pub fn custom_quote(input: TokenStream) -> TokenStream {

@@ -138,7 +138,8 @@ macro_rules! with_api {
             MultiSpan {
                 fn drop($self: $S::MultiSpan);
                 fn new() -> $S::MultiSpan;
-                fn push($self: &mut $S::MultiSpan, span: $S::Span);
+                fn push_primary_span($self: &mut $S::MultiSpan, span: $S::Span);
+                fn push_span_label($self: &mut $S::MultiSpan, span: $S::Span, label: String);
             },
             Diagnostic {
                 fn drop($self: $S::Diagnostic);
@@ -374,7 +375,6 @@ rpc_encode_decode!(
 rpc_encode_decode!(
     enum Level {
         Error,
-        Warning,
         Note,
         Help,
     }

@@ -1,5 +1,4 @@
 #![deny(unused_must_use)]
-use proc_macro::Diagnostic;
 use quote::{format_ident, quote};
 use syn::spanned::Spanned;
 
@@ -105,8 +104,17 @@ impl SessionDiagnosticDeriveError {
     }
 }
 
-fn span_err(span: impl proc_macro::MultiSpan, msg: &str) -> proc_macro::Diagnostic {
-    Diagnostic::spanned(span, proc_macro::Level::Error, msg)
+macro_rules! with_help {
+    ($diag:expr, $msg:expr) => {{
+        #[cfg(bootstrap)]
+        {
+            $diag.help($msg)
+        }
+        #[cfg(not(bootstrap))]
+        {
+            $diag.with_help($msg)
+        }
+    }};
 }
 
 /// For methods that return a Result<_, SessionDiagnosticDeriveError>: emit a diagnostic on
@@ -122,11 +130,11 @@ macro_rules! throw_span_err {
 /// When possible, prefer using throw_span_err! over using this function directly. This only exists
 /// as a function to constrain `f` to an impl FnOnce.
 fn _throw_span_err(
-    span: impl proc_macro::MultiSpan,
+    span: proc_macro::Span,
     msg: &str,
     f: impl FnOnce(proc_macro::Diagnostic) -> proc_macro::Diagnostic,
 ) -> SessionDiagnosticDeriveError {
-    let diag = span_err(span, msg);
+    let diag = span.error(msg);
     f(diag).emit();
     SessionDiagnosticDeriveError::ErrorHandled
 }
@@ -194,8 +202,10 @@ impl<'a> SessionDiagnosticDerive<'a> {
                 // Finally, putting it altogether.
                 match builder.kind {
                     None => {
-                        span_err(ast.span().unwrap(), "`code` not specified")
-                        .help("use the [code = \"...\"] attribute to set this diagnostic's error code ")
+                        with_help!(
+                            ast.span().unwrap().error("`code` not specified"),
+                            "use the [code = \"...\"] attribute to set this diagnostic's error code"
+                        )
                         .emit();
                         SessionDiagnosticDeriveError::ErrorHandled.to_compile_error()
                     }
@@ -215,11 +225,10 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     },
                 }
             } else {
-                span_err(
-                    ast.span().unwrap(),
-                    "`#[derive(SessionDiagnostic)]` can only be used on structs",
-                )
-                .emit();
+                ast.span()
+                    .unwrap()
+                    .error("`#[derive(SessionDiagnostic)]` can only be used on structs")
+                    .emit();
                 SessionDiagnosticDeriveError::ErrorHandled.to_compile_error()
             }
         };
@@ -481,17 +490,19 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                 throw_span_err!(
                                     info.span.clone().unwrap(),
                                     "wrong types for suggestion",
-                                    |diag| {
-                                        diag.help("#[suggestion(...)] on a tuple field must be applied to fields of type (Span, Applicability)")
-                                    }
+                                    |diag| with_help!(
+                                        diag,
+                                        "#[suggestion(...)] on a tuple field must be applied to fields of type (Span, Applicability)"
+                                    )
                                 );
                             }
                             _ => throw_span_err!(
                                 info.span.clone().unwrap(),
                                 "wrong field type for suggestion",
-                                |diag| {
-                                    diag.help("#[suggestion(...)] should be applied to fields of type Span or (Span, Applicability)")
-                                }
+                                |diag| with_help!(
+                                    diag,
+                                    "#[suggestion(...)] should be applied to fields of type Span or (Span, Applicability)"
+                                )
                             ),
                         })()?;
                         // Now read the key-value pairs.
@@ -537,9 +548,10 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                             throw_span_err!(
                                 list.span().unwrap(),
                                 "missing suggestion message",
-                                |diag| {
-                                    diag.help("provide a suggestion message using #[suggestion(message = \"...\")]")
-                                }
+                                |diag| with_help!(
+                                    diag,
+                                    "provide a suggestion message using #[suggestion(message = \"...\")]"
+                                )
                             );
                         };
                         let code = code.unwrap_or_else(|| quote! { String::new() });
@@ -627,12 +639,9 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 }
             } else {
                 // This field doesn't exist. Emit a diagnostic.
-                Diagnostic::spanned(
-                    span.unwrap(),
-                    proc_macro::Level::Error,
-                    format!("`{}` doesn't refer to a field on this type", field),
-                )
-                .emit();
+                span.unwrap()
+                    .error(&format!("`{}` doesn't refer to a field on this type", field))
+                    .emit();
                 quote! {
                     "{#field}"
                 }
