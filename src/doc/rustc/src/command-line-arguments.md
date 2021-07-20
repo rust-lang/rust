@@ -194,6 +194,15 @@ This flag controls the output filename.
 The outputted crate will be written to this directory. This flag is ignored if
 the [`-o` flag](#option-o-output) is used.
 
+<a id="option-temps-dir"></a>
+## `--temps-dir`: directory to write the intermediate files in
+
+Intermediate files will be written to this directory. If not set, the output
+directory is used. This option is useful if you are running more than one
+instance of `rustc` (e.g. with different `--crate-type` settings), and you
+need to make sure they are not overwriting each other's intermediate files.
+No files are kept unless `-C save-temps=yes` is also set.
+
 <a id="option-explain"></a>
 ## `--explain`: provide a detailed explanation of an error message
 

@@ -603,6 +603,7 @@ pub fn build_output_filenames(
     input: &Input,
     odir: &Option<PathBuf>,
     ofile: &Option<PathBuf>,
+    temps_dir: &Option<PathBuf>,
     attrs: &[ast::Attribute],
     sess: &Session,
 ) -> OutputFilenames {
@@ -625,6 +626,7 @@ pub fn build_output_filenames(
                 dirpath,
                 stem,
                 None,
+                temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),
                 sess.opts.output_types.clone(),
             )
@@ -653,6 +655,7 @@ pub fn build_output_filenames(
                 out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
                 out_file.file_stem().unwrap_or_default().to_str().unwrap().to_string(),
                 ofile,
+                temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),
                 sess.opts.output_types.clone(),
             )

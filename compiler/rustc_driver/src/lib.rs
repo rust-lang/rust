@@ -215,6 +215,7 @@ fn run_compiler(
 
     let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
     let (odir, ofile) = make_output(&matches);
+    let temps_dir = make_temps_dir(&matches);
     let mut config = interface::Config {
         opts: sopts,
         crate_cfg: cfg,
@@ -222,6 +223,7 @@ fn run_compiler(
         input_path: None,
         output_file: ofile,
         output_dir: odir,
+        temps_dir,
         file_loader,
         diagnostic_output,
         stderr: None,
@@ -267,6 +269,7 @@ fn run_compiler(
                         None,
                         &compiler.output_dir(),
                         &compiler.output_file(),
+                        &compiler.temps_dir(),
                     );
 
                     if should_stop == Compilation::Stop {
@@ -295,6 +298,7 @@ fn run_compiler(
             Some(compiler.input()),
             compiler.output_dir(),
             compiler.output_file(),
+            compiler.temps_dir(),
         )
         .and_then(|| {
             RustcDefaultCalls::list_metadata(
@@ -452,6 +456,11 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
     let ofile = matches.opt_str("o").map(|o| PathBuf::from(&o));
     (odir, ofile)
+}
+
+// Extract temporary directory from matches.
+fn make_temps_dir(matches: &getopts::Matches) -> Option<PathBuf> {
+    matches.opt_str("temps-dir").map(|o| PathBuf::from(&o))
 }
 
 // Extract input (string or file and optional path) from matches.
@@ -647,6 +656,7 @@ impl RustcDefaultCalls {
         input: Option<&Input>,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
+        temps_dir: &Option<PathBuf>,
     ) -> Compilation {
         use rustc_session::config::PrintRequest::*;
         // PrintRequest::NativeStaticLibs is special - printed during linking
@@ -688,7 +698,7 @@ impl RustcDefaultCalls {
                     });
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = rustc_interface::util::build_output_filenames(
-                        input, odir, ofile, attrs, sess,
+                        input, odir, ofile, temps_dir, attrs, sess,
                     );
                     let id = rustc_session::output::find_crate_name(sess, attrs, input);
                     if *req == PrintRequest::CrateName {
