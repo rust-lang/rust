@@ -545,7 +545,9 @@ impl UnixStream {
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
-    ///     ancillary.add_fds(&fds[..]);
+    ///     unsafe {
+    ///         ancillary.add_fds(&fds[..])?;
+    ///     }
     ///     socket.send_vectored_with_ancillary(bufs, &mut ancillary)
     ///         .expect("send_vectored_with_ancillary function failed");
     ///     Ok(())
