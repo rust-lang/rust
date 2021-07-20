@@ -129,8 +129,13 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
 
+    // We need a new SelectionContext for the normalization, since `selcx`
+    // has its intercrate flag set, which causes all foreign types that occur
+    // in the normalization of header to fail the orphan check.
+    let mut new_selcx = SelectionContext::new(selcx.infcx());
+
     let Normalized { value: mut header, obligations } =
-        traits::normalize(selcx, param_env, ObligationCause::dummy(), header);
+        traits::normalize(&mut new_selcx, param_env, ObligationCause::dummy(), header);
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
