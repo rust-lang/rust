@@ -689,6 +689,74 @@ impl u8 {
     pub fn escape_ascii(&self) -> ascii::EscapeDefault {
         ascii::escape_default(*self)
     }
+
+    /// Converts a value to a digit in the given radix.
+    ///
+    /// A 'radix' here is sometimes also called a 'base'. A radix of two
+    /// indicates a binary number, a radix of ten, decimal, and a radix of
+    /// sixteen, hexadecimal, to give some common values. Arbitrary
+    /// radices are supported.
+    ///
+    /// 'Digit' is defined to be only the following ASCII characters:
+    ///
+    /// * `0-9`
+    /// * `a-z`
+    /// * `A-Z`
+    ///
+    /// # Errors
+    ///
+    /// Returns `None` if the value does not refer to a digit in the given radix.
+    ///
+    /// # Panics
+    ///
+    /// Panics if given a radix larger than 36.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(byte_parse_ascii_digit)]
+    /// assert_eq!(b'1'.parse_ascii_digit(10), Some(1));
+    /// assert_eq!(b'f'.parse_ascii_digit(16), Some(15));
+    /// ```
+    ///
+    /// Passing a non-digit results in failure:
+    ///
+    /// ```
+    /// #![feature(byte_parse_ascii_digit)]
+    /// assert_eq!(b'f'.parse_ascii_digit(10), None);
+    /// assert_eq!(b'z'.parse_ascii_digit(16), None);
+    /// ```
+    ///
+    /// Passing a large radix, causing a panic:
+    ///
+    /// ```should_panic
+    /// #![feature(byte_parse_ascii_digit)]
+    /// // this panics
+    /// b'1'.parse_ascii_digit(37);
+    /// ```
+    #[unstable(feature = "byte_parse_ascii_digit", issue = "83447")]
+    #[inline]
+    pub fn parse_ascii_digit(&self, radix: u32) -> Option<u32> {
+        assert!(radix <= 36, "parse_ascii_digit: radix is too high (maximum 36)");
+        // the code is split up here to improve execution speed for cases where
+        // the `radix` is constant and 10 or smaller
+        let val = if intrinsics::likely(radix <= 10) {
+            // If not a digit, a number greater than radix will be created.
+            self.wrapping_sub(b'0')
+        } else {
+            match self {
+                b'0'..=b'9' => self - b'0',
+                b'a'..=b'z' => self - b'a' + 10,
+                b'A'..=b'Z' => self - b'A' + 10,
+                _ => return None,
+            }
+        };
+        let val: u32 = val.into();
+
+        if val < radix { Some(val) } else { None }
+    }
 }
 
 #[lang = "u16"]

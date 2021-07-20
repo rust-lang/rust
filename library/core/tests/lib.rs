@@ -39,6 +39,7 @@
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(test)]
+#![cfg_attr(not(bootstrap), feature(byte_parse_ascii_digit))]
 #![feature(trusted_len)]
 #![feature(try_trait_v2)]
 #![feature(slice_internals)]
