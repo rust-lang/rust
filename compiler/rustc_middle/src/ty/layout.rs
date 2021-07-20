@@ -1870,6 +1870,29 @@ pub enum SizeSkeleton<'tcx> {
         /// depending on one, with regions erased.
         tail: Ty<'tcx>,
     },
+
+    /// A value whose size would be statically known after monomorphization, but may not yet be
+    /// knowable. The size must either be exactly one instance of a type, or an array of instances
+    /// of a type, because this variant isn't aware of other layout constraints such as padding.
+    ///
+    /// This can be useful for comparing two types which can be known to be the same size because,
+    /// though individually their sizes aren't known, they can be easily proven to have the same
+    /// size. For instance, checking whether two arrays of the same type parameter have the same
+    /// size (even though the type parameter's size may not yet be known), or for comparing the
+    /// size of a value of a type parameter with a repr(transaprent) type which contains a value of
+    /// the same type parameter.
+    ///
+    /// This is, however, currently very limited and conservative. For instance, two arrays of the
+    /// same type, where:
+    ///  * one's size is a const generic parameter
+    ///  * the other's is an const value which happens to be equal to that const generic parameter
+    /// will not be considered equal.
+    RepeatedTy {
+        /// The type of which this size is a known multiple (e.g. in an array).
+        ty: Ty<'tcx>,
+        /// How many copies of that type are stored.
+        repetitions: &'tcx ty::Const<'tcx>,
+    },
 }
 
 impl<'tcx> SizeSkeleton<'tcx> {
@@ -1920,7 +1943,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         .fields
                         .iter()
                         .map(|field| SizeSkeleton::compute(field.ty(tcx, substs), tcx, param_env));
-                    let mut ptr = None;
+                    let mut ptr_or_transparent = None;
                     for field in fields {
                         let field = field?;
                         match field {
@@ -1930,33 +1953,54 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 }
                             }
                             SizeSkeleton::Pointer { .. } => {
-                                if ptr.is_some() {
+                                if ptr_or_transparent.is_some() {
                                     return Err(err);
                                 }
-                                ptr = Some(field);
+                                ptr_or_transparent = Some(field);
+                            }
+                            SizeSkeleton::RepeatedTy { .. } => {
+                                if ptr_or_transparent.is_some() {
+                                    return Err(err);
+                                } else if def.repr.transparent() {
+                                    ptr_or_transparent = Some(field);
+                                } else {
+                                    return Err(err);
+                                }
                             }
                         }
                     }
-                    Ok(ptr)
+                    Ok(ptr_or_transparent)
                 };
 
                 let v0 = zero_or_ptr_variant(0)?;
                 // Newtype.
                 if def.variants.len() == 1 {
-                    if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
-                        return Ok(SizeSkeleton::Pointer {
-                            non_zero: non_zero
-                                || match tcx.layout_scalar_valid_range(def.did) {
-                                    (Bound::Included(start), Bound::Unbounded) => start > 0,
-                                    (Bound::Included(start), Bound::Included(end)) => {
-                                        0 < start && start < end
-                                    }
-                                    _ => false,
-                                },
-                            tail,
-                        });
-                    } else {
-                        return Err(err);
+                    match v0 {
+                        Some(SizeSkeleton::Pointer { non_zero, tail }) => {
+                            return Ok(SizeSkeleton::Pointer {
+                                non_zero: non_zero
+                                    || match tcx.layout_scalar_valid_range(def.did) {
+                                        (Bound::Included(start), Bound::Unbounded) => start > 0,
+                                        (Bound::Included(start), Bound::Included(end)) => {
+                                            0 < start && start < end
+                                        }
+                                        _ => false,
+                                    },
+                                tail,
+                            });
+                        }
+                        Some(SizeSkeleton::RepeatedTy {
+                            ty: related_ty,
+                            repetitions: multiple,
+                        }) => {
+                            return Ok(SizeSkeleton::RepeatedTy {
+                                ty: related_ty,
+                                repetitions: multiple,
+                            });
+                        }
+                        _ => {
+                            return Err(err);
+                        }
                     }
                 }
 
@@ -1980,6 +2024,26 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            ty::Array(array_ty, size) => {
+                if array_ty.is_sized(tcx.at(DUMMY_SP), param_env) {
+                    Ok(SizeSkeleton::RepeatedTy { ty: array_ty, repetitions: size })
+                } else {
+                    Err(err)
+                }
+            }
+
+            ty::Param(param_ty) => {
+                let param_ty = param_ty.to_ty(tcx);
+                if param_ty.is_sized(tcx.at(DUMMY_SP), param_env) {
+                    Ok(SizeSkeleton::RepeatedTy {
+                        ty: param_ty,
+                        repetitions: ty::Const::from_usize(tcx, 1),
+                    })
+                } else {
+                    Err(err)
+                }
+            }
+
             _ => Err(err),
         }
     }
@@ -1990,6 +2054,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
+            (
+                SizeSkeleton::RepeatedTy { ty: related_ty, repetitions: multiple },
+                SizeSkeleton::RepeatedTy { ty: other_related_ty, repetitions: other_multiple },
+            ) => related_ty == other_related_ty && multiple == other_multiple,
             _ => false,
         }
     }
