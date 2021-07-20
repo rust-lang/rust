@@ -809,22 +809,22 @@ fn baz(bar: Bar) {}
 ",
         );
 
-//         check_assist_not_applicable(
-//             expand_glob_import,
-//             r"
-// mod foo {
-//     mod bar {
-//         pub mod baz {
-//             pub struct Baz;
-//         }
-//     }
-// }
+        check_assist_not_applicable(
+            expand_glob_import,
+            r"
+mod foo {
+    mod bar {
+        pub mod baz {
+            pub struct Baz;
+        }
+    }
+}
 
-// use foo::bar::baz::*$0;
+use foo::bar::baz::*$0;
 
-// fn qux(baz: Baz) {}
-// ",
-//         );
+fn qux(baz: Baz) {}
+",
+        );
     }
 
     #[test]
