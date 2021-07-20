@@ -1,4 +1,4 @@
-// compile-flags: -O -C no-prepopulate-passes
+// compile-flags: -O -C no-prepopulate-passes -Zmir-opt-level=0
 //
 // min-system-llvm-version: 12.0
 

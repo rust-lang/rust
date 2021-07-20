@@ -1,0 +1,38 @@
+- // MIR for `trunc` before EnumSizeOpt
++ // MIR for `trunc` after EnumSizeOpt
+  
+  fn trunc() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/enum_opt.rs:60:16: 60:16
+      let mut _1: Truncatable;             // in scope 0 at $DIR/enum_opt.rs:61:7: 61:12
+      let mut _2: Truncatable;             // in scope 0 at $DIR/enum_opt.rs:62:7: 62:32
+      let mut _3: [u8; 1024];              // in scope 0 at $DIR/enum_opt.rs:62:22: 62:31
+      let mut _4: Truncatable;             // in scope 0 at $DIR/enum_opt.rs:63:7: 63:32
+      let mut _5: [u8; 4096];              // in scope 0 at $DIR/enum_opt.rs:63:22: 63:31
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/enum_opt.rs:61:7: 61:12
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/enum_opt.rs:61:7: 61:12
+          discriminant(_1) = 0;            // scope 0 at $DIR/enum_opt.rs:61:15: 61:29
+          StorageLive(_2);                 // scope 1 at $DIR/enum_opt.rs:62:7: 62:32
+          StorageLive(_3);                 // scope 1 at $DIR/enum_opt.rs:62:22: 62:31
+          _3 = [const 0_u8; 1024];         // scope 1 at $DIR/enum_opt.rs:62:22: 62:31
+          ((_2 as B).0: [u8; 1024]) = move _3; // scope 1 at $DIR/enum_opt.rs:62:7: 62:32
+          discriminant(_2) = 1;            // scope 1 at $DIR/enum_opt.rs:62:7: 62:32
+          StorageDead(_3);                 // scope 1 at $DIR/enum_opt.rs:62:31: 62:32
+          _1 = move _2;                    // scope 1 at $DIR/enum_opt.rs:62:3: 62:32
+          StorageDead(_2);                 // scope 1 at $DIR/enum_opt.rs:62:31: 62:32
+          StorageLive(_4);                 // scope 1 at $DIR/enum_opt.rs:63:7: 63:32
+          StorageLive(_5);                 // scope 1 at $DIR/enum_opt.rs:63:22: 63:31
+          _5 = [const 0_u8; 4096];         // scope 1 at $DIR/enum_opt.rs:63:22: 63:31
+          ((_4 as C).0: [u8; 4096]) = move _5; // scope 1 at $DIR/enum_opt.rs:63:7: 63:32
+          discriminant(_4) = 2;            // scope 1 at $DIR/enum_opt.rs:63:7: 63:32
+          StorageDead(_5);                 // scope 1 at $DIR/enum_opt.rs:63:31: 63:32
+          _1 = move _4;                    // scope 1 at $DIR/enum_opt.rs:63:3: 63:32
+          StorageDead(_4);                 // scope 1 at $DIR/enum_opt.rs:63:31: 63:32
+          StorageDead(_1);                 // scope 0 at $DIR/enum_opt.rs:64:1: 64:2
+          return;                          // scope 0 at $DIR/enum_opt.rs:64:2: 64:2
+      }
+  }
+  

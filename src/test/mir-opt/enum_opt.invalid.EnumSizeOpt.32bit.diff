@@ -1,0 +1,28 @@
+- // MIR for `invalid` before EnumSizeOpt
++ // MIR for `invalid` after EnumSizeOpt
+  
+  fn invalid() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/enum_opt.rs:54:18: 54:18
+      let mut _1: InvalidIdxs;             // in scope 0 at $DIR/enum_opt.rs:55:7: 55:12
+      let mut _2: InvalidIdxs;             // in scope 0 at $DIR/enum_opt.rs:56:7: 56:36
+      let mut _3: [u64; 1024];             // in scope 0 at $DIR/enum_opt.rs:56:26: 56:35
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/enum_opt.rs:55:7: 55:12
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/enum_opt.rs:55:7: 55:12
+          discriminant(_1) = 0;            // scope 0 at $DIR/enum_opt.rs:55:15: 55:29
+          StorageLive(_2);                 // scope 1 at $DIR/enum_opt.rs:56:7: 56:36
+          StorageLive(_3);                 // scope 1 at $DIR/enum_opt.rs:56:26: 56:35
+          _3 = [const 0_u64; 1024];        // scope 1 at $DIR/enum_opt.rs:56:26: 56:35
+          ((_2 as Large).0: [u64; 1024]) = move _3; // scope 1 at $DIR/enum_opt.rs:56:7: 56:36
+          discriminant(_2) = 1;            // scope 1 at $DIR/enum_opt.rs:56:7: 56:36
+          StorageDead(_3);                 // scope 1 at $DIR/enum_opt.rs:56:35: 56:36
+          _1 = move _2;                    // scope 1 at $DIR/enum_opt.rs:56:3: 56:36
+          StorageDead(_2);                 // scope 1 at $DIR/enum_opt.rs:56:35: 56:36
+          StorageDead(_1);                 // scope 0 at $DIR/enum_opt.rs:57:1: 57:2
+          return;                          // scope 0 at $DIR/enum_opt.rs:57:2: 57:2
+      }
+  }
+  
