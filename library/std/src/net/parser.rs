@@ -9,7 +9,10 @@ mod tests;
 use crate::convert::TryInto as _;
 use crate::error::Error;
 use crate::fmt;
-use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use crate::net::{
+    IpAddr, Ipv4Addr, Ipv4AddrPrefix, Ipv6Addr, Ipv6AddrPrefix, SocketAddr, SocketAddrV4,
+    SocketAddrV6,
+};
 use crate::str::FromStr;
 
 trait ReadNumberHelper: crate::marker::Sized {
@@ -231,6 +234,16 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Read a `/` followed by a prefix length in base 10.
+    fn read_prefix(&mut self, max: u32) -> Option<u32> {
+        self.read_atomically(|p| {
+            p.read_given_char('/')?;
+            let len = p.read_number(10, None)?;
+
+            if len <= max { Some(len) } else { None }
+        })
+    }
+
     /// Read a `%` followed by a scope ID in base 10.
     fn read_scope_id(&mut self) -> Option<u32> {
         self.read_atomically(|p| {
@@ -266,6 +279,24 @@ impl<'a> Parser<'a> {
         self.read_socket_addr_v4()
             .map(SocketAddr::V4)
             .or_else(|| self.read_socket_addr_v6().map(SocketAddr::V6))
+    }
+
+    /// Read an IPv4 address prefix; an address followed by a prefix length
+    fn read_addr_v4_prefix(&mut self) -> Option<Ipv4AddrPrefix> {
+        self.read_atomically(|p| {
+            let address = p.read_ipv4_addr()?;
+            let len = p.read_prefix(u32::BITS)?;
+            Some(Ipv4AddrPrefix::new_unchecked(address, len))
+        })
+    }
+
+    /// Read an IPv6 address prefix; an address followed by a prefix length
+    fn read_addr_v6_prefix(&mut self) -> Option<Ipv6AddrPrefix> {
+        self.read_atomically(|p| {
+            let address = p.read_ipv6_addr()?;
+            let len = p.read_prefix(u128::BITS)?;
+            Some(Ipv6AddrPrefix::new_unchecked(address, len))
+        })
     }
 }
 
@@ -317,11 +348,27 @@ impl FromStr for SocketAddr {
     }
 }
 
-/// An error which can be returned when parsing an IP address or a socket address.
+#[unstable(feature = "ip_prefix", issue = "86991")]
+impl FromStr for Ipv4AddrPrefix {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Ipv4AddrPrefix, AddrParseError> {
+        Parser::new(s).parse_with(|p| p.read_addr_v4_prefix())
+    }
+}
+
+#[unstable(feature = "ip_prefix", issue = "86991")]
+impl FromStr for Ipv6AddrPrefix {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Ipv6AddrPrefix, AddrParseError> {
+        Parser::new(s).parse_with(|p| p.read_addr_v6_prefix())
+    }
+}
+
+/// An error which can be returned when parsing an IP address, IP address prefix or a socket address.
 ///
 /// This error is used as the error type for the [`FromStr`] implementation for
-/// [`IpAddr`], [`Ipv4Addr`], [`Ipv6Addr`], [`SocketAddr`], [`SocketAddrV4`], and
-/// [`SocketAddrV6`].
+/// [`IpAddr`], [`Ipv4Addr`], [`Ipv6Addr`], [`Ipv4AddrPrefix`], [`Ipv6AddrPrefix`],
+/// [`SocketAddr`], [`SocketAddrV4`], and [`SocketAddrV6`].
 ///
 /// # Potential causes
 ///

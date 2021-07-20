@@ -109,6 +109,68 @@ fn test_from_str_socket_addr() {
 }
 
 #[test]
+fn test_from_str_ipv4_prefix() {
+    assert_eq!(
+        Ok(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(127, 0, 0, 1), 16)),
+        "127.0.0.1/16".parse()
+    );
+    assert_eq!(
+        Ok(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(255, 255, 255, 255), 32)),
+        "255.255.255.255/32".parse()
+    );
+    assert_eq!(
+        Ok(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(0, 0, 0, 0), 0)),
+        "0.0.0.0/0".parse()
+    );
+
+    // no prefix
+    let none: Option<Ipv4AddrPrefix> = "255.0.0.1".parse().ok();
+    assert_eq!(None, none);
+    // wrong prefix separator
+    let none: Option<Ipv4AddrPrefix> = "255.0.0.1:16".parse().ok();
+    assert_eq!(None, none);
+    // prefix can not be longer than 32 bits
+    let none: Option<Ipv4AddrPrefix> = "255.0.0.1/35".parse().ok();
+    assert_eq!(None, none);
+}
+
+#[test]
+fn test_from_str_ipv6_prefix() {
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 0)),
+        "0:0:0:0:0:0:0:0/0".parse()
+    );
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 128)),
+        "0:0:0:0:0:0:0:1/128".parse()
+    );
+
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 128)),
+        "::1/128".parse()
+    );
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 0)),
+        "::/0".parse()
+    );
+
+    assert_eq!(
+        Ok(Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11), 32)),
+        "2a02:6b8::11:11/32".parse()
+    );
+
+    // no prefix
+    let none: Option<Ipv6AddrPrefix> = "1:2:3:4::5:6:7:8".parse().ok();
+    assert_eq!(None, none);
+    // wrong prefix separator
+    let none: Option<Ipv6AddrPrefix> = "1:2:3:4::5:6:7:8:16".parse().ok();
+    assert_eq!(None, none);
+    // prefix can not be longer than 128 bits
+    let none: Option<Ipv6AddrPrefix> = "1:2:3:4::5:6:7:8/130".parse().ok();
+    assert_eq!(None, none);
+}
+
+#[test]
 fn ipv4_addr_to_string() {
     assert_eq!(Ipv4Addr::new(127, 0, 0, 1).to_string(), "127.0.0.1");
     // Short address
@@ -169,6 +231,19 @@ fn ipv6_addr_to_string() {
 
     // don't prefix `0x` to each segment in `dbg!`.
     assert_eq!("1::4:5:0:0:8", &format!("{:#?}", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8)));
+}
+
+#[test]
+fn ip_prefix_to_string() {
+    assert_eq!(
+        Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(127, 0, 0, 1), 24).to_string(),
+        "127.0.0.0/24"
+    );
+    assert_eq!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7F00, 1), 96)
+            .to_string(),
+        "::ffff:0.0.0.0/96"
+    );
 }
 
 #[test]
@@ -796,6 +871,90 @@ fn is_v6() {
 }
 
 #[test]
+fn ip_prefix_constructor() {
+    let ipv4 = Ipv4Addr::UNSPECIFIED;
+    assert!(Ipv4AddrPrefix::new(ipv4, 24).is_ok());
+    assert!(Ipv4AddrPrefix::new(ipv4, 35).is_err());
+
+    let ipv6 = Ipv6Addr::UNSPECIFIED;
+    assert!(Ipv6AddrPrefix::new(ipv6, 96).is_ok());
+    assert!(Ipv6AddrPrefix::new(ipv6, 130).is_err());
+}
+
+#[test]
+fn ip_prefix_address() {
+    // Prefix address is not always the same as the address used to construct the prefix.
+    // The address only contains the bits specified by the prefix length.
+
+    let ipv4 = Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(1, 2, 3, 4), 24);
+    assert_ne!(ipv4.address(), Ipv4Addr::new(1, 2, 3, 4));
+    assert_eq!(ipv4.address(), Ipv4Addr::new(1, 2, 3, 0));
+
+    let ipv6 = Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 96);
+    assert_ne!(ipv6.address(), Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8));
+    assert_eq!(ipv6.address(), Ipv6Addr::new(1, 2, 3, 4, 5, 6, 0, 0));
+}
+
+#[test]
+fn ipv4_prefix_contains() {
+    let address = Ipv4Addr::new(1, 2, 3, 4);
+    assert!(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(0, 0, 0, 0), 0).contains(&address));
+    assert!(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(1, 0, 0, 0), 8).contains(&address));
+    assert!(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(1, 2, 0, 0), 16).contains(&address));
+    assert!(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(1, 2, 3, 0), 24).contains(&address));
+    assert!(Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(1, 2, 3, 4), 32).contains(&address));
+
+    // test a prefix that is not a multiple of 8
+    let prefix = Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(0, 0b01100100, 0, 0), 14);
+    assert_eq!(prefix.contains(&Ipv4Addr::new(0, 0b01100011, 0, 0)), false);
+    assert_eq!(prefix.contains(&Ipv4Addr::new(0, 0b01100100, 0, 0)), true);
+    assert_eq!(prefix.contains(&Ipv4Addr::new(0, 0b01100111, 0, 0)), true);
+    assert_eq!(prefix.contains(&Ipv4Addr::new(0, 0b01101000, 0, 0)), false);
+}
+
+#[test]
+fn ipv6_prefix_contains() {
+    let address = Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8);
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0), 0).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 0, 0, 0, 0, 0, 0, 0), 16).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 0, 0, 0, 0, 0, 0), 32).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 0, 0, 0, 0, 0), 48).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 0, 0, 0, 0), 64).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 5, 0, 0, 0), 80).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 0, 0), 96).contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 0), 112)
+            .contains(&address)
+    );
+    assert!(
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 128)
+            .contains(&address)
+    );
+
+    // test a prefix that is not a multiple of 16
+    let prefix =
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(0, 0b01100100_00000000, 0, 0, 0, 0, 0, 0), 22);
+    assert_eq!(prefix.contains(&Ipv6Addr::new(0, 0b01100011_11111111, 0, 0, 0, 0, 0, 0)), false);
+    assert_eq!(prefix.contains(&Ipv6Addr::new(0, 0b01100100_00000000, 0, 0, 0, 0, 0, 0)), true);
+    assert_eq!(prefix.contains(&Ipv6Addr::new(0, 0b01100111_11111111, 0, 0, 0, 0, 0, 0)), true);
+    assert_eq!(prefix.contains(&Ipv6Addr::new(0, 0b01101000_00000000, 0, 0, 0, 0, 0, 0)), false);
+}
+
+#[test]
 fn ipv4_const() {
     // test that the methods of `Ipv4Addr` are usable in a const context
 
@@ -921,4 +1080,37 @@ fn ip_const() {
 
     const IS_IP_V6: bool = IP_ADDRESS.is_ipv6();
     assert!(!IS_IP_V6);
+}
+
+#[test]
+fn ipv4_prefix_const() {
+    // test that the methods of `Ipv4AddrPrefix` are usable in a const context
+
+    const IP_PREFIX: Ipv4AddrPrefix = Ipv4AddrPrefix::new_unchecked(Ipv4Addr::new(1, 2, 3, 4), 24);
+
+    const PREFIX_ADDRESS: Ipv4Addr = IP_PREFIX.address();
+    assert_eq!(PREFIX_ADDRESS, Ipv4Addr::new(1, 2, 3, 0));
+
+    const PREFIX_LENGTH: u32 = IP_PREFIX.len();
+    assert_eq!(PREFIX_LENGTH, 24);
+
+    const CONTAINS: bool = IP_PREFIX.contains(&Ipv4Addr::new(1, 2, 3, 4));
+    assert!(CONTAINS);
+}
+
+#[test]
+fn ipv6_prefix_const() {
+    // test that the methods of `Ipv6AddrPrefix` are usable in a const context
+
+    const IP_PREFIX: Ipv6AddrPrefix =
+        Ipv6AddrPrefix::new_unchecked(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 96);
+
+    const PREFIX_ADDRESS: Ipv6Addr = IP_PREFIX.address();
+    assert_eq!(PREFIX_ADDRESS, Ipv6Addr::new(1, 2, 3, 4, 5, 6, 0, 0));
+
+    const PREFIX_LENGTH: u32 = IP_PREFIX.len();
+    assert_eq!(PREFIX_LENGTH, 96);
+
+    const CONTAINS: bool = IP_PREFIX.contains(&Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8));
+    assert!(CONTAINS);
 }
