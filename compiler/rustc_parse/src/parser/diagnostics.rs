@@ -1341,8 +1341,9 @@ impl<'a> Parser<'a> {
                     .span_to_snippet(pat.span.trim_start(begin_par_sp).unwrap())
                     .unwrap_or_else(|_| pprust::pat_to_string(&pat));
 
-                self.struct_span_err(self.prev_token.span, "unexpected closing `)`")
-                    .span_label(begin_par_sp, "opening `(`")
+                let sp = MultiSpan::from_spans(vec![begin_par_sp, self.prev_token.span]);
+
+                self.struct_span_err(sp, "unexpected parenthesis surrounding `for` loop head")
                     .span_suggestion(
                         begin_par_sp.to(self.prev_token.span),
                         "remove parenthesis in `for` loop",

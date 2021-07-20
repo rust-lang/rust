@@ -9,7 +9,7 @@ fn main() {
 
     for ( elem in vec ) {
         //~^ ERROR expected one of `)`, `,`, `@`, or `|`, found keyword `in`
-        //~| ERROR unexpected closing `)`
+        //~| ERROR unexpected parenthesis surrounding `for` loop head
         const RECOVERY_WITNESS: () = 0; //~ ERROR mismatched types
     }
 }
