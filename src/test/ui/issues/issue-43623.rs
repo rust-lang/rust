@@ -1,3 +1,5 @@
+// check-pass
+
 pub trait Trait<'a> {
     type Assoc;
 }
@@ -14,7 +16,6 @@ where
     F: for<'b> FnMut(<T as Trait<'b>>::Assoc),
 {
     break_me::<Type, fn(_)>;
-    //~^ ERROR: type mismatch in function arguments
 }
 
 fn main() {}

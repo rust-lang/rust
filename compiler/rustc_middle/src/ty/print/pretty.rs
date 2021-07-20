@@ -1776,13 +1776,62 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
     }
 }
 
+/// Used to fold bound and placeholder regions
+struct RegionFolder<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    current_index: ty::DebruijnIndex,
+    fold_region_fn: &'a mut (dyn FnMut(ty::Region<'tcx>) -> ty::Region<'tcx> + 'a),
+}
+
+impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match *t.kind() {
+            _ if t.has_vars_bound_at_or_above(self.current_index) || t.has_placeholders() => {
+                return t.super_fold_with(self);
+            }
+            _ => {}
+        }
+        t
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let region = match *r {
+            ty::ReLateBound(debruijn, _) if debruijn == self.current_index => {
+                (self.fold_region_fn)(r)
+            }
+            ty::RePlaceholder(_) => (self.fold_region_fn)(r),
+            _ => return r,
+        };
+        if let ty::ReLateBound(debruijn1, br) = *region {
+            assert_eq!(debruijn1, ty::INNERMOST);
+            self.tcx.mk_region(ty::ReLateBound(self.current_index, br))
+        } else {
+            region
+        }
+    }
+}
+
 // HACK(eddyb) limited to `FmtPrinter` because of `binder_depth`,
 // `region_index` and `used_region_names`.
 impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     pub fn name_all_regions<T>(
         mut self,
         value: &ty::Binder<'tcx, T>,
-    ) -> Result<(Self, (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)), fmt::Error>
+    ) -> Result<(Self, T, BTreeMap<ty::BoundRegionKind, ty::Region<'tcx>>), fmt::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
@@ -1805,16 +1854,16 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
         let mut empty = true;
         let mut start_or_continue = |cx: &mut Self, start: &str, cont: &str| {
-            write!(
-                cx,
-                "{}",
-                if empty {
-                    empty = false;
-                    start
-                } else {
-                    cont
-                }
-            )
+            let w = if empty {
+                empty = false;
+                start
+            } else {
+                cont
+            };
+            let _ = write!(cx, "{}", w);
+        };
+        let do_continue = |cx: &mut Self, cont: Symbol| {
+            let _ = write!(cx, "{}", cont);
         };
 
         define_scoped_cx!(self);
@@ -1831,11 +1880,11 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
             for var in bound_vars {
                 match var {
                     ty::BoundVariableKind::Region(ty::BrNamed(_, name)) => {
-                        let _ = start_or_continue(&mut self, "for<", ", ");
-                        let _ = write!(self, "{}", name);
+                        start_or_continue(&mut self, "for<", ", ");
+                        do_continue(&mut self, name);
                     }
                     ty::BoundVariableKind::Region(ty::BrAnon(i)) => {
-                        let _ = start_or_continue(&mut self, "for<", ", ");
+                        start_or_continue(&mut self, "for<", ", ");
                         let name = loop {
                             let name = name_by_region_index(region_index);
                             region_index += 1;
@@ -1843,11 +1892,11 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                                 break name;
                             }
                         };
-                        let _ = write!(self, "{}", name);
+                        do_continue(&mut self, name);
                         region_map.insert(i + 1, name);
                     }
                     ty::BoundVariableKind::Region(ty::BrEnv) => {
-                        let _ = start_or_continue(&mut self, "for<", ", ");
+                        start_or_continue(&mut self, "for<", ", ");
                         let name = loop {
                             let name = name_by_region_index(region_index);
                             region_index += 1;
@@ -1855,13 +1904,13 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                                 break name;
                             }
                         };
-                        let _ = write!(self, "{}", name);
+                        do_continue(&mut self, name);
                         region_map.insert(0, name);
                     }
                     _ => continue,
                 }
             }
-            start_or_continue(&mut self, "", "> ")?;
+            start_or_continue(&mut self, "", "> ");
 
             self.tcx.replace_late_bound_regions(value.clone(), |br| {
                 let kind = match br.kind {
@@ -1881,12 +1930,14 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                 ))
             })
         } else {
-            let new_value = self.tcx.replace_late_bound_regions(value.clone(), |br| {
-                let _ = start_or_continue(&mut self, "for<", ", ");
-                let kind = match br.kind {
+            let tcx = self.tcx;
+            let mut region_map: BTreeMap<ty::BoundRegionKind, ty::Region<'tcx>> = BTreeMap::new();
+            let mut name = |kind: ty::BoundRegionKind, var: ty::BoundVar| {
+                start_or_continue(&mut self, "for<", ", ");
+                let kind = match kind {
                     ty::BrNamed(_, name) => {
-                        let _ = write!(self, "{}", name);
-                        br.kind
+                        do_continue(&mut self, name);
+                        kind
                     }
                     ty::BrAnon(_) | ty::BrEnv => {
                         let name = loop {
@@ -1896,22 +1947,45 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                                 break name;
                             }
                         };
-                        let _ = write!(self, "{}", name);
+                        do_continue(&mut self, name);
                         ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
                     }
                 };
-                self.tcx.mk_region(ty::ReLateBound(
-                    ty::INNERMOST,
-                    ty::BoundRegion { var: br.var, kind },
-                ))
+                tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var, kind }))
+            };
+            let new_value = value.clone().skip_binder().fold_with(&mut RegionFolder {
+                tcx,
+                current_index: ty::INNERMOST,
+                fold_region_fn: &mut |r| {
+                    match *r {
+                        ty::ReLateBound(_, br) => {
+                            region_map.entry(br.kind).or_insert_with(|| name(br.kind, br.var))
+                        }
+                        ty::RePlaceholder(ty::PlaceholderRegion { name: kind, .. }) => {
+                            // If this is an anonymous placeholder, don't rename. Otherwise, in some
+                            // async fns, we get a `for<'r> Send` bound
+                            match kind {
+                                ty::BrAnon(_) | ty::BrEnv => {
+                                    return r;
+                                }
+                                _ => {}
+                            }
+                            // Index doesn't matter, since this will be free anyways
+                            region_map
+                                .entry(kind)
+                                .or_insert_with(|| name(kind, ty::BoundVar::from_u32(0)))
+                        }
+                        _ => r,
+                    }
+                },
             });
-            start_or_continue(&mut self, "", "> ")?;
-            new_value
+            start_or_continue(&mut self, "", "> ");
+            (new_value, region_map)
         };
 
         self.binder_depth += 1;
         self.region_index = region_index;
-        Ok((self, new_value))
+        Ok((self, new_value.0, new_value.1))
     }
 
     pub fn pretty_in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, fmt::Error>
@@ -1919,8 +1993,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
         let old_region_index = self.region_index;
-        let (new, new_value) = self.name_all_regions(value)?;
-        let mut inner = new_value.0.print(new)?;
+        let (new, new_value, _) = self.name_all_regions(value)?;
+        let mut inner = new_value.print(new)?;
         inner.region_index = old_region_index;
         inner.binder_depth -= 1;
         Ok(inner)
@@ -1935,8 +2009,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
         let old_region_index = self.region_index;
-        let (new, new_value) = self.name_all_regions(value)?;
-        let mut inner = f(&new_value.0, new)?;
+        let (new, new_value, _) = self.name_all_regions(value)?;
+        let mut inner = f(&new_value, new)?;
         inner.region_index = old_region_index;
         inner.binder_depth -= 1;
         Ok(inner)
@@ -1959,6 +2033,12 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 debug!("LateBoundRegionNameCollector::visit_region(r: {:?}, address: {:p})", r, &r);
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
+                    self.used_region_names.insert(name);
+                } else if let ty::RePlaceholder(ty::PlaceholderRegion {
+                    name: ty::BrNamed(_, name),
+                    ..
+                }) = *r
+                {
                     self.used_region_names.insert(name);
                 }
                 r.super_visit_with(self)

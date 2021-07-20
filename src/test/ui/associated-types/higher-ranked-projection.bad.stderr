@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     foo(());
    |     ^^^ lifetime mismatch
    |
-   = note: expected type `&'a ()`
-              found type `&()`
+   = note: expected reference `&'a ()`
+                   found type `&()`
 note: the lifetime requirement is introduced here
   --> $DIR/higher-ranked-projection.rs:15:33
    |

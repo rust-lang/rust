@@ -25,14 +25,12 @@ where
 
 impl<S, T> X<'_, Vec<T>> for S {
     type U = str;
-    //~^ ERROR the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
-    //~| ERROR the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
+    //~^ ERROR the trait bound `str: Clone` is not satisfied
 }
 
 impl<S, T> X<'_, Box<T>> for S {
     type U = str;
-    //~^ ERROR the trait bound `for<'b> <Box<T> as X<'b, Box<T>>>::U: Clone` is not satisfied
-    //~| ERROR the trait bound `for<'b> <Vec<T> as X<'b, Vec<T>>>::U: Clone` is not satisfied
+    //~^ ERROR the trait bound `str: Clone` is not satisfied
 }
 
 pub fn main() {
