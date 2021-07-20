@@ -429,13 +429,7 @@ impl Builder {
         {
             lookup = lookup.or_else(|| Some(label.clone()));
             insert_text = insert_text.or_else(|| Some(label.clone()));
-
-            let original_path_label = original_path.to_string();
-            if original_path_label.ends_with(&label) {
-                label = original_path_label;
-            } else {
-                format_to!(label, " (use {})", original_path)
-            }
+            format_to!(label, " (use {})", original_path)
         } else if let Some(trait_name) = self.trait_name {
             insert_text = insert_text.or_else(|| Some(label.clone()));
             format_to!(label, " (as {})", trait_name)

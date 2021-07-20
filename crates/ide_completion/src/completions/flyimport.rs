@@ -368,9 +368,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                st dep::some_module::ThirdStruct
-                st dep::some_module::AfterThirdStruct
-                st dep::some_module::ThiiiiiirdStruct
+                st ThirdStruct (use dep::some_module::ThirdStruct)
+                st AfterThirdStruct (use dep::some_module::AfterThirdStruct)
+                st ThiiiiiirdStruct (use dep::some_module::ThiiiiiirdStruct)
             "#]],
         );
     }
@@ -817,7 +817,7 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-        st foo::bar::baz::Item
+        st Item (use foo::bar::baz::Item)
         "#]],
         );
 
@@ -997,7 +997,7 @@ fn main() {
     TE$0
 }"#,
             expect![[r#"
-        ct foo::TEST_CONST
+        ct TEST_CONST (use foo::TEST_CONST)
     "#]],
         );
 
@@ -1014,7 +1014,7 @@ fn main() {
     te$0
 }"#,
             expect![[r#"
-        ct foo::TEST_CONST
+        ct TEST_CONST (use foo::TEST_CONST)
         fn test_function() (use foo::test_function) fn() -> i32
     "#]],
         );
