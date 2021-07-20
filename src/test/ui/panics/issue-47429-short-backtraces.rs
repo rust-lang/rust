@@ -12,6 +12,11 @@
 // ignore-emscripten no panic or subprocess support
 // ignore-sgx no subprocess support
 
+// NOTE(eddyb) output differs between symbol mangling schemes
+// revisions: legacy v0
+// [legacy] compile-flags: -Zsymbol-mangling-version=legacy
+//     [v0] compile-flags: -Zsymbol-mangling-version=v0
+
 fn main() {
     panic!()
 }
