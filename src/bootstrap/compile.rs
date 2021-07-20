@@ -105,10 +105,11 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
-        builder.info(&format!(
-            "Building stage{} std artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
-        ));
+        builder.step_info(&self);
+        // builder.info(&format!(
+        //     "Building stage{} std artifacts ({} -> {})",
+        //     compiler.stage, &compiler.host, target
+        // ));
         run_cargo(
             builder,
             cargo,

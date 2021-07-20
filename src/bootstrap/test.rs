@@ -1206,6 +1206,11 @@ impl Step for Compiletest {
         run.never()
     }
 
+    fn path(&self, _builder: &Builder<'_>) -> PathBuf {
+        // FIXME: it would be nice to suggest exactly the tests that fail, but that info isn't known without first running compiletest.
+        self.path.into()
+    }
+
     /// Executes the `compiletest` tool to run a suite of tests.
     ///
     /// Compiles all tests with `compiler` for `target` with the specified
@@ -1844,12 +1849,13 @@ impl Step for RustcGuide {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
     compiler: Compiler,
     target: TargetSelection,
     test_kind: TestKind,
-    krate: Interned<String>,
+    krate_name: Interned<String>,
+    krate_path: PathBuf,
 }
 
 impl Step for CrateLibrustc {
@@ -1873,7 +1879,8 @@ impl Step for CrateLibrustc {
                     compiler,
                     target: run.target,
                     test_kind,
-                    krate: krate.name,
+                    krate_name: krate.name,
+                    krate_path: krate.local_path(builder.build),
                 });
             }
         }
@@ -1885,18 +1892,20 @@ impl Step for CrateLibrustc {
             target: self.target,
             mode: Mode::Rustc,
             test_kind: self.test_kind,
-            krate: self.krate,
+            krate_name: self.krate_name,
+            krate_path: self.krate_path.clone(),
         });
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Crate {
     pub compiler: Compiler,
     pub target: TargetSelection,
     pub mode: Mode,
     pub test_kind: TestKind,
-    pub krate: Interned<String>,
+    pub krate_name: Interned<String>,
+    pub krate_path: PathBuf,
 }
 
 impl Step for Crate {
@@ -1919,7 +1928,8 @@ impl Step for Crate {
                 target: run.target,
                 mode,
                 test_kind,
-                krate: krate.name,
+                krate_name: krate.name,
+                krate_path: krate.local_path(builder.build),
             });
         };
 
@@ -1928,6 +1938,10 @@ impl Step for Crate {
                 make(Mode::Std, krate);
             }
         }
+    }
+
+    fn path(&self, _builder: &Builder<'_>) -> PathBuf {
+        self.krate_path.file_name().expect("top-level directory is not a crate").into()
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -1943,7 +1957,7 @@ impl Step for Crate {
         let target = self.target;
         let mode = self.mode;
         let test_kind = self.test_kind;
-        let krate = self.krate;
+        let krate = self.krate_name;
 
         builder.ensure(compile::Std { compiler, target });
         builder.ensure(RemoteCopyLibs { compiler, target });

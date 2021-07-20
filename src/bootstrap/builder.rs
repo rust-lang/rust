@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display};
 use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -61,6 +61,17 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
     /// If true, then this rule should be skipped if --target was specified, but --host was not
     const ONLY_HOSTS: bool = false;
+
+    /// A user-visible name to display if this step fails.
+    fn name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    /// The path that should be used on the command line to run this step.
+    fn path(&self, builder: &Builder<'_>) -> PathBuf {
+        let paths = Self::should_run(ShouldRun::new(builder)).paths;
+        paths.iter().map(|pathset| pathset.path(builder)).next().expect("no paths for step")
+    }
 
     /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
@@ -351,6 +362,26 @@ pub enum Kind {
     Run,
 }
 
+impl Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Kind::*;
+        let s = match self {
+            Build => "build",
+            Check => "check",
+            Clippy => "clippy",
+            Fix => "fix",
+            Format => "fmt",
+            Test => "test",
+            Bench => "bench",
+            Dist => "dist",
+            Doc => "doc",
+            Install => "install",
+            Run => "run",
+        };
+        f.write_str(s)
+    }
+}
+
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
@@ -608,6 +639,29 @@ impl<'a> Builder<'a> {
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
         StepDescription::run(v, self, paths);
+    }
+
+    /// Print a command that will run the current step.
+    ///
+    /// This serves two purposes:
+    /// 1. Describe what step is currently being run.
+    /// 2. Describe how to run only this step in case it fails.
+    pub(crate) fn step_info(&self, step: &impl Step) {
+        if self.config.dry_run {
+            return;
+        }
+        print!(
+            "{} {} --stage {}",
+            // TODO: this is wrong, e.g. `check --stage 1` runs build commands first
+            self.kind,
+            step.path(self).display(),
+            // FIXME: top_stage might be higher than the stage of the step
+            self.top_stage,
+        );
+        for arg in self.config.cmd.test_args() {
+            print!(" --test-args \"{}\"", arg);
+        }
+        println!();
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
@@ -1563,6 +1617,7 @@ impl<'a> Builder<'a> {
             let out = step.clone().run(self);
             let dur = start.elapsed();
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
+
             (out, dur - deps)
         };
 

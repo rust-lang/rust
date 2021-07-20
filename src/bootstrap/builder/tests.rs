@@ -511,7 +511,8 @@ mod dist {
                 target: host,
                 mode: Mode::Std,
                 test_kind: test::TestKind::Test,
-                krate: INTERNER.intern_str("std"),
+                krate_name: INTERNER.intern_str("std"),
+                krate_path: "library/std".into(),
             },]
         );
     }
