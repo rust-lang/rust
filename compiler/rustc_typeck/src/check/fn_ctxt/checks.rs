@@ -620,6 +620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk: &'tcx hir::Block<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
+        debug!("check_block_with_expected(expected={:?}, blk={:?})", expected, blk);
         let prev = self.ps.replace(self.ps.get().recurse(blk));
 
         // In some cases, blocks have just one exit, but other blocks

@@ -18,9 +18,8 @@ pub enum Expectation<'tcx> {
     /// This expression will be cast to the `Ty`.
     ExpectCastableToType(Ty<'tcx>),
 
-    /// This rvalue expression will be wrapped in `&` or `Box` and coerced
-    /// to `&Ty` or `Box<Ty>`, respectively. `Ty` is `[A]` or `Trait`.
-    ExpectRvalueLikeUnsized(Ty<'tcx>),
+    /// This rvalue expression will be wrapped in `&` or `Box`.
+    ExpectRvalueDeref(Ty<'tcx>),
 
     IsLast(Span),
 }
@@ -48,7 +47,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
                 let ety = fcx.shallow_resolve(ety);
                 if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
             }
-            ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
+            ExpectRvalueDeref(ety) => ExpectRvalueDeref(ety),
             _ => NoExpectation,
         }
     }
@@ -74,7 +73,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// for examples of where this comes up,.
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail_without_normalization(ty).kind() {
-            ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
+            ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueDeref(ty),
             _ => ExpectHasType(ty),
         }
     }
@@ -87,7 +86,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
             NoExpectation => NoExpectation,
             ExpectCastableToType(t) => ExpectCastableToType(fcx.resolve_vars_if_possible(t)),
             ExpectHasType(t) => ExpectHasType(fcx.resolve_vars_if_possible(t)),
-            ExpectRvalueLikeUnsized(t) => ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(t)),
+            ExpectRvalueDeref(t) => ExpectRvalueDeref(fcx.resolve_vars_if_possible(t)),
             IsLast(sp) => IsLast(sp),
         }
     }
@@ -95,7 +94,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     pub(super) fn to_option(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation | IsLast(_) => None,
-            ExpectCastableToType(ty) | ExpectHasType(ty) | ExpectRvalueLikeUnsized(ty) => Some(ty),
+            ExpectCastableToType(ty) | ExpectHasType(ty) | ExpectRvalueDeref(ty) => Some(ty),
         }
     }
 
@@ -106,9 +105,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     pub(super) fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self {
             ExpectHasType(ty) => Some(fcx.resolve_vars_if_possible(ty)),
-            NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) | IsLast(_) => {
-                None
-            }
+            NoExpectation | ExpectCastableToType(_) | ExpectRvalueDeref(_) | IsLast(_) => None,
         }
     }
 

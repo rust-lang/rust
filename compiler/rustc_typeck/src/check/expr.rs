@@ -11,7 +11,9 @@ use crate::check::report_unexpected_variant_res;
 use crate::check::BreakableCtxt;
 use crate::check::Diverges;
 use crate::check::DynamicCoerceMany;
-use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::check::Expectation::{
+    self, ExpectCastableToType, ExpectHasType, ExpectRvalueDeref, NoExpectation,
+};
 use crate::check::FnCtxt;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
@@ -386,7 +388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // the last field of a struct can be unsized.
                         ExpectHasType(ty)
                     } else {
-                        Expectation::rvalue_hint(self, ty)
+                        ExpectRvalueDeref(ty)
                     }
                 }
                 _ => NoExpectation,
