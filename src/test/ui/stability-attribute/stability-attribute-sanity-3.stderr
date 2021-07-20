@@ -1,4 +1,4 @@
-error: macro has missing stability attribute
+error: macro is missing a stability attribute
   --> $DIR/stability-attribute-sanity-3.rs:8:1
    |
 LL | / macro_rules! mac {

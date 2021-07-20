@@ -219,7 +219,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if kind == AnnotationKind::Prohibited
                 || (kind == AnnotationKind::Container && stab.level.is_stable() && is_deprecated)
             {
-                self.tcx.sess.struct_span_err(span,"this stability annotation is useless")
+                self.tcx.sess.struct_span_err(span, "this stability annotation is useless")
                     .span_label(span, "useless stability annotation")
                     .span_label(item_sp, "the stability attribute annotates this item")
                     .emit();
@@ -587,7 +587,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         if is_error {
             let def_id = self.tcx.hir().local_def_id(hir_id);
             let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
-            self.tcx.sess.span_err(span, &format!("{} has missing stability attribute", descr));
+            self.tcx.sess.span_err(span, &format!("{} is missing a stability attribute", descr));
         }
     }
 
@@ -603,6 +603,24 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                     `#[rustc_const_stable]` or `#[rustc_const_unstable]`",
                 );
             }
+        }
+    }
+
+    fn check_private_stability(&self, hir_id: HirId, span: Span) {
+        let stab = self.tcx.lookup_stability(hir_id);
+        let is_error = stab.is_some() && !self.access_levels.is_reachable(hir_id);
+        if is_error {
+            let def_id = self.tcx.hir().local_def_id(hir_id);
+            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+            self.tcx
+                .sess
+                .struct_span_err(
+                    span,
+                    &format!("{} is private but has a stability attribute", descr),
+                )
+                .help("if it is meant to be private, remove the stability attribute")
+                .help("or, if it is meant to be public, make it public")
+                .emit();
         }
     }
 }
@@ -635,11 +653,14 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             self.check_missing_const_stability(i.hir_id(), i.span);
         }
 
+        self.check_private_stability(i.hir_id(), i.span);
+
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
         self.check_missing_stability(ti.hir_id(), ti.span);
+        self.check_private_stability(ti.hir_id(), ti.span);
         intravisit::walk_trait_item(self, ti);
     }
 
@@ -648,26 +669,31 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
             self.check_missing_stability(ii.hir_id(), ii.span);
         }
+        self.check_private_stability(ii.hir_id(), ii.span);
         intravisit::walk_impl_item(self, ii);
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
         self.check_missing_stability(var.id, var.span);
+        self.check_private_stability(var.id, var.span);
         intravisit::walk_variant(self, var, g, item_id);
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
         self.check_missing_stability(s.hir_id, s.span);
+        self.check_private_stability(s.hir_id, s.span);
         intravisit::walk_field_def(self, s);
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.check_missing_stability(i.hir_id(), i.span);
+        self.check_private_stability(i.hir_id(), i.span);
         intravisit::walk_foreign_item(self, i);
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.check_missing_stability(md.hir_id(), md.span);
+        self.check_private_stability(md.hir_id(), md.span);
     }
 
     // Note that we don't need to `check_missing_stability` for default generic parameters,
@@ -930,6 +956,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         let krate = tcx.hir().krate();
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
         missing.check_missing_stability(hir::CRATE_HIR_ID, krate.item.inner);
+        missing.check_private_stability(hir::CRATE_HIR_ID, krate.item.inner);
         intravisit::walk_crate(&mut missing, krate);
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }
