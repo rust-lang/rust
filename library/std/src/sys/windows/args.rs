@@ -4,13 +4,12 @@
 mod tests;
 
 use crate::ffi::OsString;
-use crate::fmt;
 use crate::os::windows::prelude::*;
 use crate::path::PathBuf;
 use crate::slice;
 use crate::sys::c;
 use crate::sys::windows::os::current_exe;
-use crate::vec;
+use crate::vec::IntoIter;
 
 use core::iter;
 
@@ -21,7 +20,7 @@ pub fn args() -> Args {
             current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new())
         });
 
-        Args { parsed_args_list: parsed_args_list.into_iter() }
+        parsed_args_list.into_iter()
     }
 }
 
@@ -156,34 +155,4 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(
     ret_val
 }
 
-pub struct Args {
-    parsed_args_list: vec::IntoIter<OsString>,
-}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.parsed_args_list.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.parsed_args_list.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.parsed_args_list.size_hint()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.parsed_args_list.next_back()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.parsed_args_list.len()
-    }
-}
+pub type Args = IntoIter<OsString>;

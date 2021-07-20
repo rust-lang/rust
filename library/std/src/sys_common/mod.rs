@@ -20,6 +20,7 @@
 #[cfg(test)]
 mod tests;
 
+pub mod args;
 pub mod backtrace;
 pub mod condvar;
 pub mod fs;

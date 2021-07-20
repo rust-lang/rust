@@ -1,10 +1,9 @@
 use super::abi::usercalls::{alloc, raw::ByteBuffer};
 use crate::ffi::OsString;
-use crate::fmt;
-use crate::slice;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::os_str::Buf;
 use crate::sys_common::FromInner;
+use crate::vec::IntoIter;
 
 #[cfg_attr(test, linkage = "available_externally")]
 #[export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE"]
@@ -25,35 +24,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 
 pub fn args() -> Args {
     let args = unsafe { (ARGS.load(Ordering::Relaxed) as *const ArgsStore).as_ref() };
-    if let Some(args) = args { Args(args.iter()) } else { Args([].iter()) }
+    if let Some(args) = args { args.clone().into_iter() } else { Vec::new().into_iter() }
 }
 
-pub struct Args(slice::Iter<'static, OsString>);
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.0.next().cloned()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.0.next_back().cloned()
-    }
-}
+pub type Args = IntoIter<OsString>;
