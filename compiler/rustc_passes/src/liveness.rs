@@ -425,7 +425,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
 
             // live nodes required for interesting control flow:
-            hir::ExprKind::If(..) | hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
+            hir::ExprKind::If(..)
+            | hir::ExprKind::Match(..)
+            | hir::ExprKind::Loop(..)
+            | hir::ExprKind::Yield(..) => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
                 intravisit::walk_expr(self, expr);
             }
@@ -459,7 +462,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::LlvmInlineAsm(..)
             | hir::ExprKind::Box(..)
-            | hir::ExprKind::Yield(..)
             | hir::ExprKind::Type(..)
             | hir::ExprKind::Err
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
@@ -851,6 +853,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // at the label ident
             hir::ExprKind::Loop(ref blk, ..) => self.propagate_through_loop(expr, &blk, succ),
 
+            hir::ExprKind::Yield(ref e, ..) => {
+                let yield_ln = self.live_node(expr.hir_id, expr.span);
+                self.init_from_succ(yield_ln, succ);
+                self.merge_from_succ(yield_ln, self.exit_ln);
+                self.propagate_through_expr(e, yield_ln)
+            }
+
             hir::ExprKind::If(ref cond, ref then, ref else_opt) => {
                 //
                 //     (cond)
@@ -1029,7 +1038,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Type(ref e, _)
             | hir::ExprKind::DropTemps(ref e)
             | hir::ExprKind::Unary(_, ref e)
-            | hir::ExprKind::Yield(ref e, _)
             | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(&e, succ),
 
             hir::ExprKind::InlineAsm(ref asm) => {
