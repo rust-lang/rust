@@ -7,6 +7,7 @@ use crate::cell::UnsafeCell;
 use crate::collections;
 use crate::fmt;
 use crate::future::Future;
+use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::panicking;
 use crate::pin::Pin;
@@ -411,6 +412,11 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
 ///
+/// This function returns the payload that the closure panicked with. Because the payload
+/// is allowed to be any type, it is possible for it to be a type that itself panics when
+/// dropped. To make sure that badly-behaved panic payloads like these do not cause bugs,
+/// use [`drop_unwind`] instead.
+///
 /// Also note that unwinding into Rust code with a foreign exception (e.g.
 /// an exception thrown from C++ code) is undefined behavior.
 ///
@@ -432,6 +438,66 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
     unsafe { panicking::r#try(f) }
+}
+
+/// Invokes a closure, dropping the cause of an unwinding panic if one occurs.
+///
+/// Unlike [`catch_unwind`], this function does not return the payload that the
+/// closure panicked with if it panics. Instead, the payload is dropped in such
+/// a way that avoids propagating panics the payload causes when it is dropped.
+/// As such, unlike [`catch_unwind`], you can safely ignore and drop the result
+/// of this function without potentially causing the outer function to unwind.
+///
+/// It is currently undefined behavior to unwind from Rust code into foreign
+/// code, so this function is particularly useful when Rust is called from
+/// another language (normally C). This can run arbitrary Rust code, capturing a
+/// panic and allowing a graceful handling of the error.
+///
+/// The closure provided is required to adhere to the [`UnwindSafe`] trait to ensure
+/// that all captured variables are safe to cross this boundary. The purpose of
+/// this bound is to encode the concept of [exception safety][rfc] in the type
+/// system. Most usage of this function should not need to worry about this
+/// bound as programs are naturally unwind safe without `unsafe` code. If it
+/// becomes a problem the [`AssertUnwindSafe`] wrapper struct can be used to quickly
+/// assert that the usage here is indeed unwind safe.
+///
+/// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
+///
+/// # Notes
+///
+/// Note that this function **may not catch all panics** in Rust. A panic in
+/// Rust is not always implemented via unwinding, but can be implemented by
+/// aborting the process as well. This function *only* catches unwinding panics,
+/// not those that abort the process.
+///
+/// Also note that unwinding into Rust code with a foreign exception (e.g.
+/// an exception thrown from C++ code) is undefined behavior.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(drop_unwind)]
+///
+/// use std::panic;
+///
+/// let _ = panic::drop_unwind(|| {
+///     panic!("oh no!");
+/// });
+/// println!("hello!");
+/// ```
+#[unstable(feature = "drop_unwind", issue = "none")]
+pub fn drop_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> core::result::Result<R, ()> {
+    struct AbortOnDrop;
+    impl Drop for AbortOnDrop {
+        fn drop(&mut self) {
+            crate::process::abort();
+        }
+    }
+
+    let abort_on_drop = AbortOnDrop;
+    let res = catch_unwind(f).map_err(drop);
+    mem::forget(abort_on_drop);
+    res
 }
 
 /// Triggers a panic without invoking the panic hook.
