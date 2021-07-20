@@ -229,6 +229,7 @@ pub struct ipv6_mreq {
 }
 
 pub const VOLUME_NAME_DOS: DWORD = 0x0;
+pub const VOLUME_NAME_NT: DWORD = 0x2;
 pub const MOVEFILE_REPLACE_EXISTING: DWORD = 1;
 
 pub const FILE_BEGIN: DWORD = 0;

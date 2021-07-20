@@ -836,10 +836,37 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 }
 
 fn get_path(f: &File) -> io::Result<PathBuf> {
+    get_path_with_flags(f, c::VOLUME_NAME_DOS).or_else(|error| {
+        if error.raw_os_error() == Some(c::ERROR_INVALID_FUNCTION as i32) {
+            // This should normally be unreachable. See comment below.
+            get_path_fallback(f)
+        } else {
+            Err(error)
+        }
+    })
+}
+
+// Unfortunately some third party filesystem drivers don't implement the
+// volume manager interface that the kernel requires. This breaks a number of
+// things, including resolving the win32 path from a file handle.
+//
+// To workaround these broken drivers, this function instead gets the NT kernel
+// path (which is always available) and then uses the magic win32 prefix
+// `\\?\GLOBALROOT` so that the NT path can be used in win32 code.
+//
+// A downside to this is that it produces weird paths that users may find
+// strange.
+fn get_path_fallback(f: &File) -> io::Result<PathBuf> {
+    get_path_with_flags(f, c::VOLUME_NAME_NT).map(|nt_path| {
+        let mut win32_path: OsString = r"\\?\GLOBALROOT".into();
+        win32_path.push(nt_path);
+        win32_path.into()
+    })
+}
+
+fn get_path_with_flags(f: &File, flags: u32) -> io::Result<PathBuf> {
     super::fill_utf16_buf(
-        |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz, c::VOLUME_NAME_DOS)
-        },
+        |buf, sz| unsafe { c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz, flags) },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
 }
