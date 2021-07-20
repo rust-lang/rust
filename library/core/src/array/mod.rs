@@ -413,6 +413,88 @@ impl<T, const N: usize> [T; N] {
         // items.
         unsafe { collect_into_array_unchecked(&mut self.iter_mut()) }
     }
+
+    /// Divides one array into two at an index.
+    ///
+    /// The first will contain all indices from `[0, M)` (excluding
+    /// the index `M` itself) and the second will contain all
+    /// indices from `[M, N)` (excluding the index `N` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `M > N`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_split_array)]
+    ///
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// {
+    ///    let (left, right) = v.split_array::<0>();
+    ///    assert_eq!(left, &[]);
+    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array::<2>();
+    ///     assert_eq!(left, &[1, 2]);
+    ///     assert_eq!(right, [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_array::<6>();
+    ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, []);
+    /// }
+    /// ```
+    // Note: this is not intended to be stabilized in its current form. The
+    // second element of the return value should instead be `&[T; {N - M}]`.
+    #[unstable(
+        feature = "array_split_array",
+        reason = "not intended for stabilization",
+        issue = "74674"
+    )]
+    #[inline]
+    pub fn split_array<const M: usize>(&self) -> (&[T; M], &[T]) {
+        self[..].split_array::<M>()
+    }
+
+    /// Divides one mutable array into two at an index.
+    ///
+    /// The first will contain all indices from `[0, M)` (excluding
+    /// the index `M` itself) and the second will contain all
+    /// indices from `[M, N)` (excluding the index `N` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `M > N`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_split_array)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// let (left, right) = v.split_array_mut::<2>();
+    /// assert_eq!(left, &mut [1, 0]);
+    /// assert_eq!(right, [3, 0, 5, 6]);
+    /// left[1] = 2;
+    /// right[1] = 4;
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    // Note: this is not intended to be stabilized in its current form. The
+    // second element of the return value should instead be `&mut [T; {N - M}]`.
+    #[unstable(
+        feature = "array_split_array",
+        reason = "not intended for stabilization",
+        issue = "74674"
+    )]
+    #[inline]
+    pub fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
+        self[..].split_array_mut::<M>()
+    }
 }
 
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
