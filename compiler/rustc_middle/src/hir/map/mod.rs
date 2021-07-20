@@ -916,6 +916,19 @@ impl<'hir> Map<'hir> {
     pub fn node_to_string(&self, id: HirId) -> String {
         hir_id_to_string(self, id)
     }
+
+    /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
+    /// called with the HirId for the `{ ... }` anon const
+    pub fn opt_const_param_default_param_hir_id(&self, anon_const: HirId) -> Option<HirId> {
+        match self.get(self.get_parent_node(anon_const)) {
+            Node::GenericParam(GenericParam {
+                hir_id: param_id,
+                kind: GenericParamKind::Const { .. },
+                ..
+            }) => Some(*param_id),
+            _ => None,
+        }
+    }
 }
 
 impl<'hir> intravisit::Map<'hir> for Map<'hir> {
