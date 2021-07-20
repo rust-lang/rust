@@ -11,17 +11,17 @@
 // gdb-command:run
 
 // gdb-command:print g
-// gdb-check:$1 = issue_57822::main::{closure#1} (issue_57822::main::{closure#0} (1))
+// gdb-check:$1 = issue_57822::main::{closure#1} {f: issue_57822::main::{closure#0} {x: 1}}
 
 // gdb-command:print b
-// gdb-check:$2 = issue_57822::main::{generator#3}::Unresumed(issue_57822::main::{generator#2}::Unresumed(2))
+// gdb-check:$2 = issue_57822::main::{generator#3}::Unresumed{a: issue_57822::main::{generator#2}::Unresumed{y: 2}}
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 
 // lldb-command:print g
-// lldbg-check:(issue_57822::main::{closure#1}) $0 = { 0 = { 0 = 1 } }
+// lldbg-check:(issue_57822::main::{closure#1}) $0 = { f = { x = 1 } }
 
 // lldb-command:print b
 // lldbg-check:(issue_57822::main::{generator#3}) $1 =
