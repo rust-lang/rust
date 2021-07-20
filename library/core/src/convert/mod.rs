@@ -487,6 +487,7 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &T
 where
     T: AsRef<U>,
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
     }
@@ -498,6 +499,7 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T
 where
     T: AsRef<U>,
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
     }
@@ -517,6 +519,7 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T
 where
     T: AsMut<U>,
 {
+    #[inline]
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
     }
@@ -536,6 +539,7 @@ impl<T, U> Into<U> for T
 where
     U: From<T>,
 {
+    #[inline]
     fn into(self) -> U {
         U::from(self)
     }
@@ -544,6 +548,7 @@ where
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
+    #[inline]
     fn from(t: T) -> T {
         t
     }
@@ -572,6 +577,7 @@ where
 {
     type Error = U::Error;
 
+    #[inline]
     fn try_into(self) -> Result<U, U::Error> {
         U::try_from(self)
     }
@@ -586,6 +592,7 @@ where
 {
     type Error = Infallible;
 
+    #[inline]
     fn try_from(value: U) -> Result<Self, Self::Error> {
         Ok(U::into(value))
     }
@@ -597,6 +604,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsRef<[T]> for [T] {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self
     }
@@ -604,6 +612,7 @@ impl<T> AsRef<[T]> for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsMut<[T]> for [T] {
+    #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
