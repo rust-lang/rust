@@ -36,6 +36,20 @@ pub trait PointerArithmetic: HasDataLayout {
         i64::try_from(max_isize_plus_1 - 1).unwrap()
     }
 
+    #[inline]
+    fn machine_usize_to_isize(&self, val: u64) -> i64 {
+        let val = val as i64;
+        // Now clamp into the machine_isize range.
+        if val > self.machine_isize_max() {
+            // This can only happen the the ptr size is < 64, so we know max_usize_plus_1 fits into
+            // i64.
+            let max_usize_plus_1 = 1u128 << self.pointer_size().bits();
+            val - i64::try_from(max_usize_plus_1).unwrap()
+        } else {
+            val
+        }
+    }
+
     /// Helper function: truncate given value-"overflowed flag" pair to pointer size and
     /// update "overflowed flag" if there was an overflow.
     /// This should be called by all the other methods before returning!
