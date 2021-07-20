@@ -109,6 +109,34 @@ impl !Send for LexError {}
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Sync for LexError {}
 
+/// Error returned from `TokenStream::expand_literal`.
+#[unstable(feature = "proc_macro_expand_literal", issue = "none")]
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct ExpandLiteralError;
+
+impl ExpandLiteralError {
+    fn new() -> Self {
+        ExpandLiteralError
+    }
+}
+
+#[unstable(feature = "proc_macro_expand_literal", issue = "none")]
+impl fmt::Display for ExpandLiteralError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("expansion did not produce a valid literal")
+    }
+}
+
+#[unstable(feature = "proc_macro_expand_literal", issue = "none")]
+impl error::Error for ExpandLiteralError {}
+
+#[unstable(feature = "proc_macro_expand_literal", issue = "none")]
+impl !Send for ExpandLiteralError {}
+
+#[unstable(feature = "proc_macro_expand_literal", issue = "none")]
+impl !Sync for ExpandLiteralError {}
+
 impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -120,6 +148,24 @@ impl TokenStream {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Attempts to treat this `TokenStream` as an expression and perform macro
+    /// expansion on it. If the result of the macro expansion is a valid
+    /// `Literal`, returns it. May fail for any number of reasons, including
+    /// macro expansion failing, or the resulting tokens not being a valid
+    /// `Literal`.
+    ///
+    /// Literals may not be perfectly preserved during macro expansion.
+    ///
+    /// NOTE: Macro expansion may emit errors and attempt to recover, rather
+    /// than returning `ExpandLiteralError`.
+    #[unstable(feature = "proc_macro_expand_literal", issue = "none")]
+    pub fn expand_literal(&self) -> Result<Literal, ExpandLiteralError> {
+        match bridge::client::TokenStream::expand_literal(&self.0) {
+            Ok(literal) => Ok(Literal(literal)),
+            Err(_) => Err(ExpandLiteralError::new()),
+        }
     }
 }
 
