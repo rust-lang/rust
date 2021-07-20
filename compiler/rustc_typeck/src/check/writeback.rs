@@ -521,8 +521,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let mut skip_add = false;
 
             if let ty::Opaque(definition_ty_def_id, _substs) = *definition_ty.kind() {
-                if let hir::OpaqueTyOrigin::Misc | hir::OpaqueTyOrigin::TyAlias = opaque_defn.origin
-                {
+                if opaque_defn.origin == hir::OpaqueTyOrigin::TyAlias {
                     if opaque_type_key.def_id == definition_ty_def_id {
                         debug!(
                             "skipping adding concrete definition for opaque type {:?} {:?}",

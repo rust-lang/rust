@@ -3,15 +3,16 @@
 
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait, impl_trait_in_bindings))]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
 //[full_tait]~^ WARN incomplete
-//[full_tait]~| WARN incomplete
 
 type Foo = impl Copy; //~ could not find defining uses
 
 // make compiler happy about using 'Foo'
-fn bar(x: Foo) -> Foo { x }
+fn bar(x: Foo) -> Foo {
+    x
+}
 
 fn main() {
-    let _: Foo = std::mem::transmute(0u8); //[min_tait]~ ERROR not permitted here
+    let _: Foo = std::mem::transmute(0u8);
 }

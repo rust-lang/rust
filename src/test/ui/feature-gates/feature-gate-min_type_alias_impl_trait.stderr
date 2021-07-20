@@ -106,7 +106,7 @@ LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debu
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(min_type_alias_impl_trait)]` to the crate attributes to enable
 
-error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+error[E0562]: `impl Trait` not allowed outside of function and method return types
   --> $DIR/feature-gate-min_type_alias_impl_trait.rs:23:18
    |
 LL |     type Assoc = impl Debug;

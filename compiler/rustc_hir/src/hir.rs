@@ -2264,18 +2264,14 @@ pub struct OpaqueTy<'hir> {
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
     FnReturn,
     /// `async fn`
     AsyncFn,
-    /// `let _: impl Trait = ...`
-    Binding,
     /// type aliases: `type Foo = impl Trait;`
     TyAlias,
-    /// Impl trait consts, statics, bounds.
-    Misc,
 }
 
 /// The various kinds of types recognized by the compiler.

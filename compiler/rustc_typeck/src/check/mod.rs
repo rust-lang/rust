@@ -118,9 +118,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt, UserType};
 use rustc_session::config;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
+use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
-use rustc_span::{source_map::DUMMY_SP, sym};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -441,19 +441,12 @@ fn typeck_with_fallback<'tcx>(
             let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
-            let revealed_ty = fcx.instantiate_opaque_types_from_value(
-                id,
-                expected_type,
-                body.value.span,
-                Some(sym::impl_trait_in_bindings),
-            );
-
             // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor::new(&fcx, id).visit_body(body);
+            GatherLocalsVisitor::new(&fcx).visit_body(body);
 
-            fcx.check_expr_coercable_to_type(&body.value, revealed_ty, None);
+            fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
 
-            fcx.write_ty(id, revealed_ty);
+            fcx.write_ty(id, expected_type);
 
             fcx
         };
@@ -571,66 +564,6 @@ fn get_owner_return_paths(
             visitor.visit_body(body);
             (hir_id, visitor)
         })
-}
-
-/// Emit an error for recursive opaque types in a `let` binding.
-fn binding_opaque_type_cycle_error(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    span: Span,
-    partially_expanded_type: Ty<'tcx>,
-) {
-    let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
-    err.span_label(span, "cannot resolve opaque type");
-    // Find the owner that declared this `impl Trait` type.
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let mut prev_hir_id = hir_id;
-    let mut hir_id = tcx.hir().get_parent_node(hir_id);
-    while let Some(node) = tcx.hir().find(hir_id) {
-        match node {
-            hir::Node::Local(hir::Local {
-                pat,
-                init: None,
-                ty: Some(ty),
-                source: hir::LocalSource::Normal,
-                ..
-            }) => {
-                err.span_label(pat.span, "this binding might not have a concrete type");
-                err.span_suggestion_verbose(
-                    ty.span.shrink_to_hi(),
-                    "set the binding to a value for a concrete type to be resolved",
-                    " = /* value */".to_string(),
-                    Applicability::HasPlaceholders,
-                );
-            }
-            hir::Node::Local(hir::Local {
-                init: Some(expr),
-                source: hir::LocalSource::Normal,
-                ..
-            }) => {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                let typeck_results =
-                    tcx.typeck(tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)));
-                if let Some(ty) = typeck_results.node_type_opt(expr.hir_id) {
-                    err.span_label(
-                        expr.span,
-                        &format!(
-                            "this is of type `{}`, which doesn't constrain \
-                             `{}` enough to arrive to a concrete type",
-                            ty, partially_expanded_type
-                        ),
-                    );
-                }
-            }
-            _ => {}
-        }
-        if prev_hir_id == hir_id {
-            break;
-        }
-        prev_hir_id = hir_id;
-        hir_id = tcx.hir().get_parent_node(hir_id);
-    }
-    err.emit();
 }
 
 // Forbid defining intrinsics in Rust code,

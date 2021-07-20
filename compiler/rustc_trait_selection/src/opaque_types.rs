@@ -402,9 +402,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             // These opaque type inherit all lifetime parameters from their
             // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::Binding
-            | hir::OpaqueTyOrigin::TyAlias
-            | hir::OpaqueTyOrigin::Misc => 0,
+            hir::OpaqueTyOrigin::TyAlias => 0,
         };
 
         let span = tcx.def_span(def_id);
@@ -996,7 +994,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     may_define_opaque_type(tcx, self.parent_def_id, opaque_hir_id),
                                     origin,
                                 ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::Misc),
+                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),
                             };
                         if in_definition_scope {
                             let opaque_type_key =

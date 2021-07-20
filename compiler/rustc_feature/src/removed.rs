@@ -148,6 +148,10 @@ declare_features! (
     (removed, const_raw_ptr_to_usize_cast, "1.55.0", Some(51910), None,
      Some("at compile-time, pointers do not have an integer value, so these casts cannot be properly supported")),
 
+    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
+    (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
+     Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
+
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------
