@@ -436,6 +436,7 @@ impl Module {
         module_data.visibility
     }
 
+    /// XXX: this O(N) rather O(1) method, avoid using it if you can.
     pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
         let def_map = self.id.def_map(db.upcast());
         let module_data = &def_map[self.id.local_id];
@@ -838,6 +839,13 @@ impl Variant {
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+    }
+}
+
+/// Variants inherit visibility from the parent enum.
+impl HasVisibility for Variant {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        self.parent_enum(db).visibility(db)
     }
 }
 
