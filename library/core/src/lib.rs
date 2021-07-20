@@ -88,6 +88,7 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_option)]
+#![feature(const_replace)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
