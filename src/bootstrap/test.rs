@@ -834,22 +834,68 @@ impl Step for RustdocJSNotStd {
     }
 }
 
-fn check_if_browser_ui_test_is_installed_global(npm: &Path, global: bool) -> bool {
+fn get_browser_ui_test_version_from_string(input: &String) -> Option<String> {
+    for line in input.lines() {
+        if line.contains(&" browser-ui-test@") {
+            if let Some(long_part) = line.rsplit(" browser-ui-test@").next() {
+                if let Some(version) = long_part.split(" ").next() {
+                    return Some(version.chars().filter(|c| *c == '.' || c.is_numeric()).collect());
+                }
+            }
+        }
+    }
+    None
+}
+
+fn check_if_browser_ui_test_is_installed_global(
+    npm: &Path,
+    target_version: &String,
+    global: bool,
+) -> bool {
     let mut command = Command::new(&npm);
     command.arg("list").arg("--depth=0");
     if global {
         command.arg("--global");
     }
-    let lines = command
+    let output = command
         .output()
-        .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
+        .map(|output| {
+            if output.status.success() {
+                String::from_utf8_lossy(&output.stdout).into_owned()
+            } else {
+                String::new()
+            }
+        })
         .unwrap_or(String::new());
-    lines.contains(&" browser-ui-test@")
+    if let Some(current_version) = get_browser_ui_test_version_from_string(&output) {
+        current_version == *target_version
+    } else {
+        false
+    }
 }
 
-fn check_if_browser_ui_test_is_installed(npm: &Path) -> bool {
-    check_if_browser_ui_test_is_installed_global(npm, false)
-        || check_if_browser_ui_test_is_installed_global(npm, true)
+fn get_browser_ui_test_version() -> std::io::Result<String> {
+    let homepath = "./src/ci/docker/host-x86_64/x86_64-gnu-tools/Dockerfile";
+    let dockerfile = fs::read_to_string(homepath)?;
+    Ok(get_browser_ui_test_version_from_string(&dockerfile)
+        .expect(&*format!("unable to parse for browser-ui-test@ {}", homepath)))
+}
+
+fn check_if_browser_ui_test_is_installed(npm: &Path) -> std::io::Result<bool> {
+    let target_version = get_browser_ui_test_version()?;
+    let ok = check_if_browser_ui_test_is_installed_global(npm, &target_version, false)
+        || check_if_browser_ui_test_is_installed_global(npm, &target_version, true);
+    if !ok {
+        eprintln!(
+            "\nerror: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
+                dependency is missing",
+        );
+        eprintln!(
+            "If you want to install the `{0}` dependency, run `npm install {0}@{1}`\n",
+            "browser-ui-test", target_version,
+        );
+    }
+    Ok(ok)
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -872,7 +918,7 @@ impl Step for RustdocGUI {
                     .config
                     .npm
                     .as_ref()
-                    .map(|p| check_if_browser_ui_test_is_installed(p))
+                    .and_then(|p| check_if_browser_ui_test_is_installed(p).ok())
                     .unwrap_or(false)
         }))
     }
@@ -890,15 +936,9 @@ impl Step for RustdocGUI {
 
         // The goal here is to check if the necessary packages are installed, and if not, we
         // panic.
-        if !check_if_browser_ui_test_is_installed(&npm) {
-            eprintln!(
-                "error: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
-                 dependency is missing",
-            );
-            eprintln!(
-                "If you want to install the `{0}` dependency, run `npm install {0}`",
-                "browser-ui-test",
-            );
+        if check_if_browser_ui_test_is_installed(&npm).expect("Cannot run rustdoc-gui tests")
+            == false
+        {
             panic!("Cannot run rustdoc-gui tests");
         }
 
@@ -928,6 +968,7 @@ impl Step for RustdocGUI {
             .arg(out_dir.join("doc"))
             .arg("--tests-folder")
             .arg(builder.build.src.join("src/test/rustdoc-gui"));
+
         for path in &builder.paths {
             if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
                 if name.ends_with(".goml") {
