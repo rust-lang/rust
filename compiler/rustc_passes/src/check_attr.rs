@@ -1177,6 +1177,33 @@ impl CheckAttrVisitor<'tcx> {
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "no_mangle");
             }
+            // FIXME: #[no_mangle] was previously allowed on non-functions/statics, this should be an error
+            // The error should specify that the item that is wrong is specifically a *foreign* fn/static
+            // otherwise the error seems odd
+            Target::ForeignFn | Target::ForeignStatic => {
+                let foreign_item_kind = match target {
+                    Target::ForeignFn => "function",
+                    Target::ForeignStatic => "static",
+                    _ => unreachable!(),
+                };
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build(&format!("`#[no_mangle]` should not be applied to a foreign {}", foreign_item_kind))
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                            being phased out; it will become a hard error in \
+                            a future release!",
+                        )
+                        .span_label(*span, format!("foreign {}", foreign_item_kind))
+                        .note("foreign symbol names are always preserved and the `#[no_mangle]` attribute may have additional undesired exporting effects.")
+                        .span_suggestion(
+                            attr.span,
+                            "remove this attribute",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                });
+            }
             _ => {
                 // FIXME: #[no_mangle] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
