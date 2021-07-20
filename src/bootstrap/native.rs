@@ -169,10 +169,12 @@ impl Step for Llvm {
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
+        let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
+            .define("LLVM_ENABLE_PLUGINS", plugins)
             .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
             .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
             .define("LLVM_INCLUDE_EXAMPLES", "OFF")
@@ -263,6 +265,10 @@ impl Step for Llvm {
 
         if builder.config.llvm_polly {
             enabled_llvm_projects.push("polly");
+        }
+
+        if builder.config.llvm_clang {
+            enabled_llvm_projects.push("clang");
         }
 
         // We want libxml to be disabled.
