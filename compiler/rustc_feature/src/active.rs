@@ -684,6 +684,10 @@ declare_features! (
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
 
+    /// Allows creation of instances of a struct by moving fields that have
+    /// not changed from prior instances of the same struct (RFC #2528)
+    (active, type_changing_struct_update, "1.55.0", Some(86618), None)
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
