@@ -1,3 +1,4 @@
+use crate::borrow::Cow;
 use crate::io::prelude::*;
 use crate::io::{self, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom};
 use crate::panic;
@@ -967,4 +968,29 @@ fn single_formatted_write() {
     // have this limitation.
     writeln!(&mut writer, "{}, {}!", "hello", "world").unwrap();
     assert_eq!(writer.get_ref().events, [RecordedEvent::Write("hello, world!\n".to_string())]);
+}
+
+/// Test that IoSlice can be constructed from borrowed and owned Cows.
+#[test]
+fn ioslice_from_cow() {
+    let writer = ProgrammableSink::default();
+    let mut writer = LineWriter::new(writer);
+
+    fn write_vectored<'a, T: Into<IoSlice<'a>>, W: Write>(
+        writer: &mut LineWriter<W>,
+        content: T,
+    ) -> usize {
+        writer.write_vectored(&[content.into()]).unwrap()
+    }
+
+    let content: &[u8] = b"Hello\n";
+    let content = Cow::Borrowed(content);
+    let content2 = Cow::Owned(b"World\n".to_vec());
+
+    let count = write_vectored(&mut writer, &content);
+    assert_eq!(count, 6);
+    assert_eq!(&writer.get_ref().buffer, b"Hello\n");
+    let count = write_vectored(&mut writer, &content2);
+    assert_eq!(count, 6);
+    assert_eq!(&writer.get_ref().buffer, b"Hello\nWorld\n");
 }
