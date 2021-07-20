@@ -1478,6 +1478,32 @@ mod impls {
             PartialOrd::ge(*self, *other)
         }
     }
+    #[stable(feature = "partial_ord_mut_ref", since = "1.55.0")]
+    impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &mut A
+    where
+        A: PartialOrd<B>,
+    {
+        #[inline]
+        fn partial_cmp(&self, other: &&B) -> Option<Ordering> {
+            PartialOrd::partial_cmp(*self, *other)
+        }
+        #[inline]
+        fn lt(&self, other: &&B) -> bool {
+            PartialOrd::lt(*self, *other)
+        }
+        #[inline]
+        fn le(&self, other: &&B) -> bool {
+            PartialOrd::le(*self, *other)
+        }
+        #[inline]
+        fn ge(&self, other: &&B) -> bool {
+            PartialOrd::ge(*self, *other)
+        }
+        #[inline]
+        fn gt(&self, other: &&B) -> bool {
+            PartialOrd::gt(*self, *other)
+        }
+    }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &mut A
     where
