@@ -1,7 +1,6 @@
 //! Inlining pass for MIR functions
 
 use rustc_attr::InlineAttr;
-use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -78,7 +77,6 @@ fn inline(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         tcx,
         param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
         codegen_fn_attrs: tcx.codegen_fn_attrs(body.source.def_id()),
-        hir_id,
         history: Vec::new(),
         changed: false,
     };
@@ -92,8 +90,6 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
-    /// Caller HirID.
-    hir_id: hir::HirId,
     /// Stack of inlined Instances.
     history: Vec<ty::Instance<'tcx>>,
     /// Indicates that the caller body has been modified.
@@ -170,7 +166,8 @@ impl Inliner<'tcx> {
         caller_body: &Body<'tcx>,
         callee: &Instance<'tcx>,
     ) -> Result<(), &'static str> {
-        if callee.def_id() == caller_body.source.def_id() {
+        let caller_def_id = caller_body.source.def_id();
+        if callee.def_id() == caller_def_id {
             return Err("self-recursion");
         }
 
@@ -206,7 +203,6 @@ impl Inliner<'tcx> {
         }
 
         if let Some(callee_def_id) = callee.def_id().as_local() {
-            let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
             // Avoid inlining into generators,
             // since their `optimized_mir` is used for layout computation, which can
             // create a cycle, even when no attempt is made to inline the function
@@ -216,19 +212,18 @@ impl Inliner<'tcx> {
             }
 
             // Avoid a cycle here by only using `instance_mir` only if we have
-            // a lower `HirId` than the callee. This ensures that the callee will
-            // not inline us. This trick only works without incremental compilation.
-            // So don't do it if that is enabled.
-            if !self.tcx.dep_graph.is_fully_enabled() && self.hir_id < callee_hir_id {
+            // a lower `DefPathHash` than the callee. This ensures that the callee will
+            // not inline us. This trick only works even with incremental compilation,
+            // since `DefPathHash` is stable.
+            if self.tcx.def_path_hash(caller_def_id).local_hash()
+                < self.tcx.def_path_hash(callee_def_id.to_def_id()).local_hash()
+            {
                 return Ok(());
             }
 
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
-            if self
-                .tcx
-                .mir_callgraph_reachable((*callee, caller_body.source.def_id().expect_local()))
-            {
+            if self.tcx.mir_callgraph_reachable((*callee, caller_def_id.expect_local())) {
                 return Err("caller might be reachable from callee (query cycle avoidance)");
             }
 

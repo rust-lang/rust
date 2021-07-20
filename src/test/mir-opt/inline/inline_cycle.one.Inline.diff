@@ -4,18 +4,13 @@
   fn one() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline-cycle.rs:13:10: 13:10
       let _1: ();                          // in scope 0 at $DIR/inline-cycle.rs:14:5: 14:24
-+     scope 1 (inlined <C as Call>::call) { // at $DIR/inline-cycle.rs:14:5: 14:24
-+     }
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline-cycle.rs:14:5: 14:24
--         _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline-cycle.rs:14:5: 14:24
-+         _1 = <A<C> as Call>::call() -> bb1; // scope 1 at $DIR/inline-cycle.rs:14:5: 14:24
+          _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline-cycle.rs:14:5: 14:24
                                            // mir::Constant
--                                          // + span: $DIR/inline-cycle.rs:14:5: 14:22
--                                          // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(Scalar(<ZST>)) }
-+                                          // + span: $DIR/inline-cycle.rs:14:5: 14:24
-+                                          // + literal: Const { ty: fn() {<A<C> as Call>::call}, val: Value(Scalar(<ZST>)) }
+                                           // + span: $DIR/inline-cycle.rs:14:5: 14:22
+                                           // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
