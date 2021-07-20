@@ -6,6 +6,7 @@ use crate::infer::error_reporting::note_and_explain_region;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -42,13 +43,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         multi_span
             .push_span_label(binding_span, "introduces a `'static` lifetime requirement".into());
         err.span_note(multi_span, "because this has an unmet lifetime requirement");
-        note_and_explain_region(self.tcx(), &mut err, "...", sup, "...");
+        note_and_explain_region(self.tcx(), &mut err, "", sup, "...");
         if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
-            let ty = self.tcx().type_of(*impl_def_id);
-            let mut v = super::static_impl_trait::TraitObjectVisitor(vec![]);
-            v.visit_ty(ty);
-            let matching_def_ids = v.0;
+            // If an impl is local, then maybe this isn't what they want. Try to
+            // be as helpful as possible with implicit lifetimes.
 
+            // First, let's get the hir self type of the impl
             let impl_self_ty = match impl_node {
                 hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
@@ -57,17 +57,32 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 _ => bug!("Node not an impl."),
             };
 
-            for matching_def_id in matching_def_ids {
+            // Next, let's figure out the set of trait objects with implict static bounds
+            let ty = self.tcx().type_of(*impl_def_id);
+            let mut v = super::static_impl_trait::TraitObjectVisitor(FxHashSet::default());
+            v.visit_ty(ty);
+            let mut traits = vec![];
+            for matching_def_id in v.0 {
                 let mut hir_v =
-                    super::static_impl_trait::HirTraitObjectVisitor(vec![], matching_def_id);
+                    super::static_impl_trait::HirTraitObjectVisitor(&mut traits, matching_def_id);
                 hir_v.visit_ty(&impl_self_ty);
+            }
 
-                let mut multi_span: MultiSpan = hir_v.0.clone().into();
-                for span in &hir_v.0 {
-                    multi_span.push_span_label(
-                        *span,
-                        "this has an implicit `'static` lifetime requirement".to_string(),
-                    );
+            if traits.is_empty() {
+                // If there are no trait object traits to point at, either because
+                // there aren't trait objects or because none are implicit, then just
+                // write a single note on the impl itself.
+
+                let impl_span = self.tcx().def_span(*impl_def_id);
+                err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
+            } else {
+                // Otherwise, point at all implicit static lifetimes
+
+                err.note("...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
+                for span in &traits {
+                    err.span_note(*span, "this has an implicit `'static` lifetime requirement");
+                    // It would be nice to put this immediately under the above note, but they get
+                    // pushed to the end.
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),
                         "consider relaxing the implicit `'static` requirement",
@@ -75,8 +90,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     );
                 }
-                err.span_note(multi_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
             }
+        } else {
+            // Otherwise just point out the impl.
+
+            let impl_span = self.tcx().def_span(*impl_def_id);
+            err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
         }
         err.emit();
         Some(ErrorReported)

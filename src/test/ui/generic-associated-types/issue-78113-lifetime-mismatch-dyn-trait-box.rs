@@ -13,7 +13,28 @@ pub trait B {
 }
 
 impl B for () {
+    // `'a` doesn't match implicit `'static`: suggest `'_`
     type T<'a> = Box<dyn A + 'a>; //~ incompatible lifetime on type
+}
+
+trait C {}
+impl C for Box<dyn A + 'static> {}
+pub trait D {
+    type T<'a>: C;
+}
+impl D for () {
+    // `'a` doesn't match explicit `'static`: we *should* suggest removing `'static`
+    type T<'a> = Box<dyn A + 'a>; //~ incompatible lifetime on type
+}
+
+trait E {}
+impl E for (Box<dyn A>, Box<dyn A>) {}
+pub trait F {
+    type T<'a>: E;
+}
+impl F for () {
+    // `'a` doesn't match explicit `'static`: suggest `'_`
+    type T<'a> = (Box<dyn A + 'a>, Box<dyn A + 'a>); //~ incompatible lifetime on type
 }
 
 fn main() {}
