@@ -18,6 +18,7 @@ pub(crate) enum OverlayKind {
     RustDemangler,
     RLS,
     RustAnalyzer,
+    RustcCodegenCranelift,
 }
 
 impl OverlayKind {
@@ -61,6 +62,11 @@ impl OverlayKind {
                 "src/tools/rust-analyzer/LICENSE-APACHE",
                 "src/tools/rust-analyzer/LICENSE-MIT",
             ],
+            OverlayKind::RustcCodegenCranelift => &[
+                "compiler/rustc_codegen_cranelift/Readme.md",
+                "compiler/rustc_codegen_cranelift/LICENSE-APACHE",
+                "compiler/rustc_codegen_cranelift/LICENSE-MIT",
+            ],
         }
     }
 
@@ -83,6 +89,7 @@ impl OverlayKind {
             OverlayKind::RustAnalyzer => builder
                 .rust_analyzer_info
                 .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),
+            OverlayKind::RustcCodegenCranelift => builder.rust_version(),
         }
     }
 }
@@ -302,6 +309,7 @@ impl<'a> Tarball<'a> {
         }
 
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
+        cmd.env("RUST_BACKTRACE", "1");
 
         let package_name = self.package_name();
         self.builder.info(&format!("Dist {}", package_name));
