@@ -40,12 +40,13 @@ impl NonConstExpr {
         use hir::MatchSource::*;
 
         let gates: &[_] = match self {
-            // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
-            // so they are not yet allowed.
-            // Likewise, `?` desugars to a call to `Try::into_result`.
-            Self::Loop(ForLoop) | Self::Match(ForLoopDesugar | TryDesugar | AwaitDesugar) => {
+            Self::Match(AwaitDesugar) => {
                 return None;
             }
+
+            Self::Loop(ForLoop) | Self::Match(ForLoopDesugar) => &[sym::const_for],
+
+            Self::Match(TryDesugar) => &[sym::const_try],
 
             Self::Match(IfLetGuardDesugar) => bug!("`if let` guard outside a `match` expression"),
 
