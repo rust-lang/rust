@@ -15,6 +15,7 @@ members = [
   "src/tools/rustbook",
   "src/tools/unstable-book-gen",
   "src/tools/tidy",
+  "src/tools/errorkind-os-codes",
   "src/tools/tier-check",
   "src/tools/build-manifest",
   "src/tools/remote-test-client",

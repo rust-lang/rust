@@ -1,0 +1,14 @@
+[package]
+name = "errorkind-os-codes"
+version = "0.1.0"
+authors = ["Ian Jackson <ijackson@chiark.greenend.org.uk"]
+edition = "2018"
+autobins = false
+
+[dependencies]
+cargo_metadata = "0.11"
+regex = "1"
+
+[[bin]]
+name = "errorkind-os-codes"
+path = "src/main.rs"
