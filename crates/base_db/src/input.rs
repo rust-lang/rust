@@ -411,7 +411,7 @@ impl ops::Index<CrateId> for CrateGraph {
 }
 
 impl CrateId {
-    pub fn shift(self, amount: u32) -> CrateId {
+    fn shift(self, amount: u32) -> CrateId {
         CrateId(self.0 + amount)
     }
 }
