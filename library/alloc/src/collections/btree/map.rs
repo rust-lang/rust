@@ -935,6 +935,7 @@ impl<K, V> BTreeMap<K, V> {
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in ascending key order.
     ///
     /// # Examples
     ///
