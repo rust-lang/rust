@@ -604,8 +604,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
-        self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
-        self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
+        self.expr_ty = fcx.structurally_resolved_type(self.expr.span, self.expr_ty);
+        self.cast_ty = fcx.structurally_resolved_type(self.cast_span, self.cast_ty);
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
