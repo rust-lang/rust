@@ -20,6 +20,73 @@ mod iter;
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
+/// Creates an array `[T; N]` where each array element `T` is returned by the `cb` call.
+///
+/// # Arguments
+///
+/// * `cb`: Callback where the passed argument is the current array index.
+///
+/// # Example
+///
+/// ```rust
+/// #![feature(array_from_fn)]
+///
+/// let array = core::array::from_fn(|i| i);
+/// assert_eq!(array, [0, 1, 2, 3, 4]);
+/// ```
+#[inline]
+#[unstable(feature = "array_from_fn", issue = "none")]
+pub fn from_fn<C, T, const N: usize>(cb: C) -> [T; N]
+where
+    C: FnMut(usize) -> T,
+{
+    // SAFETY: we know for certain that this iterator will yield exactly `N`
+    // items.
+    unsafe { collect_into_array_unchecked(&mut (0..N).map(cb)) }
+}
+
+/// Creates an array `[T; N]` where each fallible array element `T` is returned by the `cb` call.
+/// Unlike `core::array::from_fn`, where the element creation can't fail, this version will return an error
+/// if any element creation was unsuccessful.
+///
+/// # Arguments
+///
+/// * `cb`: Callback where the passed argument is the current array index.
+///
+/// # Example
+///
+/// ```rust
+/// #![feature(array_from_fn)]
+///
+/// #[derive(Debug, PartialEq)]
+/// enum SomeError {
+///     Foo,
+/// }
+///
+/// let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
+/// assert_eq!(array, Ok([0, 1, 2, 3, 4]));
+///
+/// let another_array = core::array::try_from_fn::<_, SomeError, (), 2>(|_| Err(SomeError::Foo));
+/// assert_eq!(another_array, Err(SomeError::Foo));
+/// ```
+#[inline]
+#[unstable(feature = "array_from_fn", issue = "none")]
+pub fn try_from_fn<C, E, T, const N: usize>(mut cb: C) -> Result<[T; N], E>
+where
+    C: FnMut(usize) -> Result<T, E>,
+{
+    let mut array: [MaybeUninit<T>; N] = MaybeUninit::uninit_array();
+    let mut guard: Guard<T, N> =
+        Guard { ptr: MaybeUninit::slice_as_mut_ptr(&mut array), initialized: 0 };
+    for (idx, value) in array.iter_mut().enumerate() {
+        value.write(cb(idx)?);
+        guard.initialized += 1;
+    }
+    mem::forget(guard);
+    // SAFETY: If every creation was successful, it is guaranteed that the whole array was filled.
+    Ok(unsafe { MaybeUninit::array_assume_init(array) })
+}
+
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
 pub fn from_ref<T>(s: &T) -> &[T; 1] {
@@ -462,24 +529,6 @@ where
         return unsafe { Some(mem::zeroed()) };
     }
 
-    struct Guard<T, const N: usize> {
-        ptr: *mut T,
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
-
-            // SAFETY: this raw slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(initialized_part);
-            }
-        }
-    }
-
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard: Guard<_, N> =
         Guard { ptr: MaybeUninit::slice_as_mut_ptr(&mut array), initialized: 0 };
@@ -508,4 +557,22 @@ where
     // `guard.initialized` reaches `N`. Also note that `guard` is dropped here,
     // dropping all already initialized elements.
     None
+}
+
+struct Guard<T, const N: usize> {
+    initialized: usize,
+    ptr: *mut T,
+}
+
+impl<T, const N: usize> Drop for Guard<T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= N);
+
+        let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
+
+        // SAFETY: this raw slice will contain only initialized objects.
+        unsafe {
+            crate::ptr::drop_in_place(initialized_part);
+        }
+    }
 }

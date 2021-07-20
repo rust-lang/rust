@@ -356,3 +356,22 @@ fn cell_allows_array_cycle() {
     b3.a[0].set(Some(&b1));
     b3.a[1].set(Some(&b2));
 }
+
+#[test]
+fn array_from_fn() {
+    let _array = core::array::from_fn::<_, usize, 2>(|idx| idx);
+}
+
+#[test]
+fn try_array_from_fn() {
+    #[derive(Debug, PartialEq)]
+    enum SomeError {
+        Foo,
+    }
+
+    let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
+    assert_eq!(array, Ok([0, 1, 2, 3, 4]));
+
+    let another_array = core::array::try_from_fn::<_, SomeError, (), 2>(|_| Err(SomeError::Foo));
+    assert_eq!(another_array, Err(SomeError::Foo));
+}
