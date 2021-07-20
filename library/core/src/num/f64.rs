@@ -447,7 +447,7 @@ impl f64 {
     // private use internally.
     #[inline]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
-    const fn abs_private(self) -> f64 {
+    pub(crate) const fn abs_private(self) -> f64 {
         f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
     }
 

@@ -12,6 +12,16 @@ fn test_format_f64() {
     assert_eq!("1.23456789E3", format!("{:E}", 1234.56789f64));
     assert_eq!("0.0", format!("{:?}", 0.0f64));
     assert_eq!("1.01", format!("{:?}", 1.01f64));
+
+    let high_cutoff = 1e16_f64;
+    assert_eq!("1e16", format!("{:?}", high_cutoff));
+    assert_eq!("-1e16", format!("{:?}", -high_cutoff));
+    assert!(!is_exponential(&format!("{:?}", high_cutoff * (1.0 - 2.0 * f64::EPSILON))));
+    assert_eq!("-3.0", format!("{:?}", -3f64));
+    assert_eq!("0.0001", format!("{:?}", 0.0001f64));
+    assert_eq!("9e-5", format!("{:?}", 0.00009f64));
+    assert_eq!("1234567.9", format!("{:.1?}", 1234567.89f64));
+    assert_eq!("1234.6", format!("{:.1?}", 1234.56789f64));
 }
 
 #[test]
@@ -28,4 +38,18 @@ fn test_format_f32() {
     assert_eq!("1.2345679E3", format!("{:E}", 1234.56789f32));
     assert_eq!("0.0", format!("{:?}", 0.0f32));
     assert_eq!("1.01", format!("{:?}", 1.01f32));
+
+    let high_cutoff = 1e16_f32;
+    assert_eq!("1e16", format!("{:?}", high_cutoff));
+    assert_eq!("-1e16", format!("{:?}", -high_cutoff));
+    assert!(!is_exponential(&format!("{:?}", high_cutoff * (1.0 - 2.0 * f32::EPSILON))));
+    assert_eq!("-3.0", format!("{:?}", -3f32));
+    assert_eq!("0.0001", format!("{:?}", 0.0001f32));
+    assert_eq!("9e-5", format!("{:?}", 0.00009f32));
+    assert_eq!("1234567.9", format!("{:.1?}", 1234567.89f32));
+    assert_eq!("1234.6", format!("{:.1?}", 1234.56789f32));
+}
+
+fn is_exponential(s: &str) -> bool {
+    s.contains("e") || s.contains("E")
 }
