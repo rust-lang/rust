@@ -140,7 +140,7 @@ pre, .rustdoc.source .example-wrap {
 	border-bottom-color: #5c6773;
 }
 
-.docblock table, .docblock table td, .docblock table th {
+.docblock table td, .docblock table th {
 	border-color: #5c6773;
 }
 

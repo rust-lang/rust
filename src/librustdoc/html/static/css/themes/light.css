@@ -97,7 +97,7 @@ pre, .rustdoc.source .example-wrap {
 	border-bottom-color: #ddd;
 }
 
-.docblock table, .docblock table td, .docblock table th {
+.docblock table td, .docblock table th {
 	border-color: #ddd;
 }
 
