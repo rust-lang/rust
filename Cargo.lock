@@ -2322,6 +2322,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "odht"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91e547991b4135151428251dbff22e39ab0f766e0f37cc7d78c5343132be295f"
+dependencies = [
+ "cfg-if 1.0.0",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3858,6 +3867,7 @@ version = "0.0.0"
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
+ "odht",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_feature",
@@ -4044,6 +4054,7 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "libc",
+ "odht",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",

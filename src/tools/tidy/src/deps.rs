@@ -144,6 +144,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "num-integer",
     "num-traits",
     "object",
+    "odht",
     "once_cell",
     "opaque-debug",
     "parking_lot",
