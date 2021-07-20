@@ -1057,7 +1057,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
 fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
-        highlight::render_with_highlighting(
+        highlight::render_source_with_highlighting(
             &t.source,
             w,
             Some("macro"),

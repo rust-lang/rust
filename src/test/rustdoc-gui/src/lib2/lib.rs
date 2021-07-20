@@ -25,10 +25,30 @@ impl Foo {
     pub fn a_method(&self) {}
 }
 
+// This is used to ensure the line numbers are correctly set.
+/// ```
+/// # fn main() {
+/// let x = 12;
+/// let y = 13;
+/// # let z = 14;
+///
+/// println!("hello");
+/// # }
+/// ```
 pub trait Trait {
     type X;
     const Y: u32;
 
+    // This is used to ensure the line numbers are correctly set.
+    /// ```
+    /// fn main() {
+    /// let x = 12;
+    /// let y = 13;
+    /// let z = 14;
+    ///
+    /// println!("hello");
+    /// }
+    /// ```
     fn foo() {}
 }
 

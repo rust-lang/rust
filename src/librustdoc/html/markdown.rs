@@ -118,20 +118,14 @@ impl ErrorCodes {
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
 /// All lines are used in documentation tests.
-enum Line<'a> {
+#[derive(Debug)]
+crate enum Line<'a> {
     Hidden(&'a str),
     Shown(Cow<'a, str>),
 }
 
 impl<'a> Line<'a> {
-    fn for_html(self) -> Option<Cow<'a, str>> {
-        match self {
-            Line::Shown(l) => Some(l),
-            Line::Hidden(_) => None,
-        }
-    }
-
-    fn for_code(self) -> Cow<'a, str> {
+    crate fn for_code(self) -> Cow<'a, str> {
         match self {
             Line::Shown(l) => l,
             Line::Hidden(l) => Cow::Borrowed(l),
@@ -224,8 +218,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
+        let lines = origtext.lines().map(map_line);
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
@@ -321,7 +314,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let mut s = Buffer::new();
         s.push_str("\n");
         highlight::render_with_highlighting(
-            &text,
+            lines,
             &mut s,
             Some(&format!(
                 "rust-example-rendered{}",

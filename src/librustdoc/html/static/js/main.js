@@ -821,41 +821,50 @@ function hideThemeButtonState() {
         }
     }());
 
-    (function() {
-        // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        var lineNumbersFunc = function() {};
-        if (getSettingValue("line-numbers") === "true") {
-            lineNumbersFunc = function(x) {
-                var count = x.textContent.split("\n").length;
-                var elems = [];
-                for (var i = 0; i < count; ++i) {
-                    elems.push(i + 1);
+    // To avoid checking on "rustdoc-line-numbers" value on every loop...
+    var lineNumbersFunc = function() {};
+    if (getSettingValue("line-numbers") === "true") {
+        lineNumbersFunc = function(x) {
+            var count = 0;
+            var last = "";
+            onEachLazy(x.childNodes, function(e) {
+                if (e.nodeType !== Node.TEXT_NODE && hasClass(e, "hidden")) {
+                    return;
                 }
-                var node = document.createElement("pre");
-                addClass(node, "line-number");
-                node.innerHTML = elems.join("\n");
-                x.parentNode.insertBefore(node, x);
-            };
-        }
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
-            if (hasClass(e, "compile_fail")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            } else if (hasClass(e, "ignore")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
+                count += e.textContent.split("\n").length - 1;
+                last = e.textContent;
+            });
+            if (!last.endsWith("\n")) {
+                count += 1;
             }
-            lineNumbersFunc(e);
-        });
-    }());
+            var elems = [];
+            for (var i = 0; i < count; ++i) {
+                elems.push(i + 1);
+            }
+            var node = document.createElement("pre");
+            addClass(node, "line-number");
+            node.innerHTML = elems.join("\n");
+            x.parentNode.insertBefore(node, x);
+        };
+    }
+    onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
+        if (hasClass(e, "compile_fail")) {
+            e.addEventListener("mouseover", function() {
+                this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
+            });
+            e.addEventListener("mouseout", function() {
+                this.parentElement.previousElementSibling.childNodes[0].style.color = "";
+            });
+        } else if (hasClass(e, "ignore")) {
+            e.addEventListener("mouseover", function() {
+                this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
+            });
+            e.addEventListener("mouseout", function() {
+                this.parentElement.previousElementSibling.childNodes[0].style.color = "";
+            });
+        }
+        lineNumbersFunc(e);
+    });
 
     function handleClick(id, f) {
         var elem = document.getElementById(id);
@@ -969,60 +978,135 @@ function hideThemeButtonState() {
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
     searchState.setup();
-}());
 
-(function () {
-    var reset_button_timeout = null;
+    (function () {
+        var buttons_timeout = new WeakMap();
 
-    window.copy_path = function(but) {
-        var parent = but.parentElement;
-        var path = [];
+        function copyContentToClipboard(content) {
+            var el = document.createElement('textarea');
+            el.value = content;
+            el.setAttribute('readonly', '');
+            // To not make it appear on the screen.
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
 
-        onEach(parent.childNodes, function(child) {
-            if (child.tagName === 'A') {
-                path.push(child.textContent);
-            }
-        });
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        }
 
-        var el = document.createElement('textarea');
-        el.value = 'use ' + path.join('::') + ';';
-        el.setAttribute('readonly', '');
-        // To not make it appear on the screen.
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
+        window.copy_path = function(but) {
+            var parent = but.parentElement;
+            var path = [];
 
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-
-        // There is always one children, but multiple childNodes.
-        but.children[0].style.display = 'none';
-
-        var tmp;
-        if (but.childNodes.length < 2) {
-            tmp = document.createTextNode('✓');
-            but.appendChild(tmp);
-        } else {
-            onEachLazy(but.childNodes, function(e) {
-                if (e.nodeType === Node.TEXT_NODE) {
-                    tmp = e;
-                    return true;
+            onEach(parent.childNodes, function(child) {
+                if (child.tagName === 'A') {
+                    path.push(child.textContent);
                 }
             });
-            tmp.textContent = '✓';
+
+            copyContentToClipboard('use ' + path.join('::') + ';');
+
+            // There is always one children, but multiple childNodes.
+            but.children[0].style.display = 'none';
+
+            var tmp;
+            if (but.childNodes.length < 2) {
+                tmp = document.createTextNode('✓');
+                but.appendChild(tmp);
+            } else {
+                onEachLazy(but.childNodes, function(e) {
+                    if (e.nodeType === Node.TEXT_NODE) {
+                        tmp = e;
+                        return true;
+                    }
+                });
+                tmp.textContent = '✓';
+            }
+
+            if (buttons_timeout.has(but)) {
+                window.clearTimeout(buttons_timeout.get(but));
+            }
+
+            function reset_button() {
+                tmp.textContent = '';
+                buttons_timeout.delete(but);
+                but.children[0].style.display = "";
+            }
+
+            buttons_timeout.set(but, window.setTimeout(reset_button, 1000));
+        };
+
+        // This part is for the code blocks buttons.
+        window.copyCode = function(but) {
+            var code = but.parentElement.previousElementSibling;
+            var text = "";
+            onEachLazy(code.childNodes, function(e) {
+                if (e.nodeType !== Node.TEXT_NODE && hasClass(e, "hidden")) {
+                    return;
+                }
+                text += e.textContent;
+            });
+
+            copyContentToClipboard(text);
+
+            removeClass(but, 'clicked');
+            addClass(but, 'clicked');
+
+            if (buttons_timeout.has(but)) {
+                window.clearTimeout(buttons_timeout.get(but));
+            }
+
+            var tmp;
+            if (but.childNodes.length < 1) {
+                tmp = document.createTextNode('✓');
+                but.appendChild(tmp);
+            } else {
+                tmp = but.childNodes[0];
+                tmp.textContent = '✓';
+            }
+            but.style.backgroundSize = '0';
+
+            if (buttons_timeout.has(but)) {
+                window.clearTimeout(buttons_timeout.get(but));
+            }
+
+            function reset_button() {
+                but.style.backgroundSize = '';
+                tmp.textContent = '';
+                buttons_timeout.delete(but);
+            }
+
+            buttons_timeout.set(but, window.setTimeout(reset_button, 1000));
+        };
+
+        function removeLineNumbers(but) {
+            onEachLazy(but.getElementsByClassName("line-number"), function(e) {
+                e.parentElement.removeChild(e);
+            });
         }
 
-        if (reset_button_timeout !== null) {
-            window.clearTimeout(reset_button_timeout);
-        }
-
-        function reset_button() {
-            tmp.textContent = '';
-            reset_button_timeout = null;
-            but.children[0].style.display = "";
-        }
-
-        reset_button_timeout = window.setTimeout(reset_button, 1000);
-    };
+        window.expandCode = function(but) {
+            var code = but.parentElement.previousElementSibling;
+            if (hasClass(but, "expand")) {
+                onEachLazy(code.getElementsByClassName("hidden"), function(e) {
+                    removeClass(e, "hidden");
+                    addClass(e, "data-hidden");
+                });
+                removeClass(but, "expand");
+                addClass(but, "collapse");
+            } else {
+                onEachLazy(code.getElementsByClassName("data-hidden"), function(e) {
+                    removeClass(e, "data-hidden");
+                    addClass(e, "hidden");
+                });
+                removeClass(but, "collapse");
+                addClass(but, "expand");
+            }
+            // We recompute the line numbers display.
+            removeLineNumbers(code.parentElement);
+            lineNumbersFunc(code);
+        };
+    }());
 }());

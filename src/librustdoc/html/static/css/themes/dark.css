@@ -28,6 +28,10 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #2A2A2A;
 }
 
+pre .data-hidden {
+	background-color: #373636;
+}
+
 .sidebar {
 	background-color: #505050;
 }
@@ -186,6 +190,13 @@ a {
 
 a.test-arrow {
 	color: #dedede;
+}
+.copy-code, .expand, .collapse {
+	filter: invert(50%);
+	color: #999;
+}
+.copy-code:hover, .expand:hover, .collapse:hover {
+	filter: invert(65%);
 }
 
 details.rustdoc-toggle > summary.hideme > span,

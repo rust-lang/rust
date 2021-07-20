@@ -7,17 +7,19 @@
 
 use crate::html::escape::Escape;
 
-use std::fmt::Display;
-use std::iter::Peekable;
+use std::borrow::Cow;
+use std::fmt::{Debug, Display};
+use std::iter::{once, Peekable};
 
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 
 use super::format::Buffer;
+use super::markdown::Line;
 
 /// Highlights `src`, returning the HTML output.
-crate fn render_with_highlighting(
+crate fn render_source_with_highlighting(
     src: &str,
     out: &mut Buffer,
     class: Option<&str>,
@@ -26,7 +28,29 @@ crate fn render_with_highlighting(
     edition: Edition,
     extra_content: Option<Buffer>,
 ) {
-    debug!("highlighting: ================\n{}\n==============", src);
+    render_with_highlighting(
+        once(Line::Shown(Cow::Borrowed(src))),
+        out,
+        class,
+        playground_button,
+        tooltip,
+        edition,
+        extra_content,
+    )
+}
+
+/// Highlights `src` containing potential hidden lines, returning the HTML output. If you don't have
+/// hidden lines, use [`render_source_with_highlighting`] instead.
+crate fn render_with_highlighting<'a>(
+    src: impl Iterator<Item = Line<'a>> + Debug,
+    out: &mut Buffer,
+    class: Option<&str>,
+    playground_button: Option<&str>,
+    tooltip: Option<(Option<Edition>, &str)>,
+    edition: Edition,
+    extra_content: Option<Buffer>,
+) {
+    debug!("highlighting: ================\n{:?}\n==============", src);
     if let Some((edition_info, class)) = tooltip {
         write!(
             out,
@@ -41,8 +65,8 @@ crate fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, &src, edition);
-    write_footer(out, playground_button);
+    let expand = write_code(out, src, edition);
+    write_footer(out, playground_button, expand);
 }
 
 fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buffer>) {
@@ -57,20 +81,51 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
     }
 }
 
-fn write_code(out: &mut Buffer, src: &str, edition: Edition) {
-    // This replace allows to fix how the code source with DOS backline characters is displayed.
-    let src = src.replace("\r\n", "\n");
-    Classifier::new(&src, edition).highlight(&mut |highlight| {
-        match highlight {
-            Highlight::Token { text, class } => string(out, Escape(text), class),
-            Highlight::EnterSpan { class } => enter_span(out, class),
-            Highlight::ExitSpan => exit_span(out),
+fn write_code<'a>(out: &mut Buffer, src: impl Iterator<Item = Line<'a>>, edition: Edition) -> bool {
+    let mut iter = src.peekable();
+    let mut expand = false;
+
+    // For each `Line`, we replace DOS backlines with '\n'. This replace allows to fix how the code
+    // source with DOS backline characters is displayed.
+    while let Some(line) = iter.next() {
+        let (before, text, after) = match line {
+            Line::Hidden(text) => {
+                expand = true;
+                ("<span class=\"hidden\">", text.replace("\r\n", "\n"), "</span>")
+            }
+            Line::Shown(text) => ("", text.replace("\r\n", "\n"), ""),
         };
-    });
+        if !before.is_empty() {
+            out.push_str(before);
+        }
+        Classifier::new(&text, edition).highlight(&mut |highlight| {
+            match highlight {
+                Highlight::Token { text, class } => string(out, Escape(text), class),
+                Highlight::EnterSpan { class } => enter_span(out, class),
+                Highlight::ExitSpan => exit_span(out),
+            };
+        });
+        if iter.peek().is_some() && !text.ends_with('\n') {
+            out.push_str("\n");
+        }
+        if !after.is_empty() {
+            out.push_str(after);
+        }
+    }
+    expand
 }
 
-fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
-    writeln!(out, "</pre>{}</div>", playground_button.unwrap_or_default());
+fn write_footer(out: &mut Buffer, playground_button: Option<&str>, expand: bool) {
+    writeln!(
+        out,
+        "</pre>\
+         <div class=\"code-buttons\">\
+             {}{}<button class=\"copy-code\" onclick=\"copyCode(this)\"></button>\
+         </div>\
+        </div>",
+        playground_button.unwrap_or_default(),
+        if expand { "<button class=\"expand\" onclick=\"expandCode(this)\"></button>" } else { "" },
+    );
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.

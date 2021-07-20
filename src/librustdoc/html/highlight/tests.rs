@@ -1,8 +1,12 @@
 use super::write_code;
 use crate::html::format::Buffer;
+use crate::html::markdown::Line;
 use expect_test::expect_file;
 use rustc_span::create_default_session_globals_then;
 use rustc_span::edition::Edition;
+
+use std::borrow::Cow;
+use std::iter::once;
 
 const STYLE: &str = r#"
 <style>
@@ -20,6 +24,7 @@ const STYLE: &str = r#"
 fn test_html_highlighting() {
     create_default_session_globals_then(|| {
         let src = include_str!("fixtures/sample.rs");
+        let src = once(Line::Shown(Cow::Borrowed(src)));
         let html = {
             let mut out = Buffer::new();
             write_code(&mut out, src, Edition::Edition2018);
@@ -35,6 +40,7 @@ fn test_dos_backline() {
         let src = "pub fn foo() {\r\n\
     println!(\"foo\");\r\n\
 }\r\n";
+        let src = once(Line::Shown(Cow::Borrowed(src)));
         let mut html = Buffer::new();
         write_code(&mut html, src, Edition::Edition2018);
         expect_file!["fixtures/dos_line.html"].assert_eq(&html.into_inner());

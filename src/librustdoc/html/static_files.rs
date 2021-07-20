@@ -47,6 +47,12 @@ crate static CLIPBOARD_SVG: &[u8] = include_bytes!("static/images/clipboard.svg"
 /// The file contents of `down-arrow.svg`, the icon used for the crate choice combobox.
 crate static DOWN_ARROW_SVG: &[u8] = include_bytes!("static/images/down-arrow.svg");
 
+/// The file contents of `expand.svg`, the icon used to show hidden code blocks lines.
+crate static EXPAND_SVG: &[u8] = include_bytes!("static/eye.svg");
+
+/// The file contents of `collapse.svg`, the icon used to collapse hidden code blocks lines.
+crate static COLLAPSE_SVG: &[u8] = include_bytes!("static/eye-slash.svg");
+
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.
 crate static COPYRIGHT: &[u8] = include_bytes!("static/COPYRIGHT.txt");

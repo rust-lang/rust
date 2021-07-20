@@ -57,6 +57,10 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #191f26;
 }
 
+pre .data-hidden {
+	background-color: #313942;
+}
+
 .sidebar {
 	background-color: #14191f;
 }
@@ -323,10 +327,17 @@ a.test-arrow {
 	border-radius: 4px;
 	background-color: rgba(57, 175, 215, 0.09);
 }
-
 a.test-arrow:hover {
 	background-color: rgba(57, 175, 215, 0.368);
 	color: #c5c5c5;
+}
+
+.copy-code, .expand, .collapse {
+	filter: invert(70%);
+	color: #fff;
+}
+.copy-code:hover, .expand:hover, .collapse:hover {
+	filter: invert(100%);
 }
 
 .toggle-label,
