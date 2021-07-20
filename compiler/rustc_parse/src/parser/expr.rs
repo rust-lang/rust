@@ -1377,11 +1377,17 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    /// Parse `"('label ":")? break expr?`.
+    /// Parse `"break" (('label (:? expr)?) | expr?)` with `"break"` token already eaten.
+    /// If the label is followed immediately by a `:` token, the label and `:` are
+    /// parsed as part of the expression (i.e. a labeled loop).
     fn parse_break_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let label = self.eat_label();
-        let kind = if self.token != token::OpenDelim(token::Brace)
+        let mut label = self.eat_label();
+        let kind = if label.is_some() && self.token == token::Colon {
+            // The value expression can be a labeled loop, see issue #86948.
+            // Allow `loop { break 'label: loop { break 'label 42; }; }`
+            Some(self.parse_labeled_expr(label.take().unwrap(), AttrVec::new(), true)?)
+        } else if self.token != token::OpenDelim(token::Brace)
             || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
         {
             self.parse_expr_opt()?
