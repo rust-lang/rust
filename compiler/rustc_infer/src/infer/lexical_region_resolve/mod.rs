@@ -638,6 +638,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             let sub = var_data.normalize(self.tcx(), verify.region);
 
             let verify_kind_ty = verify.kind.to_ty(self.tcx());
+            let verify_kind_ty = var_data.normalize(self.tcx(), verify_kind_ty);
             if self.bound_is_met(&verify.bound, var_data, verify_kind_ty, sub) {
                 continue;
             }
