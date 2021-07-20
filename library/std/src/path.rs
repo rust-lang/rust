@@ -1398,7 +1398,7 @@ impl PathBuf {
     /// Invokes [`shrink_to`] on the underlying instance of [`OsString`].
     ///
     /// [`shrink_to`]: OsString::shrink_to
-    #[unstable(feature = "shrink_to", issue = "56431")]
+    #[stable(feature = "shrink_to", since = "1.55.0")]
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
