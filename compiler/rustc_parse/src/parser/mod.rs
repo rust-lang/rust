@@ -394,7 +394,7 @@ fn token_descr_opt(token: &Token) -> Option<&'static str> {
     })
 }
 
-pub(super) fn token_descr(token: &Token) -> String {
+pub fn token_descr(token: &Token) -> String {
     let token_str = pprust::token_to_string(token);
     match token_descr_opt(token) {
         Some(prefix) => format!("{} `{}`", prefix, token_str),

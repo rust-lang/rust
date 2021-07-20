@@ -10,6 +10,7 @@ struct A; //~ ERROR the name `A` is defined multiple times
 
 #[derive(B)]
 //~^ ERROR proc-macro derive produced unparseable tokens
+//~| ERROR expected item, found `{`
 struct B;
 
 fn main() {}

@@ -133,11 +133,21 @@ impl MultiItemModifier for ProcMacroDerive {
             }
         }
 
-        // fail if there have been errors emitted,
-        // or if there's any unparsed tokens left.
-        if parser.token != token::Eof
-            || ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before
-        {
+        // check if the entire stream was parsed
+        if parser.token != token::Eof {
+            ecx.struct_span_err(
+                parser.token.span,
+                &format!(
+                    "expected item, found {}",
+                    rustc_parse::parser::token_descr(&parser.token)
+                ),
+            )
+            .span_label(parser.token.span, "expected item")
+            .emit();
+        }
+
+        // fail if there have been errors emitted
+        if ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before {
             ecx.struct_span_err(span, "proc-macro derive produced unparseable tokens").emit();
         }
 
