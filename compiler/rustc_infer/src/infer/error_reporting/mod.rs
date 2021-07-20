@@ -1950,6 +1950,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trace: TypeTrace<'tcx>,
         terr: &TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
+        use crate::traits::ObligationCauseCode::MatchExpressionArm;
+
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span(self.tcx);
@@ -1990,6 +1992,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             }
                         }
                         _ => {}
+                    }
+                }
+                if let MatchExpressionArm(box MatchExpressionArmCause { source, .. }) =
+                    trace.cause.code
+                {
+                    if let hir::MatchSource::TryDesugar = source {
+                        if let Some((expected_ty, found_ty)) = self.values_str(trace.values) {
+                            err.note(&format!(
+                                "`?` operator cannot convert from `{}` to `{}`",
+                                found_ty.content(),
+                                expected_ty.content(),
+                            ));
+                        }
                     }
                 }
                 err
@@ -2473,9 +2488,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
                     hir::MatchSource::IfLetDesugar { .. } => {
                         "`if let` arms have incompatible types"
                     }
-                    hir::MatchSource::TryDesugar => {
-                        "try expression alternatives have incompatible types"
-                    }
+                    hir::MatchSource::TryDesugar => "`?` operator has incompatible types",
                     _ => "`match` arms have incompatible types",
                 })
             }

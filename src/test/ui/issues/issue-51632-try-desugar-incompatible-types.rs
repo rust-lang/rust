@@ -6,7 +6,7 @@ fn missing_discourses() -> Result<isize, ()> {
 
 fn forbidden_narratives() -> Result<isize, ()> {
     missing_discourses()?
-    //~^ ERROR try expression alternatives have incompatible types
+    //~^ ERROR: `?` operator has incompatible types
 }
 
 fn main() {}
