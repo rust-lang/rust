@@ -1282,7 +1282,7 @@ impl<'a> Builder<'a> {
         // efficient initial-exec TLS model. This doesn't work with `dlopen`,
         // so we can't use it by default in general, but we can use it for tools
         // and our own internal libraries.
-        if !mode.must_support_dlopen() {
+        if !mode.must_support_dlopen() && !target.triple.starts_with("powerpc-") {
             rustflags.arg("-Ztls-model=initial-exec");
         }
 
