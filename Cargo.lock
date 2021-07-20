@@ -1175,6 +1175,7 @@ dependencies = [
  "base_db",
  "cargo_metadata",
  "cfg",
+ "expect-test",
  "la-arena",
  "log",
  "paths",

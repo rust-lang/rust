@@ -24,6 +24,9 @@ mod workspace;
 mod rustc_cfg;
 mod build_scripts;
 
+#[cfg(test)]
+mod tests;
+
 use std::{
     convert::{TryFrom, TryInto},
     fs::{self, read_dir, ReadDir},

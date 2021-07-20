@@ -23,9 +23,24 @@ pub use dnf::DnfExpr;
 /// of key and value in `key_values`.
 ///
 /// See: <https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options>
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub struct CfgOptions {
     enabled: FxHashSet<CfgAtom>,
+}
+
+impl fmt::Debug for CfgOptions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut items = self
+            .enabled
+            .iter()
+            .map(|atom| match atom {
+                CfgAtom::Flag(it) => it.to_string(),
+                CfgAtom::KeyValue { key, value } => format!("{}={}", key, value),
+            })
+            .collect::<Vec<_>>();
+        items.sort();
+        f.debug_tuple("CfgOptions").field(&items).finish()
+    }
 }
 
 impl CfgOptions {
