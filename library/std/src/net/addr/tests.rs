@@ -52,6 +52,16 @@ fn to_socket_addr_string() {
 }
 
 #[test]
+fn to_socket_addr_iter() {
+    let ports = 1000..1005;
+    let sock_iter = ports.map(|port| sa4(Ipv4Addr::new(77, 88, 21, 11), port));
+    let sock_vec: Vec<SocketAddr> = tsa(SocketAddrsIter::new(sock_iter.clone())).unwrap();
+    let sock_vec2: Vec<SocketAddr> = sock_iter.map(SocketAddr::from).collect();
+
+    assert_eq!(sock_vec, sock_vec2);
+}
+
+#[test]
 fn bind_udp_socket_bad() {
     // rust-lang/rust#53957: This is a regression test for a parsing problem
     // discovered as part of issue rust-lang/rust#23076, where we were

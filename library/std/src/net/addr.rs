@@ -757,6 +757,43 @@ impl hash::Hash for SocketAddrV6 {
     }
 }
 
+#[stable(feature = "LazySocketAddrs", since = "1.52.0")]
+#[derive(Debug, Clone)]
+/// Wrapper struct that allows Iterators of SocketAddr to be used where
+/// ToSocketAddrs is a trait bound
+pub struct SocketAddrsIter<I, S>
+where
+    S: Into<SocketAddr> + Clone,
+    I: Iterator<Item = S> + Clone,
+{
+    inner: I,
+}
+
+impl<I, S> SocketAddrsIter<I, S>
+where
+    S: Into<SocketAddr> + Clone,
+    I: Iterator<Item = S> + Clone,
+{
+    #[stable(feature = "LazySocketAddrs", since = "1.52.0")]
+    /// Make a new SocketAddrsIter
+    pub fn new(iter: I) -> Self {
+        SocketAddrsIter { inner: iter }
+    }
+}
+
+#[stable(feature = "LazySocketAddrs", since = "1.52.0")]
+impl<I, S> Iterator for SocketAddrsIter<I, S>
+where
+    S: Into<SocketAddr> + Clone,
+    I: Iterator<Item = S> + Clone,
+{
+    type Item = SocketAddr;
+
+    fn next(&mut self) -> Option<SocketAddr> {
+        self.inner.next().map(S::into)
+    }
+}
+
 /// A trait for objects which can be converted or resolved to one or more
 /// [`SocketAddr`] values.
 ///
@@ -888,6 +925,19 @@ impl ToSocketAddrs for SocketAddr {
     type Iter = option::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<option::IntoIter<SocketAddr>> {
         Ok(Some(*self).into_iter())
+    }
+}
+
+#[stable(feature = "LazySocketAddrs", since = "1.52.0")]
+impl<I, S> ToSocketAddrs for SocketAddrsIter<I, S>
+where
+    S: Into<SocketAddr> + Clone,
+    I: Iterator<Item = S> + Clone,
+{
+    type Iter = Self;
+
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        Ok((*self).clone())
     }
 }
 
