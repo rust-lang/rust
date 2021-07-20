@@ -1,7 +1,6 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::profiling::QueryInvocationId;
-use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
@@ -36,6 +35,12 @@ pub struct DepGraph<K: DepKind> {
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Lrc<AtomicU32>,
+
+    /// The cached event id for profiling node interning. This saves us
+    /// from having to look up the event id every time we intern a node
+    /// which may incur too much overhead.
+    /// This will be None if self-profiling is disabled.
+    node_intern_event_id: Option<EventId>,
 }
 
 rustc_index::newtype_index! {
@@ -130,6 +135,10 @@ impl<K: DepKind> DepGraph<K> {
         );
         debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
 
+        let node_intern_event_id = profiler
+            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
+            .map(EventId::from_label);
+
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
@@ -141,11 +150,16 @@ impl<K: DepKind> DepGraph<K> {
                 colors: DepNodeColorMap::new(prev_graph_node_count),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
+            node_intern_event_id,
         }
     }
 
     pub fn new_disabled() -> DepGraph<K> {
-        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
+        DepGraph {
+            data: None,
+            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
+            node_intern_event_id: None,
+        }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -244,10 +258,15 @@ impl<K: DepKind> DepGraph<K> {
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
             let mut hcx = dcx.create_stable_hashing_context();
+            let hashing_timer = dcx.profiler().incr_result_hashing();
             let current_fingerprint = hash_result(&mut hcx, &result);
 
             let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
+            // Get timer for profiling `DepNode` interning
+            let node_intern_timer = self
+                .node_intern_event_id
+                .map(|eid| dcx.profiler().generic_activity_with_event_id(eid));
             // Intern the new `DepNode`.
             let (dep_node_index, prev_and_color) = data.current.intern_node(
                 dcx.profiler(),
@@ -257,6 +276,9 @@ impl<K: DepKind> DepGraph<K> {
                 current_fingerprint,
                 print_status,
             );
+            drop(node_intern_timer);
+
+            hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             if let Some((prev_index, color)) = prev_and_color {
                 debug_assert!(
