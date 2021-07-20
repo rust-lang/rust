@@ -623,14 +623,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let orig_tag = ptr.provenance.sb;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        let (allocation_size, _) =
+        let (alloc_size, _) =
             this.memory.get_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
-        if base_offset + size > allocation_size {
+        if base_offset + size > alloc_size {
             throw_ub!(PointerOutOfBounds {
                 alloc_id,
-                offset: base_offset,
-                size,
-                allocation_size,
+                alloc_size,
+                ptr_offset: this.machine_usize_to_isize(base_offset.bytes()),
+                ptr_size: size,
                 msg: CheckInAllocMsg::InboundsTest
             });
         }
