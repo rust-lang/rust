@@ -1148,15 +1148,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  never  = never colorize output",
             "auto|always|never",
         ),
-        opt::opt(
-            "",
-            "pretty",
-            "Pretty-print the input instead of compiling;
-                  valid types are: `normal` (un-annotated source),
-                  `expanded` (crates expanded), or
-                  `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-            "TYPE",
-        ),
         opt::multi_s(
             "",
             "remap-path-prefix",
@@ -2073,7 +2064,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let remap_path_prefix = parse_remap_path_prefix(matches, error_format);
 
-    let pretty = parse_pretty(matches, &debugging_opts, error_format);
+    let pretty = parse_pretty(&debugging_opts, error_format);
 
     if !debugging_opts.unstable_options
         && !target_triple.triple().contains("apple")
@@ -2150,69 +2141,39 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 }
 
-fn parse_pretty(
-    matches: &getopts::Matches,
-    debugging_opts: &DebuggingOptions,
-    efmt: ErrorOutputType,
-) -> Option<PpMode> {
-    fn parse_pretty_inner(efmt: ErrorOutputType, name: &str, extended: bool) -> PpMode {
-        use PpMode::*;
-        let first = match (name, extended) {
-            ("normal", _) => Source(PpSourceMode::Normal),
-            ("identified", _) => Source(PpSourceMode::Identified),
-            ("everybody_loops", true) => Source(PpSourceMode::EveryBodyLoops),
-            ("expanded", _) => Source(PpSourceMode::Expanded),
-            ("expanded,identified", _) => Source(PpSourceMode::ExpandedIdentified),
-            ("expanded,hygiene", _) => Source(PpSourceMode::ExpandedHygiene),
-            ("ast-tree", true) => AstTree(PpAstTreeMode::Normal),
-            ("ast-tree,expanded", true) => AstTree(PpAstTreeMode::Expanded),
-            ("hir", true) => Hir(PpHirMode::Normal),
-            ("hir,identified", true) => Hir(PpHirMode::Identified),
-            ("hir,typed", true) => Hir(PpHirMode::Typed),
-            ("hir-tree", true) => HirTree,
-            ("thir-tree", true) => ThirTree,
-            ("mir", true) => Mir,
-            ("mir-cfg", true) => MirCFG,
-            _ => {
-                if extended {
-                    early_error(
-                        efmt,
-                        &format!(
-                            "argument to `unpretty` must be one of `normal`, \
-                                        `expanded`, `identified`, `expanded,identified`, \
-                                        `expanded,hygiene`, `everybody_loops`, \
-                                        `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
-                                        `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
-                            name
-                        ),
-                    );
-                } else {
-                    early_error(
-                        efmt,
-                        &format!(
-                            "argument to `pretty` must be one of `normal`, \
-                                        `expanded`, `identified`, or `expanded,identified`; got {}",
-                            name
-                        ),
-                    );
-                }
-            }
-        };
-        tracing::debug!("got unpretty option: {:?}", first);
-        first
-    }
+fn parse_pretty(debugging_opts: &DebuggingOptions, efmt: ErrorOutputType) -> Option<PpMode> {
+    use PpMode::*;
 
-    if debugging_opts.unstable_options {
-        if let Some(a) = matches.opt_default("pretty", "normal") {
-            // stable pretty-print variants only
-            return Some(parse_pretty_inner(efmt, &a, false));
-        }
-    }
-
-    debugging_opts.unpretty.as_ref().map(|a| {
-        // extended with unstable pretty-print variants
-        parse_pretty_inner(efmt, &a, true)
-    })
+    let first = match debugging_opts.unpretty.as_deref()? {
+        "normal" => Source(PpSourceMode::Normal),
+        "identified" => Source(PpSourceMode::Identified),
+        "everybody_loops" => Source(PpSourceMode::EveryBodyLoops),
+        "expanded" => Source(PpSourceMode::Expanded),
+        "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
+        "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
+        "ast-tree" => AstTree(PpAstTreeMode::Normal),
+        "ast-tree,expanded" => AstTree(PpAstTreeMode::Expanded),
+        "hir" => Hir(PpHirMode::Normal),
+        "hir,identified" => Hir(PpHirMode::Identified),
+        "hir,typed" => Hir(PpHirMode::Typed),
+        "hir-tree" => HirTree,
+        "thir-tree" => ThirTree,
+        "mir" => Mir,
+        "mir-cfg" => MirCFG,
+        name => early_error(
+            efmt,
+            &format!(
+                "argument to `unpretty` must be one of `normal`, \
+                            `expanded`, `identified`, `expanded,identified`, \
+                            `expanded,hygiene`, `everybody_loops`, \
+                            `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
+                            `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
+                name
+            ),
+        ),
+    };
+    tracing::debug!("got unpretty option: {:?}", first);
+    Some(first)
 }
 
 pub fn make_crate_type_option() -> RustcOptGroup {
@@ -2320,17 +2281,17 @@ impl fmt::Display for CrateType {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
-    /// `--pretty=normal`
+    /// `-Zunpretty=normal`
     Normal,
     /// `-Zunpretty=everybody_loops`
     EveryBodyLoops,
-    /// `--pretty=expanded`
+    /// `-Zunpretty=expanded`
     Expanded,
-    /// `--pretty=identified`
+    /// `-Zunpretty=identified`
     Identified,
-    /// `--pretty=expanded,identified`
+    /// `-Zunpretty=expanded,identified`
     ExpandedIdentified,
-    /// `--pretty=expanded,hygiene`
+    /// `-Zunpretty=expanded,hygiene`
     ExpandedHygiene,
 }
 
@@ -2355,7 +2316,7 @@ pub enum PpHirMode {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
     /// Options that print the source code, i.e.
-    /// `--pretty` and `-Zunpretty=everybody_loops`
+    /// `-Zunpretty=normal` and `-Zunpretty=everybody_loops`
     Source(PpSourceMode),
     AstTree(PpAstTreeMode),
     /// Options that print the HIR, i.e. `-Zunpretty=hir`

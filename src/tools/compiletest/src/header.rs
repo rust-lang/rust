@@ -98,7 +98,7 @@ pub struct TestProps {
     // a proc-macro and needs `#![crate_type = "proc-macro"]`. This ensures
     // that the aux file is compiled as a `proc-macro` and not as a `dylib`.
     pub no_prefer_dynamic: bool,
-    // Run --pretty expanded when running pretty printing tests
+    // Run -Zunpretty expanded when running pretty printing tests
     pub pretty_expanded: bool,
     // Which pretty mode are we testing with, default to 'normal'
     pub pretty_mode: String,

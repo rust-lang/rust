@@ -619,7 +619,7 @@ impl<'test> TestCx<'test> {
             return;
         }
 
-        // additionally, run `--pretty expanded` and try to build it.
+        // additionally, run `-Zunpretty=expanded` and try to build it.
         let proc_res = self.print_source(ReadFrom::Path, "expanded");
         if !proc_res.status.success() {
             self.fatal_proc_rec("pretty-printing (expanded) failed", &proc_res);

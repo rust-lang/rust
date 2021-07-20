@@ -1,6 +1,6 @@
 // This is meant as a test case for Issue 3961.
 //
-// Test via: rustc --pretty normal src/test/pretty/block-comment-wchar.rs
+// Test via: rustc -Zunpretty normal src/test/pretty/block-comment-wchar.rs
 // ignore-tidy-cr
 // ignore-tidy-tab
 // pp-exact:block-comment-wchar.pp
