@@ -66,6 +66,7 @@
 #![feature(slice_group_by)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
+#![feature(get_many)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

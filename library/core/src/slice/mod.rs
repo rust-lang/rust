@@ -3470,6 +3470,155 @@ impl<T> [T] {
     {
         self.binary_search_by(|x| if pred(x) { Less } else { Greater }).unwrap_or_else(|i| i)
     }
+
+    /// Returns multiple references at once, without doing bounds checking.
+    ///
+    /// For a safe alternative see [`get_many`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping or out-of-bounds indices is *[undefined behavior]*
+    /// even if the resulting references are not used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many)]
+    ///
+    /// let x = &[1, 2, 4];
+    ///
+    /// unsafe {
+    ///     assert_eq!(x.get_many_unchecked([0, 2]), [&1, &4]);
+    /// }
+    /// ```
+    ///
+    /// [`get_many`]: slice::get_many
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "get_many", issue = "none")]
+    #[inline]
+    pub unsafe fn get_many_unchecked<const N: usize>(&self, indices: [usize; N]) -> [&T; N] {
+        // NB: We need to go through a raw pointer to make miri happy
+        let slice: *const [T] = self;
+        let mut arr: mem::MaybeUninit<[&T; N]> = mem::MaybeUninit::uninit();
+        let arr_ptr = arr.as_mut_ptr();
+
+        // SAFETY: We expect `indices` to contain disjunct values that are
+        // in bounds of `self`.
+        unsafe {
+            for i in 0..N {
+                let idx = *indices.get_unchecked(i);
+                *(*arr_ptr).get_unchecked_mut(i) = &*slice.get_unchecked(idx);
+            }
+            arr.assume_init()
+        }
+    }
+
+    /// Returns multiple mutable references at once, without doing bounds checking.
+    ///
+    /// For a safe alternative see [`get_many_mut`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping or out-of-bounds indices is *[undefined behavior]*
+    /// even if the resulting references are not used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many)]
+    ///
+    /// let x = &mut [1, 2, 4];
+    ///
+    /// unsafe {
+    ///     let [a, b] = x.get_many_unchecked_mut([0, 2]);
+    ///     *a *= 10;
+    ///     *b *= 100;
+    /// }
+    /// assert_eq!(x, &[10, 2, 400]);
+    /// ```
+    ///
+    /// [`get_many_mut`]: slice::get_many_mut
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "get_many", issue = "none")]
+    #[inline]
+    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+        &mut self,
+        indices: [usize; N],
+    ) -> [&mut T; N] {
+        // NB: We need to go through a raw pointer to make miri happy
+        let slice: *mut [T] = self;
+        let mut arr: mem::MaybeUninit<[&mut T; N]> = mem::MaybeUninit::uninit();
+        let arr_ptr = arr.as_mut_ptr();
+
+        // SAFETY: We expect `indices` to contain disjunct values that are
+        // in bounds of `self`.
+        unsafe {
+            for i in 0..N {
+                let idx = *indices.get_unchecked(i);
+                *(*arr_ptr).get_unchecked_mut(i) = &mut *slice.get_unchecked_mut(idx);
+            }
+            arr.assume_init()
+        }
+    }
+
+    /// Returns multiple references at once,
+    /// or `None` if out of bounds.
+    ///
+    /// The indices have to be given in sorted order, and need to be pairwise
+    /// disjunct.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many)]
+    ///
+    /// let v = [10, 40, 30];
+    /// assert_eq!(v.get_many([1]), Some([&40]));
+    /// assert_eq!(v.get_many([0, 2]), Some([&10, &30]));
+    /// assert_eq!(v.get_many([0, 1, 2]), Some([&10, &40, &30]));
+    /// assert_eq!(v.get_many([0, 1, 2, 3]), None);
+    /// ```
+    #[unstable(feature = "get_many", issue = "none")]
+    #[inline]
+    pub fn get_many<const N: usize>(&self, indices: [usize; N]) -> Option<[&T; N]> {
+        if !get_many_check_valid(&indices, self.len()) {
+            return None;
+        }
+        // SAFETY: The `get_many_check_valid()` call checked that all indices
+        // are disjunct and in bounds.
+        unsafe { Some(self.get_many_unchecked(indices)) }
+    }
+
+    /// Returns multiple mutable references at once (see [`get_many`]),
+    /// or `None` if out of bounds.
+    ///
+    /// The indices have to be given in sorted order, and need to be pairwise
+    /// disjunct.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many)]
+    ///
+    /// let v = &mut [1, 2, 3];
+    /// if let Some([a, b]) = v.get_many_mut([0, 2]) {
+    ///     *a = 413;
+    ///     *b = 612;
+    /// }
+    /// assert_eq!(v, &[413, 2, 612]);
+    /// ```
+    ///
+    /// [`get_many`]: slice::get_many
+    #[unstable(feature = "get_many", issue = "none")]
+    #[inline]
+    pub fn get_many_mut<const N: usize>(&mut self, indices: [usize; N]) -> Option<[&mut T; N]> {
+        if !get_many_check_valid(&indices, self.len()) {
+            return None;
+        }
+        // SAFETY: The `get_many_check_valid()` call checked that all indices
+        // are disjunct and in bounds.
+        unsafe { Some(self.get_many_unchecked_mut(indices)) }
+    }
 }
 
 trait CloneFromSpec<T> {
@@ -3548,4 +3697,16 @@ impl<T, const N: usize> SlicePattern for [T; N] {
     fn as_slice(&self) -> &[Self::Item] {
         self
     }
+}
+
+fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> bool {
+    // NB: This should optimize down to exactly `N` comparision operations.
+    let mut valid = true;
+    for &[a, b] in indices.array_windows() {
+        valid &= a < b;
+    }
+    if let Some(&idx) = indices.last() {
+        valid &= idx < len;
+    }
+    valid
 }

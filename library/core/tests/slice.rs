@@ -2094,3 +2094,117 @@ fn test_slice_run_destructors() {
 
     assert_eq!(x.get(), 1);
 }
+
+#[test]
+fn test_get_many_mut_normal() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a, b, c] = v.get_many_mut([0, 2, 4]).unwrap();
+    *a += 10;
+    *b += 100;
+    *c += 1000;
+    assert_eq!(v, vec![11, 2, 103, 4, 1005]);
+}
+
+#[test]
+fn test_get_many_ref_normal() {
+    let v = vec![1, 2, 3, 4, 5];
+    let [a, b, c] = v.get_many([0, 2, 4]).unwrap();
+    assert_eq!(a, &1);
+    assert_eq!(b, &3);
+    assert_eq!(c, &5);
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_empty() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [] = v.get_many_mut([]).unwrap();
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_ref_empty() {
+    let v = vec![1, 2, 3, 4, 5];
+    let [] = v.get_many([]).unwrap();
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_single_first() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many_mut([0]).unwrap();
+    *a += 10;
+    assert_eq!(v, vec![11, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_ref_single_first() {
+    let v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many([0]).unwrap();
+    assert_eq!(a, &1);
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_single_last() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many_mut([4]).unwrap();
+    *a += 10;
+    assert_eq!(v, vec![1, 2, 3, 4, 15]);
+}
+
+#[test]
+fn test_get_many_ref_single_last() {
+    let v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many([4]).unwrap();
+    assert_eq!(a, &5);
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_oob_nonempty() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([5]).is_none());
+}
+
+#[test]
+fn test_get_many_ref_oob_nonempty() {
+    let v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many([5]).is_none());
+}
+
+#[test]
+fn test_get_many_mut_oob_empty() {
+    let mut v: Vec<i32> = vec![];
+    assert!(v.get_many_mut([0]).is_none());
+}
+
+#[test]
+fn test_get_many_ref_oob_empty() {
+    let v: Vec<i32> = vec![];
+    assert!(v.get_many([0]).is_none());
+}
+
+#[test]
+fn test_get_many_mut_unsorted() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([3, 1, 4]).is_none());
+}
+
+#[test]
+fn test_get_many_ref_unsorted() {
+    let v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many([3, 1, 4]).is_none());
+}
+
+#[test]
+fn test_get_many_mut_duplicate() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([1, 3, 3, 4]).is_none());
+}
+
+#[test]
+fn test_get_many_ref_duplicate() {
+    let v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many([1, 3, 3, 4]).is_none());
+}
