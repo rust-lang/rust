@@ -56,7 +56,7 @@ pub struct OpenOptions {
     rights_inheriting: Option<wasi::Rights>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FilePermissions {
     readonly: bool,
 }

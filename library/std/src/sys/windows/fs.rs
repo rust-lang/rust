@@ -72,7 +72,7 @@ pub struct OpenOptions {
     security_attributes: usize, // FIXME: should be a reference
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FilePermissions {
     attrs: c::DWORD,
 }
