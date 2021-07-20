@@ -41,6 +41,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     if let Some(ImmediateLocation::Visibility(vis)) = &ctx.completion_location {
         if vis.in_token().is_none() {
+            cov_mark::hit!(kw_completion_in);
             add_keyword("in", "in");
         }
         return;

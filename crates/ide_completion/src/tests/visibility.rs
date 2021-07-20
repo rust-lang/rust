@@ -10,6 +10,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 
 #[test]
 fn empty_pub() {
+    cov_mark::check!(kw_completion_in);
     check(
         r#"
 pub($0)
