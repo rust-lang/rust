@@ -760,7 +760,7 @@ checksum = "8b23360e99b8717f20aaa4598f5a6541efbe30630039fbc7706cf954a87947ae"
 
 [[package]]
 name = "la-arena"
-version = "0.2.0"
+version = "0.2.1"
 
 [[package]]
 name = "lazy_static"
