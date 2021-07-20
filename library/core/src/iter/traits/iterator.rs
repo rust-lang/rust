@@ -460,8 +460,8 @@ pub trait Iterator {
     /// In other words, it zips two iterators together, into a single one.
     ///
     /// If either iterator returns [`None`], [`next`] from the zipped iterator
-    /// will return [`None`]. If the first iterator returns [`None`], `zip` will
-    /// short-circuit and `next` will not be called on the second iterator.
+    /// will return [`None`]. If the zipped iterator has no more elements to return then attempts
+    /// to advance it may try to advance one or neither of the inner iterators.
     ///
     /// # Examples
     ///
