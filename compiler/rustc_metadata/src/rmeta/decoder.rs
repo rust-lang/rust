@@ -48,7 +48,26 @@ use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
 
-crate struct MetadataBlob(MetadataRef);
+/// A reference to the raw binary version of crate metadata.
+/// A `MetadataBlob` internally is just a reference counted pointer to
+/// the actual data, so cloning it is cheap.
+#[derive(Clone)]
+crate struct MetadataBlob(Lrc<MetadataRef>);
+
+// This is needed so we can create an OwningRef into the blob.
+// The data behind a `MetadataBlob` has a stable address because it
+// contained within an Rc/Arc.
+unsafe impl rustc_data_structures::owning_ref::StableAddress for MetadataBlob {}
+
+// This is needed so we can create an OwningRef into the blob.
+impl std::ops::Deref for MetadataBlob {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -134,6 +153,7 @@ struct ImportedSourceFile {
 pub(super) struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<CrateMetadataRef<'a>>,
+    blob: &'a MetadataBlob,
     sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
 
@@ -148,7 +168,11 @@ pub(super) struct DecodeContext<'a, 'tcx> {
 
 /// Abstract over the various ways one can create metadata decoders.
 pub(super) trait Metadata<'a, 'tcx>: Copy {
-    fn raw_bytes(self) -> &'a [u8];
+    fn blob(self) -> &'a MetadataBlob;
+    #[inline]
+    fn raw_bytes(self) -> &'a [u8] {
+        self.blob()
+    }
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         None
     }
@@ -164,6 +188,7 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
         DecodeContext {
             opaque: opaque::Decoder::new(self.raw_bytes(), pos),
             cdata: self.cdata(),
+            blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx,
             last_source_file_index: 0,
@@ -176,17 +201,19 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
-    fn raw_bytes(self) -> &'a [u8] {
-        &self.0
+    #[inline]
+    fn blob(self) -> &'a MetadataBlob {
+        self
     }
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'tcx Session) {
-    fn raw_bytes(self) -> &'a [u8] {
-        let (blob, _) = self;
-        &blob.0
+    #[inline]
+    fn blob(self) -> &'a MetadataBlob {
+        self.0
     }
 
+    #[inline]
     fn sess(self) -> Option<&'tcx Session> {
         let (_, sess) = self;
         Some(sess)
@@ -194,33 +221,41 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'tcx Session) {
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a CrateMetadataRef<'a> {
-    fn raw_bytes(self) -> &'a [u8] {
-        self.blob.raw_bytes()
+    #[inline]
+    fn blob(self) -> &'a MetadataBlob {
+        &self.blob
     }
+    #[inline]
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         Some(*self)
     }
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, &'tcx Session) {
-    fn raw_bytes(self) -> &'a [u8] {
-        self.0.raw_bytes()
+    #[inline]
+    fn blob(self) -> &'a MetadataBlob {
+        &self.0.blob
     }
+    #[inline]
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         Some(*self.0)
     }
+    #[inline]
     fn sess(self) -> Option<&'tcx Session> {
         Some(&self.1)
     }
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, TyCtxt<'tcx>) {
-    fn raw_bytes(self) -> &'a [u8] {
-        self.0.raw_bytes()
+    #[inline]
+    fn blob(self) -> &'a MetadataBlob {
+        &self.0.blob
     }
+    #[inline]
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         Some(*self.0)
     }
+    #[inline]
     fn tcx(self) -> Option<TyCtxt<'tcx>> {
         Some(self.1)
     }
@@ -246,12 +281,21 @@ impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<[T]> {
 }
 
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+    #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.expect("missing TyCtxt in DecodeContext")
+        debug_assert!(self.tcx.is_some(), "missing TyCtxt in DecodeContext");
+        self.tcx.unwrap()
     }
 
-    fn cdata(&self) -> CrateMetadataRef<'a> {
-        self.cdata.expect("missing CrateMetadata in DecodeContext")
+    #[inline]
+    pub fn blob(&self) -> &'a MetadataBlob {
+        self.blob
+    }
+
+    #[inline]
+    pub fn cdata(&self) -> CrateMetadataRef<'a> {
+        debug_assert!(self.cdata.is_some(), "missing CrateMetadata in DecodeContext");
+        self.cdata.unwrap()
     }
 
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
@@ -586,7 +630,7 @@ implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
 impl MetadataBlob {
     crate fn new(metadata_ref: MetadataRef) -> MetadataBlob {
-        MetadataBlob(metadata_ref)
+        MetadataBlob(Lrc::new(metadata_ref))
     }
 
     crate fn is_compatible(&self) -> bool {
