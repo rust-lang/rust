@@ -940,6 +940,77 @@ impl<T> BTreeSet<T> {
         BTreeSet { map: self.map.split_off(value) }
     }
 
+    /// Splits the collection into two. Returns a new collection with all values in the given range.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_drain)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
+    ///
+    /// let b = a.split_off_range(&3..&33);
+    ///
+    /// assert_eq!(a.len(), 3);
+    /// assert_eq!(b.len(), 2);
+    ///
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
+    /// assert!(a.contains(&41));
+    ///
+    /// assert!(b.contains(&3));
+    /// assert!(b.contains(&17));
+    /// ```
+    #[unstable(feature = "btree_drain", issue = "81074")]
+    pub fn split_off_range<K: ?Sized, R>(&mut self, range: R) -> Self
+    where
+        K: Ord,
+        T: Borrow<K> + Ord,
+        R: RangeBounds<K>,
+    {
+        BTreeSet { map: self.map.split_off_range(range) }
+    }
+
+    /// Creates an iterator that removes a range of values and returns them.
+    ///
+    /// If the iterator is only partially consumed or not consumed at all, the remaining
+    /// values in the range are still removed and dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_drain)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
+    ///
+    /// let b: Vec<_> = a.drain(3..33).collect();
+    /// assert_eq!(b, vec![3, 17]);
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[unstable(feature = "btree_drain", issue = "81074")]
+    pub fn drain<K: ?Sized, R>(&mut self, range: R) -> Drain<T>
+    where
+        K: Ord,
+        T: Borrow<K> + Ord,
+        R: RangeBounds<K>,
+    {
+        Drain { iter: self.map.drain(range) }
+    }
+
     /// Creates an iterator that visits all values in ascending order and uses a closure
     /// to determine if a value should be removed.
     ///
@@ -1087,6 +1158,36 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
         self.iter()
     }
 }
+
+/// An iterator produced by calling `drain` on BTreeSet.
+#[unstable(feature = "btree_drain", issue = "81074")]
+#[derive(Debug)]
+pub struct Drain<T> {
+    iter: super::map::Drain<T, ()>,
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<T> Iterator for Drain<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        self.iter.next().map(|(k, _)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<T> ExactSizeIterator for Drain<T> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<T> FusedIterator for Drain<T> {}
 
 /// An iterator produced by calling `drain_filter` on BTreeSet.
 #[unstable(feature = "btree_drain_filter", issue = "70530")]

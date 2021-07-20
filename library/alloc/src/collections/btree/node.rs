@@ -213,7 +213,7 @@ unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> 
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    fn new_leaf() -> Self {
+    pub fn new_leaf() -> Self {
         Self::from_new_leaf(LeafNode::new())
     }
 
@@ -223,7 +223,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    fn new_internal(child: Root<K, V>) -> Self {
+    pub fn new_internal(child: Root<K, V>) -> Self {
         let mut new_node = unsafe { InternalNode::new() };
         new_node.edges[0].write(child.node);
         unsafe { NodeRef::from_new_internal(new_node, child.height + 1) }
@@ -418,7 +418,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     // FIXME(@gereeter) consider adding yet another type parameter to `NodeRef`
     // that restricts the use of navigation methods on reborrowed pointers,
     // preventing this unsafety.
-    unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
+    pub unsafe fn reborrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
@@ -647,6 +647,34 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             self.val_area_mut(idx).write(val);
             self.edge_area_mut(idx + 1).write(edge.node);
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
+        }
+    }
+}
+
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+    /// Removes a key-value pair from the end of the node and returns the pair.
+    /// Also removes the edge that was to the right of that pair and, if the node
+    /// is internal, returns the orphaned subtree that this edge owned.
+    pub fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
+        let idx = self.len().checked_sub(1).expect("attempt to pop from empty node");
+
+        unsafe {
+            let key = self.key_area_mut(idx).assume_init_read();
+            let val = self.val_area_mut(idx).assume_init_read();
+            let edge = match self.reborrow_mut().force() {
+                ForceResult::Leaf(_) => None,
+                ForceResult::Internal(mut internal) => {
+                    let node = internal.edge_area_mut(idx + 1).assume_init_read();
+                    let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
+                    // Currently, clearing the parent link is superfluous, because we will
+                    // insert the node elsewhere and set its parent link again.
+                    edge.clear_parent_link();
+                    Some(edge)
+                }
+            };
+
+            *self.len_mut() -= 1;
+            (key, val, edge)
         }
     }
 }
@@ -1311,23 +1339,28 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     }
 
     /// Merges the parent's key-value pair and both adjacent child nodes into
-    /// the left child node and returns the shrunk parent node.
+    /// the left child node.
+    ///
+    /// Panics unless we `.can_merge()`.
+    pub fn merge(self) {
+        self.do_merge(|_, _| ())
+    }
+
+    /// Performs `merge()` and returns the shrunk parent node.
     ///
     /// Panics unless we `.can_merge()`.
     pub fn merge_tracking_parent(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         self.do_merge(|parent, _child| parent)
     }
 
-    /// Merges the parent's key-value pair and both adjacent child nodes into
-    /// the left child node and returns that child node.
+    /// Performs `merge()` and returns the expanded child node.
     ///
     /// Panics unless we `.can_merge()`.
     pub fn merge_tracking_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         self.do_merge(|_parent, child| child)
     }
 
-    /// Merges the parent's key-value pair and both adjacent child nodes into
-    /// the left child node and returns the edge handle in that child node
+    /// Performs `merge()` and returns the edge handle in the child node
     /// where the tracked child edge ended up,
     ///
     /// Panics unless we `.can_merge()`.
@@ -1569,41 +1602,104 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
         &mut self,
         right: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
     ) {
+        self.move_region(None, right)
+    }
+
+    /// Moves a region from `self` to the back of another node. The region
+    /// consists of the key-value pairs and edges right of `self`, up to and
+    /// including the last edge specified by index.
+    /// Any existing key-value pairs and edges in `dst_node` remain unchanged.
+    fn move_region(
+        &mut self,
+        last_src_edge_idx: Option<usize>,
+        dst_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
+    ) {
+        let mut src_node = unsafe { self.node.reborrow_mut() };
+        let mut dst_node = unsafe { dst_node.reborrow_mut() };
+        assert!(dst_node.height == src_node.height);
+        let old_src_len = src_node.len();
+        let old_dst_len = dst_node.len();
+        let first_src_edge_idx = self.idx;
+        let last_src_edge_idx = last_src_edge_idx.unwrap_or(old_src_len);
+        assert!(last_src_edge_idx <= old_src_len);
+        assert!(last_src_edge_idx >= first_src_edge_idx);
+        let infix_len = last_src_edge_idx - first_src_edge_idx;
+        let new_src_len = old_src_len - infix_len;
+        let new_dst_len = old_dst_len + infix_len;
+        assert!(new_dst_len <= CAPACITY);
+
+        *src_node.len_mut() = new_src_len as u16;
+        *dst_node.len_mut() = new_dst_len as u16;
+
         unsafe {
-            let new_left_len = self.idx;
-            let mut left_node = self.reborrow_mut().into_node();
-            let old_left_len = left_node.len();
-
-            let new_right_len = old_left_len - new_left_len;
-            let mut right_node = right.reborrow_mut();
-
-            assert!(right_node.len() == 0);
-            assert!(left_node.height == right_node.height);
-
-            if new_right_len > 0 {
-                *left_node.len_mut() = new_left_len as u16;
-                *right_node.len_mut() = new_right_len as u16;
-
-                move_to_slice(
-                    left_node.key_area_mut(new_left_len..old_left_len),
-                    right_node.key_area_mut(..new_right_len),
-                );
-                move_to_slice(
-                    left_node.val_area_mut(new_left_len..old_left_len),
-                    right_node.val_area_mut(..new_right_len),
-                );
-                match (left_node.force(), right_node.force()) {
-                    (ForceResult::Internal(mut left), ForceResult::Internal(mut right)) => {
-                        move_to_slice(
-                            left.edge_area_mut(new_left_len + 1..old_left_len + 1),
-                            right.edge_area_mut(1..new_right_len + 1),
-                        );
-                        right.correct_childrens_parent_links(1..new_right_len + 1);
-                    }
-                    (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
-                    _ => unreachable!(),
+            move_to_slice(
+                src_node.key_area_mut(first_src_edge_idx..last_src_edge_idx),
+                dst_node.key_area_mut(old_dst_len..new_dst_len),
+            );
+            move_to_slice(
+                src_node.val_area_mut(first_src_edge_idx..last_src_edge_idx),
+                dst_node.val_area_mut(old_dst_len..new_dst_len),
+            );
+            slice_shl(src_node.key_area_mut(first_src_edge_idx..old_src_len), infix_len);
+            slice_shl(src_node.val_area_mut(first_src_edge_idx..old_src_len), infix_len);
+            match (src_node.force(), dst_node.force()) {
+                (ForceResult::Internal(mut src_node), ForceResult::Internal(mut dst_node)) => {
+                    move_to_slice(
+                        src_node.edge_area_mut(first_src_edge_idx + 1..last_src_edge_idx + 1),
+                        dst_node.edge_area_mut(old_dst_len + 1..new_dst_len + 1),
+                    );
+                    slice_shl(
+                        src_node.edge_area_mut(first_src_edge_idx + 1..old_src_len + 1),
+                        infix_len,
+                    );
+                    src_node
+                        .correct_childrens_parent_links(first_src_edge_idx + 1..new_src_len + 1);
+                    dst_node.correct_childrens_parent_links(old_dst_len + 1..new_dst_len + 1);
                 }
+                (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
+                _ => unreachable!(),
             }
+        }
+    }
+}
+
+impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
+    pub fn move_infix(
+        &mut self,
+        last_src_edge_idx: usize,
+        dst_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::Leaf>,
+    ) {
+        let mut src_node = unsafe { self.reborrow_mut().forget_node_type() };
+        let mut dst_node = unsafe { dst_node.reborrow_mut().forget_type() };
+        src_node.move_region(Some(last_src_edge_idx), &mut dst_node)
+    }
+}
+
+impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
+    pub fn move_infix(
+        &mut self,
+        last_src_edge_idx: usize,
+        dst_node: &mut NodeRef<marker::Mut<'a>, K, V, marker::Internal>,
+    ) {
+        let mut src_node = unsafe { self.reborrow_mut().forget_node_type() };
+        let mut dst_node = unsafe { dst_node.reborrow_mut().forget_type() };
+        src_node.move_region(Some(last_src_edge_idx), &mut dst_node)
+    }
+}
+
+impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
+    /// Replaces a single edge in `self` and returns the orphaned previous edge.
+    pub fn replace_edge(&mut self, replacement_edge: Root<K, V>) -> Root<K, V> {
+        assert!(replacement_edge.height == self.node.height - 1);
+        unsafe {
+            let node = mem::replace(
+                self.node.edge_area_mut(self.idx).assume_init_mut(),
+                replacement_edge.node,
+            );
+            self.reborrow_mut().correct_parent_link();
+            let mut old_edge = Root { node, height: self.node.height - 1, _marker: PhantomData };
+            old_edge.clear_parent_link();
+            old_edge
         }
     }
 }

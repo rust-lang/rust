@@ -10,11 +10,11 @@ LL | use crate::plumbing::Drain;
    |
 LL | use std::collections::binary_heap::Drain;
    |
-LL | use std::collections::hash_map::Drain;
+LL | use std::collections::btree_map::Drain;
    |
-LL | use std::collections::hash_set::Drain;
+LL | use std::collections::btree_set::Drain;
    |
-     and 3 other candidates
+     and 5 other candidates
 
 error: aborting due to previous error
 

@@ -1176,6 +1176,117 @@ impl<K, V> BTreeMap<K, V> {
         BTreeMap { root: Some(right_root), length: right_len }
     }
 
+    /// Splits the collection into two. Returns a new collection with all keys in the given range.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    /// May panic if the [`Ord`] implementation of type `T` is ill-defined,
+    /// either because it does not form a total order or because it does not
+    /// correspond to the [`Ord`] implementation of type `K`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_drain)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off_range(&3..&33);
+    ///
+    /// assert_eq!(a.len(), 3);
+    /// assert_eq!(b.len(), 2);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    /// assert_eq!(a[&41], "e");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// ```
+    #[unstable(feature = "btree_drain", issue = "81074")]
+    pub fn split_off_range<T: ?Sized, R>(&mut self, range: R) -> Self
+    where
+        T: Ord,
+        K: Borrow<T> + Ord,
+        R: RangeBounds<T>,
+    {
+        if self.is_empty() {
+            return Self::new();
+        }
+
+        let total_num = self.length;
+        let left_root = self.root.as_mut().unwrap(); // unwrap succeeds because not empty
+
+        let mut right_root = left_root.split_off_range(range);
+        right_root.fix_both_borders();
+
+        let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
+        self.length = new_left_len;
+
+        BTreeMap { root: Some(right_root), length: right_len }
+    }
+
+    /// Creates an iterator that removes all elements (key-value pairs) within a range
+    /// and returns them in ascending key order.
+    ///
+    /// If the iterator is only partially consumed or not consumed at all, the remaining
+    /// elements in the range are still removed, and dropped.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    /// May panic if the [`Ord`] implementation of type `T` is ill-defined,
+    /// either because it does not form a total order or because it does not
+    /// correspond to the [`Ord`] implementation of type `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_drain)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b: Vec<_> = a.drain(3..33).collect();
+    /// assert_eq!(b, vec![(3, "c"), (17, "d")]);
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[unstable(feature = "btree_drain", issue = "81074")]
+    pub fn drain<T: ?Sized, R>(&mut self, range: R) -> Drain<K, V>
+    where
+        T: Ord,
+        K: Borrow<T> + Ord,
+        R: RangeBounds<T>,
+    {
+        let (right_root, right_len) = if let Some(left_root) = self.root.as_mut() {
+            let total_num = self.length;
+            let right_root = left_root.split_off_range(range);
+            let (new_left_len, right_len) =
+                Root::calc_split_length(total_num, &left_root, &right_root);
+            self.length = new_left_len;
+            (right_root, right_len)
+        } else {
+            (Root::new(), 0)
+        };
+        Drain { inner: IntoIter { range: right_root.into_dying().full_range(), length: right_len } }
+    }
+
     /// Creates an iterator that visits all elements (key-value pairs) in
     /// ascending key order and uses a closure to determine if an element should
     /// be removed. If the closure returns `true`, the element is removed from
@@ -1611,6 +1722,36 @@ impl<K, V> Clone for Values<'_, K, V> {
         Values { inner: self.inner.clone() }
     }
 }
+
+/// An iterator produced by calling `drain` on BTreeMap.
+#[unstable(feature = "btree_drain", issue = "81074")]
+#[derive(Debug)]
+pub struct Drain<K, V> {
+    inner: IntoIter<K, V>,
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<K, V> Iterator for Drain<K, V> {
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<(K, V)> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<K, V> ExactSizeIterator for Drain<K, V> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+#[stable(feature = "fused", since = "1.26.0")]
+impl<K, V> FusedIterator for Drain<K, V> {}
 
 /// An iterator produced by calling `drain_filter` on BTreeMap.
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
