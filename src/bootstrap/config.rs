@@ -178,6 +178,7 @@ pub struct Config {
     pub npm: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
+    pub cmake: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
 
@@ -369,6 +370,7 @@ struct Build {
     nodejs: Option<String>,
     npm: Option<String>,
     python: Option<String>,
+    cmake: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
     full_bootstrap: Option<bool>,
@@ -658,6 +660,7 @@ impl Config {
         config.npm = build.npm.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
+        config.cmake = build.cmake.map(PathBuf::from);
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs_minification, build.docs_minification);

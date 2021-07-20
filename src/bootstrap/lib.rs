@@ -482,6 +482,7 @@ impl Build {
         unsafe {
             job::setup(self);
         }
+        env::set_var("CMAKE", self.config.cmake.as_ref().expect("cmake config"));
 
         // If the LLVM submodule has been initialized already, sync it unconditionally. This avoids
         // contributors checking in a submodule change by accident.
