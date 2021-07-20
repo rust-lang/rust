@@ -77,7 +77,7 @@ pub enum InstanceDef<'tcx> {
     /// `<[FnMut closure] as FnOnce>::call_once`.
     ///
     /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
-    ClosureOnceShim { call_once: DefId },
+    ClosureOnceShim { call_once: DefId, track_caller: bool },
 
     /// `core::ptr::drop_in_place::<T>`.
     ///
@@ -146,7 +146,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
-            | InstanceDef::ClosureOnceShim { call_once: def_id }
+            | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _) => def_id,
         }
@@ -161,7 +161,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
-            | InstanceDef::ClosureOnceShim { call_once: def_id }
+            | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _) => ty::WithOptConstParam::unknown(def_id),
         }
@@ -231,6 +231,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Virtual(def_id, _) => {
                 tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
+            InstanceDef::ClosureOnceShim { call_once: _, track_caller } => track_caller,
             _ => false,
         }
     }
@@ -381,6 +382,8 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
+        // Use either `resolve_closure` or `resolve_for_vtable`
+        assert!(!tcx.is_closure(def_id), "Called `resolve_for_fn_ptr` on closure: {:?}", def_id);
         Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
@@ -442,10 +445,20 @@ impl<'tcx> Instance<'tcx> {
                                 })
                             )
                         {
-                            debug!(
-                                " => vtable fn pointer created for function with #[track_caller]"
-                            );
-                            resolved.def = InstanceDef::ReifyShim(def.did);
+                            if tcx.is_closure(def.did) {
+                                debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
+                                       def.did, def_id, substs);
+
+                                // Create a shim for the `FnOnce/FnMut/Fn` method we are calling
+                                // - unlike functions, invoking a closure always goes through a
+                                // trait.
+                                resolved = Instance { def: InstanceDef::ReifyShim(def_id), substs };
+                            } else {
+                                debug!(
+                                    " => vtable fn pointer created for function with #[track_caller]: {:?}", def.did
+                                );
+                                resolved.def = InstanceDef::ReifyShim(def.did);
+                            }
                         }
                     }
                     InstanceDef::Virtual(def_id, _) => {
@@ -493,7 +506,9 @@ impl<'tcx> Instance<'tcx> {
             .find(|it| it.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
-        let def = ty::InstanceDef::ClosureOnceShim { call_once };
+        let track_caller =
+            tcx.codegen_fn_attrs(closure_did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER);
+        let def = ty::InstanceDef::ClosureOnceShim { call_once, track_caller };
 
         let self_ty = tcx.mk_closure(closure_did, substs);
 
