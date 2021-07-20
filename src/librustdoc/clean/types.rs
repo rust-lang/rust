@@ -343,7 +343,7 @@ crate struct Item {
 rustc_data_structures::static_assert_size!(Item, 56);
 
 crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
-    Span::from_rustc_span(def_id.as_local().map_or_else(
+    Span::new(def_id.as_local().map_or_else(
         || tcx.def_span(def_id),
         |local| {
             let hir = tcx.hir();
@@ -1943,10 +1943,11 @@ crate enum Variant {
 crate struct Span(rustc_span::Span);
 
 impl Span {
-    crate fn from_rustc_span(sp: rustc_span::Span) -> Self {
-        // Get the macro invocation instead of the definition,
-        // in case the span is result of a macro expansion.
-        // (See rust-lang/rust#39726)
+    /// Wraps a [`rustc_span::Span`]. In case this span is the result of a macro expansion, the
+    /// span will be updated to point to the macro invocation instead of the macro definition.
+    ///
+    /// (See rust-lang/rust#39726)
+    crate fn new(sp: rustc_span::Span) -> Self {
         Self(sp.source_callsite())
     }
 

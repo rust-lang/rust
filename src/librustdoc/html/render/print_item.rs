@@ -118,7 +118,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
     // [src] link in the downstream documentation will actually come back to
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
-    if cx.shared.include_sources && !item.is_primitive() {
+    if cx.include_sources && !item.is_primitive() {
         write_srclink(cx, item, buf);
     }
 
@@ -1064,6 +1064,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             None,
             None,
             it.span(cx.tcx()).inner().edition(),
+            None,
             None,
         );
     });

@@ -234,7 +234,7 @@ pub(super) fn write_shared(
     write_minify("search.js", static_files::SEARCH_JS)?;
     write_minify("settings.js", static_files::SETTINGS_JS)?;
 
-    if cx.shared.include_sources {
+    if cx.include_sources {
         write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT)?;
     }
 
@@ -360,7 +360,7 @@ pub(super) fn write_shared(
         }
     }
 
-    if cx.shared.include_sources {
+    if cx.include_sources {
         let mut hierarchy = Hierarchy::new(OsString::new());
         for source in cx
             .shared

@@ -95,7 +95,8 @@ impl Clean<Item> for doctree::Module<'_> {
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
-        let span = Span::from_rustc_span({
+
+        let span = Span::new({
             let where_outer = self.where_outer(cx.tcx);
             let sm = cx.sess().source_map();
             let outer = sm.lookup_char_pos(where_outer.lo());

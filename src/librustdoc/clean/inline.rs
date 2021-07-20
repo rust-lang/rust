@@ -517,7 +517,7 @@ fn build_module(
         }
     }
 
-    let span = clean::Span::from_rustc_span(cx.tcx.def_span(did));
+    let span = clean::Span::new(cx.tcx.def_span(did));
     clean::Module { items, span }
 }
 

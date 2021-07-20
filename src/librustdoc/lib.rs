@@ -607,6 +607,13 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("nocapture", |o| {
             o.optflag("", "nocapture", "Don't capture stdout and stderr of tests")
         }),
+        unstable("generate-link-to-definition", |o| {
+            o.optflag(
+                "",
+                "generate-link-to-definition",
+                "Generate URLs to definition in the HTML source code pages",
+            )
+        }),
     ]
 }
 
