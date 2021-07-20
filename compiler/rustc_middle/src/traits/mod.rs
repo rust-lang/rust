@@ -333,6 +333,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// This is purely for diagnostic purposes - it is always
     /// correct to use `MiscObligation` instead
     WellFormed(Option<hir::HirId>),
+
+    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
+    MatchImpl(Lrc<ObligationCauseCode<'tcx>>, DefId),
 }
 
 impl ObligationCauseCode<'_> {

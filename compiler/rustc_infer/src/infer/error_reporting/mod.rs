@@ -1590,17 +1590,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
         if let Some((expected, found)) = expected_found {
-            let expected_label = match exp_found {
-                Mismatch::Variable(ef) => ef.expected.prefix_string(self.tcx),
-                Mismatch::Fixed(s) => s.into(),
-            };
-            let found_label = match exp_found {
-                Mismatch::Variable(ef) => ef.found.prefix_string(self.tcx),
-                Mismatch::Fixed(s) => s.into(),
-            };
-            let exp_found = match exp_found {
-                Mismatch::Variable(exp_found) => Some(exp_found),
-                Mismatch::Fixed(_) => None,
+            let (expected_label, found_label, exp_found) = match exp_found {
+                Mismatch::Variable(ef) => (
+                    ef.expected.prefix_string(self.tcx),
+                    ef.found.prefix_string(self.tcx),
+                    Some(ef),
+                ),
+                Mismatch::Fixed(s) => (s.into(), s.into(), None),
             };
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {

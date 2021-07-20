@@ -1,0 +1,87 @@
+error: incompatible lifetime on type
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:17:5
+   |
+LL |     type T<'a> = Box<dyn A + 'a>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: because this has an unmet lifetime requirement
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:12:17
+   |
+LL |     type T<'a>: A;
+   |                 ^ introduces a `'static` lifetime requirement
+note: the lifetime `'a` as defined on the associated item at 17:12...
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:17:12
+   |
+LL |     type T<'a> = Box<dyn A + 'a>;
+   |            ^^
+   = note: ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
+note: this has an implicit `'static` lifetime requirement
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:9:20
+   |
+LL | impl A for Box<dyn A> {}
+   |                    ^
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl A for Box<dyn A + '_> {}
+   |                      ^^^^
+
+error: incompatible lifetime on type
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:27:5
+   |
+LL |     type T<'a> = Box<dyn A + 'a>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: because this has an unmet lifetime requirement
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:23:17
+   |
+LL |     type T<'a>: C;
+   |                 ^ introduces a `'static` lifetime requirement
+note: the lifetime `'a` as defined on the associated item at 27:12...
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:27:12
+   |
+LL |     type T<'a> = Box<dyn A + 'a>;
+   |            ^^
+note: ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:21:1
+   |
+LL | impl C for Box<dyn A + 'static> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible lifetime on type
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:37:5
+   |
+LL |     type T<'a> = (Box<dyn A + 'a>, Box<dyn A + 'a>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: because this has an unmet lifetime requirement
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:33:17
+   |
+LL |     type T<'a>: E;
+   |                 ^ introduces a `'static` lifetime requirement
+note: the lifetime `'a` as defined on the associated item at 37:12...
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:37:12
+   |
+LL |     type T<'a> = (Box<dyn A + 'a>, Box<dyn A + 'a>);
+   |            ^^
+   = note: ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
+note: this has an implicit `'static` lifetime requirement
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:31:21
+   |
+LL | impl E for (Box<dyn A>, Box<dyn A>) {}
+   |                     ^
+note: this has an implicit `'static` lifetime requirement
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:31:33
+   |
+LL | impl E for (Box<dyn A>, Box<dyn A>) {}
+   |                                 ^
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl E for (Box<dyn A + '_>, Box<dyn A>) {}
+   |                       ^^^^
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl E for (Box<dyn A>, Box<dyn A + '_>) {}
+   |                                   ^^^^
+
+error: aborting due to 3 previous errors
+
