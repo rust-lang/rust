@@ -57,8 +57,9 @@ pub trait InferCtxtExt<'tcx> {
 
     fn maybe_report_recursive_gat(
         &self,
-        begin: &PredicateObligation<'tcx>,
-        end: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+        parent: &PredicateObligation<'tcx>,
+        child: &PredicateObligation<'tcx>,
     ) -> bool;
 
     /// The `root_obligation` parameter should be the `root_obligation` field
@@ -221,33 +222,37 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn maybe_report_recursive_gat(
         &self,
-        begin: &PredicateObligation<'tcx>,
-        end: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+        parent: &PredicateObligation<'tcx>,
+        child: &PredicateObligation<'tcx>,
     ) -> bool {
-        let (head, tail) =
-            match (begin.predicate.kind().skip_binder(), end.predicate.kind().skip_binder()) {
+        let (parent, child) =
+            match (parent.predicate.kind().skip_binder(), child.predicate.kind().skip_binder()) {
                 (ty::PredicateKind::Trait(head, ..), ty::PredicateKind::Trait(tail, ..)) => {
                     (head, tail)
                 }
                 _ => return false,
             };
 
-        if Some(head.clone().def_id()) != self.tcx.lang_items().sized_trait() {
+        if Some(parent.clone().def_id()) != self.tcx.lang_items().sized_trait() {
             return false;
         }
 
-        let head_ty = head.self_ty();
-        let tail_ty = tail.self_ty();
-        debug!("report_overflow_error_cycle: head_ty = {:?}, tail_ty = {:?}", head_ty, tail_ty);
-
-        let head_kind = head_ty.kind();
-        let tail_kind = tail_ty.kind();
+        let parent_ty = parent.self_ty();
+        let child_ty = child.self_ty();
         debug!(
-            "report_overflow_error_cycle: head_kind = {:?}, tail_kind = {:?}",
-            head_kind, tail_kind
+            "report_overflow_error_cycle: parent_ty = {:?}, child_ty = {:?}",
+            parent_ty, child_ty
         );
 
-        let (substs, item_def_id) = match head_kind {
+        let parent_kind = parent_ty.kind();
+        let child_kind = child_ty.kind();
+        debug!(
+            "report_overflow_error_cycle: parent_kind = {:?}, child_kind = {:?}",
+            parent_kind, child_kind
+        );
+
+        let (substs, item_def_id) = match parent_kind {
             ty::Projection(ty::ProjectionTy { substs, item_def_id }) => (substs, item_def_id),
             _ => return false,
         };
@@ -278,7 +283,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             .map(|gens| {
                 gens.iter()
                     .enumerate()
-                    .find_map(|(i, param)| if param == &tail_ty.into() { Some(i) } else { None })
+                    .find_map(|(i, param)| if param == &child_ty.into() { Some(i) } else { None })
             })
             .flatten()
         {
@@ -289,16 +294,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let param = &assoc_generics.params[index];
         debug!("report_overflow_error_cycle: param = {:?}", param);
-
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            begin.cause.span,
-            E0275,
-            "overflow evaluating the requirement `{}`",
-            head
-        );
-
-        err.note("detected recursive derive for `Sized` in a generic associated type");
 
         let (span, separator) = match param.bounds {
             [] => (param.span.shrink_to_hi(), ":"),
@@ -311,8 +306,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Applicability::MachineApplicable,
         );
 
-        err.emit();
-        self.tcx.sess.abort_if_errors();
         true
     }
 
@@ -328,12 +321,24 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
         let begin = &cycle[0];
-        let end = &cycle[cycle.len() - 1];
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            begin.cause.span,
+            E0275,
+            "overflow evaluating the requirement `{}`",
+            begin.predicate
+        );
+        err.note("detected recursive derive for `Sized` in a generic associated type");
 
-        if !self.maybe_report_recursive_gat(begin, end) {
+        if cycle.windows(2).fold(false, |valid_error, preds| {
+            valid_error || self.maybe_report_recursive_gat(&mut err, &preds[0], &preds[1])
+        }) {
+            err.emit();
+            self.tcx.sess.abort_if_errors();
+            bug!()
+        } else {
             self.report_overflow_error(begin, false);
         }
-        bug!()
     }
 
     fn report_selection_error(
