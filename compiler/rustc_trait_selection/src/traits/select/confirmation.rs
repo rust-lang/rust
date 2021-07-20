@@ -34,7 +34,7 @@ use crate::traits::{
     ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
-use crate::traits::{Obligation, ObligationCause};
+use crate::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use crate::traits::{SelectionError, Unimplemented};
 
 use super::BuiltinImplConditions;
@@ -523,6 +523,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.predicate.to_poly_trait_ref(),
             trait_ref,
         )?);
+
+        let lang_items = self.tcx().lang_items();
+        if [lang_items.fn_once_trait(), lang_items.fn_trait(), lang_items.fn_mut_trait()]
+            .contains(&Some(obligation.predicate.def_id()))
+            // Skip `MiscObligation`s for better output.
+            && matches!(obligation.cause.code, ObligationCauseCode::BindingObligation(_, _))
+        {
+            // Do not allow `foo::<fn() -> A>();` for `A: !Sized` (#82633)
+            let fn_sig = obligation.predicate.self_ty().skip_binder().fn_sig(self.tcx());
+            let ty = self.infcx.replace_bound_vars_with_placeholders(fn_sig.output());
+            let trait_ref = ty::TraitRef {
+                def_id: lang_items.sized_trait().unwrap(),
+                substs: self.tcx().mk_substs_trait(ty, &[]),
+            };
+            if !matches!(ty.kind(), ty::Projection(_) | ty::Opaque(..)) {
+                let pred = crate::traits::util::predicate_for_trait_ref(
+                    self.tcx(),
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_ref,
+                    obligation.recursion_depth,
+                );
+                obligations.push(pred);
+            }
+        }
+
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested: obligations })
     }
 
