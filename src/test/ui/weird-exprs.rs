@@ -2,11 +2,13 @@
 
 #![feature(generators)]
 #![feature(destructuring_assignment)]
+#![feature(unboxed_closures, fn_traits)]
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
+#![allow(uncommon_codepoints, confusable_idents)]
 
 #![recursion_limit = "256"]
 
@@ -116,7 +118,7 @@ fn union() {
 }
 
 fn special_characters() {
-    let val = !((|(..):(_,_),__@_|__)((&*"\\",'🤔')/**/,{})=={&[..=..][..];})//
+    let val = !((|(..):(_,_),(|__@_|__)|__)((&*"\\",'#')/**/,{})=={&[..=..][..];})//
     ;
     assert!(!val);
 }
@@ -165,6 +167,24 @@ fn monkey_barrel() {
     assert_eq!(val, ());
 }
 
+fn unicode() {
+    fn 𝚋𝚛𝚎𝚊𝚔() -> char { '🤔' }
+    assert_eq!(loop {
+        break 𝚋𝚛𝚎𝚊𝚔 ();
+    }, '🤔');
+}
+
+fn function() {
+    struct foo;
+    impl FnOnce<()> for foo {
+        type Output = foo;
+        extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
+            foo
+        }
+    }
+    let foo = foo () ()() ()()() ()()()() ()()()()();
+}
+
 pub fn main() {
     strange();
     funny();
@@ -184,4 +204,6 @@ pub fn main() {
     i_yield();
     match_nested_if();
     monkey_barrel();
+    unicode();
+    function();
 }
