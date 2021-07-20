@@ -6,19 +6,6 @@
 
 -include ../tools.mk
 
-# This test makes sure that instrumented binaries record the right counts for
-# functions being called and branches being taken. We run an instrumented binary
-# with an argument that causes a know path through the program and then check
-# that the expected counts get added to the use-phase LLVM IR.
-
-# LLVM doesn't support instrumenting binaries that use SEH:
-# https://github.com/rust-lang/rust/issues/61002
-#
-# Things work fine with -Cpanic=abort though.
-ifdef IS_MSVC
-COMMON_FLAGS=-Cpanic=abort
-endif
-
 # For some very small programs GNU ld seems to not properly handle
 # instrumentation sections correctly. Neither Gold nor LLD have that problem.
 ifeq ($(UNAME),Linux)

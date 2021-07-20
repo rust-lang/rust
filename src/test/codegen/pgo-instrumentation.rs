@@ -1,8 +1,7 @@
 // Test that `-Cprofile-generate` creates expected instrumentation artifacts in LLVM IR.
-// Compiling with `-Cpanic=abort` because PGO+unwinding isn't supported on all platforms.
 
 // needs-profiler-support
-// compile-flags: -Cprofile-generate -Ccodegen-units=1 -Cpanic=abort
+// compile-flags: -Cprofile-generate -Ccodegen-units=1
 
 // CHECK: @__llvm_profile_raw_version =
 // CHECK-DAG: @__profc_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = {{.*}}global
