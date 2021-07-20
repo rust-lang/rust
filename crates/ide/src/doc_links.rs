@@ -780,7 +780,7 @@ pub struct $0Foo;
             .parse(position.file_id)
             .syntax()
             .token_at_offset(position.offset)
-            .next()
+            .left_biased()
             .unwrap()
             .ancestors()
             .find_map(|it| node_to_def(sema, &it))
