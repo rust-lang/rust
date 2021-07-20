@@ -242,6 +242,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
+#![feature(cmpxchg16b_target_feature)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_floating_point_arithmetic)]

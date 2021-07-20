@@ -3,6 +3,7 @@ use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem;
 use crate::sys::c;
+use crate::sys_common::time::MONOTONIZE_U64;
 use crate::time::Duration;
 
 use core::hash::{Hash, Hasher};
@@ -42,7 +43,7 @@ impl Instant {
     }
 
     pub fn actually_monotonic() -> bool {
-        false
+        MONOTONIZE_U64
     }
 
     pub const fn zero() -> Instant {
@@ -169,6 +170,7 @@ mod perf_counter {
     use crate::sys::c;
     use crate::sys::cvt;
     use crate::sys_common::mul_div_u64;
+    use crate::sys_common::time::monotonize_u64;
     use crate::time::Duration;
 
     pub struct PerformanceCounterInstant {
@@ -191,7 +193,9 @@ mod perf_counter {
     impl From<PerformanceCounterInstant> for super::Instant {
         fn from(other: PerformanceCounterInstant) -> Self {
             let freq = frequency() as u64;
-            let instant_nsec = mul_div_u64(other.ts as u64, NANOS_PER_SEC, freq);
+            let tick = other.ts as u64;
+            let tick = monotonize_u64(tick).unwrap_or(tick);
+            let instant_nsec = mul_div_u64(tick, NANOS_PER_SEC, freq);
             Self { t: Duration::from_nanos(instant_nsec) }
         }
     }

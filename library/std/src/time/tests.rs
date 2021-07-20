@@ -1,4 +1,5 @@
 use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use test::{black_box, Bencher};
 
 macro_rules! assert_almost_eq {
     ($a:expr, $b:expr) => {{
@@ -162,4 +163,38 @@ fn since_epoch() {
     // Should give us ~70 years to fix this!
     let hundred_twenty_years = thirty_years * 4;
     assert!(a < hundred_twenty_years);
+}
+
+#[bench]
+fn instant_uncontended(b: &mut Bencher) {
+    b.iter(|| {
+        let a = Instant::now();
+        let b = Instant::now();
+        assert!(b >= a);
+    });
+}
+
+#[bench]
+fn instant_contended(b: &mut Bencher) {
+    use crate::sync::atomic::{AtomicBool, Ordering};
+    use crate::sync::Arc;
+
+    let running = Arc::new(AtomicBool::new(true));
+
+    for _ in 0..3 {
+        let flag = Arc::clone(&running);
+        crate::thread::spawn(move || {
+            while flag.load(Ordering::Relaxed) {
+                black_box(Instant::now());
+            }
+        });
+    }
+
+    b.iter(|| {
+        let a = Instant::now();
+        let b = Instant::now();
+        assert!(b >= a);
+    });
+
+    running.store(false, Ordering::Relaxed);
 }

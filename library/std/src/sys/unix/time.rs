@@ -275,6 +275,7 @@ mod inner {
 mod inner {
     use crate::fmt;
     use crate::sys::cvt;
+    use crate::sys_common::time::{can_monotonize_u64x2, monotonize_u64x2};
     use crate::time::Duration;
 
     use super::Timespec;
@@ -290,10 +291,24 @@ mod inner {
     }
 
     pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
+    const OS_MONOTONIC: bool = (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
+        || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
+        || cfg!(target_os = "fuchsia");
 
     impl Instant {
         pub fn now() -> Instant {
-            Instant { t: now(libc::CLOCK_MONOTONIC) }
+            let timespec = now(libc::CLOCK_MONOTONIC);
+            if !OS_MONOTONIC {
+                if let Some((sec, nsec)) =
+                    monotonize_u64x2(timespec.t.tv_sec as u64, timespec.t.tv_nsec as u64)
+                {
+                    return Instant {
+                        t: Timespec { t: libc::timespec { tv_sec: sec as _, tv_nsec: nsec as _ } },
+                    };
+                }
+            }
+
+            Instant { t: timespec }
         }
 
         pub const fn zero() -> Instant {
@@ -301,9 +316,7 @@ mod inner {
         }
 
         pub fn actually_monotonic() -> bool {
-            (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
-                || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
-                || cfg!(target_os = "fuchsia")
+            OS_MONOTONIC || can_monotonize_u64x2()
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
