@@ -1,5 +1,4 @@
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 // compile-flags:-g
 // gdb-command:run
@@ -37,17 +36,17 @@
 // gdb-check:type = [...] (*)([...])
 // gdb-command:info functions _yyy
 // gdbg-check:[...]![...]_yyy([...]);
-// gdbr-check:static fn basic_types_metadata::_yyy() -> !;
+// gdbr-check:static fn basic_types_metadata::_yyy();
 // gdb-command:ptype closure_0
-// gdbr-check: type = struct closure
-// gdbg-check: type = struct closure {
+// gdbr-check: type = struct basic_types_metadata::main::closure-0
+// gdbg-check: type = struct basic_types_metadata::main::closure-0 {
 // gdbg-check:     <no data fields>
 // gdbg-check: }
 // gdb-command:ptype closure_1
-// gdbg-check: type = struct closure {
+// gdbg-check: type = struct basic_types_metadata::main::closure-1 {
 // gdbg-check:     bool *__0;
 // gdbg-check: }
-// gdbr-check: type = struct closure (
+// gdbr-check: type = struct basic_types_metadata::main::closure-1 (
 // gdbr-check:     bool *,
 // gdbr-check: )
 // gdb-command:ptype closure_2
@@ -55,7 +54,7 @@
 // gdbg-check:     bool *__0;
 // gdbg-check:     isize *__1;
 // gdbg-check: }
-// gdbr-check: type = struct closure (
+// gdbr-check: type = struct basic_types_metadata::main::closure-2 (
 // gdbr-check:     bool *,
 // gdbr-check:     isize *,
 // gdbr-check: )
