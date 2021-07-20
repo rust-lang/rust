@@ -23,6 +23,15 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use libc::c_int;
 
+/// We need to directly use the getpid syscall instead of using `process::id()`
+/// because the libc wrapper might return incorrect values after a process was
+/// forked.
+fn getpid() -> u32 {
+    unsafe {
+        libc::syscall(libc::SYS_getpid) as _
+    }
+}
+
 /// This stunt allocator allows us to spot heap allocations in the child.
 struct PidChecking<A> {
     parent: A,
@@ -44,7 +53,7 @@ impl<A> PidChecking<A> {
     fn check(&self) {
         let require_pid = self.require_pid.load(Ordering::Acquire);
         if require_pid != 0 {
-            let actual_pid = process::id();
+            let actual_pid = getpid();
             if require_pid != actual_pid {
                 unsafe {
                     libc::raise(libc::SIGUSR1);

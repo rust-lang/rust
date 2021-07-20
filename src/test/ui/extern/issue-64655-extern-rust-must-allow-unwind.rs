@@ -34,7 +34,7 @@
 // setting; pnkfelix observed three differing behaviors at opt-levels
 // 0/1/2+3 for this test, so it seems prudent to be thorough.
 
-// revisions: no0 no1 no2 no3 thin0 thin1 thin2 thin3 fat0 fat1 fat2  fat3
+// revisions: no0 no1 no2 no3 thin0 thin1 thin2 thin3 fat1 fat2 fat3
 
 //[no0]compile-flags: -C opt-level=0 -C lto=no
 //[no1]compile-flags: -C opt-level=1 -C lto=no
@@ -46,6 +46,8 @@
 //[thin1]compile-flags: -C opt-level=1 -C lto=thin
 //[thin2]compile-flags: -C opt-level=2 -C lto=thin
 //[thin3]compile-flags: -C opt-level=3 -C lto=thin
+// FIXME(#86758) running this revision without optimizations triggers an llvm assert
+// in the register allocator on i686-gnu
 //[fat0]compile-flags: -C opt-level=0 -C lto=fat
 //[fat1]compile-flags: -C opt-level=1 -C lto=fat
 //[fat2]compile-flags: -C opt-level=2 -C lto=fat
