@@ -39,6 +39,7 @@ impl<T> Into<Vec<T>> for ThinVec<T> {
 
 impl<T> ::std::ops::Deref for ThinVec<T> {
     type Target = [T];
+    #[inline(always)]
     fn deref(&self) -> &[T] {
         match *self {
             ThinVec(None) => &[],
@@ -48,6 +49,7 @@ impl<T> ::std::ops::Deref for ThinVec<T> {
 }
 
 impl<T> ::std::ops::DerefMut for ThinVec<T> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut [T] {
         match *self {
             ThinVec(None) => &mut [],
