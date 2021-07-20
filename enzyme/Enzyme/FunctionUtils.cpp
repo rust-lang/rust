@@ -307,6 +307,7 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
     if (auto C = dyn_cast<CastInst>(rep))
       CI = cast<CallInst>(C->getOperand(0));
     CI->setMetadata("enzyme_fromstack", MDNode::get(CI->getContext(), {}));
+    CI->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     assert(rep->getType() == AI->getType());
     AI->replaceAllUsesWith(rep);
     AI->eraseFromParent();
@@ -527,7 +528,7 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
 
   std::vector<CallInst *> ToConvert;
   std::map<CallInst *, Value *> reallocSizes;
-  IntegerType *T;
+  IntegerType *T = nullptr;
 
   for (auto &BB : *NewF) {
     for (auto &I : BB) {
@@ -547,6 +548,7 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
   std::vector<AllocaInst *> memoryLocations;
 
   for (auto CI : ToConvert) {
+    assert(T);
     AllocaInst *AI =
         OldAllocationSize(CI->getArgOperand(0), CI, NewF, T, reallocSizes);
 

@@ -4166,8 +4166,14 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
                                         bool pointerIntSame) {
   assert(val);
   assert(val->getType());
-  assert(val->getType()->isPointerTy());
   auto q = query(val, fn).Data0();
+  if (!(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer)) {
+    llvm::errs() << *fn.Function << "\n";
+    analyzedFunctions.find(fn)->second.dump();
+    llvm::errs() << "val: " << *val << "\n";
+  }
+  assert(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer);
+
   auto dt = q[{0}];
   dt.orIn(q[{-1}], pointerIntSame);
   for (size_t i = 1; i < num; ++i) {

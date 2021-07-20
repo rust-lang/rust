@@ -85,8 +85,11 @@ static inline bool operator==(const LoopContext &lhs, const LoopContext &rhs) {
 enum class UnwrapMode {
   // It is already known that it is legal to fully unwrap
   // this instruction. This means unwrap this instruction,
-  // its operands, etc
+  // its operands, etc. However, this will stop at known
+  // cached available from a tape.
   LegalFullUnwrap,
+  // Unlike LegalFullUnwrap, this will unwrap through a tape
+  LegalFullUnwrapNoTapeReplace,
   // Attempt to fully unwrap this, looking up whenever it
   // is not legal to unwrap
   AttemptFullUnwrapWithLookup,
@@ -101,6 +104,9 @@ static inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
   switch (mode) {
   case UnwrapMode::LegalFullUnwrap:
     os << "LegalFullUnwrap";
+    break;
+  case UnwrapMode::LegalFullUnwrapNoTapeReplace:
+    os << "LegalFullUnwrapNoTapeReplace";
     break;
   case UnwrapMode::AttemptFullUnwrapWithLookup:
     os << "AttemptFullUnwrapWithLookup";

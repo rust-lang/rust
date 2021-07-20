@@ -35,7 +35,7 @@ entry:
   ret double 0.000000e+00
 }
 
-; CHECK: define internal { double, double* } @augmented_f(double** %xp, double** %"xp'", i64* %lenp)
+; CHECK: define internal { double*, double } @augmented_f(double** %xp, double** %"xp'", i64* %lenp)
 ; CHECK-NEXT: top:
 ; CHECK-NEXT:   %len = load i64, i64* %lenp, align 8
 ; CHECK-NEXT:   %cmp = icmp eq i64 %len, 0
@@ -49,15 +49,15 @@ entry:
 ; CHECK-NEXT:   %"x'ipl" = load double*, double** %"xp'"
 ; CHECK-NEXT:   %x = load double*, double** %xp
 ; CHECK-NEXT:   %val = load double, double* %x
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double, double* } undef, double %val, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { double, double* } %.fca.0.insert, double* %"x'ipl", 1
-; CHECK-NEXT:   ret { double, double* } %.fca.1.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double } undef, double* %"x'ipl", 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { double*, double } %.fca.0.insert, double %val, 1
+; CHECK-NEXT:   ret { double*, double } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffef(double** %xp, double** %"xp'", i64* %lenp, double %differeturn, { double, double* } %tapeArg)
+; CHECK: define internal void @diffef(double** %xp, double** %"xp'", i64* %lenp, double %differeturn, { double*, double } %tapeArg)
 ; CHECK-NEXT: top:
-; CHECK-NEXT:   %"x'il_phi" = extractvalue { double, double* } %tapeArg, 1
-; CHECK-NEXT:   %val = extractvalue { double, double* } %tapeArg, 0
+; CHECK-NEXT:   %"x'il_phi" = extractvalue { double*, double } %tapeArg, 0
+; CHECK-NEXT:   %val = extractvalue { double*, double } %tapeArg, 1
 ; CHECK-NEXT:   %m0diffeval = fmul fast double %differeturn, %val
 ; CHECK-NEXT:   %m1diffeval = fmul fast double %differeturn, %val
 ; CHECK-NEXT:   %0 = fadd fast double %m0diffeval, %m1diffeval

@@ -469,9 +469,9 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %a0 = bitcast %"class.Eigen::Matrix.6"* %output to <2 x double>*
 ; CHECK-NEXT:   %[[Bdoubleipge:.+]] = getelementptr inbounds %"class.Eigen::Matrix.6", %"class.Eigen::Matrix.6"* %"b'", i64 0, i32 0, i32 0, i32 0, i32 0, i64 0
 ; CHECK-NEXT:   %Bdouble = getelementptr inbounds %"class.Eigen::Matrix.6", %"class.Eigen::Matrix.6"* %b, i64 0, i32 0, i32 0, i32 0, i32 0, i64 0
-; CHECK-NEXT:   %_augmented = call { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } @augmented_subfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]])
+; CHECK-NEXT:   %_augmented = call {{.*}} @augmented_subfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]])
 ; CHECK-NEXT:   call void @diffecast(%"struct.Eigen::EigenBase.13"* %[[uw]], %"struct.Eigen::EigenBase.13"* %[[ipc]])
-; CHECK-NEXT:   call void @diffesubfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]], { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %_augmented)
+; CHECK-NEXT:   call void @diffesubfn(<2 x double>* %a0, <2 x double>* %"a0'ipc", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %Bdouble, double* %[[Bdoubleipge]], {{.*}} %_augmented)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -492,7 +492,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   ret { <2 x double>*, <2 x double>* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } @augmented_subfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'") {
+; CHECK: define internal { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } @augmented_subfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
@@ -521,43 +521,44 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   store <2 x double> %result, <2 x double>* %subcast, align 16
 ; CHECK-NEXT:   %a13 = load <2 x double>, <2 x double>* %tmp.i, align 16
 ; CHECK-NEXT:   store <2 x double> %a13, <2 x double>* %dst, align 16
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } undef, double %B2, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.0.insert, <2 x double> %W34, 1
-; CHECK-NEXT:   %.fca.2.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.1.insert, double %B1, 2
-; CHECK-NEXT:   %.fca.3.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.2.insert, <2 x double> %W12, 3
-; CHECK-NEXT:   %.fca.4.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.3.insert, <2 x double>* %[[antisubcast]], 4
-; CHECK-NEXT:   %.fca.5.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.4.insert, i8* %"malloccall'mi", 5
-; CHECK-NEXT:   %.fca.6.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.5.insert, i8* %malloccall, 6
-; CHECK-NEXT:   ret { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.6.insert
+; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } undef, <2 x double>* %"subcast'ac", 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.0.insert, i8* %"malloccall'mi", 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.1.insert, i8* %malloccall, 2
+; CHECK-NEXT:   %.fca.3.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.2.insert, <2 x double> %W12, 3
+; CHECK-NEXT:   %.fca.4.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.3.insert, double %B1, 4
+; CHECK-NEXT:   %.fca.5.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.4.insert, <2 x double> %W34, 5
+; CHECK-NEXT:   %.fca.6.insert = insertvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.5.insert, double %B2, 6
+; CHECK-NEXT:   ret { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %.fca.6.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'", { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg) {
+; CHECK: define internal void @diffesubfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'", { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 6
-; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 5
+; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 2
+; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 1
+
 ; CHECK-NEXT:   %[[tmpiipc:.+]] = bitcast i8* %[[malloccallmi]] to <2 x double>*
 ; CHECK-NEXT:   %[[tmpi:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
 
-; CHECK-NEXT:   %[[dsubcast:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 4
+; CHECK-NEXT:   %[[dsubcast:.+]] = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 0
 ; CHECK-NEXT:   %[[W12p_ipc1:.+]] = bitcast %"class.Eigen::Matrix"* %"W'" to <2 x double>*
 
-; CHECK-NEXT:   %[[W12:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 3
+; CHECK-NEXT:   %[[W12:.+]] = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 3
 
 
 
 
-; CHECK-NEXT:   %B1 = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 2
+; CHECK-NEXT:   %B1 = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 4
 ; CHECK-NEXT:   %preb1 = insertelement <2 x double> undef, double %B1, i32 0
 ; CHECK-NEXT:   %B11 = shufflevector <2 x double> %preb1, <2 x double> undef, <2 x i32> zeroinitializer
 
 ; CHECK-NEXT:   %[[W34p_ipge:.+]] = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"W'", i64 0, i32 0, i32 0, i32 0, i32 0, i64 2
 ; CHECK-NEXT:   %[[vW34:.+]] = bitcast double* %[[W34p_ipge]] to <2 x double>*
 
-; CHECK-NEXT:   %[[W34:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 1
+; CHECK-NEXT:   %[[W34:.+]] = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 5
 
 ; CHECK-NEXT:   %[[B2p_ipge:.+]] = getelementptr inbounds double, double* %"B'", i64 1
 
-; CHECK-NEXT:   %B2 = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 0
+; CHECK-NEXT:   %B2 = extractvalue { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } %tapeArg, 6
 ; CHECK-NEXT:   %preb2 = insertelement <2 x double> undef, double %B2, i32 0
 ; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
 

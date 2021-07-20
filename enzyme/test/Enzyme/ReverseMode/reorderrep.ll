@@ -75,7 +75,6 @@ attributes #3 = { nounwind }
 ; CHECK: define internal void @diffeinner(double** %tmp35, double** %"tmp35'", double* %arg4, double* %"arg4'", { double**, i64 } %tapeArg)
 ; CHECK-NEXT: bb:
 ; CHECK-NEXT:   %0 = extractvalue { double**, i64 } %tapeArg, 0
-; CHECK-NEXT:   %"tmp36'ipl" = load double*, double** %"tmp35'", align 8
 ; CHECK-NEXT:   %tmp37 = extractvalue { double**, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %tmp39 = icmp ne i64 %tmp37, 0
 ; CHECK-NEXT:   br i1 %tmp39, label %bexit, label %bb43

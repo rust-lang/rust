@@ -499,7 +499,7 @@ public:
                                            ->getElementType(tapeIdx);
         }
         if (tapeType &&
-            DL.getTypeSizeInBits(tapeType) < 8 * allocatedTapeSize) {
+            DL.getTypeSizeInBits(tapeType) < 8 * (size_t)allocatedTapeSize) {
           auto bytes = DL.getTypeSizeInBits(tapeType) / 8;
           EmitFailure("Insufficient tape allocation size", CI->getDebugLoc(),
                       CI, "need ", bytes, " bytes have ", allocatedTapeSize,

@@ -348,7 +348,8 @@ public:
       // efficiency
       assert(pair.second.isKnown());
       if (pair.first.size() == 0) {
-        assert(pair.second == BaseType::Pointer);
+        assert(pair.second == BaseType::Pointer ||
+               pair.second == BaseType::Anything);
         continue;
       }
       return true;

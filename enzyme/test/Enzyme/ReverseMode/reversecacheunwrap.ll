@@ -87,14 +87,14 @@ attributes #4 = { "enzyme_inactive" }
 
 ; CHECK: define internal void @diffemat_mult(i64* noalias readonly %ncols12, double* noalias %tmp10, double* %"tmp10'", { i64*, double** } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = extractvalue { i64*, double** } %tapeArg, 0
-; CHECK-NEXT:   %1 = extractvalue { i64*, double** } %tapeArg, 1
-; CHECK-NEXT:   br label %for.cond8.preheader
+; CHECK-DAG:   %[[i0:.+]] = extractvalue { i64*, double** } %tapeArg, 0
+; CHECK-DAG:   %[[i1:.+]] = extractvalue { i64*, double** } %tapeArg, 1
+; CHECK:   br label %for.cond8.preheader
 
 ; CHECK: for.cond8.preheader:                              ; preds = %for.inc30, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.inc30 ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %2 = getelementptr inbounds i64, i64* %0, i64 %iv
+; CHECK-NEXT:   %2 = getelementptr inbounds i64, i64* %[[i0]], i64 %iv
 ; CHECK-NEXT:   %wide.trip.count = load i64, i64* %2, align 8
 ; CHECK-NEXT:   br label %for.body15
 
@@ -111,7 +111,7 @@ attributes #4 = { "enzyme_inactive" }
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond8.preheader
 ; CHECK-NEXT:   %3 = bitcast i64* %0 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %3)
-; CHECK-NEXT:   %4 = bitcast double** %1 to i8*
+; CHECK-NEXT:   %4 = bitcast double** %[[i1]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %4)
 ; CHECK-NEXT:   ret void
 
@@ -131,7 +131,7 @@ attributes #4 = { "enzyme_inactive" }
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"tmp10'", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %8 = load double, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %9 = getelementptr inbounds double*, double** %1, i64 %"iv'ac.0"
+; CHECK-NEXT:   %9 = getelementptr inbounds double*, double** %[[i1]], i64 %"iv'ac.0"
 ; CHECK-NEXT:   %10 = load double*, double** %9, align 8
 ; CHECK-NEXT:   %11 = getelementptr inbounds double, double* %10, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %12 = load double, double* %11, align 8
@@ -147,8 +147,8 @@ attributes #4 = { "enzyme_inactive" }
 
 ; CHECK: invertfor.inc30:                                  ; preds = %for.inc30, %incinvertfor.cond8.preheader
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %7, %incinvertfor.cond8.preheader ], [ 12, %for.inc30 ]
-; CHECK-NEXT:   %[[unwrap16:.+]] = getelementptr inbounds i64, i64* %0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !invariant.group !14
+; CHECK-NEXT:   %[[unwrap16:.+]] = getelementptr inbounds i64, i64* %[[i0]], i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !invariant.group !
 ; CHECK-NEXT:   %[[unwrap18]] = add i64 %[[unwrap17]], -1
 ; CHECK-NEXT:   br label %invertfor.body15
 ; CHECK-NEXT: }

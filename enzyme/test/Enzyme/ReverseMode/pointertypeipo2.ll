@@ -68,13 +68,13 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal void @diffemv(i64* %m_dims, i64* %"m_dims'", i64* %out, i64* %"out'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call4_augmented = call { { { i64, i64*, i8*, i8* }, i64 }, i64 } @augmented_sub(i64* %m_dims, i64* %"m_dims'")
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %call4_augmented, 0
-; CHECK-NEXT:   %call4 = extractvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %call4_augmented, 1
+; CHECK-NEXT:   %call4_augmented = call { {{.*}}, i64 } @augmented_sub(i64* %m_dims, i64* %"m_dims'")
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { {{.*}}, i64 } %call4_augmented, 0
+; CHECK-NEXT:   %call4 = extractvalue { {{.*}}, i64 } %call4_augmented, 1
 ; CHECK-NEXT:   store i64 %call4, i64* %out
 ; CHECK-NEXT:   %[[oold:.+]] = load i64, i64* %"out'"
 ; CHECK-NEXT:   store i64 0, i64* %"out'"
-; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oold]], { { i64, i64*, i8*, i8* }, i64 } %[[tape]])
+; CHECK-NEXT:   call void @diffesub(i64* %m_dims, i64* %"m_dims'", i64 %[[oold]], { {{.*}}, i64 } %[[tape]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -90,7 +90,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { i64*, i64* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { i64, i64*, i8*, i8* }, i64 } @augmented_pop(i64 %arr.coerce0) {
+; CHECK: define internal { {{.*}}, i64 } @augmented_pop(i64 %arr.coerce0) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
@@ -103,38 +103,28 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { i64*, i64* } %call.i_augmented, 1
 ; CHECK-NEXT:   %a2 = load i64, i64* %call.i{{(, align 4)?}}, !tbaa !2
 ; CHECK-NEXT:   %call2 = call i64 @augmented_mul(i64 %a2)
-; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64, i64*, i8*, i8* }, i64 } undef, i64 %a2, 0, 0
-; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64, i64*, i8*, i8* }, i64 } %.fca.0.0.insert, i64* %[[dcall]], 0, 1
-; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { i64, i64*, i8*, i8* }, i64 } %.fca.0.1.insert, i8* %"malloccall'mi", 0, 2
-; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { i64, i64*, i8*, i8* }, i64 } %.fca.0.2.insert, i8* %malloccall, 0, 3
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i64, i64*, i8*, i8* }, i64 } %.fca.0.3.insert, i64 %call2, 1
-; CHECK-NEXT:   ret { { i64, i64*, i8*, i8* }, i64 } %.fca.1.insert
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } undef, i64* %[[dcall]], 0, 0
+; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.0.insert, i8* %"malloccall'mi", 0, 1
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.1.insert, i8* %malloccall, 0, 2
+; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.2.insert, i64 %a2, 0, 3
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i64*, i8*, i8*, i64 }, i64 } %.fca.0.3.insert, i64 %call2, 1
+; CHECK-NEXT:   ret { { i64*, i8*, i8*, i64 }, i64 } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { { i64, i64*, i8*, i8* }, i64 }, i64 } @augmented_sub(i64* %this, i64* %"this'") {
+; CHECK: define internal { {{.*}}, i64 } @augmented_sub(i64* %this, i64* %"this'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %agg = load i64, i64* %this
-; CHECK-NEXT:   %call_augmented = call { { i64, i64*, i8*, i8* }, i64 } @augmented_pop(i64 %agg)
-; CHECK-NEXT:   %subcache = extractvalue { { i64, i64*, i8*, i8* }, i64 } %call_augmented, 0
-; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { i64, i64*, i8*, i8* } %subcache, 0
-; CHECK-NEXT:   %subcache.fca.1.extract = extractvalue { i64, i64*, i8*, i8* } %subcache, 1
-; CHECK-NEXT:   %subcache.fca.2.extract = extractvalue { i64, i64*, i8*, i8* } %subcache, 2
-; CHECK-NEXT:   %subcache.fca.3.extract = extractvalue { i64, i64*, i8*, i8* } %subcache, 3
-; CHECK-NEXT:   %call = extractvalue { { i64, i64*, i8*, i8* }, i64 } %call_augmented, 1
-; CHECK-NEXT:   %.fca.0.0.0.insert = insertvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } undef, i64 %subcache.fca.0.extract, 0, 0, 0
-; CHECK-NEXT:   %.fca.0.0.1.insert = insertvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %.fca.0.0.0.insert, i64* %subcache.fca.1.extract, 0, 0, 1
-; CHECK-NEXT:   %.fca.0.0.2.insert = insertvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %.fca.0.0.1.insert, i8* %subcache.fca.2.extract, 0, 0, 2
-; CHECK-NEXT:   %.fca.0.0.3.insert = insertvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %.fca.0.0.2.insert, i8* %subcache.fca.3.extract, 0, 0, 3
-; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %.fca.0.0.3.insert, i64 %agg, 0, 1
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { i64, i64*, i8*, i8* }, i64 }, i64 } %.fca.0.1.insert, i64 %call, 1
-; CHECK-NEXT:   ret { { { i64, i64*, i8*, i8* }, i64 }, i64 } %.fca.1.insert
-; CHECK-NEXT: }
+; CHECK-NEXT:   %call_augmented = call { {{.*}}, i64 } @augmented_pop(i64 %agg)
+; CHECK-NEXT:   %subcache = extractvalue { {{.*}}, i64 } %call_augmented, 0
+; CHECK:    %call = extractvalue { {{.*}}, i64 } %call_augmented, 1
+; CHECK:    insertvalue {{.*}} i64 %agg
+; CHECK:    insertvalue {{.*}} i64 %call
 
-; CHECK: define internal void @diffesub(i64* %this, i64* %"this'", i64 %differeturn, { { i64, i64*, i8*, i8* }, i64 } %tapeArg) {
+; CHECK: define internal void @diffesub(i64* %this, i64* %"this'", i64 %differeturn, { {{.*}}, i64 } %tapeArg) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[agg:.+]] = extractvalue { { i64, i64*, i8*, i8* }, i64 } %tapeArg, 1
-; CHECK-NEXT:   %[[pret:.+]] = extractvalue { { i64, i64*, i8*, i8* }, i64 } %tapeArg, 0
-; CHECK-NEXT:   %[[dpop:.+]] = call { i64 } @diffepop(i64 %[[agg]], i64 %differeturn, { i64, i64*, i8*, i8* } %[[pret]])
+; CHECK-NEXT:   %[[agg:.+]] = extractvalue { {{.*}}, i64 } %tapeArg, 1
+; CHECK-NEXT:   %[[pret:.+]] = extractvalue { {{.*}}, i64 } %tapeArg, 0
+; CHECK-NEXT:   %[[dpop:.+]] = call { i64 } @diffepop(i64 %[[agg]], i64 %differeturn, {{.*}} %[[pret]])
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { i64 } %[[dpop]], 0
 ; CHECK-NEXT:   %2 = load i64, i64* %"this'"
 ; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %[[ev]] to double
@@ -145,14 +135,14 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @diffepop(i64 %arr.coerce0, i64 %differeturn, { i64, i64*, i8*, i8* } %tapeArg) {
+; CHECK: define internal { i64 } @diffepop(i64 %arr.coerce0, i64 %differeturn, {{.*}} %tapeArg) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { i64, i64*, i8*, i8* } %tapeArg, 3
-; CHECK-NEXT:   %[[dmalloccall:.+]] = extractvalue { i64, i64*, i8*, i8* } %tapeArg, 2
+; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 2
+; CHECK-NEXT:   %[[dmalloccall:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %[[darr:.+]] = bitcast i8* %[[dmalloccall]] to i64*
 ; CHECK-NEXT:   %[[arr:.+]] = bitcast i8* %[[malloccall]] to i64*
-; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { i64, i64*, i8*, i8* } %tapeArg, 1
-; CHECK-NEXT:   %[[a2:.+]] = extractvalue { i64, i64*, i8*, i8* } %tapeArg, 0
+; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 0
+; CHECK-NEXT:   %[[a2:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 3
 ; CHECK-NEXT:   %0 = call { i64 } @diffemul(i64 %[[a2]], i64 %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { i64 } %0, 0
 ; CHECK-NEXT:   %2 = load i64, i64* %"call.i'ip_phi"

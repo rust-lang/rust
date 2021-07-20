@@ -116,23 +116,8 @@ public:
       IRBuilder<> BuilderZ(cast<Instruction>(iload));
       pn = BuilderZ.CreatePHI(I.getType(), 1,
                               (I.getName() + "_replacementA").str());
-      gutils->fictiousPHIs.insert(pn);
-
-      for (auto inst_orig : unnecessaryInstructions) {
-        if (isa<ReturnInst>(inst_orig))
-          continue;
-        if (erased.count(inst_orig))
-          continue;
-        auto val = gutils->getNewFromOriginal(cast<Value>(inst_orig));
-        if (auto inst = dyn_cast<Instruction>(val)) {
-          for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
-            if (inst->getOperand(i) == iload) {
-              inst->setOperand(i, pn);
-            }
-          }
-        } else
-          assert(isa<Argument>(val));
-      }
+      gutils->fictiousPHIs[pn] = &I;
+      gutils->replaceAWithB(iload, pn);
     }
 
     erased.insert(&I);
@@ -388,20 +373,31 @@ public:
           gutils->invertedPointers[&I] = newip;
           break;
         }
-        case DerivativeMode::ReverseModeGradient:
         case DerivativeMode::ForwardMode: {
-          // only make shadow where caching needed
-          if (can_modref && needShadow) {
-            newip = gutils->cacheForReverse(BuilderZ, placeholder,
-                                            getIndex(&I, CacheType::Shadow));
-            assert(newip->getType() == type);
-            gutils->invertedPointers[&I] = newip;
-          } else {
-            newip = gutils->invertPointerM(&I, BuilderZ);
-            assert(newip->getType() == type);
-            placeholder->replaceAllUsesWith(newip);
+          newip = gutils->invertPointerM(&I, BuilderZ);
+          assert(newip->getType() == type);
+          placeholder->replaceAllUsesWith(newip);
+          gutils->erase(placeholder);
+          gutils->invertedPointers[&I] = newip;
+          break;
+        }
+        case DerivativeMode::ReverseModeGradient: {
+          if (!needShadow) {
             gutils->erase(placeholder);
-            gutils->invertedPointers[&I] = newip;
+          } else {
+            // only make shadow where caching needed
+            if (can_modref) {
+              newip = gutils->cacheForReverse(BuilderZ, placeholder,
+                                              getIndex(&I, CacheType::Shadow));
+              assert(newip->getType() == type);
+              gutils->invertedPointers[&I] = newip;
+            } else {
+              newip = gutils->invertPointerM(&I, BuilderZ);
+              assert(newip->getType() == type);
+              placeholder->replaceAllUsesWith(newip);
+              gutils->erase(placeholder);
+              gutils->invertedPointers[&I] = newip;
+            }
           }
           break;
         }
@@ -419,19 +415,27 @@ public:
 
     Value *inst = newi;
 
-    // TODO: In the case of fwd mode this should be true if the loaded value
-    // itself is used as a pointer.
-    bool primalNeededInReverse =
-        Mode == DerivativeMode::ForwardMode
-            ? false
-            : is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, gutils, &I, Mode, oldUnreachable);
     //! Store loads that need to be cached for use in reverse pass
-    if (cache_reads_always ||
-        (!cache_reads_never && can_modref && primalNeededInReverse)) {
-      if (!gutils->unnecessaryIntermediates.count(&I)) {
-        IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
-        // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
+
+    // Only cache value here if caching decision isn't precomputed.
+    // Otherwise caching will be done inside EnzymeLogic.cpp at
+    // the end of the function jointly.
+    if ((Mode != DerivativeMode::ForwardMode &&
+         gutils->knownRecomputeHeuristic.count(&I) == 0 &&
+         !gutils->unnecessaryIntermediates.count(&I) && can_modref &&
+         !cache_reads_never) ||
+        cache_reads_always) {
+      // we can pre initialize all the knownRecomputeHeuristic values to false
+      // (not needing) as we may assume that minCutCache already preserves
+      // everything it requires.
+      std::map<UsageKey, bool> Seen;
+      for (auto pair : gutils->knownRecomputeHeuristic)
+        Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+      bool primalNeededInReverse =
+          is_value_needed_in_reverse<ValueType::Primal>(TR, gutils, &I, Mode,
+                                                        Seen, oldUnreachable);
+      if (primalNeededInReverse) {
+        IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I));
         inst = gutils->cacheForReverse(BuilderZ, newi,
                                        getIndex(&I, CacheType::Self));
         assert(inst->getType() == type);
@@ -3642,8 +3646,8 @@ public:
 
   // Return
   void visitCallInst(llvm::CallInst &call) {
-
-    IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
+    CallInst *const newCall = cast<CallInst>(gutils->getNewFromOriginal(&call));
+    IRBuilder<> BuilderZ(newCall);
     BuilderZ.setFastMathFlags(getFast());
 
     if (uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
@@ -3707,8 +3711,6 @@ public:
 
     auto found = customCallHandlers.find(funcName.str());
     if (found != customCallHandlers.end()) {
-      auto newF = gutils->getNewFromOriginal(orig);
-      IRBuilder<> BuilderZ(newF);
       IRBuilder<> Builder2(call.getParent());
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined)
@@ -3731,7 +3733,7 @@ public:
           invertedReturn = cast<PHINode>(gutils->invertedPointers[orig]);
       }
 
-      Value *normalReturn = subretused ? newF : nullptr;
+      Value *normalReturn = subretused ? newCall : nullptr;
 
       Value *tape = nullptr;
 
@@ -3750,7 +3752,7 @@ public:
             augmentedReturn->tapeIndices.find(std::make_pair(
                 orig, CacheType::Tape)) != augmentedReturn->tapeIndices.end()) {
           tape = Builder2.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
-          tape = gutils->cacheForReverse(Builder2, (Value *)0x01,
+          tape = gutils->cacheForReverse(Builder2, (Value *)tape,
                                          getIndex(orig, CacheType::Tape),
                                          /*ignoreType*/ true);
         }
@@ -3774,8 +3776,8 @@ public:
               llvm::errs() << " irt: " << *invertedReturn->getType() << "\n";
               llvm::errs() << " p: " << *placeholder << "\n";
               llvm::errs() << " PT: " << *placeholder->getType() << "\n";
-              llvm::errs() << " newF: " << *newF << "\n";
-              llvm::errs() << " newFT: " << *newF->getType() << "\n";
+              llvm::errs() << " newCall: " << *newCall << "\n";
+              llvm::errs() << " newCallT: " << *newCall->getType() << "\n";
             }
             assert(invertedReturn->getType() == orig->getType());
             placeholder->replaceAllUsesWith(invertedReturn);
@@ -3791,11 +3793,11 @@ public:
       }
 
       if (subretused) {
-        if (normalReturn != newF) {
-          assert(normalReturn->getType() == newF->getType());
-          gutils->replaceAWithB(newF, normalReturn);
-          BuilderZ.SetInsertPoint(newF->getNextNode());
-          gutils->erase(newF);
+        if (normalReturn != newCall) {
+          assert(normalReturn->getType() == newCall->getType());
+          gutils->replaceAWithB(newCall, normalReturn);
+          BuilderZ.SetInsertPoint(newCall->getNextNode());
+          gutils->erase(newCall);
         }
         normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn,
                                                getIndex(orig, CacheType::Self));
@@ -3855,7 +3857,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -3888,7 +3890,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -3912,7 +3914,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -3944,7 +3946,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -3974,7 +3976,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -4002,7 +4004,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -4032,8 +4034,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4066,8 +4067,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4100,8 +4100,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4136,8 +4135,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4169,8 +4167,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4214,8 +4211,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4257,7 +4253,8 @@ public:
             return;
           }
           SmallVector<Value *, 1> iargs;
-          IRBuilder<> Builder2(gutils->getNewFromOriginal(orig));
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
           for (size_t i = 0, end = orig->getNumArgOperands(); i < end; ++i) {
             auto arg = orig->getArgOperand(i);
             if (!gutils->isConstantValue(arg)) {
@@ -4291,8 +4288,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4334,8 +4330,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4378,8 +4373,7 @@ public:
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ,
-                                      gutils->getNewFromOriginal(&call),
+              gutils->cacheForReverse(BuilderZ, newCall,
                                       getIndex(orig, CacheType::Self));
             }
           }
@@ -4413,7 +4407,7 @@ public:
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+            gutils->cacheForReverse(BuilderZ, newCall,
                                     getIndex(orig, CacheType::Self));
           }
         }
@@ -4447,7 +4441,6 @@ public:
         }
       }
 
-      CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
@@ -4456,7 +4449,7 @@ public:
                  TR, gutils, orig, Mode, oldUnreachable) &&
              !gutils->unnecessaryIntermediates.count(orig)) ||
             hasMetadata(orig, "enzyme_fromstack")) {
-          Value *nop = gutils->cacheForReverse(BuilderZ, op,
+          Value *nop = gutils->cacheForReverse(BuilderZ, newCall,
                                                getIndex(orig, CacheType::Self));
           if (Mode == DerivativeMode::ReverseModeGradient &&
               hasMetadata(orig, "enzyme_fromstack")) {
@@ -4471,14 +4464,14 @@ public:
           // the true shadow of this
           auto pn = BuilderZ.CreatePHI(
               orig->getType(), 1, (orig->getName() + "_replacementB").str());
-          gutils->fictiousPHIs.insert(pn);
-          gutils->replaceAWithB(op, pn);
-          gutils->erase(op);
+          gutils->fictiousPHIs[pn] = orig;
+          gutils->replaceAWithB(newCall, pn);
+          gutils->erase(newCall);
         }
       } else {
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
-        freeKnownAllocation(Builder2, lookup(op, Builder2), *called,
+        freeKnownAllocation(Builder2, lookup(newCall, Builder2), *called,
                             gutils->TLI);
       }
 
@@ -4490,11 +4483,10 @@ public:
       if (gutils->isConstantValue(orig))
         return;
 
-      IRBuilder<> Builder2(gutils->getNewFromOriginal(orig));
       Value *ptrshadow =
-          gutils->invertPointerM(call.getArgOperand(0), Builder2);
+          gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
       Value *val =
-          Builder2.CreateCall(called, std::vector<Value *>({ptrshadow}));
+          BuilderZ.CreateCall(called, std::vector<Value *>({ptrshadow}));
       assert(gutils->invertedPointers.count(orig));
 
       auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
@@ -4516,25 +4508,24 @@ public:
 
       if (!constval) {
         Value *val;
-        IRBuilder<> Builder2(gutils->getNewFromOriginal(orig));
         if (Mode == DerivativeMode::ReverseModePrimal ||
             Mode == DerivativeMode::ReverseModeCombined) {
           Value *ptrshadow =
-              gutils->invertPointerM(call.getArgOperand(0), Builder2);
-          Builder2.CreateCall(
+              gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
+          BuilderZ.CreateCall(
               called,
               std::vector<Value *>(
                   {ptrshadow, gutils->getNewFromOriginal(call.getArgOperand(1)),
                    gutils->getNewFromOriginal(call.getArgOperand(2))}));
-          val = Builder2.CreateLoad(ptrshadow);
-          val = gutils->cacheForReverse(Builder2, val,
+          val = BuilderZ.CreateLoad(ptrshadow);
+          val = gutils->cacheForReverse(BuilderZ, val,
                                         getIndex(orig, CacheType::Shadow));
 
-          auto dst_arg = Builder2.CreateBitCast(
+          auto dst_arg = BuilderZ.CreateBitCast(
               val, Type::getInt8PtrTy(call.getContext()));
           auto val_arg =
               ConstantInt::get(Type::getInt8Ty(call.getContext()), 0);
-          auto len_arg = Builder2.CreateZExtOrTrunc(
+          auto len_arg = BuilderZ.CreateZExtOrTrunc(
               gutils->getNewFromOriginal(call.getArgOperand(2)),
               Type::getInt64Ty(call.getContext()));
           auto volatile_arg = ConstantInt::getFalse(call.getContext());
@@ -4549,7 +4540,7 @@ public:
 
           Type *tys[] = {dst_arg->getType(), len_arg->getType()};
 
-          auto memset = cast<CallInst>(Builder2.CreateCall(
+          auto memset = cast<CallInst>(BuilderZ.CreateCall(
               Intrinsic::getDeclaration(gutils->newFunc->getParent(),
                                         Intrinsic::memset, tys),
               nargs));
@@ -4557,11 +4548,11 @@ public:
           // inst->getAlignment()));
           memset->addParamAttr(0, Attribute::NonNull);
         } else {
-          PHINode *toReplace = Builder2.CreatePHI(
+          PHINode *toReplace = BuilderZ.CreatePHI(
               cast<PointerType>(call.getArgOperand(0)->getType())
                   ->getElementType(),
               1, orig->getName() + "_psxtmp");
-          val = gutils->cacheForReverse(Builder2, toReplace,
+          val = gutils->cacheForReverse(BuilderZ, toReplace,
                                         getIndex(orig, CacheType::Shadow));
         }
 
@@ -4577,7 +4568,6 @@ public:
         }
       }
 
-      // CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
@@ -4586,7 +4576,7 @@ public:
         //        TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both))
         //        {
 
-        //  gutils->cacheForReverse(BuilderZ, op,
+        //  gutils->cacheForReverse(BuilderZ, newCall,
         //                          getIndex(orig, CacheType::Self));
         //} else if (Mode != DerivativeMode::Forward) {
         // Note that here we cannot simply replace with null as users who try
@@ -4594,7 +4584,7 @@ public:
         // the true shadow of this
         //}
       } else {
-        IRBuilder<> Builder2(gutils->getNewFromOriginal(&call)->getNextNode());
+        IRBuilder<> Builder2(newCall->getNextNode());
         auto load = Builder2.CreateLoad(
             gutils->getNewFromOriginal(call.getOperand(0)), "posix_preread");
         Builder2.SetInsertPoint(&call);
@@ -4647,8 +4637,9 @@ public:
       if (gutils->knownRecomputeHeuristic.find(orig) !=
           gutils->knownRecomputeHeuristic.end()) {
         if (!gutils->knownRecomputeHeuristic[orig]) {
-          gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+          gutils->cacheForReverse(BuilderZ, newCall,
                                   getIndex(orig, CacheType::Self));
+          eraseIfUnused(*orig);
           return;
         }
       }
@@ -4658,11 +4649,10 @@ public:
       if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
           !orig->doesNotAccessMemory()) {
         if (!gutils->unnecessaryIntermediates.count(orig)) {
-          CallInst *const op =
-              cast<CallInst>(gutils->getNewFromOriginal(&call));
-          gutils->cacheForReverse(BuilderZ, op,
+          gutils->cacheForReverse(BuilderZ, newCall,
                                   getIndex(orig, CacheType::Self));
         }
+        eraseIfUnused(*orig);
         return;
       }
 
@@ -4973,15 +4963,14 @@ public:
             auto tt = tape->getType();
             gutils->erase(cast<Instruction>(tape));
             tape = UndefValue::get(tt);
+          } else {
+            gutils->TapesToPreventRecomputation.insert(cast<Instruction>(tape));
           }
           tape = gutils->cacheForReverse(BuilderZ, tape,
                                          getIndex(orig, CacheType::Tape));
         }
 
         if (subretused) {
-          CallInst *const op =
-              cast<CallInst>(gutils->getNewFromOriginal(&call));
-
           Value *dcall = nullptr;
           dcall = (returnIdx.getValue() < 0)
                       ? augmentcall
@@ -4997,17 +4986,15 @@ public:
                 TR.query(orig).Inner0().isPossiblePointer()) {
             } else if (Mode != DerivativeMode::ReverseModePrimal) {
               ((DiffeGradientUtils *)gutils)->differentials[dcall] =
-                  ((DiffeGradientUtils *)gutils)->differentials[op];
-              ((DiffeGradientUtils *)gutils)->differentials.erase(op);
+                  ((DiffeGradientUtils *)gutils)->differentials[newCall];
+              ((DiffeGradientUtils *)gutils)->differentials.erase(newCall);
             }
           }
           assert(dcall->getType() == orig->getType());
-          gutils->replaceAWithB(op, dcall);
+          gutils->replaceAWithB(newCall, dcall);
 
-          auto name = op->getName().str();
-          op->setName("");
           if (isa<Instruction>(dcall) && !isa<PHINode>(dcall)) {
-            cast<Instruction>(dcall)->setName(name);
+            cast<Instruction>(dcall)->takeName(newCall);
           }
 
           if (Mode == DerivativeMode::ReverseModePrimal &&
@@ -5017,8 +5004,8 @@ public:
             gutils->cacheForReverse(BuilderZ, dcall,
                                     getIndex(orig, CacheType::Self));
           }
-          BuilderZ.SetInsertPoint(op->getNextNode());
-          gutils->erase(op);
+          BuilderZ.SetInsertPoint(newCall->getNextNode());
+          gutils->erase(newCall);
         } else {
           BuilderZ.SetInsertPoint(BuilderZ.GetInsertPoint()->getNextNode());
           eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
@@ -5054,11 +5041,11 @@ public:
           } else {
             auto pn = BuilderZ.CreatePHI(
                 orig->getType(), 1, (orig->getName() + "_replacementE").str());
-            gutils->fictiousPHIs.insert(pn);
+            gutils->fictiousPHIs[pn] = orig;
             cachereplace = pn;
           }
         } else {
-          // TODO move right after op for the insertion point of BuilderZ
+          // TODO move right after newCall for the insertion point of BuilderZ
 
           BuilderZ.SetInsertPoint(BuilderZ.GetInsertPoint()->getNextNode());
           eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
@@ -5147,9 +5134,8 @@ public:
         } else {
           auto pn = BuilderZ.CreatePHI(
               orig->getType(), 1, (orig->getName() + "_replacementC").str());
-          gutils->fictiousPHIs.insert(pn);
-          cachereplace = pn; // UndefValue::get(op->getType());
-          // cachereplace = UndefValue::get(op->getType());
+          gutils->fictiousPHIs[pn] = orig;
+          cachereplace = pn;
         }
       }
 
@@ -5329,13 +5315,11 @@ public:
 
       Instruction *retval = nullptr;
 
-      CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
-
       ValueToValueMapTy mapp;
       if (subretused) {
         retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
-        gutils->replaceAWithB(op, retval, /*storeInCache*/ true);
-        mapp[op] = retval;
+        gutils->replaceAWithB(newCall, retval, /*storeInCache*/ true);
+        mapp[newCall] = retval;
       } else {
         eraseIfUnused(*orig, /*erase*/ false, /*check*/ false);
       }
@@ -5385,7 +5369,7 @@ public:
       // llvm::errs() << "newFunc postrep: " << *gutils->newFunc << "\n";
 
       erased.insert(orig);
-      gutils->erase(op);
+      gutils->erase(newCall);
 
       return;
     }
@@ -5398,26 +5382,22 @@ public:
         dcall = cachereplace;
         assert(dcall);
 
-        CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
-
         if (!gutils->isConstantValue(orig)) {
           gutils->originalToNewFn[orig] = dcall;
           if (!orig->getType()->isFPOrFPVectorTy() &&
               TR.query(orig).Inner0().isPossiblePointer()) {
           } else {
             ((DiffeGradientUtils *)gutils)->differentials[dcall] =
-                ((DiffeGradientUtils *)gutils)->differentials[op];
-            ((DiffeGradientUtils *)gutils)->differentials.erase(op);
+                ((DiffeGradientUtils *)gutils)->differentials[newCall];
+            ((DiffeGradientUtils *)gutils)->differentials.erase(newCall);
           }
         }
         assert(dcall->getType() == orig->getType());
-        op->replaceAllUsesWith(dcall);
-        auto name = orig->getName();
-        op->setName("");
+        newCall->replaceAllUsesWith(dcall);
         if (isa<Instruction>(dcall) && !isa<PHINode>(dcall)) {
-          cast<Instruction>(dcall)->setName(name);
+          cast<Instruction>(dcall)->takeName(orig);
         }
-        gutils->erase(op);
+        gutils->erase(newCall);
       } else {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
         if (augmentcall) {

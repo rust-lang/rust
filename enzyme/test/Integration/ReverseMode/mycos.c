@@ -53,9 +53,11 @@ double dd_mysin2(double x) {
 double ddd_mysin2(double x) {
     return __enzyme_autodiff(dd_mysin2, x);
 }
+
 double dddd_mysin2(double x) {
     return __enzyme_autodiff(ddd_mysin2, x);
 }
+
 
 int main() {
     double x = 1.23;

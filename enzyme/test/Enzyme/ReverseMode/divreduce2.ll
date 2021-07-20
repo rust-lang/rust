@@ -49,12 +49,14 @@ declare double @__enzyme_autodiff(i8*, double*, double*, i64, double)
 ; CHECK-NEXT:   %0 = add nuw i64 %N, 1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %0, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %div_malloccache = bitcast i8* %malloccall to double*
+; CHECK-NEXT:   %reduce_malloccache = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   br label %loop
 
 ; CHECK: loop:                                             ; preds = %body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %body ], [ 0, %entry ]
 ; CHECK-NEXT:   %reduce = phi double [ %start, %entry ], [ %div, %body ]
+; CHECK-NEXT:   %1 = getelementptr inbounds double, double* %reduce_malloccache, i64 %iv
+; CHECK-NEXT:   store double %reduce, double* %1, align 8
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv, %N
 ; CHECK-NEXT:   br i1 %cmp, label %body, label %invertloop
@@ -63,8 +65,6 @@ declare double @__enzyme_autodiff(i8*, double*, double*, i64, double)
 ; CHECK-NEXT:   %gep = getelementptr inbounds double, double* %A, i64 %iv
 ; CHECK-NEXT:   %ld = load double, double* %gep, align 8
 ; CHECK-NEXT:   %div = fdiv double %reduce, %ld
-; CHECK-NEXT:   %1 = getelementptr inbounds double, double* %div_malloccache, i64 %iv
-; CHECK-NEXT:   store double %div, double* %1, align 8
 ; CHECK-NEXT:   br label %loop
 
 ; CHECK: invertentry:                                      ; preds = %invertloop
@@ -86,9 +86,10 @@ declare double @__enzyme_autodiff(i8*, double*, double*, i64, double)
 ; CHECK-NEXT:   %gep_unwrap = getelementptr inbounds double, double* %A, i64 %7
 ; CHECK-NEXT:   %ld_unwrap = load double, double* %gep_unwrap, align 8
 ; CHECK-NEXT:   %d0differeduce = fdiv fast double %4, %ld_unwrap
-; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %div_malloccache, i64 %7
-; CHECK-NEXT:   %9 = load double, double* %8, align 8
-; CHECK-NEXT:   %10 = fmul fast double %9, %d0differeduce
+; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %reduce_malloccache, i64 %7
+; CHECK-NEXT:   %9 = load double, double* %8, align 8, !invariant.group !6
+; CHECK-NEXT:   %div_unwrap = fdiv double %9, %ld_unwrap
+; CHECK-NEXT:   %10 = fmul fast double %div_unwrap, %d0differeduce
 ; CHECK-NEXT:   %11 = {{(fsub fast double \-?0.000000e\+00,|fneg fast double)}} %10
 ; CHECK-NEXT:   %"gep'ipg_unwrap" = getelementptr inbounds double, double* %"A'", i64 %7
 ; CHECK-NEXT:   %12 = load double, double* %"gep'ipg_unwrap", align 8

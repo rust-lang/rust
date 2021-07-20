@@ -728,8 +728,14 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
             ConstantInt::get(Type::getInt64Ty(T->getContext()), 3));
       }
       if (extraSize && i == 0) {
-        Value *es = unwrapM(extraSize, allocationBuilder,
-                            /*available*/ ValueToValueMapTy(),
+        ValueToValueMapTy available;
+        for (auto &sl : sublimits) {
+          for (auto &cl : sl.second) {
+            if (cl.first.var)
+              available[cl.first.var] = cl.first.var;
+          }
+        }
+        Value *es = unwrapM(extraSize, allocationBuilder, available,
                             UnwrapMode::AttemptFullUnwrapWithLookup);
         assert(es);
         size = allocationBuilder.CreateMul(size, es, "", /*NUW*/ true,
@@ -1346,8 +1352,9 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
             8);
     cast<LoadInst>(next)->setMetadata(
         LLVMContext::MD_dereferenceable,
-        MDNode::get(cache->getContext(),
-                    {ConstantAsMetadata::get(byteSizeOfType)}));
+        MDNode::get(
+            cache->getContext(),
+            ArrayRef<Metadata *>(ConstantAsMetadata::get(byteSizeOfType))));
     unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
     if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10

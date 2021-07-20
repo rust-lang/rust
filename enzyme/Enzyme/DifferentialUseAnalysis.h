@@ -241,11 +241,12 @@ static inline bool is_value_needed_in_reverse(
     // One may need to this value in the computation of loop
     // bounds/comparisons/etc (which even though not active -- will be used for
     // the reverse pass)
-    //   We only need this if we're not doing the combined forward/reverse since
+    //   We could potentially optimize this to avoid caching if in combined mode
+    //   and the instruction dominates all returns
     //   otherwise it will use the local cache (rather than save for a separate
     //   backwards cache)
     //   We also don't need this if looking at the shadow rather than primal
-    if (mode != DerivativeMode::ReverseModeCombined) {
+    {
       // Proving that none of the uses (or uses' uses) are used in control flow
       // allows us to safely not do this load
 

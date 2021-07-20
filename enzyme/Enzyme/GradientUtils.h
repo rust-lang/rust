@@ -112,7 +112,11 @@ public:
   // Map of block in reverse to corresponding primal block
   std::map<BasicBlock *, BasicBlock *> reverseBlockToPrimal;
 
-  SmallPtrSet<PHINode *, 4> fictiousPHIs;
+  // A set of tape extractions to enforce a cache of
+  // rather than attempting to recompute.
+  SmallPtrSet<Instruction *, 4> TapesToPreventRecomputation;
+
+  ValueMap<PHINode *, WeakTrackingVH> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
   std::vector<CallInst *> originalCalls;
 
@@ -473,7 +477,7 @@ public:
   bool shouldRecompute(const Value *val, const ValueToValueMapTy &available,
                        IRBuilder<> *BuilderM);
 
-  ValueToValueMapTy unwrappedLoads;
+  ValueMap<const Instruction *, WeakTrackingVH> unwrappedLoads;
   void replaceAWithB(Value *A, Value *B, bool storeInCache = false) override {
     if (A == B)
       return;
@@ -487,9 +491,12 @@ public:
       if (pair->second == A)
         pair->second = B;
     }
-    if (unwrappedLoads.find(A) != unwrappedLoads.end()) {
-      unwrappedLoads[B] = unwrappedLoads[A];
-      unwrappedLoads.erase(A);
+    if (auto iA = dyn_cast<Instruction>(A)) {
+      auto iB = cast<Instruction>(B);
+      if (unwrappedLoads.find(iA) != unwrappedLoads.end()) {
+        unwrappedLoads[iB] = unwrappedLoads[iA];
+        unwrappedLoads.erase(iA);
+      }
     }
 
     if (invertedPointers.find(A) != invertedPointers.end()) {
@@ -757,7 +764,7 @@ public:
   }
 
   Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx,
-                         bool ignoreType = false);
+                         bool ignoreType = false, bool replace = true);
 
   const SmallVectorImpl<Value *> &getTapeValues() const {
     return addedTapeVals;
@@ -867,12 +874,18 @@ public:
   }
 
   void eraseFictiousPHIs() {
-    for (auto pp : fictiousPHIs) {
+    std::vector<std::pair<PHINode *, Value *>> phis;
+    for (auto pair : fictiousPHIs)
+      phis.emplace_back(pair.first, pair.second);
+    fictiousPHIs.clear();
+
+    for (auto pair : phis) {
+      auto pp = pair.first;
       if (pp->getNumUses() != 0) {
         llvm::errs() << "mod:" << *oldFunc->getParent() << "\n";
         llvm::errs() << "oldFunc:" << *oldFunc << "\n";
         llvm::errs() << "newFunc:" << *newFunc << "\n";
-        llvm::errs() << " pp: " << *pp << "\n";
+        llvm::errs() << " pp: " << *pp << " of " << *pair.second << "\n";
       }
       assert(pp->getNumUses() == 0);
       pp->replaceAllUsesWith(UndefValue::get(pp->getType()));
@@ -1210,9 +1223,11 @@ public:
       const std::map<BasicBlock *, PHINode *> *replacePHIs = nullptr);
 
   void getReverseBuilder(IRBuilder<> &Builder2, bool original = true) {
+    assert(reverseBlocks.size());
     BasicBlock *BB = Builder2.GetInsertBlock();
     if (original)
       BB = getNewFromOriginal(BB);
+    assert(reverseBlocks.find(BB) != reverseBlocks.end());
     BasicBlock *BB2 = reverseBlocks[BB].back();
     if (!BB2) {
       llvm::errs() << "oldFunc: " << oldFunc << "\n";
@@ -1480,8 +1495,9 @@ public:
         Value *v = ConstantInt::get(Type::getInt32Ty(st->getContext()), i);
         SmallVector<Value *, 2> idx2(idxs.begin(), idxs.end());
         idx2.push_back(v);
-        auto selects = addToDiffe(val, BuilderM.CreateExtractValue(dif, {i}),
-                                  BuilderM, nullptr, idx2);
+        auto selects = addToDiffe(
+            val, BuilderM.CreateExtractValue(dif, ArrayRef<unsigned>(i)),
+            BuilderM, nullptr, idx2);
         for (auto select : selects) {
           addedSelects.push_back(select);
         }
@@ -1546,8 +1562,9 @@ public:
     forfree->setMetadata(LLVMContext::MD_invariant_group, InvariantMD);
     forfree->setMetadata(
         LLVMContext::MD_dereferenceable,
-        MDNode::get(forfree->getContext(),
-                    {ConstantAsMetadata::get(byteSizeOfType)}));
+        MDNode::get(
+            forfree->getContext(),
+            ArrayRef<Metadata *>(ConstantAsMetadata::get(byteSizeOfType))));
     forfree->setName("forfree");
     unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
     if ((bsize & (bsize - 1)) == 0) {

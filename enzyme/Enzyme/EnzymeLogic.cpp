@@ -85,17 +85,12 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
     cl::desc("Consider loads of nonmarked globals to be inactive"));
 }
 
-bool is_load_uncacheable(
-    LoadInst &li, AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
-    const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode);
-
 struct CacheAnalysis {
   AAResults &AA;
   Function *oldFunc;
   ScalarEvolution &SE;
   LoopInfo &OrigLI;
-  DominatorTree &DT;
+  DominatorTree &OrigDT;
   TargetLibraryInfo &TLI;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
   const std::map<Argument *, bool> &uncacheable_args;
@@ -106,8 +101,8 @@ struct CacheAnalysis {
       DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode)
-      : AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), DT(OrigDT), TLI(TLI),
-        unnecessaryInstructions(unnecessaryInstructions),
+      : AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), OrigDT(OrigDT),
+        TLI(TLI), unnecessaryInstructions(unnecessaryInstructions),
         uncacheable_args(uncacheable_args), mode(mode) {}
 
   bool is_value_mustcache_from_origin(Value *obj) {
@@ -288,8 +283,8 @@ struct CacheAnalysis {
                   auto SH = SExpr->getLoop()->getHeader();
                   if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
                     auto LH = LExpr->getLoop()->getHeader();
-                    if (SH != LH && !DT.dominates(SH, LH) &&
-                        !DT.dominates(LH, SH)) {
+                    if (SH != LH && !OrigDT.dominates(SH, LH) &&
+                        !OrigDT.dominates(LH, SH)) {
                       check = false;
                     }
                   }
@@ -349,8 +344,8 @@ struct CacheAnalysis {
                   auto SH = SExpr->getLoop()->getHeader();
                   if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
                     auto LH = LExpr->getLoop()->getHeader();
-                    if (SH != LH && !DT.dominates(SH, LH) &&
-                        !DT.dominates(LH, SH)) {
+                    if (SH != LH && !OrigDT.dominates(SH, LH) &&
+                        !OrigDT.dominates(LH, SH)) {
                       check = false;
                     }
                   }
@@ -477,15 +472,16 @@ struct CacheAnalysis {
 
   std::map<Argument *, bool>
   compute_uncacheable_args_for_one_callsite(CallInst *callsite_op) {
+    Function *Fn = callsite_op->getCalledFunction();
 
-    if (!callsite_op->getCalledFunction())
+    if (!Fn)
       return {};
 
-    if (isMemFreeLibMFunction(callsite_op->getCalledFunction()->getName())) {
+    if (isMemFreeLibMFunction(Fn->getName())) {
       return {};
     }
 
-    if (isCertainMallocOrFree(callsite_op->getCalledFunction())) {
+    if (isCertainPrintMallocOrFree(Fn)) {
       return {};
     }
     std::vector<Value *> args;
@@ -537,7 +533,7 @@ struct CacheAnalysis {
             }
           }
         }
-        if (called && isCertainMallocOrFree(called)) {
+        if (called && isCertainPrintMallocOrFree(called)) {
           return false;
         }
         if (called && isMemFreeLibMFunction(called->getName())) {
@@ -1635,20 +1631,28 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
   }
 
-  for (const auto &m : gutils->knownRecomputeHeuristic) {
-    if (!m.second && !isa<LoadInst>(m.first) && !isa<CallInst>(m.first)) {
-      auto newi = gutils->getNewFromOriginal(m.first);
-      IRBuilder<> BuilderZ(cast<Instruction>(newi)->getNextNode());
-      if (isa<PHINode>(newi)) {
-        BuilderZ.SetInsertPoint(
-            cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+  if (gutils->knownRecomputeHeuristic.size()) {
+    // Even though we could simply iterate through the heuristic map,
+    // we explicity iterate in order of the instructions to maintain
+    // a deterministic cache ordering.
+    for (auto &BB : *gutils->oldFunc)
+      for (auto &I : BB) {
+        auto found = gutils->knownRecomputeHeuristic.find(&I);
+        if (found != gutils->knownRecomputeHeuristic.end()) {
+          if (!found->second && !isa<CallInst>(&I)) {
+            auto newi = gutils->getNewFromOriginal(&I);
+            IRBuilder<> BuilderZ(cast<Instruction>(newi)->getNextNode());
+            if (isa<PHINode>(newi)) {
+              BuilderZ.SetInsertPoint(
+                  cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+            }
+            gutils->cacheForReverse(BuilderZ, newi,
+                                    getIndex(&I, CacheType::Self));
+          }
+        }
       }
-      gutils->cacheForReverse(
-          BuilderZ, newi,
-          getIndex(cast<Instruction>(const_cast<Value *>(m.first)),
-                   CacheType::Self));
-    }
   }
+
   auto nf = gutils->newFunc;
 
   while (gutils->inversionAllocs->size() > 0) {
@@ -2068,12 +2072,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       user->setCalledFunction(NewF);
     }
   }
-  PPC.AlwaysInline(gutils->newFunc);
+  PPC.AlwaysInline(NewF);
   auto Arch = llvm::Triple(NewF->getParent()->getTargetTriple()).getArch();
   if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
     PPC.ReplaceReallocs(NewF, /*mem2reg*/ true);
-  if (PostOpt)
-    PPC.optimizeIntermediate(NewF);
 
   AugmentedCachedFunctions.find(tup)->second.fn = NewF;
   if (recursive || (omp && !noTape))
@@ -2087,6 +2089,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   gutils->newFunc->eraseFromParent();
 
   delete gutils;
+  if (PostOpt)
+    PPC.optimizeIntermediate(NewF);
   if (EnzymePrint)
     llvm::errs() << *NewF << "\n";
   return AugmentedCachedFunctions.find(tup)->second;
@@ -2993,35 +2997,55 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   if (mode != DerivativeMode::ReverseModeCombined &&
       mode != DerivativeMode::ForwardMode) {
-    std::map<Value *, std::vector<Value *>> unwrapToOrig;
-    for (auto pair : gutils->unwrappedLoads)
-      unwrapToOrig[pair.second].push_back(const_cast<Value *>(pair.first));
-    std::map<Value *, Value *> newIToNextI;
+    // One must use this temporary map to first create all the replacements
+    // prior to actually replacing to ensure that getSubLimits has the same
+    // behavior and unwrap behavior for all replacements.
+    std::vector<std::pair<Instruction *, Value *>> newIToNextI;
+
     for (const auto &m : mapping) {
-      if (m.first.second == CacheType::Self && !isa<LoadInst>(m.first.first) &&
-          !isa<CallInst>(m.first.first)) {
+      if (m.first.second == CacheType::Self && !isa<CallInst>(m.first.first) &&
+          gutils->knownRecomputeHeuristic.count(m.first.first)) {
+        assert(gutils->knownRecomputeHeuristic.count(m.first.first));
         auto newi = gutils->getNewFromOriginal(m.first.first);
         if (auto PN = dyn_cast<PHINode>(newi))
-          if (gutils->fictiousPHIs.count(PN))
+          if (gutils->fictiousPHIs.count(PN)) {
+            assert(gutils->fictiousPHIs[PN] == m.first.first);
             gutils->fictiousPHIs.erase(PN);
+          }
         IRBuilder<> BuilderZ(newi->getNextNode());
         if (isa<PHINode>(m.first.first)) {
           BuilderZ.SetInsertPoint(
               cast<Instruction>(newi)->getParent()->getFirstNonPHI());
         }
-        Value *nexti = gutils->cacheForReverse(BuilderZ, newi, m.second);
-        for (auto V : unwrapToOrig[newi]) {
-          ValueToValueMapTy empty;
-          IRBuilder<> lb(cast<Instruction>(V));
-          // This must disallow caching here as otherwise performing the loop in
-          // the wrong order may result in first replacing the later unwrapped
-          // value, caching it, then attempting to reuse it for an earlier
-          // replacement.
-          V->replaceAllUsesWith(
-              gutils->unwrapM(nexti, lb, empty, UnwrapMode::LegalFullUnwrap,
-                              /*scope*/ nullptr, /*permitCache*/ false));
-          cast<Instruction>(V)->eraseFromParent();
-        }
+        Value *nexti = gutils->cacheForReverse(
+            BuilderZ, newi, m.second, /*ignoreType*/ false, /*replace*/ false);
+        newIToNextI.emplace_back(newi, nexti);
+      }
+    }
+
+    std::map<Value *, std::vector<Instruction *>> unwrapToOrig;
+    for (auto pair : gutils->unwrappedLoads)
+      unwrapToOrig[pair.second].push_back(
+          const_cast<Instruction *>(pair.first));
+    gutils->unwrappedLoads.clear();
+    for (auto pair : newIToNextI) {
+      auto newi = pair.first;
+      auto nexti = pair.second;
+      newi->replaceAllUsesWith(nexti);
+      gutils->erase(newi);
+      for (auto V : unwrapToOrig[newi]) {
+        ValueToValueMapTy empty;
+        IRBuilder<> lb(V);
+        // This must disallow caching here as otherwise performing the loop in
+        // the wrong order may result in first replacing the later unwrapped
+        // value, caching it, then attempting to reuse it for an earlier
+        // replacement.
+        Value *nval = gutils->unwrapM(nexti, lb, empty,
+                                      UnwrapMode::LegalFullUnwrapNoTapeReplace,
+                                      /*scope*/ nullptr, /*permitCache*/ false);
+        assert(nval);
+        V->replaceAllUsesWith(nval);
+        V->eraseFromParent();
       }
     }
 
@@ -3044,13 +3068,17 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
       if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
 
-        Value *vals[1] = {gutils->getNewFromOriginal(bi->getCondition())};
-        if (bi->getSuccessor(0) == unreachables[0]) {
-          gutils->replaceAWithB(vals[0],
-                                ConstantInt::getFalse(vals[0]->getContext()));
-        } else {
-          gutils->replaceAWithB(vals[0],
-                                ConstantInt::getTrue(vals[0]->getContext()));
+        Value *condition = gutils->getNewFromOriginal(bi->getCondition());
+
+        Constant *repVal = (bi->getSuccessor(0) == unreachables[0])
+                               ? ConstantInt::getFalse(condition->getContext())
+                               : ConstantInt::getTrue(condition->getContext());
+
+        for (auto UI = condition->use_begin(), E = condition->use_end();
+             UI != E;) {
+          Use &U = *UI;
+          ++UI;
+          U.set(repVal);
         }
       }
     }
@@ -3219,11 +3247,11 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   PPC.AlwaysInline(gutils->newFunc);
   if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
     PPC.ReplaceReallocs(gutils->newFunc, /*mem2reg*/ true);
-  if (PostOpt)
-    PPC.optimizeIntermediate(gutils->newFunc);
 
   auto nf = gutils->newFunc;
   delete gutils;
+  if (PostOpt)
+    PPC.optimizeIntermediate(nf);
   if (EnzymePrint) {
     llvm::errs() << *nf << "\n";
   }
