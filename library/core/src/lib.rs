@@ -71,6 +71,7 @@
 #![feature(const_alloc_layout)]
 #![feature(const_assert_type)]
 #![feature(const_discriminant)]
+#![feature(const_bigint_helper_methods)]
 #![feature(const_cell_into_inner)]
 #![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
