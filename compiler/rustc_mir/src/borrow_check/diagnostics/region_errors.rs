@@ -9,7 +9,7 @@ use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use crate::util::borrowck_errors;
 
@@ -641,12 +641,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         } else {
                             "'_".to_string()
                         };
-                        let suggestion = if snippet.ends_with(';') {
+                        let span = if snippet.ends_with(';') {
                             // `type X = impl Trait;`
-                            format!("{} + {};", &snippet[..snippet.len() - 1], suggestable_fr_name)
+                            span.with_hi(span.hi() - BytePos(1))
                         } else {
-                            format!("{} + {}", snippet, suggestable_fr_name)
+                            span
                         };
+                        let suggestion = format!(" + {}", suggestable_fr_name);
+                        let span = span.shrink_to_hi();
                         diag.span_suggestion(
                             span,
                             &format!(

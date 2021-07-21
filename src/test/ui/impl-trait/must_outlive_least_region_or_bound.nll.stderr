@@ -9,7 +9,7 @@ LL | fn elided(x: &i32) -> impl Copy { x }
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a bound
    |
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
-   |                       ^^^^^^^^^^^^^^
+   |                                 ^^^^
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:5:32
@@ -23,7 +23,7 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a bound
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
-   |                                ^^^^^^^^^^^^^^
+   |                                          ^^^^
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:7:46
