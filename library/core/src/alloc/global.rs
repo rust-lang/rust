@@ -30,7 +30,8 @@ use crate::ptr;
 /// };
 ///
 /// const ARENA_SIZE: usize = 128 * 1024;
-/// #[repr(C, align(131072))] // 131072 == ARENA_SIZE.
+/// const MAX_SUPPORTED_ALIGN: usize = 4096;
+/// #[repr(C, align(4096))] // 4096 == MAX_SUPPORTED_ALIGN
 /// struct SimpleAllocator {
 ///     arena: UnsafeCell<[u8; ARENA_SIZE]>,
 ///     remaining: AtomicUsize, // we allocate from the top, counting down
@@ -53,8 +54,7 @@ use crate::ptr;
 ///         // So we can safely use a mask to ensure alignment without worrying about UB.
 ///         let align_mask_to_round_down = !(align - 1);
 ///
-///         if align > ARENA_SIZE {
-///             // align may be > size !
+///         if align > MAX_SUPPORTED_ALIGN {
 ///             return null_mut();
 ///         }
 ///
