@@ -6,10 +6,12 @@ use hir::HasVisibility;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
-use crate::{context::PathCompletionContext, CompletionContext, Completions};
+use crate::{
+    context::PathCompletionContext, patterns::ImmediateLocation, CompletionContext, Completions,
+};
 
 pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_path_disallowed() {
+    if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
     let (path, use_tree_parent) = match &ctx.path_context {
@@ -26,10 +28,11 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
     let context_module = ctx.scope.module();
 
-    if ctx.expects_item() || ctx.expects_assoc_item() {
+    if let Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) =
+        ctx.completion_location
+    {
         if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-            let module_scope = module.scope(ctx.db, context_module);
-            for (name, def) in module_scope {
+            for (name, def) in module.scope(ctx.db, context_module) {
                 if let hir::ScopeDef::MacroDef(macro_def) = def {
                     if macro_def.is_fn_like() {
                         acc.add_macro(ctx, Some(name.clone()), macro_def);

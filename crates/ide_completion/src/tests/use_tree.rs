@@ -10,7 +10,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 
 #[test]
 fn use_tree_start() {
-    cov_mark::check!(only_completes_modules_in_import);
+    cov_mark::check!(unqualified_path_only_modules_in_import);
     check(
         r#"
 //- /lib.rs crate:main deps:other_crate

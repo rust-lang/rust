@@ -12,7 +12,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
 
     if ctx.in_use_tree() {
         // only show modules in a fresh UseTree
-        cov_mark::hit!(only_completes_modules_in_import);
+        cov_mark::hit!(unqualified_path_only_modules_in_import);
         ctx.scope.process_all_names(&mut |name, res| {
             if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
                 acc.add_resolution(ctx, name, &res);
@@ -24,37 +24,39 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
     std::array::IntoIter::new(["self", "super", "crate"]).for_each(|kw| acc.add_keyword(ctx, kw));
-    if let Some(ImmediateLocation::Visibility(_)) = ctx.completion_location {
-        return;
-    }
 
-    if ctx.expects_item() || ctx.expects_assoc_item() {
-        // only show macros in {Assoc}ItemList
-        ctx.scope.process_all_names(&mut |name, res| {
-            if let hir::ScopeDef::MacroDef(mac) = res {
-                if mac.is_fn_like() {
-                    acc.add_macro(ctx, Some(name.clone()), mac);
+    match &ctx.completion_location {
+        Some(ImmediateLocation::Visibility(_)) => return,
+        Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
+            // only show macros in {Assoc}ItemList
+            ctx.scope.process_all_names(&mut |name, res| {
+                if let hir::ScopeDef::MacroDef(mac) = res {
+                    if mac.is_fn_like() {
+                        acc.add_macro(ctx, Some(name.clone()), mac);
+                    }
                 }
-            }
-            if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                acc.add_resolution(ctx, name, &res);
-            }
-        });
-        return;
-    }
-
-    if matches!(&ctx.completion_location, Some(ImmediateLocation::TypeBound)) {
-        ctx.scope.process_all_names(&mut |name, res| {
-            let add_resolution = match res {
-                ScopeDef::MacroDef(mac) => mac.is_fn_like(),
-                ScopeDef::ModuleDef(hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_)) => true,
-                _ => false,
-            };
-            if add_resolution {
-                acc.add_resolution(ctx, name, &res);
-            }
-        });
-        return;
+                if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
+                    acc.add_resolution(ctx, name, &res);
+                }
+            });
+            return;
+        }
+        Some(ImmediateLocation::TypeBound) => {
+            ctx.scope.process_all_names(&mut |name, res| {
+                let add_resolution = match res {
+                    ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+                    ScopeDef::ModuleDef(hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_)) => {
+                        true
+                    }
+                    _ => false,
+                };
+                if add_resolution {
+                    acc.add_resolution(ctx, name, &res);
+                }
+            });
+            return;
+        }
+        _ => (),
     }
 
     if !ctx.expects_type() {

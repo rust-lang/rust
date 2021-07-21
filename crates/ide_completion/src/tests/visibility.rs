@@ -23,3 +23,35 @@ pub($0)
         "#]],
     );
 }
+
+#[test]
+fn after_in_kw() {
+    check(
+        r#"
+pub(in $0)
+"#,
+        expect![[r#"
+            kw self
+            kw super
+            kw crate
+        "#]],
+    );
+}
+
+#[test]
+fn qualified() {
+    // FIXME: only show parent modules
+    check(
+        r#"
+mod foo {
+    pub(in crate::$0)
+}
+
+mod bar {}
+"#,
+        expect![[r#"
+            md bar
+            md foo
+        "#]],
+    );
+}

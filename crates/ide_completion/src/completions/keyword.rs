@@ -1,4 +1,6 @@
-//! Completes keywords.
+//! Completes keywords, except:
+//! - `self`, `super` and `crate`, as these are considered part of path completions.
+//! - `await`, as this is a postfix completion we handle this in the postfix completions.
 
 use syntax::{SyntaxKind, T};
 
@@ -23,18 +25,6 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if ctx.is_non_trivial_path() {
         cov_mark::hit!(no_keyword_completion_in_non_trivial_path);
         return;
-    }
-
-    // Suggest .await syntax for types that implement Future trait
-    if let Some(receiver) = ctx.dot_receiver() {
-        if let Some(ty) = ctx.sema.type_of_expr(receiver) {
-            if ty.impls_future(ctx.db) {
-                let mut item =
-                    CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await");
-                item.kind(CompletionItemKind::Keyword).detail("expr.await");
-                item.add_to(acc);
-            }
-        };
     }
 
     let mut add_keyword = |kw, snippet| add_keyword(ctx, acc, kw, snippet);
