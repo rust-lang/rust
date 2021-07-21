@@ -372,7 +372,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         )
     }
 
-    /// Check if the given pointerpoints to live memory of given `size` and `align`
+    /// Check if the given pointer points to live memory of given `size` and `align`
     /// (ignoring `M::enforce_alignment`). The caller can control the error message for the
     /// out-of-bounds case.
     #[inline(always)]
@@ -451,11 +451,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 None
             }
             Ok((alloc_id, offset, ptr)) => {
-                let (allocation_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, ptr)?;
+                let (alloc_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, ptr)?;
                 // Test bounds. This also ensures non-null.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
-                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > allocation_size) {
-                    throw_ub!(PointerOutOfBounds { alloc_id, offset, size, allocation_size, msg })
+                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
+                    throw_ub!(PointerOutOfBounds {
+                        alloc_id,
+                        alloc_size,
+                        ptr_offset: self.machine_usize_to_isize(offset.bytes()),
+                        ptr_size: size,
+                        msg,
+                    })
                 }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.

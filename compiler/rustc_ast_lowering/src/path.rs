@@ -336,6 +336,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             insertion_sp,
                             suggestion,
                         );
+                        err.note("assuming a `'static` lifetime...");
                         err.emit();
                     }
                     AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {

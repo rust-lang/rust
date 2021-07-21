@@ -1119,6 +1119,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         )
     }
 
+    /// Try to relate `sub <: sup`
     fn sub_types(
         &mut self,
         sub: Ty<'tcx>,
@@ -1127,32 +1128,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) -> Fallible<()> {
         self.relate_types(sub, ty::Variance::Covariant, sup, locations, category)
-    }
-
-    /// Try to relate `sub <: sup`; if this fails, instantiate opaque
-    /// variables in `sub` with their inferred definitions and try
-    /// again. This is used for opaque types in places (e.g., `let x:
-    /// impl Foo = ..`).
-    fn sub_types_or_anon(
-        &mut self,
-        sub: Ty<'tcx>,
-        sup: Ty<'tcx>,
-        locations: Locations,
-        category: ConstraintCategory,
-    ) -> Fallible<()> {
-        if let Err(terr) = self.sub_types(sub, sup, locations, category) {
-            if let ty::Opaque(..) = sup.kind() {
-                // When you have `let x: impl Foo = ...` in a closure,
-                // the resulting inferend values are stored with the
-                // def-id of the base function.
-                let parent_def_id =
-                    self.tcx().closure_base_def_id(self.body.source.def_id()).expect_local();
-                return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
-            } else {
-                return Err(terr);
-            }
-        }
-        Ok(())
     }
 
     fn eq_types(
@@ -1207,7 +1182,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     /// Equates a type `anon_ty` that may contain opaque types whose
-    /// values are to be inferred by the MIR with def-id `anon_owner_def_id`.
+    /// values are to be inferred by the MIR.
     ///
     /// The type `revealed_ty` contains the same type as `anon_ty`, but with the
     /// hidden types for impl traits revealed.
@@ -1235,12 +1210,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ///   generics of `foo`). Note that `anon_ty` is not just the opaque type,
     ///   but the entire return type (which may contain opaque types within it).
     /// * `revealed_ty` would be `Box<(T, u32)>`
-    /// * `anon_owner_def_id` would be the def-id of `foo`
     fn eq_opaque_type_and_type(
         &mut self,
         revealed_ty: Ty<'tcx>,
         anon_ty: Ty<'tcx>,
-        anon_owner_def_id: LocalDefId,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
@@ -1270,12 +1243,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
+        let mir_def_id = body.source.def_id().expect_local();
 
         // the "concrete opaque types" maps
-        let concrete_opaque_types = &tcx.typeck(anon_owner_def_id).concrete_opaque_types;
+        let concrete_opaque_types = &tcx.typeck(mir_def_id).concrete_opaque_types;
         let mut opaque_type_values = VecMap::new();
 
-        debug!("eq_opaque_type_and_type: mir_def_id={:?}", body.source.def_id());
+        debug!("eq_opaque_type_and_type: mir_def_id={:?}", mir_def_id);
         let opaque_type_map = self.fully_perform_op(
             locations,
             category,
@@ -1293,7 +1267,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // any generic parameters.)
                     let (output_ty, opaque_type_map) =
                         obligations.add(infcx.instantiate_opaque_types(
-                            anon_owner_def_id,
+                            mir_def_id,
                             dummy_body_id,
                             param_env,
                             anon_ty,
@@ -1489,7 +1463,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let rv_ty = rv.ty(body, tcx);
                 let rv_ty = self.normalize(rv_ty, location);
                 if let Err(terr) =
-                    self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
+                    self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
                     span_mirbug!(
                         self,
@@ -1776,9 +1750,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 let locations = term_location.to_locations();
 
-                if let Err(terr) =
-                    self.sub_types_or_anon(sig.output(), dest_ty, locations, category)
-                {
+                if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations, category) {
                     span_mirbug!(
                         self,
                         term,

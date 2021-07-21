@@ -4,6 +4,7 @@ use super::OutputFormatter;
 use crate::{
     bench::fmt_bench_samples,
     console::{ConsoleTestState, OutputLocation},
+    term,
     test_result::TestResult,
     time,
     types::NamePadding,

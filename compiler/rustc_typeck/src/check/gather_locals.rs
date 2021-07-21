@@ -4,12 +4,11 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::Ty;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_trait_selection::traits;
 
 pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    parent_id: hir::HirId,
     // parameters are special cases of patterns, but we want to handle them as
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
@@ -17,8 +16,8 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
-    pub(super) fn new(fcx: &'a FnCtxt<'a, 'tcx>, parent_id: hir::HirId) -> Self {
-        Self { fcx, parent_id, outermost_fn_param_pat: None }
+    pub(super) fn new(fcx: &'a FnCtxt<'a, 'tcx>) -> Self {
+        Self { fcx, outermost_fn_param_pat: None }
     }
 
     fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
@@ -57,26 +56,15 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
 
-                let revealed_ty = self.fcx.instantiate_opaque_types_from_value(
-                    self.parent_id,
-                    o_ty,
-                    ty.span,
-                    Some(sym::impl_trait_in_bindings),
-                );
-
-                let c_ty =
-                    self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(revealed_ty));
-                debug!(
-                    "visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
-                    ty.hir_id, o_ty, revealed_ty, c_ty
-                );
+                let c_ty = self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty));
+                debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
                 self.fcx
                     .typeck_results
                     .borrow_mut()
                     .user_provided_types_mut()
                     .insert(ty.hir_id, c_ty);
 
-                Some(LocalTy { decl_ty: o_ty, revealed_ty })
+                Some(LocalTy { decl_ty: o_ty, revealed_ty: o_ty })
             }
             None => None,
         };

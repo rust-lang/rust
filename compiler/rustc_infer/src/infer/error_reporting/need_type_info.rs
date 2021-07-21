@@ -491,11 +491,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span
         };
 
-        let is_named_and_not_impl_trait = |ty: Ty<'_>| {
-            &ty.to_string() != "_" &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
-                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
-        };
+        let is_named_and_not_impl_trait =
+            |ty: Ty<'_>| &ty.to_string() != "_" && !ty.is_impl_trait();
 
         let ty_msg = match (local_visitor.found_node_ty, local_visitor.found_exact_method_call) {
             (_, Some(_)) => String::new(),

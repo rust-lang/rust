@@ -2264,18 +2264,14 @@ pub struct OpaqueTy<'hir> {
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
     FnReturn,
     /// `async fn`
     AsyncFn,
-    /// `let _: impl Trait = ...`
-    Binding,
     /// type aliases: `type Foo = impl Trait;`
     TyAlias,
-    /// Impl trait consts, statics, bounds.
-    Misc,
 }
 
 /// The various kinds of types recognized by the compiler.
@@ -3062,6 +3058,27 @@ impl<'hir> Node<'hir> {
             Node::Variant(Variant { id, .. }) => Some(*id),
             Node::Ctor(variant) => variant.ctor_hir_id(),
             Node::Crate(_) | Node::Visibility(_) => None,
+        }
+    }
+
+    /// Returns `Constness::Const` when this node is a const fn/impl.
+    pub fn constness(&self) -> Constness {
+        match self {
+            Node::Item(Item {
+                kind: ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::Item(Item { kind: ItemKind::Impl(Impl { constness, .. }), .. }) => *constness,
+
+            _ => Constness::NotConst,
         }
     }
 }

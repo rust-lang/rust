@@ -1903,9 +1903,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?impl_trait_ref, ?placeholder_obligation_trait_ref);
 
+        let cause = ObligationCause::new(
+            obligation.cause.span,
+            obligation.cause.body_id,
+            ObligationCauseCode::MatchImpl(Lrc::new(obligation.cause.code.clone()), impl_def_id),
+        );
+
         let InferOk { obligations, .. } = self
             .infcx
-            .at(&obligation.cause, obligation.param_env)
+            .at(&cause, obligation.param_env)
             .eq(placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
         nested_obligations.extend(obligations);

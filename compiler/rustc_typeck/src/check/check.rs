@@ -221,9 +221,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
 
-    let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id).to_def_id()).expect_local();
-    let outer_hir_id = hir.local_def_id_to_hir_id(outer_def_id);
-    GatherLocalsVisitor::new(&fcx, outer_hir_id).visit_body(body);
+    GatherLocalsVisitor::new(&fcx).visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
@@ -665,13 +663,9 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorReported> {
-    if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs)
-    {
+    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs).is_err() {
         match origin {
             hir::OpaqueTyOrigin::AsyncFn => async_opaque_type_cycle_error(tcx, span),
-            hir::OpaqueTyOrigin::Binding => {
-                binding_opaque_type_cycle_error(tcx, def_id, span, partially_expanded_type)
-            }
             _ => opaque_type_cycle_error(tcx, def_id, span),
         }
         Err(ErrorReported)
@@ -704,8 +698,7 @@ fn check_opaque_meets_bounds<'tcx>(
         // Checked when type checking the function containing them.
         hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => return,
         // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc | hir::OpaqueTyOrigin::TyAlias => {
-        }
+        hir::OpaqueTyOrigin::TyAlias => {}
     }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

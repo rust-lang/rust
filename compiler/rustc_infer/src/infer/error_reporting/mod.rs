@@ -1590,17 +1590,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
         if let Some((expected, found)) = expected_found {
-            let expected_label = match exp_found {
-                Mismatch::Variable(ef) => ef.expected.prefix_string(self.tcx),
-                Mismatch::Fixed(s) => s.into(),
-            };
-            let found_label = match exp_found {
-                Mismatch::Variable(ef) => ef.found.prefix_string(self.tcx),
-                Mismatch::Fixed(s) => s.into(),
-            };
-            let exp_found = match exp_found {
-                Mismatch::Variable(exp_found) => Some(exp_found),
-                Mismatch::Fixed(_) => None,
+            let (expected_label, found_label, exp_found) = match exp_found {
+                Mismatch::Variable(ef) => (
+                    ef.expected.prefix_string(self.tcx),
+                    ef.found.prefix_string(self.tcx),
+                    Some(ef),
+                ),
+                Mismatch::Fixed(s) => (s.into(), s.into(), None),
             };
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {
@@ -2134,7 +2130,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let new_lt = generics
             .as_ref()
             .and_then(|(parent_g, g)| {
-                let possible: Vec<_> = (b'a'..=b'z').map(|c| format!("'{}", c as char)).collect();
+                let mut possible = (b'a'..=b'z').map(|c| format!("'{}", c as char));
                 let mut lts_names = g
                     .params
                     .iter()
@@ -2150,7 +2146,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
                 let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
-                possible.into_iter().find(|candidate| !lts.contains(&candidate.as_str()))
+                possible.find(|candidate| !lts.contains(&candidate.as_str()))
             })
             .unwrap_or("'lt".to_string());
         let add_lt_sugg = generics

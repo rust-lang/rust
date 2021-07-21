@@ -31,7 +31,7 @@ type Foo4 = impl Debug;
 
 fn define4() {
     let y: Foo4 = 42;
-    //~^ ERROR not permitted here
+    //~^ ERROR mismatched types [E0308]
 }
 
 fn main() {}

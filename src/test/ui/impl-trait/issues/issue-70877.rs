@@ -1,7 +1,6 @@
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait)]
 #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-#![feature(impl_trait_in_bindings)]
 #![allow(incomplete_features)]
 
 type FooArg<'a> = &'a dyn ToString;

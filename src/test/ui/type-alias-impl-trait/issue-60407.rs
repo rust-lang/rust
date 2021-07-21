@@ -1,18 +1,18 @@
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait, rustc_attrs)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait, impl_trait_in_bindings))]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
 //[full_tait]~^ WARN incomplete
-//[full_tait]~| WARN incomplete
 
 type Debuggable = impl core::fmt::Debug;
 
-static mut TEST: Option<Debuggable> = None; //[min_tait]~ ERROR not permitted here
+static mut TEST: Option<Debuggable> = None;
 
 #[rustc_error]
-fn main() { //[full_tait]~ ERROR
+fn main() {
+    //~^ ERROR
     unsafe { TEST = Some(foo()) }
 }
 
-fn foo() -> Debuggable { //[min_tait]~ ERROR concrete type differs
+fn foo() -> Debuggable {
     0u32
 }

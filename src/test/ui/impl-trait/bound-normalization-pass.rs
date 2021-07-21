@@ -5,8 +5,6 @@
 //-^ To make this the regression test for #75962.
 
 #![feature(min_type_alias_impl_trait)]
-#![feature(impl_trait_in_bindings)]
-//~^ WARNING the feature `impl_trait_in_bindings` is incomplete
 
 // See issue 60414
 
@@ -14,7 +12,9 @@
 
 struct Foo<T>(T);
 
-trait FooLike { type Output; }
+trait FooLike {
+    type Output;
+}
 
 impl<T> FooLike for Foo<T> {
     type Output = T;
@@ -28,7 +28,7 @@ mod impl_trait {
     }
 
     /// `T::Assoc` should be normalized to `()` here.
-    fn foo_pass<T: Trait<Assoc=()>>() -> impl FooLike<Output=T::Assoc> {
+    fn foo_pass<T: Trait<Assoc = ()>>() -> impl FooLike<Output = T::Assoc> {
         Foo(())
     }
 }
@@ -45,37 +45,17 @@ mod lifetimes {
     /// Like above.
     ///
     /// FIXME(#51525) -- the shorter notation `T::Assoc` winds up referencing `'static` here
-    fn foo2_pass<'a, T: Trait<'a, Assoc=()> + 'a>(
-    ) -> impl FooLike<Output=<T as Trait<'a>>::Assoc> + 'a {
+    fn foo2_pass<'a, T: Trait<'a, Assoc = ()> + 'a>()
+    -> impl FooLike<Output = <T as Trait<'a>>::Assoc> + 'a {
         Foo(())
     }
 
     /// Normalization to type containing bound region.
     ///
     /// FIXME(#51525) -- the shorter notation `T::Assoc` winds up referencing `'static` here
-    fn foo2_pass2<'a, T: Trait<'a, Assoc=&'a ()> + 'a>(
-    ) -> impl FooLike<Output=<T as Trait<'a>>::Assoc> + 'a {
+    fn foo2_pass2<'a, T: Trait<'a, Assoc = &'a ()> + 'a>()
+    -> impl FooLike<Output = <T as Trait<'a>>::Assoc> + 'a {
         Foo(&())
-    }
-}
-
-// Reduction using `impl Trait` in bindings
-
-mod impl_trait_in_bindings {
-    struct Foo;
-
-    trait FooLike { type Output; }
-
-    impl FooLike for Foo {
-        type Output = u32;
-    }
-
-    trait Trait {
-        type Assoc;
-    }
-
-    fn foo<T: Trait<Assoc=u32>>() {
-        let _: impl FooLike<Output=T::Assoc> = Foo;
     }
 }
 
