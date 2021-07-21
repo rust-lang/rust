@@ -560,7 +560,8 @@ nav.sub {
 .docblock table {
 	margin: .5em 0;
 	width: calc(100% - 2px);
-	border: 1px dashed;
+	overflow-x: auto;
+	display: block;
 }
 
 .docblock table td {

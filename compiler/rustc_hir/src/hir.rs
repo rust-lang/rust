@@ -3060,6 +3060,27 @@ impl<'hir> Node<'hir> {
             Node::Crate(_) | Node::Visibility(_) => None,
         }
     }
+
+    /// Returns `Constness::Const` when this node is a const fn/impl.
+    pub fn constness(&self) -> Constness {
+        match self {
+            Node::Item(Item {
+                kind: ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::Item(Item { kind: ItemKind::Impl(Impl { constness, .. }), .. }) => *constness,
+
+            _ => Constness::NotConst,
+        }
+    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
