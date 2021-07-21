@@ -40,7 +40,6 @@ pub(in $0)
 
 #[test]
 fn qualified() {
-    // FIXME: only show parent modules
     check(
         r#"
 mod foo {
@@ -50,7 +49,21 @@ mod foo {
 mod bar {}
 "#,
         expect![[r#"
-            md bar
+            md foo
+        "#]],
+    );
+    check(
+        r#"
+mod qux {
+    mod foo {
+        pub(in crate::qux::$0)
+    }
+    mod baz {}
+}
+
+mod bar {}
+"#,
+        expect![[r#"
             md foo
         "#]],
     );
