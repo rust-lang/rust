@@ -114,7 +114,7 @@ impl Diagnostic {
 
     pub fn is_error(&self) -> bool {
         match self.level {
-            Level::Bug | Level::Fatal | Level::Error | Level::FailureNote => true,
+            Level::Bug | Level::Fatal | Level::Error { .. } | Level::FailureNote => true,
 
             Level::Warning | Level::Note | Level::Help | Level::Cancelled | Level::Allow => false,
         }

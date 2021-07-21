@@ -273,7 +273,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
 impl ToInternal<rustc_errors::Level> for Level {
     fn to_internal(self) -> rustc_errors::Level {
         match self {
-            Level::Error => rustc_errors::Level::Error,
+            Level::Error => rustc_errors::Level::Error { lint: false },
             Level::Warning => rustc_errors::Level::Warning,
             Level::Note => rustc_errors::Level::Note,
             Level::Help => rustc_errors::Level::Help,

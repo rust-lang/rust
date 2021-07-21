@@ -3,6 +3,7 @@
 #![allow(
     dead_code,
     unused_variables,
+    overflowing_literals,
     clippy::excessive_precision,
     clippy::inconsistent_digit_grouping
 )]
@@ -21,7 +22,6 @@ fn main() {
     let fail25 = 1E2_32;
     let fail26 = 43E7_64;
     let fail27 = 243E17_32;
-    #[allow(overflowing_literals)]
     let fail28 = 241251235E723_64;
     let ok29 = 42279.911_32;
 

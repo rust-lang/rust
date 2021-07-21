@@ -38,6 +38,7 @@ mod issue_6089 {
     //  fn call_with_mut_self<'life0>(self: &'life0 mut Self) {}
     #[rename_my_lifetimes]
     impl T2 for S2 {
+        #[allow(clippy::needless_lifetimes)]
         fn call_with_mut_self(self: &mut Self) {}
     }
 }

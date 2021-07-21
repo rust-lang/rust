@@ -1,5 +1,5 @@
 #![warn(clippy::all)]
-#![allow(unused, clippy::println_empty_string)]
+#![allow(unused, clippy::println_empty_string, non_snake_case)]
 
 #[derive(Clone, Debug)]
 enum MaybeInst {
@@ -14,6 +14,7 @@ struct InstSplit {
 
 impl MaybeInst {
     fn fill(&mut self) {
+        #[allow(non_fmt_panics)]
         let filled = match *self {
             MaybeInst::Split1(goto1) => panic!("1"),
             MaybeInst::Split2(goto2) => panic!("2"),
@@ -36,6 +37,7 @@ fn issue2927() {
 }
 
 fn issue3078() {
+    #[allow(clippy::single_match)]
     match "a" {
         stringify!(a) => {},
         _ => {},

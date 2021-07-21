@@ -52,12 +52,14 @@ macro_rules! m_mut {
     };
 }
 
+#[derive(Copy, Clone)]
 pub struct S;
 impl S {
     pub fn f(&self) -> &Self {
         m!(self)
     }
-    pub fn f_mut(&self) -> &Self {
+    #[allow(unused_mut)] // mut will be unused, once the macro is fixed
+    pub fn f_mut(mut self) -> Self {
         m_mut!(self)
     }
 }
