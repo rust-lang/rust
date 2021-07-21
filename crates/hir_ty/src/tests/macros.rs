@@ -27,7 +27,7 @@ fn test() {
 } //^ (i32, {unknown}, i32, {unknown})
 
 //- /foo.rs crate:foo
-struct S;
+pub struct S;
 
 #[cfg(not(test))]
 impl S {

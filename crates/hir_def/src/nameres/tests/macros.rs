@@ -607,8 +607,8 @@ macro_rules! not_current2 {
     }
 }
 
-struct Bar;
-struct Baz;
+pub struct Bar;
+pub struct Baz;
 "#,
         expect![[r#"
             crate

@@ -256,8 +256,8 @@ fn test() {
 } //^ i128
 
 //- /lib.rs crate:other_crate
-mod foo {
-    struct S;
+pub mod foo {
+    pub struct S;
     impl S {
         fn thing() -> i128 { 0 }
     }
