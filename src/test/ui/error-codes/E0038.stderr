@@ -1,8 +1,8 @@
 error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/E0038.rs:5:16
+  --> $DIR/E0038.rs:5:20
    |
 LL | fn call_foo(x: Box<dyn Trait>) {
-   |                ^^^^^^^^^^^^^^ `Trait` cannot be made into an object
+   |                    ^^^^^^^^^ `Trait` cannot be made into an object
    |
    = help: consider moving `foo` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
