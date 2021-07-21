@@ -5,6 +5,7 @@
 //! Notable examples for completions that are being tested in this module's submodule are paths.
 
 mod attribute;
+mod fn_param;
 mod item_list;
 mod item;
 mod pattern;

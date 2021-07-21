@@ -166,7 +166,7 @@ impl ActiveParameter {
 
         let idx = active_parameter?;
         let mut params = signature.params(sema.db);
-        if params.len() <= idx {
+        if !(idx < params.len()) {
             cov_mark::hit!(too_many_arguments);
             return None;
         }
