@@ -290,13 +290,9 @@ fn suggest_restriction(
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
         let (sp, suggestion) = match (
-            generics
-                .params
-                .iter()
-                .filter(|p| {
-                    !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
-                })
-                .next(),
+            generics.params.iter().find(|p| {
+                !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
+            }),
             super_traits,
         ) {
             (_, None) => predicate_constraint(
