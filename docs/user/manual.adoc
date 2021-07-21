@@ -595,7 +595,7 @@ interface Dep {
 This format is provisional and subject to change.
 Specifically, the `roots` setup will be different eventually.
 
-There are tree ways to feed `rust-project.json` to rust-analyzer:
+There are three ways to feed `rust-project.json` to rust-analyzer:
 
 * Place `rust-project.json` file at the root of the project, and rust-anlayzer will discover it.
 * Specify `"rust-analyzer.linkedProjects": [ "path/to/rust-project.json" ]` in the settings (and make sure that your LSP client sends settings as a part of initialize request).
