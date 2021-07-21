@@ -365,6 +365,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let project_obligation = obligation.with(binder.rebind(data));
 
                     self.process_projection_obligation(
+                        obligation,
                         project_obligation,
                         &mut pending_obligation.stalled_on,
                     )
@@ -419,6 +420,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let project_obligation = obligation.with(Binder::dummy(*data));
 
                     self.process_projection_obligation(
+                        obligation,
                         project_obligation,
                         &mut pending_obligation.stalled_on,
                     )
@@ -666,10 +668,22 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
     fn process_projection_obligation(
         &mut self,
+        obligation: &PredicateObligation<'tcx>,
         project_obligation: PolyProjectionObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
+
+        if obligation.predicate.is_global() {
+            // no type variables present, can use evaluation for better caching.
+            // FIXME: consider caching errors too.
+            if self.selcx.infcx().predicate_must_hold_considering_regions(obligation) {
+                return ProcessResult::Changed(vec![]);
+            } else {
+                tracing::debug!("Does NOT hold: {:?}", obligation);
+            }
+        }
+
         match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
             Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
             Ok(Ok(None)) => {
