@@ -689,25 +689,12 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 &|table, index| hasher(table.bucket::<T>(index).as_ref()),
                 fallibility,
                 TableLayout::new::<T>(),
-                mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)),
-                mem::needs_drop::<T>(),
+                if mem::needs_drop::<T>() {
+                    Some(mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)))
+                } else {
+                    None
+                },
             )
-        }
-    }
-
-    /// Rehashes the contents of the table in place (i.e. without changing the
-    /// allocation).
-    ///
-    /// If `hasher` panics then some the table's contents may be lost.
-    #[cfg(test)]
-    fn rehash_in_place(&mut self, hasher: impl Fn(&T) -> u64) {
-        unsafe {
-            self.table.rehash_in_place(
-                &|table, index| hasher(table.bucket::<T>(index).as_ref()),
-                mem::size_of::<T>(),
-                mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)),
-                mem::needs_drop::<T>(),
-            );
         }
     }
 
@@ -1389,8 +1376,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         hasher: &dyn Fn(&mut Self, usize) -> u64,
         fallibility: Fallibility,
         layout: TableLayout,
-        drop: fn(*mut u8),
-        drops: bool,
+        drop: Option<fn(*mut u8)>,
     ) -> Result<(), TryReserveError> {
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
         let new_items = match self.items.checked_add(additional) {
@@ -1401,7 +1387,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         if new_items <= full_capacity / 2 {
             // Rehash in-place without re-allocating if we have plenty of spare
             // capacity that is locked up due to DELETED entries.
-            self.rehash_in_place(hasher, layout.size, drop, drops);
+            self.rehash_in_place(hasher, layout.size, drop);
             Ok(())
         } else {
             // Otherwise, conservatively resize to at least the next size up
@@ -1475,8 +1461,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         &mut self,
         hasher: &dyn Fn(&mut Self, usize) -> u64,
         size_of: usize,
-        drop: fn(*mut u8),
-        drops: bool,
+        drop: Option<fn(*mut u8)>,
     ) {
         // If the hash function panics then properly clean up any elements
         // that we haven't rehashed yet. We unfortunately can't preserve the
@@ -1485,7 +1470,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.prepare_rehash_in_place();
 
         let mut guard = guard(self, move |self_| {
-            if drops {
+            if let Some(drop) = drop {
                 for i in 0..self_.buckets() {
                     if *self_.ctrl(i) == DELETED {
                         self_.set_ctrl(i, EMPTY);
@@ -2375,6 +2360,20 @@ impl<'a, A: Allocator + Clone> Iterator for RawIterHashInner<'a, A> {
 mod test_map {
     use super::*;
 
+    fn rehash_in_place<T>(table: &mut RawTable<T>, hasher: impl Fn(&T) -> u64) {
+        unsafe {
+            table.table.rehash_in_place(
+                &|table, index| hasher(table.bucket::<T>(index).as_ref()),
+                mem::size_of::<T>(),
+                if mem::needs_drop::<T>() {
+                    Some(mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)))
+                } else {
+                    None
+                },
+            );
+        }
+    }
+
     #[test]
     fn rehash() {
         let mut table = RawTable::new();
@@ -2390,7 +2389,7 @@ mod test_map {
             assert!(table.find(i + 100, |x| *x == i + 100).is_none());
         }
 
-        table.rehash_in_place(hasher);
+        rehash_in_place(&mut table, hasher);
 
         for i in 0..100 {
             unsafe {
