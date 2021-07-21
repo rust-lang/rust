@@ -26,10 +26,8 @@ const LICENSES: &[&str] = &[
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 const EXCEPTIONS: &[(&str, &str)] = &[
-    ("mdbook", "MPL-2.0"),                                  // mdbook
-    ("openssl", "Apache-2.0"),                              // cargo, mdbook
-    ("fuchsia-zircon-sys", "BSD-3-Clause"),                 // rustdoc, rustc, cargo
-    ("fuchsia-zircon", "BSD-3-Clause"), // rustdoc, rustc, cargo (jobserver & tempdir)
+    ("mdbook", "MPL-2.0"),              // mdbook
+    ("openssl", "Apache-2.0"),          // cargo, mdbook
     ("colored", "MPL-2.0"),             // rustfmt
     ("ordslice", "Apache-2.0"),         // rls
     ("ryu", "Apache-2.0 OR BSL-1.0"),   // rls/cargo/... (because of serde)
@@ -115,8 +113,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "fixedbitset",
     "flate2",
     "fortanix-sgx-abi",
-    "fuchsia-zircon",
-    "fuchsia-zircon-sys",
     "generic-array",
     "getopts",
     "getrandom",
@@ -130,7 +126,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jobserver",
-    "kernel32-sys",
     "lazy_static",
     "libc",
     "libz-sys",
@@ -222,7 +217,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "version_check",
     "wasi",
     "winapi",
-    "winapi-build",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
