@@ -181,11 +181,11 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
                 if let Some(hir_id) = segment.hir_id {
                     let hir = self.tcx.hir();
                     let body_id = hir.enclosing_body_owner(hir_id);
-                    // FIXME: this is showing error messages for parts of the code that are not
-                    // compiled (because of cfg)!
-                    let typeck_results = self.tcx.typeck_body(
-                        hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
-                    );
+                    let typeck_results = self.tcx.sess.with_disabled_diagnostic(|| {
+                        self.tcx.typeck_body(
+                            hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
+                        )
+                    });
                     if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                         self.matches.insert(
                             LightSpan::new_from_span(method_span),
