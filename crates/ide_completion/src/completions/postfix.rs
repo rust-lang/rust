@@ -322,8 +322,8 @@ fn postfix_snippet(
     let mut item = CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label);
     item.detail(detail).kind(CompletionItemKind::Snippet).snippet_edit(cap, edit);
     if ctx.original_token.text() == label {
-        let mut relevance = CompletionRelevance::default();
-        relevance.exact_postfix_snippet_match = true;
+        let relevance =
+            CompletionRelevance { exact_postfix_snippet_match: true, ..Default::default() };
         item.set_relevance(relevance);
     }
 

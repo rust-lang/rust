@@ -32,7 +32,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         Some("target_vendor") => KNOWN_VENDOR.iter().for_each(add_completion),
         Some("target_endian") => ["little", "big"].iter().for_each(add_completion),
         Some(name) => {
-            ctx.krate.map(|krate| {
+            if let Some(krate) = ctx.krate {
                 krate.potential_cfg(ctx.db).get_cfg_values(&name).iter().for_each(|s| {
                     let mut item = CompletionItem::new(
                         CompletionKind::Attribute,
@@ -43,10 +43,10 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
 
                     acc.add(item.build());
                 })
-            });
+            };
         }
         None => {
-            ctx.krate.map(|krate| {
+            if let Some(krate) = ctx.krate {
                 krate.potential_cfg(ctx.db).get_cfg_keys().iter().for_each(|s| {
                     let item = CompletionItem::new(
                         CompletionKind::Attribute,
@@ -55,12 +55,12 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
                     );
                     acc.add(item.build());
                 })
-            });
+            }
         }
     };
 }
 
-const KNOWN_ARCH: [&'static str; 19] = [
+const KNOWN_ARCH: [&str; 19] = [
     "aarch64",
     "arm",
     "avr",
@@ -82,10 +82,9 @@ const KNOWN_ARCH: [&'static str; 19] = [
     "x86_64",
 ];
 
-const KNOWN_ENV: [&'static str; 7] =
-    ["eabihf", "gnu", "gnueabihf", "msvc", "relibc", "sgx", "uclibc"];
+const KNOWN_ENV: [&str; 7] = ["eabihf", "gnu", "gnueabihf", "msvc", "relibc", "sgx", "uclibc"];
 
-const KNOWN_OS: [&'static str; 20] = [
+const KNOWN_OS: [&str; 20] = [
     "cuda",
     "dragonfly",
     "emscripten",
@@ -108,5 +107,5 @@ const KNOWN_OS: [&'static str; 20] = [
     "windows",
 ];
 
-const KNOWN_VENDOR: [&'static str; 8] =
+const KNOWN_VENDOR: [&str; 8] =
     ["apple", "fortanix", "nvidia", "pc", "sony", "unknown", "wrs", "uwp"];

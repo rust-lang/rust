@@ -10,8 +10,8 @@ use crate::{
     render::RenderContext,
 };
 
-pub(crate) fn render_macro<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_macro(
+    ctx: RenderContext<'_>,
     import_to_add: Option<ImportEdit>,
     name: hir::Name,
     macro_: hir::MacroDef,
@@ -76,12 +76,10 @@ impl<'a> MacroRender<'a> {
     fn label(&self) -> String {
         if self.needs_bang() && self.ctx.snippet_cap().is_some() {
             format!("{}!{}…{}", self.name, self.bra, self.ket)
+        } else if self.macro_.kind() == hir::MacroKind::Derive {
+            self.name.to_string()
         } else {
-            if self.macro_.kind() == hir::MacroKind::Derive {
-                self.name.to_string()
-            } else {
-                self.banged_name()
-            }
+            self.banged_name()
         }
     }
 

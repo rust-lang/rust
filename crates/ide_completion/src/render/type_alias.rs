@@ -12,15 +12,15 @@ use crate::{
     render::RenderContext,
 };
 
-pub(crate) fn render_type_alias<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_type_alias(
+    ctx: RenderContext<'_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
     TypeAliasRender::new(ctx, type_alias)?.render(false)
 }
 
-pub(crate) fn render_type_alias_with_eq<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_type_alias_with_eq(
+    ctx: RenderContext<'_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
     TypeAliasRender::new(ctx, type_alias)?.render(true)
@@ -63,7 +63,7 @@ impl<'a> TypeAliasRender<'a> {
         if let Some(actm) = self.type_alias.as_assoc_item(db) {
             if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
                 item.trait_name(trt.name(db).to_string());
-                item.insert_text(name.clone());
+                item.insert_text(name);
             }
         }
 

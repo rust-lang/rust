@@ -51,7 +51,7 @@ pub(crate) fn add_format_like_completions(
 
     if parser.parse().is_ok() {
         for (label, macro_name) in KINDS {
-            let snippet = parser.into_suggestion(macro_name);
+            let snippet = parser.to_suggestion(macro_name);
 
             postfix_snippet(ctx, cap, dot_receiver, label, macro_name, &snippet).add_to(acc);
         }
@@ -201,7 +201,7 @@ impl FormatStrParser {
         Ok(())
     }
 
-    pub(crate) fn into_suggestion(&self, macro_name: &str) -> String {
+    pub(crate) fn to_suggestion(&self, macro_name: &str) -> String {
         assert!(self.parsed, "Attempt to get a suggestion from not parsed expression");
 
         let expressions_as_string = self.extracted_expressions.join(", ");
@@ -283,7 +283,7 @@ mod tests {
             let mut parser = FormatStrParser::new((*input).to_owned());
             parser.parse().expect("Parsing must succeed");
 
-            assert_eq!(&parser.into_suggestion(*kind), output);
+            assert_eq!(&parser.to_suggestion(*kind), output);
         }
     }
 }

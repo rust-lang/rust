@@ -13,8 +13,8 @@ use crate::{
     },
 };
 
-pub(crate) fn render_fn<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_fn(
+    ctx: RenderContext<'_>,
     import_to_add: Option<ImportEdit>,
     local_name: Option<hir::Name>,
     fn_: hir::Function,
@@ -23,8 +23,8 @@ pub(crate) fn render_fn<'a>(
     Some(FunctionRender::new(ctx, None, local_name, fn_, false)?.render(import_to_add))
 }
 
-pub(crate) fn render_method<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_method(
+    ctx: RenderContext<'_>,
     import_to_add: Option<ImportEdit>,
     receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
