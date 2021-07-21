@@ -370,14 +370,14 @@ fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: 
 fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
     if_chain! {
         if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind;
-        if loop_block.stmts.len() == 1;
-        if let ast::StmtKind::Semi(ref statement) = loop_block.stmts.first().unwrap().kind;
+        if !loop_block.stmts.is_empty();
+        if let ast::StmtKind::Semi(ref statement) = loop_block.stmts.last().unwrap().kind;
         if let ast::ExprKind::Continue(_) = statement.kind;
         then {
             span_lint_and_help(
                 cx,
                 NEEDLESS_CONTINUE,
-                loop_block.stmts.first().unwrap().span,
+                loop_block.stmts.last().unwrap().span,
                 MSG_REDUNDANT_CONTINUE_EXPRESSION,
                 None,
                 DROP_CONTINUE_EXPRESSION_MSG,

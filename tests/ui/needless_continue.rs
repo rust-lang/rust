@@ -49,8 +49,18 @@ fn main() {
 
         println!("bleh");
     }
+}
+
+fn simple_loop() {
     loop {
-        continue;
+        continue; // should lint here
+    }
+}
+
+fn simple_loop2() {
+    loop {
+        println!("bleh");
+        continue; // should lint here
     }
 }
 
