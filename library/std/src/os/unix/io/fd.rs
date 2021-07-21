@@ -99,7 +99,7 @@ impl FromRawFd for OwnedFd {
     /// # Safety
     ///
     /// The resource pointed to by `raw` must be open and suitable for assuming
-    /// ownership.
+    /// ownership. The resource must not require any cleanup other than `close`.
     #[inline]
     unsafe fn from_raw_fd(raw: RawFd) -> Self {
         assert_ne!(raw, -1i32);
