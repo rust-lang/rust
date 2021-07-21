@@ -86,8 +86,10 @@ pub struct OnDiskCache<'sess> {
     expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
     // Additional information used when decoding hygiene data.
     hygiene_context: HygieneDecodeContext,
-    // FIXME(mw): Update this comment:
-    // Likewise for ExpnId.
+    // Maps `ExpnHash`es to their raw value from the *previous*
+    // compilation session. This is used as an initial 'guess' when
+    // we try to map an `ExpnHash` to its value in the current
+    // compilation session.
     foreign_expn_data: UnhashMap<ExpnHash, u32>,
 }
 
