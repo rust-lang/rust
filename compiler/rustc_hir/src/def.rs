@@ -476,7 +476,7 @@ impl<T> PerNS<Option<T>> {
 
     /// Returns an iterator over the items which are `Some`.
     pub fn present_items(self) -> impl Iterator<Item = T> {
-        IntoIter::new([self.type_ns, self.value_ns, self.macro_ns]).filter_map(|it| it)
+        IntoIter::new([self.type_ns, self.value_ns, self.macro_ns]).flatten()
     }
 }
 
