@@ -58,10 +58,16 @@ The report should contain:
   and describe the feature's behavior on encountering edge cases.
 - Links to the documentations (the PRs we have made in the
   previous steps).
-- Any other relevant information(Examples of such reports can
-  be found in rust-lang/rust#44494 and rust-lang/rust#28237).
+- Any other relevant information.
 - The resolutions of any unresolved questions if the stabilization
   is for an RFC.
+
+Examples of stabilization reports can be found in
+[rust-lang/rust#44494][report1] and [rust-lang/rust#28237][report2] (these links
+will bring you directly to the comment containing the stabilization report).
+
+[report1]: https://github.com/rust-lang/rust/issues/44494#issuecomment-360191474
+[report2]: https://github.com/rust-lang/rust/issues/28237#issuecomment-363374130
 
 ## FCP
 
@@ -69,7 +75,7 @@ If any member of the team responsible for tracking this
 feature agrees with stabilizing this feature, they will
 start the FCP (final-comment-period) process by commenting
 
-```bash
+```text
 @rfcbot fcp merge
 ```
 
