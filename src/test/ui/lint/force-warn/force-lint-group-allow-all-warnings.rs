@@ -1,4 +1,4 @@
-// compile-flags: --force-warns nonstandard_style -Zunstable-options
+// compile-flags: --force-warn nonstandard_style -Zunstable-options
 // check-pass
 
 #![allow(warnings)]

@@ -1,4 +1,4 @@
-// compile-flags: --force-warns rust_2018_idioms -Zunstable-options
+// compile-flags: --force-warn rust_2018_idioms -Zunstable-options
 // check-pass
 
 #![allow(rust_2018_idioms)]

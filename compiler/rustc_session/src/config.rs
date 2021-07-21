@@ -1101,7 +1101,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         ),
         opt::multi_s(
             "",
-            "force-warns",
+            "force-warn",
             "Specifiy lints that should warn even if \
              they are allowed somewhere else",
             "LINT",
@@ -1175,11 +1175,11 @@ pub fn get_cmd_lint_options(
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
-    if !debugging_opts.unstable_options && matches.opt_present("force-warns") {
+    if !debugging_opts.unstable_options && matches.opt_present("force-warn") {
         early_error(
             error_format,
             "the `-Z unstable-options` flag must also be passed to enable \
-            the flag `--force-warns=lints`",
+            the flag `--force-warn=lints`",
         );
     }
 

@@ -64,7 +64,7 @@ impl Level {
         match self {
             Level::Allow => "allow",
             Level::Warn => "warn",
-            Level::ForceWarn => "force-warns",
+            Level::ForceWarn => "force-warn",
             Level::Deny => "deny",
             Level::Forbid => "forbid",
         }
