@@ -1,5 +1,5 @@
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:17:1
+  --> $DIR/fn_params_excessive_bools.rs:18:1
    |
 LL | fn g(_: bool, _: bool, _: bool, _: bool) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | fn g(_: bool, _: bool, _: bool, _: bool) {}
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:20:1
+  --> $DIR/fn_params_excessive_bools.rs:21:1
    |
 LL | fn t(_: S, _: S, _: Box<S>, _: Vec<u32>, _: bool, _: bool, _: bool, _: bool) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | fn t(_: S, _: S, _: Box<S>, _: Vec<u32>, _: bool, _: bool, _: bool, _: bool
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:24:5
+  --> $DIR/fn_params_excessive_bools.rs:25:5
    |
 LL |     fn f(_: bool, _: bool, _: bool, _: bool);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     fn f(_: bool, _: bool, _: bool, _: bool);
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:29:5
+  --> $DIR/fn_params_excessive_bools.rs:30:5
    |
 LL |     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:41:5
+  --> $DIR/fn_params_excessive_bools.rs:42:5
    |
 LL | /     fn n(_: bool, _: u32, _: bool, _: Box<u32>, _: bool, _: bool) {
 LL | |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
@@ -42,7 +42,7 @@ LL | |     }
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:42:9
+  --> $DIR/fn_params_excessive_bools.rs:43:9
    |
 LL |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

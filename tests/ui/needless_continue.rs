@@ -12,6 +12,7 @@ macro_rules! nonzero {
     };
 }
 
+#[allow(clippy::nonminimal_bool)]
 fn main() {
     let mut i = 1;
     while i < 10 {

@@ -15,5 +15,6 @@ fn main() {
     #[allow(clippy::needless_return)]
     (|| return 2)();
     (|| -> Option<i32> { None? })();
+    #[allow(clippy::try_err)]
     (|| -> Result<i32, i32> { Err(2)? })();
 }
