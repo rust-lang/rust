@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::iter::FromIterator;
-use std::slice::{Iter, IterMut};
+use std::slice::Iter;
 use std::vec::IntoIter;
 
 use crate::stable_hasher::{HashStable, StableHasher};
@@ -67,8 +67,12 @@ where
         self.into_iter()
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<'_, (K, V)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut V)> {
         self.into_iter()
+    }
+
+    pub fn retain(&mut self, f: impl Fn(&(K, V)) -> bool) {
+        self.0.retain(f)
     }
 }
 
@@ -108,12 +112,12 @@ impl<'a, K, V> IntoIterator for &'a VecMap<K, V> {
 }
 
 impl<'a, K, V> IntoIterator for &'a mut VecMap<K, V> {
-    type Item = &'a mut (K, V);
-    type IntoIter = IterMut<'a, (K, V)>;
+    type Item = (&'a K, &'a mut V);
+    type IntoIter = impl Iterator<Item = Self::Item>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter_mut()
+        self.0.iter_mut().map(|(k, v)| (&*k, v))
     }
 }
 
