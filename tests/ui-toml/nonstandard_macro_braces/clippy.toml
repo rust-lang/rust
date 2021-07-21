@@ -3,4 +3,5 @@ standard-macro-braces = [
     { name = "quote::quote", brace = "{" },
     { name = "eprint", brace = "[" },
     { name = "type_pos", brace = "[" },
+    { name = "printlnfoo", brace = "[" },
 ]

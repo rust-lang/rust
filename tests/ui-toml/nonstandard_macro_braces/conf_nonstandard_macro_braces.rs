@@ -32,6 +32,12 @@ macro_rules! type_pos {
     };
 }
 
+macro_rules! printlnfoo {
+    ($thing:expr) => {
+        println!("hey {}", $thing)
+    };
+}
+
 #[rustfmt::skip]
 fn main() {
     let _ = vec! {1, 2, 3};
@@ -49,4 +55,8 @@ fn main() {
     let _: type_pos!(usize) = vec![];
 
     eprint!("test if user config overrides defaults");
+
+    println!("test if println triggers for printlnfoo");
+
+    printlnfoo!("you");
 }
