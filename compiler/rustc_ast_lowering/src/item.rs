@@ -1385,18 +1385,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .map(|d| (d.base_res(), d.unresolved_segments()))
                         {
                             Some((Res::Def(DefKind::TyParam, def_id), 0))
-                            if bound_pred.bound_generic_params.is_empty() =>
-                                {
-                                    for param in &generics.params {
-                                        if def_id == self.resolver.local_def_id(param.id).to_def_id() {
-                                            add_bounds
-                                                .entry(param.id)
-                                                .or_default()
-                                                .push(bound.clone());
-                                            continue 'next_bound;
-                                        }
+                                if bound_pred.bound_generic_params.is_empty() =>
+                            {
+                                for param in &generics.params {
+                                    if def_id == self.resolver.local_def_id(param.id).to_def_id() {
+                                        add_bounds.entry(param.id).or_default().push(bound.clone());
+                                        continue 'next_bound;
                                     }
                                 }
+                            }
                             _ => {}
                         }
                         self.diagnostic().span_err(
