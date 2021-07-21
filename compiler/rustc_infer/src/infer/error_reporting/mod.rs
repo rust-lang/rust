@@ -2130,7 +2130,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let new_lt = generics
             .as_ref()
             .and_then(|(parent_g, g)| {
-                let possible: Vec<_> = (b'a'..=b'z').map(|c| format!("'{}", c as char)).collect();
+                let mut possible = (b'a'..=b'z').map(|c| format!("'{}", c as char));
                 let mut lts_names = g
                     .params
                     .iter()
@@ -2146,7 +2146,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
                 let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
-                possible.into_iter().find(|candidate| !lts.contains(&candidate.as_str()))
+                possible.find(|candidate| !lts.contains(&candidate.as_str()))
             })
             .unwrap_or("'lt".to_string());
         let add_lt_sugg = generics
