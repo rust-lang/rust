@@ -4,7 +4,7 @@ error[E0391]: cycle detected when computing the super traits of `Baz` with assoc
 LL | trait Baz: Foo + Bar<Self::Item> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which again requires computing the super traits of `Baz` with associated type name `Item`, completing the cycle
+   = note: ...which immediately requires computing the super traits of `Baz` with associated type name `Item` again
 note: cycle used when computing the super traits of `Baz`
   --> $DIR/ambiguous-associated-type2.rs:7:1
    |

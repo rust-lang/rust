@@ -591,10 +591,14 @@ pub(crate) fn report_cycle<'a>(
         err.span_note(span, &format!("...which requires {}...", query.description));
     }
 
-    err.note(&format!(
-        "...which again requires {}, completing the cycle",
-        stack[0].query.description
-    ));
+    if stack.len() == 1 {
+        err.note(&format!("...which immediately requires {} again", stack[0].query.description));
+    } else {
+        err.note(&format!(
+            "...which again requires {}, completing the cycle",
+            stack[0].query.description
+        ));
+    }
 
     if let Some((span, query)) = usage {
         err.span_note(fix_span(span, &query), &format!("cycle used when {}", query.description));
