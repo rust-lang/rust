@@ -72,13 +72,9 @@ impl Path {
     ) -> ast::Path {
         let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
-        let tys: Vec<P<ast::Ty>> =
-            self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
-        let params = lt
-            .into_iter()
-            .map(GenericArg::Lifetime)
-            .chain(tys.into_iter().map(GenericArg::Type))
-            .collect();
+        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
+        let params =
+            lt.into_iter().map(GenericArg::Lifetime).chain(tys.map(GenericArg::Type)).collect();
 
         match self.kind {
             PathKind::Global => cx.path_all(span, true, idents, params),
