@@ -1738,7 +1738,7 @@ impl ToOwned for Path {
 impl cmp::PartialEq for PathBuf {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        self.components() == other.components()
+        Path::eq(self, other)
     }
 }
 
@@ -1756,7 +1756,7 @@ impl cmp::Eq for PathBuf {}
 impl cmp::PartialOrd for PathBuf {
     #[inline]
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
-        Some(compare_components(self.components(), other.components()))
+        Path::partial_cmp(self, other)
     }
 }
 
@@ -1764,7 +1764,7 @@ impl cmp::PartialOrd for PathBuf {
 impl cmp::Ord for PathBuf {
     #[inline]
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
-        compare_components(self.components(), other.components())
+        Path::cmp(self, other)
     }
 }
 
@@ -2718,6 +2718,14 @@ impl Path {
         let inner = unsafe { Box::from_raw(rw) };
         PathBuf { inner: OsString::from(inner) }
     }
+
+    fn ends_with_separator(&self) -> bool {
+        let components = self.components();
+        match components.path.last() {
+            None => false,
+            Some(byte) => components.is_sep_byte(*byte),
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2779,6 +2787,7 @@ impl cmp::PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.components() == other.components()
+            && self.ends_with_separator() == other.ends_with_separator()
     }
 }
 
@@ -2798,7 +2807,7 @@ impl cmp::Eq for Path {}
 impl cmp::PartialOrd for Path {
     #[inline]
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
-        Some(compare_components(self.components(), other.components()))
+        Some(Ord::cmp(self, other))
     }
 }
 
@@ -2807,6 +2816,7 @@ impl cmp::Ord for Path {
     #[inline]
     fn cmp(&self, other: &Path) -> cmp::Ordering {
         compare_components(self.components(), other.components())
+            .then_with(|| self.ends_with_separator().cmp(&other.ends_with_separator()))
     }
 }
 

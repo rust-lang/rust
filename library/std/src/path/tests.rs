@@ -1427,7 +1427,11 @@ pub fn test_compare() {
              let eq = path1 == path2;
              assert!(eq == $eq, "{:?} == {:?}, expected {:?}, got {:?}",
                      $path1, $path2, $eq, eq);
-             assert!($eq == (hash(path1) == hash(path2)),
+
+             // They have the same hash if the paths are equal or differ only in
+             // trailing separator.
+             assert_eq!($eq || $path1.trim_end_matches('/') == $path2.trim_end_matches('/'),
+                     hash(path1) == hash(path2),
                      "{:?} == {:?}, expected {:?}, got {} and {}",
                      $path1, $path2, $eq, hash(path1), hash(path2));
 
@@ -1480,7 +1484,7 @@ pub fn test_compare() {
     );
 
     tc!("foo/", "foo",
-    eq: true,
+    eq: false,
     starts_with: true,
     ends_with: true,
     relative_from: Some("")
@@ -1530,6 +1534,27 @@ pub fn test_compare() {
         relative_from: Some("")
         );
     }
+}
+
+#[test]
+fn test_trailing_separator() {
+    let file = Path::new("tmp/f");
+    let dir = Path::new("tmp/f/");
+
+    assert_ne!(file, dir);
+    assert!(file < dir);
+    assert_eq!(dir, Path::new("tmp/f//"));
+    assert_eq!(file.components(), dir.components());
+
+    if cfg!(windows) {
+        assert_eq!(dir, Path::new(r"tmp\f\"));
+        assert_eq!(dir, Path::new(r"tmp\f\\"));
+    }
+
+    let file = file.to_owned();
+    let dir = dir.to_owned();
+    assert_ne!(file, dir);
+    assert!(file < dir);
 }
 
 #[test]
@@ -1629,10 +1654,13 @@ fn test_ord() {
     ord!(Less, "1", "2");
     ord!(Less, "/foo/bar", "/foo./bar");
     ord!(Less, "foo/bar", "foo/bar.");
-    ord!(Equal, "foo/./bar", "foo/bar/");
-    ord!(Equal, "foo/bar", "foo/bar/");
+    ord!(Equal, "foo/./bar", "foo/bar");
+    ord!(Less, "foo/./bar", "foo/bar/");
+    ord!(Equal, "foo/./bar/", "foo/bar/");
+    ord!(Less, "foo/bar", "foo/bar/");
     ord!(Equal, "foo/bar", "foo/bar/.");
-    ord!(Equal, "foo/bar", "foo/bar//");
+    ord!(Less, "foo/bar", "foo/bar//");
+    ord!(Equal, "foo/bar/", "foo/bar//");
 }
 
 #[bench]
