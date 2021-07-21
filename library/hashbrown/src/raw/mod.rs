@@ -73,12 +73,12 @@ fn unlikely(b: bool) -> bool {
 }
 
 #[cfg(feature = "nightly")]
-#[cfg_attr(feature = "inline-more", inline)]
+#[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
     to.offset_from(from) as usize
 }
 #[cfg(not(feature = "nightly"))]
-#[cfg_attr(feature = "inline-more", inline)]
+#[inline]
 unsafe fn offset_from<T>(to: *const T, from: *const T) -> usize {
     (to as usize - from as usize) / mem::size_of::<T>()
 }
@@ -292,14 +292,14 @@ pub struct Bucket<T> {
 unsafe impl<T> Send for Bucket<T> {}
 
 impl<T> Clone for Bucket<T> {
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn clone(&self) -> Self {
         Self { ptr: self.ptr }
     }
 }
 
 impl<T> Bucket<T> {
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
         let ptr = if mem::size_of::<T>() == 0 {
             // won't overflow because index must be less than length
@@ -311,7 +311,7 @@ impl<T> Bucket<T> {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
         if mem::size_of::<T>() == 0 {
             self.ptr.as_ptr() as usize - 1
@@ -319,7 +319,7 @@ impl<T> Bucket<T> {
             offset_from(base.as_ptr(), self.ptr.as_ptr())
         }
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub fn as_ptr(&self) -> *mut T {
         if mem::size_of::<T>() == 0 {
             // Just return an arbitrary ZST pointer which is properly aligned
@@ -328,7 +328,7 @@ impl<T> Bucket<T> {
             unsafe { self.ptr.as_ptr().sub(1) }
         }
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if mem::size_of::<T>() == 0 {
             (self.ptr.as_ptr() as usize + offset) as *mut T
@@ -343,24 +343,24 @@ impl<T> Bucket<T> {
     pub unsafe fn drop(&self) {
         self.as_ptr().drop_in_place();
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn read(&self) -> T {
         self.as_ptr().read()
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn write(&self, val: T) {
         self.as_ptr().write(val);
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn as_ref<'a>(&self) -> &'a T {
         &*self.as_ptr()
     }
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn as_mut<'a>(&self) -> &'a mut T {
         &mut *self.as_ptr()
     }
     #[cfg(feature = "raw")]
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn copy_from_nonoverlapping(&self, other: &Self) {
         self.as_ptr().copy_from_nonoverlapping(other.as_ptr(), 1);
     }
@@ -399,7 +399,7 @@ impl<T> RawTable<T, Global> {
     /// In effect this returns a table with exactly 1 bucket. However we can
     /// leave the data pointer dangling since that bucket is never written to
     /// due to our load factor forcing us to always have at least 1 free bucket.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub const fn new() -> Self {
         Self {
             table: RawTableInner::new_in(Global),
@@ -428,7 +428,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// In effect this returns a table with exactly 1 bucket. However we can
     /// leave the data pointer dangling since that bucket is never written to
     /// due to our load factor forcing us to always have at least 1 free bucket.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub fn new_in(alloc: A) -> Self {
         Self {
             table: RawTableInner::new_in(alloc),
@@ -506,26 +506,26 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     }
 
     /// Returns pointer to one past last element of data table.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn data_end(&self) -> NonNull<T> {
         NonNull::new_unchecked(self.table.ctrl.as_ptr().cast())
     }
 
     /// Returns pointer to start of data table.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     #[cfg(feature = "nightly")]
     pub unsafe fn data_start(&self) -> *mut T {
         self.data_end().as_ptr().wrapping_sub(self.buckets())
     }
 
     /// Returns the index of a bucket from a `Bucket`.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
         bucket.to_base_index(self.data_end())
     }
 
     /// Returns a pointer to an element in the table.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn bucket(&self, index: usize) -> Bucket<T> {
         debug_assert_ne!(self.table.bucket_mask, 0);
         debug_assert!(index < self.buckets());
@@ -913,19 +913,19 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     ///
     /// This number is a lower bound; the table might be able to hold
     /// more, but is guaranteed to be able to hold at least this many.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.table.items + self.table.growth_left
     }
 
     /// Returns the number of elements in the table.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub fn len(&self) -> usize {
         self.table.items
     }
 
     /// Returns the number of buckets in the table.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub fn buckets(&self) -> usize {
         self.table.bucket_mask + 1
     }
@@ -934,7 +934,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// the caller to ensure that the `RawTable` outlives the `RawIter`.
     /// Because we cannot make the `next` method unsafe on the `RawIter`
     /// struct, we have to make the `iter` method unsafe.
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     pub unsafe fn iter(&self) -> RawIter<T> {
         let data = Bucket::from_base_index(self.data_end(), 0);
         RawIter {
@@ -1031,7 +1031,7 @@ unsafe impl<T, A: Allocator + Clone> Send for RawTable<T, A> where T: Send {}
 unsafe impl<T, A: Allocator + Clone> Sync for RawTable<T, A> where T: Sync {}
 
 impl<A> RawTableInner<A> {
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     const fn new_in(alloc: A) -> Self {
         Self {
             // Be careful to cast the entire slice to a raw pointer.
@@ -1204,14 +1204,14 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn bucket<T>(&self, index: usize) -> Bucket<T> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
         Bucket::from_base_index(self.data_end(), index)
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn bucket_ptr(&self, index: usize, size_of: usize) -> *mut u8 {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
@@ -1219,7 +1219,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         base.sub((index + 1) * size_of)
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     unsafe fn data_end<T>(&self) -> NonNull<T> {
         NonNull::new_unchecked(self.ctrl.as_ptr().cast())
     }
@@ -1771,7 +1771,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
 }
 
 impl<T, A: Allocator + Clone + Default> Default for RawTable<T, A> {
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn default() -> Self {
         Self::new_in(Default::default())
     }
@@ -1945,7 +1945,7 @@ impl<T> Iterator for RawIterRange<T> {
         }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         // We don't have an item count, so just guess based on the range size.
         (
@@ -2127,7 +2127,7 @@ impl<T> Iterator for RawIter<T> {
         }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.items, Some(self.items))
     }
@@ -2193,7 +2193,7 @@ impl<T, A: Allocator + Clone> Iterator for RawIntoIter<T, A> {
         unsafe { Some(self.iter.next()?.read()) }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -2257,7 +2257,7 @@ impl<T, A: Allocator + Clone> Iterator for RawDrain<'_, T, A> {
         }
     }
 
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
