@@ -1229,12 +1229,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
         let base: *mut u8 = self.data_end().as_ptr();
-        if size_of == 0 {
-            // FIXME: Check if this `data_end` is aligned with ZST?
-            base
-        } else {
-            base.sub((index + 1) * size_of)
-        }
+        base.sub((index + 1) * size_of)
     }
 
     #[cfg_attr(feature = "inline-more", inline)]
