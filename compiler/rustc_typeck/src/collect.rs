@@ -35,7 +35,6 @@ use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
-use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
@@ -358,11 +357,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn default_constness_for_trait_bounds(&self) -> hir::Constness {
-        if let Some(fn_like) = FnLikeNode::from_node(self.node()) {
-            fn_like.constness()
-        } else {
-            hir::Constness::NotConst
-        }
+        self.node().constness()
     }
 
     fn get_type_parameter_bounds(
