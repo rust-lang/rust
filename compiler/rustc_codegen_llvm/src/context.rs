@@ -80,8 +80,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub isize_ty: &'ll Type,
 
     /// Cache for the mapping from source index to llvm index for struct fields,
-    /// necessary because the mapping depends on padding and thus depens on
-    /// TyAndLayout.
+    /// only present if synthetic fields are inserted for padding.
     pub field_projection_cache: RefCell<FxHashMap<TyAndLayout<'tcx>, Vec<u32>>>,
 
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,

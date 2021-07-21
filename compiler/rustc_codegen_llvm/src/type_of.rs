@@ -363,6 +363,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
+            // Look up llvm field index in projection cache if present. If no projection cache
+            // is present no padding is used and the llvm field index matches the memory index.
             FieldsShape::Arbitrary { .. } => match cx.field_projection_cache.borrow().get(self) {
                 Some(projection) => projection[index] as u64,
                 None => self.fields.memory_index(index) as u64,
