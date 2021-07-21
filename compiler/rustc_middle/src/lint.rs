@@ -288,7 +288,7 @@ pub fn struct_lint_level<'s, 'd>(
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
                     Level::Allow => "-A",
-                    Level::ForceWarn => "--force-warns",
+                    Level::ForceWarn => "--force-warn",
                 };
                 let hyphen_case_lint_name = name.replace("_", "-");
                 if lint_flag_val.as_str() == name {
