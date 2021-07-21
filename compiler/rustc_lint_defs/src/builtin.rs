@@ -2488,7 +2488,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// LLVM's assembler is allowed to duplicate inline assembly blocks for any
+    /// LLVM is allowed to duplicate inline assembly blocks for any
     /// reason, for example when it is in a function that gets inlined. Because
     /// of this, GNU assembler [local labels] *must* be used instead of labels
     /// with a name. Using named labels might cause assembler or linker errors.

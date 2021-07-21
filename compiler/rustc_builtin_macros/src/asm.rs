@@ -473,6 +473,7 @@ fn expand_preparsed_asm(
             }
         }
 
+        // Lint against the use of named labels in inline `asm!` but not `global_asm!`
         if is_local_asm {
             let find_label_span = |needle: &str| -> Option<Span> {
                 if let Some(snippet) = &template_snippet {
