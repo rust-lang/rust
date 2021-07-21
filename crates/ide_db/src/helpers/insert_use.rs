@@ -181,7 +181,7 @@ enum ImportGranularityGuess {
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
-pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
+pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     let _p = profile::span("insert_use");
     let mut mb = match cfg.granularity {
         ImportGranularity::Crate => Some(MergeBehavior::Crate),

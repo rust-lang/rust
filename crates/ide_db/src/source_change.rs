@@ -3,10 +3,7 @@
 //!
 //! It can be viewed as a dual for `Change`.
 
-use std::{
-    collections::hash_map::Entry,
-    iter::{self, FromIterator},
-};
+use std::{collections::hash_map::Entry, iter};
 
 use base_db::{AnchoredPathBuf, FileId};
 use rustc_hash::FxHashMap;
@@ -32,7 +29,7 @@ impl SourceChange {
 
     pub fn from_text_edit(file_id: FileId, edit: TextEdit) -> Self {
         SourceChange {
-            source_file_edits: FxHashMap::from_iter(iter::once((file_id, edit))),
+            source_file_edits: iter::once((file_id, edit)).collect(),
             ..Default::default()
         }
     }

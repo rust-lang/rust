@@ -153,7 +153,7 @@ impl NameClass {
                                         path_segment.name_ref()
                                     },
                                     PathSegmentKind::Name(name_ref) => Some(name_ref),
-                                    _ => return None,
+                                    _ => None,
                                 }
                             })
                             .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
@@ -341,7 +341,7 @@ impl NameRefClass {
                             hir::AssocItem::TypeAlias(it) => Some(*it),
                             _ => None,
                         })
-                        .find(|alias| &alias.name(sema.db).to_string() == &name_ref.text())
+                        .find(|alias| alias.name(sema.db).to_string() == name_ref.text())
                     {
                         return Some(NameRefClass::Definition(Definition::ModuleDef(
                             ModuleDef::TypeAlias(ty),

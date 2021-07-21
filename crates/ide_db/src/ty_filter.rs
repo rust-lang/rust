@@ -26,7 +26,7 @@ impl TryEnum {
             _ => return None,
         };
         TryEnum::ALL.iter().find_map(|&var| {
-            if &enum_.name(sema.db).to_string() == var.type_name() {
+            if enum_.name(sema.db).to_string() == var.type_name() {
                 return Some(var);
             }
             None

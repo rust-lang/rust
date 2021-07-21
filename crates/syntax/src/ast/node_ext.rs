@@ -91,7 +91,7 @@ impl ast::Expr {
                                         | ast::Effect::Const(_)
                                 )
                             }
-                            ast::Expr::ClosureExpr(__) => true,
+                            ast::Expr::ClosureExpr(_) => true,
                             _ => false,
                         };
                         cb(expr);
