@@ -353,6 +353,10 @@ impl<'a> CompletionContext<'a> {
         matches!(self.path_context, Some(PathCompletionContext { is_trivial_path: true, .. }))
     }
 
+    pub(crate) fn is_non_trivial_path(&self) -> bool {
+        matches!(self.path_context, Some(PathCompletionContext { is_trivial_path: false, .. }))
+    }
+
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
         self.path_context.as_ref().and_then(|it| it.qualifier.as_ref())
     }
