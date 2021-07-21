@@ -101,25 +101,11 @@ fn in_item_list_after_attr() {
 
 #[test]
 fn in_qualified_path() {
+    cov_mark::check!(no_keyword_completion_in_non_trivial_path);
     check(
         r#"crate::$0"#,
         expect![[r##"
-            kw pub(crate)
-            kw pub
-            kw unsafe
-            kw fn
-            kw const
-            kw type
-            kw impl
-            kw extern
-            kw use
-            kw trait
-            kw static
-            kw mod
-            kw enum
-            kw struct
-            kw union
-            ma makro!(…)  #[macro_export] macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
             md module
         "##]],
     )
