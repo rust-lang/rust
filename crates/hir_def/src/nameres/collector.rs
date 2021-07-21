@@ -747,7 +747,9 @@ impl DefCollector<'_> {
 
             if let Some(krate) = res.krate {
                 if krate != self.def_map.krate {
-                    return PartialResolvedImport::Resolved(def);
+                    return PartialResolvedImport::Resolved(
+                        def.filter_visibility(|v| matches!(v, Visibility::Public)),
+                    );
                 }
             }
 

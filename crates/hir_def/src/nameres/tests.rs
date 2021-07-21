@@ -296,7 +296,7 @@ use bar::Bar;
 use other_crate::FromLib;
 
 //- /lib.rs crate:other_crate edition:2018
-struct FromLib;
+pub struct FromLib;
 "#,
         expect![[r#"
             crate
@@ -371,7 +371,7 @@ mod sync;
 use alloc_crate::Arc;
 
 //- /lib.rs crate:alloc
-struct Arc;
+pub struct Arc;
 "#,
         expect![[r#"
             crate
@@ -397,7 +397,7 @@ mod sync;
 use alloc_crate::Arc;
 
 //- /lib.rs crate:alloc
-struct Arc;
+pub struct Arc;
 "#,
         expect![[r#"
             crate
@@ -476,13 +476,13 @@ fn no_std_prelude() {
 
         //- /core.rs crate:core
         pub mod prelude {
-            pud mod rust_2018 {
+            pub mod rust_2018 {
                 pub struct Rust;
             }
         }
         //- /std.rs crate:std deps:core
         pub mod prelude {
-            pud mod rust_2018 {
+            pub mod rust_2018 {
             }
         }
     "#,
@@ -505,7 +505,7 @@ fn edition_specific_preludes() {
 
         //- /std.rs crate:std
         pub mod prelude {
-            pud mod rust_2018 {
+            pub mod rust_2018 {
                 pub struct Rust2018;
             }
         }
@@ -522,7 +522,7 @@ fn edition_specific_preludes() {
 
         //- /std.rs crate:std
         pub mod prelude {
-            pud mod rust_2021 {
+            pub mod rust_2021 {
                 pub struct Rust2021;
             }
         }
@@ -838,4 +838,25 @@ use self::m::S::{self};
             S: t v m
         "#]],
     );
+}
+
+#[test]
+fn import_from_extern_crate_only_imports_public_items() {
+    check(
+        r#"
+//- /lib.rs crate:lib deps:settings,macros
+use macros::settings;
+use settings::Settings;
+//- /settings.rs crate:settings
+pub struct Settings;
+//- /macros.rs crate:macros
+mod settings {}
+pub const settings: () = ();
+        "#,
+        expect![[r#"
+            crate
+            Settings: t v
+            settings: v
+        "#]],
+    )
 }

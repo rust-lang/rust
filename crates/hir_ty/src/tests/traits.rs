@@ -209,8 +209,8 @@ pub mod prelude {
 
 //- /alloc.rs crate:alloc deps:core
 #![no_std]
-mod collections {
-    struct Vec<T> {}
+pub mod collections {
+    pub struct Vec<T> {}
     impl<T> Vec<T> {
         pub fn new() -> Self { Vec {} }
         pub fn push(&mut self, t: T) { }
