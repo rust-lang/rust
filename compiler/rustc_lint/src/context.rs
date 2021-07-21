@@ -370,7 +370,7 @@ impl LintStore {
                 match level {
                     Level::Allow => "-A",
                     Level::Warn => "-W",
-                    Level::ForceWarn => "--force-warns",
+                    Level::ForceWarn => "--force-warn",
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
                 },

@@ -511,10 +511,10 @@ fn opts() -> Vec<RustcOptGroup> {
                 "LEVEL",
             )
         }),
-        unstable("force-warns", |o| {
+        unstable("force-warn", |o| {
             o.optopt(
                 "",
-                "force-warns",
+                "force-warn",
                 "Lints that will warn even if allowed somewhere else",
                 "LINTS",
             )

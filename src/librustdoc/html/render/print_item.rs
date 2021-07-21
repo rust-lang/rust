@@ -1,6 +1,7 @@
 use clean::AttributesExt;
 
 use std::cmp::Ordering;
+use std::fmt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -155,7 +156,7 @@ fn should_hide_fields(n_fields: usize) -> bool {
     n_fields > 12
 }
 
-fn toggle_open(w: &mut Buffer, text: &str) {
+fn toggle_open(w: &mut Buffer, text: impl fmt::Display) {
     write!(
         w,
         "<details class=\"rustdoc-toggle type-contents-toggle\">\
@@ -481,6 +482,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
     let provided = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
+    let count_types = types.len();
+    let count_consts = consts.len();
+    let count_methods = required.len() + provided.len();
 
     // Output the trait definition
     wrap_into_docblock(w, |w| {
@@ -511,9 +515,12 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             let mut toggle = false;
 
             // If there are too many associated types, hide _everything_
-            if should_hide_fields(types.len()) {
+            if should_hide_fields(count_types) {
                 toggle = true;
-                toggle_open(w, "associated items");
+                toggle_open(
+                    w,
+                    format_args!("{} associated items", count_types + count_consts + count_methods),
+                );
             }
             for t in &types {
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
@@ -523,9 +530,18 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             // We also do this if the types + consts is large because otherwise we could
             // render a bunch of types and _then_ a bunch of consts just because both were
             // _just_ under the limit
-            if !toggle && should_hide_fields(types.len() + consts.len()) {
+            if !toggle && should_hide_fields(count_types + count_consts) {
                 toggle = true;
-                toggle_open(w, "associated constants and methods");
+                toggle_open(
+                    w,
+                    format_args!(
+                        "{} associated constant{} and {} method{}",
+                        count_consts,
+                        pluralize(count_consts),
+                        count_methods,
+                        pluralize(count_methods),
+                    ),
+                );
             }
             if !types.is_empty() && !consts.is_empty() {
                 w.write_str("\n");
@@ -534,9 +550,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                 w.write_str(";\n");
             }
-            if !toggle && should_hide_fields(required.len() + provided.len()) {
+            if !toggle && should_hide_fields(count_methods) {
                 toggle = true;
-                toggle_open(w, "methods");
+                toggle_open(w, format_args!("{} methods", count_methods));
             }
             if !consts.is_empty() && !required.is_empty() {
                 w.write_str("\n");
@@ -933,9 +949,10 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str(" {}");
         } else {
             w.write_str(" {\n");
-            let toggle = should_hide_fields(e.variants.len());
+            let count_variants = e.variants.len();
+            let toggle = should_hide_fields(count_variants);
             if toggle {
-                toggle_open(w, "variants");
+                toggle_open(w, format_args!("{} variants", count_variants));
             }
             for v in &e.variants {
                 w.write_str("    ");
@@ -1012,7 +1029,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
             use crate::clean::Variant;
             if let clean::VariantItem(Variant::Struct(ref s)) = *variant.kind {
-                toggle_open(w, "fields");
+                let count_fields = s.fields.len();
+                toggle_open(w, format_args!("{} field{}", count_fields, pluralize(count_fields)));
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
@@ -1385,7 +1403,7 @@ fn render_union(
         fields.iter().filter(|f| matches!(*f.kind, clean::StructFieldItem(..))).count();
     let toggle = should_hide_fields(count_fields);
     if toggle {
-        toggle_open(w, "fields");
+        toggle_open(w, format_args!("{} fields", count_fields));
     }
 
     for field in fields {
@@ -1441,7 +1459,7 @@ fn render_struct(
             let has_visible_fields = count_fields > 0;
             let toggle = should_hide_fields(count_fields);
             if toggle {
-                toggle_open(w, "fields");
+                toggle_open(w, format_args!("{} fields", count_fields));
             }
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = *field.kind {
@@ -1617,4 +1635,8 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
     }
 
     writeln!(w, "</div>");
+}
+
+fn pluralize(count: usize) -> &'static str {
+    if count > 1 { "s" } else { "" }
 }

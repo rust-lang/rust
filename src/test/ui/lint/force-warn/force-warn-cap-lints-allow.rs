@@ -1,4 +1,4 @@
-// compile-flags: --cap-lints allow  --force-warns bare_trait_objects -Zunstable-options
+// compile-flags: --cap-lints allow  --force-warn bare_trait_objects -Zunstable-options
 // check-pass
 
 pub trait SomeTrait {}
