@@ -1,4 +1,9 @@
+// only-x86_64
+
 #![feature(asm, global_asm)]
+
+#[no_mangle]
+pub static FOO: usize = 42;
 
 fn main() {
     unsafe {
@@ -104,6 +109,11 @@ fn main() {
             "
         );
         //~^^^^ ERROR do not use named labels
+
+        // Tests usage of colons in non-label positions
+        asm!(":lo12:FOO"); // this is apparently valid aarch64
+        // is there an example that is valid x86 for this test?
+        asm!(":bbb nop");
     }
 }
 

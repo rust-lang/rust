@@ -511,6 +511,9 @@ fn expand_preparsed_asm(
                             // If we encounter a non-label, there cannot be any further labels, so stop checking
                             break;
                         }
+                    } else {
+                        // Empty string means a leading ':' in this section, which is not a label
+                        break;
                     }
 
                     start_idx = idx + 1;
