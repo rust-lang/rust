@@ -35,7 +35,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         cov_mark::hit!(extract_var_in_comment_is_not_applicable);
         return None;
     }
-    let to_extract = node.ancestors().find_map(valid_target_expr)?;
+    let to_extract = node
+        .ancestors()
+        .take_while(|it| it.text_range().contains_range(ctx.frange.range))
+        .find_map(valid_target_expr)?;
     if let Some(ty) = ctx.sema.type_of_expr(&to_extract) {
         if ty.is_unit() {
             return None;
@@ -142,41 +145,43 @@ enum Anchor {
 
 impl Anchor {
     fn from(to_extract: &ast::Expr) -> Option<Anchor> {
-        to_extract.syntax().ancestors().find_map(|node| {
-            if let Some(expr) =
-                node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.tail_expr())
-            {
-                if expr.syntax() == &node {
-                    cov_mark::hit!(test_extract_var_last_expr);
-                    return Some(Anchor::Before(node));
+        to_extract.syntax().ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find_map(
+            |node| {
+                if let Some(expr) =
+                    node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.tail_expr())
+                {
+                    if expr.syntax() == &node {
+                        cov_mark::hit!(test_extract_var_last_expr);
+                        return Some(Anchor::Before(node));
+                    }
                 }
-            }
 
-            if let Some(parent) = node.parent() {
-                if parent.kind() == CLOSURE_EXPR {
-                    cov_mark::hit!(test_extract_var_in_closure_no_block);
-                    return Some(Anchor::WrapInBlock(node));
-                }
-                if parent.kind() == MATCH_ARM {
-                    if node.kind() == MATCH_GUARD {
-                        cov_mark::hit!(test_extract_var_in_match_guard);
-                    } else {
-                        cov_mark::hit!(test_extract_var_in_match_arm_no_block);
+                if let Some(parent) = node.parent() {
+                    if parent.kind() == CLOSURE_EXPR {
+                        cov_mark::hit!(test_extract_var_in_closure_no_block);
                         return Some(Anchor::WrapInBlock(node));
                     }
-                }
-            }
-
-            if let Some(stmt) = ast::Stmt::cast(node.clone()) {
-                if let ast::Stmt::ExprStmt(stmt) = stmt {
-                    if stmt.expr().as_ref() == Some(to_extract) {
-                        return Some(Anchor::Replace(stmt));
+                    if parent.kind() == MATCH_ARM {
+                        if node.kind() == MATCH_GUARD {
+                            cov_mark::hit!(test_extract_var_in_match_guard);
+                        } else {
+                            cov_mark::hit!(test_extract_var_in_match_arm_no_block);
+                            return Some(Anchor::WrapInBlock(node));
+                        }
                     }
                 }
-                return Some(Anchor::Before(node));
-            }
-            None
-        })
+
+                if let Some(stmt) = ast::Stmt::cast(node.clone()) {
+                    if let ast::Stmt::ExprStmt(stmt) = stmt {
+                        if stmt.expr().as_ref() == Some(to_extract) {
+                            return Some(Anchor::Replace(stmt));
+                        }
+                    }
+                    return Some(Anchor::Before(node));
+                }
+                None
+            },
+        )
     }
 
     fn syntax(&self) -> &SyntaxNode {
@@ -842,6 +847,16 @@ fn main() {
 }
 ",
             "2 + 2",
+        );
+    }
+
+    #[test]
+    fn extract_var_no_block_body() {
+        check_assist_not_applicable(
+            extract_variable,
+            r"
+const X: usize = $0100$0;
+",
         );
     }
 }
