@@ -12,10 +12,7 @@ use crate::{
     render::RenderContext,
 };
 
-pub(crate) fn render_const<'a>(
-    ctx: RenderContext<'a>,
-    const_: hir::Const,
-) -> Option<CompletionItem> {
+pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
     ConstRender::new(ctx, const_)?.render()
 }
 
@@ -50,7 +47,7 @@ impl<'a> ConstRender<'a> {
         if let Some(actm) = self.const_.as_assoc_item(db) {
             if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
                 item.trait_name(trt.name(db).to_string());
-                item.insert_text(name.clone());
+                item.insert_text(name);
             }
         }
 

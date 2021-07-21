@@ -12,8 +12,8 @@ use crate::{
     CompletionRelevance,
 };
 
-pub(crate) fn render_variant<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_variant(
+    ctx: RenderContext<'_>,
     import_to_add: Option<ImportEdit>,
     local_name: Option<hir::Name>,
     variant: hir::Variant,

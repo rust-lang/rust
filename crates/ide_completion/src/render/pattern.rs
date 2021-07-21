@@ -139,7 +139,7 @@ fn visible_fields(
     let module = ctx.completion.scope.module()?;
     let n_fields = fields.len();
     let fields = fields
-        .into_iter()
+        .iter()
         .filter(|field| field.is_visible_from(ctx.db(), module))
         .copied()
         .collect::<Vec<_>>();
