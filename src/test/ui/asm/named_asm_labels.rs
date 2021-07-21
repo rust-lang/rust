@@ -61,8 +61,9 @@ fn main() {
         // should not trigger lint, but may be invalid asm
         asm!("ab cd: nop");
 
-        // Only `blah:` should trigger
-        asm!("1bar: blah: nop"); //~ ERROR do not use named labels
+        // `blah:` does not trigger because labels need to be at the start
+        // of the statement, and there was already a non-label
+        asm!("1bar: blah: nop");
 
         // Only `blah1:` should trigger
         asm!("blah1: 2bar: nop"); //~ ERROR do not use named labels
@@ -88,6 +89,21 @@ fn main() {
         // Intentionally breaking span finding
         // equivalent to "ABC: nop"
         asm!("\x41\x42\x43\x3A\x20\x6E\x6F\x70"); //~ ERROR do not use named labels
+
+        // Non-label colons - should pass
+        // (most of these are stolen from other places)
+        asm!("{:l}", in(reg) 0i64);
+        asm!("{:e}", in(reg) 0f32);
+        asm!("mov rax, qword ptr fs:[0]");
+
+        // Comments
+        asm!(
+            r"
+            ab: nop // ab: does foo
+            // cd: nop
+            "
+        );
+        //~^^^^ ERROR do not use named labels
     }
 }
 

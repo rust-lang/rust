@@ -495,16 +495,21 @@ fn expand_preparsed_asm(
             // A semicolon might not actually be specified as a separator for all targets, but it seems like LLVM accepts it always
             let statements = template_str.split(|c| matches!(c, '\n' | ';'));
             for statement in statements {
+                // If there's a comment, trim it from the statement
+                let statement = statement.find("//").map_or(statement, |idx| &statement[..idx]);
                 let mut start_idx = 0;
                 for (idx, _) in statement.match_indices(':') {
                     let possible_label = statement[start_idx..idx].trim();
                     let mut chars = possible_label.chars();
                     if let Some(c) = chars.next() {
-                        // A label starts with an alphabetic character and continues with alphanumeric characters
-                        if c.is_alphabetic() {
-                            if chars.all(char::is_alphanumeric) {
-                                found_labels.push(possible_label);
-                            }
+                        // A label starts with an alphabetic character or . or _ and continues with alphanumeric characters, _, or $
+                        if (c.is_alphabetic() || matches!(c, '.' | '_'))
+                            && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '$'))
+                        {
+                            found_labels.push(possible_label);
+                        } else {
+                            // If we encounter a non-label, there cannot be any further labels, so stop checking
+                            break;
                         }
                     }
 
