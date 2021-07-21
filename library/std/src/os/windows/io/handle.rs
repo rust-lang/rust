@@ -175,7 +175,7 @@ impl FromRawHandle for OwnedHandle {
     /// # Safety
     ///
     /// The resource pointed to by `raw` must be open and suitable for assuming
-    /// ownership.
+    /// ownership. The resource must not require any cleanup other than `CloseHandle`.
     #[inline]
     unsafe fn from_raw_handle(raw: RawHandle) -> Self {
         assert!(!raw.is_null());
