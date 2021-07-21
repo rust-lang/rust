@@ -479,7 +479,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                     uv.promoted
                 ),
                 ty::ConstKind::Value(val) => format!("Value({:?})", val),
-                ty::ConstKind::Error(_) => format!("Error"),
+                ty::ConstKind::Error(_) => "Error".to_string(),
             };
             self.push(&format!("+ val: {}", val));
         }

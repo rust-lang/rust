@@ -344,7 +344,7 @@ impl DebugCounters {
                 return if counter_format.id {
                     format!("{}#{}", block_label, id.index())
                 } else {
-                    format!("{}", block_label)
+                    block_label.to_string()
                 };
             }
         }
@@ -369,7 +369,7 @@ impl DebugCounters {
                     }
                     return format!("({})", self.format_counter_kind(counter_kind));
                 }
-                return format!("{}", self.format_counter_kind(counter_kind));
+                return self.format_counter_kind(counter_kind).to_string();
             }
         }
         format!("#{}", operand.index().to_string())
