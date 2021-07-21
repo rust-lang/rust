@@ -304,28 +304,6 @@ impl<'tcx> FileHandler {
 
 impl<'mir, 'tcx: 'mir> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Emulate `stat` or `lstat` on `macos`. This function is not intended to be
-    /// called directly from `emulate_foreign_item_by_name`, so it does not check if isolation is
-    /// disabled or if the target OS is the correct one. Please use `macos_stat` or
-    /// `macos_lstat` instead.
-    fn macos_stat_or_lstat(
-        &mut self,
-        follow_symlink: bool,
-        path_op: &OpTy<'tcx, Tag>,
-        buf_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, i32> {
-        let this = self.eval_context_mut();
-
-        let path_scalar = this.read_pointer(path_op)?;
-        let path = this.read_path_from_c_str(path_scalar)?.into_owned();
-
-        let metadata = match FileMetadata::from_path(this, &path, follow_symlink)? {
-            Some(metadata) => metadata,
-            None => return Ok(-1),
-        };
-        this.macos_stat_write_buf(metadata, buf_op)
-    }
-
     fn macos_stat_write_buf(
         &mut self,
         metadata: FileMetadata,
@@ -504,13 +482,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`open`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(-1);
-        }
-
         let flag = this.read_scalar(flag_op)?.to_i32()?;
 
         // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
@@ -588,6 +559,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`open`", reject_with)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            return Ok(-1);
+        }
+
         let fd = options.open(&path).map(|file| {
             let fh = &mut this.machine.file_handler;
             fh.insert_fd(Box::new(FileHandle { file, writable }))
@@ -599,13 +577,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn fcntl(&mut self, args: &[OpTy<'tcx, Tag>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`fcntl`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(-1);
-        }
-
         if args.len() < 2 {
             throw_ub_format!(
                 "incorrect number of arguments for fcntl: got {}, expected at least 2",
@@ -614,6 +585,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let fd = this.read_scalar(&args[0])?.to_i32()?;
         let cmd = this.read_scalar(&args[1])?.to_i32()?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`fcntl`", reject_with)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            return Ok(-1);
+        }
+
         // We only support getting the flags for a descriptor.
         if cmd == this.eval_libc_i32("F_GETFD")? {
             // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
@@ -795,14 +774,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn unlink(&mut self, path_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`unlink`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
             return Ok(-1);
         }
-
-        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         let result = remove_file(path).map(|_| 0);
         this.try_unwrap_io_result(result)
@@ -825,6 +804,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         let this = self.eval_context_mut();
+        let target = this.read_path_from_c_str(this.read_pointer(target_op)?)?;
+        let linkpath = this.read_path_from_c_str(this.read_pointer(linkpath_op)?)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -832,9 +813,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
             return Ok(-1);
         }
-
-        let target = this.read_path_from_c_str(this.read_pointer(target_op)?)?;
-        let linkpath = this.read_path_from_c_str(this.read_pointer(linkpath_op)?)?;
 
         let result = create_link(&target, &linkpath).map(|_| 0);
         this.try_unwrap_io_result(result)
@@ -848,6 +826,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "stat");
 
+        let path_scalar = this.read_pointer(path_op)?;
+        let path = this.read_path_from_c_str(path_scalar)?.into_owned();
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`stat`", reject_with)?;
@@ -857,7 +838,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // `stat` always follows symlinks.
-        this.macos_stat_or_lstat(true, path_op, buf_op)
+        let metadata = match FileMetadata::from_path(this, &path, true)? {
+            Some(metadata) => metadata,
+            None => return Ok(-1),
+        };
+
+        this.macos_stat_write_buf(metadata, buf_op)
     }
 
     // `lstat` is used to get symlink metadata.
@@ -869,6 +855,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "lstat");
 
+        let path_scalar = this.read_pointer(path_op)?;
+        let path = this.read_path_from_c_str(path_scalar)?.into_owned();
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`lstat`", reject_with)?;
@@ -877,7 +866,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        this.macos_stat_or_lstat(false, path_op, buf_op)
+        let metadata = match FileMetadata::from_path(this, &path, false)? {
+            Some(metadata) => metadata,
+            None => return Ok(-1),
+        };
+
+        this.macos_stat_write_buf(metadata, buf_op)
     }
 
     fn macos_fstat(
@@ -889,14 +883,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.assert_target_os("macos", "fstat");
 
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fstat`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
             return this.handle_not_found();
         }
-
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         let metadata = match FileMetadata::from_fd(this, fd)? {
             Some(metadata) => metadata,
@@ -973,8 +967,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // relative to CWD, `EACCES` is the most relevant.
                 this.eval_libc("EACCES")?
             } else {
-                // `dirfd` is set to target file, and `path` is
-                // empty. `EACCES` would violate the spec.
+                // `dirfd` is set to target file, and `path` is empty
+                // (or we would have hit the `throw_unsup_format`
+                // above). `EACCES` would violate the spec.
+                assert!(empty_path_flag);
                 this.eval_libc("EBADF")?
             };
             this.set_last_error(ecode)?;
@@ -1089,13 +1085,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`rename`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(-1);
-        }
-
         let oldpath_ptr = this.read_pointer(oldpath_op)?;
         let newpath_ptr = this.read_pointer(newpath_op)?;
 
@@ -1107,6 +1096,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let oldpath = this.read_path_from_c_str(oldpath_ptr)?;
         let newpath = this.read_path_from_c_str(newpath_ptr)?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`rename`", reject_with)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            return Ok(-1);
+        }
 
         let result = rename(oldpath, newpath).map(|_| 0);
 
@@ -1120,13 +1116,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`mkdir`", reject_with)?;
-            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
-            return Ok(-1);
-        }
-
         #[cfg_attr(not(unix), allow(unused_variables))]
         let mode = if this.tcx.sess.target.os == "macos" {
             u32::from(this.read_scalar(mode_op)?.to_u16()?)
@@ -1135,6 +1124,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`mkdir`", reject_with)?;
+            this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
+            return Ok(-1);
+        }
 
         #[cfg_attr(not(unix), allow(unused_mut))]
         let mut builder = DirBuilder::new();
@@ -1155,14 +1151,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn rmdir(&mut self, path_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rmdir`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
             return Ok(-1);
         }
-
-        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         let result = remove_dir(path).map(|_| 0i32);
 
@@ -1172,6 +1168,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn opendir(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
 
+        let name = this.read_path_from_c_str(this.read_pointer(name_op)?)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`opendir`", reject_with)?;
@@ -1179,8 +1177,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.set_last_error(eacc)?;
             return Ok(Scalar::null_ptr(this));
         }
-
-        let name = this.read_path_from_c_str(this.read_pointer(name_op)?)?;
 
         let result = read_dir(name);
 
@@ -1210,14 +1206,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.assert_target_os("linux", "readdir64_r");
 
+        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir64_r`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
             return this.handle_not_found();
         }
-
-        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("the DIR pointer passed to readdir64_r did not come from opendir")
@@ -1309,14 +1305,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.assert_target_os("macos", "readdir_r");
 
+        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir_r`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
             return this.handle_not_found();
         }
-
-        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
@@ -1403,14 +1399,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn closedir(&mut self, dirp_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`closedir`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
             return this.handle_not_found();
         }
-
-        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         if let Some(dir_iter) = this.machine.dir_handler.streams.remove(&dirp) {
             drop(dir_iter);
@@ -1427,6 +1423,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let length = this.read_scalar(length_op)?.to_i64()?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`ftruncate64`", reject_with)?;
@@ -1434,8 +1433,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return this.handle_not_found();
         }
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let length = this.read_scalar(length_op)?.to_i64()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
             // FIXME: Support ftruncate64 for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
@@ -1467,6 +1464,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let this = self.eval_context_mut();
 
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fsync`", reject_with)?;
@@ -1474,7 +1473,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return this.handle_not_found();
         }
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fsync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
@@ -1488,6 +1486,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn fdatasync(&mut self, fd_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fdatasync`", reject_with)?;
@@ -1495,7 +1495,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return this.handle_not_found();
         }
 
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support fdatasync for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
@@ -1514,13 +1513,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         flags_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`sync_file_range`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.handle_not_found();
-        }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let offset = this.read_scalar(offset_op)?.to_i64()?;
@@ -1541,6 +1533,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`sync_file_range`", reject_with)?;
+            // Set error code as "EBADF" (bad fd)
+            return this.handle_not_found();
+        }
+
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support sync_data_range for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
@@ -1559,6 +1558,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
+        let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
+        let buf = this.read_pointer(buf_op)?;
+        let bufsize = this.read_scalar(bufsize_op)?.to_machine_usize(this)?;
+
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readlink`", reject_with)?;
@@ -1566,10 +1569,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.set_last_error(eacc)?;
             return Ok(-1);
         }
-
-        let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
-        let buf = this.read_pointer(buf_op)?;
-        let bufsize = this.read_scalar(bufsize_op)?.to_machine_usize(this)?;
 
         let result = std::fs::read_link(pathname);
         match result {
