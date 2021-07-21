@@ -162,7 +162,7 @@ fn recursive_merge(
             }
             Err(_)
                 if merge == MergeBehavior::Module
-                    && use_trees.len() > 0
+                    && !use_trees.is_empty()
                     && rhs_t.use_tree_list().is_some() =>
             {
                 return None

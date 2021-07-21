@@ -52,12 +52,12 @@ impl AssistKind {
 
         match self {
             AssistKind::None | AssistKind::Generate => true,
-            AssistKind::Refactor => match other {
+            AssistKind::Refactor => matches!(
+                other,
                 AssistKind::RefactorExtract
-                | AssistKind::RefactorInline
-                | AssistKind::RefactorRewrite => true,
-                _ => false,
-            },
+                    | AssistKind::RefactorInline
+                    | AssistKind::RefactorRewrite
+            ),
             _ => false,
         }
     }
