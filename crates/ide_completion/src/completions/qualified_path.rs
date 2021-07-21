@@ -28,22 +28,40 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
     let context_module = ctx.scope.module();
 
-    if let Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) =
-        ctx.completion_location
-    {
-        if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-            for (name, def) in module.scope(ctx.db, context_module) {
-                if let hir::ScopeDef::MacroDef(macro_def) = def {
-                    if macro_def.is_fn_like() {
-                        acc.add_macro(ctx, Some(name.clone()), macro_def);
+    match ctx.completion_location {
+        Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
+            if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
+                for (name, def) in module.scope(ctx.db, context_module) {
+                    if let hir::ScopeDef::MacroDef(macro_def) = def {
+                        if macro_def.is_fn_like() {
+                            acc.add_macro(ctx, Some(name.clone()), macro_def);
+                        }
+                    }
+                    if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
+                        acc.add_resolution(ctx, name, &def);
                     }
                 }
-                if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
-                    acc.add_resolution(ctx, name, &def);
+            }
+            return;
+        }
+        Some(ImmediateLocation::Visibility(_)) => {
+            if let hir::PathResolution::Def(hir::ModuleDef::Module(resolved)) = resolution {
+                if let Some(current_module) = ctx.scope.module() {
+                    if let Some(next) = current_module
+                        .path_to_root(ctx.db)
+                        .into_iter()
+                        .take_while(|&it| it != resolved)
+                        .next()
+                    {
+                        if let Some(name) = next.name(ctx.db) {
+                            acc.add_resolution(ctx, name, &hir::ScopeDef::ModuleDef(next.into()));
+                        }
+                    }
                 }
             }
+            return;
         }
-        return;
+        _ => (),
     }
 
     if ctx.in_use_tree() {
