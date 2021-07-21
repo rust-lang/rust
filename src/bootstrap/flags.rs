@@ -152,7 +152,7 @@ Subcommands:
     fmt         Run rustfmt
     test, t     Build and run some test suites
     bench       Build and run some benchmarks
-    doc         Build documentation
+    doc, d      Build documentation
     clean       Clean out build directories
     dist        Build distribution artifacts
     install     Install distribution artifacts
@@ -244,6 +244,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 || (s == "t")
                 || (s == "bench")
                 || (s == "doc")
+                || (s == "d")
                 || (s == "clean")
                 || (s == "dist")
                 || (s == "install")
@@ -312,7 +313,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "clippy" => {
                 opts.optflag("", "fix", "automatically apply lint suggestions");
             }
-            "doc" => {
+            "doc" | "d" => {
                 opts.optflag("", "open", "open the docs in a browser");
             }
             "clean" => {
@@ -487,7 +488,7 @@ Arguments:
         ./x.py test --stage 1",
                 );
             }
-            "doc" => {
+            "doc" | "d" => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -573,7 +574,7 @@ Arguments:
                 },
             },
             "bench" => Subcommand::Bench { paths, test_args: matches.opt_strs("test-args") },
-            "doc" => Subcommand::Doc { paths, open: matches.opt_present("open") },
+            "doc" | "d" => Subcommand::Doc { paths, open: matches.opt_present("open") },
             "clean" => {
                 if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
