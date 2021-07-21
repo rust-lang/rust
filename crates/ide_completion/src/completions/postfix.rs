@@ -42,6 +42,13 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
+    // Suggest .await syntax for types that implement Future trait
+    if receiver_ty.impls_future(ctx.db) {
+        let mut item = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await");
+        item.kind(CompletionItemKind::Keyword).detail("expr.await");
+        item.add_to(acc);
+    }
+
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
         None => return,

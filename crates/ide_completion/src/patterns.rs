@@ -1,4 +1,8 @@
 //! Patterns telling us certain facts about current syntax element, they are used in completion context
+//!
+//! Most logic in this module first expands the token below the cursor to a maximum node that acts similar to the token itself.
+//! This means we for example expand a NameRef token to its outermost Path node, as semantically these act in the same location
+//! and the completions usually query for path specific things on the Path context instead. This simplifies some location handling.
 
 use hir::Semantics;
 use ide_db::RootDatabase;

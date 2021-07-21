@@ -68,7 +68,7 @@ fn after_trait_name_in_trait_def() {
 }
 
 #[test]
-fn after_trait_or_target_name_in_impl() {
+fn after_target_name_in_impl() {
     check(
         r"impl Trait $0",
         expect![[r#"
@@ -76,6 +76,8 @@ fn after_trait_or_target_name_in_impl() {
             kw for
         "#]],
     );
+    // FIXME: This should emit `kw where`
+    check(r"impl Trait for Type $0", expect![[r#""#]]);
 }
 
 #[test]

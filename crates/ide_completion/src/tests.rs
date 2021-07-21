@@ -201,7 +201,7 @@ pub(crate) fn check_pattern_is_not_applicable(code: &str, check: fn(SyntaxElemen
 
 pub(crate) fn get_all_items(config: CompletionConfig, code: &str) -> Vec<CompletionItem> {
     let (db, position) = position(code);
-    crate::completions(&db, &config, position).unwrap().into()
+    crate::completions(&db, &config, position).map_or_else(Vec::default, Into::into)
 }
 
 fn check_no_completion(ra_fixture: &str) {
