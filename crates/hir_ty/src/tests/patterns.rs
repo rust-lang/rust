@@ -889,3 +889,30 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn pattern_lookup_in_value_ns() {
+    check_types(
+        r#"
+use self::Constructor::*;
+struct IntRange {
+    range: (),
+}
+enum Constructor {
+    IntRange(IntRange),
+}
+fn main() {
+    match Constructor::IntRange(IntRange { range: () }) {
+        IntRange(x) => {
+            x;
+          //^ IntRange
+        }
+        Constructor::IntRange(x) => {
+            x;
+          //^ IntRange
+        }
+    }
+}
+    "#,
+    );
+}
