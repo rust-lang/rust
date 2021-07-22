@@ -72,7 +72,7 @@ use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
     ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -490,6 +490,9 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
 
     let (krate, first, path) = match *path {
         [krate, first, ref path @ ..] => (krate, first, path),
+        [primitive] => {
+            return PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy);
+        },
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
