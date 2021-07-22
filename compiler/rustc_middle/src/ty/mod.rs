@@ -456,7 +456,7 @@ pub enum PredicateKind<'tcx> {
     /// A trait predicate will have `Constness::Const` if it originates
     /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
     /// `const fn foobar<Foo: Bar>() {}`).
-    Trait(TraitPredicate<'tcx>, Constness),
+    Trait(TraitPredicate<'tcx>),
 
     /// `where 'a: 'b`
     RegionOutlives(RegionOutlivesPredicate<'tcx>),
@@ -612,6 +612,11 @@ impl<'tcx> Predicate<'tcx> {
 #[derive(HashStable, TypeFoldable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
+
+    /// A trait predicate will have `Constness::Const` if it originates
+    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
+    /// `const fn foobar<Foo: Bar>() {}`).
+    pub constness: hir::Constness,
 }
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
@@ -745,8 +750,11 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
-            .to_predicate(tcx)
+        PredicateKind::Trait(ty::TraitPredicate {
+            trait_ref: self.value,
+            constness: self.constness,
+        })
+        .to_predicate(tcx)
     }
 }
 
@@ -754,15 +762,15 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.value
             .map_bound(|trait_ref| {
-                PredicateKind::Trait(ty::TraitPredicate { trait_ref }, self.constness)
+                PredicateKind::Trait(ty::TraitPredicate { trait_ref, constness: self.constness })
             })
             .to_predicate(tcx)
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
+impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness)).to_predicate(tcx)
+        self.map_bound(PredicateKind::Trait).to_predicate(tcx)
     }
 }
 
@@ -788,8 +796,8 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Trait(t, constness) => {
-                Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
+            PredicateKind::Trait(t) => {
+                Some(ConstnessAnd { constness: t.constness, value: predicate.rebind(t.trait_ref) })
             }
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)

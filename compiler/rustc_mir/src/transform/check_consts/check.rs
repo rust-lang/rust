@@ -423,7 +423,7 @@ impl Checker<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, _constness) => {
+                    ty::PredicateKind::Trait(pred) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -817,7 +817,10 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::dummy(TraitPredicate { trait_ref }),
+                        Binder::dummy(TraitPredicate {
+                            trait_ref,
+                            constness: hir::Constness::Const,
+                        }),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {

@@ -2688,10 +2688,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) {
         self.prove_predicates(
-            Some(ty::PredicateKind::Trait(
-                ty::TraitPredicate { trait_ref },
-                hir::Constness::NotConst,
-            )),
+            Some(ty::PredicateKind::Trait(ty::TraitPredicate {
+                trait_ref,
+                constness: hir::Constness::NotConst,
+            })),
             locations,
             category,
         );
