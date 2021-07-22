@@ -371,7 +371,8 @@ fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
     if_chain! {
         if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind;
         if !loop_block.stmts.is_empty();
-        if let ast::StmtKind::Semi(ref statement) = loop_block.stmts.last().unwrap().kind;
+        if let ast::StmtKind::Expr(ref statement)
+        | ast::StmtKind::Semi(ref statement) = loop_block.stmts.last().unwrap().kind;
         if let ast::ExprKind::Continue(_) = statement.kind;
         then {
             span_lint_and_help(
