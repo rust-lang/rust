@@ -5,7 +5,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, fold::BottomUpFolder, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits;
 
 pub fn check(tcx: TyCtxt<'_>) {
@@ -233,13 +233,26 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                 }
             }
 
-            if let ty::Opaque(def_id, _) = *trait_ref.self_ty().kind() {
-                self.tcx
-                    .sess
-                    .struct_span_err(sp, "cannot implement trait on type alias impl trait")
-                    .span_note(self.tcx.def_span(def_id), "type alias impl trait defined here")
-                    .emit();
-            }
+            // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
+            // and #84660 where it would otherwise allow unsoundness.
+            trait_ref.substs.fold_with(&mut BottomUpFolder {
+                tcx: self.tcx,
+                ty_op: |ty| {
+                    if let ty::Opaque(def_id, _) = *ty.kind() {
+                        self.tcx
+                            .sess
+                            .struct_span_err(sp, "cannot implement trait on type alias impl trait")
+                            .span_note(
+                                self.tcx.def_span(def_id),
+                                "type alias impl trait defined here",
+                            )
+                            .emit();
+                    }
+                    ty
+                },
+                lt_op: |lt| lt,
+                ct_op: |ct| ct,
+            });
         }
     }
 
