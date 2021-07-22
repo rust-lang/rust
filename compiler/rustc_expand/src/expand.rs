@@ -1328,14 +1328,30 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             return placeholder;
         }
 
+        // The only way that we can end up with a `MacCall` expression statement,
+        // (as opposed to a `StmtKind::MacCall`) is if we have a macro as the
+        // traiing expression in a block (e.g. `fn foo() { my_macro!() }`).
+        // Record this information, so that we can report a more specific
+        // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
+        // See #78991 for an investigation of treating macros in this position
+        // as statements, rather than expressions, during parsing.
+        if let StmtKind::Expr(expr) = &stmt.kind {
+            if matches!(**expr, ast::Expr { kind: ast::ExprKind::MacCall(..), .. }) {
+                self.cx.current_expansion.is_trailing_mac = true;
+            }
+        }
+
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
         // We don't use `assign_id!` - it will be called when we visit statement's contents
         // (e.g. an expression, item, or local)
         let ast::Stmt { id, kind, span } = stmt;
-        noop_flat_map_stmt_kind(kind, self)
+        let res = noop_flat_map_stmt_kind(kind, self)
             .into_iter()
             .map(|kind| ast::Stmt { id, kind, span })
-            .collect()
+            .collect();
+
+        self.cx.current_expansion.is_trailing_mac = false;
+        res
     }
 
     fn visit_block(&mut self, block: &mut P<Block>) {

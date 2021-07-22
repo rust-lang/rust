@@ -303,6 +303,7 @@ pub enum BuiltinLintDiagnostics {
     ProcMacroBackCompat(String),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span),
+    TrailingMacro(bool, Ident),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
