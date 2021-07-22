@@ -14,16 +14,16 @@ LL |     type Item = T;
              <&T as Deref>
              <&mut T as Deref>
 
-error[E0277]: the trait bound `<T as UnsafeCopy<'b, T>>::Item: Deref` is not satisfied
+error[E0277]: the trait bound `for<'b> <T as UnsafeCopy<'b, T>>::Item: Deref` is not satisfied
   --> $DIR/hr-associated-type-projection-1.rs:13:33
    |
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
-   |                                 ^^^^^^^^^^^^^^^^^ the trait `Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
+   |                                 ^^^^^^^^^^^^^^^^^ the trait `for<'b> Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
    |
 help: consider further restricting the associated type
    |
-LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T where <T as UnsafeCopy<'b, T>>::Item: Deref {
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T where for<'b> <T as UnsafeCopy<'b, T>>::Item: Deref {
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

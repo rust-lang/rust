@@ -10,7 +10,7 @@ LL |     F: for<'a> FnMut(<T as Trait<'a>>::Item),
 LL |     foo((), drop)
    |             ^^^^
    |             |
-   |             expected signature of `fn(<() as Trait<'a>>::Item) -> _`
+   |             expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
    |             found signature of `fn(()) -> _`
 
 error[E0277]: the size for values of type `<() as Trait<'_>>::Item` cannot be known at compilation time

@@ -11,7 +11,7 @@ where
 }
 
 impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
-    //~^ ERROR the trait bound `<T as UnsafeCopy<'b, T>>::Item: Deref` is not satisfied
+    //~^ ERROR the trait bound `for<'b> <T as UnsafeCopy<'b, T>>::Item: Deref` is not satisfied
     type Item = T;
     //~^ ERROR the trait bound `for<'b> <T as UnsafeCopy<'b, T>>::Item: Deref
 }
