@@ -11,8 +11,8 @@ use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
-    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, HoverDocFormat,
-    InlayHintsConfig, JoinLinesConfig,
+    AssistConfig, CompletionConfig, DiagnosticsConfig, HighlightRelatedConfig, HoverConfig,
+    HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
 };
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -261,6 +261,14 @@ config_data! {
         workspace_symbol_search_scope: WorskpaceSymbolSearchScopeDef = "\"workspace\"",
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorskpaceSymbolSearchKindDef = "\"only_types\"",
+
+        highlightRelated_references: bool = "true",
+
+        highlightRelated_exitPoints: bool = "true",
+
+        highlightRelated_breakPoints: bool = "true",
+
+        highlightRelated_yieldPoints: bool = "true",
     }
 }
 
@@ -851,6 +859,15 @@ impl Config {
                 .insert_replace_support?,
             false
         )
+    }
+
+    pub fn highlight_related(&self) -> HighlightRelatedConfig {
+        HighlightRelatedConfig {
+            references: self.data.highlightRelated_references,
+            break_points: self.data.highlightRelated_breakPoints,
+            exit_points: self.data.highlightRelated_exitPoints,
+            yield_points: self.data.highlightRelated_yieldPoints,
+        }
     }
 }
 

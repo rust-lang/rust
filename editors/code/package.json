@@ -881,6 +881,26 @@
                         "Search for all symbols kinds"
                     ]
                 },
+                "rust-analyzer.highlightRelated.references": {
+                    "markdownDescription": "Enables highlighting of related references while hovering your mouse above any identifier.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.highlightRelated.exitPoints": {
+                    "markdownDescription": "Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.highlightRelated.breakPoints": {
+                    "markdownDescription": "Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.highlightRelated.yieldPoints": {
+                    "markdownDescription": "Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "$generated-end": {}
             }
         },

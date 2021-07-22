@@ -172,6 +172,15 @@ export class Config {
         };
     }
 
+    get highlightRelated() {
+        return {
+            references: this.get<boolean>("highlightRelated.references"),
+            exitPoints: this.get<boolean>("highlightRelated.exit_points"),
+            breakPoints: this.get<boolean>("highlightRelated.exit_points"),
+            yieldPoints: this.get<boolean>("highlightRelated.yield_points")
+        };
+    }
+
     get currentExtensionIsNightly() {
         return this.package.releaseTag === NIGHTLY_TAG;
     }
