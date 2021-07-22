@@ -19,7 +19,7 @@ trait AnotherTrait {}
 impl<T: std::fmt::Debug> AnotherTrait for T {}
 
 // This is in error, because we cannot assume that `OpaqueType: !Debug`
-impl AnotherTrait for D<OpaqueType> {
+impl AnotherTrait for D<OpaqueType> { //~ ERROR cannot implement trait
     //~^ ERROR conflicting implementations of trait `AnotherTrait` for type `D<impl OpaqueTrait>`
 }
 
