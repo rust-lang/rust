@@ -7,4 +7,4 @@ edition = "2018"
 path = "lib.rs"
 
 [dependencies]
-implementors = { path = "../implementors" }
+implementors = { path = "./implementors" }

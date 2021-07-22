@@ -40,6 +40,7 @@ members = [
 exclude = [
   "build",
   "compiler/rustc_codegen_cranelift",
+  "src/test/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
   # The `x` binary is a thin wrapper that calls `x.py`, which initializes

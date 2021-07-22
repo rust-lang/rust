@@ -3,16 +3,5 @@
 version = 3
 
 [[package]]
-name = "implementors"
-version = "0.1.0"
-
-[[package]]
-name = "lib2"
-version = "0.1.0"
-dependencies = [
- "implementors",
-]
-
-[[package]]
 name = "test_docs"
 version = "0.1.0"
