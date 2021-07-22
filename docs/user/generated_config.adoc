@@ -204,7 +204,9 @@ Controls file watching implementation.
 [[rust-analyzer.files.excludeDirs]]rust-analyzer.files.excludeDirs (default: `[]`)::
 +
 --
-These directories will be ignored by rust-analyzer.
+These directories will be ignored by rust-analyzer. They are
+relative to the workspace root, and globs are not supported. You may
+also need to add the folders to Code's `files.watcherExclude`.
 --
 [[rust-analyzer.highlighting.strings]]rust-analyzer.highlighting.strings (default: `true`)::
 +
