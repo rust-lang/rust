@@ -142,7 +142,6 @@ fn foo<'lt, T, const C: usize>() {
 
 #[test]
 fn completes_types_and_const_in_arg_list() {
-    // FIXME: we should complete the lifetime here for now
     check_with(
         r#"
 trait Trait2 {

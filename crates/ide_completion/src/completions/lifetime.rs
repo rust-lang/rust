@@ -1,4 +1,12 @@
 //! Completes lifetimes and labels.
+//!
+//! These completions work a bit differently in that they are only shown when what the user types
+//! has a `'` preceding it, as our fake syntax tree is invalid otherwise(due to us not inserting a
+//! lifetime but an ident for obvious reasons).
+//! Due to this all the tests for lifetimes and labels live in this module for the time being as
+//! there is no value in lifting these out into the outline module test since they will either not
+//! show up for normal completions, or they won't show completions other than lifetimes depending
+//! on the fixture input.
 use hir::ScopeDef;
 
 use crate::{completions::Completions, context::CompletionContext};
