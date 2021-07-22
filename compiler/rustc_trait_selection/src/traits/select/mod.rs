@@ -42,7 +42,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
 
 use std::cell::{Cell, RefCell};
@@ -454,7 +454,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let result = ensure_sufficient_stack(|| {
             let bound_predicate = obligation.predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(t, _) => {
+                ty::PredicateKind::Trait(t) => {
                     let t = bound_predicate.rebind(t);
                     debug_assert!(!t.has_escaping_bound_vars());
                     let obligation = obligation.with(t);
@@ -762,8 +762,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // if the regions match exactly.
             let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
             let tcx = self.tcx();
-            let cycle =
-                cycle.map(|stack| stack.obligation.predicate.without_const().to_predicate(tcx));
+            let cycle = cycle.map(|stack| stack.obligation.predicate.to_predicate(tcx));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack --> recursive, coinductive");
                 Some(EvaluatedToOk)
@@ -873,7 +872,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref data, _) => self.tcx().trait_is_auto(data.def_id()),
+            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
             _ => false,
         };
         debug!(?predicate, ?result, "coinductive_predicate");
@@ -1213,7 +1212,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .enumerate()
             .filter_map(|(idx, bound)| {
                 let bound_predicate = bound.kind();
-                if let ty::PredicateKind::Trait(pred, _) = bound_predicate.skip_binder() {
+                if let ty::PredicateKind::Trait(pred) = bound_predicate.skip_binder() {
                     let bound = bound_predicate.rebind(pred.trait_ref);
                     if self.infcx.probe(|_| {
                         match self.match_normalize_trait_ref(

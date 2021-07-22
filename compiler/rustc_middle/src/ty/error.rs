@@ -33,6 +33,7 @@ impl<T> ExpectedFound<T> {
 #[derive(Clone, Debug, TypeFoldable)]
 pub enum TypeError<'tcx> {
     Mismatch,
+    ConstnessMismatch(ExpectedFound<hir::Constness>),
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
@@ -106,6 +107,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             CyclicConst(_) => write!(f, "encountered a self-referencing constant"),
             Mismatch => write!(f, "types differ"),
+            ConstnessMismatch(values) => {
+                write!(f, "expected {} fn, found {} fn", values.expected, values.found)
+            }
             UnsafetyMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
             }
@@ -213,9 +217,11 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(&self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_)
-            | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_) | IntMismatch(_)
-            | FloatMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
+            | Mismatch | AbiMismatch(_) | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_)
+            | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => {
+                false
+            }
 
             Mutability
             | ArgumentMutability(_)

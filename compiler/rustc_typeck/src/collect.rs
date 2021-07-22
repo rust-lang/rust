@@ -643,7 +643,7 @@ fn type_param_predicates(
         )
         .into_iter()
         .filter(|(predicate, _)| match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(data, _) => data.self_ty().is_param(index),
+            ty::PredicateKind::Trait(data) => data.self_ty().is_param(index),
             _ => false,
         }),
     );
@@ -1201,7 +1201,7 @@ fn super_predicates_that_define_assoc_type(
             // which will, in turn, reach indirect supertraits.
             for &(pred, span) in superbounds {
                 debug!("superbound: {:?}", pred);
-                if let ty::PredicateKind::Trait(bound, _) = pred.kind().skip_binder() {
+                if let ty::PredicateKind::Trait(bound) = pred.kind().skip_binder() {
                     tcx.at(span).super_predicates_of(bound.def_id());
                 }
             }
@@ -2438,7 +2438,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             .iter()
             .copied()
             .filter(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::Trait(tr, _) => !is_assoc_item_ty(tr.self_ty()),
+                ty::PredicateKind::Trait(tr) => !is_assoc_item_ty(tr.self_ty()),
                 ty::PredicateKind::Projection(proj) => {
                     !is_assoc_item_ty(proj.projection_ty.self_ty())
                 }
