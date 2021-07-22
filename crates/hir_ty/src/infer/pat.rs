@@ -27,7 +27,7 @@ impl<'a> InferenceContext<'a> {
         id: PatId,
         ellipsis: Option<usize>,
     ) -> Ty {
-        let (ty, def) = self.resolve_variant(path);
+        let (ty, def) = self.resolve_variant(path, true);
         let var_data = def.map(|it| it.variant_data(self.db.upcast()));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
@@ -68,7 +68,7 @@ impl<'a> InferenceContext<'a> {
         default_bm: BindingMode,
         id: PatId,
     ) -> Ty {
-        let (ty, def) = self.resolve_variant(path);
+        let (ty, def) = self.resolve_variant(path, false);
         let var_data = def.map(|it| it.variant_data(self.db.upcast()));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);

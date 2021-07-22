@@ -437,7 +437,7 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Never.intern(&Interner)
             }
             Expr::RecordLit { path, fields, spread } => {
-                let (ty, def_id) = self.resolve_variant(path.as_deref());
+                let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
                 if let Some(variant) = def_id {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }

@@ -23,7 +23,7 @@ use hir_def::{
     expr::{ArithOp, BinaryOp, BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
     path::{path, Path},
-    resolver::{HasResolver, Resolver, TypeNs},
+    resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule, Lookup,
     TraitId, TypeAliasId, VariantId,
@@ -548,7 +548,7 @@ impl<'a> InferenceContext<'a> {
         self.table.normalize_associated_types_in(ty)
     }
 
-    fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantId>) {
+    fn resolve_variant(&mut self, path: Option<&Path>, value_ns: bool) -> (Ty, Option<VariantId>) {
         let path = match path {
             Some(path) => path,
             None => return (self.err_ty(), None),
@@ -557,11 +557,32 @@ impl<'a> InferenceContext<'a> {
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         // FIXME: this should resolve assoc items as well, see this example:
         // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-        let (resolution, unresolved) =
+        let (resolution, unresolved) = if value_ns {
+            match resolver.resolve_path_in_value_ns(self.db.upcast(), path.mod_path()) {
+                Some(ResolveValueResult::ValueNs(value)) => match value {
+                    ValueNs::EnumVariantId(var) => {
+                        let substs = ctx.substs_from_path(path, var.into(), true);
+                        let ty = self.db.ty(var.parent.into());
+                        let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                        return (ty, Some(var.into()));
+                    }
+                    ValueNs::StructId(strukt) => {
+                        let substs = ctx.substs_from_path(path, strukt.into(), true);
+                        let ty = self.db.ty(strukt.into());
+                        let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                        return (ty, Some(strukt.into()));
+                    }
+                    _ => return (self.err_ty(), None),
+                },
+                Some(ResolveValueResult::Partial(typens, unresolved)) => (typens, Some(unresolved)),
+                None => return (self.err_ty(), None),
+            }
+        } else {
             match resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
                 None => return (self.err_ty(), None),
-            };
+            }
+        };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = ctx.substs_from_path(path, strukt.into(), true);
