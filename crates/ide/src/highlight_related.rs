@@ -217,8 +217,8 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         async_token: Option<SyntaxToken>,
         body: Option<ast::Expr>,
     ) -> Option<Vec<HighlightedRange>> {
-        let mut highlights = Vec::new();
-        highlights.push(HighlightedRange { access: None, range: async_token?.text_range() });
+        let mut highlights =
+            vec![HighlightedRange { access: None, range: async_token?.text_range() }];
         if let Some(body) = body {
             body.walk(&mut |expr| {
                 if let ast::Expr::AwaitExpr(expr) = expr {

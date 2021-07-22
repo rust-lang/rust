@@ -769,8 +769,8 @@ pub(crate) fn handle_completion(
         snap.config.insert_replace_support(),
         completion_config.enable_imports_on_the_fly,
         &line_index,
-        text_document_position.clone(),
-        items.clone(),
+        text_document_position,
+        items,
     );
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
