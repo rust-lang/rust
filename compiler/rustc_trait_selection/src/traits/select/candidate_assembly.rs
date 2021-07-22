@@ -144,7 +144,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_negative_and_reservation_impls(candidates.pop().unwrap());
+            return self.filter_impls(candidates.pop().unwrap(), stack.obligation);
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -217,7 +217,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_negative_and_reservation_impls(candidates.pop().unwrap().candidate)
+        self.filter_impls(candidates.pop().unwrap().candidate, stack.obligation)
     }
 
     pub(super) fn assemble_candidates<'o>(
