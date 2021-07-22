@@ -1,4 +1,4 @@
 fn main() {
-    assert(true);
-    //~^ ERROR expected function, found macro `assert`
+    assert_eq(1, 1);
+    //~^ ERROR expected function, found macro `assert_eq`
 }

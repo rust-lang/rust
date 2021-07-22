@@ -552,17 +552,17 @@ pub use std_detect::{
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_matches, assert_ne, debug_assert, debug_assert_eq, debug_assert_matches,
-    debug_assert_ne, matches, r#try, todo, unimplemented, unreachable, write, writeln,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
+    unimplemented, unreachable, write, writeln,
 };
 
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
 pub use core::{
-    asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
-    module_path, option_env, stringify, trace_macros,
+    asm, assert, assert_matches, cfg, column, compile_error, concat, concat_idents, env, file,
+    format_args, format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm,
+    log_syntax, module_path, option_env, stringify, trace_macros,
 };
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
