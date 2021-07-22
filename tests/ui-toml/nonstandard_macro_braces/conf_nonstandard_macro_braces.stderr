@@ -47,25 +47,6 @@ help: consider writing `quote::quote! {match match match}`
 LL |     let _ = quote::quote!(match match match);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: use of irregular braces for `vec!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:18:9
-   |
-LL |         vec!{0, 0, 0}
-   |         ^^^^^^^^^^^^^
-...
-LL |     let _ = test!();
-   |             ------- in this macro invocation
-   |
-help: consider writing `vec![0, 0, 0]`
-  --> $DIR/conf_nonstandard_macro_braces.rs:18:9
-   |
-LL |         vec!{0, 0, 0}
-   |         ^^^^^^^^^^^^^
-...
-LL |     let _ = test!();
-   |             ------- in this macro invocation
-   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: use of irregular braces for `type_pos!` macro
   --> $DIR/conf_nonstandard_macro_braces.rs:55:12
    |
@@ -90,17 +71,5 @@ help: consider writing `eprint!["test if user config overrides defaults"];`
 LL |     eprint!("test if user config overrides defaults");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: use of irregular braces for `printlnfoo!` macro
-  --> $DIR/conf_nonstandard_macro_braces.rs:61:5
-   |
-LL |     printlnfoo!("you");
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-help: consider writing `printlnfoo!["you"];`
-  --> $DIR/conf_nonstandard_macro_braces.rs:61:5
-   |
-LL |     printlnfoo!("you");
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 

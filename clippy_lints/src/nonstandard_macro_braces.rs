@@ -94,7 +94,8 @@ impl EarlyLintPass for MacroBraces {
 
 fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a MacroBraces) -> Option<MacroInfo<'a>> {
     if_chain! {
-        if in_macro(span);
+        // Make sure we are only one level deep otherwise there are to many FP's
+        if in_macro(span) && !in_macro(span.ctxt().outer_expn_data().call_site);
         if let Some((name, braces)) = find_matching_macro(span, &mac_braces.macro_braces);
         if let Some(snip) = snippet_opt(cx, span.ctxt().outer_expn_data().call_site);
         // we must check only invocation sites

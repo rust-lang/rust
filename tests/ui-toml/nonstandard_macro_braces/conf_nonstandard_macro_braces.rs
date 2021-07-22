@@ -34,7 +34,7 @@ macro_rules! type_pos {
 
 macro_rules! printlnfoo {
     ($thing:expr) => {
-        println!("hey {}", $thing)
+        println!("{}", $thing)
     };
 }
 
@@ -44,7 +44,7 @@ fn main() {
     let _ = format!["ugh {} stop being such a good compiler", "hello"];
     let _ = quote!(let x = 1;);
     let _ = quote::quote!(match match match);
-    let _ = test!();
+    let _ = test!(); // don't trigger for macro calls inside macros
     let _ = vec![1,2,3];
 
     let _ = quote::quote! {true || false};
@@ -56,7 +56,5 @@ fn main() {
 
     eprint!("test if user config overrides defaults");
 
-    println!("test if println triggers for printlnfoo");
-
-    printlnfoo!("you");
+    printlnfoo!["test if printlnfoo is triggered by println"];
 }
