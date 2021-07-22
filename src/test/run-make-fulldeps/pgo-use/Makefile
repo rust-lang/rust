@@ -18,14 +18,6 @@
 
 COMMON_FLAGS=-Copt-level=2 -Ccodegen-units=1 -Cllvm-args=-disable-preinline
 
-# LLVM doesn't support instrumenting binaries that use SEH:
-# https://github.com/rust-lang/rust/issues/61002
-#
-# Things work fine with -Cpanic=abort though.
-ifdef IS_MSVC
-COMMON_FLAGS+= -Cpanic=abort
-endif
-
 ifeq ($(UNAME),Darwin)
 # macOS does not have the `tac` command, but `tail -r` does the same thing
 TAC := tail -r

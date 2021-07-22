@@ -459,7 +459,31 @@ impl Options {
                 })
                 .collect(),
         ];
-        let default_settings = default_settings.into_iter().flatten().collect();
+        let default_settings = default_settings
+            .into_iter()
+            .flatten()
+            .map(
+                // The keys here become part of `data-` attribute names in the generated HTML.  The
+                // browser does a strange mapping when converting them into attributes on the
+                // `dataset` property on the DOM HTML Node:
+                //   https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset
+                //
+                // The original key values we have are the same as the DOM storage API keys and the
+                // command line options, so contain `-`.  Our Javascript needs to be able to look
+                // these values up both in `dataset` and in the storage API, so it needs to be able
+                // to convert the names back and forth.  Despite doing this kebab-case to
+                // StudlyCaps transformation automatically, the JS DOM API does not provide a
+                // mechanism for doing the just transformation on a string.  So we want to avoid
+                // the StudlyCaps representation in the `dataset` property.
+                //
+                // We solve this by replacing all the `-`s with `_`s.  We do that here, when we
+                // generate the `data-` attributes, and in the JS, when we look them up.  (See
+                // `getSettingValue` in `storage.js.`) Converting `-` to `_` is simple in JS.
+                //
+                // The values will be HTML-escaped by the default Tera escaping.
+                |(k, v)| (k.replace('-', "_"), v),
+            )
+            .collect();
 
         let test_args = matches.opt_strs("test-args");
         let test_args: Vec<String> =

@@ -907,18 +907,27 @@ impl Step for RustdocGUI {
         // We remove existing folder to be sure there won't be artifacts remaining.
         let _ = fs::remove_dir_all(&out_dir);
 
-        let src_path = "src/test/rustdoc-gui/src";
+        let src_path = builder.build.src.join("src/test/rustdoc-gui/src");
         // We generate docs for the libraries present in the rustdoc-gui's src folder.
-        let mut cargo = Command::new(&builder.initial_cargo);
-        cargo
-            .arg("doc")
-            .arg("--workspace")
-            .arg("--target-dir")
-            .arg(&out_dir)
-            .env("RUSTDOC", builder.rustdoc(self.compiler))
-            .env("RUSTC", builder.rustc(self.compiler))
-            .current_dir(&builder.build.src.join(src_path));
-        builder.run(&mut cargo);
+        for entry in src_path.read_dir().expect("read_dir call failed") {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+
+                if !path.is_dir() {
+                    continue;
+                }
+
+                let mut cargo = Command::new(&builder.initial_cargo);
+                cargo
+                    .arg("doc")
+                    .arg("--target-dir")
+                    .arg(&out_dir)
+                    .env("RUSTDOC", builder.rustdoc(self.compiler))
+                    .env("RUSTC", builder.rustc(self.compiler))
+                    .current_dir(path);
+                builder.run(&mut cargo);
+            }
+        }
 
         // We now run GUI tests.
         let mut command = Command::new(&nodejs);
