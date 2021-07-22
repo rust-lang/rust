@@ -7,11 +7,17 @@ use rustc_ast::Mutability;
 
 #[derive(Clone, Copy, PartialEq, HashStable)]
 pub enum VtblEntry<'tcx> {
+    /// destructor of this type (used in vtable header)
     MetadataDropInPlace,
+    /// layout size of this type (used in vtable header)
     MetadataSize,
+    /// layout align of this type (used in vtable header)
     MetadataAlign,
+    /// non-dispatchable associated function that is excluded from trait object
     Vacant,
+    /// dispatchable associated function
     Method(Instance<'tcx>),
+    /// pointer to a separate supertrait vtable, can be used by trait upcasting coercion
     TraitVPtr(PolyTraitRef<'tcx>),
 }
 
