@@ -621,9 +621,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w);
         write!(w, "</div>");
-        write!(w, "<code>");
+        write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
-        w.write_str("</code>");
+        w.write_str("</h4>");
         w.write_str("</div>");
         if toggled {
             write!(w, "</summary>");
