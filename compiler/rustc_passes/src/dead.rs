@@ -134,6 +134,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self
             .typeck_results()
@@ -150,6 +151,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper(
             tcx: TyCtxt<'tcx>,
@@ -337,12 +339,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
-            }
-            hir::ExprKind::Assign(ref left, ref right, ..) => {
-                self.handle_assign(left);
-                self.check_for_self_assign(expr);
-                self.visit_expr(right);
-                return;
             }
             hir::ExprKind::Field(ref lhs, ..) => {
                 self.handle_field_access(&lhs, expr.hir_id);
