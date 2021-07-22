@@ -3,5 +3,5 @@ macro_rules! foo {
 }
 
 pub fn main() {
-    'x: loop { foo!() }
+    'x: loop { foo!(); }
 }

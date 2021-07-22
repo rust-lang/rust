@@ -4,8 +4,8 @@ error[E0426]: use of undeclared label `'x`
 LL |     () => { break 'x; }
    |                   ^^ undeclared label `'x`
 ...
-LL |     'x: loop { foo!() }
-   |                ------ in this macro invocation
+LL |     'x: loop { foo!(); }
+   |                ------- in this macro invocation
    |
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
