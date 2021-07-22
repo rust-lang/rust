@@ -77,7 +77,7 @@ fn convert_to_windows_newlines(formatted_text: &String) -> String {
     transformed
 }
 
-fn convert_to_unix_newlines(formatted_text: &String) -> String {
+fn convert_to_unix_newlines(formatted_text: &str) -> String {
     formatted_text.replace(WINDOWS_NEWLINE, UNIX_NEWLINE)
 }
 

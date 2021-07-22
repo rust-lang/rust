@@ -1,6 +1,7 @@
 // Inspired by Paul Woolcock's cargo-fmt (https://github.com/pwoolcoc/cargo-fmt/).
 
 #![deny(warnings)]
+#![allow(clippy::match_like_matches_macro)]
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -405,8 +406,8 @@ fn get_targets_recursive(
                 .packages
                 .iter()
                 .find(|p| p.name == dependency.name && p.source.is_none());
-            let manifest_path = if dependency_package.is_some() {
-                PathBuf::from(&dependency_package.unwrap().manifest_path)
+            let manifest_path = if let Some(dep_pkg) = dependency_package {
+                PathBuf::from(&dep_pkg.manifest_path)
             } else {
                 let mut package_manifest_path = PathBuf::from(&package.manifest_path);
                 package_manifest_path.pop();
@@ -527,7 +528,7 @@ fn get_cargo_metadata(
     if let Some(manifest_path) = manifest_path {
         cmd.manifest_path(manifest_path);
     }
-    cmd.other_options(&[String::from("--offline")]);
+    cmd.other_options(vec![String::from("--offline")]);
 
     match cmd.exec() {
         Ok(metadata) => Ok(metadata),

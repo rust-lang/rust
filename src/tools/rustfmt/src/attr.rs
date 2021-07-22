@@ -183,7 +183,7 @@ fn format_derive(
     } else if let SeparatorTactic::Always = context.config.trailing_comma() {
         // Retain the trailing comma.
         result.push_str(&item_str);
-    } else if item_str.ends_with(",") {
+    } else if item_str.ends_with(',') {
         // Remove the trailing comma.
         result.push_str(&item_str[..item_str.len() - 1]);
     } else {

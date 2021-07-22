@@ -45,7 +45,7 @@ impl Emitter for DiffEmitter {
             return Ok(EmitterResult { has_diff: true });
         }
 
-        return Ok(EmitterResult { has_diff });
+        Ok(EmitterResult { has_diff })
     }
 }
 

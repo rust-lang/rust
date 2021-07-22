@@ -230,5 +230,5 @@ Apache License (Version 2.0).
 See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.
 
 [rust]: https://github.com/rust-lang/rust
-[fmt rfcs]: https://github.com/rust-lang-nursery/fmt-rfcs
-[style guide]: https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/guide/guide.md
+[fmt rfcs]: https://github.com/rust-dev-tools/fmt-rfcs
+[style guide]: https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md

@@ -198,7 +198,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             let missing_span = self.next_span(hi);
             let snippet = self.snippet(missing_span);
             let len = CommentCodeSlices::new(snippet)
-                .nth(0)
+                .next()
                 .and_then(|(kind, _, s)| {
                     if kind == CodeCharKind::Normal {
                         s.rfind('\n')
@@ -293,7 +293,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     }
                     let span_in_between = mk_sp(last_hi, span.lo() + BytePos::from_usize(offset));
                     let snippet_in_between = self.snippet(span_in_between);
-                    let mut comment_on_same_line = !snippet_in_between.contains("\n");
+                    let mut comment_on_same_line = !snippet_in_between.contains('\n');
 
                     let mut comment_shape =
                         Shape::indented(self.block_indent, config).comment(config);
@@ -301,7 +301,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         self.push_str(" ");
                         // put the first line of the comment on the same line as the
                         // block's last line
-                        match sub_slice.find("\n") {
+                        match sub_slice.find('\n') {
                             None => {
                                 self.push_str(&sub_slice);
                             }
@@ -764,7 +764,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let hi = self.snippet_provider.span_before(search_span, ";");
                 let target_span = mk_sp(mac.span().lo(), hi + BytePos(1));
                 let rewrite = rewrite.map(|rw| {
-                    if !rw.ends_with(";") {
+                    if !rw.ends_with(';') {
                         format!("{};", rw)
                     } else {
                         rw
@@ -921,7 +921,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         !is_skip_attr(segments)
     }
 
-    fn walk_mod_items(&mut self, items: &Vec<rustc_ast::ptr::P<ast::Item>>) {
+    fn walk_mod_items(&mut self, items: &[rustc_ast::ptr::P<ast::Item>]) {
         self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&items));
     }
 
@@ -953,10 +953,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             // break the Stability Guarantee
             // N.B. This could be updated to utilize the version gates.
             let include_next_empty = if stmts.len() > 1 {
-                match (&stmts[0].as_ast_node().kind, &stmts[1].as_ast_node().kind) {
-                    (ast::StmtKind::Item(_), ast::StmtKind::Empty) => true,
-                    _ => false,
-                }
+                matches!(
+                    (&stmts[0].as_ast_node().kind, &stmts[1].as_ast_node().kind),
+                    (ast::StmtKind::Item(_), ast::StmtKind::Empty)
+                )
             } else {
                 false
             };

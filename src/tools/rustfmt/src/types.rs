@@ -24,7 +24,6 @@ use crate::utils::{
     colon_spaces, extra_offset, first_line_width, format_extern, format_mutability,
     last_line_extendable, last_line_width, mk_sp, rewrite_ident,
 };
-use crate::DEFAULT_VISIBILITY;
 use crate::{
     comment::{combine_strs_with_missing_comments, contains_comment},
     items::format_struct_struct,
@@ -662,7 +661,7 @@ impl Rewrite for ast::Ty {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
-                result.push_str("&");
+                result.push('&');
                 let ref_hi = context.snippet_provider.span_after(self.span(), "&");
                 let mut cmnt_lo = ref_hi;
 
@@ -685,7 +684,7 @@ impl Rewrite for ast::Ty {
                     } else {
                         result.push_str(&lt_str);
                     }
-                    result.push_str(" ");
+                    result.push(' ');
                     cmnt_lo = lifetime.ident.span.hi();
                 }
 
@@ -769,54 +768,14 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
-            ast::TyKind::AnonymousStruct(ref fields, recovered) => {
-                let ident = Ident::new(
-                    kw::Struct,
-                    mk_sp(self.span.lo(), self.span.lo() + BytePos(6)),
-                );
-                let data = ast::VariantData::Struct(fields.clone(), recovered);
-                let variant = ast::Variant {
-                    attrs: AttrVec::new(),
-                    id: self.id,
-                    span: self.span,
-                    vis: DEFAULT_VISIBILITY,
-                    ident,
-                    data,
-                    disr_expr: None,
-                    is_placeholder: false,
-                };
-                format_struct_struct(
-                    &context,
-                    &StructParts::from_variant(&variant),
-                    fields,
-                    shape.indent,
-                    None,
-                )
-            }
-            ast::TyKind::AnonymousUnion(ref fields, recovered) => {
-                let ident = Ident::new(
-                    kw::Union,
-                    mk_sp(self.span.lo(), self.span.lo() + BytePos(5)),
-                );
-                let data = ast::VariantData::Struct(fields.clone(), recovered);
-                let variant = ast::Variant {
-                    attrs: AttrVec::new(),
-                    id: self.id,
-                    span: self.span,
-                    vis: DEFAULT_VISIBILITY,
-                    ident,
-                    data,
-                    disr_expr: None,
-                    is_placeholder: false,
-                };
-                format_struct_struct(
-                    &context,
-                    &StructParts::from_variant(&variant),
-                    fields,
-                    shape.indent,
-                    None,
-                )
-            }
+            ast::TyKind::AnonymousStruct(ref fields, _)
+            | ast::TyKind::AnonymousUnion(ref fields, _) => format_struct_struct(
+                &context,
+                &StructParts::from_anonymous_type(&self),
+                fields,
+                shape.indent,
+                None,
+            ),
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
@@ -1048,11 +1007,7 @@ fn join_bounds_inner(
                     true,
                 )
                 .map(|v| (v, trailing_span, extendable)),
-                _ => Some((
-                    String::from(strs) + &trailing_str,
-                    trailing_span,
-                    extendable,
-                )),
+                _ => Some((strs + &trailing_str, trailing_span, extendable)),
             }
         },
     )?;
@@ -1089,10 +1044,7 @@ fn rewrite_lifetime_param(
 ) -> Option<String> {
     let result = generic_params
         .iter()
-        .filter(|p| match p.kind {
-            ast::GenericParamKind::Lifetime => true,
-            _ => false,
-        })
+        .filter(|p| matches!(p.kind, ast::GenericParamKind::Lifetime))
         .map(|lt| lt.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?
         .join(", ");
