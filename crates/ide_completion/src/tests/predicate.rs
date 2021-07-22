@@ -35,7 +35,6 @@ struct Foo<'lt, T, const C: usize> where $0 {}
 
 #[test]
 fn bound_for_type_pred() {
-    // FIXME: only show traits, macros and modules
     check(
         r#"
 struct Foo<'lt, T, const C: usize> where T: $0 {}
@@ -54,7 +53,8 @@ struct Foo<'lt, T, const C: usize> where T: $0 {}
 
 #[test]
 fn bound_for_lifetime_pred() {
-    // FIXME: should only show lifetimes here
+    // FIXME: should only show lifetimes here, that is we shouldn't get any completions here when not typing
+    // a `'`
     check(
         r#"
 struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
