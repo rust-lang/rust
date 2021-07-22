@@ -66,3 +66,10 @@ pub mod long_table {
     /// I wanna sqdkfnqds f dsqf qds f dsqf dsq f dsq f qds f qds f qds f dsqq f dsf sqdf dsq fds f dsq f dq f ds fq sd fqds f dsq f sqd fsq df sd fdsqfqsd fdsq f dsq f dsqfd s dfq
     pub struct Foo;
 }
+
+pub mod summary_table {
+    /// | header 1 | header 2 |
+    /// | -------- | -------- |
+    /// | content | content |
+    pub struct Foo;
+}
