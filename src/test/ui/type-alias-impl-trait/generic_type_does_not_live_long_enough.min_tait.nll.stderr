@@ -19,7 +19,7 @@ LL | type WrongGeneric<T> = impl 'static;
            found opaque type `impl Sized`
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generic_type_does_not_live_long_enough.rs:17:30
+  --> $DIR/generic_type_does_not_live_long_enough.rs:16:30
    |
 LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
    |                              ^^^^^^^^^^^^^^^
