@@ -410,10 +410,6 @@ fn run_compiler(
                 sess.code_stats.print_type_sizes();
             }
 
-            if sess.diagnostic().has_errors_or_lint_errors() {
-                return Err(ErrorReported);
-            }
-
             let linker = queries.linker()?;
             Ok(Some(linker))
         })?;

@@ -411,7 +411,7 @@ impl Session {
         self.diagnostic().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorReported> {
-        if self.has_errors() {
+        if self.diagnostic().has_errors_or_lint_errors() {
             self.diagnostic().emit_stashed_diagnostics();
             Err(ErrorReported)
         } else {
