@@ -87,6 +87,7 @@ std::set<std::string> KnownInactiveFunctions = {
     "__cxa_guard_release",
     "__cxa_guard_abort",
     "printf",
+    "putchar",
     "vprintf",
     "puts",
     "fflush",
