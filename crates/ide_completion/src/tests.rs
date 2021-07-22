@@ -3,6 +3,9 @@
 //! Most tests live in this module or its submodules unless for very specific completions like
 //! `attributes` or `lifetimes` where the completed concept is a distinct thing.
 //! Notable examples for completions that are being tested in this module's submodule are paths.
+//! Another exception are `check_edit` tests which usually live in the completion modules themselves,
+//! as the main purpose of this test module here is to give the developer an overview of whats being
+//! completed where, not how.
 
 mod attribute;
 mod fn_param;

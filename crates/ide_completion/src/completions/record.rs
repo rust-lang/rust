@@ -44,3 +44,77 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 
     Some(())
 }
+
+#[cfg(test)]
+mod tests {
+
+    use crate::tests::check_edit;
+
+    #[test]
+    fn default_completion_edit() {
+        check_edit(
+            "..Default::default()",
+            r#"
+//- minicore: default
+struct Struct { foo: u32, bar: usize }
+
+impl Default for Struct {
+    fn default() -> Self {}
+}
+
+fn foo() {
+    let other = Struct {
+        foo: 5,
+        .$0
+    };
+}
+"#,
+            r#"
+struct Struct { foo: u32, bar: usize }
+
+impl Default for Struct {
+    fn default() -> Self {}
+}
+
+fn foo() {
+    let other = Struct {
+        foo: 5,
+        ..Default::default()
+    };
+}
+"#,
+        );
+        check_edit(
+            "..Default::default()",
+            r#"
+//- minicore: default
+struct Struct { foo: u32, bar: usize }
+
+impl Default for Struct {
+    fn default() -> Self {}
+}
+
+fn foo() {
+    let other = Struct {
+        foo: 5,
+        $0
+    };
+}
+"#,
+            r#"
+struct Struct { foo: u32, bar: usize }
+
+impl Default for Struct {
+    fn default() -> Self {}
+}
+
+fn foo() {
+    let other = Struct {
+        foo: 5,
+        ..Default::default()
+    };
+}
+"#,
+        );
+    }
+}

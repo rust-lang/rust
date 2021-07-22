@@ -1,6 +1,6 @@
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, completion_list};
+use crate::tests::completion_list;
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(ra_fixture);
@@ -160,73 +160,5 @@ fn main() {
             fn main()    fn()
             bt u32
         "#]],
-    );
-}
-
-#[test]
-fn default_completion_edit() {
-    check_edit(
-        "..Default::default()",
-        r#"
-//- minicore: default
-struct Struct { foo: u32, bar: usize }
-
-impl Default for Struct {
-    fn default() -> Self {}
-}
-
-fn foo() {
-    let other = Struct {
-        foo: 5,
-        .$0
-    };
-}
-"#,
-        r#"
-struct Struct { foo: u32, bar: usize }
-
-impl Default for Struct {
-    fn default() -> Self {}
-}
-
-fn foo() {
-    let other = Struct {
-        foo: 5,
-        ..Default::default()
-    };
-}
-"#,
-    );
-    check_edit(
-        "..Default::default()",
-        r#"
-//- minicore: default
-struct Struct { foo: u32, bar: usize }
-
-impl Default for Struct {
-    fn default() -> Self {}
-}
-
-fn foo() {
-    let other = Struct {
-        foo: 5,
-        $0
-    };
-}
-"#,
-        r#"
-struct Struct { foo: u32, bar: usize }
-
-impl Default for Struct {
-    fn default() -> Self {}
-}
-
-fn foo() {
-    let other = Struct {
-        foo: 5,
-        ..Default::default()
-    };
-}
-"#,
     );
 }

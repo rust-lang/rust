@@ -210,3 +210,40 @@ fn in_trait_assoc_item_list() {
         "##]],
     );
 }
+
+#[test]
+fn in_trait_impl_assoc_item_list() {
+    check(
+        r#"
+trait Test {
+    type Type0;
+    type Type1;
+    const CONST0: ();
+    const CONST1: ();
+    fn function0();
+    fn function1();
+}
+
+impl Test for () {
+    type Type0 = ();
+    const CONST0: () = ();
+    fn function0() {}
+    $0
+}
+"#,
+        expect![[r##"
+            kw pub(crate)
+            kw pub
+            kw unsafe
+            kw fn
+            kw const
+            kw type
+            kw self
+            kw super
+            kw crate
+            md module
+            ma makro!(…)  #[macro_export] macro_rules! makro
+            ma makro!(…)  #[macro_export] macro_rules! makro
+        "##]],
+    );
+}

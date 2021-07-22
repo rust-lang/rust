@@ -108,10 +108,4 @@ mod tests {
             "#]],
         );
     }
-
-    #[test]
-    fn should_not_complete_snippets_in_path() {
-        check(r#"fn foo(x: i32) { ::foo$0 }"#, expect![[""]]);
-        check(r#"fn foo(x: i32) { ::$0 }"#, expect![[""]]);
-    }
 }

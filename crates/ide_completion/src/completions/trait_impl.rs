@@ -300,29 +300,6 @@ mod tests {
     }
 
     #[test]
-    fn name_ref_function_type_const() {
-        check(
-            r#"
-trait Test {
-    type TestType;
-    const TEST_CONST: u16;
-    fn test();
-}
-struct T;
-
-impl Test for T {
-    t$0
-}
-"#,
-            expect![["
-ta type TestType = \n\
-ct const TEST_CONST: u16 = \n\
-fn fn test()
-"]],
-        );
-    }
-
-    #[test]
     fn no_completion_inside_fn() {
         check(
             r"
@@ -569,27 +546,6 @@ impl Test for T {
 }
 }
 "#,
-        );
-    }
-
-    #[test]
-    fn hide_implemented_fn() {
-        check(
-            r#"
-trait Test {
-    fn foo();
-    fn foo_bar();
-}
-struct T;
-
-impl Test for T {
-    fn foo() {}
-    fn f$0
-}
-"#,
-            expect![[r#"
-                fn fn foo_bar()
-            "#]],
         );
     }
 
