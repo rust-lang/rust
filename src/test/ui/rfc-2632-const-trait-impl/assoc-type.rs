@@ -1,5 +1,5 @@
 // ignore-test
-
+//
 // FIXME: This test should fail since, within a const impl of `Foo`, the bound on `Foo::Bar` should
 // require a const impl of `Add` for the associated type.
 

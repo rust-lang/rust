@@ -200,6 +200,20 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ast::Constness {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ast::Constness,
+        b: ast::Constness,
+    ) -> RelateResult<'tcx, ast::Constness> {
+        if a != b {
+            Err(TypeError::ConstnessMismatch(expected_found(relation, a, b)))
+        } else {
+            Ok(a)
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ast::Unsafety {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
@@ -767,7 +781,10 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
         a: ty::TraitPredicate<'tcx>,
         b: ty::TraitPredicate<'tcx>,
     ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>> {
-        Ok(ty::TraitPredicate { trait_ref: relation.relate(a.trait_ref, b.trait_ref)? })
+        Ok(ty::TraitPredicate {
+            trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
+            constness: relation.relate(a.constness, b.constness)?,
+        })
     }
 }
 

@@ -2709,6 +2709,15 @@ pub enum Constness {
     NotConst,
 }
 
+impl fmt::Display for Constness {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            Self::Const => "const",
+            Self::NotConst => "non-const",
+        })
+    }
+}
+
 #[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
