@@ -20,6 +20,7 @@ impl<T: Send> AnotherTrait for T {}
 // in the future.)
 impl AnotherTrait for D<OpaqueType> {
     //~^ ERROR conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+    //~| ERROR cannot implement trait on type alias impl trait
 }
 
 fn main() {}

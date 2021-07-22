@@ -141,13 +141,22 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         }
     }
 
-    if let ty::Opaque(def_id, _) = *trait_ref.self_ty().kind() {
-        let reported = tcx
-            .sess
-            .struct_span_err(sp, "cannot implement trait on type alias impl trait")
-            .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
-            .emit();
-        return Err(reported);
+    // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
+    // and #84660 where it would otherwise allow unsoundness.
+    if trait_ref.has_opaque_types() {
+        for ty in trait_ref.substs {
+            for ty in ty.walk() {
+                let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
+                let ty::Opaque(def_id, _) = ty.kind() else { continue };
+                let reported = tcx
+                    .sess
+                    .struct_span_err(sp, "cannot implement trait on type alias impl trait")
+                    .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
+                    .emit();
+                return Err(reported);
+            }
+        }
+        span_bug!(sp, "opque type not found, but `has_opaque_types` is set")
     }
 
     Ok(())

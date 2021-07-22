@@ -2,7 +2,6 @@
 
 mod a {
     type Foo = impl PartialEq<(Foo, i32)>;
-    //~^ ERROR unconstrained opaque type
 
     struct Bar;
 
@@ -15,13 +14,12 @@ mod a {
 
 mod b {
     type Foo = impl PartialEq<(Foo, i32)>;
-    //~^ ERROR unconstrained opaque type
 
     struct Bar;
 
     impl PartialEq<(Foo, i32)> for Bar {
+        //~^ ERROR cannot implement trait on type alias impl trait
         fn eq(&self, _other: &(Bar, i32)) -> bool {
-            //~^ ERROR impl has stricter requirements than trait
             true
         }
     }
