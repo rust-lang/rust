@@ -1015,13 +1015,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
-    // Treat negative impls as unimplemented, and reservation impls as ambiguity.
-    fn filter_negative_and_reservation_impls(
+    fn filter_impls(
         &mut self,
         candidate: SelectionCandidate<'tcx>,
+        obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+        let tcx = self.tcx();
+        // Respect const trait obligations
+        if let hir::Constness::Const = obligation.predicate.skip_binder().constness {
+            match candidate {
+                // const impl
+                ImplCandidate(def_id) if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                // const param
+                ParamCandidate(ty::ConstnessAnd { constness: hir::Constness::Const, .. }) => {}
+                // auto trait impl
+                AutoImplCandidate(..) => {}
+                // FIXME check if this is right, but this would allow Sized impls
+                BuiltinCandidate { .. } => {}
+                _ => { // reject all other types of candidates
+                    return Err(Unimplemented)
+                }
+            }
+        }
+        // Treat negative impls as unimplemented, and reservation impls as ambiguity.
         if let ImplCandidate(def_id) = candidate {
-            let tcx = self.tcx();
             match tcx.impl_polarity(def_id) {
                 ty::ImplPolarity::Negative if !self.allow_negative_impls => {
                     return Err(Unimplemented);
@@ -1035,7 +1052,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let value = attr.and_then(|a| a.value_str());
                         if let Some(value) = value {
                             debug!(
-                                "filter_negative_and_reservation_impls: \
+                                "filter_impls: \
                                  reservation impl ambiguity on {:?}",
                                 def_id
                             );
