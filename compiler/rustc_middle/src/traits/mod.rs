@@ -16,7 +16,7 @@ use crate::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Constness;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -327,15 +327,37 @@ pub enum ObligationCauseCode<'tcx> {
     /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
     OpaqueType,
 
-    /// Well-formed checking. If a `HirId` is provided,
-    /// it is used to perform HIR-based wf checking if an error
-    /// occurs, in order to generate a more precise error message.
+    /// Well-formed checking. If a `WellFormedLoc` is provided,
+    /// then it will be used to eprform HIR-based wf checking
+    /// after an error occurs, in order to generate a more precise error span.
     /// This is purely for diagnostic purposes - it is always
-    /// correct to use `MiscObligation` instead
-    WellFormed(Option<hir::HirId>),
+    /// correct to use `MiscObligation` instead, or to specify
+    /// `WellFormed(None)`
+    WellFormed(Option<WellFormedLoc>),
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
     MatchImpl(Lrc<ObligationCauseCode<'tcx>>, DefId),
+}
+
+/// The 'location' at which we try to perform HIR-based wf checking.
+/// This information is used to obtain an `hir::Ty`, which
+/// we can walk in order to obtain precise spans for any
+/// 'nested' types (e.g. `Foo` in `Option<Foo>`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum WellFormedLoc {
+    /// Use the type of the provided definition.
+    Ty(LocalDefId),
+    /// Use the type of the parameter of the provided function.
+    /// We cannot use `hir::Param`, since the function may
+    /// not have a body (e.g. a trait method definition)
+    Param {
+        /// The function to lookup the parameter in
+        function: LocalDefId,
+        /// The index of the parameter to use.
+        /// Parameters are indexed from 0, with the return type
+        /// being the last 'parameter'
+        param_idx: u16,
+    },
 }
 
 impl ObligationCauseCode<'_> {
