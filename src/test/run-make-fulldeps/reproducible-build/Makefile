@@ -10,6 +10,9 @@ all:  \
 	link_paths \
 	remap_paths \
 	different_source_dirs \
+	remap_cwd_bin \
+	remap_cwd_rlib \
+	remap_cwd_to_empty \
 	extern_flags
 
 smoke:
@@ -63,6 +66,45 @@ different_source_dirs:
 		--remap-path-prefix=$(TMPDIR)/test=/b \
 		--crate-type rlib)
 	cmp "$(TMPDIR)/libreproducible_build.rlib" "$(TMPDIR)/libfoo.rlib" || exit 1
+
+remap_cwd_bin:
+	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) reproducible-build-aux.rs
+	mkdir $(TMPDIR)/test
+	cp reproducible-build.rs $(TMPDIR)/test
+	$(RUSTC) reproducible-build.rs --crate-type bin -C debuginfo=2 \
+	  -Z remap-cwd-prefix=.
+	cp $(TMPDIR)/reproducible-build $(TMPDIR)/first
+	(cd $(TMPDIR)/test && \
+	 $(RUSTC) reproducible-build.rs --crate-type bin -C debuginfo=2 \
+	   -Z remap-cwd-prefix=.)
+	cmp "$(TMPDIR)/first" "$(TMPDIR)/reproducible-build" || exit 1
+
+remap_cwd_rlib:
+	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) reproducible-build-aux.rs
+	mkdir $(TMPDIR)/test
+	cp reproducible-build.rs $(TMPDIR)/test
+	$(RUSTC) reproducible-build.rs --crate-type rlib -C debuginfo=2 \
+	  -Z remap-cwd-prefix=.
+	cp $(TMPDIR)/libreproducible_build.rlib $(TMPDIR)/libfirst.rlib
+	(cd $(TMPDIR)/test && \
+	 $(RUSTC) reproducible-build.rs --crate-type rlib -C debuginfo=2 \
+	   -Z remap-cwd-prefix=.)
+	cmp "$(TMPDIR)/libfirst.rlib" "$(TMPDIR)/libreproducible_build.rlib" || exit 1
+
+remap_cwd_to_empty:
+	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) reproducible-build-aux.rs
+	mkdir $(TMPDIR)/test
+	cp reproducible-build.rs $(TMPDIR)/test
+	$(RUSTC) reproducible-build.rs --crate-type rlib -C debuginfo=2 \
+	  -Z remap-cwd-prefix=
+	cp $(TMPDIR)/libreproducible_build.rlib $(TMPDIR)/libfirst.rlib
+	(cd $(TMPDIR)/test && \
+	 $(RUSTC) reproducible-build.rs --crate-type rlib -C debuginfo=2 \
+	   -Z remap-cwd-prefix=)
+	cmp "$(TMPDIR)/libfirst.rlib" "$(TMPDIR)/libreproducible_build.rlib" || exit 1
 
 extern_flags:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
