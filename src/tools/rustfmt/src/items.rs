@@ -6,7 +6,7 @@ use std::cmp::{max, min, Ordering};
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{symbol::kw, symbol::Ident, BytePos, Span, DUMMY_SP};
+use rustc_span::{symbol::kw, symbol::Ident, BytePos, Span};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{

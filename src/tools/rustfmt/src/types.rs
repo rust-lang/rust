@@ -1,8 +1,8 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use rustc_ast::ast::{self, AttrVec, FnRetTy, Mutability};
-use rustc_span::{symbol::kw, symbol::Ident, BytePos, Pos, Span};
+use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
