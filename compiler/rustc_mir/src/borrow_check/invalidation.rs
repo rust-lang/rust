@@ -179,7 +179,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 let resume = self.location_table.start_index(resume.start_location());
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
-                        self.all_facts.invalidates.push((resume, i));
+                        self.all_facts.loan_invalidated_at.push((resume, i));
                     }
                 }
 
@@ -191,7 +191,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 let start = self.location_table.start_index(location);
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
-                        self.all_facts.invalidates.push((start, i));
+                        self.all_facts.loan_invalidated_at.push((start, i));
                     }
                 }
             }
@@ -420,7 +420,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
                         // Unique and mutable borrows are invalidated by reads from any
                         // involved path
-                        this.generate_invalidates(borrow_index, location);
+                        this.emit_loan_invalidated_at(borrow_index, location);
                     }
 
                     (Reservation(_) | Activation(_, _) | Write(_), _) => {
@@ -428,7 +428,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         // Reservations count as writes since we need to check
                         // that activating the borrow will be OK
                         // FIXME(bob_twinkles) is this actually the right thing to do?
-                        this.generate_invalidates(borrow_index, location);
+                        this.emit_loan_invalidated_at(borrow_index, location);
                     }
                 }
                 Control::Continue
@@ -436,10 +436,10 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         );
     }
 
-    /// Generates a new `invalidates(L, B)` fact.
-    fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
+    /// Generates a new `loan_invalidated_at(L, B)` fact.
+    fn emit_loan_invalidated_at(&mut self, b: BorrowIndex, l: Location) {
         let lidx = self.location_table.start_index(l);
-        self.all_facts.invalidates.push((lidx, b));
+        self.all_facts.loan_invalidated_at.push((lidx, b));
     }
 
     fn check_activations(&mut self, location: Location) {

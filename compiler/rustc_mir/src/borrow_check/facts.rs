@@ -64,13 +64,12 @@ impl AllFactsExt for AllFacts {
         }
         write_facts_to_path! {
             wr.write_facts_to_path(self.[
-                borrow_region,
+                loan_issued_at,
                 universal_region,
-                placeholder,
                 cfg_edge,
-                killed,
-                outlives,
-                invalidates,
+                loan_killed_at,
+                subset_base,
+                loan_invalidated_at,
                 var_used_at,
                 var_defined_at,
                 var_dropped_at,
@@ -81,7 +80,8 @@ impl AllFactsExt for AllFacts {
                 path_assigned_at_base,
                 path_moved_at_base,
                 path_accessed_at_base,
-                known_subset,
+                known_placeholder_subset,
+                placeholder,
             ])
         }
         Ok(())
