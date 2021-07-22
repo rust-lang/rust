@@ -1510,7 +1510,7 @@ dependencies = [
 [[package]]
 name = "hashbrown"
 version = "0.11.2"
-source = "git+https://github.com/Zoxc/hashbrown.git?branch=opt-insert#ed0f9a8a288c709c11dbcefa8edad7cb85fb3bd8"
+source = "git+https://github.com/Zoxc/hashbrown.git?branch=opt-insert#d6795c0b74e9d83f842624207c8c55329b362bc9"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
