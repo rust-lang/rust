@@ -486,7 +486,7 @@ impl Build {
             t!(std::fs::read_dir(dir)).next().is_none()
         }
 
-        if !self.config.submodules {
+        if !self.config.submodules(&self.rust_info) {
             return;
         }
 
@@ -562,7 +562,7 @@ impl Build {
             "library/stdarch",
         ];
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules {
+        if !self.config.submodules(&self.rust_info) {
             return;
         }
         let output = output(
