@@ -2,9 +2,9 @@ goto: file://|DOC_PATH|/lib2/struct.Foo.html
 // This test checks that the font weight is correctly applied.
 assert-css: ("//*[@class='docblock type-decl']//a[text()='Alias']", {"font-weight": "400"})
 assert-css: ("//*[@class='structfield small-section-header']//a[text()='Alias']", {"font-weight": "400"})
-assert-css: ("#method\.a_method > code", {"font-weight": "600"})
-assert-css: ("#associatedtype\.X > code", {"font-weight": "600"})
-assert-css: ("#associatedconstant\.Y > code", {"font-weight": "600"})
+assert-css: ("#method\.a_method > .code-header", {"font-weight": "600"})
+assert-css: ("#associatedtype\.X > .code-header", {"font-weight": "600"})
+assert-css: ("#associatedconstant\.Y > .code-header", {"font-weight": "600"})
 
 goto: file://|DOC_PATH|/test_docs/type.SomeType.html
 assert-css: (".top-doc .docblock p", {"font-weight": "400"}, ALL)

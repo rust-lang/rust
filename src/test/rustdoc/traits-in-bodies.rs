@@ -4,7 +4,7 @@
 pub struct Bounded<T: Clone>(T);
 
 // @has traits_in_bodies/struct.SomeStruct.html
-// @has - '//code' 'impl Clone for SomeStruct'
+// @has - '//h3' 'impl Clone for SomeStruct'
 pub struct SomeStruct;
 
 fn asdf() -> Bounded<SomeStruct> {
@@ -18,7 +18,7 @@ fn asdf() -> Bounded<SomeStruct> {
 }
 
 // @has traits_in_bodies/struct.Point.html
-// @has - '//code' 'impl Copy for Point'
+// @has - '//h3' 'impl Copy for Point'
 #[derive(Clone)]
 pub struct Point {
     x: i32,
@@ -31,7 +31,7 @@ const _FOO: () = {
 };
 
 // @has traits_in_bodies/struct.Inception.html
-// @has - '//code' 'impl Clone for Inception'
+// @has - '//h3' 'impl Clone for Inception'
 pub struct Inception;
 
 static _BAR: usize = {

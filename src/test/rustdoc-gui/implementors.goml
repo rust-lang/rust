@@ -8,9 +8,9 @@ assert-count: ("#implementors-list > .impl", 2)
 assert: ("#implementors-list > .impl:nth-child(1) > a.anchor")
 assert-attribute: ("#implementors-list > .impl:nth-child(1)", {"id": "impl-Whatever"})
 assert-attribute: ("#implementors-list > .impl:nth-child(1) > a.anchor", {"href": "#impl-Whatever"})
-assert: "#implementors-list > .impl:nth-child(1) > code.in-band"
+assert: "#implementors-list > .impl:nth-child(1) > .code-header.in-band"
 
 assert: ("#implementors-list > .impl:nth-child(2) > a.anchor")
 assert-attribute: ("#implementors-list > .impl:nth-child(2)", {"id": "impl-Whatever-1"})
 assert-attribute: ("#implementors-list > .impl:nth-child(2) > a.anchor", {"href": "#impl-Whatever-1"})
-assert: "#implementors-list > .impl:nth-child(2) > code.in-band"
+assert: "#implementors-list > .impl:nth-child(2) > .code-header.in-band"

@@ -3,5 +3,5 @@
 extern crate inner;
 
 // @has trait_vis/struct.SomeStruct.html
-// @has - '//code' 'impl Clone for SomeStruct'
+// @has - '//h3' 'impl Clone for SomeStruct'
 pub use inner::SomeStruct;

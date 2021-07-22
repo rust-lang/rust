@@ -8,7 +8,7 @@ pub struct Simd<T, const WIDTH: usize> {
     inner: T,
 }
 
-// @has foo/struct.Simd.html '//div[@id="trait-implementations-list"]//div/code' 'impl Add<Simd<u8, 16_usize>> for Simd<u8, 16>'
+// @has foo/struct.Simd.html '//div[@id="trait-implementations-list"]//div/h3' 'impl Add<Simd<u8, 16_usize>> for Simd<u8, 16>'
 impl Add for Simd<u8, 16> {
     type Output = Self;
 

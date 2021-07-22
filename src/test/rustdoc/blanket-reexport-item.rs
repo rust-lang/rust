@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-// @has foo/struct.S.html '//div[@id="impl-Into%3CU%3E"]//code' 'impl<T, U> Into<U> for T'
+// @has foo/struct.S.html '//div[@id="impl-Into%3CU%3E"]//h3' 'impl<T, U> Into<U> for T'
 pub struct S2 {}
 mod m {
     pub struct S {}

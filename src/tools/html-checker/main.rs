@@ -15,6 +15,11 @@ fn check_html_file(file: &Path) -> usize {
         "MISSING_ENDTAG_BEFORE",
         "INSERTING_TAG",
         "DISCARDING_UNEXPECTED",
+        // This error is caused by nesting the Notable Traits tooltip within an <h4> tag.
+        // The solution is to avoid doing that, but we need to have the <h4> tags for accessibility
+        // reasons, and we need the Notable Traits tooltip to help everyone understand the Iterator
+        // combinators
+        "TAG_NOT_ALLOWED_IN",
     ];
     let to_mute_s = to_mute.join(",");
     let mut command = Command::new("tidy");
