@@ -29,6 +29,7 @@ hir_expand = { path = "../hir_expand", version = "0.0.0" }
 base_db = { path = "../base_db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
+limit = { path = "../limit", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

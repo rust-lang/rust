@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
+use limit::Limit;
 use mbe::{ExpandError, ExpandResult};
 use parser::FragmentKind;
 use syntax::{
@@ -21,7 +22,7 @@ use crate::{
 ///
 /// If an invocation produces more tokens than this limit, it will not be stored in the database and
 /// an error will be emitted.
-const TOKEN_LIMIT: usize = 524288;
+const TOKEN_LIMIT: Limit = Limit::new(524288);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
@@ -356,10 +357,12 @@ fn macro_expand_with_arg(
     let ExpandResult { value: tt, err } = macro_rules.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
-    if count > TOKEN_LIMIT {
+    // XXX: Make ExpandResult a real error and use .map_err instead?
+    if TOKEN_LIMIT.check(count).is_err() {
         return ExpandResult::str_err(format!(
             "macro invocation exceeds token limit: produced {} tokens, limit is {}",
-            count, TOKEN_LIMIT,
+            count,
+            TOKEN_LIMIT.inner(),
         ));
     }
 

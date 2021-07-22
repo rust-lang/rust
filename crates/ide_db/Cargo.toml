@@ -26,6 +26,7 @@ profile = { path = "../profile", version = "0.0.0" }
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../hir", version = "0.0.0" }
+limit = { path = "../limit", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }

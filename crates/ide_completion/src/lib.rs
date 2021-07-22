@@ -187,7 +187,7 @@ pub fn resolve_completion_edits(
         current_crate,
         NameToImport::Exact(imported_name),
         items_locator::AssocItemSearch::Include,
-        Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
+        Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )
     .filter_map(|candidate| {
         current_module

@@ -15,6 +15,7 @@ use hir_expand::{
     ast_id_map::AstIdMap, hygiene::Hygiene, AstId, ExpandResult, HirFileId, InFile, MacroDefId,
 };
 use la_arena::{Arena, ArenaMap};
+use limit::Limit;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
@@ -53,10 +54,10 @@ pub struct Expander {
 }
 
 #[cfg(test)]
-const EXPANSION_RECURSION_LIMIT: usize = 32;
+const EXPANSION_RECURSION_LIMIT: Limit = Limit::new(32);
 
 #[cfg(not(test))]
-const EXPANSION_RECURSION_LIMIT: usize = 128;
+const EXPANSION_RECURSION_LIMIT: Limit = Limit::new(128);
 
 impl CfgExpander {
     pub(crate) fn new(
@@ -99,7 +100,7 @@ impl Expander {
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
     ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
-        if self.recursion_limit + 1 > EXPANSION_RECURSION_LIMIT {
+        if EXPANSION_RECURSION_LIMIT.check(self.recursion_limit + 1).is_err() {
             cov_mark::hit!(your_stack_belongs_to_me);
             return Ok(ExpandResult::str_err(
                 "reached recursion limit during macro expansion".into(),
