@@ -10,6 +10,7 @@ mod item_list;
 mod item;
 mod pattern;
 mod predicate;
+mod record;
 mod sourcegen;
 mod type_pos;
 mod use_tree;
