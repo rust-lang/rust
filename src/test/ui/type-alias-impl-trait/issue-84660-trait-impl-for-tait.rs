@@ -1,7 +1,7 @@
 // Regression test for issues #84660 and #86411: both are variations on #76202.
 // Tests that we don't ICE when we have an opaque type appearing anywhere in an impl header.
 
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 trait Foo {}
 impl Foo for () {}
