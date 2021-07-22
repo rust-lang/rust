@@ -2990,6 +2990,7 @@ declare_lint_pass! {
         INLINE_NO_SANITIZE,
         BAD_ASM_STYLE,
         ASM_SUB_REGISTER,
+        NAMED_ASM_LABELS,
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,

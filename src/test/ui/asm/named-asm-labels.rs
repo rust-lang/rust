@@ -114,6 +114,20 @@ fn main() {
         asm!(":lo12:FOO"); // this is apparently valid aarch64
         // is there an example that is valid x86 for this test?
         asm!(":bbb nop");
+
+        // Test include_str in asm
+        asm!(include_str!("named-asm-labels.s")); //~ ERROR do not use named labels
+
+        // Test allowing or warning on the lint instead
+        #[allow(named_asm_labels)]
+        {
+            asm!("allowed: nop"); // Should not emit anything
+        }
+
+        #[warn(named_asm_labels)]
+        {
+            asm!("warned: nop"); //~ WARNING do not use named labels
+        }
     }
 }
 

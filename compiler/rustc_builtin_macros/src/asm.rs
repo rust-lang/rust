@@ -530,17 +530,17 @@ fn expand_preparsed_asm(
                             span,
                             ecx.current_expansion.lint_node_id,
                             "do not use named labels in inline assembly",
-                            BuiltinLintDiagnostics::NamedAsmLabel("Only GAS local labels of the form `N:` where N is a number may be used in inline asm".to_string()),
+                            BuiltinLintDiagnostics::NamedAsmLabel("only GAS local labels of the form `N:` where N is a number may be used in inline asm".to_string()),
                         );
                     }
                 } else {
                     // If there were labels but we couldn't find a span, combine the warnings and use the template span
                     ecx.parse_sess().buffer_lint_with_diagnostic(
                         lint::builtin::NAMED_ASM_LABELS,
-                        template_span,
+                        template_sp,
                         ecx.current_expansion.lint_node_id,
                         "do not use named labels in inline assembly",
-                        BuiltinLintDiagnostics::NamedAsmLabel("Only GAS local labels of the form `N:` where N is a number may be used in inline asm".to_string()),
+                        BuiltinLintDiagnostics::NamedAsmLabel("only GAS local labels of the form `N:` where N is a number may be used in inline asm".to_string()),
                     );
                 }
             }
