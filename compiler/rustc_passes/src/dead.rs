@@ -134,6 +134,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self
             .typeck_results()
