@@ -133,7 +133,6 @@ impl<W> IntoInnerError<W> {
     ///
     /// # Example
     /// ```
-    /// #![feature(io_into_inner_error_parts)]
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///
     /// let mut not_enough_space = [0u8; 10];
@@ -143,7 +142,7 @@ impl<W> IntoInnerError<W> {
     /// let err = into_inner_err.into_error();
     /// assert_eq!(err.kind(), ErrorKind::WriteZero);
     /// ```
-    #[unstable(feature = "io_into_inner_error_parts", issue = "79704")]
+    #[stable(feature = "io_into_inner_error_parts", since = "1.55.0")]
     pub fn into_error(self) -> Error {
         self.1
     }
@@ -156,7 +155,6 @@ impl<W> IntoInnerError<W> {
     ///
     /// # Example
     /// ```
-    /// #![feature(io_into_inner_error_parts)]
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///
     /// let mut not_enough_space = [0u8; 10];
@@ -167,7 +165,7 @@ impl<W> IntoInnerError<W> {
     /// assert_eq!(err.kind(), ErrorKind::WriteZero);
     /// assert_eq!(recovered_writer.buffer(), b"t be actually written");
     /// ```
-    #[unstable(feature = "io_into_inner_error_parts", issue = "79704")]
+    #[stable(feature = "io_into_inner_error_parts", since = "1.55.0")]
     pub fn into_parts(self) -> (Error, W) {
         (self.1, self.0)
     }
