@@ -1,9 +1,7 @@
 use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::vec::{Idx, IndexVec};
@@ -13,7 +11,7 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
-use rustc_query_system::query::QueryContext;
+use rustc_query_system::query::{QueryContext, QuerySideEffects};
 use rustc_serialize::{
     opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
@@ -41,14 +39,14 @@ const TAG_EXPN_DATA: u8 = 1;
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
 /// of a few selected queries (like `typeck` and `mir_optimized`) and
-/// any diagnostics that have been emitted during a query.
+/// any side effects that have been emitted during a query.
 pub struct OnDiskCache<'sess> {
     // The complete cache data in serialized form.
     serialized_data: Vec<u8>,
 
-    // Collects all `Diagnostic`s emitted during the current compilation
+    // Collects all `QuerySideEffects` created during the current compilation
     // session.
-    current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
+    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffects>>,
 
     cnum_map: OnceCell<UnhashMap<StableCrateId, CrateNum>>,
 
@@ -62,9 +60,9 @@ pub struct OnDiskCache<'sess> {
     // `serialized_data`.
     query_result_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
-    // A map from dep-node to the position of any associated diagnostics in
+    // A map from dep-node to the position of any associated `QuerySideEffects` in
     // `serialized_data`.
-    prev_diagnostics_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+    prev_side_effects_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
     alloc_decoding_state: AllocDecodingState,
 
@@ -113,8 +111,8 @@ pub struct OnDiskCache<'sess> {
 #[derive(Encodable, Decodable)]
 struct Footer {
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
-    query_result_index: EncodedQueryResultIndex,
-    diagnostics_index: EncodedQueryResultIndex,
+    query_result_index: EncodedDepNodeIndex,
+    side_effects_index: EncodedDepNodeIndex,
     // The location of all allocations.
     interpret_alloc_index: Vec<u32>,
     // See `OnDiskCache.syntax_contexts`
@@ -125,9 +123,7 @@ struct Footer {
     foreign_expn_data: UnhashMap<ExpnHash, u32>,
 }
 
-pub type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
-type EncodedDiagnosticsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
-type EncodedDiagnostics = Vec<Diagnostic>;
+pub type EncodedDepNodeIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
 struct SourceFileIndex(u32);
@@ -213,9 +209,9 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             file_index_to_file: Default::default(),
             cnum_map: OnceCell::new(),
             source_map: sess.source_map(),
-            current_diagnostics: Default::default(),
+            current_side_effects: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
-            prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
+            prev_side_effects_index: footer.side_effects_index.into_iter().collect(),
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
             syntax_contexts: footer.syntax_contexts,
             expn_data: footer.expn_data,
@@ -234,9 +230,9 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             file_index_to_file: Default::default(),
             cnum_map: OnceCell::new(),
             source_map,
-            current_diagnostics: Default::default(),
+            current_side_effects: Default::default(),
             query_result_index: Default::default(),
-            prev_diagnostics_index: Default::default(),
+            prev_side_effects_index: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
             syntax_contexts: FxHashMap::default(),
             expn_data: UnhashMap::default(),
@@ -301,7 +297,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             };
 
             // Encode query results.
-            let mut query_result_index = EncodedQueryResultIndex::new();
+            let mut query_result_index = EncodedDepNodeIndex::new();
 
             tcx.sess.time("encode_query_results", || -> FileEncodeResult {
                 let enc = &mut encoder;
@@ -309,18 +305,16 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                 QueryCtxt::from_tcx(tcx).encode_query_results(enc, qri)
             })?;
 
-            // Encode diagnostics.
-            let diagnostics_index: EncodedDiagnosticsIndex = self
-                .current_diagnostics
+            // Encode side effects.
+            let side_effects_index: EncodedDepNodeIndex = self
+                .current_side_effects
                 .borrow()
                 .iter()
                 .map(
-                    |(dep_node_index, diagnostics)| -> Result<_, <FileEncoder as Encoder>::Error> {
+                    |(dep_node_index, side_effects)| -> Result<_, <FileEncoder as Encoder>::Error> {
                         let pos = AbsoluteBytePos::new(encoder.position());
-                        // Let's make sure we get the expected type here.
-                        let diagnostics: &EncodedDiagnostics = diagnostics;
                         let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
-                        encoder.encode_tagged(dep_node_index, diagnostics)?;
+                        encoder.encode_tagged(dep_node_index, side_effects)?;
 
                         Ok((dep_node_index, pos))
                     },
@@ -386,7 +380,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                 &Footer {
                     file_index_to_stable_id,
                     query_result_index,
-                    diagnostics_index,
+                    side_effects_index,
                     interpret_alloc_index,
                     syntax_contexts,
                     expn_data,
@@ -488,30 +482,26 @@ impl<'sess> OnDiskCache<'sess> {
         self as _
     }
 
-    /// Loads a diagnostic emitted during the previous compilation session.
-    pub fn load_diagnostics(
+    /// Loads a `QuerySideEffects` created during the previous compilation session.
+    pub fn load_side_effects(
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
-    ) -> Vec<Diagnostic> {
-        let diagnostics: Option<EncodedDiagnostics> =
-            self.load_indexed(tcx, dep_node_index, &self.prev_diagnostics_index, "diagnostics");
+    ) -> QuerySideEffects {
+        let side_effects: Option<QuerySideEffects> =
+            self.load_indexed(tcx, dep_node_index, &self.prev_side_effects_index, "side_effects");
 
-        diagnostics.unwrap_or_default()
+        side_effects.unwrap_or_default()
     }
 
-    /// Stores a diagnostic emitted during the current compilation session.
-    /// Anything stored like this will be available via `load_diagnostics` in
+    /// Stores a `QuerySideEffects` emitted during the current compilation session.
+    /// Anything stored like this will be available via `load_side_effects` in
     /// the next compilation session.
     #[inline(never)]
     #[cold]
-    pub fn store_diagnostics(
-        &self,
-        dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
-    ) {
-        let mut current_diagnostics = self.current_diagnostics.borrow_mut();
-        let prev = current_diagnostics.insert(dep_node_index, diagnostics.into());
+    pub fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
+        let mut current_side_effects = self.current_side_effects.borrow_mut();
+        let prev = current_side_effects.insert(dep_node_index, side_effects);
         debug_assert!(prev.is_none());
     }
 
@@ -539,22 +529,21 @@ impl<'sess> OnDiskCache<'sess> {
         self.load_indexed(tcx, dep_node_index, &self.query_result_index, "query result")
     }
 
-    /// Stores a diagnostic emitted during computation of an anonymous query.
+    /// Stores side effect emitted during computation of an anonymous query.
     /// Since many anonymous queries can share the same `DepNode`, we aggregate
     /// them -- as opposed to regular queries where we assume that there is a
     /// 1:1 relationship between query-key and `DepNode`.
     #[inline(never)]
     #[cold]
-    pub fn store_diagnostics_for_anon_node(
+    pub fn store_side_effects_for_anon_node(
         &self,
         dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
+        side_effects: QuerySideEffects,
     ) {
-        let mut current_diagnostics = self.current_diagnostics.borrow_mut();
+        let mut current_side_effects = self.current_side_effects.borrow_mut();
 
-        let x = current_diagnostics.entry(dep_node_index).or_default();
-
-        x.extend(Into::<Vec<_>>::into(diagnostics));
+        let x = current_side_effects.entry(dep_node_index).or_default();
+        x.append(side_effects);
     }
 
     fn load_indexed<'tcx, T>(
@@ -1155,7 +1144,7 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, FileEncoder>> for [u8] {
 pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     tcx: CTX,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
-    query_result_index: &mut EncodedQueryResultIndex,
+    query_result_index: &mut EncodedDepNodeIndex,
 ) -> FileEncodeResult
 where
     CTX: QueryContext + 'tcx,

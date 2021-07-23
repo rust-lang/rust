@@ -7,7 +7,9 @@ use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeI
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{QueryContext, QueryDescription, QueryJobId, QueryMap};
+use rustc_query_system::query::{
+    QueryContext, QueryDescription, QueryJobId, QueryMap, QuerySideEffects,
+};
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -83,27 +85,27 @@ impl QueryContext for QueryCtxt<'tcx> {
     }
 
     // Interactions with on_disk_cache
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {
+    fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects {
         self.queries
             .on_disk_cache
             .as_ref()
-            .map(|c| c.load_diagnostics(**self, prev_dep_node_index))
+            .map(|c| c.load_side_effects(**self, prev_dep_node_index))
             .unwrap_or_default()
     }
 
-    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {
+    fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
         if let Some(c) = self.queries.on_disk_cache.as_ref() {
-            c.store_diagnostics(dep_node_index, diagnostics)
+            c.store_side_effects(dep_node_index, side_effects)
         }
     }
 
-    fn store_diagnostics_for_anon_node(
+    fn store_side_effects_for_anon_node(
         &self,
         dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
+        side_effects: QuerySideEffects,
     ) {
         if let Some(c) = self.queries.on_disk_cache.as_ref() {
-            c.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
+            c.store_side_effects_for_anon_node(dep_node_index, side_effects)
         }
     }
 
@@ -163,7 +165,7 @@ impl<'tcx> QueryCtxt<'tcx> {
     pub(super) fn encode_query_results(
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
-        query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+        query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
     ) -> opaque::FileEncodeResult {
         macro_rules! encode_queries {
             ($($query:ident,)*) => {
