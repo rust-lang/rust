@@ -1,11 +1,11 @@
 error[E0503]: cannot use `e` because it was mutably borrowed
-  --> $DIR/borrowed-match-issue-45045.rs:13:9
+  --> $DIR/borrowed-match-issue-45045.rs:12:11
    |
 LL |     let f = &mut e;
    |             ------ borrow of `e` occurs here
-...
-LL |         Xyz::A => println!("a"),
-   |         ^^^^^^ use of borrowed `e`
+LL |     let g = f;
+LL |     match e {
+   |           ^ use of borrowed `e`
 ...
 LL |     *g = Xyz::B;
    |     ----------- borrow later used here

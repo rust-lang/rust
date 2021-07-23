@@ -1,11 +1,10 @@
 error[E0503]: cannot use `foo` because it was mutably borrowed
-  --> $DIR/borrowck-match-already-borrowed.rs:10:9
+  --> $DIR/borrowck-match-already-borrowed.rs:9:19
    |
 LL |     let p = &mut foo;
    |             -------- borrow of `foo` occurs here
 LL |     let _ = match foo {
-LL |         Foo::B => 1,
-   |         ^^^^^^ use of borrowed `foo`
+   |                   ^^^ use of borrowed `foo`
 ...
 LL |     drop(p);
    |          - borrow later used here

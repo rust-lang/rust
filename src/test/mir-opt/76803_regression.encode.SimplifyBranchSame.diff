@@ -7,18 +7,18 @@
       let mut _2: isize;                   // in scope 0 at $DIR/76803_regression.rs:12:9: 12:16
   
       bb0: {
-          _2 = discriminant(_1);           // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
-          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/76803_regression.rs:12:9: 12:16
+          _2 = discriminant(_1);           // scope 0 at $DIR/76803_regression.rs:11:11: 11:12
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/76803_regression.rs:11:5: 11:12
       }
   
       bb1: {
           _0 = move _1;                    // scope 0 at $DIR/76803_regression.rs:13:14: 13:15
-          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
+          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:13:14: 13:15
       }
   
       bb2: {
           discriminant(_0) = 1;            // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
-          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:11:5: 14:6
+          goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
       }
   
       bb3: {

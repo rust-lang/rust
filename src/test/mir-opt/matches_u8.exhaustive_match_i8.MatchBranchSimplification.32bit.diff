@@ -7,18 +7,18 @@
       let mut _2: isize;                   // in scope 0 at $DIR/matches_u8.rs:21:9: 21:13
   
       bb0: {
-          _2 = discriminant(_1);           // scope 0 at $DIR/matches_u8.rs:21:9: 21:13
-          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_u8.rs:21:9: 21:13
+          _2 = discriminant(_1);           // scope 0 at $DIR/matches_u8.rs:20:11: 20:12
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_u8.rs:20:5: 20:12
       }
   
       bb1: {
           _0 = const 1_i8;                 // scope 0 at $DIR/matches_u8.rs:22:17: 22:18
-          goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:20:5: 23:6
+          goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:22:17: 22:18
       }
   
       bb2: {
           _0 = const 0_i8;                 // scope 0 at $DIR/matches_u8.rs:21:17: 21:18
-          goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:20:5: 23:6
+          goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:21:17: 21:18
       }
   
       bb3: {

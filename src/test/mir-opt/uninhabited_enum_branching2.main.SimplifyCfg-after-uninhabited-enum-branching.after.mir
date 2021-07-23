@@ -29,8 +29,8 @@ fn main() -> () {
         StorageLive(_3);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:5: 26:6
         StorageLive(_4);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:11: 21:22
         _4 = &(_1.1: Test1);             // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:11: 21:22
-        _5 = discriminant((*_4));        // scope 1 at $DIR/uninhabited_enum_branching2.rs:22:9: 22:20
-        switchInt(move _5) -> [2_isize: bb2, otherwise: bb1]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:22:9: 22:20
+        _5 = discriminant((*_4));        // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:11: 21:22
+        switchInt(move _5) -> [2_isize: bb2, otherwise: bb1]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:5: 21:22
     }
 
     bb1: {
@@ -44,7 +44,7 @@ fn main() -> () {
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [68], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1], len: Size { raw: 1 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
         _3 = &(*_8);                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:25:21: 25:24
         StorageDead(_8);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:25:23: 25:24
-        goto -> bb3;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:5: 26:6
+        goto -> bb3;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:25:23: 25:24
     }
 
     bb2: {
@@ -58,15 +58,15 @@ fn main() -> () {
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [67], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1], len: Size { raw: 1 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
         _3 = &(*_7);                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:24:21: 24:24
         StorageDead(_7);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:24:23: 24:24
-        goto -> bb3;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:5: 26:6
+        goto -> bb3;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:24:23: 24:24
     }
 
     bb3: {
         StorageDead(_4);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:26:6: 26:7
         StorageDead(_3);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:26:6: 26:7
         StorageLive(_9);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:5: 33:6
-        _10 = discriminant((_1.1: Test1)); // scope 1 at $DIR/uninhabited_enum_branching2.rs:29:9: 29:20
-        switchInt(move _10) -> [2_isize: bb5, otherwise: bb4]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:29:9: 29:20
+        _10 = discriminant((_1.1: Test1)); // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:11: 28:21
+        switchInt(move _10) -> [2_isize: bb5, otherwise: bb4]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:5: 28:21
     }
 
     bb4: {
@@ -80,7 +80,7 @@ fn main() -> () {
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [68], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1], len: Size { raw: 1 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
         _9 = &(*_13);                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:32:21: 32:24
         StorageDead(_13);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:32:23: 32:24
-        goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:5: 33:6
+        goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:32:23: 32:24
     }
 
     bb5: {
@@ -94,7 +94,7 @@ fn main() -> () {
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [67], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1], len: Size { raw: 1 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
         _9 = &(*_12);                    // scope 1 at $DIR/uninhabited_enum_branching2.rs:31:21: 31:24
         StorageDead(_12);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:31:23: 31:24
-        goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:5: 33:6
+        goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:31:23: 31:24
     }
 
     bb6: {

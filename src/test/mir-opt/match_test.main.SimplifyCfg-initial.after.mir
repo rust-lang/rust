@@ -42,7 +42,7 @@ fn main() -> () {
 
     bb3: {
         _3 = const 3_i32;                // scope 2 at $DIR/match_test.rs:16:14: 16:15
-        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:12:5: 17:6
+        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:16:14: 16:15
     }
 
     bb4: {
@@ -60,7 +60,7 @@ fn main() -> () {
     }
 
     bb7: {
-        switchInt(_1) -> [-1_i32: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
+        switchInt(_1) -> [-1_i32: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:12:5: 12:12
     }
 
     bb8: {
@@ -78,7 +78,7 @@ fn main() -> () {
         StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:23: 13:24
         FakeRead(ForMatchGuard, _8);     // scope 2 at $DIR/match_test.rs:13:18: 13:19
         _3 = const 0_i32;                // scope 2 at $DIR/match_test.rs:13:23: 13:24
-        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:12:5: 17:6
+        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:13:23: 13:24
     }
 
     bb11: {
@@ -88,12 +88,12 @@ fn main() -> () {
 
     bb12: {
         _3 = const 1_i32;                // scope 2 at $DIR/match_test.rs:14:20: 14:21
-        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:12:5: 17:6
+        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:14:20: 14:21
     }
 
     bb13: {
         _3 = const 2_i32;                // scope 2 at $DIR/match_test.rs:15:15: 15:16
-        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:12:5: 17:6
+        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:15:15: 15:16
     }
 
     bb14: {
