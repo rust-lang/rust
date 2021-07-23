@@ -3,14 +3,14 @@ use expect_test::{expect, Expect};
 
 use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
 
-fn check_with(ra_fixture: &str, expect: Expect) {
+fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{}\n{}", BASE_ITEMS_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
 #[test]
 fn record_field_ty() {
-    check_with(
+    check(
         r#"
 struct Foo<'lt, T, const C: usize> {
     f: $0
@@ -30,6 +30,7 @@ struct Foo<'lt, T, const C: usize> {
             st Foo<…>
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -38,7 +39,7 @@ struct Foo<'lt, T, const C: usize> {
 
 #[test]
 fn tuple_struct_field() {
-    check_with(
+    check(
         r#"
 struct Foo<'lt, T, const C: usize>(f$0);
 "#,
@@ -58,6 +59,7 @@ struct Foo<'lt, T, const C: usize>(f$0);
             st Foo<…>
             st Unit
             ma makro!(…)  #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…)  #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -66,7 +68,7 @@ struct Foo<'lt, T, const C: usize>(f$0);
 
 #[test]
 fn fn_return_type() {
-    check_with(
+    check(
         r#"
 fn x<'lt, T, const C: usize>() -> $0
 "#,
@@ -82,6 +84,7 @@ fn x<'lt, T, const C: usize>() -> $0
             md module
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -90,7 +93,7 @@ fn x<'lt, T, const C: usize>() -> $0
 
 #[test]
 fn body_type_pos() {
-    check_with(
+    check(
         r#"
 fn foo<'lt, T, const C: usize>() {
     let local = ();
@@ -109,11 +112,12 @@ fn foo<'lt, T, const C: usize>() {
             md module
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );
-    check_with(
+    check(
         r#"
 fn foo<'lt, T, const C: usize>() {
     let local = ();
@@ -128,13 +132,14 @@ fn foo<'lt, T, const C: usize>() {
             md module
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
         "##]],
     );
 }
 
 #[test]
 fn completes_types_and_const_in_arg_list() {
-    check_with(
+    check(
         r#"
 trait Trait2 {
     type Foo;
@@ -157,12 +162,13 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             st Unit
             ma makro!(…)          #[macro_export] macro_rules! makro
             tt Trait2
+            un Union
             ct CONST
             ma makro!(…)          #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );
-    check_with(
+    check(
         r#"
 trait Trait2 {
     type Foo;
@@ -179,7 +185,25 @@ fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             tt Trait2
+            un Union
             ct CONST
         "##]],
+    );
+}
+
+#[test]
+fn enum_qualified() {
+    check(
+        r#"
+impl Enum {
+    type AssocType = ();
+    const ASSOC_CONST: () = ();
+    fn assoc_fn() {}
+}
+fn func(_: Enum::$0) {}
+"#,
+        expect![[r#"
+            ta AssocType type AssocType = ();
+        "#]],
     );
 }

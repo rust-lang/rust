@@ -255,60 +255,6 @@ mod tests {
         expect.assert_eq(&actual);
     }
 
-    fn check_builtin(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::BuiltinType);
-        expect.assert_eq(&actual);
-    }
-
-    #[test]
-    fn dont_complete_primitive_in_use() {
-        check_builtin(r#"use self::$0;"#, expect![[""]]);
-    }
-
-    #[test]
-    fn dont_complete_primitive_in_module_scope() {
-        check_builtin(r#"fn foo() { self::$0 }"#, expect![[""]]);
-    }
-
-    #[test]
-    fn completes_enum_variant() {
-        check(
-            r#"
-enum E { Foo, Bar(i32) }
-fn foo() { let _ = E::$0 }
-"#,
-            expect![[r#"
-                ev Foo    ()
-                ev Bar(…) (i32)
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_struct_associated_items() {
-        check(
-            r#"
-//- /lib.rs
-struct S;
-
-impl S {
-    fn a() {}
-    fn b(&self) {}
-    const C: i32 = 42;
-    type T = i32;
-}
-
-fn foo() { let _ = S::$0 }
-"#,
-            expect![[r#"
-                fn a()  fn()
-                me b(…) fn(&self)
-                ct C    const C: i32 = 42;
-                ta T    type T = i32;
-            "#]],
-        );
-    }
-
     #[test]
     fn associated_item_visibility() {
         check(
@@ -332,21 +278,6 @@ fn foo() { let _ = S::$0 }
                 fn public_method() fn()
                 ct PUBLIC_CONST    pub(crate) const PUBLIC_CONST: u32 = 1;
                 ta PublicType      pub(crate) type PublicType = u32;
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_enum_associated_method() {
-        check(
-            r#"
-enum E {};
-impl E { fn m() { } }
-
-fn foo() { let _ = E::$0 }
-        "#,
-            expect![[r#"
-                fn m() fn()
             "#]],
         );
     }

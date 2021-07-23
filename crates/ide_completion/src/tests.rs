@@ -1,11 +1,12 @@
 //! Tests and test utilities for completions.
 //!
-//! Most tests live in this module or its submodules unless for very specific completions like
-//! `attributes` or `lifetimes` where the completed concept is a distinct thing.
-//! Notable examples for completions that are being tested in this module's submodule are paths.
-//! Another exception are `check_edit` tests which usually live in the completion modules themselves,
-//! as the main purpose of this test module here is to give the developer an overview of whats being
-//! completed where, not how.
+//! Most tests live in this module or its submodules. The tests in these submodules are "location"
+//! oriented, that is they try to check completions for something like type position, param position
+//! etc.
+//! Tests that are more orientated towards specific completion types like visibility checks of path
+//! completions or `check_edit` tests usually live in their respective completion modules instead.
+//! This gives this test module and its submodules here the main purpose of giving the developer an
+//! overview of whats being completed where, not how.
 
 mod attribute;
 mod expression;
@@ -55,6 +56,7 @@ macro_rules! makro {}
 #[rustc_builtin_macro]
 pub macro Clone {}
 fn function() {}
+union Union { field: i32 }
 "#;
 
 pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {

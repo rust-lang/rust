@@ -28,6 +28,7 @@ impl Tra$0
             md module
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -51,6 +52,7 @@ impl Trait for Str$0
             md module
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],

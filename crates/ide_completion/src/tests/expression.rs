@@ -70,6 +70,7 @@ impl Unit {
     }
 }
 "#,
+        // `self` is in here twice, once as the module, once as the local
         expect![[r##"
             kw unsafe
             kw fn
@@ -114,10 +115,40 @@ impl Unit {
             ?? Unresolved
             fn function()   fn()
             sc STATIC
+            un Union
             ev TupleV(…)    (u32)
             ct CONST
             ma makro!(…)    #[macro_export] macro_rules! makro
             me self.foo()   fn(self)
+        "##]],
+    );
+    check(
+        r#"
+use non_existant::Unresolved;
+mod qualified { pub enum Enum { Variant } }
+
+impl Unit {
+    fn foo<'lifetime, TypeParam, const CONST_PARAM: usize>(self) {
+        fn local_func() {}
+        self::$0
+    }
+}
+"#,
+        expect![[r##"
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Unit
+            md qualified
+            ma makro!(…)  #[macro_export] macro_rules! makro
+            ?? Unresolved
+            fn function() fn()
+            sc STATIC
+            un Union
+            ev TupleV(…)  (u32)
+            ct CONST
         "##]],
     );
 }
@@ -244,6 +275,30 @@ fn quux(x: i32) {
             lc x         i32
             fn quux(…)   fn(i32)
             ma m!(…)     macro_rules! m
+        "#]],
+    );
+}
+
+#[test]
+fn enum_qualified() {
+    check(
+        r#"
+impl Enum {
+    type AssocType = ();
+    const ASSOC_CONST: () = ();
+    fn assoc_fn() {}
+}
+fn func() {
+    Enum::$0
+}
+"#,
+        expect![[r#"
+            ev TupleV(…)   (u32)
+            ev RecordV     { field: u32 }
+            ev UnitV       ()
+            ct ASSOC_CONST const ASSOC_CONST: () = ();
+            fn assoc_fn()  fn()
+            ta AssocType   type AssocType = ();
         "#]],
     );
 }
