@@ -147,6 +147,15 @@ config_data! {
         /// also need to add the folders to Code's `files.watcherExclude`.
         files_excludeDirs: Vec<PathBuf> = "[]",
 
+        /// Enables highlighting of related references while hovering your mouse above any identifier.
+        highlightRelated_references: bool = "true",
+        /// Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
+        highlightRelated_exitPoints: bool = "true",
+        /// Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
+        highlightRelated_breakPoints: bool = "true",
+        /// Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
+        highlightRelated_yieldPoints: bool = "true",
+
         /// Use semantic tokens for strings.
         ///
         /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
@@ -261,14 +270,6 @@ config_data! {
         workspace_symbol_search_scope: WorskpaceSymbolSearchScopeDef = "\"workspace\"",
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorskpaceSymbolSearchKindDef = "\"only_types\"",
-
-        highlightRelated_references: bool = "true",
-
-        highlightRelated_exitPoints: bool = "true",
-
-        highlightRelated_breakPoints: bool = "true",
-
-        highlightRelated_yieldPoints: bool = "true",
     }
 }
 

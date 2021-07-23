@@ -208,6 +208,26 @@ These directories will be ignored by rust-analyzer. They are
 relative to the workspace root, and globs are not supported. You may
 also need to add the folders to Code's `files.watcherExclude`.
 --
+[[rust-analyzer.highlightRelated.references]]rust-analyzer.highlightRelated.references (default: `true`)::
++
+--
+Enables highlighting of related references while hovering your mouse above any identifier.
+--
+[[rust-analyzer.highlightRelated.exitPoints]]rust-analyzer.highlightRelated.exitPoints (default: `true`)::
++
+--
+Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
+--
+[[rust-analyzer.highlightRelated.breakPoints]]rust-analyzer.highlightRelated.breakPoints (default: `true`)::
++
+--
+Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
+--
+[[rust-analyzer.highlightRelated.yieldPoints]]rust-analyzer.highlightRelated.yieldPoints (default: `true`)::
++
+--
+Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
+--
 [[rust-analyzer.highlighting.strings]]rust-analyzer.highlighting.strings (default: `true`)::
 +
 --
