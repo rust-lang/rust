@@ -120,12 +120,6 @@ export class Config {
         };
     }
 
-    get checkOnSave() {
-        return {
-            command: this.get<string>("checkOnSave.command"),
-        };
-    }
-
     get cargoRunner() {
         return this.get<string | undefined>("cargoRunner");
     }
@@ -147,17 +141,6 @@ export class Config {
             engineSettings: this.get<object>("debug.engineSettings"),
             openDebugPane: this.get<boolean>("debug.openDebugPane"),
             sourceFileMap: sourceFileMap
-        };
-    }
-
-    get lens() {
-        return {
-            enable: this.get<boolean>("lens.enable"),
-            run: this.get<boolean>("lens.run"),
-            debug: this.get<boolean>("lens.debug"),
-            implementations: this.get<boolean>("lens.implementations"),
-            methodReferences: this.get<boolean>("lens.methodReferences"),
-            references: this.get<boolean>("lens.references"),
         };
     }
 
