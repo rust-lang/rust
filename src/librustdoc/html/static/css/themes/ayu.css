@@ -334,7 +334,7 @@ a.test-arrow:hover {
 	color: #999;
 }
 
-:target, :target * {
+:target, :target > * {
 	background: rgba(255, 236, 164, 0.06);
 }
 
