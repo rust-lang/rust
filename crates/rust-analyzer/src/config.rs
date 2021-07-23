@@ -11,8 +11,8 @@ use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
-    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, HoverDocFormat,
-    InlayHintsConfig, JoinLinesConfig,
+    AssistConfig, CompletionConfig, DiagnosticsConfig, HighlightRelatedConfig, HoverConfig,
+    HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
 };
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -146,6 +146,15 @@ config_data! {
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
         files_excludeDirs: Vec<PathBuf> = "[]",
+
+        /// Enables highlighting of related references while hovering your mouse above any identifier.
+        highlightRelated_references: bool = "true",
+        /// Enables highlighting of all exit points while hovering your mouse above any `return`, `?`, or return type arrow (`->`).
+        highlightRelated_exitPoints: bool = "true",
+        /// Enables highlighting of related references while hovering your mouse `break`, `loop`, `while`, or `for` keywords.
+        highlightRelated_breakPoints: bool = "true",
+        /// Enables highlighting of all break points for a loop or block context while hovering your mouse above any `async` or `await` keywords.
+        highlightRelated_yieldPoints: bool = "true",
 
         /// Use semantic tokens for strings.
         ///
@@ -851,6 +860,15 @@ impl Config {
                 .insert_replace_support?,
             false
         )
+    }
+
+    pub fn highlight_related(&self) -> HighlightRelatedConfig {
+        HighlightRelatedConfig {
+            references: self.data.highlightRelated_references,
+            break_points: self.data.highlightRelated_breakPoints,
+            exit_points: self.data.highlightRelated_exitPoints,
+            yield_points: self.data.highlightRelated_yieldPoints,
+        }
     }
 }
 

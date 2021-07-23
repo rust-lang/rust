@@ -1188,7 +1188,7 @@ pub(crate) fn handle_document_highlight(
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let line_index = snap.file_line_index(position.file_id)?;
 
-    let refs = match snap.analysis.highlight_related(position)? {
+    let refs = match snap.analysis.highlight_related(snap.config.highlight_related(), position)? {
         None => return Ok(None),
         Some(refs) => refs,
     };
