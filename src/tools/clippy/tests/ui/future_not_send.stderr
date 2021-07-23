@@ -55,11 +55,11 @@ note: captured value is not `Send`
 LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                          ^^ has type `std::rc::Rc<[u8]>` which is not `Send`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
-note: captured value is not `Send`
+note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
   --> $DIR/future_not_send.rs:20:40
    |
 LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
-   |                                        ^^^^ has type `&std::cell::Cell<usize>` which is not `Send`
+   |                                        ^^^^ has type `&std::cell::Cell<usize>` which is not `Send`, because `std::cell::Cell<usize>` is not `Sync`
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely

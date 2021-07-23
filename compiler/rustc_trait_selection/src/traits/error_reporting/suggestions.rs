@@ -1857,12 +1857,37 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
             GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
+                // `Some(ref_ty)` if `target_ty` is `&T` and `T` fails to impl `Sync`
+                let refers_to_non_sync = match target_ty.kind() {
+                    ty::Ref(_, ref_ty, _) => match self.evaluate_obligation(&obligation) {
+                        Ok(eval) if !eval.may_apply() => Some(ref_ty),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+
+                let (span_label, span_note) = match refers_to_non_sync {
+                    // if `target_ty` is `&T` and `T` fails to impl `Sync`,
+                    // include suggestions to make `T: Sync` so that `&T: Send`
+                    Some(ref_ty) => (
+                        format!(
+                            "has type `{}` which {}, because `{}` is not `Sync`",
+                            target_ty, trait_explanation, ref_ty
+                        ),
+                        format!(
+                            "captured value {} because `&` references cannot be sent unless their referent is `Sync`",
+                            trait_explanation
+                        ),
+                    ),
+                    None => (
+                        format!("has type `{}` which {}", target_ty, trait_explanation),
+                        format!("captured value {}", trait_explanation),
+                    ),
+                };
+
                 let mut span = MultiSpan::from_span(upvar_span);
-                span.push_span_label(
-                    upvar_span,
-                    format!("has type `{}` which {}", target_ty, trait_explanation),
-                );
-                err.span_note(span, &format!("captured value {}", trait_explanation));
+                span.push_span_label(upvar_span, span_label);
+                err.span_note(span, &span_note);
             }
         }
 

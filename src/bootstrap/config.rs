@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::cache::{Interned, INTERNER};
+use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::exe;
@@ -48,7 +49,7 @@ pub struct Config {
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
     pub verbose: usize,
-    pub submodules: bool,
+    pub submodules: Option<bool>,
     pub fast_submodules: bool,
     pub compiler_docs: bool,
     pub docs_minification: bool,
@@ -552,7 +553,7 @@ impl Config {
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
-        config.submodules = true;
+        config.submodules = None;
         config.fast_submodules = true;
         config.docs = true;
         config.docs_minification = true;
@@ -658,11 +659,11 @@ impl Config {
         config.npm = build.npm.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
+        config.submodules = build.submodules;
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs_minification, build.docs_minification);
         set(&mut config.docs, build.docs);
-        set(&mut config.submodules, build.submodules);
         set(&mut config.fast_submodules, build.fast_submodules);
         set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
@@ -792,8 +793,16 @@ impl Config {
 
                 // CI-built LLVM can be either dynamic or static.
                 let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
-                let link_type = t!(std::fs::read_to_string(ci_llvm.join("link-type.txt")));
-                config.llvm_link_shared = link_type == "dynamic";
+                config.llvm_link_shared = if config.dry_run {
+                    // just assume dynamic for now
+                    true
+                } else {
+                    let link_type = t!(
+                        std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                        format!("CI llvm missing: {}", ci_llvm.display())
+                    );
+                    link_type == "dynamic"
+                };
             }
 
             if config.llvm_thin_lto {
@@ -1074,6 +1083,10 @@ impl Config {
 
     pub fn llvm_enabled(&self) -> bool {
         self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+    }
+
+    pub fn submodules(&self, rust_info: &GitInfo) -> bool {
+        self.submodules.unwrap_or(rust_info.is_git())
     }
 }
 
