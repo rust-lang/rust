@@ -69,7 +69,7 @@ fn complete_fields(
             f(Either::Left(field), ty);
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
-            // FIXME: Handle visibility
+            // Tuple fields are always public (tuple struct fields are handled above).
             f(Either::Right(i), ty);
         }
     }
