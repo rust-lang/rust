@@ -1,4 +1,5 @@
 use super::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use test::{black_box, Bencher};
 
 macro_rules! assert_almost_eq {
     ($a:expr, $b:expr) => {{
@@ -188,3 +189,45 @@ fn since_epoch() {
     let hundred_twenty_years = thirty_years * 4;
     assert!(a < hundred_twenty_years);
 }
+
+macro_rules! bench_instant_threaded {
+    ($bench_name:ident, $thread_count:expr) => {
+        #[bench]
+        fn $bench_name(b: &mut Bencher) -> crate::thread::Result<()> {
+            use crate::sync::atomic::{AtomicBool, Ordering};
+            use crate::sync::Arc;
+
+            let running = Arc::new(AtomicBool::new(true));
+
+            let threads: Vec<_> = (0..$thread_count)
+                .map(|_| {
+                    let flag = Arc::clone(&running);
+                    crate::thread::spawn(move || {
+                        while flag.load(Ordering::Relaxed) {
+                            black_box(Instant::now());
+                        }
+                    })
+                })
+                .collect();
+
+            b.iter(|| {
+                let a = Instant::now();
+                let b = Instant::now();
+                assert!(b >= a);
+            });
+
+            running.store(false, Ordering::Relaxed);
+
+            for t in threads {
+                t.join()?;
+            }
+            Ok(())
+        }
+    };
+}
+
+bench_instant_threaded!(instant_contention_01_threads, 0);
+bench_instant_threaded!(instant_contention_02_threads, 1);
+bench_instant_threaded!(instant_contention_04_threads, 3);
+bench_instant_threaded!(instant_contention_08_threads, 7);
+bench_instant_threaded!(instant_contention_16_threads, 15);
