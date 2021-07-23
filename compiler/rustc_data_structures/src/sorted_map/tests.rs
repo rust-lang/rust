@@ -14,11 +14,11 @@ fn test_sorted_index_multi_map() {
     }
 
     // `get_by_key` works.
-    assert_eq!(set.get_by_key(&3).copied().collect::<Vec<_>>(), vec![0]);
-    assert!(set.get_by_key(&4).next().is_none());
+    assert_eq!(set.get_by_key(3).copied().collect::<Vec<_>>(), vec![0]);
+    assert!(set.get_by_key(4).next().is_none());
 
     // `get_by_key` returns items in insertion order.
-    let twos: Vec<_> = set.get_by_key_enumerated(&2).collect();
+    let twos: Vec<_> = set.get_by_key_enumerated(2).collect();
     let idxs: Vec<usize> = twos.iter().map(|(i, _)| *i).collect();
     let values: Vec<usize> = twos.iter().map(|(_, &v)| v).collect();
 

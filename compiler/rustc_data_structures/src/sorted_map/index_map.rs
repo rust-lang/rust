@@ -1,6 +1,5 @@
 //! A variant of `SortedMap` that preserves insertion order.
 
-use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 
@@ -76,11 +75,7 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     ///
     /// If there are multiple items that are equivalent to `key`, they will be yielded in
     /// insertion order.
-    pub fn get_by_key<Q: 'a>(&'a self, key: &Q) -> impl 'a + Iterator<Item = &'a V>
-    where
-        Q: Ord + ?Sized,
-        K: Borrow<Q>,
-    {
+    pub fn get_by_key(&'a self, key: K) -> impl 'a + Iterator<Item = &'a V> {
         self.get_by_key_enumerated(key).map(|(_, v)| v)
     }
 
@@ -89,35 +84,12 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     ///
     /// If there are multiple items that are equivalent to `key`, they will be yielded in
     /// insertion order.
-    pub fn get_by_key_enumerated<Q>(&self, key: &Q) -> impl '_ + Iterator<Item = (I, &V)>
-    where
-        Q: Ord + ?Sized,
-        K: Borrow<Q>,
-    {
-        match self.binary_search_idx(key) {
-            Err(_) => self.idxs_to_items_enumerated(&[]),
-
-            Ok(idx) => {
-                let start = self.idx_sorted_by_item_key[..idx]
-                    .partition_point(|&i| self.items[i].0.borrow() != key);
-                let end = idx
-                    + self.idx_sorted_by_item_key[idx..]
-                        .partition_point(|&i| self.items[i].0.borrow() == key);
-                self.idxs_to_items_enumerated(&self.idx_sorted_by_item_key[start..end])
-            }
-        }
-    }
-
-    fn binary_search_idx<Q>(&self, key: &Q) -> Result<usize, usize>
-    where
-        Q: Ord + ?Sized,
-        K: Borrow<Q>,
-    {
-        self.idx_sorted_by_item_key.binary_search_by(|&idx| self.items[idx].0.borrow().cmp(key))
-    }
-
-    fn idxs_to_items_enumerated(&'a self, idxs: &'a [I]) -> impl 'a + Iterator<Item = (I, &'a V)> {
-        idxs.iter().map(move |&idx| (idx, &self.items[idx].1))
+    pub fn get_by_key_enumerated(&'a self, key: K) -> impl '_ + Iterator<Item = (I, &V)> {
+        let lower_bound = self.idx_sorted_by_item_key.partition_point(|&i| self.items[i].0 < key);
+        self.idx_sorted_by_item_key[lower_bound..].iter().map_while(move |&i| {
+            let (k, v) = &self.items[i];
+            (k == &key).then_some((i, v))
+        })
     }
 }
 
