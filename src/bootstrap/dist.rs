@@ -50,12 +50,7 @@ fn should_build_extended_tool(builder: &Builder<'_>, tool: &str) -> bool {
     if !builder.config.extended {
         return false;
     }
-
-    if let Some(tools) = &builder.config.tools {
-        tools.is_empty() || tools.contains(tool)
-    } else {
-        true
-    }
+    builder.config.tools.as_ref().map_or(true, |tools| tools.contains(tool))
 }
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
