@@ -252,6 +252,10 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
 
+    fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
+        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
+    }
+
     fn read_lazy_with_meta<T: ?Sized + LazyMeta>(
         &mut self,
         meta: T::Meta,
@@ -322,10 +326,6 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
         self.opaque = old_opaque;
         self.lazy_state = old_state;
         r
-    }
-
-    fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
     }
 
     fn decode_alloc_id(&mut self) -> Result<rustc_middle::mir::interpret::AllocId, Self::Error> {
