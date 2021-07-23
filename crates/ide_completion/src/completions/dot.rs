@@ -215,6 +215,23 @@ fn foo(a: lib::m::A) { a.$0 }
 
         check(
             r#"
+//- /lib.rs crate:lib new_source_root:library
+pub mod m {
+    pub struct A(
+        i32,
+        pub f64,
+    );
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::m::A) { a.$0 }
+"#,
+            expect![[r#"
+                fd 1 f64
+            "#]],
+        );
+
+        check(
+            r#"
 //- /lib.rs crate:lib new_source_root:local
 pub struct A {}
 mod m {
@@ -405,7 +422,24 @@ fn foo() {
                 fd 0 i32
                 fd 1 f64
             "#]],
-        )
+        );
+    }
+
+    #[test]
+    fn test_tuple_struct_field_completion() {
+        check(
+            r#"
+struct S(i32, f64);
+fn foo() {
+   let b = S(0, 3.14);
+   b.$0
+}
+"#,
+            expect![[r#"
+                fd 0 i32
+                fd 1 f64
+            "#]],
+        );
     }
 
     #[test]
