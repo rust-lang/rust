@@ -292,10 +292,10 @@ impl Attrs {
     }
 
     pub fn has_doc_hidden(&self) -> bool {
-        self.by_key("doc").tt_values().find(|tt| {
+        self.by_key("doc").tt_values().any(|tt| {
             tt.delimiter_kind() == Some(DelimiterKind::Parenthesis) &&
                 matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "hidden")
-        }).is_some()
+        })
     }
 }
 

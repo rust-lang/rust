@@ -231,7 +231,7 @@ impl A {
             expect![[r#"
                 fd pub_field    u32
                 me pub_method() fn(&self)
-            "#]]
+            "#]],
         )
     }
 
