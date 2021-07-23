@@ -3,7 +3,6 @@ if_chain! {
     if let Some(ref init) = local.init;
     if let ExprKind::If(ref cond, ref then, Some(ref else_)) = init.kind;
     if let ExprKind::Block(ref block) = else_.kind;
-    if let Some(trailing_expr) = &block.expr;
     if block.stmts.len() == 1;
     if let StmtKind::Semi(ref e, _) = block.stmts[0].kind
     if let ExprKind::Binary(ref op, ref left, ref right) = e.kind;
@@ -15,7 +14,6 @@ if_chain! {
     if let ExprKind::Lit(ref lit2) = cond.kind;
     if let LitKind::Bool(true) = lit2.node;
     if let ExprKind::Block(ref block1) = then.kind;
-    if let Some(trailing_expr1) = &block1.expr;
     if block1.stmts.len() == 1;
     if let StmtKind::Semi(ref e1, _) = block1.stmts[0].kind
     if let ExprKind::Binary(ref op1, ref left1, ref right1) = e1.kind;
