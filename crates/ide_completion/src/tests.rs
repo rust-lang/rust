@@ -8,6 +8,7 @@
 //! completed where, not how.
 
 mod attribute;
+mod expression;
 mod fn_param;
 mod item_list;
 mod item;

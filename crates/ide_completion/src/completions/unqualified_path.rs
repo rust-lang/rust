@@ -87,7 +87,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) =
             res
         {
-            cov_mark::hit!(skip_lifetime_completion);
+            cov_mark::hit!(unqualified_skip_lifetime_completion);
             return;
         }
         let add_resolution = match res {
@@ -155,51 +155,6 @@ fn main() {
         )
     }
 
-    #[test]
-    fn completes_generic_params() {
-        check(
-            r#"fn quux<T>() { $0 }"#,
-            expect![[r#"
-                tp T
-                fn quux() fn()
-            "#]],
-        );
-        check(
-            r#"fn quux<const C: usize>() { $0 }"#,
-            expect![[r#"
-                cp C
-                fn quux() fn()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn does_not_complete_lifetimes() {
-        cov_mark::check!(skip_lifetime_completion);
-        check(
-            r#"fn quux<'a>() { $0 }"#,
-            expect![[r#"
-                fn quux() fn()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_module_items() {
-        check(
-            r#"
-struct S;
-enum E {}
-fn quux() { $0 }
-"#,
-            expect![[r#"
-                st S
-                fn quux() fn()
-                en E
-            "#]],
-        );
-    }
-
     /// Regression test for issue #6091.
     #[test]
     fn correctly_completes_module_items_prefixed_with_underscore() {
@@ -218,55 +173,6 @@ fn main() {
 fn _alpha() {}
 "#,
         )
-    }
-
-    #[test]
-    fn completes_module_items_in_nested_modules() {
-        check(
-            r#"
-struct Foo;
-mod m {
-    struct Bar;
-    fn quux() { $0 }
-}
-"#,
-            expect![[r#"
-                fn quux() fn()
-                st Bar
-            "#]],
-        );
-    }
-
-    #[test]
-    fn dont_show_both_completions_for_shadowing() {
-        check(
-            r#"
-fn foo() {
-    let bar = 92;
-    {
-        let bar = 62;
-        drop($0)
-    }
-}
-"#,
-            // FIXME: should be only one bar here
-            expect![[r#"
-                lc bar   i32
-                lc bar   i32
-                fn foo() fn()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_self_in_methods() {
-        check(
-            r#"impl S { fn foo(&self) { $0 } }"#,
-            expect![[r#"
-                lc self &{unknown}
-                sp Self
-            "#]],
-        );
     }
 
     #[test]
@@ -319,32 +225,6 @@ mod macros {
     }
 
     #[test]
-    fn does_not_complete_non_fn_macros() {
-        check(
-            r#"
-#[rustc_builtin_macro]
-pub macro Clone {}
-
-fn f() {$0}
-"#,
-            expect![[r#"
-                fn f() fn()
-            "#]],
-        );
-        check(
-            r#"
-#[rustc_builtin_macro]
-pub macro bench {}
-
-fn f() {$0}
-"#,
-            expect![[r#"
-                fn f() fn()
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_std_prelude_if_core_is_defined() {
         check(
             r#"
@@ -371,184 +251,5 @@ pub mod prelude {
                 st String
             "#]],
         );
-    }
-
-    #[test]
-    fn completes_macros_as_value() {
-        check(
-            r#"
-macro_rules! foo { () => {} }
-
-#[macro_use]
-mod m1 {
-    macro_rules! bar { () => {} }
-}
-
-mod m2 {
-    macro_rules! nope { () => {} }
-
-    #[macro_export]
-    macro_rules! baz { () => {} }
-}
-
-fn main() { let v = $0 }
-"#,
-            expect![[r##"
-                md m1
-                ma baz!(…) #[macro_export] macro_rules! baz
-                fn main()  fn()
-                md m2
-                ma bar!(…) macro_rules! bar
-                ma foo!(…) macro_rules! foo
-            "##]],
-        );
-    }
-
-    #[test]
-    fn completes_both_macro_and_value() {
-        check(
-            r#"
-macro_rules! foo { () => {} }
-fn foo() { $0 }
-"#,
-            expect![[r#"
-                fn foo()   fn()
-                ma foo!(…) macro_rules! foo
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_macros_as_stmt() {
-        check(
-            r#"
-macro_rules! foo { () => {} }
-fn main() { $0 }
-"#,
-            expect![[r#"
-                fn main()  fn()
-                ma foo!(…) macro_rules! foo
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_local_item() {
-        check(
-            r#"
-fn main() {
-    return f$0;
-    fn frobnicate() {}
-}
-"#,
-            expect![[r#"
-                fn frobnicate() fn()
-                fn main()       fn()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_in_simple_macro_1() {
-        check(
-            r#"
-macro_rules! m { ($e:expr) => { $e } }
-fn quux(x: i32) {
-    let y = 92;
-    m!($0);
-}
-"#,
-            expect![[r#"
-                lc y       i32
-                lc x       i32
-                fn quux(…) fn(i32)
-                ma m!(…)   macro_rules! m
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_in_simple_macro_2() {
-        check(
-            r"
-macro_rules! m { ($e:expr) => { $e } }
-fn quux(x: i32) {
-    let y = 92;
-    m!(x$0);
-}
-",
-            expect![[r#"
-                lc y       i32
-                lc x       i32
-                fn quux(…) fn(i32)
-                ma m!(…)   macro_rules! m
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_in_simple_macro_without_closing_parens() {
-        check(
-            r#"
-macro_rules! m { ($e:expr) => { $e } }
-fn quux(x: i32) {
-    let y = 92;
-    m!(x$0
-}
-"#,
-            expect![[r#"
-                lc y       i32
-                lc x       i32
-                fn quux(…) fn(i32)
-                ma m!(…)   macro_rules! m
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_unresolved_uses() {
-        check(
-            r#"
-use spam::Quux;
-
-fn main() { $0 }
-"#,
-            expect![[r#"
-                fn main() fn()
-                ?? Quux
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_enum_variant_basic_expr() {
-        check(
-            r#"
-enum Foo { Bar, Baz, Quux }
-fn main() { let foo: Foo = Q$0 }
-"#,
-            expect![[r#"
-                ev Foo::Bar  ()
-                ev Foo::Baz  ()
-                ev Foo::Quux ()
-                en Foo
-                fn main()    fn()
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_enum_variant_from_module() {
-        check(
-            r#"
-mod m { pub enum E { V } }
-fn f() -> m::E { V$0 }
-"#,
-            expect![[r#"
-                ev m::E::V ()
-                md m
-                fn f()     fn() -> E
-            "#]],
-        )
     }
 }

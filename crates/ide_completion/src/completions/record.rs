@@ -47,7 +47,6 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 
 #[cfg(test)]
 mod tests {
-
     use crate::tests::check_edit;
 
     #[test]

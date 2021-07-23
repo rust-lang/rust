@@ -86,26 +86,3 @@ fn ${1:feature}() {
     let item = snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}");
     item.add_to(acc);
 }
-
-#[cfg(test)]
-mod tests {
-    use expect_test::{expect, Expect};
-
-    use crate::{tests::filtered_completion_list, CompletionKind};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Snippet);
-        expect.assert_eq(&actual)
-    }
-
-    #[test]
-    fn completes_snippets_in_expressions() {
-        check(
-            r#"fn foo(x: i32) { $0 }"#,
-            expect![[r#"
-                sn pd
-                sn ppd
-            "#]],
-        );
-    }
-}
