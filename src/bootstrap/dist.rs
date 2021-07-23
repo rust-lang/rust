@@ -59,7 +59,7 @@ pub struct Docs {
 }
 
 impl Step for Docs {
-    type Output = GeneratedTarball;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -72,7 +72,7 @@ impl Step for Docs {
     }
 
     /// Builds the `rust-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
         builder.default_doc(&[]);
 
@@ -82,7 +82,7 @@ impl Step for Docs {
         tarball.set_product_name("Rust Documentation");
         tarball.add_bulk_dir(&builder.doc_out(host), dest);
         tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
-        tarball.generate()
+        Some(tarball.generate())
     }
 }
 
@@ -1359,13 +1359,11 @@ impl Step for Extended {
 
         let mut tarballs = Vec::new();
         let mut built_tools = HashSet::new();
-        macro_rules! add_tool {
+        macro_rules! add_component {
             ($name:expr => $step:expr) => {
-                if should_build_extended_tool(builder, $name) {
-                    if let Some(tarball) = builder.ensure($step) {
-                        tarballs.push(tarball);
-                        built_tools.insert($name);
-                    }
+                if let Some(tarball) = builder.ensure_if_default($step) {
+                    tarballs.push(tarball);
+                    built_tools.insert($name);
                 }
             };
         }
@@ -1377,31 +1375,20 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
-        if builder.config.docs {
-            tarballs.push(builder.ensure(Docs { host: target }));
-        }
-
         if target.contains("windows-gnu") {
             tarballs.push(builder.ensure(Mingw { host: target }).expect("missing mingw"));
         }
 
-        if builder.config.profiler_enabled(target)
-            || should_build_extended_tool(builder, "rust-demangler")
-        {
-            if let Some(tarball) = builder.ensure(RustDemangler { compiler, target }) {
-                tarballs.push(tarball);
-                built_tools.insert("rust-demangler");
-            }
-        }
-
-        add_tool!("cargo" => Cargo { compiler, target });
-        add_tool!("rustfmt" => Rustfmt { compiler, target });
-        add_tool!("rls" => Rls { compiler, target });
-        add_tool!("rust-analyzer" => RustAnalyzer { compiler, target });
-        add_tool!("llvm-tools" => LlvmTools { target });
-        add_tool!("clippy" => Clippy { compiler, target });
-        add_tool!("miri" => Miri { compiler, target });
-        add_tool!("analysis" => Analysis { compiler, target });
+        add_component!("rust-docs" => Docs { host: target });
+        add_component!("rust-demangler"=> RustDemangler { compiler, target });
+        add_component!("cargo" => Cargo { compiler, target });
+        add_component!("rustfmt" => Rustfmt { compiler, target });
+        add_component!("rls" => Rls { compiler, target });
+        add_component!("rust-analyzer" => RustAnalyzer { compiler, target });
+        add_component!("llvm-components" => LlvmTools { target });
+        add_component!("clippy" => Clippy { compiler, target });
+        add_component!("miri" => Miri { compiler, target });
+        add_component!("analysis" => Analysis { compiler, target });
 
         let etc = builder.src.join("src/etc/installer");
 
