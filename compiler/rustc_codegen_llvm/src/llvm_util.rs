@@ -221,7 +221,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         supported_target_features(sess)
             .iter()
             .filter_map(|&(feature, gate)| {
-                if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
+                if sess.is_nightly_build() || gate.is_none() {
+                    Some(feature)
+                } else {
+                    None
+                }
             })
             .filter(|feature| {
                 for llvm_feature in to_llvm_feature(sess, feature) {
@@ -428,20 +432,15 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
     }
 
     let filter = |s: &str| {
-        if s.is_empty() {
-            return vec![];
-        }
-        let feature = strip(s);
-        if feature == s {
-            return vec![s.to_string()];
-        }
-
-        // Rustc-specific feature requests like `+crt-static` or `-crt-static`
-        // are not passed down to LLVM.
-        if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-            return vec![];
-        }
-        // ... otherwise though we run through `to_llvm_feature` feature when
+        // features must start with a `+` or `-`.
+        let feature = match s.strip_prefix(&['+', '-'][..]) {
+            None => return vec![],
+            // Rustc-specific feature requests like `+crt-static` or `-crt-static`
+            // are not passed down to LLVM.
+            Some(feature) if RUSTC_SPECIFIC_FEATURES.contains(&feature) => return vec![],
+            Some(feature) => feature,
+        };
+        // ... otherwise though we run through `to_llvm_feature` when
         // passing requests down to LLVM. This means that all in-language
         // features also work on the command line instead of having two
         // different names when the LLVM name and the Rust name differ.
@@ -458,11 +457,11 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
         check_tied_features(sess, &feats.iter().map(|f| (strip(f), !f.starts_with("-"))).collect())
     {
         sess.err(&format!(
-            "Target features {} must all be enabled or disabled together",
+            "target features {} must all be enabled or disabled together",
             f.join(", ")
         ));
     }
-    features.extend(feats.iter().flat_map(|&f| filter(f)));
+    features.extend(feats.iter().flat_map(&filter));
     features
 }
 
