@@ -4,7 +4,7 @@ Version 1.54.0 (2021-07-29)
 Language
 -----------------------
 
-- [You can now use macros for values in key-value attributes.][83366]
+- [You can now use macros for values in built-in attribute macros.][83366]
   While a seemingly minor addition on its own, this enables a lot of
   powerful functionality when combined correctly. Most notably you can
   now include external documentation in your crate by writing the following.
