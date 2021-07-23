@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/wf-in-obj-type-trait.rs:11:8
+  --> $DIR/wf-in-obj-type-trait.rs:11:19
    |
 LL | struct MustBeCopy<T:Copy> {
    |                     ---- required by this bound in `MustBeCopy`
 ...
 LL |     x: dyn Object<MustBeCopy<T>>
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |                   ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
