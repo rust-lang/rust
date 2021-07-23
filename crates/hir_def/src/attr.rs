@@ -12,7 +12,7 @@ use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use mbe::ast_to_token_tree;
+use mbe::{ast_to_token_tree, DelimiterKind};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -289,6 +289,13 @@ impl Attrs {
         } else {
             Some(Documentation(buf))
         }
+    }
+
+    pub fn has_doc_hidden(&self) -> bool {
+        self.by_key("doc").tt_values().find(|tt| {
+            tt.delimiter_kind() == Some(DelimiterKind::Parenthesis) &&
+                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "hidden")
+        }).is_some()
     }
 }
 

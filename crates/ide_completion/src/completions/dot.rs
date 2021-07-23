@@ -1,7 +1,7 @@
 //! Completes references after dot (fields and method calls).
 
 use either::Either;
-use hir::{HasVisibility, ScopeDef};
+use hir::ScopeDef;
 use rustc_hash::FxHashSet;
 
 use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
@@ -63,9 +63,7 @@ fn complete_fields(
 ) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
-            if ctx.scope.module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
-                // Skip private field. FIXME: If the definition location of the
-                // field is editable, we should show the completion
+            if !ctx.is_visible(&field) {
                 continue;
             }
             f(Either::Left(field), ty);
@@ -87,7 +85,7 @@ fn complete_methods(
         let traits_in_scope = ctx.scope.traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
             if func.self_param(ctx.db).is_some()
-                && ctx.scope.module().map_or(true, |m| func.is_visible_from(ctx.db, m))
+                && ctx.is_visible(&func)
                 && seen_methods.insert(func.name(ctx.db))
             {
                 f(func);
@@ -208,6 +206,33 @@ fn foo(a: A) { a.$0 }
                 me the_method() fn(&self)
             "#]],
         );
+    }
+
+    #[test]
+    fn test_doc_hidden_filtering() {
+        check(
+            r#"
+//- /lib.rs crate:lib deps:dep
+fn foo(a: dep::A) { a.$0 }
+//- /dep.rs crate:dep
+pub struct A {
+    #[doc(hidden)]
+    pub hidden_field: u32,
+    pub pub_field: u32,
+}
+
+impl A {
+    pub fn pub_method(&self) {}
+
+    #[doc(hidden)]
+    pub fn hidden_method(&self) {}
+}
+            "#,
+            expect![[r#"
+                fd pub_field    u32
+                me pub_method() fn(&self)
+            "#]]
+        )
     }
 
     #[test]

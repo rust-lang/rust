@@ -2744,3 +2744,32 @@ pub trait HasVisibility {
         vis.is_visible_from(db.upcast(), module.id)
     }
 }
+
+/// Trait for obtaining the defining crate of an item.
+pub trait HasCrate {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate;
+}
+
+impl<T: hir_def::HasModule> HasCrate for T {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db.upcast()).krate().into()
+    }
+}
+
+impl HasCrate for AssocItem {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
+impl HasCrate for Field {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.parent_def(db).module(db).krate()
+    }
+}
+
+impl HasCrate for Function {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}

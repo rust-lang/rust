@@ -2,7 +2,6 @@
 
 use std::iter;
 
-use hir::HasVisibility;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -120,6 +119,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     _ => true,
                 };
 
+                // FIXME: respect #[doc(hidden)] (see `CompletionContext::is_visible`)
                 if add_resolution {
                     acc.add_resolution(ctx, name, &def);
                 }
@@ -163,7 +163,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             if let Some(krate) = krate {
                 let traits_in_scope = ctx.scope.traits_in_scope();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
-                    if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                    if !ctx.is_visible(&item) {
                         return None;
                     }
                     add_assoc_item(acc, ctx, item);
@@ -172,7 +172,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
                 // Iterate assoc types separately
                 ty.iterate_assoc_items(ctx.db, krate, |item| {
-                    if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                    if !ctx.is_visible(&item) {
                         return None;
                     }
                     if let hir::AssocItem::TypeAlias(ty) = item {
@@ -185,7 +185,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         hir::PathResolution::Def(hir::ModuleDef::Trait(t)) => {
             // Handles `Trait::assoc` as well as `<Ty as Trait>::assoc`.
             for item in t.items(ctx.db) {
-                if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                if !ctx.is_visible(&item) {
                     continue;
                 }
                 add_assoc_item(acc, ctx, item);
@@ -206,7 +206,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 let traits_in_scope = ctx.scope.traits_in_scope();
                 let mut seen = FxHashSet::default();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
-                    if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                    if !ctx.is_visible(&item) {
                         return None;
                     }
 
