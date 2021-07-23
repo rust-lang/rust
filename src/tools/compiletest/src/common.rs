@@ -1,5 +1,6 @@
 pub use self::Mode::*;
 
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -274,6 +275,10 @@ pub struct Config {
     /// What panic strategy the target is built with.  Unwind supports Abort, but
     /// not vice versa.
     pub target_panic: PanicStrategy,
+
+    /// A map from target cfg keys to their values. If the key is present with no value,
+    /// the vector will contain the empty string.
+    pub target_cfg: HashMap<String, Vec<String>>,
 
     /// Target system to be tested
     pub target: String,

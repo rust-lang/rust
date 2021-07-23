@@ -1,4 +1,6 @@
 use crate::common::Config;
+
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
@@ -212,6 +214,55 @@ pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
     if config.verbose {
         println!("{}", s);
+    }
+}
+
+/// Parses the output of `rustc --print cfg` into a [`HashMap`] containing
+/// the cfg values for each name. If the name is present with no value,
+/// it is treated as having a value of "".
+pub fn parse_rustc_cfg(rustc_output: String) -> HashMap<String, Vec<String>> {
+    let mut map = HashMap::new();
+
+    for line in rustc_output.lines() {
+        if let Some((name, value)) = line.split_once('=') {
+            let normalized_value = value.trim_matches('"');
+            cfg_add(&mut map, name, normalized_value);
+        } else {
+            cfg_add(&mut map, line, "");
+        }
+    }
+
+    return map;
+}
+
+/// Adds the given name and value to the provided cfg [`HashMap`]. If the `name` already
+/// points to a vector, this adds `value` to the vector. If `name` does not point
+/// to a vector, this adds a new vector containing only `value` to the [`HashMap`].
+fn cfg_add(map: &mut HashMap<String, Vec<String>>, name: &str, value: &str) {
+    let name = name.to_string();
+    let value = value.to_string();
+
+    if let Some(values) = map.get_mut(&name) {
+        values.push(value.to_string());
+    } else {
+        map.insert(name, vec![value.to_string()]);
+    }
+}
+
+/// Checks if the cfg HashMap has the given `name`. If the `required_value` is
+/// `Some(value)`, this will only return `true` if `name` is associated with `value`.
+pub fn cfg_has(
+    map: &HashMap<String, Vec<String>>,
+    name: &str,
+    required_value: Option<&str>,
+) -> bool {
+    let name = name.replace("-", "_");
+    let required_value = required_value.map(str::trim).map(str::to_string);
+
+    match (map.get(&name), required_value) {
+        (None, _) => false,
+        (Some(_), None) => true,
+        (Some(values), Some(required_value)) => values.contains(&required_value),
     }
 }
 

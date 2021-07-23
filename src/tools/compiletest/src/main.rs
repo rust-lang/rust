@@ -11,6 +11,7 @@ use crate::common::{
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -201,6 +202,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let llvm_version =
         matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
 
+    let rustc_path = opt_path(matches, "rustc-path");
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
@@ -214,11 +216,24 @@ pub fn parse_config(args: Vec<String>) -> Config {
         // Avoid spawning an external command when we know tidy won't be used.
         false
     };
+
+    let target_cfg = if cfg!(test) {
+        HashMap::new()
+    } else {
+        let rustc_cfg_data = Command::new(&rustc_path)
+            .args(&["--target", &target])
+            .args(&["--print", "cfg"])
+            .output()
+            .unwrap()
+            .stdout;
+        util::parse_rustc_cfg(String::from_utf8(rustc_cfg_data).unwrap())
+    };
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
-        rustc_path: opt_path(matches, "rustc-path"),
+        rustc_path: rustc_path,
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         lldb_python: matches.opt_str("lldb-python").unwrap(),
@@ -257,6 +272,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             Some("abort") => PanicStrategy::Abort,
             _ => panic!("unknown `--target-panic` option `{}` given", mode),
         },
+        target_cfg,
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,

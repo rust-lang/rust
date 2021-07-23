@@ -5,6 +5,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
+use lazy_static::lazy_static;
+use regex::Regex;
 use tracing::*;
 
 use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PanicStrategy, PassMode};
@@ -669,6 +671,32 @@ impl Config {
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
     /// or `normalize-stderr-32bit`.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
+        // This matches optional whitespace, followed by a group containing a series of word
+        // characters (including '_' and '-'), followed optionally by a sequence consisting
+        // of a colon, optional whitespace, and another group containing word characters.
+        //
+        // Matches in full:
+        //   cfg-target-has-atomic: 128
+        //   cfg-target-has-atomic:128
+        //   cfg-target-has-atomic
+        //
+        // Matches up to the first space (exclusive):
+        //   ignore-test - This test really shouldn't ever be run
+        //
+        // Matches up to the second space (exclusive):
+        //   cfg-target-has-atomic: 128 - this requires fancy newfangled atomics
+        //
+        // Matches up to the second colon (exclusive)
+        //   cfg-target-has-atomic:128: I put an extra colon here to confuse other programmers!
+        //
+        // Does not match:
+        //   (a line consisting solely of whitespace)
+        //   &*#$ cfg-target-has-atomic
+        //
+        lazy_static! {
+            static ref CFG_REGEX: Regex = Regex::new(r"^\s*([\w-]+)(?::\s*([\w-]+))?").unwrap();
+        }
+
         if !line.as_bytes().starts_with(prefix.as_bytes()) {
             return ParsedNameDirective::NoMatch;
         }
@@ -676,7 +704,9 @@ impl Config {
             return ParsedNameDirective::NoMatch;
         }
 
-        let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
+        let captures = CFG_REGEX.captures(&line[&prefix.len() + 1..]).unwrap();
+        let name = captures.get(1).unwrap().as_str();
+        let maybe_value = captures.get(2).map(|v| v.as_str().trim());
 
         let is_match = name == "test" ||
             self.target == name ||                              // triple
@@ -704,6 +734,10 @@ impl Config {
                 Some(Debugger::Gdb) => name == "gdb",
                 Some(Debugger::Lldb) => name == "lldb",
                 None => false,
+            } ||
+            match name.strip_prefix("cfg-") {
+                Some(rustc_cfg_name) => util::cfg_has(&self.target_cfg, rustc_cfg_name, maybe_value),
+                None => false
             };
 
         if is_match { ParsedNameDirective::Match } else { ParsedNameDirective::NoMatch }
