@@ -22,7 +22,7 @@ Language
 - [You can now use multiple generic lifetimes with `impl Trait` where the
    lifetimes don't explicitly outlive another.][84701] In code this means
    that you can now have `impl Trait<'a, 'b>` where as before you could
-   only have `impl Trait<'a, 'b: 'a>`.
+   only have `impl Trait<'a, 'b> where 'b: 'a`.
 
 Compiler
 -----------------------
