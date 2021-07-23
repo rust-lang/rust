@@ -2078,7 +2078,7 @@ pub trait Iterator {
     /// to produce a single value from it.
     ///
     /// Note: `fold()`, and similar methods that traverse the entire iterator,
-    /// may not terminate for infinite iterators, even on traits for which a
+    /// might not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
     ///
     /// Note: [`reduce()`] can be used to use the first element as the initial

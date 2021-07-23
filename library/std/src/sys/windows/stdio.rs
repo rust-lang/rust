@@ -169,7 +169,7 @@ impl io::Read for Stdin {
 
 // We assume that if the last `u16` is an unpaired surrogate they got sliced apart by our
 // buffer size, and keep it around for the next read hoping to put them together.
-// This is a best effort, and may not work if we are not the only reader on Stdin.
+// This is a best effort, and might not work if we are not the only reader on Stdin.
 fn read_u16s_fixup_surrogates(
     handle: c::HANDLE,
     buf: &mut [u16],

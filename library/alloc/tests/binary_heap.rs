@@ -408,7 +408,7 @@ fn test_retain() {
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,
-// even if the order may not be correct.
+// even if the order might not be correct.
 //
 // Destructors must be called exactly once per element.
 // FIXME: re-enable emscripten once it can unwind again

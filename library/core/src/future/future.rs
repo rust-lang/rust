@@ -7,7 +7,7 @@ use crate::task::{Context, Poll};
 
 /// A future represents an asynchronous computation.
 ///
-/// A future is a value that may not have finished computing yet. This kind of
+/// A future is a value that might not have finished computing yet. This kind of
 /// "asynchronous value" makes it possible for a thread to continue doing useful
 /// work while it waits for the value to become available.
 ///

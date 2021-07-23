@@ -386,7 +386,7 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
             //
             // Note that panics should be impossible beyond this point, but
             // this is defensively trying to avoid any accidental panicking
-            // reaching the `extern "C"` (which should `abort` but may not
+            // reaching the `extern "C"` (which should `abort` but might not
             // at the moment, so this is also potentially preventing UB).
             b.clear();
             Ok::<_, ()>(output).encode(&mut b, &mut ());

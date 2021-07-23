@@ -83,7 +83,7 @@ pub trait CommandExt: Sealed {
     ///
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
-    /// locations may not appear where intended.
+    /// locations might not appear where intended.
     ///
     /// [POSIX fork() specification]:
     ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html

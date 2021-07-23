@@ -250,7 +250,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
     /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
@@ -419,7 +419,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`guaranteed_ne`]: #method.guaranteed_ne
     ///
-    /// The return value may change depending on the compiler version and unsafe code may not
+    /// The return value may change depending on the compiler version and unsafe code might not
     /// rely on the result of this function for soundness. It is suggested to only use this function
     /// for performance optimizations where spurious `false` return values by this function do not
     /// affect the outcome, but just the performance.
@@ -450,7 +450,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`guaranteed_eq`]: #method.guaranteed_eq
     ///
-    /// The return value may change depending on the compiler version and unsafe code may not
+    /// The return value may change depending on the compiler version and unsafe code might not
     /// rely on the result of this function for soundness. It is suggested to only use this function
     /// for performance optimizations where spurious `false` return values by this function do not
     /// affect the outcome, but just the performance.
@@ -696,7 +696,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
     /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
@@ -758,7 +758,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
     /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`

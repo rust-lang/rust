@@ -824,7 +824,7 @@ fn symlink_noexist() {
     };
 
     // Use a relative path for testing. Symlinks get normalized by Windows,
-    // so we may not get the same path back for absolute paths
+    // so we might not get the same path back for absolute paths
     check!(symlink_file(&"foo", &tmpdir.join("bar")));
     assert_eq!(check!(fs::read_link(&tmpdir.join("bar"))).to_str().unwrap(), "foo");
 }
