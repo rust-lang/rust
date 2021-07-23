@@ -62,8 +62,7 @@ pub struct PrivStruct {
 }
 
 // @has 'toggle_item_contents/enum.Enum.html'
-// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 2 fields'
+// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]'
 pub enum Enum {
     A, B, C,
     D {
@@ -73,8 +72,7 @@ pub enum Enum {
 }
 
 // @has 'toggle_item_contents/enum.EnumStructVariant.html'
-// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 1 field'
+// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]'
 pub enum EnumStructVariant {
     A, B, C,
     D {

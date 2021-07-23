@@ -1029,14 +1029,12 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
             use crate::clean::Variant;
             if let clean::VariantItem(Variant::Struct(ref s)) = *variant.kind {
-                let count_fields = s.fields.len();
-                toggle_open(w, format_args!("{} field{}", count_fields, pluralize(count_fields)));
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
                     variant.name.as_ref().unwrap()
                 ));
-                write!(w, "<div class=\"autohide sub-variant\" id=\"{id}\">", id = variant_id);
+                write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(
                     w,
                     "<h3>Fields of <b>{name}</b></h3><div>",
@@ -1064,7 +1062,6 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     }
                 }
                 w.write_str("</div></div>");
-                toggle_close(w);
             }
         }
     }
