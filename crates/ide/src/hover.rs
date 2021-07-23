@@ -3780,4 +3780,63 @@ struct Foo;
             "#]],
         )
     }
+
+    #[test]
+    fn hover_rename() {
+        check(
+            r#"
+use self as foo$0;
+            "#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                extern crate test
+                ```
+            "#]],
+        );
+        check(
+            r#"
+mod bar {}
+use bar::{self as foo$0};
+            "#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                mod bar
+                ```
+            "#]],
+        );
+        check(
+            r#"
+mod bar {
+    use super as foo$0;
+}
+            "#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                extern crate test
+                ```
+            "#]],
+        );
+        check(
+            r#"
+use crate as foo$0;
+            "#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                extern crate test
+                ```
+            "#]],
+        );
+    }
 }

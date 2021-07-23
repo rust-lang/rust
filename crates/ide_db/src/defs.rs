@@ -10,8 +10,8 @@ use hir::{
     PathResolution, Semantics, Visibility,
 };
 use syntax::{
-    ast::{self, AstNode, PathSegmentKind},
-    match_ast, SyntaxKind, SyntaxNode,
+    ast::{self, AstNode},
+    match_ast, SyntaxKind,
 };
 
 use crate::RootDatabase;
@@ -134,29 +134,23 @@ impl NameClass {
                     if let Some(use_tree) = it.syntax().parent().and_then(ast::UseTree::cast) {
                         let path = use_tree.path()?;
                         let path_segment = path.segment()?;
-                        let name_ref_class = path_segment
-                            .kind()
-                            .and_then(|kind| {
-                                match kind {
-                                    // The rename might be from a `self` token, so fallback to the name higher
-                                    // in the use tree.
-                                    PathSegmentKind::SelfKw => {
-                                        let use_tree = use_tree
-                                            .syntax()
-                                            .parent()
-                                            .as_ref()
-                                            // Skip over UseTreeList
-                                            .and_then(SyntaxNode::parent)
-                                            .and_then(ast::UseTree::cast)?;
-                                        let path = use_tree.path()?;
-                                        let path_segment = path.segment()?;
-                                        path_segment.name_ref()
-                                    },
-                                    PathSegmentKind::Name(name_ref) => Some(name_ref),
-                                    _ => None,
-                                }
-                            })
-                            .and_then(|name_ref| NameRefClass::classify(sema, &name_ref))?;
+                        let name_ref = path_segment.name_ref()?;
+                        let name_ref = if name_ref.self_token().is_some() {
+                             use_tree
+                                .syntax()
+                                .parent()
+                                .as_ref()
+                                // Skip over UseTreeList
+                                .and_then(|it| {
+                                    let use_tree = it.parent().and_then(ast::UseTree::cast)?;
+                                    let path = use_tree.path()?;
+                                    let path_segment = path.segment()?;
+                                    path_segment.name_ref()
+                                }).unwrap_or(name_ref)
+                        } else {
+                            name_ref
+                        };
+                        let name_ref_class = NameRefClass::classify(sema, &name_ref)?;
 
                         Some(NameClass::Definition(match name_ref_class {
                             NameRefClass::Definition(def) => def,
