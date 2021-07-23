@@ -1,7 +1,7 @@
 //! Completion tests for pattern position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_FIXTURE};
+use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(ra_fixture);
@@ -9,7 +9,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 fn check_with(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}\n{}", BASE_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{}\n{}", BASE_ITEMS_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 

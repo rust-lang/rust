@@ -136,61 +136,6 @@ mod tests {
     }
 
     #[test]
-    fn completes_bindings_from_let() {
-        check(
-            r#"
-fn quux(x: i32) {
-    let y = 92;
-    1 + $0;
-    let z = ();
-}
-"#,
-            expect![[r#"
-                lc y       i32
-                lc x       i32
-                fn quux(…) fn(i32)
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_bindings_from_if_let() {
-        check(
-            r#"
-fn quux() {
-    if let Some(x) = foo() {
-        let y = 92;
-    };
-    if let Some(a) = bar() {
-        let b = 62;
-        1 + $0
-    }
-}
-"#,
-            expect![[r#"
-                lc b      i32
-                lc a
-                fn quux() fn()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_bindings_from_for() {
-        check(
-            r#"
-fn quux() {
-    for x in &[1, 2, 3] { $0 }
-}
-"#,
-            expect![[r#"
-                lc x
-                fn quux() fn()
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_if_prefix_is_keyword() {
         cov_mark::check!(completes_if_prefix_is_keyword);
         check_edit(

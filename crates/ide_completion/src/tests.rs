@@ -38,7 +38,7 @@ use test_utils::assert_eq_text;
 use crate::{item::CompletionKind, CompletionConfig, CompletionItem};
 
 /// Lots of basic item definitions
-const BASE_FIXTURE: &str = r#"
+const BASE_ITEMS_FIXTURE: &str = r#"
 enum Enum { TupleV(u32), RecordV { field: u32 }, UnitV }
 use self::Enum::TupleV;
 mod module {}
@@ -53,6 +53,7 @@ struct Unit;
 macro_rules! makro {}
 #[rustc_builtin_macro]
 pub macro Clone {}
+fn function() {}
 "#;
 
 pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {

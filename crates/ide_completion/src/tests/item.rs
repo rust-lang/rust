@@ -4,10 +4,10 @@
 //! in [crate::completions::mod_].
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_FIXTURE};
+use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}{}", BASE_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -25,9 +25,9 @@ impl Tra$0
             en Enum
             st Record
             st Tuple
-            ma makro!(…) #[macro_export] macro_rules! makro
             md module
             st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -48,9 +48,9 @@ impl Trait for Str$0
             en Enum
             st Record
             st Tuple
-            ma makro!(…) #[macro_export] macro_rules! makro
             md module
             st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
