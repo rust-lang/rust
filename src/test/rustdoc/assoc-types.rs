@@ -4,9 +4,9 @@
 pub trait Index<I: ?Sized> {
         // @has - '//*[@id="associatedtype.Output"]//h4[@class="code-header"]' 'type Output: ?Sized'
     type Output: ?Sized;
-    // @has - '//*[@id="tymethod.index"]//h4' \
+    // @has - '//*[@id="tymethod.index"]//h4[@class="code-header"]' \
     //      "fn index<'a>(&'a self, index: I) -> &'a Self::Output"
-    // @has - '//*[@id="tymethod.index"]//h4//a[@href="trait.Index.html#associatedtype.Output"]' \
+    // @has - '//*[@id="tymethod.index"]//h4[@class="code-header"]//a[@href="trait.Index.html#associatedtype.Output"]' \
     //      "Output"
     fn index<'a>(&'a self, index: I) -> &'a Self::Output;
 }
