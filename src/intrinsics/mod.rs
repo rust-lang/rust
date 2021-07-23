@@ -250,6 +250,11 @@ fn simd_reduce_bool<'tcx>(
         let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
     }
+    let res_val = if fx.bcx.func.dfg.value_type(res_val) != types::I8 {
+        fx.bcx.ins().ireduce(types::I8, res_val)
+    } else {
+        res_val
+    };
     let res = CValue::by_val(res_val, ret.layout());
     ret.write_cvalue(fx, res);
 }
@@ -284,7 +289,11 @@ macro simd_cmp {
         if let Some(vector_ty) = vector_ty {
             let x = $x.load_scalar($fx);
             let y = $y.load_scalar($fx);
-            let val = $fx.bcx.ins().icmp(IntCC::$cc, x, y);
+            let val = if vector_ty.lane_type().is_float() {
+                $fx.bcx.ins().fcmp(FloatCC::$cc_f, x, y)
+            } else {
+                $fx.bcx.ins().icmp(IntCC::$cc, x, y)
+            };
 
             // HACK This depends on the fact that icmp for vectors represents bools as 0 and !0, not 0 and 1.
             let val = $fx.bcx.ins().raw_bitcast(vector_ty, val);
