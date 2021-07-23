@@ -1,0 +1,20 @@
+error: expected identifier, found `1`
+  --> $DIR/issue-79099.rs:3:65
+   |
+LL |         let f: impl core::future::Future<Output = u8> = async { 1 };
+   |                                                         -----   ^ expected identifier
+   |                                                         |
+   |                                                         `async` blocks are only allowed in Rust 2018 or later
+   |
+   = help: set `edition = "2018"` in `Cargo.toml`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/issue-79099.rs:3:16
+   |
+LL |         let f: impl core::future::Future<Output = u8> = async { 1 };
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

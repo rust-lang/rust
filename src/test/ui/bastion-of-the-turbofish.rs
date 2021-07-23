@@ -25,9 +25,12 @@
 //
 // My heart aches in sorrow, for I know I am defeated. Let this be a warning
 // to all those who come after. Here stands the bastion of the Turbofish.
+//
+// RIP Anna Harren, Guardian Angel of the Hallowed Turbofish. <3
 
 // See https://github.com/rust-lang/rust/pull/53562
 // and https://github.com/rust-lang/rfcs/pull/2527
+// and https://twitter.com/garblefart/status/1393236602856611843
 // for context.
 
 fn main() {

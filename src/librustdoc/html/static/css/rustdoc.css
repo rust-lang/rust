@@ -329,6 +329,7 @@ nav.sub {
 .logo-container > img {
 	max-width: 100px;
 	max-height: 100px;
+	height: 100%;
 	position: absolute;
 	left: 50%;
 	top: 50%;
@@ -1072,7 +1073,7 @@ a.test-arrow:hover{
 	padding-top: 1px;
 }
 
-#main > details > .sub-variant > h3 {
+#main .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;
