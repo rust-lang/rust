@@ -364,7 +364,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let concrete_ty = tcx
                         .mir_borrowck(owner.expect_local())
                         .concrete_opaque_types
-                        .get_by(|(key, _)| key.def_id == def_id.to_def_id())
+                        .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
                         .map(|concrete_ty| *concrete_ty)
                         .unwrap_or_else(|| {
                             tcx.sess.delay_span_bug(
@@ -512,8 +512,15 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
 
     struct ConstraintLocator<'tcx> {
         tcx: TyCtxt<'tcx>,
+
+        /// def_id of the opaque type whose defining uses are being checked
         def_id: DefId,
-        // (first found type span, actual type)
+
+        /// as we walk the defining uses, we are checking that all of them
+        /// define the same hidden type. This variable is set to `Some`
+        /// with the first type that we find, and then later types are
+        /// checked against it (we also carry the span of that first
+        /// type).
         found: Option<(Span, Ty<'tcx>)>,
     }
 
@@ -531,7 +538,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 .tcx
                 .typeck(def_id)
                 .concrete_opaque_types
-                .get_by(|(key, _)| key.def_id == self.def_id)
+                .any_value_matching(|(key, _)| key.def_id == self.def_id)
                 .is_none()
             {
                 debug!("no constraints in typeck results");
