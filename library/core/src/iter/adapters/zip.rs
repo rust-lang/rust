@@ -470,7 +470,6 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///
 /// The iterator's `size_hint` must be exact and cheap to call.
 ///
-<<<<<<< HEAD
 /// `TrustedRandomAccessNoCoerce::size` may not be overridden.
 ///
 /// All subtypes and all supertypes of `Self` must also implement `TrustedRandomAccess`.
@@ -481,9 +480,6 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///
 /// If `Self: ExactSizeIterator` then `self.len()` must always produce results consistent
 /// with `self.size()`.
-=======
-/// `size` must not be overridden.
->>>>>>> Fix may not to appropriate might not or must not
 ///
 /// If `Self: Iterator`, then `<Self as Iterator>::__iterator_get_unchecked(&mut self, idx)`
 /// must be safe to call provided the following conditions are met.
