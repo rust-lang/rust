@@ -82,33 +82,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let local = Local::new(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
-            // FIXME(jackh726): This is a hack. It's somewhat like
-            // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
-            // like to normalize *before* inserting into `local_decls`, but I
-            // couldn't figure out where the heck that was.
-            let mir_input_ty = match self
-                .infcx
-                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .normalize(mir_input_ty)
-            {
-                Ok(n) => {
-                    debug!("equate_inputs_and_outputs: {:?}", n);
-                    if n.obligations.iter().all(|o| {
-                        matches!(
-                            o.predicate.kind().skip_binder(),
-                            ty::PredicateKind::RegionOutlives(_)
-                        )
-                    }) {
-                        n.value
-                    } else {
-                        mir_input_ty
-                    }
-                }
-                Err(_) => {
-                    debug!("equate_inputs_and_outputs: NoSolution");
-                    mir_input_ty
-                }
-            };
             let mir_input_span = body.local_decls[local].source_info.span;
             self.equate_normalized_input_or_output(
                 normalized_input_ty,
@@ -191,17 +164,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
 
-        if let Err(terr) =
+        if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {
-            span_mirbug!(
-                self,
-                Location::START,
-                "equate_normalized_input_or_output: `{:?}=={:?}` failed with `{:?}`",
-                a,
-                b,
-                terr
-            );
+            // FIXME(jackh726): This is a hack. It's somewhat like
+            // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
+            // like to normalize *before* inserting into `local_decls`, but I
+            // couldn't figure out where the heck that was.
+            let b = match self
+                .infcx
+                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                .normalize(b)
+            {
+                Ok(n) => {
+                    debug!("equate_inputs_and_outputs: {:?}", n);
+                    if n.obligations.iter().all(|o| {
+                        matches!(
+                            o.predicate.kind().skip_binder(),
+                            ty::PredicateKind::RegionOutlives(_)
+                        )
+                    }) {
+                        n.value
+                    } else {
+                        b
+                    }
+                }
+                Err(_) => {
+                    debug!("equate_inputs_and_outputs: NoSolution");
+                    b
+                }
+            };
+            if let Err(terr) =
+                self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
+            {
+                span_mirbug!(
+                    self,
+                    Location::START,
+                    "equate_normalized_input_or_output: `{:?}=={:?}` failed with `{:?}`",
+                    a,
+                    b,
+                    terr
+                );
+            }
         }
     }
 }
