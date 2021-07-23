@@ -792,8 +792,16 @@ impl Config {
 
                 // CI-built LLVM can be either dynamic or static.
                 let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
-                let link_type = t!(std::fs::read_to_string(ci_llvm.join("link-type.txt")));
-                config.llvm_link_shared = link_type == "dynamic";
+                config.llvm_link_shared = if config.dry_run {
+                    // just assume dynamic for now
+                    true
+                } else {
+                    let link_type = t!(
+                        std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                        format!("CI llvm missing: {}", ci_llvm.display())
+                    );
+                    link_type == "dynamic"
+                };
             }
 
             if config.llvm_thin_lto {
