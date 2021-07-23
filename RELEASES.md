@@ -37,7 +37,6 @@ Compiler
 - [Improved debugger output for enums on Windows MSVC platforms.][85292]
 - [Added tier 3\* support for `bpfel-unknown-none`
    and `bpfeb-unknown-none`.][79608]
-- [Added tier 3 support for `powerpc64le-unknown-freebsd`.][83572]
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
    information on Rust's tiered platform support.
@@ -45,8 +44,6 @@ Compiler
 Libraries
 -----------------------
 
-- [You can now explicitly import the prelude of different editions
-  through `std::prelude`. (e.g. `use std::prelude::rust_2021::*;`)][86294]
 - [`panic::panic_any` will now `#[track_caller]`.][85745]
 - [Added `OutOfMemory` as a variant of `io::ErrorKind`.][84744]
 - [ `proc_macro::Literal` now implements `FromStr`.][84717]
@@ -64,19 +61,7 @@ Stabilized APIs
 - [`BTreeMap::into_values`]
 - [`HashMap::into_keys`]
 - [`HashMap::into_values`]
-- [`MaybeUninit::assume_init_mut`]
-- [`MaybeUninit::assume_init_ref`]
 - [`arch::wasm32`]
-- [`arch::x86::_bittest`]
-- [`arch::x86::_bittestandcomplement`]
-- [`arch::x86::_bittestandset`]
-- [`arch::x86_64::_bittest`]
-- [`arch::x86_64::_bittestandcomplement64`]
-- [`arch::x86_64::_bittestandcomplement`]
-- [`arch::x86_64::_bittestandreset64`]
-- [`arch::x86_64::_bittestandset64`]
-- [`arch::x86_64::_bittestandset`]
-- [`ops::ControlFlow`]
 - [`VecDeque::binary_search`]
 - [`VecDeque::binary_search_by`]
 - [`VecDeque::binary_search_by_key`]
@@ -99,7 +84,6 @@ Cargo
 [84988]: https://github.com/rust-lang/rust/pull/84988
 [84701]: https://github.com/rust-lang/rust/pull/84701
 [84072]: https://github.com/rust-lang/rust/pull/84072
-[86294]: https://github.com/rust-lang/rust/pull/86294
 [85745]: https://github.com/rust-lang/rust/pull/85745
 [84744]: https://github.com/rust-lang/rust/pull/84744
 [85078]: https://github.com/rust-lang/rust/pull/85078
@@ -108,28 +92,15 @@ Cargo
 [83366]: https://github.com/rust-lang/rust/pull/83366
 [83278]: https://github.com/rust-lang/rust/pull/83278
 [85292]: https://github.com/rust-lang/rust/pull/85292
-[83572]: https://github.com/rust-lang/rust/pull/83572
 [cargo/9520]: https://github.com/rust-lang/cargo/pull/9520
 [cargo/9499]: https://github.com/rust-lang/cargo/pull/9499
 [cargo/9488]: https://github.com/rust-lang/cargo/pull/9488
 [cargo/9375]: https://github.com/rust-lang/cargo/pull/9375
-[`arch::x86::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittest.html
-[`arch::x86::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandcomplement.html
-[`arch::x86::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandset.html
-[`arch::x86_64::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittest.html
-[`arch::x86_64::_bittestandcomplement64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandcomplement64.html
-[`arch::x86_64::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandcomplement.html
-[`arch::x86_64::_bittestandreset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandreset64.html
-[`arch::x86_64::_bittestandset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandset64.html
-[`arch::x86_64::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandset.html
 [`BTreeMap::into_keys`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.into_keys
 [`BTreeMap::into_values`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.into_values
 [`HashMap::into_keys`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.into_keys
 [`HashMap::into_values`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.into_values
-[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_ref
-[`MaybeUninit::assume_init_mut`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_mut
 [`arch::wasm32`]: https://doc.rust-lang.org/core/arch/wasm32/index.html
-[`ops::ControlFlow`]: https://doc.rust-lang.org/std/ops/enum.ControlFlow.html
 [`VecDeque::binary_search`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search
 [`VecDeque::binary_search_by`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search_by
 
