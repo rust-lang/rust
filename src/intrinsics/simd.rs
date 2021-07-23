@@ -108,11 +108,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             for (out_idx, in_idx) in indexes.into_iter().enumerate() {
                 let in_lane = if u64::from(in_idx) < lane_count {
-                    x.value_field(fx, mir::Field::new(in_idx.into()))
+                    x.value_lane(fx, in_idx.into())
                 } else {
-                    y.value_field(fx, mir::Field::new(usize::from(in_idx) - usize::try_from(lane_count).unwrap()))
+                    y.value_lane(fx, u64::from(in_idx) - lane_count)
                 };
-                let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
+                let out_lane = ret.place_lane(fx, u64::try_from(out_idx).unwrap());
                 out_lane.write_cvalue(fx, in_lane);
             }
         };
@@ -163,7 +163,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
             }
 
-            let ret_lane = v.value_field(fx, mir::Field::new(idx.try_into().unwrap()));
+            let ret_lane = v.value_lane(fx, idx.try_into().unwrap());
             ret.write_cvalue(fx, ret_lane);
         };
 
@@ -216,15 +216,14 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let ret_lane_layout = fx.layout_of(ret_lane_ty);
 
             for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.try_into().unwrap());
-                let a_lane = a.value_field(fx, lane).load_scalar(fx);
-                let b_lane = b.value_field(fx, lane).load_scalar(fx);
-                let c_lane = c.value_field(fx, lane).load_scalar(fx);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
+                let c_lane = c.value_lane(fx, lane).load_scalar(fx);
 
                 let mul_lane = fx.bcx.ins().fmul(a_lane, b_lane);
                 let res_lane = CValue::by_val(fx.bcx.ins().fadd(mul_lane, c_lane), ret_lane_layout);
 
-                ret.place_field(fx, lane).write_cvalue(fx, res_lane);
+                ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
             }
         };
 

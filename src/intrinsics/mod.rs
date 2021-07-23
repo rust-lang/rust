@@ -175,12 +175,11 @@ fn simd_for_each_lane<'tcx>(
     assert_eq!(lane_count, ret_lane_count);
 
     for lane_idx in 0..lane_count {
-        let lane_idx = mir::Field::new(lane_idx.try_into().unwrap());
-        let lane = val.value_field(fx, lane_idx).load_scalar(fx);
+        let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout, ret_lane_layout, lane);
 
-        ret.place_field(fx, lane_idx).write_cvalue(fx, res_lane);
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
     }
 }
 
@@ -206,14 +205,13 @@ fn simd_pair_for_each_lane<'tcx>(
     let ret_lane_layout = fx.layout_of(ret_lane_ty);
     assert_eq!(lane_count, ret_lane_count);
 
-    for lane in 0..lane_count {
-        let lane = mir::Field::new(lane.try_into().unwrap());
-        let x_lane = x.value_field(fx, lane).load_scalar(fx);
-        let y_lane = y.value_field(fx, lane).load_scalar(fx);
+    for lane_idx in 0..lane_count {
+        let x_lane = x.value_lane(fx, lane_idx).load_scalar(fx);
+        let y_lane = y.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout, ret_lane_layout, x_lane, y_lane);
 
-        ret.place_field(fx, lane).write_cvalue(fx, res_lane);
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
     }
 }
 
@@ -227,10 +225,9 @@ fn simd_reduce<'tcx>(
     let lane_layout = fx.layout_of(lane_ty);
     assert_eq!(lane_layout, ret.layout());
 
-    let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    let mut res_val = val.value_lane(fx, 0).load_scalar(fx);
     for lane_idx in 1..lane_count {
-        let lane =
-            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
+        let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
         res_val = f(fx, lane_layout, res_val, lane);
     }
     let res = CValue::by_val(res_val, lane_layout);
@@ -246,11 +243,10 @@ fn simd_reduce_bool<'tcx>(
     let (lane_count, _lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     assert!(ret.layout().ty.is_bool());
 
-    let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    let res_val = val.value_lane(fx, 0).load_scalar(fx);
     let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
     for lane_idx in 1..lane_count {
-        let lane =
-            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
+        let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
         let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
     }
