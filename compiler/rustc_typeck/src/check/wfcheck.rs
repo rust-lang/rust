@@ -523,8 +523,7 @@ fn check_type_defn<'tcx, F>(
                 fcx.register_wf_obligation(
                     field.ty.into(),
                     field.span,
-                    // We don't have an HIR id for the field
-                    ObligationCauseCode::WellFormed(None),
+                    ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(field.def_id))),
                 )
             }
 
@@ -1467,6 +1466,7 @@ struct AdtVariant<'tcx> {
 
 struct AdtField<'tcx> {
     ty: Ty<'tcx>,
+    def_id: LocalDefId,
     span: Span,
 }
 
@@ -1477,11 +1477,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields()
             .iter()
             .map(|field| {
-                let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
+                let def_id = self.tcx.hir().local_def_id(field.hir_id);
+                let field_ty = self.tcx.type_of(def_id);
                 let field_ty = self.normalize_associated_types_in(field.ty.span, field_ty);
                 let field_ty = self.resolve_vars_if_possible(field_ty);
                 debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
-                AdtField { ty: field_ty, span: field.ty.span }
+                AdtField { ty: field_ty, span: field.ty.span, def_id }
             })
             .collect();
         AdtVariant { fields, explicit_discr: None }
