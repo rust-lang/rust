@@ -17,7 +17,7 @@ LL | |     }
   ::: $DIR/auxiliary/issue-81839.rs:6:49
    |
 LL |       pub async fn answer_str(&self, _s: &str) -> Test {
-   |                                                   ---- calling an async function returns a future
+   |                                                   ---- async functions return futures
    |
    = note: while checking the return type of the `async fn`
    = note:     expected type `()`

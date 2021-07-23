@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/dont-suggest-missing-await.rs:14:18
    |
 LL | async fn make_u32() -> u32 {
-   |                        --- calling an async function returns a future
+   |                        --- async functions return futures
 ...
 LL |         take_u32(x)
    |                  ^ expected `u32`, found opaque type

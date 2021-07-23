@@ -13,9 +13,9 @@ error[E0308]: mismatched types
   --> $DIR/generator-desc.rs:12:16
    |
 LL | async fn one() {}
-   |                - calling an async function returns a future
+   |                - async functions return futures
 LL | async fn two() {}
-   |                - calling an async function returns a future
+   |                - async functions return futures
 ...
 LL |     fun(one(), two());
    |                ^^^^^ expected opaque type, found a different opaque type

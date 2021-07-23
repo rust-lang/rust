@@ -56,7 +56,7 @@ async fn struct_() -> Struct {
 }
 
 async fn tuple() -> Tuple {
-    //~^ NOTE calling an async function returns a future
+    //~^ NOTE async functions return futures
     Tuple(1i32)
 }
 

@@ -53,7 +53,7 @@ LL |     async fn associated();
 LL |     async fn associated();
    |                          ^
    |                          |
-   |                          calling an async function returns a future
+   |                          async functions return futures
    |                          expected `()`, found opaque type
    |
    = note: while checking the return type of the `async fn`

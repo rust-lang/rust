@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
                             err.span_label(
                                 *sp,
-                                format!("{}", "calling an async function returns a future"),
+                                format!("{}", "async functions return futures"),
                             );
                         } else {
                             err.span_label(
