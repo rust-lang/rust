@@ -182,6 +182,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         matches!(
                             o.predicate.kind().skip_binder(),
                             ty::PredicateKind::RegionOutlives(_)
+                                | ty::PredicateKind::TypeOutlives(_)
                         )
                     }) {
                         n.value
