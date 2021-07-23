@@ -174,36 +174,81 @@ fn foo(a: A) { a.$0() }
     fn test_visibility_filtering() {
         check(
             r#"
-mod inner {
+//- /lib.rs crate:lib new_source_root:local
+pub mod m {
     pub struct A {
         private_field: u32,
         pub pub_field: u32,
         pub(crate) crate_field: u32,
-        pub(crate) super_field: u32,
+        pub(super) super_field: u32,
     }
 }
-fn foo(a: inner::A) { a.$0 }
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::m::A) { a.$0 }
 "#,
             expect![[r#"
-                fd pub_field   u32
-                fd crate_field u32
-                fd super_field u32
+                fd private_field u32
+                fd pub_field     u32
+                fd crate_field   u32
+                fd super_field   u32
             "#]],
         );
 
         check(
             r#"
-struct A {}
+//- /lib.rs crate:lib new_source_root:library
+pub mod m {
+    pub struct A {
+        private_field: u32,
+        pub pub_field: u32,
+        pub(crate) crate_field: u32,
+        pub(super) super_field: u32,
+    }
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::m::A) { a.$0 }
+"#,
+            expect![[r#"
+                fd pub_field u32
+            "#]],
+        );
+
+        check(
+            r#"
+//- /lib.rs crate:lib new_source_root:local
+pub struct A {}
 mod m {
     impl super::A {
         fn private_method(&self) {}
-        pub(crate) fn the_method(&self) {}
+        pub(crate) fn crate_method(&self) {}
+        pub fn pub_method(&self) {}
     }
 }
-fn foo(a: A) { a.$0 }
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::A) { a.$0 }
 "#,
             expect![[r#"
-                me the_method() fn(&self)
+                me private_method() fn(&self)
+                me crate_method()   fn(&self)
+                me pub_method()     fn(&self)
+            "#]],
+        );
+        check(
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct A {}
+mod m {
+    impl super::A {
+        fn private_method(&self) {}
+        pub(crate) fn crate_method(&self) {}
+        pub fn pub_method(&self) {}
+    }
+}
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo(a: lib::A) { a.$0 }
+"#,
+            expect![[r#"
+                me pub_method() fn(&self)
             "#]],
         );
     }

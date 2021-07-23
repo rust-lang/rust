@@ -259,25 +259,25 @@ mod tests {
     fn associated_item_visibility() {
         check(
             r#"
-struct S;
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
 
-mod m {
-    impl super::S {
-        pub(crate) fn public_method() { }
-        fn private_method() { }
-        pub(crate) type PublicType = u32;
-        type PrivateType = u32;
-        pub(crate) const PUBLIC_CONST: u32 = 1;
-        const PRIVATE_CONST: u32 = 1;
-    }
+impl S {
+    pub fn public_method() { }
+    fn private_method() { }
+    pub type PublicType = u32;
+    type PrivateType = u32;
+    pub const PUBLIC_CONST: u32 = 1;
+    const PRIVATE_CONST: u32 = 1;
 }
 
-fn foo() { let _ = S::$0 }
+//- /main.rs crate:main deps:lib new_source_root:local
+fn foo() { let _ = lib::S::$0 }
 "#,
             expect![[r#"
                 fn public_method() fn()
-                ct PUBLIC_CONST    pub(crate) const PUBLIC_CONST: u32 = 1;
-                ta PublicType      pub(crate) type PublicType = u32;
+                ct PUBLIC_CONST    pub const PUBLIC_CONST: u32 = 1;
+                ta PublicType      pub type PublicType = u32;
             "#]],
         );
     }

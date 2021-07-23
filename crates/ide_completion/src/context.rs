@@ -1,5 +1,6 @@
 //! See `CompletionContext` structure.
 
+use base_db::SourceDatabaseExt;
 use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
 use ide_db::{
     base_db::{FilePosition, SourceDatabase},
@@ -380,8 +381,11 @@ impl<'a> CompletionContext<'a> {
             None => return false,
         };
         if !vis.is_visible_from(self.db, module.into()) {
-            // FIXME: if the definition location is editable, also show private items
-            return false;
+            // If the definition location is editable, also show private items
+            let root_file = defining_crate.root_file(self.db);
+            let source_root_id = self.db.file_source_root(root_file);
+            let is_editable = !self.db.source_root(source_root_id).is_library;
+            return is_editable;
         }
 
         if module.krate() != defining_crate && attrs.has_doc_hidden() {

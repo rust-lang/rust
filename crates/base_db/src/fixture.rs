@@ -92,6 +92,7 @@ impl ChangeFixture {
         let mut default_cfg = CfgOptions::default();
 
         let mut file_set = FileSet::default();
+        let mut current_source_root_kind = SourceRootKind::Local;
         let source_root_prefix = "/".to_string();
         let mut file_id = FileId(0);
         let mut roots = Vec::new();
@@ -118,8 +119,13 @@ impl ChangeFixture {
                 assert!(meta.krate.is_some(), "can't specify deps without naming the crate")
             }
 
-            if meta.introduce_new_source_root {
-                roots.push(SourceRoot::new_local(mem::take(&mut file_set)));
+            if let Some(kind) = &meta.introduce_new_source_root {
+                let root = match current_source_root_kind {
+                    SourceRootKind::Local => SourceRoot::new_local(mem::take(&mut file_set)),
+                    SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
+                };
+                roots.push(root);
+                current_source_root_kind = *kind;
             }
 
             if let Some(krate) = meta.krate {
@@ -197,12 +203,22 @@ impl ChangeFixture {
                 crate_graph.add_dep(krate, CrateName::new("core").unwrap(), core_crate).unwrap();
             }
         }
-        roots.push(SourceRoot::new_local(mem::take(&mut file_set)));
+        let root = match current_source_root_kind {
+            SourceRootKind::Local => SourceRoot::new_local(mem::take(&mut file_set)),
+            SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
+        };
+        roots.push(root);
         change.set_roots(roots);
         change.set_crate_graph(crate_graph);
 
         ChangeFixture { file_position, files, change }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum SourceRootKind {
+    Local,
+    Library,
 }
 
 #[derive(Debug)]
@@ -213,7 +229,7 @@ struct FileMeta {
     cfg: CfgOptions,
     edition: Edition,
     env: Env,
-    introduce_new_source_root: bool,
+    introduce_new_source_root: Option<SourceRootKind>,
 }
 
 impl From<Fixture> for FileMeta {
@@ -229,7 +245,11 @@ impl From<Fixture> for FileMeta {
             cfg,
             edition: f.edition.as_ref().map_or(Edition::CURRENT, |v| Edition::from_str(v).unwrap()),
             env: f.env.into_iter().collect(),
-            introduce_new_source_root: f.introduce_new_source_root,
+            introduce_new_source_root: f.introduce_new_source_root.map(|kind| match &*kind {
+                "local" => SourceRootKind::Local,
+                "library" => SourceRootKind::Library,
+                invalid => panic!("invalid source root kind '{}'", invalid),
+            }),
         }
     }
 }

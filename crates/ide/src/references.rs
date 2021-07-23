@@ -1375,13 +1375,13 @@ fn foo(_: bool) -> bo$0ol { true }
     fn test_transitive() {
         check(
             r#"
-//- /level3.rs new_source_root: crate:level3
+//- /level3.rs new_source_root:local crate:level3
 pub struct Fo$0o;
-//- /level2.rs new_source_root: crate:level2 deps:level3
+//- /level2.rs new_source_root:local crate:level2 deps:level3
 pub use level3::Foo;
-//- /level1.rs new_source_root: crate:level1 deps:level2
+//- /level1.rs new_source_root:local crate:level1 deps:level2
 pub use level2::Foo;
-//- /level0.rs new_source_root: crate:level0 deps:level1
+//- /level0.rs new_source_root:local crate:level0 deps:level1
 pub use level1::Foo;
 "#,
             expect![[r#"
@@ -1411,7 +1411,7 @@ macro_rules! foo$0 {
 }
 //- /bar.rs
 foo!();
-//- /other.rs crate:other deps:lib new_source_root:
+//- /other.rs crate:other deps:lib new_source_root:local
 lib::foo!();
 "#,
             expect![[r#"
