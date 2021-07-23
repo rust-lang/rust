@@ -423,6 +423,15 @@ impl Analysis {
         self.with_db(|db| hover::hover(db, position, config))
     }
 
+    /// Returns a short text displaying the type for the expression.
+    pub fn hover_range(
+        &self,
+        config: &HoverConfig,
+        range: FileRange,
+    ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
+        self.with_db(|db| hover::hover_range(db, range, config))
+    }
+
     /// Return URL(s) for the documentation of the symbol under the cursor.
     pub fn external_docs(
         &self,

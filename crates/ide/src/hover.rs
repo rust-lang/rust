@@ -241,6 +241,13 @@ fn try_hover_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<RangeInfo
     ))
 }
 
+pub(crate) fn hover_range(
+    db: &RootDatabase,
+    range: FileRange,
+    config: &HoverConfig,
+) -> Option<RangeInfo<HoverResult>> {
+}
+
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
         HoverAction::Implementation(FilePosition {
