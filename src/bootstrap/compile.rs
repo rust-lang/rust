@@ -3,7 +3,7 @@
 //!
 //! This module contains some of the real meat in the rustbuild build system
 //! which is where Cargo is used to compile the standard library, libtest, and
-//! compiler. This module is also responsible for assembling the sysroot as it
+//! the compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
