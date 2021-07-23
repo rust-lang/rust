@@ -333,21 +333,22 @@ pub trait Iterator {
     /// regardless of the step given.
     ///
     /// Note 2: The time at which ignored elements are pulled is not fixed.
-    /// `StepBy` behaves like the sequence `next(), nth(step-1), nth(step-1), …`,
-    /// but is also free to behave like the sequence
-    /// `advance_n_and_return_first(step), advance_n_and_return_first(step), …`
+    /// `StepBy` behaves like the sequence `self.next()`, `self.nth(step-1)`,
+    /// `self.nth(step-1)`, …, but is also free to behave like the sequence
+    /// `advance_n_and_return_first(&mut self, step)`,
+    /// `advance_n_and_return_first(&mut self, step)`, …
     /// Which way is used may change for some iterators for performance reasons.
     /// The second way will advance the iterator earlier and may consume more items.
     ///
     /// `advance_n_and_return_first` is the equivalent of:
     /// ```
-    /// fn advance_n_and_return_first<I>(iter: &mut I, total_step: usize) -> Option<I::Item>
+    /// fn advance_n_and_return_first<I>(iter: &mut I, n: usize) -> Option<I::Item>
     /// where
     ///     I: Iterator,
     /// {
     ///     let next = iter.next();
-    ///     if total_step > 1 {
-    ///         iter.nth(total_step-2);
+    ///     if n > 1 {
+    ///         iter.nth(n - 2);
     ///     }
     ///     next
     /// }
