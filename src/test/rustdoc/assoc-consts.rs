@@ -13,7 +13,7 @@ pub trait Foo {
 pub struct Bar;
 
 impl Foo for Bar {
-    // @has assoc_consts/struct.Bar.html '//h3' 'impl Foo for Bar'
+    // @has assoc_consts/struct.Bar.html '//h3[@class="code-header in-band"]' 'impl Foo for Bar'
     // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
     const FOO: usize = 12;
     // @has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
