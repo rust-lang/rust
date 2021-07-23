@@ -105,7 +105,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         registry: rustc_driver::diagnostics_registry(),
     };
 
-    let mut test_args = options.test_args.clone();
+    let test_args = options.test_args.clone();
     let display_warnings = options.display_warnings;
     let nocapture = options.nocapture;
     let externs = options.externs.clone();
@@ -166,12 +166,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         Err(ErrorReported) => return Err(ErrorReported),
     };
 
-    test_args.insert(0, "rustdoctest".to_string());
-    if nocapture {
-        test_args.push("--nocapture".to_string());
-    }
-
-    test::test_main(&test_args, tests, Some(test::Options::new().display_output(display_warnings)));
+    run_tests(test_args, nocapture, display_warnings, tests);
 
     // Collect and warn about unused externs, but only if we've gotten
     // reports for each doctest
@@ -212,6 +207,19 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
     }
 
     Ok(())
+}
+
+crate fn run_tests(
+    mut test_args: Vec<String>,
+    nocapture: bool,
+    display_warnings: bool,
+    tests: Vec<test::TestDescAndFn>,
+) {
+    test_args.insert(0, "rustdoctest".to_string());
+    if nocapture {
+        test_args.push("--nocapture".to_string());
+    }
+    test::test_main(&test_args, tests, Some(test::Options::new().display_output(display_warnings)));
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.

@@ -115,7 +115,7 @@ crate fn render<P: AsRef<Path>>(
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-crate fn test(mut options: Options) -> Result<(), String> {
+crate fn test(options: Options) -> Result<(), String> {
     let input_str = read_to_string(&options.input)
         .map_err(|err| format!("{}: {}", options.input.display(), err))?;
     let mut opts = TestOptions::default();
@@ -135,14 +135,11 @@ crate fn test(mut options: Options) -> Result<(), String> {
 
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 
-    options.test_args.insert(0, "rustdoctest".to_string());
-    if options.nocapture {
-        options.test_args.push("--nocapture".to_string());
-    }
-    test::test_main(
-        &options.test_args,
+    crate::doctest::run_tests(
+        options.test_args,
+        options.nocapture,
+        options.display_warnings,
         collector.tests,
-        Some(test::Options::new().display_output(options.display_warnings)),
     );
     Ok(())
 }
