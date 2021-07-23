@@ -1072,7 +1072,7 @@ a.test-arrow:hover{
 	padding-top: 1px;
 }
 
-#main > details > .sub-variant > h3 {
+#main .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;
