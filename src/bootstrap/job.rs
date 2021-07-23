@@ -103,12 +103,20 @@ pub unsafe fn setup(build: &mut Build) {
     };
 
     let parent = OpenProcess(PROCESS_DUP_HANDLE, FALSE, pid.parse().unwrap());
-    assert!(
-        !parent.is_null(),
-        "PID `{}` doesn't seem to exist: {}",
-        pid,
-        io::Error::last_os_error()
-    );
+
+    // If we get a null parent pointer here, it is possible that either
+    // we have got an invalid pid or the parent process has been closed.
+    // Since the first case rarely happens
+    // (only when wrongly setting the environmental variable),
+    // so it might be better to improve the experience of the second case
+    // when users have interrupted the parent process and we don't finish
+    // duplicating the handle yet.
+    // We just need close the job object if that occurs.
+    if parent.is_null() {
+        CloseHandle(job);
+        return;
+    }
+
     let mut parent_handle = ptr::null_mut();
     let r = DuplicateHandle(
         GetCurrentProcess(),
