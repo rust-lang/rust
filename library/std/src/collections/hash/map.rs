@@ -10,6 +10,7 @@ use hashbrown::hash_map as base;
 use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
+use crate::collections::TryReserveErrorKind;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
@@ -2966,9 +2967,11 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 #[inline]
 pub(super) fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReserveError {
     match err {
-        hashbrown::TryReserveError::CapacityOverflow => TryReserveError::CapacityOverflow,
+        hashbrown::TryReserveError::CapacityOverflow => {
+            TryReserveErrorKind::CapacityOverflow.into()
+        }
         hashbrown::TryReserveError::AllocError { layout } => {
-            TryReserveError::AllocError { layout, non_exhaustive: () }
+            TryReserveErrorKind::AllocError { layout, non_exhaustive: () }.into()
         }
     }
 }

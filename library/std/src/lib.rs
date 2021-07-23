@@ -325,6 +325,7 @@
 #![feature(trace_macros)]
 #![feature(try_blocks)]
 #![feature(try_reserve)]
+#![feature(try_reserve_kind)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_cell_raw_get)]
 #![feature(unwind_attributes)]
