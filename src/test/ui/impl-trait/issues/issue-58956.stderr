@@ -1,0 +1,15 @@
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/issue-58956.rs:7:11
+   |
+LL | const _A: impl Lam = {
+   |           ^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/issue-58956.rs:9:17
+   |
+LL |     let x: Wrap<impl Lam> = Wrap(B);
+   |                 ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

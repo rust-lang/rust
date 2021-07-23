@@ -1,0 +1,9 @@
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/issue-58504.rs:10:16
+   |
+LL |     let gens: [impl Generator<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0562`.
