@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/issue-86465.rs:5:1
+   |
+LL | fn f<'t, 'u>(a: &'t u32, b: &'u u32) -> (X<'t, 'u>, X<'u, 't>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'a u32`, got `&'b u32`
+   |
+note: previous use here
+  --> $DIR/issue-86465.rs:5:1
+   |
+LL | fn f<'t, 'u>(a: &'t u32, b: &'u u32) -> (X<'t, 'u>, X<'u, 't>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

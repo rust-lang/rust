@@ -26,7 +26,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueTypeKey, RegionVid,
     ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
@@ -60,7 +60,6 @@ use crate::borrow_check::{
         LivenessValues, PlaceholderIndex, PlaceholderIndices, RegionValueElements,
     },
     region_infer::{ClosureRegionRequirementsExt, TypeTest},
-    renumber,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
     Upvar,
@@ -180,7 +179,54 @@ pub(crate) fn type_check<'mir, 'tcx>(
             liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
 
             translate_outlives_facts(&mut cx);
-            cx.opaque_type_values
+            let mut opaque_type_values = cx.opaque_type_values;
+
+            for (_, revealed_ty) in &mut opaque_type_values {
+                *revealed_ty = infcx.resolve_vars_if_possible(*revealed_ty);
+                if revealed_ty.has_infer_types_or_consts() {
+                    infcx.tcx.sess.delay_span_bug(
+                        body.span,
+                        &format!("could not resolve {:#?}", revealed_ty.kind()),
+                    );
+                    *revealed_ty = infcx.tcx.ty_error();
+                }
+            }
+
+            opaque_type_values.retain(|(opaque_type_key, resolved_ty)| {
+                let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
+                    *def_id == opaque_type_key.def_id
+                } else {
+                    false
+                };
+
+                if concrete_is_opaque {
+                    // We're using an opaque `impl Trait` type without
+                    // 'revealing' it. For example, code like this:
+                    //
+                    // type Foo = impl Debug;
+                    // fn foo1() -> Foo { ... }
+                    // fn foo2() -> Foo { foo1() }
+                    //
+                    // In `foo2`, we're not revealing the type of `Foo` - we're
+                    // just treating it as the opaque type.
+                    //
+                    // When this occurs, we do *not* want to try to equate
+                    // the concrete type with the underlying defining type
+                    // of the opaque type - this will always fail, since
+                    // the defining type of an opaque type is always
+                    // some other type (e.g. not itself)
+                    // Essentially, none of the normal obligations apply here -
+                    // we're just passing around some unknown opaque type,
+                    // without actually looking at the underlying type it
+                    // gets 'revealed' into
+                    debug!(
+                        "eq_opaque_type_and_type: non-defining use of {:?}",
+                        opaque_type_key.def_id,
+                    );
+                }
+                !concrete_is_opaque
+            });
+            opaque_type_values
         },
     );
 
@@ -1239,14 +1285,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return Ok(());
         }
 
-        let infcx = self.infcx;
-        let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
         let mir_def_id = body.source.def_id().expect_local();
 
-        // the "concrete opaque types" maps
-        let concrete_opaque_types = &tcx.typeck(mir_def_id).concrete_opaque_types;
         let mut opaque_type_values = VecMap::new();
 
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", mir_def_id);
@@ -1296,88 +1338,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
-                    // For each opaque type `Foo<T>` inferred by this value, we want to equate
-                    // the inference variable `?T` with the revealed type that was computed
-                    // earlier by type check.
                     for &(opaque_type_key, opaque_decl) in &opaque_type_map {
-                        let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
-                        let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
-                            *def_id == opaque_type_key.def_id
-                        } else {
-                            false
-                        };
-
-                        // The revealed type computed by the earlier phase of type check.
-                        // In our example, this would be `(U, u32)`. Note that this references
-                        // the type parameter `U` from the definition of `Foo`.
-                        let concrete_ty = match concrete_opaque_types
-                            .get_by(|(key, _)| key.def_id == opaque_type_key.def_id)
-                        {
-                            None => {
-                                if !concrete_is_opaque {
-                                    tcx.sess.delay_span_bug(
-                                        body.span,
-                                        &format!(
-                                            "Non-defining use of {:?} with revealed type",
-                                            opaque_type_key.def_id,
-                                        ),
-                                    );
-                                }
-                                continue;
-                            }
-                            Some(concrete_ty) => concrete_ty,
-                        };
-                        debug!("concrete_ty = {:?}", concrete_ty);
-
-                        // Apply the substitution, in this case `[U -> T]`, so that the
-                        // concrete type becomes `Foo<(T, u32)>`
-                        let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_type_key.substs);
-
-                        // "Renumber" this, meaning that we replace all the regions
-                        // with fresh inference variables. Not relevant to our example.
-                        let renumbered_opaque_defn_ty =
-                            renumber::renumber_regions(infcx, subst_opaque_defn_ty);
-
-                        debug!(
-                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
-                            concrete_ty, resolved_ty, renumbered_opaque_defn_ty,
-                        );
-
-                        if !concrete_is_opaque {
-                            // Equate the instantiated opaque type `opaque_decl.concrete_ty` (`?T`,
-                            // in our example) with the renumbered version that we took from
-                            // the type check results (`Foo<(T, u32)>`).
-                            obligations.add(
-                                infcx
-                                    .at(&ObligationCause::dummy(), param_env)
-                                    .eq(opaque_decl.concrete_ty, renumbered_opaque_defn_ty)?,
-                            );
-                            opaque_type_values.insert(opaque_type_key, renumbered_opaque_defn_ty);
-                        } else {
-                            // We're using an opaque `impl Trait` type without
-                            // 'revealing' it. For example, code like this:
-                            //
-                            // type Foo = impl Debug;
-                            // fn foo1() -> Foo { ... }
-                            // fn foo2() -> Foo { foo1() }
-                            //
-                            // In `foo2`, we're not revealing the type of `Foo` - we're
-                            // just treating it as the opaque type.
-                            //
-                            // When this occurs, we do *not* want to try to equate
-                            // the concrete type with the underlying defining type
-                            // of the opaque type - this will always fail, since
-                            // the defining type of an opaque type is always
-                            // some other type (e.g. not itself)
-                            // Essentially, none of the normal obligations apply here -
-                            // we're just passing around some unknown opaque type,
-                            // without actually looking at the underlying type it
-                            // gets 'revealed' into
-                            debug!(
-                                "eq_opaque_type_and_type: non-defining use of {:?}",
-                                opaque_type_key.def_id,
-                            );
-                        }
+                        opaque_type_values.insert(opaque_type_key, opaque_decl.concrete_ty);
                     }
 
                     debug!("eq_opaque_type_and_type: equated");
@@ -1405,7 +1367,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     locations,
                     ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
-                        |_cx| {
+                        |infcx| {
                             infcx.constrain_opaque_type(
                                 opaque_type_key,
                                 &opaque_decl,

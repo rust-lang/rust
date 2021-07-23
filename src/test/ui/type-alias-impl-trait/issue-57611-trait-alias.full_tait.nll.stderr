@@ -8,13 +8,13 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
 error: higher-ranked subtype error
-  --> $DIR/issue-57611-trait-alias.rs:28:9
+  --> $DIR/issue-57611-trait-alias.rs:24:9
    |
 LL |         |x| x
    |         ^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/issue-57611-trait-alias.rs:28:9
+  --> $DIR/issue-57611-trait-alias.rs:24:9
    |
 LL |         |x| x
    |         ^^^^^
@@ -28,7 +28,7 @@ LL |     type Bar = impl Baz<Self, Self>;
    = note: expected type `for<'r> Fn<(&'r X,)>`
               found type `Fn<(&'static X,)>`
 note: this closure does not fulfill the lifetime requirements
-  --> $DIR/issue-57611-trait-alias.rs:28:9
+  --> $DIR/issue-57611-trait-alias.rs:24:9
    |
 LL |         |x| x
    |         ^^^^^

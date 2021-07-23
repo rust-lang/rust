@@ -24,6 +24,7 @@
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(min_type_alias_impl_trait)]
 #![allow(rustc::default_hash_types)]
 #![deny(unaligned_references)]
 

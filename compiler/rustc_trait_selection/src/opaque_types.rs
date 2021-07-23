@@ -83,6 +83,7 @@ pub struct OpaqueTypeDecl<'tcx> {
 }
 
 /// Whether member constraints should be generated for all opaque types
+#[derive(Debug)]
 pub enum GenerateMemberConstraints {
     /// The default, used by typeck
     WhenRequired,
@@ -354,8 +355,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         opaque_types: &OpaqueTypeMap<'tcx>,
         free_region_relations: &FRR,
     ) {
-        debug!("constrain_opaque_types()");
-
         for &(opaque_type_key, opaque_defn) in opaque_types {
             self.constrain_opaque_type(
                 opaque_type_key,
@@ -367,6 +366,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     /// See `constrain_opaque_types` for documentation.
+    #[instrument(level = "debug", skip(self, free_region_relations))]
     fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
@@ -376,15 +376,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let def_id = opaque_type_key.def_id;
 
-        debug!("constrain_opaque_type()");
-        debug!("constrain_opaque_type: def_id={:?}", def_id);
-        debug!("constrain_opaque_type: opaque_defn={:#?}", opaque_defn);
-
         let tcx = self.tcx;
 
         let concrete_ty = self.resolve_vars_if_possible(opaque_defn.concrete_ty);
 
-        debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
+        debug!(?concrete_ty);
 
         let first_own_region = match opaque_defn.origin {
             hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
@@ -397,7 +393,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // type foo::<'p0..'pn>::Foo<'q0..'qm>
                 // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
                 //
-                // For these types we onlt iterate over `'l0..lm` below.
+                // For these types we only iterate over `'l0..lm` below.
                 tcx.generics_of(def_id).parent_count
             }
             // These opaque type inherit all lifetime parameters from their
@@ -410,10 +406,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // If there are required region bounds, we can use them.
         if opaque_defn.has_required_region_bounds {
             let bounds = tcx.explicit_item_bounds(def_id);
-            debug!("constrain_opaque_type: predicates: {:#?}", bounds);
+            debug!("{:#?}", bounds);
             let bounds: Vec<_> =
                 bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs)).collect();
-            debug!("constrain_opaque_type: bounds={:#?}", bounds);
+            debug!("{:#?}", bounds);
             let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
 
             let required_region_bounds =
@@ -452,8 +448,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
             // Compute the least upper bound of it with the other regions.
-            debug!("constrain_opaque_types: least_region={:?}", least_region);
-            debug!("constrain_opaque_types: subst_region={:?}", subst_region);
+            debug!(?least_region);
+            debug!(?subst_region);
             match least_region {
                 None => least_region = Some(subst_region),
                 Some(lr) => {
@@ -484,7 +480,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         let least_region = least_region.unwrap_or(tcx.lifetimes.re_static);
-        debug!("constrain_opaque_types: least_region={:?}", least_region);
+        debug!(?least_region);
 
         if let GenerateMemberConstraints::IfNoStaticBound = mode {
             if least_region != tcx.lifetimes.re_static {
