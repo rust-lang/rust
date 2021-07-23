@@ -11,8 +11,8 @@ use hir_ty::db::HirDatabase;
 use syntax::ast;
 
 use crate::{
-    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, Impl, LifetimeParam, MacroDef,
-    Module, ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
+    Adt, AssocItem, Const, ConstParam, Enum, Field, Function, GenericParam, Impl, LifetimeParam,
+    MacroDef, Module, ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
 };
 
 pub trait HasAttrs {
@@ -85,6 +85,37 @@ macro_rules! impl_has_attrs_enum {
 
 impl_has_attrs_enum![Struct, Union, Enum for Adt];
 impl_has_attrs_enum![TypeParam, ConstParam, LifetimeParam for GenericParam];
+
+impl HasAttrs for AssocItem {
+    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
+        match self {
+            AssocItem::Function(it) => it.attrs(db),
+            AssocItem::Const(it) => it.attrs(db),
+            AssocItem::TypeAlias(it) => it.attrs(db),
+        }
+    }
+
+    fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
+        match self {
+            AssocItem::Function(it) => it.docs(db),
+            AssocItem::Const(it) => it.docs(db),
+            AssocItem::TypeAlias(it) => it.docs(db),
+        }
+    }
+
+    fn resolve_doc_path(
+        self,
+        db: &dyn HirDatabase,
+        link: &str,
+        ns: Option<Namespace>,
+    ) -> Option<ModuleDef> {
+        match self {
+            AssocItem::Function(it) => it.resolve_doc_path(db, link, ns),
+            AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
+            AssocItem::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
+        }
+    }
+}
 
 fn resolve_doc_path(
     db: &dyn HirDatabase,
