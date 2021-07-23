@@ -1,10 +1,10 @@
 //! Completion tests for predicates and bounds.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_FIXTURE};
+use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}\n{}", BASE_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{}\n{}", BASE_ITEMS_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -27,6 +27,7 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             st Foo<…>
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -107,6 +108,7 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             st Foo<…>
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
@@ -130,9 +132,10 @@ impl Record {
             en Enum
             st Record
             st Tuple
-            ma makro!(…) #[macro_export] macro_rules! makro
             md module
             st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
             ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],

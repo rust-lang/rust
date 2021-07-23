@@ -1,10 +1,10 @@
 //! Completion tests for item list position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_FIXTURE};
+use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}{}", BASE_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -65,8 +65,8 @@ fn in_source_file_item_list() {
             kw self
             kw super
             kw crate
-            ma makro!(…)           #[macro_export] macro_rules! makro
             md module
+            ma makro!(…)           #[macro_export] macro_rules! makro
             ma makro!(…)           #[macro_export] macro_rules! makro
         "##]],
     )
@@ -105,8 +105,8 @@ fn in_qualified_path() {
     check(
         r#"crate::$0"#,
         expect![[r##"
-            ma makro!(…) #[macro_export] macro_rules! makro
             md module
+            ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     )
 }
@@ -170,8 +170,8 @@ fn in_impl_assoc_item_list() {
             kw self
             kw super
             kw crate
-            ma makro!(…)  #[macro_export] macro_rules! makro
             md module
+            ma makro!(…)  #[macro_export] macro_rules! makro
             ma makro!(…)  #[macro_export] macro_rules! makro
         "##]],
     )

@@ -1,35 +1,22 @@
 //! Completion tests for type position.
 use expect_test::{expect, Expect};
 
-use crate::tests::completion_list;
+use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
 
-fn check_with(ra_fixture: &str, expect: Expect) {
-    let base = r#"
-enum Enum { TupleV(u32), RecordV { field: u32 }, UnitV }
-use self::Enum::TupleV;
-mod module {}
-
-trait Trait {}
-static STATIC: Unit = Unit;
-const CONST: Unit = Unit;
-struct Record { field: u32 }
-struct Tuple(u32);
-struct Unit
-macro_rules! makro {}
-"#;
-    let actual = completion_list(&format!("{}\n{}", base, ra_fixture));
+fn check(ra_fixture: &str, expect: Expect) {
+    let actual = completion_list(&format!("{}\n{}", BASE_ITEMS_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
 #[test]
 fn record_field_ty() {
-    check_with(
+    check(
         r#"
 struct Foo<'lt, T, const C: usize> {
     f: $0
 }
 "#,
-        expect![[r#"
+        expect![[r##"
             kw self
             kw super
             kw crate
@@ -42,19 +29,21 @@ struct Foo<'lt, T, const C: usize> {
             md module
             st Foo<…>
             st Unit
-            ma makro!(…) macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     )
 }
 
 #[test]
 fn tuple_struct_field() {
-    check_with(
+    check(
         r#"
 struct Foo<'lt, T, const C: usize>(f$0);
 "#,
-        expect![[r#"
+        expect![[r##"
             kw pub(crate)
             kw pub
             kw self
@@ -69,19 +58,21 @@ struct Foo<'lt, T, const C: usize>(f$0);
             md module
             st Foo<…>
             st Unit
-            ma makro!(…)  macro_rules! makro
+            ma makro!(…)  #[macro_export] macro_rules! makro
+            un Union
+            ma makro!(…)  #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     )
 }
 
 #[test]
 fn fn_return_type() {
-    check_with(
+    check(
         r#"
 fn x<'lt, T, const C: usize>() -> $0
 "#,
-        expect![[r#"
+        expect![[r##"
             kw self
             kw super
             kw crate
@@ -92,22 +83,24 @@ fn x<'lt, T, const C: usize>() -> $0
             st Tuple
             md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     );
 }
 
 #[test]
 fn body_type_pos() {
-    check_with(
+    check(
         r#"
 fn foo<'lt, T, const C: usize>() {
     let local = ();
     let _: $0;
 }
 "#,
-        expect![[r#"
+        expect![[r##"
             kw self
             kw super
             kw crate
@@ -118,31 +111,35 @@ fn foo<'lt, T, const C: usize>() {
             st Tuple
             md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     );
-    check_with(
+    check(
         r#"
 fn foo<'lt, T, const C: usize>() {
     let local = ();
     let _: self::$0;
 }
 "#,
-        expect![[r#"
+        expect![[r##"
             tt Trait
             en Enum
             st Record
             st Tuple
             md module
             st Unit
-        "#]],
+            ma makro!(…) #[macro_export] macro_rules! makro
+            un Union
+        "##]],
     );
 }
 
 #[test]
 fn completes_types_and_const_in_arg_list() {
-    check_with(
+    check(
         r#"
 trait Trait2 {
     type Foo;
@@ -150,7 +147,7 @@ trait Trait2 {
 
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
-        expect![[r#"
+        expect![[r##"
             kw self
             kw super
             kw crate
@@ -161,15 +158,17 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             en Enum
             st Record
             st Tuple
-            tt Trait2
             md module
             st Unit
+            ma makro!(…)          #[macro_export] macro_rules! makro
+            tt Trait2
+            un Union
             ct CONST
-            ma makro!(…)          macro_rules! makro
+            ma makro!(…)          #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     );
-    check_with(
+    check(
         r#"
 trait Trait2 {
     type Foo;
@@ -177,15 +176,34 @@ trait Trait2 {
 
 fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
     "#,
-        expect![[r#"
+        expect![[r##"
             tt Trait
             en Enum
             st Record
             st Tuple
-            tt Trait2
             md module
             st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
+            tt Trait2
+            un Union
             ct CONST
+        "##]],
+    );
+}
+
+#[test]
+fn enum_qualified() {
+    check(
+        r#"
+impl Enum {
+    type AssocType = ();
+    const ASSOC_CONST: () = ();
+    fn assoc_fn() {}
+}
+fn func(_: Enum::$0) {}
+"#,
+        expect![[r#"
+            ta AssocType type AssocType = ();
         "#]],
     );
 }
