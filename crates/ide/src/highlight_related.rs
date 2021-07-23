@@ -272,7 +272,6 @@ mod tests {
     use super::*;
 
     fn check(ra_fixture: &str) {
-        let (analysis, pos, annotations) = fixture::annotations(ra_fixture);
         let config = HighlightRelatedConfig {
             break_points: true,
             exit_points: true,
@@ -280,7 +279,13 @@ mod tests {
             yield_points: true,
         };
 
-        let hls = analysis.highlight_related(config, pos).unwrap().unwrap();
+        check_with_config(ra_fixture, config);
+    }
+
+    fn check_with_config(ra_fixture: &str, config: HighlightRelatedConfig) {
+        let (analysis, pos, annotations) = fixture::annotations(ra_fixture);
+
+        let hls = analysis.highlight_related(config, pos).unwrap().unwrap_or(Vec::default());
 
         let mut expected = annotations
             .into_iter()
@@ -744,5 +749,188 @@ fn foo() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_hl_disabled_ref_local() {
+        let config = HighlightRelatedConfig {
+            references: false,
+            break_points: true,
+            exit_points: true,
+            yield_points: true,
+        };
+
+        let ra_fixture = r#"
+fn foo() {
+    let x$0 = 5;
+    let y = x * 2;
+}"#;
+
+        check_with_config(ra_fixture, config);
+    }
+
+    #[test]
+    fn test_hl_disabled_ref_local_preserved_break() {
+        let config = HighlightRelatedConfig {
+            references: false,
+            break_points: true,
+            exit_points: true,
+            yield_points: true,
+        };
+
+        let ra_fixture = r#"
+fn foo() {
+    let x$0 = 5;
+    let y = x * 2;
+
+    loop {
+        break;
+    }
+}"#;
+
+        check_with_config(ra_fixture, config.clone());
+
+        let ra_fixture = r#"
+fn foo() {
+    let x = 5;
+    let y = x * 2;
+
+    loop$0 {
+//  ^^^^
+        break;
+//      ^^^^^
+    }
+}"#;
+
+        check_with_config(ra_fixture, config);
+    }
+
+    #[test]
+    fn test_hl_disabled_ref_local_preserved_yield() {
+        let config = HighlightRelatedConfig {
+            references: false,
+            break_points: true,
+            exit_points: true,
+            yield_points: true,
+        };
+
+        let ra_fixture = r#"
+async fn foo() {
+    let x$0 = 5;
+    let y = x * 2;
+
+    0.await;
+}"#;
+
+        check_with_config(ra_fixture, config.clone());
+
+        let ra_fixture = r#"
+    async fn foo() {
+//  ^^^^^
+        let x = 5;
+        let y = x * 2;
+
+        0.await$0;
+//        ^^^^^
+}"#;
+
+        check_with_config(ra_fixture, config);
+    }
+
+    #[test]
+    fn test_hl_disabled_ref_local_preserved_exit() {
+        let config = HighlightRelatedConfig {
+            references: false,
+            break_points: true,
+            exit_points: true,
+            yield_points: true,
+        };
+
+        let ra_fixture = r#"
+fn foo() -> i32 {
+    let x$0 = 5;
+    let y = x * 2;
+
+    if true {
+        return y;
+    }
+
+    0?
+}"#;
+
+        check_with_config(ra_fixture, config.clone());
+
+        let ra_fixture = r#"
+fn foo() ->$0 i32 {
+    let x = 5;
+    let y = x * 2;
+
+    if true {
+        return y;
+//      ^^^^^^
+    }
+
+    0?
+//   ^
+"#;
+
+        check_with_config(ra_fixture, config);
+    }
+
+    #[test]
+    fn test_hl_disabled_break() {
+        let config = HighlightRelatedConfig {
+            references: true,
+            break_points: false,
+            exit_points: true,
+            yield_points: true,
+        };
+
+        let ra_fixture = r#"
+fn foo() {
+    loop {
+        break$0;
+    }
+}"#;
+
+        check_with_config(ra_fixture, config);
+    }
+
+    #[test]
+    fn test_hl_disabled_yield() {
+        let config = HighlightRelatedConfig {
+            references: true,
+            break_points: true,
+            exit_points: true,
+            yield_points: false,
+        };
+
+        let ra_fixture = r#"
+async$0 fn foo() {
+    0.await;
+}"#;
+
+        check_with_config(ra_fixture, config);
+    }
+
+    #[test]
+    fn test_hl_disabled_exit() {
+        let config = HighlightRelatedConfig {
+            references: true,
+            break_points: true,
+            exit_points: false,
+            yield_points: true,
+        };
+
+        let ra_fixture = r#"
+fn foo() ->$0 i32 {
+    if true {
+        return -1;
+    }
+
+    42
+}"#;
+
+        check_with_config(ra_fixture, config);
     }
 }
