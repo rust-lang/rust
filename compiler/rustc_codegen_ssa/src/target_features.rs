@@ -4,6 +4,9 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 
+/// Features that control behaviour of rustc, rather than the codegen.
+pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
+
 // When adding features to the below lists
 // check whether they're named already elsewhere in rust
 // e.g. in stdarch and whether the given name matches LLVM's
