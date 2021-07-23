@@ -77,7 +77,7 @@ pub trait Qux {
     const QUX_DEFAULT2: u32 = 3;
 }
 
-// @has assoc_consts/struct.Bar.html '//h3[@class="code-header"]' 'impl Qux for Bar'
+// @has assoc_consts/struct.Bar.html '//h3[@class="code-header in-band"]' 'impl Qux for Bar'
 impl Qux for Bar {
     // @has - '//*[@id="associatedconstant.QUX0"]' 'const QUX0: u8'
     // @has - '//*[@class="docblock"]' "Docs for QUX0 in trait."
