@@ -190,6 +190,15 @@ impl Command {
         self.args.push(arg);
     }
 
+    pub fn args_clear(&mut self) {
+        // resize `argv` to 2 (argv[0] and NULL).
+        self.argv.0.truncate(2);
+        self.argv.0[1] = ptr::null();
+
+        // drop all excess args.
+        self.args.truncate(1);
+    }
+
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(os2c(dir, &mut self.saw_nul));
     }

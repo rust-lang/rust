@@ -306,6 +306,7 @@
 #![feature(min_specialization)]
 #![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]
+#![feature(mutate_command_args)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]

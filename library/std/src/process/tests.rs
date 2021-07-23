@@ -211,6 +211,32 @@ fn test_wait_with_output_once() {
     assert_eq!(stderr, Vec::new());
 }
 
+#[test]
+fn test_args_clear() {
+    let mut prog = Command::new("echo");
+
+    if cfg!(target_os = "windows") {
+        prog.args(&["/C", "echo reset_me"])
+    } else {
+        prog.arg("reset_me")
+    };
+
+    prog.args_clear();
+
+    if cfg!(target_os = "windows") {
+        prog.args(&["/C", "echo hello"]);
+    } else {
+        prog.arg("hello");
+    };
+
+    let Output { status, stdout, stderr } = prog.output().unwrap();
+    let output_str = str::from_utf8(&stdout).unwrap();
+
+    assert!(status.success());
+    assert_eq!(output_str.trim().to_string(), "hello");
+    assert_eq!(stderr, Vec::new());
+}
+
 #[cfg(all(unix, not(target_os = "android")))]
 pub fn env_cmd() -> Command {
     Command::new("env")
