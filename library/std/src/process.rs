@@ -714,6 +714,48 @@ impl Command {
         self
     }
 
+    /// Reset the argument list to new content
+    ///
+    /// Allows to maintain the argument list in a Vec or anything else that can provide
+    /// a suitable iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// #![feature(mutate_command_args)]
+    /// use std::process::Command;
+    ///
+    /// // Prepare a command
+    /// let mut command = Command::new("ls");
+    /// let mut my_args = Vec::from(["-l", "foo"]);
+    ///
+    /// command
+    ///     .args_new(&my_args)
+    ///     .spawn()
+    ///     .unwrap();
+    ///
+    /// // Mutate my_args
+    /// my_args.insert(1, "-a");
+    /// my_args.pop();
+    /// my_args.push("bar");
+    ///
+    /// // Run command again with the mutated arguments
+    /// command
+    ///     .args_new(&my_args)
+    ///     .spawn()
+    ///     .unwrap();
+    /// ```
+    #[unstable(feature = "mutate_command_args", issue = "87379")]
+    pub fn args_new<I, S>(&mut self, args: I) -> &mut Command
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.args_clear().args(args)
+    }
+
     /// Inserts or updates an environment variable mapping.
     ///
     /// Note that environment variable names are case-insensitive (but case-preserving) on Windows,
