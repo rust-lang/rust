@@ -682,8 +682,11 @@ impl Command {
 
     /// Sets the argument at index to a new value.
     ///
-    /// When one wants to restart a Command again with different
-    /// arguments the argument list can to be cleared first.
+    /// An existing argument at the given index will be replaced with a new value.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the index is 0 or out of bounds.
     ///
     /// # Examples
     ///
