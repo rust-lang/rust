@@ -16,7 +16,11 @@ declare_clippy_lint! {
     /// - `.clone()` for `String`
     /// - `.to_vec()` for `slice`
     ///
-    /// **Why is this bad?** For example, `String.repeat(1)` is equivalent to `.clone()`. If cloning the string is the intention behind this, `clone()` should be used.
+    /// The lint will evaluate constant expressions and values as arguments of `.repeat(..)` and emit a message if
+    /// they are equivalent to `1`. (Related discussion in [rust-clippy#7306](https://github.com/rust-lang/rust-clippy/issues/7306))
+    ///
+    /// **Why is this bad?** For example, `String.repeat(1)` is equivalent to `.clone()`. If cloning
+    /// the string is the intention behind this, `clone()` should be used.
     ///
     /// **Known problems:** None.
     ///
