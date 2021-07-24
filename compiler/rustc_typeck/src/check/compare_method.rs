@@ -1292,7 +1292,24 @@ pub fn check_type_bounds<'tcx>(
     };
 
     tcx.infer_ctxt().enter(move |infcx| {
-        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
+        // if the item is inside a const impl, we transform the predicates to be const.
+        let constness = tcx.impl_constness(impl_ty.container.assert_impl());
+        let pred_map = match constness {
+            hir::Constness::NotConst => |p, _| p,
+            hir::Constness::Const => |p: ty::Predicate<'tcx>, tcx: TyCtxt<'tcx>| {
+                p.kind()
+                    .map_bound(|kind| match kind {
+                        ty::PredicateKind::Trait(mut tp) => {
+                            tp.constness = hir::Constness::Const;
+                            ty::PredicateKind::Trait(tp)
+                        }
+                        kind => kind,
+                    })
+                    .to_predicate(tcx)
+            },
+        };
+
+        let inh = Inherited::with_constness(infcx, impl_ty.def_id.expect_local(), constness);
         let infcx = &inh.infcx;
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -1310,7 +1327,7 @@ pub fn check_type_bounds<'tcx>(
             .explicit_item_bounds(trait_ty.def_id)
             .iter()
             .map(|&(bound, span)| {
-                let concrete_ty_bound = bound.subst(tcx, rebased_substs);
+                let concrete_ty_bound = pred_map(bound.subst(tcx, rebased_substs), tcx);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
                 traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
@@ -1328,7 +1345,10 @@ pub fn check_type_bounds<'tcx>(
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
             obligation.predicate = normalized_predicate;
 
-            inh.register_predicates(obligations);
+            inh.register_predicates(obligations.into_iter().map(|mut o| {
+                o.predicate = pred_map(o.predicate, tcx);
+                o
+            }));
             inh.register_predicate(obligation);
         }
 
