@@ -109,7 +109,20 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// }
 /// ```
 ///
-/// `BTreeMap` also implements an [`Entry API`], which allows for more complex
+/// A `BTreeMap` with a known list of items can be initialized from an array:
+///
+/// ```
+/// use std::collections::BTreeMap;
+///
+/// let solar_distance = BTreeMap::from([
+///     ("Mercury", 0.4),
+///     ("Venus", 0.7),
+///     ("Earth", 1.0),
+///     ("Mars", 1.5),
+/// ]);
+/// ```
+///
+/// `BTreeMap` implements an [`Entry API`], which allows for complex
 /// methods of getting, setting, updating and removing keys and their values:
 ///
 /// [`Entry API`]: BTreeMap::entry
@@ -2009,6 +2022,20 @@ where
     #[inline]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
+    }
+}
+
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
+impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let map1 = BTreeMap::from([(1, 2), (3, 4)]);
+    /// let map2: BTreeMap<_, _> = [(1, 2), (3, 4)].into();
+    /// assert_eq!(map1, map2);
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }
 

@@ -209,6 +209,14 @@ use super::SpecExtend;
 /// assert!(heap.is_empty())
 /// ```
 ///
+/// A `BinaryHeap` with a known list of items can be initialized from an array:
+///
+/// ```
+/// use std::collections::BinaryHeap;
+///
+/// let heap = BinaryHeap::from([1, 5, 2]);
+/// ```
+///
 /// ## Min-heap
 ///
 /// Either `std::cmp::Reverse` or a custom `Ord` implementation can be used to
@@ -1462,6 +1470,22 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
         heap.rebuild();
         heap
+    }
+}
+
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
+impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
+    /// ```
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut h1 = BinaryHeap::from([1, 4, 2, 3]);
+    /// let mut h2: BinaryHeap<_> = [1, 4, 2, 3].into();
+    /// while let Some((a, b)) = h1.pop().zip(h2.pop()) {
+    ///     assert_eq!(a, b);
+    /// }
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }
 

@@ -95,14 +95,12 @@ use super::map::{map_try_reserve_error, RandomState};
 /// }
 /// ```
 ///
-/// A `HashSet` with fixed list of elements can be initialized from an array:
+/// A `HashSet` with a known list of items can be initialized from an array:
 ///
 /// ```
 /// use std::collections::HashSet;
 ///
-/// let viking_names: HashSet<&'static str> =
-///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
-/// // use the values stored in the set
+/// let viking_names = HashSet::from(["Einar", "Olaf", "Harald"]);
 /// ```
 ///
 /// [hash set]: crate::collections#use-the-set-variant-of-any-of-these-maps-when
@@ -994,6 +992,37 @@ where
         let mut set = HashSet::with_hasher(Default::default());
         set.extend(iter);
         set
+    }
+}
+
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
+// Note: as what is currently the most convenient built-in way to construct
+// a HashSet, a simple usage of this function must not *require* the user
+// to provide a type annotation in order to infer the third type parameter
+// (the hasher parameter, conventionally "S").
+// To that end, this impl is defined using RandomState as the concrete
+// type of S, rather than being generic over `S: BuildHasher + Default`.
+// It is expected that users who want to specify a hasher will manually use
+// `with_capacity_and_hasher`.
+// If type parameter defaults worked on impls, and if type parameter
+// defaults could be mixed with const generics, then perhaps
+// this could be generalized.
+// See also the equivalent impl on HashMap.
+impl<T, const N: usize> From<[T; N]> for HashSet<T, RandomState>
+where
+    T: Eq + Hash,
+{
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let set1 = HashSet::from([1, 2, 3, 4]);
+    /// let set2: HashSet<_> = [1, 2, 3, 4].into();
+    /// assert_eq!(set1, set2);
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        crate::array::IntoIter::new(arr).collect()
     }
 }
 

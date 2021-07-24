@@ -67,6 +67,14 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible 
 /// push onto the back in this manner, and iterating over `VecDeque` goes front
 /// to back.
 ///
+/// A `VecDeque` with a known list of items can be initialized from an array:
+///
+/// ```
+/// use std::collections::VecDeque;
+///
+/// let deq = VecDeque::from([-1, 0, 1]);
+/// ```
+///
 /// Since `VecDeque` is a ring buffer, its elements are not necessarily contiguous
 /// in memory. If you want to access the elements as a single slice, such as for
 /// efficient sorting, you can use [`make_contiguous`]. It rotates the `VecDeque`
@@ -2913,5 +2921,19 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             }
             Vec::from_raw_parts(buf, len, cap)
         }
+    }
+}
+
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
+impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let deq1 = VecDeque::from([1, 2, 3, 4]);
+    /// let deq2: VecDeque<_> = [1, 2, 3, 4].into();
+    /// assert_eq!(deq1, deq2);
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }

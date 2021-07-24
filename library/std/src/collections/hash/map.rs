@@ -124,8 +124,21 @@ use crate::sys;
 /// }
 /// ```
 ///
-/// `HashMap` also implements an [`Entry API`](#method.entry), which allows
-/// for more complex methods of getting, setting, updating and removing keys and
+/// A `HashMap` with a known list of items can be initialized from an array:
+///
+/// ```
+/// use std::collections::HashMap;
+///
+/// let solar_distance = HashMap::from([
+///     ("Mercury", 0.4),
+///     ("Venus", 0.7),
+///     ("Earth", 1.0),
+///     ("Mars", 1.5),
+/// ]);
+/// ```
+///
+/// `HashMap` implements an [`Entry API`](#method.entry), which allows
+/// for complex methods of getting, setting, updating and removing keys and
 /// their values:
 ///
 /// ```
@@ -179,26 +192,16 @@ use crate::sys;
 /// }
 ///
 /// // Use a HashMap to store the vikings' health points.
-/// let mut vikings = HashMap::new();
-///
-/// vikings.insert(Viking::new("Einar", "Norway"), 25);
-/// vikings.insert(Viking::new("Olaf", "Denmark"), 24);
-/// vikings.insert(Viking::new("Harald", "Iceland"), 12);
+/// let vikings = HashMap::from([
+///     (Viking::new("Einar", "Norway"), 25),
+///     (Viking::new("Olaf", "Denmark"), 24),
+///     (Viking::new("Harald", "Iceland"), 12),
+/// ]);
 ///
 /// // Use derived implementation to print the status of the vikings.
 /// for (viking, health) in &vikings {
 ///     println!("{:?} has {} hp", viking, health);
 /// }
-/// ```
-///
-/// A `HashMap` with fixed list of elements can be initialized from an array:
-///
-/// ```
-/// use std::collections::HashMap;
-///
-/// let timber_resources: HashMap<&str, i32> = [("Norway", 100), ("Denmark", 50), ("Iceland", 10)]
-///     .iter().cloned().collect();
-/// // use the values stored in map
 /// ```
 
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
@@ -1145,6 +1148,37 @@ where
     #[inline]
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
+    }
+}
+
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
+// Note: as what is currently the most convenient built-in way to construct
+// a HashMap, a simple usage of this function must not *require* the user
+// to provide a type annotation in order to infer the third type parameter
+// (the hasher parameter, conventionally "S").
+// To that end, this impl is defined using RandomState as the concrete
+// type of S, rather than being generic over `S: BuildHasher + Default`.
+// It is expected that users who want to specify a hasher will manually use
+// `with_capacity_and_hasher`.
+// If type parameter defaults worked on impls, and if type parameter
+// defaults could be mixed with const generics, then perhaps
+// this could be generalized.
+// See also the equivalent impl on HashSet.
+impl<K, V, const N: usize> From<[(K, V); N]> for HashMap<K, V, RandomState>
+where
+    K: Eq + Hash,
+{
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let map1 = HashMap::from([(1, 2), (3, 4)]);
+    /// let map2: HashMap<_, _> = [(1, 2), (3, 4)].into();
+    /// assert_eq!(map1, map2);
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        crate::array::IntoIter::new(arr).collect()
     }
 }
 

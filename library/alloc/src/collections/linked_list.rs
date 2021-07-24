@@ -31,6 +31,13 @@ mod tests;
 /// The `LinkedList` allows pushing and popping elements at either end
 /// in constant time.
 ///
+/// A `LinkedList` with a known list of items can be initialized from an array:
+/// ```
+/// use std::collections::LinkedList;
+///
+/// let list = LinkedList::from([1, 2, 3]);
+/// ```
+///
 /// NOTE: It is almost always better to use `Vec` or `VecDeque` because
 /// array-based containers are generally faster,
 /// more memory efficient, and make better use of CPU cache.
@@ -1898,6 +1905,20 @@ impl<T: Hash> Hash for LinkedList<T> {
         for elt in self {
             elt.hash(state);
         }
+    }
+}
+
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
+impl<T, const N: usize> From<[T; N]> for LinkedList<T> {
+    /// ```
+    /// use std::collections::LinkedList;
+    ///
+    /// let list1 = LinkedList::from([1, 2, 3, 4]);
+    /// let list2: LinkedList<_> = [1, 2, 3, 4].into();
+    /// assert_eq!(list1, list2);
+    /// ```
+    fn from(arr: [T; N]) -> Self {
+        core::array::IntoIter::new(arr).collect()
     }
 }
 

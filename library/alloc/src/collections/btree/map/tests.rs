@@ -2173,3 +2173,10 @@ fn test_insert_remove_intertwined_ord_chaos() {
     }
     map.check_invariants();
 }
+
+#[test]
+fn from_array() {
+    let map = BTreeMap::from([(1, 2), (3, 4)]);
+    let unordered_duplicates = BTreeMap::from([(3, 4), (1, 2), (1, 2)]);
+    assert_eq!(map, unordered_duplicates);
+}
