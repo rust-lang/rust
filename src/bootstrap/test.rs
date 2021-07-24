@@ -13,7 +13,7 @@ use std::process::{Command, Stdio};
 
 use build_helper::{self, output, t};
 
-use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::cache::Interned;
 use crate::compile;
 use crate::config::TargetSelection;
@@ -25,6 +25,33 @@ use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
 use crate::{envify, DocTests, GitRepo, Mode};
+
+macro_rules! host_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.host(step.host).cmd(Kind::Test);
+        }
+    }
+}
+
+macro_rules! stage_host_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.stage(step.stage).host(step.host).cmd(Kind::Test);
+        }
+    }
+}
+
+macro_rules! compiler_target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Test);
+        }
+    }
+}
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -150,6 +177,11 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
         );
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.host(step.host).cmd(Kind::Test);
+    }
+
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         let run = run.path("src/tools/linkchecker");
@@ -188,6 +220,10 @@ impl Step for HtmlCheck {
         run.builder.ensure(HtmlCheck { target: run.target });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.target(step_info.step.target).cmd(Kind::Test);
+    }
+
     fn run(self, builder: &Builder<'_>) {
         if !check_if_tidy_is_installed() {
             eprintln!("not running HTML-check tool because `tidy` is missing");
@@ -221,6 +257,8 @@ impl Step for Cargotest {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargotest { stage: run.builder.top_stage, host: run.target });
     }
+
+    stage_host_info!();
 
     /// Runs the `cargotest` tool as compiled in `stage` by the `host` compiler.
     ///
@@ -267,6 +305,8 @@ impl Step for Cargo {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo { stage: run.builder.top_stage, host: run.target });
     }
+
+    stage_host_info!();
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
@@ -322,6 +362,8 @@ impl Step for Rls {
         run.builder.ensure(Rls { stage: run.builder.top_stage, host: run.target });
     }
 
+    stage_host_info!();
+
     /// Runs `cargo test` for the rls.
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
@@ -373,6 +415,8 @@ impl Step for Rustfmt {
         run.builder.ensure(Rustfmt { stage: run.builder.top_stage, host: run.target });
     }
 
+    stage_host_info!();
+
     /// Runs `cargo test` for rustfmt.
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
@@ -421,6 +465,8 @@ impl Step for RustDemangler {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustDemangler { stage: run.builder.top_stage, host: run.target });
     }
+
+    stage_host_info!();
 
     /// Runs `cargo test` for rust-demangler.
     fn run(self, builder: &Builder<'_>) {
@@ -472,6 +518,8 @@ impl Step for Miri {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri { stage: run.builder.top_stage, host: run.target });
     }
+
+    stage_host_info!();
 
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder<'_>) {
@@ -605,6 +653,8 @@ impl Step for CompiletestTest {
         run.builder.ensure(CompiletestTest { host: run.target });
     }
 
+    host_info!();
+
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
@@ -646,6 +696,8 @@ impl Step for Clippy {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy { stage: run.builder.top_stage, host: run.target });
     }
+
+    stage_host_info!();
 
     /// Runs `cargo test` for clippy.
     fn run(self, builder: &Builder<'_>) {
@@ -738,6 +790,11 @@ impl Step for RustdocTheme {
         run.builder.ensure(RustdocTheme { compiler });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(step.compiler).cmd(Kind::Test);
+    }
+
     fn run(self, builder: &Builder<'_>) {
         let rustdoc = builder.out.join("bootstrap/debug/rustdoc");
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
@@ -775,6 +832,11 @@ impl Step for RustdocJSStd {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustdocJSStd { target: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.target).cmd(Kind::Test);
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -817,6 +879,8 @@ impl Step for RustdocJSNotStd {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
         run.builder.ensure(RustdocJSNotStd { target: run.target, compiler });
     }
+
+    compiler_target_info!();
 
     fn run(self, builder: &Builder<'_>) {
         if builder.config.nodejs.is_some() {
@@ -881,6 +945,8 @@ impl Step for RustdocGUI {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
         run.builder.ensure(RustdocGUI { target: run.target, compiler });
     }
+
+    compiler_target_info!();
 
     fn run(self, builder: &Builder<'_>) {
         let nodejs = builder.config.nodejs.as_ref().expect("nodejs isn't available");
@@ -999,6 +1065,10 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
         }
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Test);
+    }
+
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/tidy")
     }
@@ -1026,6 +1096,10 @@ impl Step for ExpandYamlAnchors {
             builder,
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
         );
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Test);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1125,6 +1199,8 @@ macro_rules! test_definitions {
                 run.builder.ensure($name { compiler, target: run.target });
             }
 
+            compiler_target_info!();
+
             fn run(self, builder: &Builder<'_>) {
                 builder.ensure(Compiletest {
                     compiler: self.compiler,
@@ -1214,6 +1290,8 @@ impl Step for Compiletest {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
+
+    compiler_target_info!();
 
     fn path(&self, _builder: &Builder<'_>) -> PathBuf {
         // FIXME: it would be nice to suggest exactly the tests that fail, but that info isn't known without first running compiletest.
@@ -1624,6 +1702,12 @@ impl Step for BookTest {
         run.never()
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        todo!("path");
+        step_info.compiler(&step.compiler).cmd(Kind::Test);
+    }
+
     /// Runs the documentation tests for a book in `src/doc`.
     ///
     /// This uses the `rustdoc` that sits next to `compiler`.
@@ -1730,6 +1814,11 @@ macro_rules! test_book {
                     });
                 }
 
+                fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+                    let step = step_info.step;
+                    step_info.compiler(&step.compiler).cmd(Kind::Test);
+                }
+
                 fn run(self, builder: &Builder<'_>) {
                     builder.ensure(BookTest {
                         compiler: self.compiler,
@@ -1775,6 +1864,11 @@ impl Step for ErrorIndex {
         // tests in src/test/rustdoc) so that it shares the same artifacts.
         let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build);
         run.builder.ensure(ErrorIndex { compiler });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).cmd(Kind::Test);
     }
 
     /// Runs the error index generator tool to execute the tests located in the error
@@ -1846,6 +1940,10 @@ impl Step for RustcGuide {
         run.builder.ensure(RustcGuide);
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Test);
+    }
+
     fn run(self, builder: &Builder<'_>) {
         let relative_path = Path::new("src").join("doc").join("rustc-dev-guide");
         builder.update_submodule(&relative_path);
@@ -1896,6 +1994,12 @@ impl Step for CrateLibrustc {
                 });
             }
         }
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.path(step.krate_path.clone());
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Test);
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1951,6 +2055,8 @@ impl Step for Crate {
             }
         }
     }
+
+    compiler_target_info!();
 
     fn path(&self, _builder: &Builder<'_>) -> PathBuf {
         self.krate_path.file_name().expect("top-level directory is not a crate").into()
@@ -2078,6 +2184,11 @@ impl Step for CrateRustdoc {
         builder.ensure(CrateRustdoc { host: run.target, test_kind });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.host(step.host).cmd(Kind::Test);
+    }
+
     fn run(self, builder: &Builder<'_>) {
         let test_kind = self.test_kind;
         let target = self.host;
@@ -2175,6 +2286,11 @@ impl Step for CrateRustdocJsonTypes {
         builder.ensure(CrateRustdocJsonTypes { host: run.target, test_kind });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.host(step.host).cmd(Kind::Test);
+    }
+
     fn run(self, builder: &Builder<'_>) {
         let test_kind = self.test_kind;
         let target = self.host;
@@ -2245,6 +2361,8 @@ impl Step for RemoteCopyLibs {
         run.never()
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
@@ -2291,6 +2409,10 @@ impl Step for Distcheck {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Distcheck);
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Test);
     }
 
     /// Runs "distcheck", a 'make check' from a tarball
@@ -2381,6 +2503,10 @@ impl Step for Bootstrap {
         try_run(builder, &mut cmd);
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Test);
+    }
+
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/bootstrap")
     }
@@ -2408,6 +2534,11 @@ impl Step for TierCheck {
         let compiler =
             run.builder.compiler_for(run.builder.top_stage, run.builder.build.build, run.target);
         run.builder.ensure(TierCheck { compiler });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(step.compiler).cmd(Kind::Test);
     }
 
     /// Tests the Platform Support page in the rustc book.
@@ -2455,6 +2586,8 @@ impl Step for LintDocs {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     /// Tests that the lint examples in the rustc book generate the correct
     /// lints and have the expected format.

@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use crate::Mode;
 use build_helper::{t, up_to_date};
 
-use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::{Config, TargetSelection};
@@ -29,6 +29,32 @@ macro_rules! submodule_helper {
     ($path:expr, submodule = $submodule:literal) => {
         $submodule
     };
+}
+
+macro_rules! target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            step_info.target(step_info.step.target).cmd(Kind::Doc);
+        }
+    }
+}
+
+macro_rules! compiler_target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Doc);
+        }
+    }
+}
+
+macro_rules! stage_target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.stage(step.stage).target(step.target).cmd(Kind::Doc);
+        }
+    }
 }
 
 macro_rules! book {
@@ -53,6 +79,8 @@ macro_rules! book {
                     target: run.target,
                 });
             }
+
+            target_info!();
 
             fn run(self, builder: &Builder<'_>) {
                 $(
@@ -132,6 +160,8 @@ impl Step for UnstableBook {
         run.builder.ensure(UnstableBook { target: run.target });
     }
 
+    target_info!();
+
     fn run(self, builder: &Builder<'_>) {
         builder.ensure(UnstableBookGen { target: self.target });
         builder.ensure(RustbookSrc {
@@ -155,6 +185,8 @@ impl Step for RustbookSrc {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
+
+    target_info!();
 
     /// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
     ///
@@ -202,6 +234,8 @@ impl Step for TheBook {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     /// Builds the book and associated stuff.
     ///
@@ -317,6 +351,8 @@ impl Step for Standalone {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     /// Generates all standalone documentation as compiled by the rustdoc in `stage`
     /// for the `target` into `out`.
@@ -434,6 +470,8 @@ impl Step for Std {
         run.builder.ensure(Std { stage: run.builder.top_stage, target: run.target });
     }
 
+    stage_target_info!();
+
     /// Compile all standard library documentation.
     ///
     /// This will generate all documentation for the standard library and its
@@ -544,6 +582,8 @@ impl Step for Rustc {
         run.builder.ensure(Rustc { stage: run.builder.top_stage, target: run.target });
     }
 
+    stage_target_info!();
+
     /// Generates compiler documentation.
     ///
     /// This will generate all documentation for compiler and dependencies.
@@ -638,6 +678,8 @@ macro_rules! tool_doc {
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($tool { stage: run.builder.top_stage, target: run.target });
             }
+
+            stage_target_info!();
 
             /// Generates compiler documentation.
             ///
@@ -735,6 +777,8 @@ impl Step for ErrorIndex {
         run.builder.ensure(ErrorIndex { target });
     }
 
+    target_info!();
+
     /// Generates the HTML rendered error-index by running the
     /// `error_index_generator` tool.
     fn run(self, builder: &Builder<'_>) {
@@ -768,6 +812,8 @@ impl Step for UnstableBookGen {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(UnstableBookGen { target: run.target });
     }
+
+    target_info!();
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
@@ -827,6 +873,8 @@ impl Step for RustcBook {
             validate: false,
         });
     }
+
+    compiler_target_info!();
 
     /// Builds the rustc book.
     ///

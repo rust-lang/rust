@@ -1,4 +1,4 @@
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, RunConfig, ShouldRun, Step, StepInfo};
 use build_helper::t;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -140,6 +140,8 @@ pub struct ToolStateCheck;
 
 impl Step for ToolStateCheck {
     type Output = ();
+
+    fn info(_step_info: &mut StepInfo<'_, '_, Self>) {}
 
     /// Checks tool state status.
     ///

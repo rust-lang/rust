@@ -15,7 +15,7 @@ use std::process::Command;
 
 use build_helper::{output, t};
 
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::TargetSelection;
@@ -45,6 +45,15 @@ fn missing_tool(tool_name: &str, skip: bool) {
     }
 }
 
+macro_rules! compiler_target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Dist);
+        }
+    }
+}
+
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Docs {
     pub host: TargetSelection,
@@ -60,6 +69,11 @@ impl Step for Docs {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Docs { host: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.host).cmd(Kind::Dist);
     }
 
     /// Builds the `rust-docs` installer component.
@@ -95,6 +109,11 @@ impl Step for RustcDocs {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustcDocs { host: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.host).cmd(Kind::Dist);
     }
 
     /// Builds the `rustc-docs` installer component.
@@ -278,6 +297,11 @@ impl Step for Mingw {
         run.builder.ensure(Mingw { host: run.target });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.host).cmd(Kind::Dist);
+    }
+
     /// Builds the `rust-mingw` installer component.
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
@@ -318,6 +342,11 @@ impl Step for Rustc {
     fn make_run(run: RunConfig<'_>) {
         run.builder
             .ensure(Rustc { compiler: run.builder.compiler(run.builder.top_stage, run.target) });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).cmd(Kind::Dist);
     }
 
     /// Creates the `rustc` installer component.
@@ -484,6 +513,11 @@ impl Step for DebuggerScripts {
         });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.host).cmd(Kind::Dist);
+    }
+
     /// Copies debugger scripts for `target` into the `sysroot` specified.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
@@ -577,6 +611,8 @@ impl Step for Std {
         });
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
@@ -623,6 +659,8 @@ impl Step for RustcDev {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
@@ -693,6 +731,8 @@ impl Step for Analysis {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     /// Creates a tarball of save-analysis metadata, if available.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
@@ -820,6 +860,10 @@ impl Step for Src {
         run.builder.ensure(Src);
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Dist);
+    }
+
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let tarball = Tarball::new_targetless(builder, "rust-src");
@@ -871,6 +915,10 @@ impl Step for PlainSourceTarball {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(PlainSourceTarball);
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Dist);
     }
 
     /// Creates the plain source tarball
@@ -971,6 +1019,8 @@ impl Step for Cargo {
         });
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let target = self.target;
@@ -1025,6 +1075,8 @@ impl Step for Rls {
         });
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
@@ -1070,6 +1122,8 @@ impl Step for RustAnalyzer {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         // This prevents rust-analyzer from being built for "dist" or "install"
@@ -1126,6 +1180,8 @@ impl Step for Clippy {
         });
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let target = self.target;
@@ -1175,6 +1231,8 @@ impl Step for Miri {
             target: run.target,
         });
     }
+
+    compiler_target_info!();
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         // This prevents miri from being built for "dist" or "install"
@@ -1235,6 +1293,8 @@ impl Step for Rustfmt {
         });
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
@@ -1287,6 +1347,8 @@ impl Step for RustDemangler {
         });
     }
 
+    compiler_target_info!();
+
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
@@ -1335,6 +1397,11 @@ impl Step for Extended {
             host: run.builder.config.build,
             target: run.target,
         });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.stage(step.stage).host(step.host).target(step.target).cmd(Kind::Dist);
     }
 
     /// Creates a combined installer for the specified target in the provided stage.
@@ -2012,6 +2079,11 @@ impl Step for LlvmTools {
         run.builder.ensure(LlvmTools { target: run.target });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.target).cmd(Kind::Dist);
+    }
+
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
         assert!(builder.config.extended);
@@ -2065,6 +2137,11 @@ impl Step for RustDev {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustDev { target: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.target).cmd(Kind::Dist);
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
@@ -2135,6 +2212,11 @@ impl Step for BuildManifest {
         run.builder.ensure(BuildManifest { target: run.target });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.target).cmd(Kind::Dist);
+    }
+
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let build_manifest = builder.tool_exe(Tool::BuildManifest);
 
@@ -2165,6 +2247,11 @@ impl Step for ReproducibleArtifacts {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(ReproducibleArtifacts { target: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.target).cmd(Kind::Dist);
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {

@@ -262,6 +262,11 @@ impl Step for CodegenBackend {
         }
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.target(step.target).cmd(Kind::Check);
+    }
+
     fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
@@ -281,10 +286,11 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        builder.info(&format!(
-            "Checking stage{} {} artifacts ({} -> {})",
-            builder.top_stage, backend, &compiler.host.triple, target.triple
-        ));
+        builder.step_info(&self);
+        // builder.info(&format!(
+        //     "Checking stage{} {} artifacts ({} -> {})",
+        //     builder.top_stage, backend, &compiler.host.triple, target.triple
+        // ));
 
         run_cargo(
             builder,
@@ -316,6 +322,13 @@ macro_rules! tool_check_step {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name { target: run.target });
+            }
+
+            fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+                let step = step_info.step;
+                let builder = step_info.builder;
+                let compiler = builder.compiler(builder.top_stage, builder.config.build);
+                step_info.compiler(compiler).target(step.target).cmd(Kind::Check);
             }
 
             fn run(self, builder: &Builder<'_>) {

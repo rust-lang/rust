@@ -40,6 +40,12 @@ impl Step for ToolBuild {
         run.never()
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        todo!("path");
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
+    }
+
     /// Builds a tool in `src/tools`
     ///
     /// This will build the specified tool with the specified `host` compiler in
@@ -432,6 +438,11 @@ impl Step for ErrorIndex {
         run.builder.ensure(ErrorIndex { compiler });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).cmd(Kind::Build);
+    }
+
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder
             .ensure(ToolBuild {
@@ -468,6 +479,11 @@ impl Step for RemoteTestServer {
         });
     }
 
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
+    }
+
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder
             .ensure(ToolBuild {
@@ -498,6 +514,11 @@ impl Step for Rustdoc {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc").path("src/librustdoc")
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).cmd(Kind::Build);
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -720,6 +741,11 @@ macro_rules! tool_extended {
                     target: run.target,
                     extra_features: Vec::new(),
                 });
+            }
+
+            fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+                let step = step_info.step;
+                step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Check);
             }
 
             #[allow(unused_mut)]

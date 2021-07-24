@@ -14,7 +14,7 @@ use crate::dist::{self, sanitize_sh};
 use crate::tarball::GeneratedTarball;
 use crate::Compiler;
 
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::config::{Config, TargetSelection};
 
 #[cfg(target_os = "illumos")]
@@ -90,6 +90,15 @@ fn prepare_dir(mut path: PathBuf) -> String {
     sanitize_sh(&path)
 }
 
+macro_rules! compiler_target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            let step = step_info.step;
+            step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Install);
+        }
+    }
+}
+
 macro_rules! install {
     (($sel:ident, $builder:ident, $_config:ident),
        $($name:ident,
@@ -129,6 +138,8 @@ macro_rules! install {
                     target: run.target,
                 });
             }
+
+            compiler_target_info!();
 
             fn run($sel, $builder: &Builder<'_>) {
                 $run_item
@@ -260,6 +271,10 @@ impl Step for Src {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Src { stage: run.builder.top_stage });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.stage(step_info.step.stage).cmd(Kind::Install);
     }
 
     fn run(self, builder: &Builder<'_>) {

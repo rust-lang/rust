@@ -68,7 +68,7 @@ pub(crate) trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         std::any::type_name::<Self>()
     }
 
-    fn info(_step_info: &mut StepInfo<'_, '_, Self>) {}
+    fn info(_step_info: &mut StepInfo<'_, '_, Self>);
 
     /// The path that should be used on the command line to run this step.
     fn path(&self, builder: &Builder<'_>) -> PathBuf {
@@ -704,6 +704,11 @@ impl<'a> Builder<'a> {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.never()
+            }
+
+            fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+                let step = step_info.step;
+                step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Check);
             }
 
             fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
@@ -1822,15 +1827,25 @@ impl<'a, 'b, S> StepInfo<'a, 'b, S> {
         }
         // let stage = self.stage.unwrap_or(self.builder.top_stage);
         let stage = self.stage.expect("missing stage");
-        let host = self.host;
-        let kind = self.cmd.unwrap_or(self.builder.kind);
-        let target = self.target;
-        print!("{} {} --stage {}", kind, self.step.path(self.builder).display(), stage,);
-        if let Some(host) = host {
-            print!(" --host {}", host);
+        // let kind = self.cmd.unwrap_or(self.builder.kind);
+        let kind = self.cmd.expect("missing kind");
+        print!(
+            "{} {} --stage {}",
+            kind,
+            self.step.path(self.builder).display(),
+            stage,
+        );
+        if let Some(host) = self.host {
+            // Almost always, this will be the same as build. Don't print it if so.
+            if host != self.builder.config.build {
+                print!(" --host {}", host);
+            }
         }
-        if let Some(target) = target {
-            print!(" --target {}", target);
+        if let Some(target) = self.target {
+            let different_from_host = self.host.map_or(false, |h| h != target);
+            if target != self.builder.config.build || different_from_host {
+                print!(" --target {}", target);
+            }
         }
         if kind == Kind::Test {
             for arg in self.builder.config.cmd.test_args() {

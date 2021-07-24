@@ -1,4 +1,4 @@
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::dist::distdir;
 use crate::tool::Tool;
 use build_helper::output;
@@ -20,6 +20,10 @@ impl Step for ExpandYamlAnchors {
             builder,
             &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("generate").arg(&builder.src),
         );
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Run);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -57,6 +61,10 @@ impl Step for BuildManifest {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(BuildManifest);
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        step_info.cmd(Kind::Run);
     }
 
     fn run(self, builder: &Builder<'_>) {

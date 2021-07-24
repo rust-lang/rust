@@ -18,11 +18,19 @@ use std::process::Command;
 
 use build_helper::{output, t};
 
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::config::TargetSelection;
 use crate::util::{self, exe};
 use crate::GitRepo;
 use build_helper::up_to_date;
+
+macro_rules! target_info {
+    () => {
+        fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+            step_info.target(step_info.step.target).cmd(Kind::Build);
+        }
+    }
+}
 
 pub struct Meta {
     stamp: HashStamp,
@@ -108,6 +116,8 @@ impl Step for Llvm {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Llvm { target: run.target });
     }
+
+    target_info!();
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
@@ -539,6 +549,8 @@ impl Step for Lld {
         run.builder.ensure(Lld { target: run.target });
     }
 
+    target_info!();
+
     /// Compile LLD for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.config.dry_run {
@@ -632,6 +644,8 @@ impl Step for TestHelpers {
         run.builder.ensure(TestHelpers { target: run.target })
     }
 
+    target_info!();
+
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
@@ -696,6 +710,8 @@ impl Step for Sanitizers {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Sanitizers { target: run.target });
     }
+
+    target_info!();
 
     /// Builds sanitizer runtime libraries.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -875,6 +891,8 @@ impl Step for CrtBeginEnd {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(CrtBeginEnd { target: run.target });
     }
+
+    target_info!();
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
