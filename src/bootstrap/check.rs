@@ -1,6 +1,6 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::cache::Interned;
 use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo};
 use crate::config::TargetSelection;
@@ -69,6 +69,13 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Std { target: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        let builder = step_info.builder;
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        step_info.compiler(compiler).target(step.target).cmd(Kind::Check);
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -165,6 +172,13 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustc { target: run.target });
+    }
+
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        let builder = step_info.builder;
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        step_info.compiler(compiler).target(step.target).cmd(Kind::Check);
     }
 
     /// Builds the compiler.

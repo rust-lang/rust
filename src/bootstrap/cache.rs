@@ -245,7 +245,7 @@ impl Cache {
         Cache(RefCell::new(HashMap::new()))
     }
 
-    pub fn put<S: Step>(&self, step: S, value: S::Output) {
+    pub(crate) fn put<S: Step>(&self, step: S, value: S::Output) {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
         let stepcache = cache
@@ -257,7 +257,7 @@ impl Cache {
         stepcache.insert(step, value);
     }
 
-    pub fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
+    pub(crate) fn get<S: Step>(&self, step: &S) -> Option<S::Output> {
         let mut cache = self.0.borrow_mut();
         let type_id = TypeId::of::<S>();
         let stepcache = cache

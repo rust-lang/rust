@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
@@ -50,7 +51,7 @@ impl<'a> Deref for Builder<'a> {
     }
 }
 
-pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
+pub(crate) trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// `PathBuf` when directories are created or to return a `Compiler` once
     /// it's been assembled.
     type Output: Clone;
@@ -67,15 +68,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         std::any::type_name::<Self>()
     }
 
-    // fn kind(&self) -> Kind;
-
-    fn compiler(&self) -> Option<&Compiler> {
-        None
-    }
-
-    fn target(&self) -> Option<&TargetSelection> {
-        None
-    }
+    fn info(_step_info: &mut StepInfo<'_, '_, Self>) {}
 
     /// The path that should be used on the command line to run this step.
     fn path(&self, builder: &Builder<'_>) -> PathBuf {
@@ -656,37 +649,10 @@ impl<'a> Builder<'a> {
         StepDescription::run(v, self, paths);
     }
 
-    /// Print a command that will run the current step.
-    ///
-    /// This serves two purposes:
-    /// 1. Describe what step is currently being run.
-    /// 2. Describe how to run only this step in case it fails.
     pub(crate) fn step_info(&self, step: &impl Step) {
-        if self.config.dry_run {
-            return;
-        }
-        let (stage, host) = if let Some(compiler) = step.compiler() {
-            (compiler.stage, Some(compiler.host))
-        } else {
-            (self.top_stage, None)
-        };
-        print!(
-            "{} {} --stage {}",
-            // TODO: this is wrong, e.g. `check --stage 1` runs build commands first
-            self.kind,
-            step.path(self).display(),
-            stage,
-        );
-        if let Some(host) = host {
-            print!(" --host {}", host);
-        }
-        if let Some(target) = step.target() {
-            print!(" --target {}", target);
-        }
-        for arg in self.config.cmd.test_args() {
-            print!(" --test-args \"{}\"", arg);
-        }
-        println!();
+        let mut info = StepInfo::new(self, step);
+        Step::info(&mut info);
+        info.print();
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
@@ -1611,7 +1577,7 @@ impl<'a> Builder<'a> {
     /// Ensure that a given step is built, returning its output. This will
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
-    pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
+    pub(crate) fn ensure<S: Step>(&'a self, step: S) -> S::Output {
         {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
@@ -1770,5 +1736,107 @@ impl From<Cargo> for Command {
         }
 
         cargo.command
+    }
+}
+
+pub(crate) struct StepInfo<'a, 'b, S> {
+    pub(crate) builder: &'a Builder<'b>,
+    pub(crate) step: &'a S,
+    compiler: Option<Cow<'a, Compiler>>,
+    stage: Option<u32>,
+    host: Option<TargetSelection>,
+    target: Option<TargetSelection>,
+    cmd: Option<Kind>,
+}
+
+impl<'a> From<Compiler> for Cow<'a, Compiler> {
+    fn from(val: Compiler) -> Self {
+        Self::Owned(val)
+    }
+}
+
+impl<'a> From<&'a Compiler> for Cow<'a, Compiler> {
+    fn from(val: &'a Compiler) -> Self {
+        Self::Borrowed(val)
+    }
+}
+
+impl<'a, 'b, S> StepInfo<'a, 'b, S> {
+    pub(crate) fn new(builder: &'a Builder<'b>, step: &'a S) -> Self {
+        Self { builder, step, compiler: None, stage: None, host: None, target: None, cmd: None }
+    }
+
+    pub(crate) fn compiler(&mut self, val: impl Into<Cow<'a, Compiler>>) -> &mut Self {
+        if self.compiler.is_some() {
+            panic!("cannot overwrite compiler");
+        }
+        let val = val.into();
+        self.stage(val.stage).host(val.host);
+        self.compiler = Some(val);
+        self
+    }
+
+    pub(crate) fn stage(&mut self, stage: u32) -> &mut Self {
+        if self.stage.is_some() {
+            panic!("cannot overwrite stage");
+        }
+        self.stage = Some(stage);
+        self
+    }
+
+    pub(crate) fn host(&mut self, host: TargetSelection) -> &mut Self {
+        if self.host.is_some() {
+            panic!("cannot overwrite host");
+        }
+        self.host = Some(host);
+        self
+    }
+
+    pub(crate) fn target(&mut self, target: TargetSelection) -> &mut Self {
+        if self.target.is_some() {
+            panic!("cannot overwrite target");
+        }
+        self.target = Some(target);
+        self
+    }
+
+    pub(crate) fn cmd(&mut self, val: Kind) -> &mut Self {
+        if self.cmd.is_some() {
+            panic!("cannot overwrite cmd");
+        }
+        self.cmd = Some(val);
+        self
+    }
+
+    /// Print a command that will run the current step.
+    ///
+    /// This serves two purposes:
+    /// 1. Describe what step is currently being run.
+    /// 2. Describe how to run only this step in case it fails.
+    pub(crate) fn print(&self)
+    where
+        S: Step,
+    {
+        if self.builder.config.dry_run {
+            return;
+        }
+        // let stage = self.stage.unwrap_or(self.builder.top_stage);
+        let stage = self.stage.expect("missing stage");
+        let host = self.host;
+        let kind = self.cmd.unwrap_or(self.builder.kind);
+        let target = self.target;
+        print!("{} {} --stage {}", kind, self.step.path(self.builder).display(), stage,);
+        if let Some(host) = host {
+            print!(" --host {}", host);
+        }
+        if let Some(target) = target {
+            print!(" --target {}", target);
+        }
+        if kind == Kind::Test {
+            for arg in self.builder.config.cmd.test_args() {
+                print!(" --test-args \"{}\"", arg);
+            }
+        }
+        println!();
     }
 }

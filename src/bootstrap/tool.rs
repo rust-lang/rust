@@ -6,7 +6,7 @@ use std::process::{exit, Command};
 
 use build_helper::t;
 
-use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Cargo as CargoCommand, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::config::TargetSelection;
@@ -319,16 +319,9 @@ macro_rules! bootstrap_tool {
         impl Step for $name {
             type Output = PathBuf;
 
-            // fn stage(&self, _builder: &Builder<'_>) -> u32 {
-            //     self.compiler.stage
-            // }
-
-            fn compiler(&self) -> Option<&Compiler> {
-                Some(&self.compiler)
-            }
-
-            fn target(&self) -> Option<&TargetSelection> {
-                Some(&self.target)
+            fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+                let step = step_info.step;
+                step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
             }
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -607,16 +600,9 @@ impl Step for Cargo {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    // fn stage(&self, _builder: &Builder<'_>) -> u32 {
-    //     self.compiler.stage
-    // }
-
-    fn compiler(&self) -> Option<&Compiler> {
-        Some(&self.compiler)
-    }
-
-    fn target(&self) -> Option<&TargetSelection> {
-        Some(&self.target)
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

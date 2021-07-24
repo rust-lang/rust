@@ -21,7 +21,7 @@ use filetime::FileTime;
 use serde::Deserialize;
 
 use crate::builder::Cargo;
-use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepInfo};
 use crate::cache::{Interned, INTERNER};
 use crate::config::TargetSelection;
 use crate::dist;
@@ -54,12 +54,9 @@ impl Step for Std {
         });
     }
 
-    fn compiler(&self) -> Option<&Compiler> {
-        Some(&self.compiler)
-    }
-
-    fn target(&self) -> Option<&TargetSelection> {
-        Some(&self.target)
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
     }
 
     /// Builds the standard library.
@@ -527,13 +524,10 @@ impl Step for Rustc {
         });
     }
 
-    fn compiler(&self) -> Option<&Compiler> {
-        Some(&self.compiler)
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
     }
-
-    // fn stage(&self, _builder: &Builder<'_>) -> u32 {
-    //     self.compiler.stage
-    // }
 
     /// Builds the compiler.
     ///
