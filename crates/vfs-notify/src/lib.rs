@@ -83,7 +83,7 @@ impl NotifyActor {
                         self.watcher = None;
                         if !config.watch.is_empty() {
                             let (watcher_sender, watcher_receiver) = unbounded();
-                            let watcher = log_notify_error(Watcher::new_immediate(move |event| {
+                            let watcher = log_notify_error(RecommendedWatcher::new(move |event| {
                                 watcher_sender.send(event).unwrap()
                             }));
                             self.watcher = watcher.map(|it| (it, watcher_receiver));
@@ -214,7 +214,7 @@ impl NotifyActor {
 
     fn watch(&mut self, path: AbsPathBuf) {
         if let Some((watcher, _)) = &mut self.watcher {
-            log_notify_error(watcher.watch(&path, RecursiveMode::NonRecursive));
+            log_notify_error(watcher.watch(path.as_ref(), RecursiveMode::NonRecursive));
         }
     }
     fn send(&mut self, msg: loader::Message) {
