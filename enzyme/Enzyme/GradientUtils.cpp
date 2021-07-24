@@ -340,6 +340,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -356,6 +358,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     assert(val->getType() == toreturn->getType());
     return toreturn;
@@ -373,6 +377,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     assert(val->getType() == toreturn->getType());
     return toreturn;
@@ -390,6 +396,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     assert(val->getType() == toreturn->getType());
     return toreturn;
@@ -410,6 +418,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     assert(val->getType() == toreturn->getType());
     return toreturn;
@@ -432,6 +442,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     assert(val->getType() == toreturn->getType());
     return toreturn;
@@ -453,6 +465,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -470,6 +484,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -487,6 +503,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -503,6 +521,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() !=
+          cast<Instruction>(val)->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -524,6 +545,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != op->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -549,6 +572,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(inst);
       unwrappedLoads[newi] = val;
+      if (newi->getParent()->getParent() != inst->getParent()->getParent())
+        newi->setDebugLoc(nullptr);
     }
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
@@ -560,7 +585,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     bool legalMove = mode == UnwrapMode::LegalFullUnwrap ||
                      mode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
-    if (mode != UnwrapMode::LegalFullUnwrap) {
+    if (!legalMove) {
       BasicBlock *parent = nullptr;
       if (isOriginalBlock(*BuilderM.GetInsertBlock()))
         parent = BuilderM.GetInsertBlock();
@@ -591,9 +616,11 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (pidx->getType() != load->getOperand(0)->getType()) {
       llvm::errs() << "load: " << *load << "\n";
       llvm::errs() << "load->getOperand(0): " << *load->getOperand(0) << "\n";
-      llvm::errs() << "idx: " << *pidx << "\n";
+      llvm::errs() << "idx: " << *pidx << " unwrapping: " << *val
+                   << " mode=" << mode << "\n";
     }
     assert(pidx->getType() == load->getOperand(0)->getType());
+
     auto toreturn = BuilderM.CreateLoad(pidx, load->getName() + "_unwrap");
     toreturn->copyIRFlags(load);
     unwrappedLoads[toreturn] = load;
@@ -605,7 +632,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setVolatile(load->isVolatile());
     toreturn->setOrdering(load->getOrdering());
     toreturn->setSyncScopeID(load->getSyncScopeID());
-    toreturn->setDebugLoc(getNewFromOriginal(load->getDebugLoc()));
+    if (toreturn->getParent()->getParent() != load->getParent()->getParent())
+      toreturn->setDebugLoc(nullptr);
+    else
+      toreturn->setDebugLoc(getNewFromOriginal(load->getDebugLoc()));
     toreturn->setMetadata(LLVMContext::MD_tbaa,
                           load->getMetadata(LLVMContext::MD_tbaa));
     toreturn->setMetadata(LLVMContext::MD_invariant_group,
@@ -619,7 +649,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     bool legalMove = mode == UnwrapMode::LegalFullUnwrap ||
                      mode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
-    if (mode != UnwrapMode::LegalFullUnwrap) {
+    if (!legalMove) {
       legalMove = legalRecompute(op, available, &BuilderM);
     }
     if (!legalMove)
@@ -646,7 +676,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setAttributes(op->getAttributes());
     toreturn->setCallingConv(op->getCallingConv());
     toreturn->setTailCallKind(op->getTailCallKind());
-    toreturn->setDebugLoc(getNewFromOriginal(op->getDebugLoc()));
+    if (toreturn->getParent()->getParent() == op->getParent()->getParent())
+      toreturn->setDebugLoc(getNewFromOriginal(op->getDebugLoc()));
+    else
+      toreturn->setDebugLoc(nullptr);
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
     unwrappedLoads[toreturn] = val;
@@ -664,7 +697,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
         bool legalMove = mode == UnwrapMode::LegalFullUnwrap ||
                          mode == UnwrapMode::LegalFullUnwrapNoTapeReplace;
-        if (mode != UnwrapMode::LegalFullUnwrap) {
+        if (!legalMove) {
           // TODO actually consider whether this is legal to move to the new
           // location, rather than recomputable anywhere
           legalMove = legalRecompute(dli, available, &BuilderM);
@@ -1884,13 +1917,18 @@ bool GradientUtils::legalRecompute(const Value *val,
     const Instruction *orig = nullptr;
     if (li->getParent()->getParent() == oldFunc) {
       orig = li;
-    } else {
+    } else if (li->getParent()->getParent() == newFunc) {
       orig = isOriginal(li);
       // todo consider when we pass non original queries
       if (orig && !isa<LoadInst>(orig)) {
         return legalRecompute(orig, available, BuilderM, reverse,
                               legalRecomputeCache);
       }
+    } else {
+      llvm::errs() << " newFunc: " << *newFunc << "\n";
+      llvm::errs() << " parent: " << *li->getParent()->getParent() << "\n";
+      llvm::errs() << " li: " << *li << "\n";
+      assert(0 && "illegal load legalRecopmute query");
     }
 
     if (orig) {
@@ -2005,7 +2043,9 @@ bool GradientUtils::legalRecompute(const Value *val,
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
-          n == "__lgammal_r_finite" || isMemFreeLibMFunction(n)) {
+          n == "__lgammal_r_finite" || isMemFreeLibMFunction(n) ||
+          n.startswith("enzyme_wrapmpi$$") || n == "omp_get_thread_num" ||
+          n == "omp_get_max_threads") {
         return true;
       }
     }
@@ -2173,7 +2213,9 @@ bool GradientUtils::shouldRecompute(const Value *val,
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
           n == "__pow_finite" || n == "__fd_sincos_1" ||
-          isMemFreeLibMFunction(n) || n == "julia.pointer_from_objref") {
+          isMemFreeLibMFunction(n) || n == "julia.pointer_from_objref" ||
+          n.startswith("enzyme_wrapmpi$$") || n == "omp_get_thread_num" ||
+          n == "omp_get_max_threads") {
         return true;
       }
     }

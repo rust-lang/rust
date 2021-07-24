@@ -3028,11 +3028,20 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       unwrapToOrig[pair.second].push_back(
           const_cast<Instruction *>(pair.first));
     gutils->unwrappedLoads.clear();
+
     for (auto pair : newIToNextI) {
       auto newi = pair.first;
       auto nexti = pair.second;
       newi->replaceAllUsesWith(nexti);
       gutils->erase(newi);
+    }
+
+    // This most occur after all the replacements have been made
+    // in the previous loop, lest a loop bound being unwrapped use
+    // a value being replaced.
+    for (auto pair : newIToNextI) {
+      auto newi = pair.first;
+      auto nexti = pair.second;
       for (auto V : unwrapToOrig[newi]) {
         ValueToValueMapTy empty;
         IRBuilder<> lb(V);
