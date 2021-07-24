@@ -180,7 +180,7 @@ impl Qualifs<'mir, 'tcx> {
     }
 }
 
-pub struct Validator<'mir, 'tcx> {
+pub struct Checker<'mir, 'tcx> {
     ccx: &'mir ConstCx<'mir, 'tcx>,
     qualifs: Qualifs<'mir, 'tcx>,
 
@@ -194,7 +194,7 @@ pub struct Validator<'mir, 'tcx> {
     secondary_errors: Vec<Diagnostic>,
 }
 
-impl Deref for Validator<'mir, 'tcx> {
+impl Deref for Checker<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -202,9 +202,9 @@ impl Deref for Validator<'mir, 'tcx> {
     }
 }
 
-impl Validator<'mir, 'tcx> {
+impl Checker<'mir, 'tcx> {
     pub fn new(ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
-        Validator {
+        Checker {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
@@ -477,7 +477,7 @@ impl Validator<'mir, 'tcx> {
     }
 }
 
-impl Visitor<'tcx> for Validator<'mir, 'tcx> {
+impl Visitor<'tcx> for Checker<'mir, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 
