@@ -1,6 +1,6 @@
 macro_rules! impl_uint_arith {
     ($(($name:ident, $n:ident)),+) => {
-        $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
+        $( impl<const LANES: usize> $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
 
             /// Lanewise saturating add.
             ///
@@ -44,7 +44,7 @@ macro_rules! impl_uint_arith {
 
 macro_rules! impl_int_arith {
     ($(($name:ident, $n:ident)),+) => {
-        $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
+        $( impl<const LANES: usize> $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
 
             /// Lanewise saturating add.
             ///

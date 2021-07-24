@@ -1,50 +1,81 @@
-use crate::Mask;
-use core::marker::PhantomData;
+use crate::{LaneCount, SupportedLaneCount};
 
 /// Helper trait for limiting int conversion types
 pub trait ConvertToInt {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI8<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI16<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI32<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI64<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdIsize<LANES> where Self: crate::LanesAtMost32 {}
+impl<const LANES: usize> ConvertToInt for crate::SimdI8<LANES> where
+    LaneCount<LANES>: SupportedLaneCount
+{
+}
+impl<const LANES: usize> ConvertToInt for crate::SimdI16<LANES> where
+    LaneCount<LANES>: SupportedLaneCount
+{
+}
+impl<const LANES: usize> ConvertToInt for crate::SimdI32<LANES> where
+    LaneCount<LANES>: SupportedLaneCount
+{
+}
+impl<const LANES: usize> ConvertToInt for crate::SimdI64<LANES> where
+    LaneCount<LANES>: SupportedLaneCount
+{
+}
+impl<const LANES: usize> ConvertToInt for crate::SimdIsize<LANES> where
+    LaneCount<LANES>: SupportedLaneCount
+{
+}
 
 /// A mask where each lane is represented by a single bit.
 #[repr(transparent)]
-pub struct BitMask<T: Mask, const LANES: usize>(T::BitMask, PhantomData<[(); LANES]>);
+pub struct BitMask<const LANES: usize>(<LaneCount<LANES> as SupportedLaneCount>::BitMask)
+where
+    LaneCount<LANES>: SupportedLaneCount;
 
-impl<T: Mask, const LANES: usize> Copy for BitMask<T, LANES> {}
+impl<const LANES: usize> Copy for BitMask<LANES> where LaneCount<LANES>: SupportedLaneCount {}
 
-impl<T: Mask, const LANES: usize> Clone for BitMask<T, LANES> {
+impl<const LANES: usize> Clone for BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T: Mask, const LANES: usize> PartialEq for BitMask<T, LANES> {
+impl<const LANES: usize> PartialEq for BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     fn eq(&self, other: &Self) -> bool {
         self.0.as_ref() == other.0.as_ref()
     }
 }
 
-impl<T: Mask, const LANES: usize> PartialOrd for BitMask<T, LANES> {
+impl<const LANES: usize> PartialOrd for BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.0.as_ref().partial_cmp(other.0.as_ref())
     }
 }
 
-impl<T: Mask, const LANES: usize> Eq for BitMask<T, LANES> {}
+impl<const LANES: usize> Eq for BitMask<LANES> where LaneCount<LANES>: SupportedLaneCount {}
 
-impl<T: Mask, const LANES: usize> Ord for BitMask<T, LANES> {
+impl<const LANES: usize> Ord for BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.0.as_ref().cmp(other.0.as_ref())
     }
 }
 
-impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
+impl<const LANES: usize> BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     #[inline]
     pub fn splat(value: bool) -> Self {
-        let mut mask = T::BitMask::default();
+        let mut mask = <LaneCount<LANES> as SupportedLaneCount>::BitMask::default();
         if value {
             mask.as_mut().fill(u8::MAX)
         } else {
@@ -53,12 +84,12 @@ impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
         if LANES % 8 > 0 {
             *mask.as_mut().last_mut().unwrap() &= u8::MAX >> (8 - LANES % 8);
         }
-        Self(mask, PhantomData)
+        Self(mask)
     }
 
     #[inline]
     pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
-        (self.0.as_ref()[lane / 8] >> lane % 8) & 0x1 > 0
+        (self.0.as_ref()[lane / 8] >> (lane % 8)) & 0x1 > 0
     }
 
     #[inline]
@@ -72,7 +103,8 @@ impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
         V: ConvertToInt + Default + core::ops::Not<Output = V>,
     {
         unsafe {
-            let mask: T::IntBitMask = core::mem::transmute_copy(&self);
+            let mask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
+                core::mem::transmute_copy(&self);
             crate::intrinsics::simd_select_bitmask(mask, !V::default(), V::default())
         }
     }
@@ -80,33 +112,29 @@ impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
     #[inline]
     pub unsafe fn from_int_unchecked<V>(value: V) -> Self
     where
-        V: crate::LanesAtMost32,
+        V: crate::Vector,
     {
         // TODO remove the transmute when rustc is more flexible
         assert_eq!(
-            core::mem::size_of::<T::IntBitMask>(),
-            core::mem::size_of::<T::BitMask>()
+            core::mem::size_of::<<crate::LaneCount::<LANES> as crate::SupportedLaneCount>::BitMask>(
+            ),
+            core::mem::size_of::<
+                <crate::LaneCount::<LANES> as crate::SupportedLaneCount>::IntBitMask,
+            >(),
         );
-        let mask: T::IntBitMask = crate::intrinsics::simd_bitmask(value);
-        Self(core::mem::transmute_copy(&mask), PhantomData)
+        let mask: <LaneCount<LANES> as SupportedLaneCount>::IntBitMask =
+            crate::intrinsics::simd_bitmask(value);
+        Self(core::mem::transmute_copy(&mask))
     }
 
     #[inline]
-    pub fn to_bitmask<U: Mask>(self) -> U::BitMask {
-        assert_eq!(
-            core::mem::size_of::<T::BitMask>(),
-            core::mem::size_of::<U::BitMask>()
-        );
-        unsafe { core::mem::transmute_copy(&self.0) }
+    pub fn to_bitmask(self) -> <LaneCount<LANES> as SupportedLaneCount>::BitMask {
+        self.0
     }
 
     #[inline]
-    pub fn from_bitmask<U: Mask>(bitmask: U::BitMask) -> Self {
-        assert_eq!(
-            core::mem::size_of::<T::BitMask>(),
-            core::mem::size_of::<U::BitMask>()
-        );
-        unsafe { core::mem::transmute_copy(&bitmask) }
+    pub fn from_bitmask(bitmask: <LaneCount<LANES> as SupportedLaneCount>::BitMask) -> Self {
+        Self(bitmask)
     }
 
     #[inline]
@@ -120,9 +148,10 @@ impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
     }
 }
 
-impl<T: Mask, const LANES: usize> core::ops::BitAnd for BitMask<T, LANES>
+impl<const LANES: usize> core::ops::BitAnd for BitMask<LANES>
 where
-    T::BitMask: Default + AsRef<[u8]> + AsMut<[u8]>,
+    LaneCount<LANES>: SupportedLaneCount,
+    <LaneCount<LANES> as SupportedLaneCount>::BitMask: Default + AsRef<[u8]> + AsMut<[u8]>,
 {
     type Output = Self;
     #[inline]
@@ -134,9 +163,10 @@ where
     }
 }
 
-impl<T: Mask, const LANES: usize> core::ops::BitOr for BitMask<T, LANES>
+impl<const LANES: usize> core::ops::BitOr for BitMask<LANES>
 where
-    T::BitMask: Default + AsRef<[u8]> + AsMut<[u8]>,
+    LaneCount<LANES>: SupportedLaneCount,
+    <LaneCount<LANES> as SupportedLaneCount>::BitMask: Default + AsRef<[u8]> + AsMut<[u8]>,
 {
     type Output = Self;
     #[inline]
@@ -148,7 +178,10 @@ where
     }
 }
 
-impl<T: Mask, const LANES: usize> core::ops::BitXor for BitMask<T, LANES> {
+impl<const LANES: usize> core::ops::BitXor for BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     type Output = Self;
     #[inline]
     fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -159,7 +192,10 @@ impl<T: Mask, const LANES: usize> core::ops::BitXor for BitMask<T, LANES> {
     }
 }
 
-impl<T: Mask, const LANES: usize> core::ops::Not for BitMask<T, LANES> {
+impl<const LANES: usize> core::ops::Not for BitMask<LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
     type Output = Self;
     #[inline]
     fn not(mut self) -> Self::Output {
@@ -173,31 +209,8 @@ impl<T: Mask, const LANES: usize> core::ops::Not for BitMask<T, LANES> {
     }
 }
 
-pub type Mask8<T, const LANES: usize> = BitMask<T, LANES>;
-pub type Mask16<T, const LANES: usize> = BitMask<T, LANES>;
-pub type Mask32<T, const LANES: usize> = BitMask<T, LANES>;
-pub type Mask64<T, const LANES: usize> = BitMask<T, LANES>;
-pub type MaskSize<T, const LANES: usize> = BitMask<T, LANES>;
-
-macro_rules! impl_from {
-    { $from:ident ($from_inner:ident) => $($to:ident ($to_inner:ident)),* } => {
-        $(
-        impl<const LANES: usize> From<$from<crate::$from<LANES>, LANES>> for $to<crate::$to<LANES>, LANES>
-        where
-            crate::$from_inner<LANES>: crate::LanesAtMost32,
-            crate::$to_inner<LANES>: crate::LanesAtMost32,
-            crate::$from<LANES>: crate::Mask,
-            crate::$to<LANES>: crate::Mask,
-        {
-            fn from(value: $from<crate::$from<LANES>, LANES>) -> Self {
-                unsafe { core::mem::transmute_copy(&value) }
-            }
-        }
-        )*
-    }
-}
-impl_from! { Mask8 (SimdI8) => Mask16 (SimdI16), Mask32 (SimdI32), Mask64 (SimdI64), MaskSize (SimdIsize) }
-impl_from! { Mask16 (SimdI16) => Mask32 (SimdI32), Mask64 (SimdI64), MaskSize (SimdIsize), Mask8 (SimdI8) }
-impl_from! { Mask32 (SimdI32) => Mask64 (SimdI64), MaskSize (SimdIsize), Mask8 (SimdI8), Mask16 (SimdI16) }
-impl_from! { Mask64 (SimdI64) => MaskSize (SimdIsize), Mask8 (SimdI8), Mask16 (SimdI16), Mask32 (SimdI32) }
-impl_from! { MaskSize (SimdIsize) => Mask8 (SimdI8), Mask16 (SimdI16), Mask32 (SimdI32), Mask64 (SimdI64) }
+pub type Mask8<const LANES: usize> = BitMask<LANES>;
+pub type Mask16<const LANES: usize> = BitMask<LANES>;
+pub type Mask32<const LANES: usize> = BitMask<LANES>;
+pub type Mask64<const LANES: usize> = BitMask<LANES>;
+pub type MaskSize<const LANES: usize> = BitMask<LANES>;
