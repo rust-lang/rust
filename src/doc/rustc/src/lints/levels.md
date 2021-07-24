@@ -1,11 +1,12 @@
 # Lint levels
 
-In `rustc`, lints are divided into four *levels*:
+In `rustc`, lints are divided into five *levels*:
 
 1. allow
 2. warn
-3. deny
-4. forbid
+3. force-warn
+4. deny
+5. forbid
 
 Each lint has a default level (explained in the lint listing later in this
 chapter), and the compiler has a default warning level. First, let's explain
@@ -57,6 +58,14 @@ warning: unused variable: `x`
   = note: to avoid this warning, consider using `_x` instead
 ```
 
+## force-warn
+
+'force-warn' is a special lint level. It's the same as 'warn' in that a lint
+at this level will produce a warning, but unlike the 'warn' level, the
+'force-warn' level cannot be overridden. If a lint is set to 'force-warn', it
+is guaranteed to warn: no more, no less. This is true even if the overall lint
+level is capped via cap-lints.
+
 ## deny
 
 A 'deny' lint produces an error if you violate it. For example, this code
@@ -87,11 +96,12 @@ This lint level gives you that.
 
 ## forbid
 
-'forbid' is a special lint level that's stronger than 'deny'. It's the same
-as 'deny' in that a lint at this level will produce an error, but unlike the
-'deny' level, the 'forbid' level can not be overridden to be anything lower
-than an error.  However, lint levels may still be capped with `--cap-lints`
-(see below) so `rustc --cap-lints warn` will make lints set to 'forbid' just
+'forbid' is a special lint level that fills the same role for 'deny' that
+'force-warn' does for 'warn'. It's the same as 'deny' in that a lint at this
+level will produce an error, but unlike the 'deny' level, the 'forbid' level
+can not be overridden to be anything lower than an error.  However, lint
+levels may still be capped with `--cap-lints` (see below) so `rustc --cap-
+lints warn` will make lints set to 'forbid' just
 warn.
 
 ## Configuring warning levels
@@ -113,8 +123,8 @@ certain lint levels. We'll talk about that last.
 
 ### Via compiler flag
 
-The `-A`, `-W`, `-D`, and `-F` flags let you turn one or more lints
-into allowed, warning, deny, or forbid levels, like this:
+The `-A`, `-W`, `--force-warn` `-D`, and `-F` flags let you turn one or more lints
+into allowed, warning, force-warn, deny, or forbid levels, like this:
 
 ```bash
 $ rustc lib.rs --crate-type=lib -W missing-docs
@@ -158,7 +168,7 @@ You can also pass each flag more than once for changing multiple lints:
 $ rustc lib.rs --crate-type=lib -D missing-docs -D unused-variables
 ```
 
-And of course, you can mix these four flags together:
+And of course, you can mix these five flags together:
 
 ```bash
 $ rustc lib.rs --crate-type=lib -D missing-docs -A unused-variables
@@ -175,6 +185,10 @@ You can make use of this behavior by overriding the level of one specific lint o
 ```bash
 $ rustc lib.rs --crate-type=lib -D unused -A unused-variables
 ```
+
+Since `force-warn` and `forbid` cannot be overridden, setting
+one of them will prevent any later level for the same lint from
+taking effect.
 
 ### Via an attribute
 
@@ -207,7 +221,8 @@ warning: missing documentation for a function
   | ^^^^^^^^^^^^
 ```
 
-All four, `warn`, `allow`, `deny`, and `forbid` all work this way.
+`warn`, `allow`, `deny`, and `forbid` all work this way. There is
+no way to set a lint to `force-warn` using an attribute.
 
 You can also pass in multiple lints per attribute:
 
