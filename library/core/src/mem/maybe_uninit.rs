@@ -461,7 +461,6 @@ impl<T> MaybeUninit<T> {
     /// With `write`, we can avoid the need to write through a raw pointer:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_extra)]
     /// use core::pin::Pin;
     /// use core::mem::MaybeUninit;
     ///
