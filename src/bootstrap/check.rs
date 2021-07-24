@@ -94,10 +94,6 @@ impl Step for Std {
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.step_info(&self);
-        // builder.info(&format!(
-        //     "Checking stage{} std artifacts ({} -> {})",
-        //     builder.top_stage, &compiler.host, target
-        // ));
         run_cargo(
             builder,
             cargo,
@@ -141,7 +137,7 @@ impl Step for Std {
             }
 
             builder.info(&format!(
-                "Checking stage{} std test/bench/example targets ({} -> {})",
+                "check library/alloc --stage {} --all-targets --host {} --target {}",
                 builder.top_stage, &compiler.host, target
             ));
             run_cargo(
@@ -222,10 +218,6 @@ impl Step for Rustc {
         }
 
         builder.step_info(&self);
-        // builder.info(&format!(
-        //     "Checking stage{} compiler artifacts ({} -> {})",
-        //     builder.top_stage, &compiler.host, target
-        // ));
         run_cargo(
             builder,
             cargo,
@@ -287,10 +279,6 @@ impl Step for CodegenBackend {
         rustc_cargo_env(builder, &mut cargo, target);
 
         builder.step_info(&self);
-        // builder.info(&format!(
-        //     "Checking stage{} {} artifacts ({} -> {})",
-        //     builder.top_stage, backend, &compiler.host.triple, target.triple
-        // ));
 
         run_cargo(
             builder,
@@ -358,13 +346,6 @@ macro_rules! tool_check_step {
                 cargo.rustflag("-Zunstable-options");
 
                 builder.step_info(&self);
-                // builder.info(&format!(
-                //     "Checking stage{} {} artifacts ({} -> {})",
-                //     builder.top_stage,
-                //     stringify!($name).to_lowercase(),
-                //     &compiler.host.triple,
-                //     target.triple
-                // ));
                 run_cargo(
                     builder,
                     cargo,

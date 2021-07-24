@@ -29,7 +29,7 @@ macro_rules! target_info {
         fn info(step_info: &mut StepInfo<'_, '_, Self>) {
             step_info.target(step_info.step.target).cmd(Kind::Build);
         }
-    }
+    };
 }
 
 pub struct Meta {

@@ -43,6 +43,7 @@ impl Step for ToolBuild {
     fn info(step_info: &mut StepInfo<'_, '_, Self>) {
         let step = step_info.step;
         // todo!("path");
+        step_info.path(step.path.into());
         step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
     }
 

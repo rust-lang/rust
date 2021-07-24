@@ -36,7 +36,7 @@ macro_rules! target_info {
         fn info(step_info: &mut StepInfo<'_, '_, Self>) {
             step_info.target(step_info.step.target).cmd(Kind::Doc);
         }
-    }
+    };
 }
 
 macro_rules! compiler_target_info {
@@ -45,7 +45,7 @@ macro_rules! compiler_target_info {
             let step = step_info.step;
             step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Doc);
         }
-    }
+    };
 }
 
 macro_rules! stage_target_info {
@@ -54,7 +54,7 @@ macro_rules! stage_target_info {
             let step = step_info.step;
             step_info.stage(step.stage).target(step.target).cmd(Kind::Doc);
         }
-    }
+    };
 }
 
 macro_rules! book {
@@ -818,7 +818,7 @@ impl Step for UnstableBookGen {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
 
-        builder.info(&format!("Generating unstable book md files ({})", target));
+        builder.step_info(&self);
         let out = builder.md_doc_out(target).join("unstable-book");
         builder.create_dir(&out);
         builder.remove_dir(&out);

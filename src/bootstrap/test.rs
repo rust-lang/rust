@@ -32,7 +32,7 @@ macro_rules! host_info {
             let step = step_info.step;
             step_info.host(step.host).cmd(Kind::Test);
         }
-    }
+    };
 }
 
 macro_rules! stage_host_info {
@@ -41,7 +41,7 @@ macro_rules! stage_host_info {
             let step = step_info.step;
             step_info.stage(step.stage).host(step.host).cmd(Kind::Test);
         }
-    }
+    };
 }
 
 macro_rules! compiler_target_info {
@@ -50,7 +50,7 @@ macro_rules! compiler_target_info {
             let step = step_info.step;
             step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Test);
         }
-    }
+    };
 }
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
@@ -1047,7 +1047,7 @@ impl Step for Tidy {
         try_run(builder, &mut cmd);
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
-            builder.info("fmt check");
+            builder.info("fmt --check");
             if builder.config.initial_rustfmt.is_none() {
                 let inferred_rustfmt_dir = builder.config.initial_rustc.parent().unwrap();
                 eprintln!(
@@ -1291,11 +1291,14 @@ impl Step for Compiletest {
         run.never()
     }
 
-    compiler_target_info!();
-
-    fn path(&self, _builder: &Builder<'_>) -> PathBuf {
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
         // FIXME: it would be nice to suggest exactly the tests that fail, but that info isn't known without first running compiletest.
-        self.path.into()
+        step_info
+            .path(step.path.into())
+            .compiler(&step.compiler)
+            .target(step.target)
+            .cmd(Kind::Test);
     }
 
     /// Executes the `compiletest` tool to run a suite of tests.
@@ -1667,10 +1670,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
-        builder.info(&format!(
-            "Check compiletest suite={} mode={} ({} -> {})",
-            suite, mode, &compiler.host, target
-        ));
+        builder.step_info(&self);
         let _time = util::timeit(&builder);
         try_run(builder, &mut cmd);
 
@@ -1704,8 +1704,7 @@ impl Step for BookTest {
 
     fn info(step_info: &mut StepInfo<'_, '_, Self>) {
         let step = step_info.step;
-        todo!("path");
-        step_info.compiler(&step.compiler).cmd(Kind::Test);
+        step_info.path(step.path.clone()).compiler(&step.compiler).cmd(Kind::Test);
     }
 
     /// Runs the documentation tests for a book in `src/doc`.
@@ -2056,10 +2055,12 @@ impl Step for Crate {
         }
     }
 
-    compiler_target_info!();
-
-    fn path(&self, _builder: &Builder<'_>) -> PathBuf {
-        self.krate_path.file_name().expect("top-level directory is not a crate").into()
+    fn info(step_info: &mut StepInfo<'_, '_, Self>) {
+        let step = step_info.step;
+        // FIXME: it would be nice to suggest exactly the tests that fail, but that info isn't known without first running compiletest.
+        step_info
+            .path(step.krate_path.file_name().expect("top-level directory is not a crate").into());
+        step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Test);
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined

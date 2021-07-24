@@ -70,17 +70,6 @@ pub(crate) trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
     fn info(_step_info: &mut StepInfo<'_, '_, Self>);
 
-    /// The path that should be used on the command line to run this step.
-    fn path(&self, builder: &Builder<'_>) -> PathBuf {
-        let paths = Self::should_run(ShouldRun::new(builder)).paths;
-        paths.iter().map(|pathset| pathset.path(builder)).next().expect("no paths for step")
-    }
-
-    // /// The stage that should be passed to x.py to run this step.
-    // fn stage(&self, builder: &Builder<'_>) -> u32 {
-    //     builder.top_stage
-    // }
-
     /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
     fn run(self, builder: &Builder<'_>) -> Self::Output;
@@ -1752,6 +1741,7 @@ pub(crate) struct StepInfo<'a, 'b, S> {
     host: Option<TargetSelection>,
     target: Option<TargetSelection>,
     cmd: Option<Kind>,
+    path: Option<PathBuf>,
 }
 
 impl<'a> From<Compiler> for Cow<'a, Compiler> {
@@ -1768,7 +1758,16 @@ impl<'a> From<&'a Compiler> for Cow<'a, Compiler> {
 
 impl<'a, 'b, S> StepInfo<'a, 'b, S> {
     pub(crate) fn new(builder: &'a Builder<'b>, step: &'a S) -> Self {
-        Self { builder, step, compiler: None, stage: None, host: None, target: None, cmd: None }
+        Self {
+            builder,
+            step,
+            compiler: None,
+            stage: None,
+            host: None,
+            target: None,
+            cmd: None,
+            path: None,
+        }
     }
 
     pub(crate) fn compiler(&mut self, val: impl Into<Cow<'a, Compiler>>) -> &mut Self {
@@ -1813,6 +1812,14 @@ impl<'a, 'b, S> StepInfo<'a, 'b, S> {
         self
     }
 
+    pub(crate) fn path(&mut self, val: PathBuf) -> &mut Self {
+        if self.path.is_some() {
+            panic!("cannot overwrite path");
+        }
+        self.path = Some(val);
+        self
+    }
+
     /// Print a command that will run the current step.
     ///
     /// This serves two purposes:
@@ -1822,33 +1829,31 @@ impl<'a, 'b, S> StepInfo<'a, 'b, S> {
     where
         S: Step,
     {
-        if self.builder.config.dry_run {
+        let builder = self.builder;
+        if builder.config.dry_run {
             return;
         }
-        // let stage = self.stage.unwrap_or(self.builder.top_stage);
-        let stage = self.stage.expect("missing stage");
-        // let kind = self.cmd.unwrap_or(self.builder.kind);
-        let kind = self.cmd.expect("missing kind");
-        print!(
-            "{} {} --stage {}",
-            kind,
-            self.step.path(self.builder).display(),
-            stage,
-        );
+        let stage = self.stage.unwrap_or(self.builder.top_stage);
+        let kind = self.cmd.unwrap_or_else(|| panic!("missing kind for {}", self.step.name()));
+        let path = self.path.clone().unwrap_or_else(|| {
+            let paths = S::should_run(ShouldRun::new(builder)).paths;
+            paths.iter().map(|pathset| pathset.path(builder)).next().expect("no paths for step")
+        });
+        print!("{} {} --stage {}", kind, path.display(), stage,);
         if let Some(host) = self.host {
             // Almost always, this will be the same as build. Don't print it if so.
-            if host != self.builder.config.build {
+            if host != builder.config.build {
                 print!(" --host {}", host);
             }
         }
         if let Some(target) = self.target {
             let different_from_host = self.host.map_or(false, |h| h != target);
-            if target != self.builder.config.build || different_from_host {
+            if target != builder.config.build || different_from_host {
                 print!(" --target {}", target);
             }
         }
         if kind == Kind::Test {
-            for arg in self.builder.config.cmd.test_args() {
+            for arg in builder.config.cmd.test_args() {
                 print!(" --test-args \"{}\"", arg);
             }
         }

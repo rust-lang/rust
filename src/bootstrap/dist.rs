@@ -51,7 +51,7 @@ macro_rules! compiler_target_info {
             let step = step_info.step;
             step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Dist);
         }
-    }
+    };
 }
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
