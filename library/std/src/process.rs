@@ -680,6 +680,40 @@ impl Command {
         self
     }
 
+    /// Sets the argument at index to a new value.
+    ///
+    /// When one wants to restart a Command again with different
+    /// arguments the argument list can to be cleared first.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// #![feature(mutate_command_args)]
+    /// use std::process::Command;
+    ///
+    /// // Prepare a command
+    /// let mut command = Command::new("ls");
+    /// command.args(["-l", "-a", "FILE"]);
+    ///
+    /// // Run it with mutated 3rd parameter
+    /// ["foo", "bar", "baz"].iter()
+    ///     .for_each(
+    ///         |file| {
+    ///             command
+    ///                 .arg_set(3, file)
+    ///                 .spawn()
+    ///                 .unwrap();
+    ///         }
+    ///     );
+    /// ```
+    #[unstable(feature = "mutate_command_args", issue = "87379")]
+    pub fn arg_set<S: AsRef<OsStr>>(&mut self, index: usize, value: S) -> &mut Command {
+        self.inner.arg_set(index, value.as_ref());
+        self
+    }
+
     /// Inserts or updates an environment variable mapping.
     ///
     /// Note that environment variable names are case-insensitive (but case-preserving) on Windows,

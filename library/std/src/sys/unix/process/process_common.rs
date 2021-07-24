@@ -199,6 +199,13 @@ impl Command {
         self.args.truncate(1);
     }
 
+    pub fn arg_set(&mut self, index: usize, arg: &OsStr) {
+        debug_assert!(index >= 1 && index < self.args.len(), "Index out of range");
+        let arg = os2c(arg, &mut self.saw_nul);
+        self.argv.0[index] = arg.as_ptr();
+        self.args[index] = arg;
+    }
+
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(os2c(dir, &mut self.saw_nul));
     }

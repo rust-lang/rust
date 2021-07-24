@@ -237,6 +237,42 @@ fn test_args_clear() {
     assert_eq!(stderr, Vec::new());
 }
 
+#[test]
+fn test_arg_set() {
+    let mut prog = Command::new("echo");
+
+    if cfg!(target_os = "windows") {
+        prog.args(&["/C", "echo set_me"])
+    } else {
+        prog.arg("set_me")
+    };
+
+    if cfg!(target_os = "windows") {
+        prog.arg_set(2, "echo hello");
+    } else {
+        prog.arg_set(1, "hello");
+    };
+
+    let Output { status, stdout, stderr } = prog.output().unwrap();
+    let output_str = str::from_utf8(&stdout).unwrap();
+
+    assert!(status.success());
+    assert_eq!(output_str.trim().to_string(), "hello");
+    assert_eq!(stderr, Vec::new());
+}
+
+#[test]
+#[should_panic]
+fn test_arg_set_fail() {
+    let mut prog = Command::new("echo");
+
+    if cfg!(target_os = "windows") {
+        prog.arg_set(1, "echo hello");
+    } else {
+        prog.arg_set(1, "hello");
+    };
+}
+
 #[cfg(all(unix, not(target_os = "android")))]
 pub fn env_cmd() -> Command {
     Command::new("env")
