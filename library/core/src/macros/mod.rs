@@ -845,6 +845,7 @@ pub(crate) mod builtin {
                   language use and is subject to change"
     )]
     #[allow_internal_unstable(fmt_internals)]
+    #[doc(hidden)]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args_nl {
