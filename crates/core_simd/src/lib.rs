@@ -1,12 +1,12 @@
 #![no_std]
 #![allow(incomplete_features)]
 #![feature(
-    const_generics, 
+    const_generics,
     platform_intrinsics,
     repr_simd,
     simd_ffi,
     staged_api,
-    stdsimd,
+    stdsimd
 )]
 #![warn(missing_docs)]
 #![unstable(feature = "portable_simd", issue = "86656")]

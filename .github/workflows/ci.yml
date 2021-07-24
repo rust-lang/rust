@@ -11,6 +11,53 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
+  rustfmt:
+    name: "rustfmt"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup component add rustfmt
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: "clippy on ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # We shouldn't really have any OS-specific code, so think of this as a list of architectures
+          - x86_64-unknown-linux-gnu
+          - i686-unknown-linux-gnu
+          - i586-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - mips-unknown-linux-gnu
+          - mips64-unknown-linux-gnuabi64
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
+          - sparc64-unknown-linux-gnu
+          - wasm32-unknown-unknown
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+          rustup target add ${{ matrix.target }}
+          rustup component add clippy
+      - name: Run Clippy
+        run: cargo clippy --all-targets --target ${{ matrix.target }}
+
   x86-tests:
     name: "${{ matrix.target_feature }} on ${{ matrix.target }}"
     runs-on: ${{ matrix.os }}

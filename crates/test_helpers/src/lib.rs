@@ -304,19 +304,23 @@ pub fn test_ternary_elementwise<
     Vector3: Into<[Scalar3; LANES]> + From<[Scalar3; LANES]> + Copy,
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
-    test_3(&|x: [Scalar1; LANES], y: [Scalar2; LANES], z: [Scalar3; LANES]| {
-        proptest::prop_assume!(check(x, y, z));
-        let result_1: [ScalarResult; LANES] = fv(x.into(), y.into(), z.into()).into();
-        let result_2: [ScalarResult; LANES] = {
-            let mut result = [ScalarResult::default(); LANES];
-            for ((i1, (i2, i3)), o) in x.iter().zip(y.iter().zip(z.iter())).zip(result.iter_mut()) {
-                *o = fs(*i1, *i2, *i3);
-            }
-            result
-        };
-        crate::prop_assert_biteq!(result_1, result_2);
-        Ok(())
-    });
+    test_3(
+        &|x: [Scalar1; LANES], y: [Scalar2; LANES], z: [Scalar3; LANES]| {
+            proptest::prop_assume!(check(x, y, z));
+            let result_1: [ScalarResult; LANES] = fv(x.into(), y.into(), z.into()).into();
+            let result_2: [ScalarResult; LANES] = {
+                let mut result = [ScalarResult::default(); LANES];
+                for ((i1, (i2, i3)), o) in
+                    x.iter().zip(y.iter().zip(z.iter())).zip(result.iter_mut())
+                {
+                    *o = fs(*i1, *i2, *i3);
+                }
+                result
+            };
+            crate::prop_assert_biteq!(result_1, result_2);
+            Ok(())
+        },
+    );
 }
 
 /// Expand a const-generic test into separate tests for each possible lane count.

@@ -174,7 +174,7 @@ macro_rules! impl_float_vector {
             }
 
             /// Restrict each lane to a certain interval unless it is NaN.
-            /// 
+            ///
             /// For each lane in `self`, returns the corresponding lane in `max` if the lane is
             /// greater than `max`, and the corresponding lane in `min` if the lane is less
             /// than `min`.  Otherwise returns the lane in `self`.
