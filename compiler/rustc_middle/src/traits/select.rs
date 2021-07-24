@@ -12,12 +12,12 @@ use rustc_hir::def_id::DefId;
 use rustc_query_system::cache::Cache;
 
 pub type SelectionCache<'tcx> = Cache<
-    ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>,
+    ty::ConstnessAnd<ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>>,
     SelectionResult<'tcx, SelectionCandidate<'tcx>>,
 >;
 
 pub type EvaluationCache<'tcx> =
-    Cache<ty::ParamEnvAnd<'tcx, ty::PolyTraitRef<'tcx>>, EvaluationResult>;
+    Cache<ty::ParamEnvAnd<'tcx, ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>>, EvaluationResult>;
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation. Sometimes
