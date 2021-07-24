@@ -93,14 +93,21 @@ impl EarlyLintPass for MacroBraces {
 }
 
 fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a MacroBraces) -> Option<MacroInfo<'a>> {
+    let unnested_or_local = || {
+        let nested = in_macro(span.ctxt().outer_expn_data().call_site);
+        let in_local_macro = nested
+            && matches!(span.macro_backtrace().last().and_then(|e| e.macro_def_id), Some(defid) if defid.is_local());
+        !nested || in_local_macro
+    };
     if_chain! {
         // Make sure we are only one level deep otherwise there are to many FP's
-        if in_macro(span) && !in_macro(span.ctxt().outer_expn_data().call_site);
+        if in_macro(span);
         if let Some((name, braces)) = find_matching_macro(span, &mac_braces.macro_braces);
         if let Some(snip) = snippet_opt(cx, span.ctxt().outer_expn_data().call_site);
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
         if snip.starts_with(&format!("{}!", name));
+        if unnested_or_local();
         // make formatting consistent
         let c = snip.replace(" ", "");
         if !c.starts_with(&format!("{}!{}", name, braces.0));

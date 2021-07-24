@@ -44,7 +44,7 @@ fn main() {
     let _ = format!["ugh {} stop being such a good compiler", "hello"];
     let _ = quote!(let x = 1;);
     let _ = quote::quote!(match match match);
-    let _ = test!(); // don't trigger for macro calls inside macros
+    let _ = test!(); // trigger when macro def is inside our own crate
     let _ = vec![1,2,3];
 
     let _ = quote::quote! {true || false};
