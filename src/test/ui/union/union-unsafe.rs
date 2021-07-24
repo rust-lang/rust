@@ -36,8 +36,8 @@ fn deref_union_field(mut u: URef) {
 
 fn assign_noncopy_union_field(mut u: URefCell) {
     // FIXME(thir-unsafeck)
-    u.a = (RefCell::new(0), 1); //[mir]~ ERROR assignment to union field that might need dropping
-    u.a.0 = RefCell::new(0); //[mir]~ ERROR assignment to union field that might need dropping
+    u.a = (RefCell::new(0), 1); //~ ERROR assignment to union field that might need dropping
+    u.a.0 = RefCell::new(0); //~ ERROR assignment to union field that might need dropping
     u.a.1 = 1; // OK
 }
 
