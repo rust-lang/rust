@@ -14,12 +14,10 @@ macro_rules! impl_select {
         $mask:ident ($bits_ty:ident): $($type:ident),*
     } => {
         $(
-        impl<const LANES: usize> Sealed for crate::$type<LANES> where Self: crate::Vector {}
+        impl<const LANES: usize> Sealed for crate::$type<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {}
         impl<const LANES: usize> Select<crate::$mask<LANES>> for crate::$type<LANES>
         where
-            crate::$mask<LANES>: crate::Mask,
-            crate::$bits_ty<LANES>: crate::Vector,
-            Self: crate::Vector,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[doc(hidden)]
             #[inline]
@@ -31,13 +29,12 @@ macro_rules! impl_select {
 
         impl<const LANES: usize> Sealed for crate::$mask<LANES>
         where
-            Self: crate::Mask,
-            crate::$bits_ty<LANES>: crate::Vector,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {}
+
         impl<const LANES: usize> Select<Self> for crate::$mask<LANES>
         where
-            Self: crate::Mask,
-            crate::$bits_ty<LANES>: crate::Vector,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[doc(hidden)]
             #[inline]
@@ -48,8 +45,7 @@ macro_rules! impl_select {
 
         impl<const LANES: usize> crate::$mask<LANES>
         where
-            Self: crate::Mask,
-            crate::$bits_ty<LANES>: crate::Vector,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             /// Choose lanes from two vectors.
             ///

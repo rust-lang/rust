@@ -26,10 +26,6 @@ pub trait Vector: sealed::Sealed {
     /// The number of lanes for this vector.
     const LANES: usize;
 
-    // Implementation detail until the compiler can support bitmasks of any integer width
-    #[doc(hidden)]
-    type BitMask: Into<u64>;
-
     /// Generates a SIMD vector with the same value in every lane.
     #[must_use]
     fn splat(val: Self::Scalar) -> Self;

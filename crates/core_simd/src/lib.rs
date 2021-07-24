@@ -27,11 +27,13 @@ mod comparisons;
 mod fmt;
 mod intrinsics;
 mod iter;
+mod math;
 mod ops;
 mod round;
 mod vendor;
 
-mod math;
+mod lane_count;
+pub use lane_count::*;
 
 mod masks;
 pub use masks::*;

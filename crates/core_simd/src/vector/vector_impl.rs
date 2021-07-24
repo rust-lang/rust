@@ -1,37 +1,28 @@
-macro_rules! impl_vector_trait {
-    ($simd:ident {type Scalar = $scalar:ty;}) => {
-        impl_vector_trait! { $simd<1> { type Scalar = $scalar; type BitMask = u8; } }
-        impl_vector_trait! { $simd<2> { type Scalar = $scalar; type BitMask = u8; } }
-        impl_vector_trait! { $simd<4> { type Scalar = $scalar; type BitMask = u8; } }
-        impl_vector_trait! { $simd<8> { type Scalar = $scalar; type BitMask = u8; } }
-        impl_vector_trait! { $simd<16> { type Scalar = $scalar; type BitMask = u16; } }
-        impl_vector_trait! { $simd<32> { type Scalar = $scalar; type BitMask = u32; } }
-    };
-    ($simd:ident<$lanes:literal> {type Scalar = $scalar:ty; type BitMask = $bitmask:ident; }) => {
-        impl crate::vector::sealed::Sealed for $simd<$lanes> {}
+/// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
+macro_rules! impl_vector {
+    { $name:ident, $type:ty } => {
+        impl<const LANES: usize> crate::vector::sealed::Sealed for $name<LANES>
+        where
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+        {}
 
-        impl crate::vector::Vector for $simd<$lanes> {
-            type Scalar = $scalar;
-            const LANES: usize = $lanes;
-
-            type BitMask = $bitmask;
+        impl<const LANES: usize> crate::vector::Vector for $name<LANES>
+        where
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+        {
+            type Scalar = $type;
+            const LANES: usize = LANES;
 
             #[inline]
             fn splat(val: Self::Scalar) -> Self {
                 Self::splat(val)
             }
         }
-    };
-}
 
-/// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
-macro_rules! impl_vector {
-    { $name:ident, $type:ty } => {
-        impl_vector_trait! {
-            $name { type Scalar = $type; }
-        }
-
-        impl<const LANES: usize> $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> $name<LANES>
+        where
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+        {
             /// Construct a SIMD vector by setting all lanes to the given value.
             pub const fn splat(value: $type) -> Self {
                 Self([value; LANES])
@@ -56,15 +47,7 @@ macro_rules! impl_vector {
             pub const fn to_array(self) -> [$type; LANES] {
                 self.0
             }
-        }
 
-        impl<const LANES: usize> $name<LANES>
-        where
-            Self: crate::Vector,
-            crate::MaskSize<LANES>: crate::Mask,
-            crate::SimdIsize<LANES>: crate::Vector,
-            crate::SimdUsize<LANES>: crate::Vector,
-        {
             /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
             /// If an index is out of bounds, that lane instead selects the value from the "or" vector.
             /// ```
@@ -194,23 +177,23 @@ macro_rules! impl_vector {
             }
         }
 
-        impl<const LANES: usize> Copy for $name<LANES> where Self: crate::Vector {}
+        impl<const LANES: usize> Copy for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {}
 
-        impl<const LANES: usize> Clone for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> Clone for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<const LANES: usize> Default for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> Default for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn default() -> Self {
                 Self::splat(<$type>::default())
             }
         }
 
-        impl<const LANES: usize> PartialEq for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> PartialEq for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
                 // TODO use SIMD equality
@@ -218,7 +201,7 @@ macro_rules! impl_vector {
             }
         }
 
-        impl<const LANES: usize> PartialOrd for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> PartialOrd for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 // TODO use SIMD equalitya
@@ -227,14 +210,14 @@ macro_rules! impl_vector {
         }
 
         // array references
-        impl<const LANES: usize> AsRef<[$type; LANES]> for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> AsRef<[$type; LANES]> for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn as_ref(&self) -> &[$type; LANES] {
                 &self.0
             }
         }
 
-        impl<const LANES: usize> AsMut<[$type; LANES]> for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> AsMut<[$type; LANES]> for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn as_mut(&mut self) -> &mut [$type; LANES] {
                 &mut self.0
@@ -242,14 +225,14 @@ macro_rules! impl_vector {
         }
 
         // slice references
-        impl<const LANES: usize> AsRef<[$type]> for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> AsRef<[$type]> for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn as_ref(&self) -> &[$type] {
                 &self.0
             }
         }
 
-        impl<const LANES: usize> AsMut<[$type]> for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> AsMut<[$type]> for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             #[inline]
             fn as_mut(&mut self) -> &mut [$type] {
                 &mut self.0
@@ -257,13 +240,13 @@ macro_rules! impl_vector {
         }
 
         // vector/array conversion
-        impl<const LANES: usize> From<[$type; LANES]> for $name<LANES> where Self: crate::Vector {
+        impl<const LANES: usize> From<[$type; LANES]> for $name<LANES> where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             fn from(array: [$type; LANES]) -> Self {
                 Self(array)
             }
         }
 
-        impl <const LANES: usize> From<$name<LANES>> for [$type; LANES] where $name<LANES>: crate::Vector {
+        impl <const LANES: usize> From<$name<LANES>> for [$type; LANES] where crate::LaneCount<LANES>: crate::SupportedLaneCount {
             fn from(vector: $name<LANES>) -> Self {
                 vector.to_array()
             }

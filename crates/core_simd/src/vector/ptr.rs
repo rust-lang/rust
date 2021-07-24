@@ -1,5 +1,5 @@
 //! Private implementation details of public gather/scatter APIs.
-use crate::SimdUsize;
+use crate::{LaneCount, SimdUsize, SupportedLaneCount};
 use core::mem;
 
 /// A vector of *const T.
@@ -9,7 +9,7 @@ pub(crate) struct SimdConstPtr<T, const LANES: usize>([*const T; LANES]);
 
 impl<T, const LANES: usize> SimdConstPtr<T, LANES>
 where
-    SimdUsize<LANES>: crate::Vector,
+    LaneCount<LANES>: SupportedLaneCount,
     T: Sized,
 {
     #[inline]
@@ -35,7 +35,7 @@ pub(crate) struct SimdMutPtr<T, const LANES: usize>([*mut T; LANES]);
 
 impl<T, const LANES: usize> SimdMutPtr<T, LANES>
 where
-    SimdUsize<LANES>: crate::Vector,
+    LaneCount<LANES>: SupportedLaneCount,
     T: Sized,
 {
     #[inline]

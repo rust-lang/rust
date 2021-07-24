@@ -335,23 +335,7 @@ macro_rules! test_lanes {
 
                 fn implementation<const $lanes: usize>()
                 where
-                    core_simd::SimdU8<$lanes>: core_simd::Vector,
-                    core_simd::SimdU16<$lanes>: core_simd::Vector,
-                    core_simd::SimdU32<$lanes>: core_simd::Vector,
-                    core_simd::SimdU64<$lanes>: core_simd::Vector,
-                    core_simd::SimdUsize<$lanes>: core_simd::Vector,
-                    core_simd::SimdI8<$lanes>: core_simd::Vector,
-                    core_simd::SimdI16<$lanes>: core_simd::Vector,
-                    core_simd::SimdI32<$lanes>: core_simd::Vector,
-                    core_simd::SimdI64<$lanes>: core_simd::Vector,
-                    core_simd::SimdIsize<$lanes>: core_simd::Vector,
-                    core_simd::SimdF32<$lanes>: core_simd::Vector,
-                    core_simd::SimdF64<$lanes>: core_simd::Vector,
-                    core_simd::Mask8<$lanes>: core_simd::Mask,
-                    core_simd::Mask16<$lanes>: core_simd::Mask,
-                    core_simd::Mask32<$lanes>: core_simd::Mask,
-                    core_simd::Mask64<$lanes>: core_simd::Mask,
-                    core_simd::MaskSize<$lanes>: core_simd::Mask,
+                    core_simd::LaneCount<$lanes>: core_simd::SupportedLaneCount,
                 $body
 
                 #[cfg(target_arch = "wasm32")]
@@ -409,23 +393,7 @@ macro_rules! test_lanes_panic {
 
                 fn implementation<const $lanes: usize>()
                 where
-                    core_simd::SimdU8<$lanes>: core_simd::Vector,
-                    core_simd::SimdU16<$lanes>: core_simd::Vector,
-                    core_simd::SimdU32<$lanes>: core_simd::Vector,
-                    core_simd::SimdU64<$lanes>: core_simd::Vector,
-                    core_simd::SimdUsize<$lanes>: core_simd::Vector,
-                    core_simd::SimdI8<$lanes>: core_simd::Vector,
-                    core_simd::SimdI16<$lanes>: core_simd::Vector,
-                    core_simd::SimdI32<$lanes>: core_simd::Vector,
-                    core_simd::SimdI64<$lanes>: core_simd::Vector,
-                    core_simd::SimdIsize<$lanes>: core_simd::Vector,
-                    core_simd::SimdF32<$lanes>: core_simd::Vector,
-                    core_simd::SimdF64<$lanes>: core_simd::Vector,
-                    core_simd::Mask8<$lanes>: core_simd::Mask,
-                    core_simd::Mask16<$lanes>: core_simd::Mask,
-                    core_simd::Mask32<$lanes>: core_simd::Mask,
-                    core_simd::Mask64<$lanes>: core_simd::Mask,
-                    core_simd::MaskSize<$lanes>: core_simd::Mask,
+                    core_simd::LaneCount<$lanes>: core_simd::SupportedLaneCount,
                 $body
 
                 #[test]

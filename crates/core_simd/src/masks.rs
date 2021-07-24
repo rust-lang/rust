@@ -12,7 +12,7 @@
 )]
 mod mask_impl;
 
-use crate::{SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize, Vector};
+use crate::{SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
 
 mod sealed {
     pub trait Sealed {}
@@ -20,12 +20,12 @@ mod sealed {
 
 /// Helper trait for mask types.
 pub trait Mask: sealed::Sealed {
-    /// The bitmask representation of a mask.
-    type BitMask: Copy + Default + AsRef<[u8]> + AsMut<[u8]>;
+    /// The number of lanes for this mask.
+    const LANES: usize;
 
-    // TODO remove this when rustc intrinsics are more flexible
-    #[doc(hidden)]
-    type IntBitMask;
+    /// Generates a mask with the same value in every lane.
+    #[must_use]
+    fn splat(val: bool) -> Self;
 }
 
 macro_rules! define_opaque_mask {
@@ -38,45 +38,30 @@ macro_rules! define_opaque_mask {
         #[allow(non_camel_case_types)]
         pub struct $name<const LANES: usize>($inner_ty)
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask;
+            crate::LaneCount<LANES>: crate::SupportedLaneCount;
 
         impl<const LANES: usize> sealed::Sealed for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {}
-        impl Mask for $name<1> {
-            type BitMask = [u8; 1];
-            type IntBitMask = u8;
-        }
-        impl Mask for $name<2> {
-            type BitMask = [u8; 1];
-            type IntBitMask = u8;
-        }
-        impl Mask for $name<4> {
-            type BitMask = [u8; 1];
-            type IntBitMask = u8;
-        }
-        impl Mask for $name<8> {
-            type BitMask = [u8; 1];
-            type IntBitMask = u8;
-        }
-        impl Mask for $name<16> {
-            type BitMask = [u8; 2];
-            type IntBitMask = u16;
-        }
-        impl Mask for $name<32> {
-            type BitMask = [u8; 4];
-            type IntBitMask = u32;
+
+        impl<const LANES: usize> Mask for $name<LANES>
+        where
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+        {
+            const LANES: usize = LANES;
+
+            #[inline]
+            fn splat(value: bool) -> Self {
+                Self::splat(value)
+            }
         }
 
         impl_opaque_mask_reductions! { $name, $bits_ty }
 
         impl<const LANES: usize> $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             /// Construct a mask by setting all lanes to the given value.
             pub fn splat(value: bool) -> Self {
@@ -175,21 +160,20 @@ macro_rules! define_opaque_mask {
             }
 
             /// Convert this mask to a bitmask, with one bit set per lane.
-            pub fn to_bitmask(self) -> <Self as Mask>::BitMask {
-                self.0.to_bitmask::<Self>()
+            pub fn to_bitmask(self) -> <crate::LaneCount<LANES> as crate::SupportedLaneCount>::BitMask {
+                self.0.to_bitmask()
             }
 
             /// Convert a bitmask to a mask.
-            pub fn from_bitmask(bitmask: <Self as Mask>::BitMask) -> Self {
-                Self(<$inner_ty>::from_bitmask::<Self>(bitmask))
+            pub fn from_bitmask(bitmask: <crate::LaneCount<LANES> as crate::SupportedLaneCount>::BitMask) -> Self {
+                Self(<$inner_ty>::from_bitmask(bitmask))
             }
         }
 
         // vector/array conversion
         impl<const LANES: usize> From<[bool; LANES]> for $name<LANES>
         where
-            $bits_ty<LANES>: crate::Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             fn from(array: [bool; LANES]) -> Self {
                 Self::from_array(array)
@@ -198,8 +182,7 @@ macro_rules! define_opaque_mask {
 
         impl <const LANES: usize> From<$name<LANES>> for [bool; LANES]
         where
-            $bits_ty<LANES>: crate::Vector,
-            $name<LANES>: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             fn from(vector: $name<LANES>) -> Self {
                 vector.to_array()
@@ -208,14 +191,12 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> Copy for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {}
 
         impl<const LANES: usize> Clone for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn clone(&self) -> Self {
@@ -225,8 +206,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> Default for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn default() -> Self {
@@ -236,8 +216,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> PartialEq for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
@@ -247,8 +226,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> PartialOrd for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
@@ -258,8 +236,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::fmt::Debug for $name<LANES>
         where
-            $bits_ty<LANES>: crate::Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 f.debug_list()
@@ -270,8 +247,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitAnd for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -282,8 +258,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitAnd<bool> for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -294,8 +269,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitAnd<$name<LANES>> for bool
         where
-            $bits_ty<LANES>: Vector,
-            $name<LANES>: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -306,8 +280,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitOr for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -318,8 +291,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitOr<bool> for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -330,8 +302,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitOr<$name<LANES>> for bool
         where
-            $bits_ty<LANES>: Vector,
-            $name<LANES>: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -342,8 +313,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitXor for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -354,8 +324,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitXor<bool> for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = Self;
             #[inline]
@@ -366,8 +335,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitXor<$name<LANES>> for bool
         where
-            $bits_ty<LANES>: Vector,
-            $name<LANES>: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -378,8 +346,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::Not for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -390,8 +357,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitAndAssign for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn bitand_assign(&mut self, rhs: Self) {
@@ -401,8 +367,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitAndAssign<bool> for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn bitand_assign(&mut self, rhs: bool) {
@@ -412,8 +377,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitOrAssign for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn bitor_assign(&mut self, rhs: Self) {
@@ -423,8 +387,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitOrAssign<bool> for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn bitor_assign(&mut self, rhs: bool) {
@@ -434,8 +397,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitXorAssign for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn bitxor_assign(&mut self, rhs: Self) {
@@ -445,8 +407,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::ops::BitXorAssign<bool> for $name<LANES>
         where
-            $bits_ty<LANES>: Vector,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             #[inline]
             fn bitxor_assign(&mut self, rhs: bool) {
@@ -460,7 +421,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 8-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask8<const LANES: usize>(mask_impl::Mask8<Self, LANES>);
+    struct Mask8<const LANES: usize>(mask_impl::Mask8<LANES>);
     @bits SimdI8
 }
 
@@ -468,7 +429,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 16-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask16<const LANES: usize>(mask_impl::Mask16<Self, LANES>);
+    struct Mask16<const LANES: usize>(mask_impl::Mask16<LANES>);
     @bits SimdI16
 }
 
@@ -476,7 +437,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 32-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask32<const LANES: usize>(mask_impl::Mask32<Self, LANES>);
+    struct Mask32<const LANES: usize>(mask_impl::Mask32<LANES>);
     @bits SimdI32
 }
 
@@ -484,7 +445,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 64-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask64<const LANES: usize>(mask_impl::Mask64<Self, LANES>);
+    struct Mask64<const LANES: usize>(mask_impl::Mask64<LANES>);
     @bits SimdI64
 }
 
@@ -492,7 +453,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` pointer-width elements.
     ///
     /// The layout of this type is unspecified.
-    struct MaskSize<const LANES: usize>(mask_impl::MaskSize<Self, LANES>);
+    struct MaskSize<const LANES: usize>(mask_impl::MaskSize<LANES>);
     @bits SimdIsize
 }
 
@@ -555,10 +516,7 @@ macro_rules! impl_from {
         $(
         impl<const LANES: usize> From<$from<LANES>> for $to<LANES>
         where
-            crate::$from_inner<LANES>: crate::Vector,
-            crate::$to_inner<LANES>: crate::Vector,
-            $from<LANES>: Mask,
-            Self: Mask,
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             fn from(value: $from<LANES>) -> Self {
                 Self(value.0.into())
