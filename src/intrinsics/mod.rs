@@ -218,6 +218,7 @@ fn simd_pair_for_each_lane<'tcx>(
 fn simd_reduce<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
+    acc: Option<Value>,
     ret: CPlace<'tcx>,
     f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
 ) {
@@ -225,8 +226,9 @@ fn simd_reduce<'tcx>(
     let lane_layout = fx.layout_of(lane_ty);
     assert_eq!(lane_layout, ret.layout());
 
-    let mut res_val = val.value_lane(fx, 0).load_scalar(fx);
-    for lane_idx in 1..lane_count {
+    let (mut res_val, start_lane) =
+        if let Some(acc) = acc { (acc, 0) } else { (val.value_lane(fx, 0).load_scalar(fx), 1) };
+    for lane_idx in start_lane..lane_count {
         let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
         res_val = f(fx, lane_layout, res_val, lane);
     }

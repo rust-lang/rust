@@ -236,9 +236,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
 
-        simd_reduce_add_ordered | simd_reduce_add_unordered, (c v) {
+        simd_reduce_add_ordered | simd_reduce_add_unordered, (c v, v acc) {
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
-            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+            simd_reduce(fx, v, Some(acc), ret, |fx, lane_layout, a, b| {
                 if lane_layout.ty.is_floating_point() {
                     fx.bcx.ins().fadd(a, b)
                 } else {
@@ -247,9 +247,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v) {
+        simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v, v acc) {
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
-            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+            simd_reduce(fx, v, Some(acc), ret, |fx, lane_layout, a, b| {
                 if lane_layout.ty.is_floating_point() {
                     fx.bcx.ins().fmul(a, b)
                 } else {
