@@ -3,9 +3,9 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
+use super::check::Qualifs;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{NeedsDrop, Qualif};
-use super::validation::Qualifs;
 use super::ConstCx;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
