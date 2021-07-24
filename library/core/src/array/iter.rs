@@ -123,6 +123,22 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         (len, Some(len))
     }
 
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, mut fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let data = &mut self.data;
+        (&mut self.alive)
+            .try_fold::<_, _, Result<_, !>>(init, |acc, idx| {
+                // SAFETY: idx is obtained by folding over the `alive` range, which implies the
+                // value is currently considered alive but as the range is being consumed each value
+                // we read here will only be read once and then considered dead.
+                Ok(fold(acc, unsafe { data.get_unchecked(idx).assume_init_read() }))
+            })
+            .unwrap()
+    }
+
     fn count(self) -> usize {
         self.len()
     }
