@@ -1015,6 +1015,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         (result, dep_node)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn filter_impls(
         &mut self,
         candidate: SelectionCandidate<'tcx>,
@@ -1031,7 +1032,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // auto trait impl
                 AutoImplCandidate(..) => {}
                 // FIXME check if this is right, but this would allow Sized impls
-                BuiltinCandidate { .. } => {}
+                // BuiltinCandidate { .. } => {}
                 _ => {
                     // reject all other types of candidates
                     return Err(Unimplemented);

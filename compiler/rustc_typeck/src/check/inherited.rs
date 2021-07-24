@@ -117,7 +117,11 @@ impl Inherited<'a, 'tcx> {
         Self::with_constness(infcx, def_id, tcx.hir().get(item_id).constness())
     }
 
-    pub(super) fn with_constness(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId, constness: hir::Constness) -> Self {
+    pub(super) fn with_constness(
+        infcx: InferCtxt<'a, 'tcx>,
+        def_id: LocalDefId,
+        constness: hir::Constness,
+    ) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
