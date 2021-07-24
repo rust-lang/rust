@@ -754,7 +754,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 }
                 SyntaxExtensionKind::NonMacroAttr { mark_used } => {
-                    self.cx.sess.mark_attr_known(&attr);
+                    self.cx.expanded_inert_attrs.mark(&attr);
                     if *mark_used {
                         self.cx.sess.mark_attr_used(&attr);
                     }
@@ -1040,7 +1040,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         item.visit_attrs(|attrs| {
             attr = attrs
                 .iter()
-                .position(|a| !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a))
+                .position(|a| !self.cx.expanded_inert_attrs.is_marked(a) && !is_builtin_attr(a))
                 .map(|attr_pos| {
                     let attr = attrs.remove(attr_pos);
                     let following_derives = attrs[attr_pos..]

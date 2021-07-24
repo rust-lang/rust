@@ -1,6 +1,7 @@
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
+use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
@@ -951,6 +952,10 @@ pub struct ExtCtxt<'a> {
     ///
     /// `Ident` is the module name.
     pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
+    /// When we 'expand' an inert attribute, we leave it
+    /// in the AST, but insert it here so that we know
+    /// not to expand it again.
+    pub(super) expanded_inert_attrs: MarkedAttrs,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -977,6 +982,7 @@ impl<'a> ExtCtxt<'a> {
             },
             force_mode: false,
             expansions: FxHashMap::default(),
+            expanded_inert_attrs: MarkedAttrs::new(),
         }
     }
 
