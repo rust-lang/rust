@@ -16,6 +16,23 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
 #[cfg(target_os = "vxworks")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 
+#[cfg(target_os = "fuchsia")]
+mod zircon {
+    type zx_handle_t = u32;
+    type zx_status_t = i32;
+    pub const ZX_PROP_NAME: u32 = 3;
+
+    extern "C" {
+        pub fn zx_object_set_property(
+            handle: zx_handle_t,
+            property: u32,
+            value: *const libc::c_void,
+            value_size: libc::size_t,
+        ) -> zx_status_t;
+        pub fn zx_thread_self() -> zx_handle_t;
+    }
+}
+
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -134,6 +151,19 @@ impl Thread {
         }
     }
 
+    #[cfg(target_os = "fuchsia")]
+    pub fn set_name(name: &CStr) {
+        use self::zircon::*;
+        unsafe {
+            zx_object_set_property(
+                zx_thread_self(),
+                ZX_PROP_NAME,
+                name.as_ptr() as *const libc::c_void,
+                name.to_bytes().len(),
+            );
+        }
+    }
+
     #[cfg(any(
         target_env = "newlib",
         target_os = "haiku",
@@ -144,10 +174,6 @@ impl Thread {
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Haiku, Emscripten, and VxWorks have no way to set a thread name.
-    }
-    #[cfg(target_os = "fuchsia")]
-    pub fn set_name(_name: &CStr) {
-        // FIXME: determine whether Fuchsia has a way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {
