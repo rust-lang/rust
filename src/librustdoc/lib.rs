@@ -505,7 +505,7 @@ fn opts() -> Vec<RustcOptGroup> {
         }),
         stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "LINT")),
         stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "LINT")),
-        unstable("force-warn", |o| o.optmulti("", "force-warn", "Set lint force-warn", "LINT")),
+        stable("force-warn", |o| o.optmulti("", "force-warn", "Set lint force-warn", "LINT")),
         stable("deny", |o| o.optmulti("D", "deny", "Set lint denied", "LINT")),
         stable("forbid", |o| o.optmulti("F", "forbid", "Set lint forbidden", "LINT")),
         stable("cap-lints", |o| {

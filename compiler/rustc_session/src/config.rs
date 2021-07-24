@@ -1157,18 +1157,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 pub fn get_cmd_lint_options(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-    debugging_opts: &DebuggingOptions,
 ) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
-
-    if !debugging_opts.unstable_options && matches.opt_present("force-warn") {
-        early_error(
-            error_format,
-            "the `-Z unstable-options` flag must also be passed to enable \
-            the flag `--force-warn=lints`",
-        );
-    }
 
     for level in [lint::Allow, lint::Warn, lint::ForceWarn, lint::Deny, lint::Forbid] {
         for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
@@ -1959,8 +1950,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut debugging_opts = DebuggingOptions::build(matches, error_format);
-    let (lint_opts, describe_lints, lint_cap) =
-        get_cmd_lint_options(matches, error_format, &debugging_opts);
+    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
 

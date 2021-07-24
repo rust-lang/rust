@@ -671,8 +671,7 @@ impl Options {
             return Err(1);
         }
 
-        let (lint_opts, describe_lints, lint_cap) =
-            get_cmd_lint_options(matches, error_format, &debugging_opts);
+        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
             input,
