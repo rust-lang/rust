@@ -219,7 +219,6 @@ pub struct Session {
     /// Set of enabled features for the current target.
     pub target_features: FxHashSet<Symbol>,
 
-    known_attrs: Lock<MarkedAttrs>,
     used_attrs: Lock<MarkedAttrs>,
 
     /// `Span`s for `if` conditions that we have suggested turning into `if let`.
@@ -1076,14 +1075,6 @@ impl Session {
             == config::InstrumentCoverage::ExceptUnusedFunctions
     }
 
-    pub fn mark_attr_known(&self, attr: &Attribute) {
-        self.known_attrs.lock().mark(attr)
-    }
-
-    pub fn is_attr_known(&self, attr: &Attribute) -> bool {
-        self.known_attrs.lock().is_marked(attr)
-    }
-
     pub fn mark_attr_used(&self, attr: &Attribute) {
         self.used_attrs.lock().mark(attr)
     }
@@ -1389,7 +1380,6 @@ pub fn build_session(
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         target_features: FxHashSet::default(),
-        known_attrs: Lock::new(MarkedAttrs::new()),
         used_attrs: Lock::new(MarkedAttrs::new()),
         if_let_suggestions: Default::default(),
     };

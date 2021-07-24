@@ -1080,7 +1080,10 @@ impl CrateError {
                                 locator.triple
                             ));
                         }
-                        if missing_core && std::env::var("RUSTUP_HOME").is_ok() {
+                        // NOTE: this suggests using rustup, even though the user may not have it installed.
+                        // That's because they could choose to install it; or this may give them a hint which
+                        // target they need to install from their distro.
+                        if missing_core {
                             err.help(&format!(
                                 "consider downloading the target with `rustup target add {}`",
                                 locator.triple
@@ -1097,7 +1100,7 @@ impl CrateError {
                                 current_crate
                             ));
                         }
-                        if sess.is_nightly_build() && std::env::var("CARGO").is_ok() {
+                        if sess.is_nightly_build() {
                             err.help("consider building the standard library from source with `cargo build -Zbuild-std`");
                         }
                     } else if Some(crate_name)

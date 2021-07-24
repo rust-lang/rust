@@ -44,7 +44,7 @@ Libraries
 - [`leading_zeros`, and `trailing_zeros` are now available on all
   `NonZero` integer types.][84082]
 - [`{f32, f64}::from_str` now parse and print special values
-  (`NaN`, `-0`) according to IEEE RFC 754.][78618]
+  (`NaN`, `-0`) according to IEEE 754.][78618]
 - [You can now index into slices using `(Bound<usize>, Bound<usize>)`.][77704]
 - [Add the `BITS` associated constant to all numeric types.][82565]
 
