@@ -34,9 +34,11 @@ use rustc_middle::ty::{
     self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
     COMMON_VTABLE_ENTRIES,
 };
-use rustc_span::Span;
+use rustc_span::{sym, Span};
+use smallvec::SmallVec;
 
 use std::fmt::Debug;
+use std::ops::ControlFlow;
 
 pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
@@ -454,6 +456,174 @@ fn subst_and_check_impossible_predicates<'tcx>(
     result
 }
 
+#[derive(Clone, Debug)]
+enum VtblSegment<'tcx> {
+    MetadataDSA,
+    TraitOwnEntries { trait_ref: ty::PolyTraitRef<'tcx>, emit_vptr: bool },
+}
+
+/// Prepare the segments for a vtable
+fn prepare_vtable_segments<'tcx, T>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    mut segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
+) -> Option<T> {
+    // The following constraints holds for the final arrangement.
+    // 1. The whole virtual table of the first direct super trait is included as the
+    //    the prefix. If this trait doesn't have any super traits, then this step
+    //    consists of the dsa metadata.
+    // 2. Then comes the proper pointer metadata(vptr) and all own methods for all
+    //    other super traits except those already included as part of the first
+    //    direct super trait virtual table.
+    // 3. finally, the own methods of this trait.
+
+    // This has the advantage that trait upcasting to the first direct super trait on each level
+    // is zero cost, and to another trait includes only replacing the pointer with one level indirection,
+    // while not using too much extra memory.
+
+    // For a single inheritance relationship like this,
+    //   D --> C --> B --> A
+    // The resulting vtable will consists of these segments:
+    //  DSA, A, B, C, D
+
+    // For a multiple inheritance relationship like this,
+    //   D --> C --> A
+    //           \-> B
+    // The resulting vtable will consists of these segments:
+    //  DSA, A, B, B-vptr, C, D
+
+    // For a diamond inheritance relationship like this,
+    //   D --> B --> A
+    //     \-> C -/
+    // The resulting vtable will consists of these segments:
+    //  DSA, A, B, C, C-vptr, D
+
+    // For a more complex inheritance relationship like this:
+    //   O --> G --> C --> A
+    //     \     \     \-> B
+    //     |     |-> F --> D
+    //     |           \-> E
+    //     |-> N --> J --> H
+    //           \     \-> I
+    //           |-> M --> K
+    //                 \-> L
+    // The resulting vtable will consists of these segments:
+    //  DSA, A, B, B-vptr, C, D, D-vptr, E, E-vptr, F, F-vptr, G,
+    //  H, H-vptr, I, I-vptr, J, J-vptr, K, K-vptr, L, L-vptr, M, M-vptr,
+    //  N, N-vptr, O
+
+    // emit dsa segment first.
+    if let ControlFlow::Break(v) = (segment_visitor)(VtblSegment::MetadataDSA) {
+        return Some(v);
+    }
+
+    let mut emit_vptr_on_new_entry = false;
+    let mut visited = util::PredicateSet::new(tcx);
+    let predicate = trait_ref.without_const().to_predicate(tcx);
+    let mut stack: SmallVec<[(ty::PolyTraitRef<'tcx>, _, _); 5]> =
+        smallvec![(trait_ref, emit_vptr_on_new_entry, None)];
+    visited.insert(predicate);
+
+    // the main traversal loop:
+    // basically we want to cut the inheritance directed graph into a few non-overlapping slices of nodes
+    // that each node is emited after all its descendents have been emitted.
+    // so we convert the directed graph into a tree by skipping all previously visted nodes using a visited set.
+    // this is done on the fly.
+    // Each loop run emits a slice - it starts by find a "childless" unvisited node, backtracking upwards, and it
+    // stops after it finds a node that has a next-sibling node.
+    // This next-sibling node will used as the starting point of next slice.
+
+    // Example:
+    // For a diamond inheritance relationship like this,
+    //   D#1 --> B#0 --> A#0
+    //     \-> C#1 -/
+
+    // Starting point 0 stack [D]
+    // Loop run #0: Stack after diving in is [D B A], A is "childless"
+    // after this point, all newly visited nodes won't have a vtable that equals to a prefix of this one.
+    // Loop run #0: Emiting the slice [B A] (in reverse order), B has a next-sibling node, so this slice stops here.
+    // Loop run #0: Stack after exiting out is [D C], C is the next starting point.
+    // Loop run #1: Stack after diving in is [D C], C is "childless", since its child A is skipped(already emitted).
+    // Loop run #1: Emiting the slice [D C] (in reverse order). No one has a next-sibling node.
+    // Loop run #1: Stack after exiting out is []. Now the function exits.
+
+    loop {
+        // dive deeper into the stack, recording the path
+        'diving_in: loop {
+            if let Some((inner_most_trait_ref, _, _)) = stack.last() {
+                let inner_most_trait_ref = *inner_most_trait_ref;
+                let mut direct_super_traits_iter = tcx
+                    .super_predicates_of(inner_most_trait_ref.def_id())
+                    .predicates
+                    .into_iter()
+                    .filter_map(move |(pred, _)| {
+                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_ref()
+                    });
+
+                'diving_in_skip_visited_traits: loop {
+                    if let Some(next_super_trait) = direct_super_traits_iter.next() {
+                        if visited.insert(next_super_trait.to_predicate(tcx)) {
+                            stack.push((
+                                next_super_trait.value,
+                                emit_vptr_on_new_entry,
+                                Some(direct_super_traits_iter),
+                            ));
+                            break 'diving_in_skip_visited_traits;
+                        } else {
+                            continue 'diving_in_skip_visited_traits;
+                        }
+                    } else {
+                        break 'diving_in;
+                    }
+                }
+            }
+        }
+
+        // Other than the left-most path, vptr should be emitted for each trait.
+        emit_vptr_on_new_entry = true;
+
+        // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
+        'exiting_out: loop {
+            if let Some((inner_most_trait_ref, emit_vptr, siblings_opt)) = stack.last_mut() {
+                if let ControlFlow::Break(v) = (segment_visitor)(VtblSegment::TraitOwnEntries {
+                    trait_ref: *inner_most_trait_ref,
+                    emit_vptr: *emit_vptr,
+                }) {
+                    return Some(v);
+                }
+
+                'exiting_out_skip_visited_traits: loop {
+                    if let Some(siblings) = siblings_opt {
+                        if let Some(next_inner_most_trait_ref) = siblings.next() {
+                            if visited.insert(next_inner_most_trait_ref.to_predicate(tcx)) {
+                                *inner_most_trait_ref = next_inner_most_trait_ref.value;
+                                *emit_vptr = emit_vptr_on_new_entry;
+                                break 'exiting_out;
+                            } else {
+                                continue 'exiting_out_skip_visited_traits;
+                            }
+                        }
+                    }
+                    stack.pop();
+                    continue 'exiting_out;
+                }
+            }
+            // all done
+            return None;
+        }
+    }
+}
+
+fn dump_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sp: Span,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    entries: &[VtblEntry<'tcx>],
+) {
+    let msg = format!("Vtable entries for `{}`: {:#?}", trait_ref, entries);
+    tcx.sess.struct_span_err(sp, &msg).emit();
+}
+
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
 fn vtable_entries<'tcx>(
@@ -462,57 +632,86 @@ fn vtable_entries<'tcx>(
 ) -> &'tcx [VtblEntry<'tcx>] {
     debug!("vtable_entries({:?})", trait_ref);
 
-    let entries = COMMON_VTABLE_ENTRIES.iter().cloned().chain(
-        supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
-            let trait_methods = tcx
-                .associated_items(trait_ref.def_id())
-                .in_definition_order()
-                .filter(|item| item.kind == ty::AssocKind::Fn);
+    let mut entries = vec![];
 
-            // Now list each method's DefId and InternalSubsts (for within its trait).
-            // If the method can never be called from this object, produce `Vacant`.
-            trait_methods.map(move |trait_method| {
-                debug!("vtable_entries: trait_method={:?}", trait_method);
-                let def_id = trait_method.def_id;
+    let vtable_segment_callback = |segment| -> ControlFlow<()> {
+        match segment {
+            VtblSegment::MetadataDSA => {
+                entries.extend(COMMON_VTABLE_ENTRIES);
+            }
+            VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                let trait_methods = tcx
+                    .associated_items(trait_ref.def_id())
+                    .in_definition_order()
+                    .filter(|item| item.kind == ty::AssocKind::Fn);
+                // Now list each method's DefId and InternalSubsts (for within its trait).
+                // If the method can never be called from this object, produce `Vacant`.
+                let own_entries = trait_methods.map(move |trait_method| {
+                    debug!("vtable_entries: trait_method={:?}", trait_method);
+                    let def_id = trait_method.def_id;
 
-                // Some methods cannot be called on an object; skip those.
-                if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
-                    debug!("vtable_entries: not vtable safe");
-                    return VtblEntry::Vacant;
-                }
+                    // Some methods cannot be called on an object; skip those.
+                    if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
+                        debug!("vtable_entries: not vtable safe");
+                        return VtblEntry::Vacant;
+                    }
 
-                // The method may have some early-bound lifetimes; add regions for those.
-                let substs = trait_ref.map_bound(|trait_ref| {
-                    InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
-                        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                            trait_ref.substs[param.index as usize]
-                        }
-                    })
+                    // The method may have some early-bound lifetimes; add regions for those.
+                    let substs = trait_ref.map_bound(|trait_ref| {
+                        InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+                            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                            GenericParamDefKind::Type { .. }
+                            | GenericParamDefKind::Const { .. } => {
+                                trait_ref.substs[param.index as usize]
+                            }
+                        })
+                    });
+
+                    // The trait type may have higher-ranked lifetimes in it;
+                    // erase them if they appear, so that we get the type
+                    // at some particular call site.
+                    let substs = tcx
+                        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
+
+                    // It's possible that the method relies on where-clauses that
+                    // do not hold for this particular set of type parameters.
+                    // Note that this method could then never be called, so we
+                    // do not want to try and codegen it, in that case (see #23435).
+                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+                    if impossible_predicates(tcx, predicates.predicates) {
+                        debug!("vtable_entries: predicates do not hold");
+                        return VtblEntry::Vacant;
+                    }
+
+                    let instance = ty::Instance::resolve_for_vtable(
+                        tcx,
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .expect("resolution failed during building vtable representation");
+                    VtblEntry::Method(instance)
                 });
 
-                // The trait type may have higher-ranked lifetimes in it;
-                // erase them if they appear, so that we get the type
-                // at some particular call site.
-                let substs =
-                    tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
+                entries.extend(own_entries);
 
-                // It's possible that the method relies on where-clauses that
-                // do not hold for this particular set of type parameters.
-                // Note that this method could then never be called, so we
-                // do not want to try and codegen it, in that case (see #23435).
-                let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-                if impossible_predicates(tcx, predicates.predicates) {
-                    debug!("vtable_entries: predicates do not hold");
-                    return VtblEntry::Vacant;
+                if emit_vptr {
+                    entries.push(VtblEntry::TraitVPtr(trait_ref));
                 }
+            }
+        }
 
-                VtblEntry::Method(def_id, substs)
-            })
-        }),
-    );
+        ControlFlow::Continue(())
+    };
 
-    tcx.arena.alloc_from_iter(entries)
+    let _ = prepare_vtable_segments(tcx, trait_ref, vtable_segment_callback);
+
+    if tcx.has_attr(trait_ref.def_id(), sym::rustc_dump_vtable) {
+        let sp = tcx.def_span(trait_ref.def_id());
+        dump_vtable_entries(tcx, sp, trait_ref, &entries);
+    }
+
+    tcx.arena.alloc_from_iter(entries.into_iter())
 }
 
 /// Find slot base for trait methods within vtable entries of another trait
@@ -525,20 +724,82 @@ fn vtable_trait_first_method_offset<'tcx>(
 ) -> usize {
     let (trait_to_be_found, trait_owning_vtable) = key;
 
-    let mut supertraits = util::supertraits(tcx, trait_owning_vtable);
+    let vtable_segment_callback = {
+        let mut vtable_base = 0;
 
-    // For each of the non-matching predicates that
-    // we pass over, we sum up the set of number of vtable
-    // entries, so that we can compute the offset for the selected
-    // trait.
-    let vtable_base = ty::COMMON_VTABLE_ENTRIES.len()
-        + supertraits
-            .by_ref()
-            .take_while(|t| *t != trait_to_be_found)
-            .map(|t| util::count_own_vtable_entries(tcx, t))
-            .sum::<usize>();
+        move |segment| {
+            match segment {
+                VtblSegment::MetadataDSA => {
+                    vtable_base += COMMON_VTABLE_ENTRIES.len();
+                }
+                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                    if trait_ref == trait_to_be_found {
+                        return ControlFlow::Break(vtable_base);
+                    }
+                    vtable_base += util::count_own_vtable_entries(tcx, trait_ref);
+                    if emit_vptr {
+                        vtable_base += 1;
+                    }
+                }
+            }
+            ControlFlow::Continue(())
+        }
+    };
 
-    vtable_base
+    if let Some(vtable_base) =
+        prepare_vtable_segments(tcx, trait_owning_vtable, vtable_segment_callback)
+    {
+        vtable_base
+    } else {
+        bug!("Failed to find info for expected trait in vtable");
+    }
+}
+
+/// Find slot offset for trait vptr within vtable entries of another trait
+/// FIXME: This function is not yet used. Remove `#[allow(dead_code)]` when it's used in upcoming pr.
+#[allow(dead_code)]
+fn vtable_trait_vptr_slot_offset<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: (
+        ty::PolyTraitRef<'tcx>, // trait_to_be_found
+        ty::PolyTraitRef<'tcx>, // trait_owning_vtable
+    ),
+) -> Option<usize> {
+    let (trait_to_be_found, trait_owning_vtable) = key;
+
+    let vtable_segment_callback = {
+        let mut vptr_offset = 0;
+        move |segment| {
+            match segment {
+                VtblSegment::MetadataDSA => {
+                    vptr_offset += COMMON_VTABLE_ENTRIES.len();
+                }
+                VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
+                    vptr_offset += util::count_own_vtable_entries(tcx, trait_ref);
+                    if trait_ref == trait_to_be_found {
+                        if emit_vptr {
+                            return ControlFlow::Break(Some(vptr_offset));
+                        } else {
+                            return ControlFlow::Break(None);
+                        }
+                    }
+
+                    if emit_vptr {
+                        vptr_offset += 1;
+                    }
+                }
+            }
+            ControlFlow::Continue(())
+        }
+    };
+
+    if let Some(vptr_offset) =
+        prepare_vtable_segments(tcx, trait_owning_vtable, vtable_segment_callback)
+    {
+        vptr_offset
+    } else {
+        bug!("Failed to find info for expected trait in vtable");
+    }
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

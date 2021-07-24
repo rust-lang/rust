@@ -1,0 +1,33 @@
+error: Vtable entries for `<S as C>`: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method(<S as A>::foo_a),
+    Method(<S as B>::foo_b),
+    TraitVPtr(<S as B>),
+    Method(<S as C>::foo_c),
+]
+  --> $DIR/vtable-multiple.rs:16:1
+   |
+LL | / trait C: A + B {
+LL | |
+LL | |     fn foo_c(&self) {}
+LL | | }
+   | |_^
+
+error: Vtable entries for `<S as B>`: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method(<S as B>::foo_b),
+]
+  --> $DIR/vtable-multiple.rs:10:1
+   |
+LL | / trait B {
+LL | |
+LL | |     fn foo_b(&self) {}
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

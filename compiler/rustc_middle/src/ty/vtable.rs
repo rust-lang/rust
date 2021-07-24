@@ -1,17 +1,39 @@
 use std::convert::TryFrom;
+use std::fmt;
 
 use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, ScalarMaybeUninit};
-use crate::ty::fold::TypeFoldable;
-use crate::ty::{self, DefId, SubstsRef, Ty, TyCtxt};
+use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
 
-#[derive(Clone, Copy, Debug, PartialEq, HashStable)]
+#[derive(Clone, Copy, PartialEq, HashStable)]
 pub enum VtblEntry<'tcx> {
+    /// destructor of this type (used in vtable header)
     MetadataDropInPlace,
+    /// layout size of this type (used in vtable header)
     MetadataSize,
+    /// layout align of this type (used in vtable header)
     MetadataAlign,
+    /// non-dispatchable associated function that is excluded from trait object
     Vacant,
-    Method(DefId, SubstsRef<'tcx>),
+    /// dispatchable associated function
+    Method(Instance<'tcx>),
+    /// pointer to a separate supertrait vtable, can be used by trait upcasting coercion
+    TraitVPtr(PolyTraitRef<'tcx>),
+}
+
+impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // We want to call `Display` on `Instance` and `PolyTraitRef`,
+        // so we implement this manually.
+        match self {
+            VtblEntry::MetadataDropInPlace => write!(f, "MetadataDropInPlace"),
+            VtblEntry::MetadataSize => write!(f, "MetadataSize"),
+            VtblEntry::MetadataAlign => write!(f, "MetadataAlign"),
+            VtblEntry::Vacant => write!(f, "Vacant"),
+            VtblEntry::Method(instance) => write!(f, "Method({})", instance),
+            VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({})", trait_ref),
+        }
+    }
 }
 
 pub const COMMON_VTABLE_ENTRIES: &[VtblEntry<'_>] =
@@ -36,11 +58,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         drop(vtables_cache);
 
-        // See https://github.com/rust-lang/rust/pull/86475#discussion_r655162674
-        assert!(
-            !ty.needs_subst() && !poly_trait_ref.map_or(false, |trait_ref| trait_ref.needs_subst())
-        );
-        let param_env = ty::ParamEnv::reveal_all();
         let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
             let trait_ref = poly_trait_ref.with_self_ty(tcx, ty);
             let trait_ref = tcx.erase_regions(trait_ref);
@@ -50,8 +67,9 @@ impl<'tcx> TyCtxt<'tcx> {
             COMMON_VTABLE_ENTRIES
         };
 
-        let layout =
-            tcx.layout_of(param_env.and(ty)).expect("failed to build vtable representation");
+        let layout = tcx
+            .layout_of(ty::ParamEnv::reveal_all().and(ty))
+            .expect("failed to build vtable representation");
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
         let size = layout.size.bytes();
         let align = layout.align.abi.bytes();
@@ -79,18 +97,20 @@ impl<'tcx> TyCtxt<'tcx> {
                 VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size).into(),
                 VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size).into(),
                 VtblEntry::Vacant => continue,
-                VtblEntry::Method(def_id, substs) => {
-                    // See https://github.com/rust-lang/rust/pull/86475#discussion_r655162674
-                    assert!(!substs.needs_subst());
-
+                VtblEntry::Method(instance) => {
                     // Prepare the fn ptr we write into the vtable.
-                    let instance =
-                        ty::Instance::resolve_for_vtable(tcx, param_env, *def_id, substs)
-                            .expect("resolution failed during building vtable representation")
-                            .polymorphize(tcx);
+                    let instance = instance.polymorphize(tcx);
                     let fn_alloc_id = tcx.create_fn_alloc(instance);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
+                }
+                VtblEntry::TraitVPtr(trait_ref) => {
+                    let super_trait_ref = trait_ref.map_bound(|trait_ref| {
+                        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+                    });
+                    let supertrait_alloc_id = self.vtable_allocation(ty, Some(super_trait_ref));
+                    let vptr = Pointer::from(supertrait_alloc_id);
+                    ScalarMaybeUninit::from_pointer(vptr, &tcx)
                 }
             };
             vtable
