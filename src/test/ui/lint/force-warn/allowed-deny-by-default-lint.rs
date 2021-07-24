@@ -1,6 +1,6 @@
 // --force-warn $LINT causes $LINT (which is deny-by-default) to warn
 // despite $LINT being allowed in module
-// compile-flags: --force-warn const_err -Zunstable-options
+// compile-flags: --force-warn const_err
 // check-pass
 
 #![allow(const_err)]
