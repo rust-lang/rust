@@ -294,7 +294,7 @@ impl Error for VarError {
     }
 }
 
-/// Sets the environment variable `k` to the value `v` for the currently running
+/// Sets the environment variable `key` to the value `value` for the currently running
 /// process.
 ///
 /// Note that while concurrent access to environment variables is safe in Rust,
@@ -310,9 +310,8 @@ impl Error for VarError {
 ///
 /// # Panics
 ///
-/// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// This function may panic if `key` is empty, contains an ASCII equals sign `'='`
+/// or the NUL character `'\0'`, or when `value` contains the NUL character.
 ///
 /// # Examples
 ///
