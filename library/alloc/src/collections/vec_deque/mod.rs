@@ -2864,7 +2864,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     }
 }
 
-#[stable(feature = "std_collections_from_array", since = "1.55.0")]
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;

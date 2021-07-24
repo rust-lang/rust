@@ -996,7 +996,7 @@ where
     }
 }
 
-#[stable(feature = "std_collections_from_array", since = "1.55.0")]
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
 // Note: as what is currently the most convenient built-in way to construct
 // a HashSet, a simple usage of this function must not *require* the user
 // to provide a type annotation in order to infer the third type parameter

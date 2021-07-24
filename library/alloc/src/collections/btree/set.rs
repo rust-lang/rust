@@ -1065,7 +1065,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
     }
 }
 
-#[stable(feature = "std_collections_from_array", since = "1.55.0")]
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;

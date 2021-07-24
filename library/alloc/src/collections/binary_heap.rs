@@ -1451,7 +1451,7 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     }
 }
 
-#[stable(feature = "std_collections_from_array", since = "1.55.0")]
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;

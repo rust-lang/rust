@@ -2043,7 +2043,7 @@ where
     }
 }
 
-#[stable(feature = "std_collections_from_array", since = "1.55.0")]
+#[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
     /// ```
     /// use std::collections::BTreeMap;
