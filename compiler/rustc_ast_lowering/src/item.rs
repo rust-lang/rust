@@ -1373,50 +1373,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> GenericsCtor<'hir> {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
-        // FIXME: this could probably be done with less rightward drift. It also looks like two
-        // control paths where `report_error` is called are the only paths that advance to after the
-        // match statement, so the error reporting could probably just be moved there.
         let mut add_bounds: NodeMap<Vec<_>> = Default::default();
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
                     if let GenericBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
-                        let report_error = |this: &mut Self| {
-                            this.diagnostic().span_err(
-                                bound_pred.bounded_ty.span,
-                                "`?Trait` bounds are only permitted at the \
-                                 point where a type parameter is declared",
-                            );
-                        };
                         // Check if the where clause type is a plain type parameter.
-                        match bound_pred.bounded_ty.kind {
-                            TyKind::Path(None, ref path)
-                                if path.segments.len() == 1
-                                    && bound_pred.bound_generic_params.is_empty() =>
+                        match self
+                            .resolver
+                            .get_partial_res(bound_pred.bounded_ty.id)
+                            .map(|d| (d.base_res(), d.unresolved_segments()))
+                        {
+                            Some((Res::Def(DefKind::TyParam, def_id), 0))
+                                if bound_pred.bound_generic_params.is_empty() =>
                             {
-                                if let Some(Res::Def(DefKind::TyParam, def_id)) = self
-                                    .resolver
-                                    .get_partial_res(bound_pred.bounded_ty.id)
-                                    .map(|d| d.base_res())
-                                {
-                                    if let Some(def_id) = def_id.as_local() {
-                                        for param in &generics.params {
-                                            if let GenericParamKind::Type { .. } = param.kind {
-                                                if def_id == self.resolver.local_def_id(param.id) {
-                                                    add_bounds
-                                                        .entry(param.id)
-                                                        .or_default()
-                                                        .push(bound.clone());
-                                                    continue 'next_bound;
-                                                }
-                                            }
-                                        }
+                                for param in &generics.params {
+                                    if def_id == self.resolver.local_def_id(param.id).to_def_id() {
+                                        add_bounds.entry(param.id).or_default().push(bound.clone());
+                                        continue 'next_bound;
                                     }
                                 }
-                                report_error(self)
                             }
-                            _ => report_error(self),
+                            _ => {}
                         }
+                        self.diagnostic().span_err(
+                            bound_pred.bounded_ty.span,
+                            "`?Trait` bounds are only permitted at the \
+                                 point where a type parameter is declared",
+                        );
                     }
                 }
             }
