@@ -1085,11 +1085,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         span_mirbug!(
                             self,
                             user_annotation,
-                            "bad user type AscribeUserType({:?}, {:?} {:?}): {:?}",
+                            "bad user type AscribeUserType({:?}, {:?} {:?}, type_of={:?}): {:?}",
                             inferred_ty,
                             def_id,
                             user_substs,
-                            terr
+                            self.tcx().type_of(def_id),
+                            terr,
                         );
                     }
                 }
