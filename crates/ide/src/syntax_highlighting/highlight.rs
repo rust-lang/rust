@@ -3,6 +3,7 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
+    helpers::try_resolve_derive_input_at,
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
@@ -87,7 +88,18 @@ pub(super) fn element(
                 _ => Highlight::from(SymbolKind::LifetimeParam) | HlMod::Definition,
             }
         }
-        IDENT if parent_matches::<ast::TokenTree>(&element) => HlTag::None.into(),
+        IDENT if parent_matches::<ast::TokenTree>(&element) => {
+            if let Some((attr, token)) =
+                element.ancestors().nth(2).and_then(ast::Attr::cast).zip(element.as_token())
+            {
+                match try_resolve_derive_input_at(sema, &attr, token) {
+                    Some(makro) => highlight_def(sema.db, krate, Definition::Macro(makro)),
+                    None => HlTag::None.into(),
+                }
+            } else {
+                HlTag::None.into()
+            }
+        }
         p if p.is_punct() => match p {
             T![&] if parent_matches::<ast::BinExpr>(&element) => HlOperator::Bitwise.into(),
             T![&] => {

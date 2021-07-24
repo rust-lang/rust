@@ -5,7 +5,7 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::{
         generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
-        pick_best_token, FamousDefs,
+        pick_best_token, try_resolve_derive_input_at, FamousDefs,
     },
     RootDatabase,
 };
@@ -129,8 +129,12 @@ pub(crate) fn hover(
                         })?;
                     range = Some(idl_range);
                     resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
-                } else if let res@Some(_) = try_hover_for_attribute(&token) {
-                    return res;
+                } else if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
+                    if let res@Some(_) = try_hover_for_lint(&attr, &token) {
+                        return res;
+                    } else {
+                        try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro)
+                    }
                 } else {
                     None
                 }
@@ -197,8 +201,7 @@ pub(crate) fn hover(
     Some(RangeInfo::new(range, res))
 }
 
-fn try_hover_for_attribute(token: &SyntaxToken) -> Option<RangeInfo<HoverResult>> {
-    let attr = token.ancestors().find_map(ast::Attr::cast)?;
+fn try_hover_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<RangeInfo<HoverResult>> {
     let (path, tt) = attr.as_simple_call()?;
     if !tt.syntax().text_range().contains(token.text_range().start()) {
         return None;
@@ -3835,6 +3838,50 @@ use crate as foo$0;
 
                 ```rust
                 extern crate test
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_derive_input() {
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Copy {}
+#[derive(Copy$0)]
+struct Foo;
+            "#,
+            expect![[r#"
+                *(Copy)*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub macro Copy
+                ```
+            "#]],
+        );
+        check(
+            r#"
+mod foo {
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+}
+#[derive(foo::Copy$0)]
+struct Foo;
+            "#,
+            expect![[r#"
+                *(foo::Copy)*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub macro Copy
                 ```
             "#]],
         );

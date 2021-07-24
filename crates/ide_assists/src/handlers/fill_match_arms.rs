@@ -43,8 +43,8 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let expr = match_expr.expr()?;
 
     let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
-    if arms.len() == 1 {
-        if let Some(Pat::WildcardPat(..)) = arms[0].pat() {
+    if let [arm] = arms.as_slice() {
+        if let Some(Pat::WildcardPat(..)) = arm.pat() {
             arms.clear();
         }
     }
@@ -73,9 +73,9 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             .filter_map(|variant| build_pat(ctx.db(), module, variant))
             .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat));
 
-        let missing_pats: Box<dyn Iterator<Item = _>> = if Some(enum_def)
-            == FamousDefs(&ctx.sema, Some(module.krate())).core_option_Option().map(lift_enum)
-        {
+        let option_enum =
+            FamousDefs(&ctx.sema, Some(module.krate())).core_option_Option().map(lift_enum);
+        let missing_pats: Box<dyn Iterator<Item = _>> = if Some(enum_def) == option_enum {
             // Match `Some` variant first.
             cov_mark::hit!(option_order);
             Box::new(missing_pats.rev())
@@ -136,7 +136,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 .arms()
                 .find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
             if let Some(arm) = catch_all_arm {
-                arm.remove()
+                arm.remove();
             }
             let mut first_new_arm = None;
             for arm in missing_arms {
@@ -214,13 +214,7 @@ impl ExtendedEnum {
 fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<ExtendedEnum> {
     sema.type_of_expr(expr)?.autoderef(sema.db).find_map(|ty| match ty.as_adt() {
         Some(Adt::Enum(e)) => Some(ExtendedEnum::Enum(e)),
-        _ => {
-            if ty.is_bool() {
-                Some(ExtendedEnum::Bool)
-            } else {
-                None
-            }
-        }
+        _ => ty.is_bool().then(|| ExtendedEnum::Bool),
     })
 }
 
@@ -237,13 +231,7 @@ fn resolve_tuple_of_enum_def(
                 // For now we only handle expansion for a tuple of enums. Here
                 // we map non-enum items to None and rely on `collect` to
                 // convert Vec<Option<hir::Enum>> into Option<Vec<hir::Enum>>.
-                _ => {
-                    if ty.is_bool() {
-                        Some(ExtendedEnum::Bool)
-                    } else {
-                        None
-                    }
-                }
+                _ => ty.is_bool().then(|| ExtendedEnum::Bool),
             })
         })
         .collect()
