@@ -5,7 +5,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, ParamEnv, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -27,7 +27,9 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// The `#[target_feature]` attributes of the body. Used for checking
     /// calls to functions with `#[target_feature]` (RFC 2396).
     body_target_features: &'tcx Vec<Symbol>,
-    in_possible_lhs_union_assign: bool,
+    /// When inside the LHS of an assignment to a field, this is the type
+    /// of the LHS and the span of the assignment expression.
+    assignment_info: Option<(Ty<'tcx>, Span)>,
     in_union_destructure: bool,
     param_env: ParamEnv<'tcx>,
     inside_adt: bool,
@@ -287,7 +289,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &Expr<'tcx>) {
-        // could we be in a the LHS of an assignment of a union?
+        // could we be in the LHS of an assignment to a field?
         match expr.kind {
             ExprKind::Field { .. }
             | ExprKind::VarRef { .. }
@@ -329,7 +331,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::InlineAsm { .. }
             | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::LogicalOp { .. }
-            | ExprKind::Use { .. } => self.in_possible_lhs_union_assign = false,
+            | ExprKind::Use { .. } => {
+                // We don't need to save the old value and restore it
+                // because all the place expressions can't have more
+                // than one child.
+                self.assignment_info = None;
+            }
         };
         match expr.kind {
             ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
@@ -409,11 +416,21 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 self.safety_context = closure_visitor.safety_context;
             }
             ExprKind::Field { lhs, .. } => {
-                // assigning to union field is okay for AccessToUnionField
-                if let ty::Adt(adt_def, _) = &self.thir[lhs].ty.kind() {
+                let lhs = &self.thir[lhs];
+                if let ty::Adt(adt_def, _) = lhs.ty.kind() {
                     if adt_def.is_union() {
-                        if self.in_possible_lhs_union_assign {
-                            // FIXME: trigger AssignToDroppingUnionField unsafety if needed
+                        if let Some((assigned_ty, assignment_span)) = self.assignment_info {
+                            // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
+                            if !(assigned_ty
+                                .ty_adt_def()
+                                .map_or(false, |adt| adt.is_manually_drop())
+                                || assigned_ty
+                                    .is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env))
+                            {
+                                self.requires_unsafe(assignment_span, AssignToDroppingUnionField);
+                            } else {
+                                // write to non-drop union field, safe
+                            }
                         } else {
                             self.requires_unsafe(expr.span, AccessToUnionField);
                         }
@@ -421,9 +438,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::Assign { lhs, rhs } | ExprKind::AssignOp { lhs, rhs, .. } => {
+                let lhs = &self.thir[lhs];
                 // First, check whether we are mutating a layout constrained field
                 let mut visitor = LayoutConstrainedPlaceVisitor::new(self.thir, self.tcx);
-                visit::walk_expr(&mut visitor, &self.thir[lhs]);
+                visit::walk_expr(&mut visitor, lhs);
                 if visitor.found {
                     self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField);
                 }
@@ -431,10 +449,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 // Second, check for accesses to union fields
                 // don't have any special handling for AssignOp since it causes a read *and* write to lhs
                 if matches!(expr.kind, ExprKind::Assign { .. }) {
-                    // assigning to a union is safe, check here so it doesn't get treated as a read later
-                    self.in_possible_lhs_union_assign = true;
-                    visit::walk_expr(self, &self.thir()[lhs]);
-                    self.in_possible_lhs_union_assign = false;
+                    self.assignment_info = Some((lhs.ty, expr.span));
+                    visit::walk_expr(self, lhs);
+                    self.assignment_info = None;
                     visit::walk_expr(self, &self.thir()[rhs]);
                     return; // we have already visited everything by now
                 }
@@ -506,12 +523,9 @@ enum UnsafeOpKind {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    #[allow(dead_code)] // FIXME
     AssignToDroppingUnionField,
     AccessToUnionField,
-    #[allow(dead_code)] // FIXME
     MutationOfLayoutConstrainedField,
-    #[allow(dead_code)] // FIXME
     BorrowOfLayoutConstrainedField,
     CallToFunctionWith,
 }
@@ -619,7 +633,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         hir_context: hir_id,
         body_unsafety,
         body_target_features,
-        in_possible_lhs_union_assign: false,
+        assignment_info: None,
         in_union_destructure: false,
         param_env: tcx.param_env(def.did),
         inside_adt: false,
