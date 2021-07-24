@@ -1424,7 +1424,7 @@ pub type Lit = Spanned<LitKind>;
 /// explicit discriminant values for enum variants.
 ///
 /// You can check if this anon const is a default in a const param
-/// `const N: usize = { ... }` with [Map::opt_const_param_default_param_hir_id]
+/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_hir_id(..)`
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
