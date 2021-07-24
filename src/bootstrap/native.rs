@@ -145,7 +145,7 @@ impl Step for Llvm {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
-        builder.info(&format!("Building LLVM for {}", target));
+        builder.step_info(&self);
         t!(stamp.remove());
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -566,7 +566,7 @@ impl Step for Lld {
             return out_dir;
         }
 
-        builder.info(&format!("Building LLD for {}", target));
+        builder.step_info(&self);
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -666,7 +666,7 @@ impl Step for TestHelpers {
             return;
         }
 
-        builder.info("Building test helpers");
+        builder.step_info(&self);
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
         // FIXME: Workaround for https://github.com/emscripten-core/emscripten/issues/9013
@@ -744,7 +744,7 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        builder.info(&format!("Building sanitizers for {}", self.target));
+        builder.step_info(&self);
         t!(stamp.remove());
         let _time = util::timeit(&builder);
 
@@ -910,7 +910,7 @@ impl Step for CrtBeginEnd {
             return out_dir;
         }
 
-        builder.info("Building crtbegin.o and crtend.o");
+        builder.step_info(&self);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cc::Build::new();

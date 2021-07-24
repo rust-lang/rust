@@ -1043,7 +1043,7 @@ impl Step for Tidy {
             cmd.arg("--verbose");
         }
 
-        builder.info("tidy check");
+        builder.step_info(&self);
         try_run(builder, &mut cmd);
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {

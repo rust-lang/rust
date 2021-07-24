@@ -42,7 +42,7 @@ impl Step for ToolBuild {
 
     fn info(step_info: &mut StepInfo<'_, '_, Self>) {
         let step = step_info.step;
-        todo!("path");
+        // todo!("path");
         step_info.compiler(&step.compiler).target(step.target).cmd(Kind::Build);
     }
 
@@ -78,7 +78,7 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
+        builder.step_info(&self);
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
@@ -582,10 +582,7 @@ impl Step for Rustdoc {
             features.as_slice(),
         );
 
-        builder.info(&format!(
-            "Building rustdoc for stage{} ({})",
-            target_compiler.stage, target_compiler.host
-        ));
+        builder.step_info(&self);
         builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
