@@ -20,6 +20,27 @@ pub fn provide(providers: &mut Providers) {
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, Span)] {
     let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
 
+    if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
+    {
+        if let Some(_) = tcx.hir().opt_const_param_default_param_hir_id(id) {
+            // In `generics_of` we set the generics' parent to be our parent's parent which means that
+            // we lose out on the predicates of our actual parent if we dont return those predicates here.
+            // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
+            //
+            // struct Foo<'a, 'b, const N: usize = { ... }>(&'a &'b ());
+            //        ^^^                          ^^^^^^^ the def id we are calling
+            //        ^^^                                  inferred_outlives_of on
+            //        parent item we dont have set as the
+            //        parent of generics returned by `generics_of`
+            //
+            // In the above code we want the anon const to have predicates in its param env for `'b: 'a`
+            let item_id = tcx.hir().get_parent_item(id);
+            let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
+            // In the above code example we would be calling `inferred_outlives_of(Foo)` here
+            return tcx.inferred_outlives_of(item_def_id);
+        }
+    }
+
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {

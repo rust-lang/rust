@@ -1437,6 +1437,52 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.lazy_normalization() {
+                if let Some(param_id) = tcx.hir().opt_const_param_default_param_hir_id(hir_id) {
+                    // If the def_id we are calling generics_of on is an anon ct default i.e:
+                    //
+                    // struct Foo<const N: usize = { .. }>;
+                    //        ^^^       ^          ^^^^^^ def id of this anon const
+                    //        ^         ^ param_id
+                    //        ^ parent_def_id
+                    //
+                    // then we only want to return generics for params to the left of `N`. If we don't do that we
+                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, substs: [N#0])`.
+                    //
+                    // This causes ICEs (#86580) when building the substs for Foo in `fn foo() -> Foo { .. }` as
+                    // we substitute the defaults with the partially built substs when we build the substs. Subst'ing
+                    // the `N#0` on the unevaluated const indexes into the empty substs we're in the process of building.
+                    //
+                    // We fix this by having this function return the parent's generics ourselves and truncating the
+                    // generics to only include non-forward declared params (with the exception of the `Self` ty)
+                    //
+                    // For the above code example that means we want `substs: []`
+                    // For the following struct def we want `substs: [N#0]` when generics_of is called on
+                    // the def id of the `{ N + 1 }` anon const
+                    // struct Foo<const N: usize, const M: usize = { N + 1 }>;
+                    //
+                    // This has some implications for how we get the predicates available to the anon const
+                    // see `explicit_predicates_of` for more information on this
+                    let generics = tcx.generics_of(parent_def_id.to_def_id());
+                    let param_def = tcx.hir().local_def_id(param_id).to_def_id();
+                    let param_def_idx = generics.param_def_id_to_index[&param_def];
+                    // In the above example this would be .params[..N#0]
+                    let params = generics.params[..param_def_idx as usize].to_owned();
+                    let param_def_id_to_index =
+                        params.iter().map(|param| (param.def_id, param.index)).collect();
+
+                    return ty::Generics {
+                        // we set the parent of these generics to be our parent's parent so that we
+                        // dont end up with substs: [N, M, N] for the const default on a struct like this:
+                        // struct Foo<const N: usize, const M: usize = { ... }>;
+                        parent: generics.parent,
+                        parent_count: generics.parent_count,
+                        params,
+                        param_def_id_to_index,
+                        has_self: generics.has_self,
+                        has_late_bound_regions: generics.has_late_bound_regions,
+                    };
+                }
+
                 // HACK(eddyb) this provides the correct generics when
                 // `feature(const_generics)` is enabled, so that const expressions
                 // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
@@ -2355,7 +2401,8 @@ fn trait_explicit_predicates_and_bounds(
 }
 
 fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    if let DefKind::Trait = tcx.def_kind(def_id) {
+    let def_kind = tcx.def_kind(def_id);
+    if let DefKind::Trait = def_kind {
         // Remove bounds on associated types from the predicates, they will be
         // returned by `explicit_item_bounds`.
         let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id.expect_local());
@@ -2400,6 +2447,26 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             }
         }
     } else {
+        if matches!(def_kind, DefKind::AnonConst) && tcx.lazy_normalization() {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+            if let Some(_) = tcx.hir().opt_const_param_default_param_hir_id(hir_id) {
+                // In `generics_of` we set the generics' parent to be our parent's parent which means that
+                // we lose out on the predicates of our actual parent if we dont return those predicates here.
+                // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
+                //
+                // struct Foo<T, const N: usize = { <T as Trait>::ASSOC }>(T) where T: Trait;
+                //        ^^^                     ^^^^^^^^^^^^^^^^^^^^^^^ the def id we are calling
+                //        ^^^                                             explicit_predicates_of on
+                //        parent item we dont have set as the
+                //        parent of generics returned by `generics_of`
+                //
+                // In the above code we want the anon const to have predicates in its param env for `T: Trait`
+                let item_id = tcx.hir().get_parent_item(hir_id);
+                let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
+                // In the above code example we would be calling `explicit_predicates_of(Foo)` here
+                return tcx.explicit_predicates_of(item_def_id);
+            }
+        }
         gather_explicit_predicates_of(tcx, def_id)
     }
 }
