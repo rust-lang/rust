@@ -5,7 +5,7 @@ use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, NameClass, NameRefClass},
-    helpers::pick_best_token,
+    helpers::{pick_best_token, try_resolve_derive_input_at},
     RootDatabase,
 };
 use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
@@ -78,7 +78,7 @@ pub(crate) fn goto_definition(
             } else {
                 reference_definition(&sema, Either::Left(&lt))
             },
-            ast::TokenTree(tt) => try_lookup_include_path(sema.db, tt, token, position.file_id)?,
+            ast::TokenTree(tt) => try_lookup_include_path_or_derive(&sema, tt, token, position.file_id)?,
             _ => return None,
         }
     };
@@ -86,30 +86,41 @@ pub(crate) fn goto_definition(
     Some(RangeInfo::new(original_token.text_range(), navs))
 }
 
-fn try_lookup_include_path(
-    db: &RootDatabase,
+fn try_lookup_include_path_or_derive(
+    sema: &Semantics<RootDatabase>,
     tt: ast::TokenTree,
     token: SyntaxToken,
     file_id: FileId,
 ) -> Option<Vec<NavigationTarget>> {
-    let path = ast::String::cast(token)?.value()?.into_owned();
-    let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
-    let name = macro_call.path()?.segment()?.name_ref()?;
-    if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
-        return None;
+    match ast::String::cast(token.clone()) {
+        Some(token) => {
+            let path = token.value()?.into_owned();
+            let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
+            let name = macro_call.path()?.segment()?.name_ref()?;
+            if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
+                return None;
+            }
+            let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
+            let size = sema.db.file_text(file_id).len().try_into().ok()?;
+            Some(vec![NavigationTarget {
+                file_id,
+                full_range: TextRange::new(0.into(), size),
+                name: path.into(),
+                focus_range: None,
+                kind: None,
+                container_name: None,
+                description: None,
+                docs: None,
+            }])
+        }
+        None => try_resolve_derive_input_at(
+            sema,
+            &tt.syntax().ancestors().nth(2).and_then(ast::Attr::cast)?,
+            &token,
+        )
+        .and_then(|it| it.try_to_nav(sema.db))
+        .map(|it| vec![it]),
     }
-    let file_id = db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
-    let size = db.file_text(file_id).len().try_into().ok()?;
-    Some(vec![NavigationTarget {
-        file_id,
-        full_range: TextRange::new(0.into(), size),
-        name: path.into(),
-        focus_range: None,
-        kind: None,
-        container_name: None,
-        description: None,
-        docs: None,
-    }])
 }
 
 /// finds the trait definition of an impl'd item
@@ -1381,6 +1392,30 @@ impl Twait for Stwuct {
     type IsBad$0 = !;
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn goto_def_derive_input() {
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Copy {}
+       // ^^^^
+#[derive(Copy$0)]
+struct Foo;
+            "#,
+        );
+        check(
+            r#"
+mod foo {
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+           // ^^^^
+}
+#[derive(foo::Copy$0)]
+struct Foo;
+            "#,
         );
     }
 }
