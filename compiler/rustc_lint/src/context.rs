@@ -734,6 +734,16 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable,
                     );
                 }
+                BuiltinLintDiagnostics::UnusedBuiltinAttribute {
+                    attr_name,
+                    macro_name,
+                    invoc_span
+                } => {
+                    db.span_note(
+                        invoc_span,
+                        &format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
