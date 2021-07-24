@@ -52,6 +52,9 @@ pub struct Inherited<'a, 'tcx> {
     pub(super) deferred_generator_interiors:
         RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
 
+    /// Reports whether this is in a const context.
+    pub(super) constness: hir::Constness,
+
     pub(super) body_id: Option<hir::BodyId>,
 }
 
@@ -95,6 +98,12 @@ impl Inherited<'a, 'tcx> {
     pub(super) fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        Self::with_constness(infcx, def_id, tcx.hir().get(item_id).constness())
+    }
+
+    pub(super) fn with_constness(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId, constness: hir::Constness) -> Self {
+        let tcx = infcx.tcx;
+        let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
 
         Inherited {
@@ -108,12 +117,29 @@ impl Inherited<'a, 'tcx> {
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
+            constness,
             body_id,
         }
     }
 
-    pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
+    #[instrument(level = "debug", skip(self))]
+    fn transform_predicate(&self, p: &mut ty::Predicate<'tcx>) {
+        // Don't transform non-const bounds into const bounds,
+        // but transform const bounds to non-const when we are
+        // not in a const context.
+        if let hir::Constness::NotConst = self.constness {
+            let kind = p.kind();
+            if let ty::PredicateKind::Trait(pred) = kind.as_ref().skip_binder() {
+                let mut pred = *pred;
+                pred.constness = hir::Constness::NotConst;
+                *p = kind.rebind(ty::PredicateKind::Trait(pred)).to_predicate(self.tcx);
+            }
+        }
+    }
+
+    pub(super) fn register_predicate(&self, mut obligation: traits::PredicateObligation<'tcx>) {
         debug!("register_predicate({:?})", obligation);
+        self.transform_predicate(&mut obligation.predicate);
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
