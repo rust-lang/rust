@@ -16,6 +16,10 @@ LL | enum Foo<U> { FooSome(U), FooNone }
    |          ^            - ...if indirection were used here: `Box<U>`
    |          |
    |          this could be changed to `U: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn foo2<T>() { not_sized::<Foo<T>>() }
+   |         --
 
 error: aborting due to previous error
 

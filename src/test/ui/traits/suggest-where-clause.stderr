@@ -11,6 +11,11 @@ LL |     mem::size_of::<U>();
    |
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn check<T: Iterator, U>() {
+   |                       --
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:10:5
@@ -31,6 +36,10 @@ note: required because it appears within the type `Misc<U>`
    |
 LL | struct Misc<T:?Sized>(T);
    |        ^^^^
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn check<T: Iterator, U>() {
+   |                       --
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:5
