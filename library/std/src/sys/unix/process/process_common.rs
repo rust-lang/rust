@@ -200,7 +200,8 @@ impl Command {
     }
 
     pub fn arg_set(&mut self, index: usize, arg: &OsStr) {
-        debug_assert!(index >= 1 && index < self.args.len(), "Index out of range");
+        assert!(index >= 1, "Index must be >= 1");
+        debug_assert!(index < self.args.len(), "Index out of range");
         let arg = os2c(arg, &mut self.saw_nul);
         self.argv.0[index] = arg.as_ptr();
         self.args[index] = arg;
