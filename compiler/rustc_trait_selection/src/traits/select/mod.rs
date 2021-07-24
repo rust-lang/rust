@@ -41,6 +41,7 @@ use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
+use rustc_middle::ty::WithConstness;
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
@@ -141,7 +142,7 @@ struct TraitObligationStack<'prev, 'tcx> {
 
     /// The trait ref from `obligation` but "freshened" with the
     /// selection-context's freshener. Used to check for recursion.
-    fresh_trait_ref: ty::PolyTraitRef<'tcx>,
+    fresh_trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
 
     /// Starts out equal to `depth` -- if, during evaluation, we
     /// encounter a cycle, then we will set this flag to the minimum
@@ -804,7 +805,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         let unbound_input_types =
-            stack.fresh_trait_ref.skip_binder().substs.types().any(|ty| ty.is_fresh());
+            stack.fresh_trait_ref.value.skip_binder().substs.types().any(|ty| ty.is_fresh());
         // This check was an imperfect workaround for a bug in the old
         // intercrate mode; it should be removed when that goes away.
         if unbound_input_types && self.intercrate {
@@ -925,7 +926,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn check_evaluation_cache(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
     ) -> Option<EvaluationResult> {
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
@@ -939,7 +940,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn insert_evaluation_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
         dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
@@ -1024,18 +1025,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         // Respect const trait obligations
         if let hir::Constness::Const = obligation.predicate.skip_binder().constness {
-            match candidate {
-                // const impl
-                ImplCandidate(def_id) if tcx.impl_constness(def_id) == hir::Constness::Const => {}
-                // const param
-                ParamCandidate(ty::ConstnessAnd { constness: hir::Constness::Const, .. }) => {}
-                // auto trait impl
-                AutoImplCandidate(..) => {}
-                // FIXME check if this is right, but this would allow Sized impls
-                // BuiltinCandidate { .. } => {}
-                _ => {
-                    // reject all other types of candidates
-                    return Err(Unimplemented);
+            if Some(obligation.predicate.skip_binder().trait_ref.def_id)
+                != tcx.lang_items().sized_trait()
+            // const Sized bounds are skipped
+            {
+                match candidate {
+                    // const impl
+                    ImplCandidate(def_id)
+                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                    // const param
+                    ParamCandidate(ty::ConstnessAnd {
+                        constness: hir::Constness::Const, ..
+                    }) => {}
+                    // auto trait impl
+                    AutoImplCandidate(..) => {}
+                    // FIXME check if this is right, but this would allow Sized impls
+                    // BuiltinCandidate { .. } => {}
+                    _ => {
+                        // reject all other types of candidates
+                        return Err(Unimplemented);
+                    }
                 }
             }
         }
@@ -1121,13 +1130,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
         let tcx = self.tcx();
-        let trait_ref = &cache_fresh_trait_pred.skip_binder().trait_ref;
+        let pred = &cache_fresh_trait_pred.skip_binder();
+        let trait_ref = pred.trait_ref;
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.selection_cache.get(&param_env.and(*trait_ref), tcx) {
+            if let Some(res) = tcx
+                .selection_cache
+                .get(&param_env.and(trait_ref).with_constness(pred.constness), tcx)
+            {
                 return Some(res);
             }
         }
-        self.infcx.selection_cache.get(&param_env.and(*trait_ref), tcx)
+        self.infcx
+            .selection_cache
+            .get(&param_env.and(trait_ref).with_constness(pred.constness), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -1164,7 +1179,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        let trait_ref = cache_fresh_trait_pred.skip_binder().trait_ref;
+        let pred = cache_fresh_trait_pred.skip_binder();
+        let trait_ref = pred.trait_ref;
 
         if !self.can_cache_candidate(&candidate) {
             debug!(?trait_ref, ?candidate, "insert_candidate_cache - candidate is not cacheable");
@@ -1178,14 +1194,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if !candidate.needs_infer() {
                     debug!(?trait_ref, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
-                    tcx.selection_cache.insert(param_env.and(trait_ref), dep_node, candidate);
+                    tcx.selection_cache.insert(
+                        param_env.and(trait_ref).with_constness(pred.constness),
+                        dep_node,
+                        candidate,
+                    );
                     return;
                 }
             }
         }
 
         debug!(?trait_ref, ?candidate, "insert_candidate_cache local");
-        self.infcx.selection_cache.insert(param_env.and(trait_ref), dep_node, candidate);
+        self.infcx.selection_cache.insert(
+            param_env.and(trait_ref).with_constness(pred.constness),
+            dep_node,
+            candidate,
+        );
     }
 
     /// Matches a predicate against the bounds of its self type.
@@ -2015,8 +2039,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn match_fresh_trait_refs(
         &self,
-        previous: ty::PolyTraitRef<'tcx>,
-        current: ty::PolyTraitRef<'tcx>,
+        previous: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
+        current: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         let mut matcher = ty::_match::Match::new(self.tcx(), param_env);
@@ -2028,8 +2052,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
-        let fresh_trait_ref =
-            obligation.predicate.to_poly_trait_ref().fold_with(&mut self.freshener);
+        let fresh_trait_ref = obligation
+            .predicate
+            .to_poly_trait_ref()
+            .fold_with(&mut self.freshener)
+            .with_constness(obligation.predicate.skip_binder().constness);
 
         let dfn = previous_stack.cache.next_dfn();
         let depth = previous_stack.depth() + 1;
@@ -2308,7 +2335,7 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// - then we determine that `E` is in error -- we will then clear
     ///   all cache values whose DFN is >= 4 -- in this case, that
     ///   means the cached value for `F`.
-    map: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, ProvisionalEvaluation>>,
+    map: RefCell<FxHashMap<ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>, ProvisionalEvaluation>>,
 }
 
 /// A cache value for the provisional cache: contains the depth-first
@@ -2340,7 +2367,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// `reached_depth` (from the returned value).
     fn get_provisional(
         &self,
-        fresh_trait_ref: ty::PolyTraitRef<'tcx>,
+        fresh_trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
     ) -> Option<ProvisionalEvaluation> {
         debug!(
             ?fresh_trait_ref,
@@ -2358,7 +2385,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
         &self,
         from_dfn: usize,
         reached_depth: usize,
-        fresh_trait_ref: ty::PolyTraitRef<'tcx>,
+        fresh_trait_ref: ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>,
         result: EvaluationResult,
     ) {
         debug!(?from_dfn, ?fresh_trait_ref, ?result, "insert_provisional");
@@ -2436,7 +2463,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     fn on_completion(
         &self,
         dfn: usize,
-        mut op: impl FnMut(ty::PolyTraitRef<'tcx>, EvaluationResult),
+        mut op: impl FnMut(ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>, EvaluationResult),
     ) {
         debug!(?dfn, "on_completion");
 
