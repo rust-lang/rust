@@ -208,6 +208,14 @@ impl Command {
     pub fn arg(&mut self, arg: &OsStr) {
         self.args.push(Arg::Regular(arg.to_os_string()))
     }
+    pub fn args_clear(&mut self) {
+        self.args.truncate(1);
+    }
+    pub fn arg_set(&mut self, index: usize, arg: &OsStr) {
+        assert!(index >= 1, "Index must be >= 1");
+        debug_assert!(index < self.args.len(), "Index out of range");
+        self.args[index] = Arg::Regular(arg.to_os_string());
+    }
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
