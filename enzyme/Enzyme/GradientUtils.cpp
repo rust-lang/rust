@@ -814,17 +814,13 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     // Don't attempt to unroll a loop induction variable in other
     // circumstances
-    assert(parent->getParent() == newFunc);
-    if (parent->getParent() == newFunc) {
-      if (LI.isLoopHeader(parent)) {
-        goto endCheck;
-      }
-      for (auto &val : phi->incoming_values()) {
-        if (isPotentialLastLoopValue(val, parent, LI))
-          goto endCheck;
-      }
-    } else {
+    auto &LLI = Logic.PPC.FAM.getResult<LoopAnalysis>(*parent->getParent());
+    if (LLI.isLoopHeader(parent)) {
       goto endCheck;
+    }
+    for (auto &val : phi->incoming_values()) {
+      if (isPotentialLastLoopValue(val, parent, LLI))
+        goto endCheck;
     }
 
     if (phi->getNumIncomingValues() == 1) {
@@ -1347,6 +1343,12 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     return malloc;
   }
 
+  if (auto CI = dyn_cast<CallInst>(malloc)) {
+    if (auto F = CI->getCalledFunction()) {
+      assert(F->getName() != "omp_get_thread_num");
+    }
+  }
+
   if (tape) {
     if (idx >= 0 && !tape->getType()->isStructTy()) {
       llvm::errs() << "cacheForReverse incorrect tape type: " << *tape
@@ -1411,6 +1413,11 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     if (!inLoop) {
       if (malloc)
         ret->setName(malloc->getName() + "_fromtape");
+      if (omp) {
+        Value *tid = ompThreadId();
+        ret = BuilderQ.CreateLoad(
+            BuilderQ.CreateInBoundsGEP(ret, ArrayRef<Value *>(tid)));
+      }
     } else {
       if (auto ri = dyn_cast<Instruction>(ret))
         erase(ri);
@@ -1684,7 +1691,37 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     }
 
     if (!inLoop) {
-      addedTapeVals.push_back(malloc);
+      Value *toStoreInTape = malloc;
+      if (omp) {
+        Value *numThreads = ompNumThreads();
+        Value *tid = ompThreadId();
+        IRBuilder<> entryBuilder(inversionAllocs);
+
+        Constant *byteSizeOfType = ConstantInt::get(
+            numThreads->getType(),
+            (newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+                 malloc->getType()) +
+             7) /
+                8,
+            false);
+
+        auto firstallocation = cast<Instruction>(CallInst::CreateMalloc(
+            inversionAllocs, numThreads->getType(), malloc->getType(),
+            byteSizeOfType, numThreads, nullptr,
+            malloc->getName() + "_malloccache"));
+        if (firstallocation->getParent() == nullptr) {
+          inversionAllocs->getInstList().push_back(firstallocation);
+        }
+
+        if (auto inst = dyn_cast<Instruction>(malloc)) {
+          entryBuilder.SetInsertPoint(inst->getNextNode());
+        }
+        entryBuilder.CreateStore(
+            malloc, entryBuilder.CreateInBoundsGEP(firstallocation,
+                                                   ArrayRef<Value *>(tid)));
+        toStoreInTape = firstallocation;
+      }
+      addedTapeVals.push_back(toStoreInTape);
       return malloc;
     }
 
@@ -2235,7 +2272,7 @@ GradientUtils *GradientUtils::CreateFromClone(
     EnzymeLogic &Logic, Function *todiff, TargetLibraryInfo &TLI,
     TypeAnalysis &TA, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
-    std::map<AugmentedStruct, int> &returnMapping) {
+    std::map<AugmentedStruct, int> &returnMapping, bool omp) {
   assert(!todiff->empty());
 
   // Since this is forward pass this should always return the tape (at index 0)
@@ -2290,7 +2327,7 @@ GradientUtils *GradientUtils::CreateFromClone(
       new GradientUtils(Logic, newFunc, todiff, TLI, TA, invertedPointers,
                         constant_values, nonconstant_values,
                         /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
-                        originalToNew, DerivativeMode::ReverseModePrimal);
+                        originalToNew, DerivativeMode::ReverseModePrimal, omp);
   return res;
 }
 
@@ -2298,7 +2335,7 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
     EnzymeLogic &Logic, DerivativeMode mode, Function *todiff,
     TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
     bool diffeReturnArg, const std::vector<DIFFE_TYPE> &constant_args,
-    ReturnType returnValue, Type *additionalArg) {
+    ReturnType returnValue, Type *additionalArg, bool omp) {
   assert(!todiff->empty());
   assert(mode == DerivativeMode::ReverseModeGradient ||
          mode == DerivativeMode::ReverseModeCombined ||
@@ -2320,7 +2357,7 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   auto res = new DiffeGradientUtils(
       Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
       nonconstant_values, /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
-      originalToNew, mode);
+      originalToNew, mode, omp);
   return res;
 }
 

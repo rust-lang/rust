@@ -112,7 +112,7 @@ public:
 
   std::map<llvm::Instruction *, bool> can_modref_map;
 
-  std::set<size_t> tapeIndiciesToFree;
+  std::set<ssize_t> tapeIndiciesToFree;
 
   AugmentedReturn(
       llvm::Function *fn, llvm::StructType *tapeType,

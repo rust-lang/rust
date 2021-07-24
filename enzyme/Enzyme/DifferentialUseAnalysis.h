@@ -54,7 +54,24 @@ static inline bool is_use_directly_needed_in_reverse(
 
   // We don't need any of the input operands to compute the adjoint of a store
   // instance
-  if (isa<StoreInst>(user)) {
+  if (auto SI = dyn_cast<StoreInst>(user)) {
+    // The one exception to this is stores to the loop bounds.
+    if (SI->getValueOperand() == val) {
+      for (auto U : SI->getPointerOperand()->users()) {
+        if (auto CI = dyn_cast<CallInst>(U)) {
+          if (auto F = CI->getCalledFunction()) {
+            if (F->getName() == "__kmpc_for_static_init_4" ||
+                F->getName() == "__kmpc_for_static_init_4u" ||
+                F->getName() == "__kmpc_for_static_init_8" ||
+                F->getName() == "__kmpc_for_static_init_8u") {
+              if (CI->getArgOperand(4) == val || CI->getArgOperand(5) == val ||
+                  CI->getArgOperand(6))
+                return true;
+            }
+          }
+        }
+      }
+    }
     return false;
   }
 
@@ -135,6 +152,28 @@ static inline bool is_use_directly_needed_in_reverse(
 
     // only need the condition if select is active
     return !gutils->isConstantValue(const_cast<SelectInst *>(si));
+  }
+
+  if (auto CI = dyn_cast<CallInst>(user)) {
+    if (auto F = CI->getCalledFunction()) {
+      // Only need primal length and datatype for reverse
+      if (F->getName() == "MPI_Isend" || F->getName() == "MPI_Irecv") {
+        if (val != CI->getArgOperand(1) && val != CI->getArgOperand(2)) {
+          return false;
+        }
+      }
+      // Don't need any primal arguments for mpi_wait
+      if (F->getName() == "MPI_Wait")
+        return false;
+      // Only need element count for reverse of waitall
+      if (F->getName() == "MPI_Waitall")
+        if (val != CI->getArgOperand(0))
+          return false;
+      // Since adjoint of barrier is another barrier in reverse
+      // we still need even if instruction is inactive
+      if (F->getName() == "__kmpc_barrier" || F->getName() == "MPI_Barrier")
+        return true;
+    }
   }
 
   return !gutils->isConstantInstruction(user) ||

@@ -630,6 +630,81 @@ void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
   FAM.invalidate(*NewF, PA);
 }
 
+Function *CreateMPIWrapper(Function *F) {
+  std::string name = ("enzyme_wrapmpi$$" + F->getName() + "#").str();
+  if (auto W = F->getParent()->getFunction(name))
+    return W;
+  Type *types = {F->getFunctionType()->getParamType(0)};
+  auto FT = FunctionType::get(F->getReturnType(), types, false);
+  Function *W = Function::Create(FT, GlobalVariable::InternalLinkage, name,
+                                 F->getParent());
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::InaccessibleMemOnly);
+  W->addAttribute(AttributeList::FunctionIndex,
+                  Attribute::get(F->getContext(), "enzyme_inactive"));
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::Speculatable);
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::NoUnwind);
+#if LLVM_VERSION_MAJOR >= 10
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::NoFree);
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::NoSync);
+#endif
+  W->addAttribute(AttributeList::FunctionIndex, Attribute::AlwaysInline);
+  BasicBlock *entry = BasicBlock::Create(W->getContext(), "entry", W);
+  IRBuilder<> B(entry);
+  auto alloc = B.CreateAlloca(F->getReturnType());
+  Value *args[] = {W->arg_begin(), alloc};
+  B.CreateCall(F, args);
+  B.CreateRet(B.CreateLoad(alloc));
+  return W;
+}
+static void SimplifyMPIQueries(Function &NewF) {
+  SmallVector<CallInst *, 4> Todo;
+  SmallVector<CallInst *, 0> OMPBounds;
+  for (auto &BB : NewF) {
+    for (auto &I : BB) {
+      if (auto CI = dyn_cast<CallInst>(&I)) {
+        Function *Fn = CI->getCalledFunction();
+        if (Fn == nullptr)
+          continue;
+        if (Fn->getName() == "MPI_Comm_rank" ||
+            Fn->getName() == "MPI_Comm_size") {
+          if (!CI->use_empty()) {
+            continue;
+          }
+          Todo.push_back(CI);
+        }
+        if (Fn->getName() == "__kmpc_for_static_init_4" ||
+            Fn->getName() == "__kmpc_for_static_init_4u" ||
+            Fn->getName() == "__kmpc_for_static_init_8" ||
+            Fn->getName() == "__kmpc_for_static_init_8u") {
+          OMPBounds.push_back(CI);
+        }
+      }
+    }
+  }
+  for (auto CI : Todo) {
+    IRBuilder<> B(CI);
+    Value *arg[] = {CI->getArgOperand(0)};
+    auto res = B.CreateCall(CreateMPIWrapper(CI->getCalledFunction()), arg);
+    B.CreateStore(res, CI->getArgOperand(1));
+    CI->eraseFromParent();
+  }
+  for (auto Bound : OMPBounds) {
+    for (int i = 4; i <= 6; i++) {
+      auto AI = cast<AllocaInst>(Bound->getArgOperand(i));
+      IRBuilder<> B(AI);
+      auto AI2 = B.CreateAlloca(AI->getAllocatedType(), nullptr,
+                                AI->getName() + "_smpl");
+      B.SetInsertPoint(Bound);
+      B.CreateStore(B.CreateLoad(AI), AI2);
+      Bound->setArgOperand(i, AI2);
+      B.SetInsertPoint(Bound->getNextNode());
+      B.CreateStore(B.CreateLoad(AI2), AI);
+      Bound->addParamAttr(i, Attribute::NoCapture);
+    }
+  }
+}
+
 /// Perform recursive inlinining on NewF up to the given limit
 static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
   std::map<const Function *, RecurType> RecurResults;
@@ -645,6 +720,8 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
                   "_ZN3std2io5stdio6_print"))
             continue;
           if (CI->getCalledFunction()->getName().startswith("_ZN4core3fmt"))
+            continue;
+          if (CI->getCalledFunction()->getName().startswith("enzyme_wrapmpi$$"))
             continue;
           if (CI->getCalledFunction()->hasFnAttribute(
                   Attribute::ReturnsTwice) ||
@@ -849,6 +926,12 @@ Function *PreProcessCache::preprocessForClone(Function *F,
       Call->setArgOperand(
           0, B.CreateAdd(Call->getArgOperand(0), Call->getArgOperand(1)));
     }
+  }
+
+  {
+    SimplifyMPIQueries(*NewF);
+    PreservedAnalyses PA;
+    FAM.invalidate(*NewF, PA);
   }
 
   if (EnzymeLowerGlobals) {

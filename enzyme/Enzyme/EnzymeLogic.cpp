@@ -96,14 +96,40 @@ struct CacheAnalysis {
   const std::map<Argument *, bool> &uncacheable_args;
   DerivativeMode mode;
   std::map<Value *, bool> seen;
+  bool omp;
+  SmallVector<CallInst *, 0> kmpcCall;
   CacheAnalysis(
       AAResults &AA, Function *oldFunc, ScalarEvolution &SE, LoopInfo &OrigLI,
       DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-      const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode)
+      const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode,
+      bool omp)
       : AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), OrigDT(OrigDT),
         TLI(TLI), unnecessaryInstructions(unnecessaryInstructions),
-        uncacheable_args(uncacheable_args), mode(mode) {}
+        uncacheable_args(uncacheable_args), mode(mode), omp(omp) {
+
+    for (auto &BB : *oldFunc)
+      for (auto &I : BB)
+        if (auto CI = dyn_cast<CallInst>(&I)) {
+          if (auto F = CI->getCalledFunction()) {
+            if (F->getName() == "__kmpc_for_static_init_4" ||
+                F->getName() == "__kmpc_for_static_init_4u" ||
+                F->getName() == "__kmpc_for_static_init_8" ||
+                F->getName() == "__kmpc_for_static_init_8u") {
+              kmpcCall.push_back(CI);
+            }
+          }
+        }
+    if (kmpcCall.size() > 1) {
+      for (auto call : kmpcCall) {
+        EmitFailure("MultiOMPForInParallel", call->getDebugLoc(), call,
+                    " multiple OpenMP for loops within a single parallel not "
+                    "yet handled",
+                    *call);
+      }
+      llvm_unreachable("Unhandled OpenMP input");
+    }
+  }
 
   bool is_value_mustcache_from_origin(Value *obj) {
     if (seen.find(obj) != seen.end())
@@ -243,6 +269,15 @@ struct CacheAnalysis {
                             oldFunc->getParent()->getDataLayout(), 100);
 #endif
 
+    // Openmp bound and local thread id are unchanging
+    // definitionally cacheable.
+    if (omp)
+      if (auto arg = dyn_cast<Argument>(obj)) {
+        if (arg->getArgNo() < 2) {
+          return false;
+        }
+      }
+
     bool can_modref = is_value_mustcache_from_origin(obj);
 
     if (!can_modref) {
@@ -256,6 +291,13 @@ struct CacheAnalysis {
 
         if (!writesToMemoryReadBy(AA, &li, inst2)) {
           return false;
+        }
+        if (auto CI = dyn_cast<CallInst>(inst2)) {
+          if (auto F = CI->getCalledFunction()) {
+            if (F->getName() == "__kmpc_for_static_fini") {
+              return false;
+            }
+          }
         }
 
         if (auto SI = dyn_cast<StoreInst>(inst2)) {
@@ -484,6 +526,18 @@ struct CacheAnalysis {
     if (isCertainPrintMallocOrFree(Fn)) {
       return {};
     }
+
+    if (Fn->getName().startswith("MPI_") ||
+        Fn->getName().startswith("enzyme_wrapmpi$$"))
+      return {};
+
+    if (Fn->getName() == "__kmpc_for_static_init_4" ||
+        Fn->getName() == "__kmpc_for_static_init_4u" ||
+        Fn->getName() == "__kmpc_for_static_init_8" ||
+        Fn->getName() == "__kmpc_for_static_init_8u") {
+      return {};
+    }
+
     std::vector<Value *> args;
     std::vector<bool> args_safe;
 
@@ -505,7 +559,7 @@ struct CacheAnalysis {
 #endif
 
       bool init_safe = !is_value_mustcache_from_origin(obj);
-      if (!init_safe) {
+      if (!init_safe && !isa<ConstantInt>(obj) && !isa<Function>(obj)) {
         EmitWarning("UncacheableOrigin", callsite_op->getDebugLoc(), oldFunc,
                     callsite_op->getParent(), "Callsite ", *callsite_op,
                     " arg ", i, " ", *callsite_op->getArgOperand(i),
@@ -539,6 +593,9 @@ struct CacheAnalysis {
         if (called && isMemFreeLibMFunction(called->getName())) {
           return false;
         }
+        if (called && called->getName() == "__kmpc_for_static_fini") {
+          return false;
+        }
 
 #if LLVM_VERSION_MAJOR >= 11
         if (auto iasm = dyn_cast<InlineAsm>(obj_op->getCalledOperand()))
@@ -560,10 +617,11 @@ struct CacheAnalysis {
       for (unsigned i = 0; i < args.size(); ++i) {
         if (llvm::isModSet(AA.getModRefInfo(
                 inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
-          EmitWarning("UncacheableArg", callsite_op->getDebugLoc(), oldFunc,
-                      callsite_op->getParent(), "Callsite ", *callsite_op,
-                      " arg ", i, " ", *callsite_op->getArgOperand(i),
-                      " uncacheable due to ", *inst2);
+          if (!isa<ConstantInt>(callsite_op->getArgOperand(i)))
+            EmitWarning("UncacheableArg", callsite_op->getDebugLoc(), oldFunc,
+                        callsite_op->getParent(), "Callsite ", *callsite_op,
+                        " arg ", i, " ", *callsite_op->getArgOperand(i),
+                        " uncacheable due to ", *inst2);
           args_safe[i] = false;
         }
       }
@@ -1457,9 +1515,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   GradientUtils *gutils = GradientUtils::CreateFromClone(
       *this, todiff, TLI, TA, retType, constant_args,
-      /*returnUsed*/ returnUsed, returnMapping);
-  if (omp)
-    gutils->setupOMPFor();
+      /*returnUsed*/ returnUsed, returnMapping, omp);
   gutils->AtomicAdd = AtomicAdd;
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
@@ -1488,7 +1544,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
                    unnecessaryInstructionsTmp, _uncacheable_argsPP,
-                   DerivativeMode::ReverseModePrimal);
+                   DerivativeMode::ReverseModePrimal, omp);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
 
@@ -2700,10 +2756,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
       *this, mode, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
-      retVal, additionalArg);
+      retVal, additionalArg, omp);
 
-  if (omp)
-    gutils->setupOMPFor();
   gutils->AtomicAdd = AtomicAdd;
   insert_or_assign2<ReverseCacheKey, Function *>(ReverseCachedFunctions, tup,
                                                  gutils->newFunc);
@@ -2733,7 +2787,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc,
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP, mode);
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP, mode, omp);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map

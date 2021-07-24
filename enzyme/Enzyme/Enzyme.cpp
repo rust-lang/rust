@@ -816,6 +816,11 @@ public:
         if (Fn->getName().contains("__enzyme_call_inactive")) {
           InactiveCalls.insert(CI);
         }
+        if (F.getName() == "omp_get_max_threads" ||
+            F.getName() == "omp_get_thread_num") {
+          F.addFnAttr(Attribute::ReadOnly);
+          F.addFnAttr(Attribute::InaccessibleMemOnly);
+        }
         if (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
             Fn->getName() == "frexpl") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);

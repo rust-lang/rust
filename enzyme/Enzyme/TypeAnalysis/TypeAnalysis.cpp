@@ -3154,6 +3154,29 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
 
+    if (funcName == "__kmpc_for_static_init_4" ||
+        funcName == "__kmpc_for_static_init_4u" ||
+        funcName == "__kmpc_for_static_init_8" ||
+        funcName == "__kmpc_for_static_init_8u") {
+      TypeTree ptrint;
+      ptrint.insert({-1}, BaseType::Pointer);
+      ptrint.insert({-1, 0}, BaseType::Integer);
+      updateAnalysis(call.getOperand(3), ptrint, &call);
+      updateAnalysis(call.getOperand(4), ptrint, &call);
+      updateAnalysis(call.getOperand(5), ptrint, &call);
+      updateAnalysis(call.getOperand(6), ptrint, &call);
+      updateAnalysis(call.getOperand(7), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(8), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
+    if (funcName == "omp_get_max_threads" || funcName == "omp_get_thread_num" ||
+        funcName == "omp_get_num_threads") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
+
     /// MPI
     if (funcName == "MPI_Init") {
       TypeTree ptrint;
