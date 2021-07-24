@@ -2520,13 +2520,8 @@ fn simd_ffi_feature_check(
                 {
                     Ok(())
                 }
-                8 => Err(Some("mmx")),
-                16 if feature.contains("sse")
-                    || feature.contains("ssse")
-                    || feature.contains("avx") =>
-                {
-                    Ok(())
-                }
+                8 => Err(None),
+                16 if feature.contains("sse") => Ok(()),
                 16 => Err(Some("sse")),
                 32 if feature.contains("avx") => Ok(()),
                 32 => Err(Some("avx")),
@@ -2535,19 +2530,16 @@ fn simd_ffi_feature_check(
                 _ => Err(None),
             }
         }
-        t if t.contains("arm") => {
-            match simd_width {
-                // 32-bit arm does not support vectors with 64-bit wide elements
-                8 | 16 if simd_elem_width < 8 => {
-                    if feature.contains("neon") {
-                        Ok(())
-                    } else {
-                        Err(Some("neon"))
-                    }
+        t if t.contains("arm") => match simd_width {
+            8 | 16 | 32 => {
+                if feature.contains("neon") {
+                    Ok(())
+                } else {
+                    Err(Some("neon"))
                 }
-                _ => Err(None),
             }
-        }
+            _ => Err(None),
+        },
         t if t.contains("aarch64") => match simd_width {
             8 | 16 => {
                 if feature.contains("neon") {
