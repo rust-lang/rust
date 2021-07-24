@@ -1089,10 +1089,11 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         ),
         opt::flag_s("", "test", "Build a test harness"),
         opt::opt_s("", "target", "Target triple for which the code is compiled", "TARGET"),
-        opt::multi_s("W", "warn", "Set lint warnings", "OPT"),
-        opt::multi_s("A", "allow", "Set lint allowed", "OPT"),
-        opt::multi_s("D", "deny", "Set lint denied", "OPT"),
-        opt::multi_s("F", "forbid", "Set lint forbidden", "OPT"),
+        opt::multi_s("A", "allow", "Set lint allowed", "LINT"),
+        opt::multi_s("W", "warn", "Set lint warnings", "LINT"),
+        opt::multi_s("", "force-warn", "Set lint force-warn", "LINT"),
+        opt::multi_s("D", "deny", "Set lint denied", "LINT"),
+        opt::multi_s("F", "forbid", "Set lint forbidden", "LINT"),
         opt::multi_s(
             "",
             "cap-lints",
@@ -1100,13 +1101,6 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
              More restrictive lints are capped at this \
              level",
             "LEVEL",
-        ),
-        opt::multi_s(
-            "",
-            "force-warn",
-            "Specifiy lints that should warn even if \
-             they are allowed somewhere else",
-            "LINT",
         ),
         opt::multi_s("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt::flag_s("V", "version", "Print version info and exit"),
