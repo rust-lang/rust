@@ -897,7 +897,6 @@ pub(crate) fn handle_hover_range(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let range = from_proto::file_range(&snap, params.text_document, params.range)?;
 
-    log::info!("Triggered range hover");
     let info = match snap.analysis.hover_range(&snap.config.hover(), range)? {
         None => return Ok(None),
         Some(info) => info,
