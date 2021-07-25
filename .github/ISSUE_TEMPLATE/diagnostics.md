@@ -20,14 +20,14 @@ Given the following code: <!-- Please provide a link to play.rust-lang.org -->
 
 The current output is:
 
-```
+```rust
 <rustc output>
 ```
 
 <!-- The following is not always necessary. -->
 Ideally the output should look like:
 
-```
+```rust
 <proposed output>
 ```
 
