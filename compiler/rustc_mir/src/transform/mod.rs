@@ -48,6 +48,7 @@ pub mod remove_unneeded_drops;
 pub mod remove_zsts;
 pub mod required_consts;
 pub mod rustc_peek;
+pub mod separate_const_switch;
 pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_comparison_integral;
@@ -501,6 +502,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
         &multiple_return_terminators::MultipleReturnTerminators,
         &instcombine::InstCombine,
+        &separate_const_switch::SeparateConstSwitch,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &early_otherwise_branch::EarlyOtherwiseBranch,
