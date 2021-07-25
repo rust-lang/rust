@@ -119,9 +119,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     && !self.upvars.is_empty()
                 {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL]
-                        .ty
-                        .is_region_ptr());
+                    debug_assert!(
+                        self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_region_ptr()
+                    );
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
                             the_place_err.local,
