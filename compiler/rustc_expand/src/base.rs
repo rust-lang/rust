@@ -929,6 +929,7 @@ pub struct ExpansionData {
     pub prior_type_ascription: Option<(Span, bool)>,
     /// Some parent node that is close to this macro call
     pub lint_node_id: NodeId,
+    pub is_trailing_mac: bool,
 }
 
 type OnExternModLoaded<'a> =
@@ -979,6 +980,7 @@ impl<'a> ExtCtxt<'a> {
                 dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
                 lint_node_id: ast::CRATE_NODE_ID,
+                is_trailing_mac: false,
             },
             force_mode: false,
             expansions: FxHashMap::default(),

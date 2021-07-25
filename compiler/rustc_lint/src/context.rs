@@ -744,6 +744,12 @@ pub trait LintContext: Sized {
                         &format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
                     );
                 }
+                BuiltinLintDiagnostics::TrailingMacro(is_trailing, name) => {
+                    if is_trailing {
+                        db.note("macro invocations at the end of a block are treated as expressions");
+                        db.note(&format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
+                    }
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
