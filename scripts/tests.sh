@@ -136,6 +136,11 @@ function extended_sysroot_tests() {
         ../build/cargo build --tests --target $TARGET_TRIPLE
     fi
     popd
+
+    pushd stdsimd
+    echo "[TEST] rust-lang/stdsimd"
+    ../build/cargo test -q
+    popd
 }
 
 case "$1" in
