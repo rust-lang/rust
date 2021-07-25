@@ -1,4 +1,4 @@
-error[E0658]: trait upcasting is experimental
+error[E0658]: trait upcasting coercion is experimental
   --> $DIR/feature-gate-trait_upcasting.rs:11:25
    |
 LL |     let foo: &dyn Foo = bar;

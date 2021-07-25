@@ -703,10 +703,56 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
-                // See `assemble_candidates_for_unsizing` for more info.
-                let iter = data_a
-                    .principal()
-                    .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
+                // Upcast coercions permit several things:
+                //
+                // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
+                // 2. Tightening the region bound, e.g., `Foo + 'a` to `Foo + 'b` if `'a: 'b`
+                // 3. Tightening trait to its super traits, eg. `Foo` to `Bar` if `Foo: Bar`
+                //
+                // Note that neither of the first two of these changes requires any
+                // change at runtime. The third needs to change pointer metadata at runtime.
+                //
+                // We always perform upcasting coercions when we can because of reason
+                // #2 (region bounds).
+
+                // We already checked the compatiblity of auto traits within `assemble_candidates_for_unsizing`.
+
+                let principal_a = data_a.principal();
+                let principal_def_id_b = data_b.principal_def_id();
+
+                let existential_predicate = if let Some(principal_a) = principal_a {
+                    let source_trait_ref = principal_a.with_self_ty(tcx, source);
+                    let target_trait_did = principal_def_id_b.ok_or_else(|| Unimplemented)?;
+                    let upcast_idx = util::supertraits(tcx, source_trait_ref)
+                        .position(|upcast_trait_ref| upcast_trait_ref.def_id() == target_trait_did)
+                        .ok_or_else(|| Unimplemented)?;
+                    // FIXME(crlf0710): This is less than ideal, for example,
+                    // if the trait is defined as `trait Foo: Bar<u32> + Bar<i32>`,
+                    // the coercion from Box<Foo> to Box<dyn Bar<_>> is actually ambiguous.
+                    // We currently make this coercion fail for now.
+                    //
+                    // see #65991 for more information.
+                    if util::supertraits(tcx, source_trait_ref)
+                        .skip(upcast_idx + 1)
+                        .any(|upcast_trait_ref| upcast_trait_ref.def_id() == target_trait_did)
+                    {
+                        return Err(Unimplemented);
+                    }
+                    let target_trait_ref =
+                        util::supertraits(tcx, source_trait_ref).nth(upcast_idx).unwrap();
+                    let existential_predicate = target_trait_ref.map_bound(|trait_ref| {
+                        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(
+                            tcx, trait_ref,
+                        ))
+                    });
+                    Some(existential_predicate)
+                } else if principal_def_id_b.is_none() {
+                    None
+                } else {
+                    return Err(Unimplemented);
+                };
+
+                let iter = existential_predicate
                     .into_iter()
                     .chain(
                         data_a

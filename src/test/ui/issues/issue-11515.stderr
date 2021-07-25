@@ -1,4 +1,4 @@
-error[E0658]: trait upcasting is experimental
+error[E0658]: trait upcasting coercion is experimental
   --> $DIR/issue-11515.rs:9:33
    |
 LL |     let test = box Test { func: closure };

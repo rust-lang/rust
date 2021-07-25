@@ -9,5 +9,5 @@ impl Bar for () {}
 fn main() {
     let bar: &dyn Bar = &();
     let foo: &dyn Foo = bar;
-    //~^ ERROR trait upcasting is experimental [E0658]
+    //~^ ERROR trait upcasting coercion is experimental [E0658]
 }
