@@ -4813,6 +4813,7 @@ void GradientUtils::computeMinCache(
 
     for (auto V : Intermediates) {
       knownRecomputeHeuristic[V] = !MinReq.count(V);
+      llvm::errs() << "int: " << *V << "minreq: " << MinReq.count(V) << " need: " << NeedGraph.count(V) << "\n";
       if (!NeedGraph.count(V)) {
         unnecessaryIntermediates.insert(cast<Instruction>(V));
       }
