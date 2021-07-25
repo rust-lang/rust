@@ -116,6 +116,30 @@ export function matchingBrace(ctx: Ctx): Cmd {
     };
 }
 
+export function hoverRange(ctx: Ctx): Cmd {
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        const client = ctx.client;
+        if (!editor || !client) return;
+
+        client
+        .sendRequest(ra.hoverRange, {
+            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
+                editor.document
+            ),
+            range: client.code2ProtocolConverter.asRange(editor.selection),
+        })
+        .then(
+            (result) => client.protocol2CodeConverter.asHover(result),
+            (error) => {
+                client.handleFailedRequest(lc.HoverRequest.type, undefined, error, null);
+                return Promise.resolve(null);
+            }
+        );
+    };
+}
+
+
 export function joinLines(ctx: Ctx): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;

@@ -56,21 +56,67 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
         traceOutputChannel,
         middleware: {
             async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
-                return client.sendRequest(lc.HoverRequest.type, client.code2ProtocolConverter.asTextDocumentPositionParams(document, position), token).then(
-                    (result) => {
-                        const hover = client.protocol2CodeConverter.asHover(result);
-                        if (hover) {
+                const editor = vscode.window.activeTextEditor;
+                const selection = editor?.selection;
+                return selection?.contains(position)
+                  ? client
+                      .sendRequest(
+                        ra.hoverRange,
+                        {
+                          textDocument:
+                            client.code2ProtocolConverter.asTextDocumentIdentifier(
+                              document
+                            ),
+                          range: client.code2ProtocolConverter.asRange(
+                            editor?.selection
+                          ),
+                        },
+                        token
+                      )
+                      .then(
+                        (result) =>
+                          client.protocol2CodeConverter.asHover(result),
+                        (error) => {
+                          client.handleFailedRequest(
+                            lc.HoverRequest.type,
+                            undefined,
+                            error,
+                            null
+                          );
+                          return Promise.resolve(null);
+                        }
+                      )
+                  : client
+                      .sendRequest(
+                        lc.HoverRequest.type,
+                        client.code2ProtocolConverter.asTextDocumentPositionParams(
+                          document,
+                          position
+                        ),
+                        token
+                      )
+                      .then(
+                        (result) => {
+                          const hover =
+                            client.protocol2CodeConverter.asHover(result);
+                          if (hover) {
                             const actions = (<any>result).actions;
                             if (actions) {
-                                hover.contents.push(renderHoverActions(actions));
+                              hover.contents.push(renderHoverActions(actions));
                             }
+                          }
+                          return hover;
+                        },
+                        (error) => {
+                          client.handleFailedRequest(
+                            lc.HoverRequest.type,
+                            token,
+                            error,
+                            null
+                          );
+                          return Promise.resolve(null);
                         }
-                        return hover;
-                    },
-                    (error) => {
-                        client.handleFailedRequest(lc.HoverRequest.type, token, error, null);
-                        return Promise.resolve(null);
-                    });
+                      );
             },
             // Using custom handling of CodeActions to support action groups and snippet edits.
             // Note that this means we have to re-implement lazy edit resolving ourselves as well.

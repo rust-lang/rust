@@ -376,14 +376,22 @@ pub struct SnippetTextEdit {
 pub enum HoverRequest {}
 
 impl Request for HoverRequest {
-    type Params = HoverParams;
+    type Params = lsp_types::HoverParams;
     type Result = Option<Hover>;
     const METHOD: &'static str = "textDocument/hover";
 }
 
+pub enum HoverRangeRequest {}
+
+impl Request for HoverRangeRequest {
+    type Params = HoverRangeParams;
+    type Result = Option<Hover>;
+    const METHOD: &'static str = "rust-analyzer/hoverRange";
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct HoverParams {
+pub struct HoverRangeParams {
     pub text_document: TextDocumentIdentifier,
     pub range: Range,
 }
