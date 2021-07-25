@@ -230,7 +230,8 @@ environment variable:
   the host so that it cannot be accessed by the program.  Can be used multiple
   times to exclude several variables.  On Windows, the `TERM` environment
   variable is excluded by default.
-* `-Zmiri-ignore-leaks` disables the memory leak checker.
+* `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
+  remaining threads to exist when the main thread exits.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed

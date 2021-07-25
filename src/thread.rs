@@ -302,6 +302,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.threads[thread_id].state == ThreadState::Terminated
     }
 
+    /// Have all threads terminated?
+    fn have_all_terminated(&self) -> bool {
+        self.threads.iter().all(|thread| thread.state == ThreadState::Terminated)
+    }
+
     /// Enable the thread for execution. The thread must be terminated.
     fn enable_thread(&mut self, thread_id: ThreadId) {
         assert!(self.has_terminated(thread_id));
@@ -491,15 +496,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // If we get here again and the thread is *still* terminated, there are no more dtors to run.
         if self.threads[MAIN_THREAD].state == ThreadState::Terminated {
             // The main thread terminated; stop the program.
-            if self.threads.iter().any(|thread| thread.state != ThreadState::Terminated) {
-                // FIXME: This check should be either configurable or just emit
-                // a warning. For example, it seems normal for a program to
-                // terminate without waiting for its detached threads to
-                // terminate. However, this case is not trivial to support
-                // because we also probably do not want to consider the memory
-                // owned by these threads as leaked.
-                throw_unsup_format!("the main thread terminated without waiting for other threads");
-            }
+            // We do *not* run TLS dtors of remaining threads, which seems to match rustc behavior.
             return Ok(SchedulingAction::Stop);
         }
         // This thread and the program can keep going.
@@ -643,6 +640,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn has_terminated(&self, thread_id: ThreadId) -> bool {
         let this = self.eval_context_ref();
         this.machine.threads.has_terminated(thread_id)
+    }
+
+    #[inline]
+    fn have_all_terminated(&self) -> bool {
+        let this = self.eval_context_ref();
+        this.machine.threads.have_all_terminated()
     }
 
     #[inline]

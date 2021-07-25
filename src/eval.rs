@@ -300,6 +300,12 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     match res {
         Ok(return_code) => {
             if !ignore_leaks {
+                // Check for thread leaks.
+                if !ecx.have_all_terminated() {
+                    tcx.sess.err("the main thread terminated without waiting for all remaining threads");
+                    return None;
+                }
+                // Check for memory leaks.
                 info!("Additonal static roots: {:?}", ecx.machine.static_roots);
                 let leaks = ecx.memory.leak_report(&ecx.machine.static_roots);
                 if leaks != 0 {
