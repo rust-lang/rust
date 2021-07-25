@@ -585,9 +585,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         }
-        write!(w, "<div id=\"{}\" class=\"method has-srclink\"><code>", id);
+        write!(w, "<div id=\"{}\" class=\"method has-srclink\"><h4 class=\"code-header\">", id);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
-        w.write_str("</code>");
+        w.write_str("</h4>");
         render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w);
         w.write_str("</div>");

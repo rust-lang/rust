@@ -2,11 +2,11 @@
 
 // @has assoc_types/trait.Index.html
 pub trait Index<I: ?Sized> {
-    // @has - '//*[@id="associatedtype.Output"]//code' 'type Output: ?Sized'
+        // @has - '//*[@id="associatedtype.Output"]//h4[@class="code-header"]' 'type Output: ?Sized'
     type Output: ?Sized;
-    // @has - '//*[@id="tymethod.index"]//code' \
+    // @has - '//*[@id="tymethod.index"]//h4[@class="code-header"]' \
     //      "fn index<'a>(&'a self, index: I) -> &'a Self::Output"
-    // @has - '//*[@id="tymethod.index"]//code//a[@href="trait.Index.html#associatedtype.Output"]' \
+    // @has - '//*[@id="tymethod.index"]//h4[@class="code-header"]//a[@href="trait.Index.html#associatedtype.Output"]' \
     //      "Output"
     fn index<'a>(&'a self, index: I) -> &'a Self::Output;
 }
