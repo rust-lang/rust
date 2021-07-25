@@ -136,7 +136,18 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
                 .arms()
                 .find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
             if let Some(arm) = catch_all_arm {
-                arm.remove();
+                let is_empty_expr = arm.expr().map_or(true, |e| match e {
+                    ast::Expr::BlockExpr(b) => {
+                        b.statements().next().is_none() && b.tail_expr().is_none()
+                    }
+                    ast::Expr::TupleExpr(t) => t.fields().next().is_none(),
+                    _ => false,
+                });
+                if is_empty_expr {
+                    arm.remove();
+                } else {
+                    cov_mark::hit!(fill_match_arms_empty_expr);
+                }
             }
             let mut first_new_arm = None;
             for arm in missing_arms {
@@ -1092,6 +1103,28 @@ fn foo(t: bool) {
     match t {
         true => 1 + 2,
         $0false => todo!(),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn does_not_remove_catch_all_with_non_empty_expr() {
+        cov_mark::check!(fill_match_arms_empty_expr);
+        check_assist(
+            fill_match_arms,
+            r#"
+fn foo(t: bool) {
+    match $0t {
+        _ => 1 + 2,
+    }
+}"#,
+            r#"
+fn foo(t: bool) {
+    match t {
+        _ => 1 + 2,
+        $0true => todo!(),
+        false => todo!(),
     }
 }"#,
         );
