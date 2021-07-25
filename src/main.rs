@@ -14,6 +14,8 @@ Usage:
     cargo clippy [options] [--] [<opts>...]
 
 Common options:
+    --fix                    Automatically apply lint suggestions
+    --no-deps                Run Clippy only on the given crate
     -h, --help               Print this message
     -V, --version            Print version info and exit
 
