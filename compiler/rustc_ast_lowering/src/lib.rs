@@ -512,8 +512,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
-        let module = self.lower_mod(&c.items, c.span);
+        let module = self.arena.alloc(self.lower_mod(&c.items, c.span));
         self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
+        self.owners.ensure_contains_elem(CRATE_DEF_ID, || None);
+        self.owners[CRATE_DEF_ID] = Some(hir::OwnerNode::Crate(module));
+
         let body_ids = body_ids(&self.bodies);
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
@@ -548,7 +551,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let krate = hir::Crate {
-            item: module,
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             owners: self.owners,
             bodies: self.bodies,

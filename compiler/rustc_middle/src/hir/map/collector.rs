@@ -77,23 +77,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         definitions: &'a definitions::Definitions,
         mut hcx: StableHashingContext<'a>,
     ) -> NodeCollector<'a, 'hir> {
-        let hash = {
-            let Crate {
-                ref item,
-                // These fields are handled separately:
-                non_exported_macro_attrs: _,
-                owners: _,
-                trait_impls: _,
-                bodies: _,
-                body_ids: _,
-                modules: _,
-                proc_macros: _,
-                trait_map: _,
-                attrs: _,
-            } = *krate;
-
-            hash_body(&mut hcx, item)
-        };
+        let hash = hash_body(&mut hcx, krate.module());
 
         let mut collector = NodeCollector {
             arena,
@@ -108,7 +92,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         };
         collector.insert_entry(
             hir::CRATE_HIR_ID,
-            Entry { parent: hir::CRATE_HIR_ID, node: Node::Crate(&krate.item) },
+            Entry { parent: hir::CRATE_HIR_ID, node: Node::Crate(&krate.module()) },
             hash,
         );
 
