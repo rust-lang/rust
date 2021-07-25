@@ -48,10 +48,10 @@ changes "uniquely", but we might also want to fork an `Analysis` and send it to
 another thread for background processing. That is, there is only a single
 `AnalysisHost`, but there may be several (equivalent) `Analysis`.
 
-Note that all of the `Analysis` API return `Cancelable<T>`. This is required to
+Note that all of the `Analysis` API return `Cancellable<T>`. This is required to
 be responsive in an IDE setting. Sometimes a long-running query is being computed
 and the user types something in the editor and asks for completion. In this
-case, we cancel the long-running computation (so it returns `Err(Canceled)`),
+case, we cancel the long-running computation (so it returns `Err(Cancelled)`),
 apply the change and execute request for completion. We never use stale data to
 answer requests. Under the cover, `AnalysisHost` "remembers" all outstanding
 `Analysis` instances. The `AnalysisHost::apply_change` method cancels all
