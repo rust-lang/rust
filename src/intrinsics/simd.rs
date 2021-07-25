@@ -289,9 +289,23 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
         simd_round, (c a) {
             validate_simd_type!(fx, intrinsic, span, a.layout().ty);
-            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, ret_lane_layout, lane| {
-                let ret_lane = fx.bcx.ins().nearest(lane);
-                CValue::by_val(ret_lane, ret_lane_layout)
+            simd_for_each_lane(fx, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
+                let res_lane = match lane_layout.ty.kind() {
+                    ty::Float(FloatTy::F32) => fx.lib_call(
+                        "roundf",
+                        vec![AbiParam::new(types::F32)],
+                        vec![AbiParam::new(types::F32)],
+                        &[lane],
+                    )[0],
+                    ty::Float(FloatTy::F64) => fx.lib_call(
+                        "round",
+                        vec![AbiParam::new(types::F64)],
+                        vec![AbiParam::new(types::F64)],
+                        &[lane],
+                    )[0],
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
             });
         };
         simd_ceil, (c a) {
@@ -409,5 +423,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
         // simd_saturating_*
         // simd_bitmask
+        // simd_scatter
+        // simd_gather
     }
 }
