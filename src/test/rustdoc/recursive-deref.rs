@@ -3,7 +3,7 @@ use std::ops::Deref;
 pub struct A;
 pub struct B;
 
-// @has recursive_deref/struct.A.html '//code' 'impl Deref for A'
+// @has recursive_deref/struct.A.html '//h3[@class="code-header in-band"]' 'impl Deref for A'
 impl Deref for A {
     type Target = B;
 
@@ -12,7 +12,7 @@ impl Deref for A {
     }
 }
 
-// @has recursive_deref/struct.B.html '//code' 'impl Deref for B'
+// @has recursive_deref/struct.B.html '//h3[@class="code-header in-band"]' 'impl Deref for B'
 impl Deref for B {
     type Target = A;
 
