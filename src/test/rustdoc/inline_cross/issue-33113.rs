@@ -5,6 +5,6 @@
 extern crate bar;
 
 // @has issue_33113/trait.Bar.html
-// @has - '//code' "for &'a char"
-// @has - '//code' "for Foo"
+// @has - '//h3[@class="code-header in-band"]' "for &'a char"
+// @has - '//h3[@class="code-header in-band"]' "for Foo"
 pub use bar::Bar;
