@@ -13,6 +13,6 @@ mod asdf {
 }
 
 // @has trait_vis/struct.SomeStruct.html
-// @has - '//code' 'impl ThisTrait for SomeStruct'
-// @!has - '//code' 'impl PrivateTrait for SomeStruct'
+// @has - '//h3[@class="code-header in-band"]' 'impl ThisTrait for SomeStruct'
+// @!has - '//h3[@class="code-header in-band"]' 'impl PrivateTrait for SomeStruct'
 pub use asdf::SomeStruct;

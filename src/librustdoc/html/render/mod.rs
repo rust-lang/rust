@@ -1194,7 +1194,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                     if out.is_empty() {
                         write!(
                             &mut out,
-                            "<h3 class=\"notable\">Notable traits for {}</h3>\
+                            "<div class=\"notable\">Notable traits for {}</div>\
                              <code class=\"content\">",
                             impl_.for_.print(cx)
                         );
@@ -1350,7 +1350,7 @@ fn render_impl(
                     );
                     render_rightside(w, cx, item, containing_item);
                     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                    w.write_str("<code>");
+                    w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
                         w,
                         item,
@@ -1358,7 +1358,7 @@ fn render_impl(
                         ItemType::Impl,
                         cx,
                     );
-                    w.write_str("</code>");
+                    w.write_str("</h4>");
                     w.write_str("</div>");
                 }
             }
@@ -1371,7 +1371,7 @@ fn render_impl(
                     id, item_type, in_trait_class
                 );
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                w.write_str("<code>");
+                w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
                     item,
@@ -1381,7 +1381,7 @@ fn render_impl(
                     "",
                     cx,
                 );
-                w.write_str("</code>");
+                w.write_str("</h4>");
                 w.write_str("</div>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
@@ -1394,7 +1394,7 @@ fn render_impl(
                 );
                 render_rightside(w, cx, item, containing_item);
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                w.write_str("<code>");
+                w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
                     w,
                     item,
@@ -1404,7 +1404,7 @@ fn render_impl(
                     "",
                     cx,
                 );
-                w.write_str("</code>");
+                w.write_str("</h4>");
                 w.write_str("</div>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
@@ -1412,7 +1412,7 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(w, "<div id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                w.write_str("<code>");
+                w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
                     item,
@@ -1422,7 +1422,7 @@ fn render_impl(
                     "",
                     cx,
                 );
-                w.write_str("</code>");
+                w.write_str("</h4>");
                 w.write_str("</div>");
             }
             clean::StrippedItem(..) => return,
@@ -1613,7 +1613,7 @@ pub(crate) fn render_impl_summary(
     write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-    write!(w, "<code class=\"in-band\">");
+    write!(w, "<h3 class=\"code-header in-band\">");
 
     if let Some(use_absolute) = use_absolute {
         write!(w, "{}", i.inner_impl().print(use_absolute, cx));
@@ -1629,7 +1629,7 @@ pub(crate) fn render_impl_summary(
     } else {
         write!(w, "{}", i.inner_impl().print(false, cx));
     }
-    write!(w, "</code>");
+    write!(w, "</h3>");
 
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {

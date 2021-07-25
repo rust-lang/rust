@@ -31,8 +31,8 @@ pub use impl_trait_aux::func4;
 pub use impl_trait_aux::async_fn;
 
 // @has impl_trait/struct.Foo.html
-// @has - '//*[@id="method.method"]//code' "pub fn method<'a>(_x: impl Clone + Into<Vec<u8, Global>> + 'a)"
-// @!has - '//*[@id="method.method"]//code' 'where'
+// @has - '//*[@id="method.method"]//h4[@class="code-header"]' "pub fn method<'a>(_x: impl Clone + Into<Vec<u8, Global>> + 'a)"
+// @!has - '//*[@id="method.method"]//h4[@class="code-header"]' 'where'
 pub use impl_trait_aux::Foo;
 
 // @has impl_trait/struct.Bar.html

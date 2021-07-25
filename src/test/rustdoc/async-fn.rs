@@ -35,9 +35,9 @@ pub async fn quux() -> impl Bar {
 }
 
 // @has async_fn/struct.Foo.html
-// @matches - '//code' 'pub async fn f\(\)$'
-// @matches - '//code' 'pub async unsafe fn g\(\)$'
-// @matches - '//code' 'pub async fn mut_self\(self, first: usize\)$'
+// @matches - '//h4[@class="code-header"]' 'pub async fn f\(\)$'
+// @matches - '//h4[@class="code-header"]' 'pub async unsafe fn g\(\)$'
+// @matches - '//h4[@class="code-header"]' 'pub async fn mut_self\(self, first: usize\)$'
 pub struct Foo;
 
 impl Foo {

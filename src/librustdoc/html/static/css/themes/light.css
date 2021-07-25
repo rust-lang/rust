@@ -274,7 +274,7 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target, :target * {
+:target, :target > * {
 	background: #FDFFD3;
 }
 

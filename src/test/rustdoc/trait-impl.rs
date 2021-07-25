@@ -43,5 +43,5 @@ impl Trait for Struct {
     // @!has - '//*[@id="method.d"]/../../div[@class="docblock"]/p/em'
     fn d() {}
 
-    // @has - '//*[@id="impl-Trait"]/code/a/@href' 'trait.Trait.html'
+    // @has - '//*[@id="impl-Trait"]/h3//a/@href' 'trait.Trait.html'
 }
