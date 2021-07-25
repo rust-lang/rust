@@ -257,9 +257,7 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 }
 
 /// If this `DefId` is a "primary tables entry", returns
-/// `Some((body_id, header, decl))` with information about
-/// its body-id, fn-header and fn-decl (if any). Otherwise,
-/// returns `None`.
+/// `Some((body_id, body_ty, fn_sig))`. Otherwise, returns `None`.
 ///
 /// If this function returns `Some`, then `typeck_results(def_id)` will
 /// succeed; if it returns `None`, then `typeck_results(def_id)` may or
@@ -269,32 +267,28 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 fn primary_body_of(
     tcx: TyCtxt<'_>,
     id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnHeader>, Option<&hir::FnDecl<'_>>)> {
+) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Const(ref ty, body) | hir::ItemKind::Static(ref ty, _, body) => {
-                Some((body, Some(ty), None, None))
+                Some((body, Some(ty), None))
             }
-            hir::ItemKind::Fn(ref sig, .., body) => {
-                Some((body, None, Some(&sig.header), Some(&sig.decl)))
-            }
+            hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(&sig))),
             _ => None,
         },
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Const(ref ty, Some(body)) => Some((body, Some(ty), None, None)),
+            hir::TraitItemKind::Const(ref ty, Some(body)) => Some((body, Some(ty), None)),
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                Some((body, None, Some(&sig.header), Some(&sig.decl)))
+                Some((body, None, Some(&sig)))
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Const(ref ty, body) => Some((body, Some(ty), None, None)),
-            hir::ImplItemKind::Fn(ref sig, body) => {
-                Some((body, None, Some(&sig.header), Some(&sig.decl)))
-            }
+            hir::ImplItemKind::Const(ref ty, body) => Some((body, Some(ty), None)),
+            hir::ImplItemKind::Fn(ref sig, body) => Some((body, None, Some(&sig))),
             _ => None,
         },
-        Node::AnonConst(constant) => Some((constant.body, None, None, None)),
+        Node::AnonConst(constant) => Some((constant.body, None, None)),
         _ => None,
     }
 }
@@ -362,14 +356,14 @@ fn typeck_with_fallback<'tcx>(
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
-    let (body_id, body_ty, fn_header, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
+    let (body_id, body_ty, fn_sig) = primary_body_of(tcx, id).unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
+        let fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(
@@ -513,7 +507,7 @@ fn typeck_with_fallback<'tcx>(
 
         fcx.select_all_obligations_or_error();
 
-        if fn_decl.is_some() {
+        if fn_sig.is_some() {
             fcx.regionck_fn(id, body);
         } else {
             fcx.regionck_expr(body);
