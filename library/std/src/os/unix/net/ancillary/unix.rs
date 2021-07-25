@@ -323,8 +323,7 @@ impl<'a> UnixAncillary<'a> {
     ///
     /// The function returns `true` if there was enough space in the buffer.
     /// If there was not enough space then no file descriptors was appended.
-    /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
-    /// and type `SCM_RIGHTS`.
+    /// This adds a control message with the level `SOL_SOCKET` and type `SCM_RIGHTS`.
     ///
     /// # Example
     ///
@@ -356,8 +355,8 @@ impl<'a> UnixAncillary<'a> {
     ///
     /// The function returns `true` if there was enough space in the buffer.
     /// If there was not enough space then no credentials was appended.
-    /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
-    /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
+    /// This adds a control message with the level `SOL_SOCKET` and type `SCM_CREDENTIALS`
+    /// or `SCM_CREDS`.
     ///
     #[doc(cfg(any(target_os = "android", target_os = "linux",)))]
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]

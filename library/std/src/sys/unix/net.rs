@@ -394,6 +394,18 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+    pub fn set_recvhoplimit(&self, recvhoplimit: bool) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_IPV6, libc::IPV6_RECVHOPLIMIT, recvhoplimit as libc::c_int)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+    pub fn recvhoplimit(&self) -> io::Result<bool> {
+        let recvhoplimit: libc::c_int =
+            getsockopt(self, libc::IPPROTO_IPV6, libc::IPV6_RECVHOPLIMIT)?;
+        Ok(recvhoplimit != 0)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
     pub fn set_recvttl(&self, recvttl: bool) -> io::Result<()> {
         setsockopt(self, libc::IPPROTO_IP, libc::IP_RECVTTL, recvttl as libc::c_int)
     }

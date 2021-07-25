@@ -60,6 +60,7 @@ impl Socket {
 #[non_exhaustive]
 pub enum IpAncillaryData {
     Ttl(u8),
+    HopLimit(u8),
 }
 
 impl IpAncillaryData {
@@ -84,6 +85,17 @@ impl IpAncillaryData {
         IpAncillaryData::Ttl(ttl)
     }
 
+    /// Create a `AncillaryData::HopLimit` variant.
+    ///
+    /// # Safety
+    ///
+    /// `data` must contain a valid control message and the control message must be type of
+    /// `IPPROTO_IPV6` and level of `IPV6_HOPLIMIT`.
+    unsafe fn as_hop_limit(data: &[u8]) -> Self {
+        let hop_limit = IpAncillaryData::as_u8(data);
+        IpAncillaryData::HopLimit(hop_limit)
+    }
+
     unsafe fn try_from(cmsg: &libc::cmsghdr) -> Result<Self, AncillaryError> {
         let data = get_data_from_cmsghdr(cmsg);
 
@@ -92,6 +104,12 @@ impl IpAncillaryData {
                 libc::IP_TTL => Ok(IpAncillaryData::as_ttl(data)),
                 cmsg_type => {
                     Err(AncillaryError::Unknown { cmsg_level: libc::IPPROTO_IP, cmsg_type })
+                }
+            },
+            libc::IPPROTO_IPV6 => match (*cmsg).cmsg_type {
+                libc::IPV6_HOPLIMIT => Ok(IpAncillaryData::as_hop_limit(data)),
+                cmsg_type => {
+                    Err(AncillaryError::Unknown { cmsg_level: libc::IPPROTO_IPV6, cmsg_type })
                 }
             },
             cmsg_level => Err(AncillaryError::Unknown { cmsg_level, cmsg_type: (*cmsg).cmsg_type }),
@@ -146,7 +164,7 @@ pub struct IpAncillary<'a> {
 }
 
 impl<'a> IpAncillary<'a> {
-    /// Create an ancillary data with the given buffer.
+    /// Create ancillary data backed by the given buffer.
     ///
     /// # Example
     ///
@@ -186,12 +204,53 @@ impl<'a> IpAncillary<'a> {
         self.inner.messages()
     }
 
+    /// Add hop-limit to the ancillary data.
+    ///
+    /// The function returns `true` if there was enough space in the buffer.
+    /// If there was not enough space then no hop-limit was appended.
+    /// This adds a control message with the level `IPPROTO_IPV6` and type `IPV6_HOPLIMIT`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::io::IoSlice;
+    /// use std::net::UdpSocket;
+    /// use std::os::unix::net::IpAncillary;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UdpSocket::bind("[::1]:34254")?;
+    ///     sock.connect("[::1]:41203")?;
+    ///     let buf1 = [1; 8];
+    ///     let buf2 = [2; 16];
+    ///     let buf3 = [3; 8];
+    ///     let bufs = &[
+    ///         IoSlice::new(&buf1),
+    ///         IoSlice::new(&buf2),
+    ///         IoSlice::new(&buf3),
+    ///     ][..];
+    ///     let mut ancillary_buffer = [0; 128];
+    ///     let mut ancillary = IpAncillary::new(&mut ancillary_buffer[..]);
+    ///     ancillary.add_hop_limit(20);
+    ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)
+    ///         .expect("send_vectored_with_ancillary function failed");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn add_hop_limit(&mut self, hop_limit: u8) -> bool {
+        let hop_limit: libc::c_int = hop_limit as libc::c_int;
+        self.inner.add_to_ancillary_data(
+            from_ref(&hop_limit),
+            libc::IPPROTO_IPV6,
+            libc::IPV6_HOPLIMIT,
+        )
+    }
+
     /// Add TTL to the ancillary data.
     ///
     /// The function returns `true` if there was enough space in the buffer.
     /// If there was not enough space then no file descriptors was appended.
-    /// Technically, that means this operation adds a control message with the level `IPPROTO_IP`
-    /// and type `IP_TTL`.
+    /// This adds a control message with the level `IPPROTO_IP` and type `IP_TTL`.
     ///
     /// # Example
     /// ```no_run

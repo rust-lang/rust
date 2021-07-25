@@ -1,6 +1,8 @@
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
+#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+use crate::net::UdpSocket;
 use crate::sys_common::io::test::tmpdir;
 use crate::thread;
 use crate::time::Duration;
@@ -631,14 +633,7 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
 
 #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
 #[test]
-fn test_send_vectored_with_ancillary_to_udp_socket() {
-    use super::{IpAncillary, IpAncillaryData};
-    use crate::{
-        io::{IoSlice, IoSliceMut},
-        iter::FromIterator,
-        net::UdpSocket,
-    };
-
+fn test_send_vectored_with_ancillary_to_udp_socket_ttl() {
     let socket1 = or_panic!(UdpSocket::bind("127.0.0.1:0"));
     let socket2 = or_panic!(UdpSocket::bind("127.0.0.1:0"));
 
@@ -673,6 +668,49 @@ fn test_send_vectored_with_ancillary_to_udp_socket() {
 
     let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
     assert_eq!(ancillary_data_vec.len(), 1);
-    let IpAncillaryData::Ttl(ttl) = ancillary_data_vec.pop().unwrap().unwrap();
-    assert_eq!(ttl, 20);
+    assert!(
+        matches!(ancillary_data_vec.pop().unwrap().unwrap(), IpAncillaryData::Ttl(ttl) if ttl == 20)
+    );
+}
+
+#[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+#[test]
+fn test_send_vectored_with_ancillary_to_udp_socket_hop_limit() {
+    let socket1 = or_panic!(UdpSocket::bind("[::1]:0"));
+    let socket2 = or_panic!(UdpSocket::bind("[::1]:0"));
+
+    let addr1 = or_panic!(socket1.local_addr());
+    let addr2 = or_panic!(socket2.local_addr());
+
+    or_panic!(socket2.set_recvhoplimit(true));
+
+    let buf1 = [1; 8];
+    let bufs_send = &[IoSlice::new(&buf1[..])][..];
+
+    let mut ancillary1_buffer = [0; 64];
+    let mut ancillary1 = IpAncillary::new(&mut ancillary1_buffer[..]);
+    assert!(ancillary1.add_hop_limit(20));
+
+    let usize =
+        or_panic!(socket1.send_vectored_with_ancillary_to(&bufs_send, &mut ancillary1, &addr2));
+    assert_eq!(usize, 8);
+
+    let mut buf2 = [0; 8];
+    let mut bufs_recv = &mut [IoSliceMut::new(&mut buf2[..])][..];
+
+    let mut ancillary2_buffer = [0; 64];
+    let mut ancillary2 = IpAncillary::new(&mut ancillary2_buffer[..]);
+
+    let (usize, truncated, addr) =
+        or_panic!(socket2.recv_vectored_with_ancillary_from(&mut bufs_recv, &mut ancillary2));
+    assert_eq!(usize, 8);
+    assert_eq!(truncated, false);
+    assert_eq!(addr1, addr);
+    assert_eq!(buf1, buf2);
+
+    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+    assert_eq!(ancillary_data_vec.len(), 1);
+    assert!(
+        matches!(ancillary_data_vec.pop().unwrap().unwrap(), IpAncillaryData::HopLimit(ttl) if ttl == 20)
+    );
 }

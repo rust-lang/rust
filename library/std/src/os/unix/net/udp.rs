@@ -6,6 +6,39 @@ use crate::{
 };
 
 impl UdpSocket {
+    /// Sets the value of the `IPV6_RECVHOPLIMIT` option for this socket.
+    ///
+    /// If enabled, received packets will come with ancillary data ([`IpAncillary`]) providing
+    /// the hop-limit value of the packet.
+    ///
+    /// # Examples
+    ///
+    ///```no_run
+    /// #![feature(unix_socket_ancillary_data)]
+    /// use std::net::UdpSocket;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("[::1]:34254")?;
+    ///     socket.set_recvhoplimit(true)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn set_recvhoplimit(&self, recvhoplimit: bool) -> io::Result<()> {
+        self.as_inner().set_recvhoplimit(recvhoplimit)
+    }
+
+    /// Get the current value of the socket for receiving TTL in [`IpAncillary`].
+    /// This value can be change by [`set_recvhoplimit`].
+    ///
+    /// Get the socket option `IPV6_RECVHOPLIMIT`.
+    ///
+    /// [`set_recvhoplimit`]: UdpSocket::set_recvhoplimit
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn recvhoplimit(&self) -> io::Result<bool> {
+        self.as_inner().recvhoplimit()
+    }
+
     /// Sets the value of the `IP_RECVTTL` option for this socket.
     ///
     /// If enabled, received packets will come with ancillary data ([`IpAncillary`]) providing

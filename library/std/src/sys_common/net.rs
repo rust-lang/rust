@@ -508,6 +508,16 @@ impl UdpSocket {
     }
 
     #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+    pub fn set_recvhoplimit(&self, recvhoplimit: bool) -> io::Result<()> {
+        self.inner.set_recvhoplimit(recvhoplimit)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
+    pub fn recvhoplimit(&self) -> io::Result<bool> {
+        self.inner.recvhoplimit()
+    }
+
+    #[cfg(any(target_os = "android", target_os = "emscripten", target_os = "linux"))]
     pub fn set_recvttl(&self, recvttl: bool) -> io::Result<()> {
         self.inner.set_recvttl(recvttl)
     }
