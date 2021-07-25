@@ -2041,6 +2041,30 @@ impl<T> VecDeque<T> {
         self.extend(other.drain(..));
     }
 
+    /// Extends `self` with the contents of `iter`, placing all the elements of `iter` at the
+    /// front of `self`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new number of elements in self overflows a `usize`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf: VecDeque<_> = vec![2, 4].into_iter().collect();
+    /// buf.extend_front([3, 5, 7]);
+    /// assert_eq!(buf, [3, 5, 7, 2, 4]);
+    /// ```
+    #[unstable(feature = "vec_deque_extend_front", reason = "new API", issue = "87463")]
+    pub fn extend_front<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        let prev_len = self.len();
+        self.extend(iter);
+        self.rotate_right(self.len() - prev_len);
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns false.
