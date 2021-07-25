@@ -5,7 +5,7 @@ LL |         Some(ref v) => { let a = &mut v; },
    |                                  ^^^^^^
    |                                  |
    |                                  cannot borrow as mutable
-   |                                  try removing `&mut` here
+   |                                  help: try removing `&mut` here
 
 error: aborting due to previous error
 

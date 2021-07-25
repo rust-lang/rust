@@ -5,14 +5,14 @@ LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
    |         |
    |         cannot borrow as mutable
-   |         try removing `&mut` here
+   |         help: try removing `&mut` here
 
 warning: function cannot return without recursing
-  --> $DIR/issue-31424.rs:12:5
+  --> $DIR/issue-31424.rs:13:5
    |
 LL |     fn bar(self: &mut Self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
-LL |
+...
 LL |         (&mut self).bar();
    |         ----------------- recursive call site
    |
@@ -20,13 +20,13 @@ LL |         (&mut self).bar();
    = help: a `loop` may express intention better if this is on purpose
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-31424.rs:14:9
+  --> $DIR/issue-31424.rs:16:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
    |         |
    |         cannot borrow as mutable
-   |         try removing `&mut` here
+   |         help: try removing `&mut` here
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
