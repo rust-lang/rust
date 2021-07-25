@@ -236,6 +236,7 @@ fn simd_reduce<'tcx>(
     ret.write_cvalue(fx, res);
 }
 
+// FIXME move all uses to `simd_reduce`
 fn simd_reduce_bool<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
