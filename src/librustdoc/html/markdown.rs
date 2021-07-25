@@ -34,14 +34,13 @@ use std::str;
 use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::html::escape::Escape;
+use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
     html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag,
 };
-
-use super::format::Buffer;
 
 #[cfg(test)]
 mod tests;
@@ -1086,7 +1085,7 @@ fn markdown_summary_with_limit(
     let mut stopped_early = false;
 
     fn push(s: &mut String, text_length: &mut usize, text: &str) {
-        s.push_str(text);
+        write!(s, "{}", Escape(text)).unwrap();
         *text_length += text.len();
     }
 
