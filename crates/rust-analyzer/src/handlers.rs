@@ -873,24 +873,25 @@ pub(crate) fn handle_hover(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let range = from_proto::file_range(&snap, params.text_document, params.range)?;
 
-    let info = if range.end - range.start == 1 {
+    let info = if range.range.is_empty() {
         // It's a hover over a position
         match snap
             .analysis
-            .hover(&snap.config.hover(), FilePosition { file_id, offset: range.start })?
+            .hover(&snap.config.hover(), FilePosition { file_id, offset: range.range.start() })?
         {
             None => return Ok(None),
             Some(info) => info,
         }
     } else {
         // It's a hover over a range
+        log::info!("Triggered range hover");
         match snap.analysis.hover_range(&snap.config.hover(), range)? {
             None => return Ok(None),
             Some(info) => info,
         }
     };
 
-    let line_index = snap.file_line_index(position.file_id)?;
+    let line_index = snap.file_line_index(range.file_id)?;
     let range = to_proto::range(&line_index, info.range);
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {

@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
 use ide_db::{
-    base_db::SourceDatabase,
+    base_db::{FileRange, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
     helpers::{
         generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
@@ -12,8 +12,12 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, AstToken, Direction,
-    SyntaxKind::*, SyntaxToken, T,
+    algo::{self, find_node_at_range},
+    ast,
+    display::fn_as_proc_macro_label,
+    match_ast, AstNode, AstToken, Direction,
+    SyntaxKind::*,
+    SyntaxToken, T,
 };
 
 use crate::{
@@ -246,6 +250,24 @@ pub(crate) fn hover_range(
     range: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
+    let sema = hir::Semantics::new(db);
+    let file = sema.parse(range.file_id).syntax().clone();
+    let expr = find_node_at_range::<ast::Expr>(&file, range.range)?;
+    let ty = sema.type_of_expr(&expr)?;
+
+    if ty.is_unknown() {
+        return None;
+    }
+
+    let mut res = HoverResult::default();
+
+    res.markup = if config.markdown() {
+        Markup::fenced_block(&ty.display(db))
+    } else {
+        ty.display(db).to_string().into()
+    };
+
+    Some(RangeInfo::new(range.range, res))
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
