@@ -60,14 +60,14 @@ pub trait PubTrait {
     fn function();
 }
 
-// @has 'foo/struct.FooPublic.html' '//code' 'type Type'
-// @!has 'foo/struct.FooPublic.html' '//code' 'pub type Type'
+// @has 'foo/struct.FooPublic.html' '//h4[@class="code-header"]' 'type Type'
+// @!has 'foo/struct.FooPublic.html' '//h4[@class="code-header"]' 'pub type Type'
 //
-// @has 'foo/struct.FooPublic.html' '//code' 'const CONST: usize'
-// @!has 'foo/struct.FooPublic.html' '//code' 'pub const CONST: usize'
+// @has 'foo/struct.FooPublic.html' '//h4[@class="code-header"]' 'const CONST: usize'
+// @!has 'foo/struct.FooPublic.html' '//h4[@class="code-header"]' 'pub const CONST: usize'
 //
-// @has 'foo/struct.FooPublic.html' '//code' 'fn function()'
-// @!has 'foo/struct.FooPublic.html' '//code' 'pub fn function()'
+// @has 'foo/struct.FooPublic.html' '//h4[@class="code-header"]' 'fn function()'
+// @!has 'foo/struct.FooPublic.html' '//h4[@class="code-header"]' 'pub fn function()'
 
 impl PubTrait for FooPublic {
     type Type = usize;

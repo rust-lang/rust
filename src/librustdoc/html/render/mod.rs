@@ -1214,7 +1214,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                     if out.is_empty() {
                         write!(
                             &mut out,
-                            "<h3 class=\"notable\">Notable traits for {}</h3>\
+                            "<div class=\"notable\">Notable traits for {}</div>\
                              <code class=\"content\">",
                             impl_.for_.print(cx)
                         );
@@ -1370,7 +1370,7 @@ fn render_impl(
                         "<div id=\"{}\" class=\"{}{} has-srclink\">",
                         id, item_type, in_trait_class,
                     );
-                    w.write_str("<code>");
+                    w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
                         w,
                         item,
@@ -1378,7 +1378,7 @@ fn render_impl(
                         ItemType::Impl,
                         cx,
                     );
-                    w.write_str("</code>");
+                    w.write_str("</h4>");
                     render_stability_since_raw(
                         w,
                         item.stable_since(tcx).as_deref(),
@@ -1396,9 +1396,10 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
+                    "<div id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
+                w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
                     item,
@@ -1408,7 +1409,7 @@ fn render_impl(
                     "",
                     cx,
                 );
-                w.write_str("</code>");
+                w.write_str("</h4>");
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("</div>");
             }
@@ -1417,9 +1418,10 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
+                    "<div id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
+                w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
                     w,
                     item,
@@ -1429,7 +1431,7 @@ fn render_impl(
                     "",
                     cx,
                 );
-                w.write_str("</code>");
+                w.write_str("</h4>");
                 render_stability_since_raw(
                     w,
                     item.stable_since(tcx).as_deref(),
@@ -1444,7 +1446,8 @@ fn render_impl(
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(w, "<div id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class,);
+                write!(w, "<div id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
+                w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
                     item,
@@ -1454,7 +1457,7 @@ fn render_impl(
                     "",
                     cx,
                 );
-                w.write_str("</code>");
+                w.write_str("</h4>");
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("</div>");
             }
@@ -1638,12 +1641,8 @@ fn render_impl_summary(
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
     if let Some(use_absolute) = use_absolute {
-        write!(
-            w,
-            "<div id=\"{}\" class=\"impl has-srclink\"{}>\
-                     <code class=\"in-band\">",
-            id, aliases
-        );
+        write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+        write!(w, "<h3 class=\"code-header in-band\">");
         write!(w, "{}", i.inner_impl().print(use_absolute, cx));
         if show_def_docs {
             for it in &i.inner_impl().items {
@@ -1654,12 +1653,12 @@ fn render_impl_summary(
                 }
             }
         }
-        w.write_str("</code>");
+        w.write_str("</h3>");
     } else {
         write!(
             w,
             "<div id=\"{}\" class=\"impl has-srclink\"{}>\
-                     <code class=\"in-band\">{}</code>",
+                     <h3 class=\"code-header in-band\">{}</h3>",
             id,
             aliases,
             i.inner_impl().print(false, cx)

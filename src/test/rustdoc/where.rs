@@ -11,7 +11,7 @@ pub fn charlie<C>() where C: MyTrait {}
 
 pub struct Delta<D>(D);
 
-// @has foo/struct.Delta.html '//*[@class="impl has-srclink"]//code' \
+// @has foo/struct.Delta.html '//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
 //          "impl<D> Delta<D> where D: MyTrait"
 impl<D> Delta<D> where D: MyTrait {
     pub fn delta() {}
@@ -19,17 +19,17 @@ impl<D> Delta<D> where D: MyTrait {
 
 pub struct Echo<E>(E);
 
-// @has foo/struct.Echo.html '//*[@class="impl has-srclink"]//code' \
+// @has foo/struct.Echo.html '//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
 //          "impl<E> MyTrait for Echo<E> where E: MyTrait"
-// @has foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' \
+// @has foo/trait.MyTrait.html '//*[@id="implementors-list"]//h3[@class="code-header in-band"]' \
 //          "impl<E> MyTrait for Echo<E> where E: MyTrait"
 impl<E> MyTrait for Echo<E> where E: MyTrait {}
 
 pub enum Foxtrot<F> { Foxtrot1(F) }
 
-// @has foo/enum.Foxtrot.html '//*[@class="impl has-srclink"]//code' \
+// @has foo/enum.Foxtrot.html '//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
 //          "impl<F> MyTrait for Foxtrot<F> where F: MyTrait"
-// @has foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' \
+// @has foo/trait.MyTrait.html '//*[@id="implementors-list"]//h3[@class="code-header in-band"]' \
 //          "impl<F> MyTrait for Foxtrot<F> where F: MyTrait"
 impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}
 

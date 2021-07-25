@@ -134,12 +134,25 @@ h1.fqn {
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
-h2, h3, h4 {
+#main > h2, #main > h3, #main > h4 {
 	border-bottom: 1px solid;
 }
-.impl, .method,
-.type:not(.container-rustdoc), .associatedconstant,
-.associatedtype {
+h3.code-header, h4.code-header {
+	font-size: 1em;
+	font-weight: 600;
+	border: none;
+	padding: 0;
+	margin: 0;
+}
+.impl,
+.impl-items .method,
+.methods .method,
+.impl-items .type,
+.methods .type,
+.impl-items .associatedconstant,
+.methods .associatedconstant,
+.impl-items .associatedtype,
+.methods .associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
@@ -190,7 +203,34 @@ summary {
 	outline: none;
 }
 
-code, pre, a.test-arrow {
+/* Fix some style changes due to normalize.css 8 */
+
+td,
+th {
+	padding: 0;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+	color: inherit;
+	font: inherit;
+	margin: 0;
+}
+
+/* end tweaks for normalize.css 8 */
+
+details:not(.rustdoc-toggle) summary {
+	margin-bottom: .6em;
+}
+
+code, pre, a.test-arrow, .code-header {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -474,9 +514,10 @@ nav.sub {
 	font-weight: normal;
 }
 
-.method > code, .trait-impl > code, .invisible > code {
+.method > .code-header, .trait-impl > .code-header, .invisible > .code-header {
 	max-width: calc(100% - 41px);
 	display: block;
+	flex-grow: 1;
 }
 
 .invisible {
@@ -490,7 +531,7 @@ nav.sub {
 	padding: 0px;
 }
 
-.in-band > code {
+.in-band > code, .in-band > .code-header {
 	display: inline-block;
 }
 
@@ -585,7 +626,7 @@ nav.sub {
 .content .item-info {
 	position: relative;
 	margin-left: 33px;
-	margin-top: -13px;
+	margin-top: -6px;
 }
 
 .sub-variant > div > .item-info {
@@ -596,7 +637,7 @@ nav.sub {
 	content: '⬑';
 	font-size: 25px;
 	position: absolute;
-	top: -6px;
+	top: 0px;
 	left: -19px;
 }
 
@@ -690,7 +731,7 @@ a {
 }
 
 .invisible > .srclink,
-.method > code + .srclink {
+.method > .code-header + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -912,7 +953,7 @@ body.blur > :not(#help) {
 .impl-items .since, .impl .since, .methods .since {
 	flex-grow: 0;
 	padding-left: 12px;
-	padding-right: 2px;
+	padding-right: 6px;
 	position: initial;
 }
 
@@ -1045,8 +1086,7 @@ a.test-arrow:hover{
 	display: block;
 }
 
-
-:target > code {
+:target > code, :target > .code-header {
 	opacity: 1;
 }
 
