@@ -1730,9 +1730,7 @@ impl Clean<Variant> for hir::VariantData<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Variant {
         match self {
             hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
-            hir::VariantData::Tuple(..) => {
-                Variant::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
-            }
+            hir::VariantData::Tuple(..) => Variant::Struct(self.clean(cx)),
             hir::VariantData::Unit(..) => Variant::CLike,
         }
     }

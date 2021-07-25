@@ -1037,8 +1037,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(
                     w,
-                    "<h3>Fields of <b>{name}</b></h3><div>",
-                    name = variant.name.as_ref().unwrap()
+                    "<h3>{extra}Fields of <b>{name}</b></h3><div>",
+                    extra = if s.struct_type == CtorKind::Fn { "Tuple " } else { "" },
+                    name = variant.name.as_ref().unwrap(),
                 );
                 for field in &s.fields {
                     use crate::clean::StructFieldItem;
@@ -1509,7 +1510,10 @@ fn render_struct(
             if let Some(g) = g {
                 write!(w, "{}", print_where_clause(g, cx, 0, false),)
             }
-            w.write_str(";");
+            // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
+            if structhead {
+                w.write_str(";");
+            }
         }
         CtorKind::Const => {
             // Needed for PhantomData.
