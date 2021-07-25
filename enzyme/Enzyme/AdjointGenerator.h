@@ -3942,7 +3942,19 @@ public:
         }
       }
 
-      if (subretused) {
+      bool primalNeededInReverse;
+
+      if (gutils->knownRecomputeHeuristic.count(orig)) {
+        primalNeededInReverse = !gutils->knownRecomputeHeuristic[orig];
+      } else {
+        std::map<UsageKey, bool> Seen;
+        for (auto pair : gutils->knownRecomputeHeuristic)
+          Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+        primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
+            TR, gutils, orig, Mode, Seen, oldUnreachable);
+      }
+
+      if (subretused && primalNeededInReverse) {
         if (normalReturn != newCall) {
           assert(normalReturn->getType() == newCall->getType());
           gutils->replaceAWithB(newCall, normalReturn);
@@ -3952,7 +3964,9 @@ public:
         normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn,
                                                getIndex(orig, CacheType::Self));
       } else {
-        eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+        if (!orig->mayWriteToMemory() ||
+            Mode == DerivativeMode::ReverseModeGradient)
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
       return;
     }
@@ -4439,17 +4453,16 @@ public:
             return;
           }
           SmallVector<Value *, 1> iargs;
-          IRBuilder<> Builder2(call.getParent());
-          getReverseBuilder(Builder2);
+          IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
           for (size_t i = 0, end = orig->getNumArgOperands(); i < end; ++i) {
             auto arg = orig->getArgOperand(i);
             if (!gutils->isConstantValue(arg)) {
-              Value *ptrshadow = gutils->invertPointerM(arg, Builder2);
+              Value *ptrshadow = gutils->invertPointerM(arg, BuilderZ);
               iargs.push_back(ptrshadow);
             }
           }
           if (iargs.size()) {
-            Builder2.CreateCall(called, iargs);
+            BuilderZ.CreateCall(called, iargs);
           }
           return;
         }

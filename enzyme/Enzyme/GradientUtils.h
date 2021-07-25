@@ -700,12 +700,6 @@ public:
         bb.CreateCall(oldFunc->getParent()->getOrInsertFunction(
                           "julia.write_barrier", FT),
                       anti);
-        if (mode != DerivativeMode::ReverseModeCombined) {
-          EmitFailure("SplitGCAllocation", orig->getDebugLoc(), orig,
-                      "Not handling Julia shadow GC allocation in split mode ",
-                      *orig);
-          return anti;
-        }
       }
 
       if (orig->getCalledFunction()->getName() == "swift_allocObject") {

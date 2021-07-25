@@ -349,6 +349,11 @@ static inline bool is_value_needed_in_reverse(
     if (!direct)
       continue;
 
+    if (inst->getType()->isTokenTy()) {
+      llvm::errs() << " need " << *inst << " via " << *user << "\n";
+    }
+    assert(!inst->getType()->isTokenTy());
+
     return seen[idx] = true;
   }
   return false;

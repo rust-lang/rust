@@ -658,8 +658,9 @@ struct CacheAnalysis {
 
         // We do not need uncacheable args for intrinsic functions. So skip such
         // callsites.
-        if (isa<IntrinsicInst>(&inst)) {
-          continue;
+        if (auto II = dyn_cast<IntrinsicInst>(&inst)) {
+          if (!II->getCalledFunction()->getName().startswith("llvm.julia"))
+            continue;
         }
 
         // For all other calls, we compute the uncacheable args for this

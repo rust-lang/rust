@@ -1349,6 +1349,13 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     }
   }
 
+  if (malloc->getType()->isTokenTy()) {
+    llvm::errs() << " oldFunc: " << *oldFunc << "\n";
+    llvm::errs() << " newFunc: " << *newFunc << "\n";
+    llvm::errs() << " malloc: " << *malloc << "\n";
+  }
+  assert(!malloc->getType()->isTokenTy());
+
   if (tape) {
     if (idx >= 0 && !tape->getType()->isStructTy()) {
       llvm::errs() << "cacheForReverse incorrect tape type: " << *tape
