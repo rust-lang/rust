@@ -11,6 +11,7 @@ if_chain! {
     if let LitKind::Int(2, _) = lit.node;
     if let ExprKind::Lit(ref lit1) = right.kind;
     if let LitKind::Int(2, _) = lit1.node;
+    if block.expr.is_none();
     if let ExprKind::Lit(ref lit2) = cond.kind;
     if let LitKind::Bool(true) = lit2.node;
     if let ExprKind::Block(ref block1) = then.kind;
@@ -22,6 +23,7 @@ if_chain! {
     if let LitKind::Int(1, _) = lit3.node;
     if let ExprKind::Lit(ref lit4) = right1.kind;
     if let LitKind::Int(1, _) = lit4.node;
+    if block1.expr.is_none();
     if let PatKind::Wild = local.pat.kind;
     then {
         // report your lint here

@@ -554,6 +554,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             self.current = self.next("trailing_expr");
             println!("    if let Some({}) = &{}.expr;", self.current, block_name);
             self.visit_expr(expr);
+        } else {
+            println!("    if {}.expr.is_none();", block_name);
         }
     }
 

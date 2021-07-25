@@ -11,6 +11,7 @@ if_chain! {
     if let ExprKind::Unary(UnOp::Neg, ref inner) = e.kind;
     if let ExprKind::Path(ref path) = inner.kind;
     if match_qpath(path, &["x"]);
+    if block.expr.is_none();
     then {
         // report your lint here
     }

@@ -54,6 +54,8 @@ if_chain! {
     if match_qpath(path9, &["y"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name2, None) = local2.pat.kind;
     if name2.as_str() == "z";
+    if block.expr.is_none();
+    if body.expr.is_none();
     if let PatKind::Binding(BindingAnnotation::Mutable, _, name3, None) = arms[0].pat.kind;
     if name3.as_str() == "iter";
     then {
