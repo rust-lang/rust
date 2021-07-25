@@ -34,7 +34,7 @@ Compiling `rustc` is done in stages:
 - **Stage 1:** the code in your clone (for new version) is then
   compiled with the stage0 compiler to produce the stage1 compiler.
   However, it was built with an older compiler (stage0), so to
-  optimize the stage1 compiler we go to next the stage.
+  optimize the stage1 compiler we go to the next stage.
   - In theory, the stage1 compiler is functionally identical to the
     stage2 compiler, but in practice there are subtle differences. In
     particular, the stage1 compiler itself was built by stage0 and
