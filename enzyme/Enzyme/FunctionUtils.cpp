@@ -85,6 +85,9 @@
 #include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvm/Transforms/Scalar/SROA.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
+#if LLVM_VERSION_MAJOR >= 12
+#include "llvm/Transforms/Scalar/ScalarizeMaskedMemIntrin.h"
+#endif
 #include "llvm/Transforms/Utils/LCSSA.h"
 #include "llvm/Transforms/Utils/LowerInvoke.h"
 
@@ -1285,6 +1288,10 @@ Function *PreProcessCache::preprocessForClone(Function *F,
 #endif
     FAM.invalidate(*NewF, PA);
   }
+
+#if LLVM_VERSION_MAJOR >= 12
+  ScalarizeMaskedMemIntrinPass().run(*NewF, FAM);
+#endif
 
   if (EnzymePreopt) {
     {

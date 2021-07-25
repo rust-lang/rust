@@ -740,6 +740,30 @@ void TypeAnalyzer::considerTBAA() {
           updateAnalysis(call->getOperand(0), update.Only(-1), call);
           updateAnalysis(call->getOperand(1), update.Only(-1), call);
           continue;
+        } else if (call->getCalledFunction() &&
+                   call->getCalledFunction()->getIntrinsicID() ==
+                       Intrinsic::masked_gather) {
+          auto VT = cast<VectorType>(call->getType());
+          auto LoadSize = (DL.getTypeSizeInBits(VT) + 7) / 8;
+          TypeTree req = vdptr.Only(-1);
+          updateAnalysis(call, req.Lookup(LoadSize, DL), call);
+          // TODO use mask to propagate up to relevant pointer
+        } else if (call->getCalledFunction() &&
+                   call->getCalledFunction()->getIntrinsicID() ==
+                       Intrinsic::masked_scatter) {
+          // TODO use mask to propagate up to relevant pointer
+        } else if (call->getCalledFunction() &&
+                   call->getCalledFunction()->getIntrinsicID() ==
+                       Intrinsic::masked_load) {
+          auto VT = cast<VectorType>(call->getType());
+          auto LoadSize = (DL.getTypeSizeInBits(VT) + 7) / 8;
+          TypeTree req = vdptr.Only(-1);
+          updateAnalysis(call, req.Lookup(LoadSize, DL), call);
+          // TODO use mask to propagate up to relevant pointer
+        } else if (call->getCalledFunction() &&
+                   call->getCalledFunction()->getIntrinsicID() ==
+                       Intrinsic::masked_store) {
+          // TODO use mask to propagate up to relevant pointer
         } else if (call->getType()->isPointerTy()) {
           updateAnalysis(call, vdptr.Only(-1), call);
         } else {
