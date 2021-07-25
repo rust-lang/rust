@@ -336,15 +336,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if def_id.as_local() == Some(self.mir_def_id()) && upvar_field.is_some() =>
             {
                 let closure_kind_ty = closure_substs.as_closure().kind_ty();
-                let closure_kind = closure_kind_ty.to_opt_closure_kind();
-                let capture_description = match closure_kind {
-                    Some(ty::ClosureKind::Fn) => "captured variable in an `Fn` closure",
-                    Some(ty::ClosureKind::FnMut) => "captured variable in an `FnMut` closure",
+                let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
+                    Some(kind @ (ty::ClosureKind::Fn | ty::ClosureKind::FnMut)) => kind,
                     Some(ty::ClosureKind::FnOnce) => {
                         bug!("closure kind does not match first argument type")
                     }
                     None => bug!("closure kind not inferred by borrowck"),
                 };
+                let capture_description =
+                    format!("captured variable in an `{}` closure", closure_kind);
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
                 let upvar_hir_id = upvar.place.get_root_variable();
@@ -368,6 +368,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let mut diag = self.cannot_move_out_of(span, &place_description);
 
                 diag.span_label(upvar_span, "captured outer variable");
+                diag.span_label(
+                    self.body.span,
+                    format!("captured by this `{}` closure", closure_kind),
+                );
 
                 diag
             }

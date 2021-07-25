@@ -1,11 +1,15 @@
 error[E0507]: cannot move out of `y`, a captured variable in an `Fn` closure
   --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:11:9
    |
-LL |     let y = vec![format!("World")];
-   |         - captured outer variable
-LL |     call(|| {
-LL |         y.into_iter();
-   |         ^ move occurs because `y` has type `Vec<String>`, which does not implement the `Copy` trait
+LL |       let y = vec![format!("World")];
+   |           - captured outer variable
+LL |       call(|| {
+   |  __________-
+LL | |         y.into_iter();
+   | |         ^ move occurs because `y` has type `Vec<String>`, which does not implement the `Copy` trait
+LL | |
+LL | |     });
+   | |_____- captured by this `Fn` closure
 
 error: aborting due to previous error
 

@@ -29,11 +29,17 @@ LL |     f.f.call_mut(())
 error[E0507]: cannot move out of `f`, a captured variable in an `FnMut` closure
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:57:13
    |
-LL |     let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
-   |         ----- captured outer variable
+LL |       let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
+   |           ----- captured outer variable
 ...
-LL |         foo(f);
-   |             ^ move occurs because `f` has type `[closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 54:6]`, which does not implement the `Copy` trait
+LL |       f(Box::new(|a| {
+   |  ________________-
+LL | |
+LL | |         foo(f);
+   | |             ^ move occurs because `f` has type `[closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 54:6]`, which does not implement the `Copy` trait
+LL | |
+LL | |     }), 3);
+   | |_____- captured by this `FnMut` closure
 
 error[E0505]: cannot move out of `f` because it is borrowed
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:55:16
