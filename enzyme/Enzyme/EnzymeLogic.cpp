@@ -759,6 +759,15 @@ void calculateUnusedValuesInFunction(
       [&](const Value *val) {
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, val, mode, PrimalSeen, oldUnreachable);
+        if (!ivn) {
+          if (auto I = dyn_cast<Instruction>(val)) {
+            auto found = gutils->knownRecomputeHeuristic.find(I);
+            if (found != gutils->knownRecomputeHeuristic.end() &&
+                found->second && !gutils->unnecessaryIntermediates.count(I)) {
+              ivn = true;
+            }
+          }
+        }
         return ivn;
       },
       [&](const Instruction *inst) {
@@ -937,6 +946,13 @@ void calculateUnusedValuesInFunction(
           return UseReq::Recur;
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, inst, mode, PrimalSeen, oldUnreachable);
+        if (!ivn) {
+          auto found = gutils->knownRecomputeHeuristic.find(inst);
+          if (found != gutils->knownRecomputeHeuristic.end() && found->second &&
+              !gutils->unnecessaryIntermediates.count(inst)) {
+            ivn = true;
+          }
+        }
         if (ivn) {
           return UseReq::Need;
         }
