@@ -5178,11 +5178,12 @@ public:
                       : BuilderZ.CreateExtractValue(
                             augmentcall, {(unsigned)returnIdx.getValue()});
           gutils->originalToNewFn[orig] = dcall;
+          gutils->newToOriginalFn.erase(newCall);
+          gutils->newToOriginalFn[dcall] = orig;
           assert(dcall->getType() == orig->getType());
           assert(dcall);
 
           if (!gutils->isConstantValue(orig)) {
-            gutils->originalToNewFn[orig] = dcall;
             if (!orig->getType()->isFPOrFPVectorTy() &&
                 TR.query(orig).Inner0().isPossiblePointer()) {
             } else if (Mode != DerivativeMode::ReverseModePrimal) {
@@ -5211,6 +5212,7 @@ public:
           BuilderZ.SetInsertPoint(BuilderZ.GetInsertPoint()->getNextNode());
           eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
           gutils->originalToNewFn[orig] = augmentcall;
+          gutils->newToOriginalFn[augmentcall] = orig;
         }
 
       } else {
@@ -5566,6 +5568,8 @@ public:
       }
 
       gutils->originalToNewFn[orig] = retval ? retval : diffes;
+      gutils->newToOriginalFn.erase(newCall);
+      gutils->newToOriginalFn[retval ? retval : diffes] = orig;
 
       // llvm::errs() << "newFunc postrep: " << *gutils->newFunc << "\n";
 
@@ -5585,6 +5589,8 @@ public:
 
         if (!gutils->isConstantValue(orig)) {
           gutils->originalToNewFn[orig] = dcall;
+          gutils->newToOriginalFn.erase(newCall);
+          gutils->newToOriginalFn[dcall] = orig;
           if (!orig->getType()->isFPOrFPVectorTy() &&
               TR.query(orig).Inner0().isPossiblePointer()) {
           } else {
@@ -5603,6 +5609,8 @@ public:
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
         if (augmentcall) {
           gutils->originalToNewFn[orig] = augmentcall;
+          gutils->newToOriginalFn.erase(newCall);
+          gutils->newToOriginalFn[augmentcall] = orig;
         }
       }
     }

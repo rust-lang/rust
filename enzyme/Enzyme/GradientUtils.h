@@ -118,6 +118,7 @@ public:
 
   ValueMap<PHINode *, WeakTrackingVH> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
+  ValueToValueMapTy newToOriginalFn;
   std::vector<CallInst *> originalCalls;
 
   SmallPtrSet<Instruction *, 4> unnecessaryIntermediates;
@@ -433,14 +434,9 @@ public:
   }
   BasicBlock *getOriginalFromNew(const BasicBlock *newinst) const {
     assert(newinst->getParent() == newFunc);
-    for (auto &B : *oldFunc) {
-
-      auto f = originalToNewFn.find(&B);
-      assert(f != originalToNewFn.end());
-      if (f->second == newinst)
-        return &B;
-    }
-    llvm_unreachable("could not find original block");
+    auto found = newToOriginalFn.find(newinst);
+    assert(found != newToOriginalFn.end());
+    return cast<BasicBlock>(found->second);
   }
 
   Value *isOriginal(const Value *newinst) const {
@@ -452,11 +448,10 @@ public:
     if (auto inst = dyn_cast<Instruction>(newinst)) {
       assert(inst->getParent()->getParent() == newFunc);
     }
-    for (auto v : originalToNewFn) {
-      if (v.second == newinst)
-        return const_cast<Value *>(v.first);
-    }
-    return nullptr;
+    auto found = newToOriginalFn.find(newinst);
+    if (found == newToOriginalFn.end())
+      return nullptr;
+    return found->second;
   }
 
   Instruction *isOriginal(const Instruction *newinst) const {
@@ -467,13 +462,14 @@ public:
   }
 
 private:
-  SmallVector<Value *, 4> addedTapeVals;
+  SmallVector<WeakTrackingVH, 4> addedTapeVals;
   unsigned tapeidx;
   Value *tape;
 
-  std::map<BasicBlock *, std::map<std::pair<Value *, BasicBlock *>, Value *>>
+  std::map<BasicBlock *,
+           std::map<Value *, std::map<BasicBlock *, WeakTrackingVH>>>
       unwrap_cache;
-  std::map<BasicBlock *, std::map<Value *, Value *>> lookup_cache;
+  std::map<BasicBlock *, std::map<Value *, WeakTrackingVH>> lookup_cache;
 
 public:
   BasicBlock *addReverseBlock(BasicBlock *currentBlock, Twine name,
@@ -511,15 +507,21 @@ public:
     if (A == B)
       return;
     assert(A->getType() == B->getType());
+    // Following should be handled by tracking VH
+    /*
     for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
       if (addedTapeVals[i] == A) {
         addedTapeVals[i] = B;
       }
     }
+    */
+    // Following should be handled by tracking VH
+    /*
     for (auto pair : unwrappedLoads) {
       if (pair->second == A)
         pair->second = B;
     }
+    */
     if (auto iA = dyn_cast<Instruction>(A)) {
       auto iB = cast<Instruction>(B);
       if (unwrappedLoads.find(iA) != unwrappedLoads.end()) {
@@ -534,6 +536,9 @@ public:
     }
     if (auto orig = isOriginal(A)) {
       originalToNewFn[orig] = B;
+      assert(newToOriginalFn.count(A));
+      newToOriginalFn.erase(A);
+      newToOriginalFn[B] = orig;
     }
 
     CacheUtility::replaceAWithB(A, B, storeInCache);
@@ -541,16 +546,28 @@ public:
 
   void erase(Instruction *I) override {
     assert(I);
-    invertedPointers.erase(I);
+    if (I->getParent()->getParent() != newFunc) {
+      llvm::errs() << "newFunc: " << *newFunc << "\n";
+      llvm::errs() << "paren: " << *I->getParent()->getParent() << "\n";
+      llvm::errs() << "I: " << *I << "\n";
+    }
+    assert(I->getParent()->getParent() == newFunc);
+
+    // not original, should not contain
+    assert(!invertedPointers.count(I));
+    // not original, should not contain
+    assert(!originalToNewFn.count(I));
+
     originalToNewFn.erase(I);
-    unwrappedLoads.erase(I);
-  eraser:
-    for (auto v : originalToNewFn) {
-      if (v.second == I) {
-        originalToNewFn.erase(v.first);
-        goto eraser;
+    {
+      auto found = newToOriginalFn.find(I);
+      if (found != newToOriginalFn.end()) {
+        Value *orig = found->second;
+        newToOriginalFn.erase(I);
+        originalToNewFn.erase(orig);
       }
     }
+    unwrappedLoads.erase(I);
     for (auto v : invertedPointers) {
       if (v.second == I) {
         llvm::errs() << *oldFunc << "\n";
@@ -568,6 +585,10 @@ public:
     }
 
     for (auto &pair : unwrap_cache) {
+      if (pair.second.find(I) != pair.second.end())
+        pair.second.erase(I);
+      // following should be handled by valuehandle
+      /*
       std::vector<std::pair<Value *, BasicBlock *>> cache_pairs;
       for (auto &a : pair.second) {
         if (a.second == I) {
@@ -580,21 +601,25 @@ public:
       for (auto a : cache_pairs) {
         pair.second.erase(a);
       }
+      */
     }
 
     for (auto &pair : lookup_cache) {
+      if (pair.second.find(I) != pair.second.end())
+        pair.second.erase(I);
+
+      // following should be handled by valuehandle
+      /*
       std::vector<Value *> cache_pairs;
       for (auto &a : pair.second) {
         if (a.second == I) {
-          cache_pairs.push_back(a.first);
-        }
-        if (a.first == I) {
           cache_pairs.push_back(a.first);
         }
       }
       for (auto a : cache_pairs) {
         pair.second.erase(a);
       }
+      */
     }
     CacheUtility::erase(I);
   }
@@ -789,7 +814,7 @@ public:
   Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx,
                          bool ignoreType = false, bool replace = true);
 
-  const SmallVectorImpl<Value *> &getTapeValues() const {
+  const SmallVectorImpl<WeakTrackingVH> &getTapeValues() const {
     return addedTapeVals;
   }
 
@@ -840,6 +865,15 @@ public:
 #endif
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
+    for (BasicBlock &oBB : *oldFunc) {
+      for (Instruction &oI : oBB) {
+        newToOriginalFn[originalToNewFn[&oI]] = &oI;
+      }
+      newToOriginalFn[originalToNewFn[&oBB]] = &oBB;
+    }
+    for (Argument &oArg : oldFunc->args()) {
+      newToOriginalFn[originalToNewFn[&oArg]] = &oArg;
+    }
     for (BasicBlock &BB : *newFunc) {
       originalBlocks.emplace_back(&BB);
     }

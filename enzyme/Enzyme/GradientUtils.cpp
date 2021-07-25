@@ -161,15 +161,31 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
   std::pair<Value *, BasicBlock *> idx = std::make_pair(val, scope);
   // assert(!val->getName().startswith("$tapeload"));
-  if (permitCache && unwrap_cache[BuilderM.GetInsertBlock()].find(idx) !=
-                         unwrap_cache[BuilderM.GetInsertBlock()].end()) {
-    auto cachedValue = unwrap_cache[BuilderM.GetInsertBlock()][idx];
-    if (cachedValue->getType() != val->getType()) {
-      llvm::errs() << "val: " << *val << "\n";
-      llvm::errs() << "unwrap_cache[cidx]: " << *cachedValue << "\n";
+  if (permitCache) {
+    auto found0 = unwrap_cache.find(BuilderM.GetInsertBlock());
+    if (found0 != unwrap_cache.end()) {
+      auto found1 = found0->second.find(idx.first);
+      if (found1 != found0->second.end()) {
+        auto found2 = found1->second.find(idx.second);
+        if (found2 != found1->second.end()) {
+
+          auto cachedValue = found2->second;
+          if (cachedValue == nullptr) {
+            found1->second.erase(idx.second);
+            if (found1->second.size() == 0) {
+              found0->second.erase(idx.first);
+            }
+          } else {
+            if (cachedValue->getType() != val->getType()) {
+              llvm::errs() << "val: " << *val << "\n";
+              llvm::errs() << "unwrap_cache[cidx]: " << *cachedValue << "\n";
+            }
+            assert(cachedValue->getType() == val->getType());
+            return cachedValue;
+          }
+        }
+      }
     }
-    assert(cachedValue->getType() == val->getType());
-    return cachedValue;
   }
 
   if (this->mode == DerivativeMode::ReverseModeGradient)
@@ -192,7 +208,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 val->getType(), 0, val->getName() + "_krcLFUreplacement");
             assert(permitCache);
             unwrappedLoads[placeholder] = inst;
-            return unwrap_cache[BuilderM.GetInsertBlock()][idx] = placeholder;
+            return unwrap_cache[BuilderM.GetInsertBlock()][idx.first]
+                               [idx.second] = placeholder;
           }
         }
       } else if (mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
@@ -222,7 +239,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                   val->getType(), 0, val->getName() + "_krcAFUWLreplacement");
               assert(permitCache);
               unwrappedLoads[placeholder] = inst;
-              return unwrap_cache[BuilderM.GetInsertBlock()][idx] = placeholder;
+              return unwrap_cache[BuilderM.GetInsertBlock()][idx.first]
+                                 [idx.second] = placeholder;
             }
           }
         }
@@ -327,7 +345,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       unwrappedLoads[newi] = val;
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
 #endif
@@ -344,7 +362,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
@@ -354,7 +372,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(),
                                                 op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
@@ -373,7 +391,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn = BuilderM.CreateInsertValue(op0, op1, op->getIndices(),
                                                op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
@@ -392,7 +410,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn =
         BuilderM.CreateExtractElement(op0, op1, op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
@@ -414,7 +432,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn =
         BuilderM.CreateInsertElement(op0, op1, op2, op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
@@ -438,7 +456,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                                                  op->getName() + "'_unwrap");
 #endif
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn)) {
       newi->copyIRFlags(op);
       unwrappedLoads[newi] = val;
@@ -469,7 +487,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<ICmpInst>(val)) {
@@ -488,7 +506,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<FCmpInst>(val)) {
@@ -507,7 +525,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
 #if LLVM_VERSION_MAJOR >= 9
@@ -526,7 +544,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
 #endif
@@ -549,7 +567,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
@@ -576,7 +594,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         newi->setDebugLoc(nullptr);
     }
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto load = dyn_cast<LoadInst>(val)) {
@@ -642,7 +660,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                           load->getMetadata(LLVMContext::MD_invariant_group));
     // TODO adding to cache only legal if no alias of any future writes
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<CallInst>(val)) {
@@ -681,7 +699,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     else
       toreturn->setDebugLoc(nullptr);
     if (permitCache)
-      unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;
     unwrappedLoads[toreturn] = val;
     return toreturn;
   } else if (auto phi = dyn_cast<PHINode>(val)) {
@@ -741,7 +759,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             dli->getMetadata(LLVMContext::MD_invariant_group));
         // TODO adding to cache only legal if no alias of any future writes
         if (permitCache)
-          unwrap_cache[BuilderM.GetInsertBlock()][idx] = toreturn;
+          unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] =
+              toreturn;
         assert(val->getType() == toreturn->getType());
         return toreturn;
       }
@@ -790,7 +809,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (!lc.dynamic) {
           Value *lim = getOp(lc.trueLimit);
           if (lim) {
-            unwrap_cache[BuilderM.GetInsertBlock()][idx] = lim;
+            unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] =
+                lim;
             return lim;
           }
         } else if (mode == UnwrapMode::AttemptFullUnwrapWithLookup &&
@@ -804,7 +824,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               /*forwardPass*/ false, BuilderM, lctx,
               getDynamicLoopLimit(LI.getLoopFor(lc.header)),
               /*isi1*/ false);
-          unwrap_cache[BuilderM.GetInsertBlock()][idx] = lim;
+          unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = lim;
           return lim;
         }
       }
@@ -1076,7 +1096,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               toret->addIncoming(vals[i], endingBlocks[i]);
             assert(val->getType() == toret->getType());
             if (permitCache) {
-              unwrap_cache[bret][idx] = toret;
+              unwrap_cache[bret][idx.first][idx.second] = toret;
             }
             unwrappedLoads[toret] = val;
             unwrap_cache[bret] = unwrap_cache[oldB];
@@ -1249,7 +1269,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         Value *toret = BuilderM.CreateSelect(cond, vals[0], vals[1],
                                              phi->getName() + "_unwrap");
         if (permitCache) {
-          unwrap_cache[BuilderM.GetInsertBlock()][idx] = toret;
+          unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] =
+              toret;
         }
         if (auto instRet = dyn_cast<Instruction>(toret))
           unwrappedLoads[instRet] = val;
@@ -1276,7 +1297,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         toret->addIncoming(vals[i], endingBlocks[i]);
       assert(val->getType() == toret->getType());
       if (permitCache) {
-        unwrap_cache[bret][idx] = toret;
+        unwrap_cache[bret][idx.first][idx.second] = toret;
       }
       unwrap_cache[bret] = unwrap_cache[oldB];
       lookup_cache[bret] = lookup_cache[oldB];
@@ -1510,9 +1531,15 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         assert(malloc->getType() == ret->getType());
       }
 
-      if (replace)
-        if (auto orig = isOriginal(malloc))
+      if (replace) {
+        auto found = newToOriginalFn.find(malloc);
+        if (found != newToOriginalFn.end()) {
+          Value *orig = found->second;
           originalToNewFn[orig] = ret;
+          newToOriginalFn.erase(malloc);
+          newToOriginalFn[ret] = orig;
+        }
+      }
 
       if (auto found = findInMap(scopeMap, malloc)) {
         // There already exists an alloaction for this, we should fully remove
@@ -3129,11 +3156,15 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   if (lookup_cache[BuilderM.GetInsertBlock()].find(val) !=
       lookup_cache[BuilderM.GetInsertBlock()].end()) {
     auto result = lookup_cache[BuilderM.GetInsertBlock()][val];
-    assert(result);
-    assert(result->getType());
-    result = BuilderM.CreateBitCast(result, val->getType());
-    assert(result->getType() == inst->getType());
-    return result;
+    if (result == nullptr) {
+      lookup_cache[BuilderM.GetInsertBlock()].erase(val);
+    } else {
+      assert(result);
+      assert(result->getType());
+      result = BuilderM.CreateBitCast(result, val->getType());
+      assert(result->getType() == inst->getType());
+      return result;
+    }
   }
 
   ValueToValueMapTy available;
@@ -3244,11 +3275,15 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   if (lookup_cache[BuilderM.GetInsertBlock()].find(val) !=
       lookup_cache[BuilderM.GetInsertBlock()].end()) {
     auto result = lookup_cache[BuilderM.GetInsertBlock()][val];
-    assert(result);
-    assert(result->getType());
-    result = BuilderM.CreateBitCast(result, val->getType());
-    assert(result->getType() == inst->getType());
-    return result;
+    if (result == nullptr) {
+      lookup_cache[BuilderM.GetInsertBlock()].erase(val);
+    } else {
+      assert(result);
+      assert(result->getType());
+      result = BuilderM.CreateBitCast(result, val->getType());
+      assert(result->getType() == inst->getType());
+      return result;
+    }
   }
 
   // TODO consider call as part of

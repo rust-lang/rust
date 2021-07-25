@@ -1634,6 +1634,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
       auto newri = ib.CreateRet(rt);
       gutils->originalToNewFn[orig_ri] = newri;
+      gutils->newToOriginalFn.erase(ri);
+      gutils->newToOriginalFn[newri] = orig_ri;
       gutils->erase(ri);
     }
   }
@@ -2049,7 +2051,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         ib.CreateRetVoid();
       else
         ib.CreateRet(ib.CreateLoad(ret));
-      gutils->erase(cast<Instruction>(VMap[ri]));
+      cast<Instruction>(VMap[ri])->eraseFromParent();
     }
   }
 
