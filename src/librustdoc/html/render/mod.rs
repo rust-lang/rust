@@ -1194,7 +1194,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                     if out.is_empty() {
                         write!(
                             &mut out,
-                            "<h3 class=\"notable\">Notable traits for {}</h3>\
+                            "<div class=\"notable\">Notable traits for {}</div>\
                              <code class=\"content\">",
                             impl_.for_.print(cx)
                         );
