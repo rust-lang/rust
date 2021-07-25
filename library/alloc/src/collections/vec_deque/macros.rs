@@ -1,9 +1,9 @@
 macro_rules! __impl_slice_eq1 {
     ([$($vars:tt)*] $lhs:ty, $rhs:ty, $($constraints:tt)*) => {
         #[stable(feature = "vec_deque_partial_eq_slice", since = "1.17.0")]
-        impl<A, B, $($vars)*> PartialEq<$rhs> for $lhs
+        impl<T, U, A: Allocator, $($vars)*> PartialEq<$rhs> for $lhs
         where
-            A: PartialEq<B>,
+            T: PartialEq<U>,
             $($constraints)*
         {
             fn eq(&self, other: &$rhs) -> bool {

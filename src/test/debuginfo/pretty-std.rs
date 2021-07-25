@@ -137,8 +137,8 @@
 // cdb-check:    [0x1]            : 42 [Type: int]
 
 // cdb-command: dx vecdeque
-// cdb-check:vecdeque         : { len=0x2 } [Type: alloc::collections::vec_deque::VecDeque<i32>]
-// cdb-check:    [<Raw View>]     [Type: alloc::collections::vec_deque::VecDeque<i32>]
+// cdb-check:vecdeque         : { len=0x2 } [Type: alloc::collections::vec_deque::VecDeque<i32,alloc::alloc::Global>]
+// cdb-check:    [<Raw View>]     [Type: alloc::collections::vec_deque::VecDeque<i32,alloc::alloc::Global>]
 // cdb-check:    [len]            : 0x2
 // cdb-check:    [capacity]       : 0x8 [Type: unsigned [...]]
 // cdb-check:    [0x0]            : 90 [Type: int]
