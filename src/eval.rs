@@ -138,6 +138,12 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     EnvVars::init(&mut ecx, config.excluded_env_vars)?;
     MemoryExtra::init_extern_statics(&mut ecx)?;
 
+    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
+    let sentinel = ecx.resolve_path(&["core", "ascii", "escape_default"]);
+    if !tcx.is_mir_available(sentinel.def.def_id()) {
+        tcx.sess.fatal("the current sysroot was built without `-Zalways-encode-mir`. Use `cargo miri setup` to prepare a sysroot that is suitable for Miri.");
+    }
+
     // Setup first stack-frame
     let main_instance = ty::Instance::mono(tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def, None)?;

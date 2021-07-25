@@ -132,8 +132,6 @@ pub fn report_error<'tcx, 'mir>(
             };
             #[rustfmt::skip]
             let helps = match e.kind() {
-                Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
-                    vec![(None, format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`"))],
                 Unsupported(UnsupportedOpInfo::ThreadLocalStatic(_) | UnsupportedOpInfo::ReadExternStatic(_)) =>
                     panic!("Error should never be raised by Miri: {:?}", e.kind()),
                 Unsupported(_) =>
