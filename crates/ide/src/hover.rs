@@ -684,7 +684,6 @@ mod tests {
                 range,
             )
             .unwrap();
-        println!("AAA {:#?}", hover);
         assert!(hover.is_none());
     }
 
