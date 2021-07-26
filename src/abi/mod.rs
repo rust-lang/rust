@@ -424,66 +424,65 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     };
 
     let ret_place = destination.map(|(place, _)| place);
-    let (call_inst, call_args) = self::returning::codegen_with_call_return_arg(
-        fx,
-        &fn_abi.ret,
-        ret_place,
-        |fx, return_ptr| {
-            let regular_args_count = args.len();
-            let mut call_args: Vec<Value> = return_ptr
-                .into_iter()
-                .chain(first_arg_override.into_iter())
-                .chain(
-                    args.into_iter()
-                        .enumerate()
-                        .skip(if first_arg_override.is_some() { 1 } else { 0 })
-                        .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
-                        .flatten(),
-                )
-                .collect::<Vec<_>>();
-
-            if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
-                // Pass the caller location for `#[track_caller]`.
-                let caller_location = fx.get_caller_location(span);
-                call_args.extend(
-                    adjust_arg_for_abi(fx, caller_location, &fn_abi.args[regular_args_count])
-                        .into_iter(),
-                );
-                assert_eq!(fn_abi.args.len(), regular_args_count + 1);
-            } else {
-                assert_eq!(fn_abi.args.len(), regular_args_count);
-            }
-
-            let call_inst = match func_ref {
-                CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
-                CallTarget::Indirect(sig, func_ptr) => {
-                    fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
-                }
-            };
-
-            (call_inst, call_args)
-        },
-    );
-
-    // FIXME find a cleaner way to support varargs
-    if fn_sig.c_variadic {
-        if !matches!(fn_sig.abi, Abi::C { .. }) {
-            fx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
-        }
-        let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
-        let abi_params = call_args
+    self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
+        let regular_args_count = args.len();
+        let mut call_args: Vec<Value> = return_ptr
             .into_iter()
-            .map(|arg| {
-                let ty = fx.bcx.func.dfg.value_type(arg);
-                if !ty.is_int() {
-                    // FIXME set %al to upperbound on float args once floats are supported
-                    fx.tcx.sess.span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
-                }
-                AbiParam::new(ty)
-            })
-            .collect::<Vec<AbiParam>>();
-        fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
-    }
+            .chain(first_arg_override.into_iter())
+            .chain(
+                args.into_iter()
+                    .enumerate()
+                    .skip(if first_arg_override.is_some() { 1 } else { 0 })
+                    .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
+                    .flatten(),
+            )
+            .collect::<Vec<_>>();
+
+        if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
+            // Pass the caller location for `#[track_caller]`.
+            let caller_location = fx.get_caller_location(span);
+            call_args.extend(
+                adjust_arg_for_abi(fx, caller_location, &fn_abi.args[regular_args_count])
+                    .into_iter(),
+            );
+            assert_eq!(fn_abi.args.len(), regular_args_count + 1);
+        } else {
+            assert_eq!(fn_abi.args.len(), regular_args_count);
+        }
+
+        let call_inst = match func_ref {
+            CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
+            CallTarget::Indirect(sig, func_ptr) => {
+                fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
+            }
+        };
+
+        // FIXME find a cleaner way to support varargs
+        if fn_sig.c_variadic {
+            if !matches!(fn_sig.abi, Abi::C { .. }) {
+                fx.tcx
+                    .sess
+                    .span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
+            }
+            let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
+            let abi_params = call_args
+                .into_iter()
+                .map(|arg| {
+                    let ty = fx.bcx.func.dfg.value_type(arg);
+                    if !ty.is_int() {
+                        // FIXME set %al to upperbound on float args once floats are supported
+                        fx.tcx
+                            .sess
+                            .span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
+                    }
+                    AbiParam::new(ty)
+                })
+                .collect::<Vec<AbiParam>>();
+            fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
+        }
+
+        call_inst
+    });
 
     if let Some((_, dest)) = destination {
         let ret_block = fx.get_block(dest);

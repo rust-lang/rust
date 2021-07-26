@@ -99,12 +99,12 @@ pub(super) fn codegen_return_param<'tcx>(
 
 /// Invokes the closure with if necessary a value representing the return pointer. When the closure
 /// returns the call return value(s) if any are written to the correct place.
-pub(super) fn codegen_with_call_return_arg<'tcx, T>(
+pub(super) fn codegen_with_call_return_arg<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
-    f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> (Inst, T),
-) -> (Inst, T) {
+    f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> Inst,
+) {
     let return_ptr = match ret_arg_abi.mode {
         PassMode::Ignore => None,
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => match ret_place {
@@ -117,7 +117,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, T>(
         PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => None,
     };
 
-    let (call_inst, meta) = f(fx, return_ptr);
+    let call_inst = f(fx, return_ptr);
 
     match ret_arg_abi.mode {
         PassMode::Ignore => {}
@@ -155,8 +155,6 @@ pub(super) fn codegen_with_call_return_arg<'tcx, T>(
             unreachable!("unsized return value")
         }
     }
-
-    (call_inst, meta)
 }
 
 /// Codegen a return instruction with the right return value(s) if any.
