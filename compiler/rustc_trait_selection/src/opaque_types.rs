@@ -981,21 +981,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let ty_var = infcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
 
-        let item_bounds = tcx.explicit_item_bounds(def_id);
-        debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
-        let bounds: Vec<_> =
-            item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
-
-        let param_env = tcx.param_env(def_id);
-        let InferOk { value: bounds, obligations } = infcx.partially_normalize_associated_types_in(
-            ObligationCause::misc(span, self.body_id),
-            param_env,
-            bounds,
-        );
-        self.obligations.extend(obligations);
-
-        debug!("instantiate_opaque_types: bounds={:?}", bounds);
-
         // Make sure that we are in fact defining the *entire* type
         // (e.g., `type Foo<T: Bound> = impl Bar;` needs to be
         // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
@@ -1014,6 +999,21 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
+
+        let item_bounds = tcx.explicit_item_bounds(def_id);
+        debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
+        let bounds: Vec<_> =
+            item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
+
+        let param_env = tcx.param_env(def_id);
+        let InferOk { value: bounds, obligations } = infcx.partially_normalize_associated_types_in(
+            ObligationCause::misc(span, self.body_id),
+            param_env,
+            bounds,
+        );
+        self.obligations.extend(obligations);
+
+        debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
         for predicate in &bounds {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
