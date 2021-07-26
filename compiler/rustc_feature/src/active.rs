@@ -629,9 +629,6 @@ declare_features! (
     /// Allows macro attributes to observe output of `#[derive]`.
     (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
 
-    /// Allows the use of type alias impl trait in function return positions
-    (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
-
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
 
