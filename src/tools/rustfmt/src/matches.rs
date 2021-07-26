@@ -19,7 +19,7 @@ use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
-    mk_sp_lo_plus_one, semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
+    semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
 };
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
@@ -167,8 +167,9 @@ fn collect_beginning_verts(
     arms.iter()
         .map(|a| {
             context
-                .snippet_provider
-                .opt_span_before(mk_sp_lo_plus_one(a.pat.span.lo()), "|")
+                .snippet(a.pat.span)
+                .starts_with("|")
+                .then(|| a.pat.span().lo())
         })
         .collect()
 }

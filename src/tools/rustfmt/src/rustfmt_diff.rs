@@ -56,10 +56,7 @@ impl From<Vec<Mismatch>> for ModifiedLines {
         let chunks = mismatches.into_iter().map(|mismatch| {
             let lines = mismatch.lines.iter();
             let num_removed = lines
-                .filter(|line| match line {
-                    DiffLine::Resulting(_) => true,
-                    _ => false,
-                })
+                .filter(|line| matches!(line, DiffLine::Resulting(_)))
                 .count();
 
             let new_lines = mismatch.lines.into_iter().filter_map(|line| match line {
@@ -94,7 +91,7 @@ impl fmt::Display for ModifiedLines {
                 "{} {} {}",
                 chunk.line_number_orig,
                 chunk.lines_removed,
-                chunk.lines.iter().count()
+                chunk.lines.len()
             )?;
 
             for line in &chunk.lines {
