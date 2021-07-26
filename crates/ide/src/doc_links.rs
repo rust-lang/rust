@@ -24,6 +24,7 @@ use crate::{
     FilePosition, Semantics,
 };
 
+/// Weblink to an item's documentation.
 pub(crate) type DocumentationLink = String;
 
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)

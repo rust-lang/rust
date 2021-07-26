@@ -107,9 +107,11 @@ pub(super) fn doc_comment(
         extract_definitions_from_docs(&docs)
             .into_iter()
             .filter_map(|(range, link, ns)| {
-                let def = resolve_doc_path_for_def(sema.db, def, &link, ns)?;
-                let InFile { file_id, value: range } = doc_mapping.map(range)?;
-                (file_id == node.file_id).then(|| (range, def))
+                doc_mapping.map(range).filter(|mapping| mapping.file_id == node.file_id).and_then(
+                    |InFile { value: mapped_range, .. }| {
+                        Some(mapped_range).zip(resolve_doc_path_for_def(sema.db, def, &link, ns))
+                    },
+                )
             })
             .for_each(|(range, def)| {
                 hl.add(HlRange {
