@@ -330,19 +330,36 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let span = tcx.def_span(def_id);
 
-        // If there are required region bounds, we can use them.
-        if opaque_defn.has_required_region_bounds {
-            let bounds = tcx.explicit_item_bounds(def_id);
-            debug!("{:#?}", bounds);
-            let bounds: Vec<_> =
-                bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs)).collect();
-            debug!("{:#?}", bounds);
-            let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
+        // Check if the `impl Trait` bounds include region bounds.
+        // For example, this would be true for:
+        //
+        //     fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b
+        //
+        // but false for:
+        //
+        //     fn foo<'c>() -> impl Trait<'c>
+        //
+        // unless `Trait` was declared like:
+        //
+        //     trait Trait<'c>: 'c
+        //
+        // in which case it would be true.
+        //
+        // This is used during regionck to decide whether we need to
+        // impose any additional constraints to ensure that region
+        // variables in `concrete_ty` wind up being constrained to
+        // something from `substs` (or, at minimum, things that outlive
+        // the fn body). (Ultimately, writeback is responsible for this
+        // check.)
+        let bounds = tcx.explicit_item_bounds(def_id);
+        debug!("{:#?}", bounds);
+        let bounds: Vec<_> =
+            bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs)).collect();
+        debug!("{:#?}", bounds);
+        let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
 
-            let required_region_bounds =
-                required_region_bounds(tcx, opaque_type, bounds.into_iter());
-            debug_assert!(!required_region_bounds.is_empty());
-
+        let required_region_bounds = required_region_bounds(tcx, opaque_type, bounds.into_iter());
+        if !required_region_bounds.is_empty() {
             for required_region in required_region_bounds {
                 concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
                     op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
@@ -979,9 +996,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
-        let required_region_bounds = required_region_bounds(tcx, ty, bounds.iter().copied());
-        debug!("instantiate_opaque_types: required_region_bounds={:?}", required_region_bounds);
-
         // Make sure that we are in fact defining the *entire* type
         // (e.g., `type Foo<T: Bound> = impl Bar;` needs to be
         // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
@@ -997,13 +1011,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         self.opaque_types.insert(
             OpaqueTypeKey { def_id, substs },
-            OpaqueTypeDecl {
-                opaque_type: ty,
-                definition_span,
-                concrete_ty: ty_var,
-                has_required_region_bounds: !required_region_bounds.is_empty(),
-                origin,
-            },
+            OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
