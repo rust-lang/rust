@@ -43,7 +43,7 @@ mod handlers {
     pub(crate) mod unresolved_module;
     pub(crate) mod unresolved_proc_macro;
 
-    // The handlers bellow are unusual, the implement the diagnostics as well.
+    // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
     pub(crate) mod useless_braces;
     pub(crate) mod unlinked_file;
