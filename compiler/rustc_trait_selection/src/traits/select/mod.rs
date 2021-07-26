@@ -130,6 +130,9 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// and a negative impl
     allow_negative_impls: bool,
 
+    /// Do we only want const impls when we have a const trait predicate?
+    const_impls_required: bool,
+
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
@@ -221,6 +224,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            const_impls_required: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -232,6 +236,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: true,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            const_impls_required: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -247,6 +252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
+            const_impls_required: false,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -262,7 +268,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            const_impls_required: false,
             query_mode,
+        }
+    }
+
+    pub fn with_constness(
+        infcx: &'cx InferCtxt<'cx, 'tcx>,
+        constness: hir::Constness,
+    ) -> SelectionContext<'cx, 'tcx> {
+        SelectionContext {
+            infcx,
+            freshener: infcx.freshener_keep_static(),
+            intercrate: false,
+            intercrate_ambiguity_causes: None,
+            allow_negative_impls: false,
+            const_impls_required: matches!(constness, hir::Constness::Const),
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -1024,26 +1046,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Respect const trait obligations
-        if let hir::Constness::Const = obligation.predicate.skip_binder().constness {
-            if Some(obligation.predicate.skip_binder().trait_ref.def_id)
-                != tcx.lang_items().sized_trait()
-            // const Sized bounds are skipped
-            {
-                match candidate {
-                    // const impl
-                    ImplCandidate(def_id)
-                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
-                    // const param
-                    ParamCandidate(ty::ConstnessAnd {
-                        constness: hir::Constness::Const, ..
-                    }) => {}
-                    // auto trait impl
-                    AutoImplCandidate(..) => {}
-                    // FIXME check if this is right, but this would allow Sized impls
-                    // BuiltinCandidate { .. } => {}
-                    _ => {
-                        // reject all other types of candidates
-                        return Err(Unimplemented);
+        if self.const_impls_required {
+            if let hir::Constness::Const = obligation.predicate.skip_binder().constness {
+                if Some(obligation.predicate.skip_binder().trait_ref.def_id)
+                    != tcx.lang_items().sized_trait()
+                // const Sized bounds are skipped
+                {
+                    match candidate {
+                        // const impl
+                        ImplCandidate(def_id)
+                            if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                        // const param
+                        ParamCandidate(ty::ConstnessAnd {
+                            constness: hir::Constness::Const,
+                            ..
+                        }) => {}
+                        // auto trait impl
+                        AutoImplCandidate(..) => {}
+                        // FIXME check if this is right, but this would allow Sized impls
+                        // BuiltinCandidate { .. } => {}
+                        _ => {
+                            // reject all other types of candidates
+                            return Err(Unimplemented);
+                        }
                     }
                 }
             }
