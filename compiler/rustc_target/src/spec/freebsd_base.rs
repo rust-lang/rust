@@ -1,4 +1,4 @@
-use crate::spec::{FramePointer, RelroLevel, TargetOptions};
+use crate::spec::{RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -8,7 +8,6 @@ pub fn opts() -> TargetOptions {
         families: vec!["unix".to_string()],
         has_rpath: true,
         position_independent_executables: true,
-        frame_pointer: FramePointer::Always, // FIXME 43575: should be MayOmit...
         relro_level: RelroLevel::Full,
         abi_return_struct_as_int: true,
         dwarf_version: Some(2),

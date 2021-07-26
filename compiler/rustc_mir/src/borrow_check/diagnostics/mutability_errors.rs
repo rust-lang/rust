@@ -905,6 +905,8 @@ fn suggest_ampmut<'tcx>(
                         Some(c) if c.is_whitespace() => true,
                         // e.g. `&mut(x)`
                         Some('(') => true,
+                        // e.g. `&mut{x}`
+                        Some('{') => true,
                         // e.g. `&mutablevar`
                         _ => false,
                     }
@@ -912,9 +914,7 @@ fn suggest_ampmut<'tcx>(
                     false
                 }
             };
-            if let (true, Some(ws_pos)) =
-                (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
-            {
+            if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
                 let lt_name = &src[1..ws_pos];
                 let ty = src[ws_pos..].trim_start();
                 if !is_mutbl(ty) {
@@ -940,9 +940,7 @@ fn suggest_ampmut<'tcx>(
     };
 
     if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span) {
-        if let (true, Some(ws_pos)) =
-            (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
-        {
+        if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
             let lt_name = &src[1..ws_pos];
             let ty = &src[ws_pos..];
             return (highlight_span, format!("&{} mut{}", lt_name, ty));

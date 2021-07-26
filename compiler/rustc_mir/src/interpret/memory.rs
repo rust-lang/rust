@@ -1142,7 +1142,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Err(ptr) => ptr.into(),
             Ok(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                M::ptr_from_addr(&self, addr)
+                let ptr = M::ptr_from_addr(&self, addr);
+                if addr == 0 {
+                    assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
+                }
+                ptr
             }
         }
     }
