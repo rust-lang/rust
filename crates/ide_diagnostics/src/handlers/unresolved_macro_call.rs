@@ -63,7 +63,7 @@ foo::bar!(92);
 macro_rules! m { () => {} }
 
 m!(); m2!();
-    //^^ error: unresolved macro `self::m2!`
+    //^^ error: unresolved macro `m2!`
 "#,
         );
     }

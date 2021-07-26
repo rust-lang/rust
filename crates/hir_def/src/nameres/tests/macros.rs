@@ -349,8 +349,10 @@ macro_rules! m {
 "#,
         expect![[r#"
             crate
+            S: t v
         "#]],
     );
+    // FIXME: should not expand. legacy macro scoping is not implemented.
 }
 
 #[test]
@@ -427,6 +429,7 @@ macro_rules! baz {
 "#,
         expect![[r#"
             crate
+            NotFoundBefore: t v
             Ok: t v
             OkAfter: t v
             OkShadowStop: t v
@@ -462,6 +465,7 @@ macro_rules! baz {
             crate::m3::m5
         "#]],
     );
+    // FIXME: should not see `NotFoundBefore`
 }
 
 #[test]
@@ -993,4 +997,27 @@ structs!(Foo);
             structs: m
         "#]],
     );
+}
+
+#[test]
+fn macro_in_prelude() {
+    check(
+        r#"
+//- /lib.rs crate:lib deps:std
+global_asm!();
+
+//- /std.rs crate:std
+pub mod prelude {
+    pub mod rust_2018 {
+        pub macro global_asm() {
+            pub struct S;
+        }
+    }
+}
+        "#,
+        expect![[r#"
+            crate
+            S: t v
+        "#]],
+    )
 }
