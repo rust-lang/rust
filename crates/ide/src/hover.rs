@@ -71,12 +71,12 @@ pub struct HoverResult {
     pub actions: Vec<HoverAction>,
 }
 
-// Feature: Hover
-//
-// Shows additional information, like type of an expression or documentation for definition when "focusing" code.
-// Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
-//
-// image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif[]
+/// Feature: Hover
+///
+/// Shows additional information, like the type of an expression or the documentation for a definition when "focusing" code.
+/// Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
+///
+/// image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif
 pub(crate) fn hover(
     db: &RootDatabase,
     position: FilePosition,
@@ -98,8 +98,8 @@ pub(crate) fn hover(
     let mut range = None;
     let definition = match_ast! {
         match node {
-            // we don't use NameClass::referenced_or_defined here as we do not want to resolve
-            // field pattern shorthands to their definition
+            // We don't use NameClass::referenced_or_defined here as we do not want to resolve
+            // field pattern shorthands to their definition.
             ast::Name(name) => NameClass::classify(&sema, &name).map(|class| match class {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
                 NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
@@ -245,6 +245,12 @@ fn try_hover_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<RangeInfo
     ))
 }
 
+/// LSP Extension: Hover over a range
+///
+/// Gets the type of the expression closest to the selection if the user is hovering inside
+/// the selection. If not, it is handled by `handle_hover`.
+///
+/// https://user-images.githubusercontent.com/22298999/126914293-0ce49a92-545d-4005-a59e-9294fa2330d6.gif
 pub(crate) fn hover_range(
     db: &RootDatabase,
     range: FileRange,
