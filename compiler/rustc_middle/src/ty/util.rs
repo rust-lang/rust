@@ -11,7 +11,7 @@ use crate::ty::{self, DebruijnIndex, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -537,7 +537,6 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let mut visitor = OpaqueTypeExpander {
             seen_opaque_tys: FxHashSet::default(),
-            expanded_cache: FxHashMap::default(),
             primary_def_id: Some(def_id),
             found_recursion: false,
             check_recursion: true,
@@ -557,7 +556,6 @@ struct OpaqueTypeExpander<'tcx> {
     seen_opaque_tys: FxHashSet<DefId>,
     // Cache of all expansions we've seen so far. This is a critical
     // optimization for some large types produced by async fn trees.
-    expanded_cache: FxHashMap<(DefId, SubstsRef<'tcx>), Ty<'tcx>>,
     primary_def_id: Option<DefId>,
     found_recursion: bool,
     /// Whether or not to check for recursive opaque types.
@@ -574,16 +572,9 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
         }
         let substs = substs.fold_with(self);
         if !self.check_recursion || self.seen_opaque_tys.insert(def_id) {
-            let expanded_ty = match self.expanded_cache.get(&(def_id, substs)) {
-                Some(expanded_ty) => expanded_ty,
-                None => {
-                    let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.subst(self.tcx, substs);
-                    let expanded_ty = self.fold_ty(concrete_ty);
-                    self.expanded_cache.insert((def_id, substs), expanded_ty);
-                    expanded_ty
-                }
-            };
+            let generic_ty = self.tcx.type_of(def_id);
+            let concrete_ty = generic_ty.subst(self.tcx, substs);
+            let expanded_ty = self.fold_ty(concrete_ty);
             if self.check_recursion {
                 self.seen_opaque_tys.remove(&def_id);
             }
@@ -1075,7 +1066,6 @@ pub fn normalize_opaque_types(
 ) -> &'tcx List<ty::Predicate<'tcx>> {
     let mut visitor = OpaqueTypeExpander {
         seen_opaque_tys: FxHashSet::default(),
-        expanded_cache: FxHashMap::default(),
         primary_def_id: None,
         found_recursion: false,
         check_recursion: false,
