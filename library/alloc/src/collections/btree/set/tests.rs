@@ -16,13 +16,6 @@ fn test_clone_eq() {
     assert_eq!(m.clone(), m);
 }
 
-#[allow(dead_code)]
-fn test_const() {
-    const SET: &'static BTreeSet<()> = &BTreeSet::new();
-    const LEN: usize = SET.len();
-    const IS_EMPTY: bool = SET.is_empty();
-}
-
 #[test]
 fn test_iter_min_max() {
     let mut a = BTreeSet::new();
