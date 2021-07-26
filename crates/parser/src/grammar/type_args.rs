@@ -65,15 +65,13 @@ fn generic_arg(p: &mut Parser) {
             m.complete(p, LIFETIME_ARG);
         }
         // test associated_type_bounds
-        // fn print_all<T: Iterator<Item, Item::Item, Item: Display, Item<'a> = Item>>(printables: T) {}
+        // fn print_all<T: Iterator<Item, Item::Item, Item::<true>, Item: Display, Item<'a> = Item>>(printables: T) {}
         IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) => {
             let path_ty = p.start();
             let path = p.start();
             let path_seg = p.start();
             name_ref(p);
-            if p.current() == T![<] {
-                opt_generic_arg_list(p, false);
-            }
+            opt_generic_arg_list(p, false);
             match p.current() {
                 // NameRef<...> =
                 T![=] => {
@@ -89,6 +87,7 @@ fn generic_arg(p: &mut Parser) {
                     // NameRef::, this is a path type
                     path_seg.complete(p, PATH_SEGMENT);
                     let qual = path.complete(p, PATH);
+                    opt_generic_arg_list(p, false);
                     paths::type_path_for_qualifier(p, qual);
                     path_ty.complete(p, PATH_TYPE);
                     m.complete(p, TYPE_ARG);
