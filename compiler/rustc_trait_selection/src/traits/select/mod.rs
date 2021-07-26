@@ -1063,8 +1063,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }) => {}
                         // auto trait impl
                         AutoImplCandidate(..) => {}
-                        // FIXME check if this is right, but this would allow Sized impls
-                        // BuiltinCandidate { .. } => {}
+                        // generator, this will raise error in other places
+                        // or ignore error with const_async_blocks feature
+                        GeneratorCandidate => {}
                         _ => {
                             // reject all other types of candidates
                             return Err(Unimplemented);
