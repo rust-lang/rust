@@ -888,7 +888,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     wrap_into_docblock(w, |w| {
         w.write_str("<pre class=\"rust union\">");
         render_attributes_in_pre(w, it, "");
-        render_union(w, it, Some(&s.generics), &s.fields, "", true, cx);
+        render_union(w, it, Some(&s.generics), &s.fields, "", cx);
         w.write_str("</pre>")
     });
 
@@ -1380,14 +1380,12 @@ fn render_union(
     g: Option<&clean::Generics>,
     fields: &[clean::Item],
     tab: &str,
-    structhead: bool,
     cx: &Context<'_>,
 ) {
     write!(
         w,
-        "{}{}{}",
+        "{}union {}",
         it.visibility.print_with_space(it.def_id, cx),
-        if structhead { "union " } else { "" },
         it.name.as_ref().unwrap()
     );
     if let Some(g) = g {
