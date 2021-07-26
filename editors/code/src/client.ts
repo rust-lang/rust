@@ -62,27 +62,27 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
                     textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
                     position: positionOrRange
                 }, token).then(
-                        (result) => {
-                          const hover =
+                    (result) => {
+                        const hover =
                             client.protocol2CodeConverter.asHover(result);
-                          if (hover) {
+                        if (hover) {
                             const actions = (<any>result).actions;
                             if (actions) {
-                              hover.contents.push(renderHoverActions(actions));
+                                hover.contents.push(renderHoverActions(actions));
                             }
-                          }
-                          return hover;
-                        },
-                        (error) => {
-                          client.handleFailedRequest(
+                        }
+                        return hover;
+                    },
+                    (error) => {
+                        client.handleFailedRequest(
                             lc.HoverRequest.type,
                             token,
                             error,
                             null
-                          );
-                          return Promise.resolve(null);
-                        }
-                      );
+                        );
+                        return Promise.resolve(null);
+                    }
+                );
             },
             // Using custom handling of CodeActions to support action groups and snippet edits.
             // Note that this means we have to re-implement lazy edit resolving ourselves as well.
