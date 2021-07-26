@@ -7,7 +7,7 @@ use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc_hir::{Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -131,6 +131,10 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
         if !has_attr(cx, stmt.hir_id) {
             return;
+        }
+        match stmt.kind {
+            StmtKind::Expr(e) | StmtKind::Semi(e) if has_attr(cx, e.hir_id) => return,
+            _ => {},
         }
         prelude();
         PrintVisitor::new("stmt").visit_stmt(stmt);
@@ -316,11 +320,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
-            ExprKind::Loop(body, _, desugaring, _) => {
+            ExprKind::Loop(body, _, des, _) => {
                 let body_pat = self.next("body");
-                let des = loop_desugaring_name(desugaring);
                 let label_pat = self.next("label");
-                println!("Loop(ref {}, ref {}, {}) = {};", body_pat, label_pat, des, current);
+                println!(
+                    "Loop(ref {}, ref {}, LoopSource::{:?}) = {};",
+                    body_pat, label_pat, des, current
+                );
                 self.current = body_pat;
                 self.visit_block(body);
             },
@@ -343,11 +349,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = then_pat;
                 self.visit_expr(then);
             },
-            ExprKind::Match(expr, arms, desugaring) => {
-                let des = desugaring_name(desugaring);
+            ExprKind::Match(expr, arms, des) => {
                 let expr_pat = self.next("expr");
                 let arms_pat = self.next("arms");
-                println!("Match(ref {}, ref {}, {}) = {};", expr_pat, arms_pat, des, current);
+                println!(
+                    "Match(ref {}, ref {}, MatchSource::{:?}) = {};",
+                    expr_pat, arms_pat, des, current
+                );
                 self.current = expr_pat;
                 self.visit_expr(expr);
                 println!("    if {}.len() == {};", arms_pat, arms.len());
@@ -536,13 +544,18 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 
     fn visit_block(&mut self, block: &Block<'_>) {
-        let trailing_pat = self.next("trailing_expr");
-        println!("    if let Some({}) = &{}.expr;", trailing_pat, self.current);
         println!("    if {}.stmts.len() == {};", self.current, block.stmts.len());
-        let current = self.current.clone();
+        let block_name = self.current.clone();
         for (i, stmt) in block.stmts.iter().enumerate() {
-            self.current = format!("{}.stmts[{}]", current, i);
+            self.current = format!("{}.stmts[{}]", block_name, i);
             self.visit_stmt(stmt);
+        }
+        if let Some(expr) = block.expr {
+            self.current = self.next("trailing_expr");
+            println!("    if let Some({}) = &{}.expr;", self.current, block_name);
+            self.visit_expr(expr);
+        } else {
+            println!("    if {}.expr.is_none();", block_name);
         }
     }
 
@@ -553,12 +566,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         match pat.kind {
             PatKind::Wild => println!("Wild = {};", current),
             PatKind::Binding(anno, .., ident, ref sub) => {
-                let anno_pat = match anno {
-                    BindingAnnotation::Unannotated => "BindingAnnotation::Unannotated",
-                    BindingAnnotation::Mutable => "BindingAnnotation::Mutable",
-                    BindingAnnotation::Ref => "BindingAnnotation::Ref",
-                    BindingAnnotation::RefMut => "BindingAnnotation::RefMut",
-                };
+                let anno_pat = &format!("BindingAnnotation::{:?}", anno);
                 let name_pat = self.next("name");
                 if let Some(sub) = *sub {
                     let sub_pat = self.next("sub");
@@ -721,33 +729,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
     let attrs = cx.tcx.hir().attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
-}
-
-#[must_use]
-fn desugaring_name(des: hir::MatchSource) -> String {
-    match des {
-        hir::MatchSource::ForLoopDesugar => "MatchSource::ForLoopDesugar".to_string(),
-        hir::MatchSource::TryDesugar => "MatchSource::TryDesugar".to_string(),
-        hir::MatchSource::WhileDesugar => "MatchSource::WhileDesugar".to_string(),
-        hir::MatchSource::WhileLetDesugar => "MatchSource::WhileLetDesugar".to_string(),
-        hir::MatchSource::Normal => "MatchSource::Normal".to_string(),
-        hir::MatchSource::IfLetDesugar { contains_else_clause } => format!(
-            "MatchSource::IfLetDesugar {{ contains_else_clause: {} }}",
-            contains_else_clause
-        ),
-        hir::MatchSource::IfLetGuardDesugar => "MatchSource::IfLetGuardDesugar".to_string(),
-        hir::MatchSource::AwaitDesugar => "MatchSource::AwaitDesugar".to_string(),
-    }
-}
-
-#[must_use]
-fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
-    match des {
-        hir::LoopSource::ForLoop => "LoopSource::ForLoop",
-        hir::LoopSource::Loop => "LoopSource::Loop",
-        hir::LoopSource::While => "LoopSource::While",
-        hir::LoopSource::WhileLet => "LoopSource::WhileLet",
-    }
 }
 
 fn print_path(path: &QPath<'_>, first: &mut bool) {
