@@ -1,7 +1,5 @@
-// FIXME(jschievink): this is not rejected correctly (only when the non-const impl is actually used)
-// ignore-test
-
 #![feature(const_trait_impl)]
+#![feature(const_fn_trait_bound)]
 
 struct S;
 
