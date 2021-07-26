@@ -554,8 +554,6 @@ struct OpaqueTypeExpander<'tcx> {
     // that type, and when we finish expanding that type we remove the
     // its DefId.
     seen_opaque_tys: FxHashSet<DefId>,
-    // Cache of all expansions we've seen so far. This is a critical
-    // optimization for some large types produced by async fn trees.
     primary_def_id: Option<DefId>,
     found_recursion: bool,
     /// Whether or not to check for recursive opaque types.
