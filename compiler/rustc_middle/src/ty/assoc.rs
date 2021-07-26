@@ -16,12 +16,10 @@ pub enum AssocItemContainer {
 }
 
 impl AssocItemContainer {
-    /// Asserts that this is the `DefId` of an associated item declared
-    /// in an impl, and returns the trait `DefId`.
-    pub fn assert_impl(&self) -> DefId {
+    pub fn impl_def_id(&self) -> Option<DefId> {
         match *self {
-            ImplContainer(id) => id,
-            _ => bug!("associated item has wrong container type: {:?}", self),
+            ImplContainer(id) => Some(id),
+            _ => None,
         }
     }
 

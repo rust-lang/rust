@@ -1293,7 +1293,12 @@ pub fn check_type_bounds<'tcx>(
 
     tcx.infer_ctxt().enter(move |infcx| {
         // if the item is inside a const impl, we transform the predicates to be const.
-        let constness = tcx.impl_constness(impl_ty.container.assert_impl());
+        let constness = impl_ty
+            .container
+            .impl_def_id()
+            .map(|did| tcx.impl_constness(did))
+            .unwrap_or(hir::Constness::NotConst);
+
         let pred_map = match constness {
             hir::Constness::NotConst => |p, _| p,
             hir::Constness::Const => |p: ty::Predicate<'tcx>, tcx: TyCtxt<'tcx>| {
