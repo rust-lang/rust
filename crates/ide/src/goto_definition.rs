@@ -43,11 +43,10 @@ pub(crate) fn goto_definition(
     let parent = token.parent()?;
     if let Some(_) = ast::Comment::cast(token.clone()) {
         let (attributes, def) = doc_attributes(&sema, &parent)?;
-
         let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
         let (_, link, ns) =
-            extract_definitions_from_docs(&docs).into_iter().find(|(range, ..)| {
-                doc_mapping.map(*range).map_or(false, |InFile { file_id, value: range }| {
+            extract_definitions_from_docs(&docs).into_iter().find(|&(range, ..)| {
+                doc_mapping.map(range).map_or(false, |InFile { file_id, value: range }| {
                     file_id == position.file_id.into() && range.contains(position.offset)
                 })
             })?;

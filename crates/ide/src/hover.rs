@@ -120,12 +120,8 @@ pub(crate) fn hover(
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
                         extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
-                            let hir::InFile { file_id, value: range } = doc_mapping.map(range)?;
-                            if file_id == position.file_id.into() && range.contains(position.offset) {
-                                Some((range, link, ns))
-                            } else {
-                                None
-                            }
+                            let hir::InFile { file_id, value: mapped_range } = doc_mapping.map(range)?;
+                            (file_id == position.file_id.into() && mapped_range.contains(position.offset)).then(||(mapped_range, link, ns))
                         })?;
                     range = Some(idl_range);
                     resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
