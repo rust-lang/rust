@@ -359,7 +359,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     }
 
     // Unpack arguments tuple for closures
-    let args = if fn_sig.abi == Abi::RustCall {
+    let mut args = if fn_sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
         let self_arg = codegen_operand(fx, &args[0]);
         let pack_arg = codegen_operand(fx, &args[1]);
@@ -378,6 +378,15 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     } else {
         args.iter().map(|arg| codegen_operand(fx, arg)).collect::<Vec<_>>()
     };
+
+    // Pass the caller location for `#[track_caller]`.
+    if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
+        let caller_location = fx.get_caller_location(span);
+        args.push(caller_location);
+    }
+
+    let args = args;
+    assert_eq!(fn_abi.args.len(), args.len());
 
     enum CallTarget {
         Direct(FuncRef),
@@ -425,8 +434,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     let ret_place = destination.map(|(place, _)| place);
     self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
-        let regular_args_count = args.len();
-        let mut call_args: Vec<Value> = return_ptr
+        let call_args = return_ptr
             .into_iter()
             .chain(first_arg_override.into_iter())
             .chain(
@@ -436,19 +444,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
                     .flatten(),
             )
-            .collect::<Vec<_>>();
-
-        if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
-            // Pass the caller location for `#[track_caller]`.
-            let caller_location = fx.get_caller_location(span);
-            call_args.extend(
-                adjust_arg_for_abi(fx, caller_location, &fn_abi.args[regular_args_count])
-                    .into_iter(),
-            );
-            assert_eq!(fn_abi.args.len(), regular_args_count + 1);
-        } else {
-            assert_eq!(fn_abi.args.len(), regular_args_count);
-        }
+            .collect::<Vec<Value>>();
 
         let call_inst = match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
