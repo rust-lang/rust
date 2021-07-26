@@ -9,7 +9,7 @@ use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, OpaqueTypeKey, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::{self, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::OpaqueTypeDecl;
@@ -144,24 +144,8 @@ impl Inherited<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
-    fn transform_predicate(&self, p: &mut ty::Predicate<'tcx>) {
-        // Don't transform non-const bounds into const bounds,
-        // but transform const bounds to non-const when we are
-        // not in a const context.
-        if let hir::Constness::NotConst = self.constness {
-            let kind = p.kind();
-            if let ty::PredicateKind::Trait(pred) = kind.as_ref().skip_binder() {
-                let mut pred = *pred;
-                pred.constness = hir::Constness::NotConst;
-                *p = kind.rebind(ty::PredicateKind::Trait(pred)).to_predicate(self.tcx);
-            }
-        }
-    }
-
-    pub(super) fn register_predicate(&self, mut obligation: traits::PredicateObligation<'tcx>) {
+    pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
         debug!("register_predicate({:?})", obligation);
-        self.transform_predicate(&mut obligation.predicate);
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
