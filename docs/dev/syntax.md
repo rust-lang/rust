@@ -6,7 +6,7 @@ This guide describes the current state of syntax trees and parsing in rust-analy
 
 ## Source Code
 
-The things described are implemented in two places
+The things described are implemented in three places
 
 * [rowan](https://github.com/rust-analyzer/rowan/tree/v0.9.0) -- a generic library for rowan syntax trees.
 * [ra_syntax](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/ra_syntax) crate inside rust-analyzer which wraps `rowan` into rust-analyzer specific API.
@@ -15,9 +15,9 @@ The things described are implemented in two places
 
 ## Design Goals
 
-* Syntax trees are lossless, or full fidelity. All comments and whitespace are preserved.
+* Syntax trees are lossless, or full fidelity. All comments and whitespace get preserved.
 * Syntax trees are semantic-less. They describe *strictly* the structure of a sequence of characters, they don't have hygiene, name resolution or type information attached.
-* Syntax trees are simple value type. It is possible to create trees for a syntax without any external context.
+* Syntax trees are simple value types. It is possible to create trees for a syntax without any external context.
 * Syntax trees have intuitive traversal API (parent, children, siblings, etc).
 * Parsing is lossless (even if the input is invalid, the tree produced by the parser represents it exactly).
 * Parsing is resilient (even if the input is invalid, parser tries to see as much syntax tree fragments in the input as it can).

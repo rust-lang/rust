@@ -79,7 +79,7 @@ group of files which are assumed to rarely change. It's mostly an optimization
 and does not change the fundamental picture.
 
 The `set_crate_graph` method allows us to control how the input files are partitioned
-into compilation unites -- crates. It also controls (in theory, not implemented
+into compilation units -- crates. It also controls (in theory, not implemented
 yet) `cfg` flags. `CrateGraph` is a directed acyclic graph of crates. Each crate
 has a root `FileId`, a set of active `cfg` flags and a set of dependencies. Each
 dependency is a pair of a crate and a name. It is possible to have two crates
@@ -95,7 +95,6 @@ function, and will be inserted into the crate graph just like dependencies.
 Soon we'll talk how we build an LSP server on top of `Analysis`, but first,
 let's deal with that paths issue.
 
-
 ## Source roots (a.k.a. "Filesystems are horrible")
 
 This is a non-essential section, feel free to skip.
@@ -104,18 +103,18 @@ The previous section said that the filesystem path is an attribute of a file,
 but this is not the whole truth. Making it an absolute `PathBuf` will be bad for
 several reasons. First, filesystems are full of (platform-dependent) edge cases:
 
-* it's hard (requires a syscall) to decide if two paths are equivalent
-* some filesystems are case-sensitive (e.g. on macOS)
-* paths are not necessary UTF-8
-* symlinks can form cycles
+* It's hard (requires a syscall) to decide if two paths are equivalent.
+* Some filesystems are case-sensitive (e.g. macOS).
+* Paths are not necessarily UTF-8.
+* Symlinks can form cycles.
 
-Second, this might hurt reproducibility and hermeticity of builds. In theory,
+Second, this might hurt the reproducibility and hermeticity of builds. In theory,
 moving a project from `/foo/bar/my-project` to `/spam/eggs/my-project` should
 not change a bit in the output. However, if the absolute path is a part of the
 input, it is at least in theory observable, and *could* affect the output.
 
 Yet another problem is that we really *really* want to avoid doing I/O, but with
-Rust the set of "input" files is not necessary known up-front. In theory, you
+Rust the set of "input" files is not necessarily known up-front. In theory, you
 can have `#[path="/dev/random"] mod foo;`.
 
 To solve (or explicitly refuse to solve) these problems rust-analyzer uses the
@@ -205,7 +204,7 @@ fact that most of the changes are small, and that analysis results are unlikely
 to change significantly between invocations.
 
 To do this we use [salsa]: a framework for incremental on-demand computation.
-You can skip the rest of the section if you are familiar with rustc's red-green
+You can skip the rest of the section if you are familiar with `rustc`'s red-green
 algorithm (which is used for incremental compilation).
 
 [salsa]: https://github.com/salsa-rs/salsa
@@ -220,11 +219,10 @@ of type `V`. Queries come in two basic varieties:
   like.
 
 * **Functions**: pure functions (no side effects) that transform your inputs
-  into other values. The results of queries is memoized to avoid recomputing
+  into other values. The results of queries are memoized to avoid recomputing
   them a lot. When you make changes to the inputs, we'll figure out (fairly
   intelligently) when we can re-use these memoized values and when we have to
   recompute them.
-
 
 For further discussion, its important to understand one bit of "fairly
 intelligently". Suppose we have two functions, `f1` and `f2`, and one input,
@@ -267,13 +265,13 @@ The bulk of the rust-analyzer is transforming input text into a semantic model o
 Rust code: a web of entities like modules, structs, functions and traits.
 
 An important fact to realize is that (unlike most other languages like C# or
-Java) there isn't a one-to-one mapping between source code and the semantic model. A
+Java) there is not a one-to-one mapping between the source code and the semantic model. A
 single function definition in the source code might result in several semantic
-functions: for example, the same source file might be included as a module into
-several crate, or a single "crate" might be present in the compilation DAG
+functions: for example, the same source file might get included as a module in
+several crates or a single crate might be present in the compilation DAG
 several times, with different sets of `cfg`s enabled. The IDE-specific task of
-mapping source code position into a semantic model is inherently imprecise for
-this reason, and is handled by the [`source_binder`].
+mapping source code into a semantic model is inherently imprecise for
+this reason and gets handled by the [`source_binder`].
 
 [`source_binder`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/source_binder.rs
 
@@ -533,18 +531,18 @@ To conclude the overview of the rust-analyzer, let's trace the request for
 
 We start by [receiving a message] from the language client. We decode the
 message as a request for completion and [schedule it on the threadpool]. This is
-the also place where we [catch] canceled errors if, immediately after completion, the
+the place where we [catch] canceled errors if, immediately after completion, the
 client sends some modification.
 
-In [the handler] we a deserialize LSP request into the rust-analyzer specific data
+In [the handler], we deserialize LSP requests into rust-analyzer specific data
 types (by converting a file url into a numeric `FileId`), [ask analysis for
-completion] and serializer results to LSP.
+completion] and serialize results into the LSP.
 
 The [completion implementation] is finally the place where we start doing the actual
 work. The first step is to collect the `CompletionContext` -- a struct which
 describes the cursor position in terms of Rust syntax and semantics. For
 example, `function_syntax: Option<&'a ast::FnDef>` stores a reference to
-enclosing function *syntax*, while `function: Option<hir::Function>` is the
+the enclosing function *syntax*, while `function: Option<hir::Function>` is the
 `Def` for this function.
 
 To construct the context, we first do an ["IntelliJ Trick"]: we insert a dummy

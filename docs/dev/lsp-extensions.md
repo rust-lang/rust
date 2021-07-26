@@ -656,7 +656,7 @@ interface TestInfo {
 }
 ```
 
-## Hover Actions
+## Move Item
 
 **Issue:** https://github.com/rust-analyzer/rust-analyzer/issues/6823
 
