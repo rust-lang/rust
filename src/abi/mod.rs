@@ -235,27 +235,20 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         // not mutated by the current function, this is necessary to support unsized arguments.
         if let ArgKind::Normal(Some(val)) = arg_kind {
             if let Some((addr, meta)) = val.try_to_ptr() {
-                let local_decl = &fx.mir.local_decls[local];
-                //                       v this ! is important
-                let internally_mutable = !val
-                    .layout()
-                    .ty
-                    .is_freeze(fx.tcx.at(local_decl.source_info.span), ParamEnv::reveal_all());
-                if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
-                    // We wont mutate this argument, so it is fine to borrow the backing storage
-                    // of this argument, to prevent a copy.
+                // Ownership of the value at the backing storage for an argument is passed to the
+                // callee per the ABI, so it is fine to borrow the backing storage of this argument
+                // to prevent a copy.
 
-                    let place = if let Some(meta) = meta {
-                        CPlace::for_ptr_with_extra(addr, meta, val.layout())
-                    } else {
-                        CPlace::for_ptr(addr, val.layout())
-                    };
+                let place = if let Some(meta) = meta {
+                    CPlace::for_ptr_with_extra(addr, meta, val.layout())
+                } else {
+                    CPlace::for_ptr(addr, val.layout())
+                };
 
-                    self::comments::add_local_place_comments(fx, place, local);
+                self::comments::add_local_place_comments(fx, place, local);
 
-                    assert_eq!(fx.local_map.push(place), local);
-                    continue;
-                }
+                assert_eq!(fx.local_map.push(place), local);
+                continue;
             }
         }
 
@@ -289,6 +282,22 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     }
 
     fx.bcx.ins().jump(*fx.block_map.get(START_BLOCK).unwrap(), &[]);
+}
+
+struct CallArgument<'tcx> {
+    value: CValue<'tcx>,
+    is_owned: bool,
+}
+
+// FIXME avoid intermediate `CValue` before calling `adjust_arg_for_abi`
+fn codegen_call_argument_operand<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    operand: &Operand<'tcx>,
+) -> CallArgument<'tcx> {
+    CallArgument {
+        value: codegen_operand(fx, operand),
+        is_owned: matches!(operand, Operand::Move(_)),
+    }
 }
 
 pub(crate) fn codegen_terminator_call<'tcx>(
@@ -361,10 +370,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     // Unpack arguments tuple for closures
     let mut args = if fn_sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = codegen_operand(fx, &args[0]);
-        let pack_arg = codegen_operand(fx, &args[1]);
+        let self_arg = codegen_call_argument_operand(fx, &args[0]);
+        let pack_arg = codegen_call_argument_operand(fx, &args[1]);
 
-        let tupled_arguments = match pack_arg.layout().ty.kind() {
+        let tupled_arguments = match pack_arg.value.layout().ty.kind() {
             ty::Tuple(ref tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
@@ -372,17 +381,20 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let mut args = Vec::with_capacity(1 + tupled_arguments.len());
         args.push(self_arg);
         for i in 0..tupled_arguments.len() {
-            args.push(pack_arg.value_field(fx, mir::Field::new(i)));
+            args.push(CallArgument {
+                value: pack_arg.value.value_field(fx, mir::Field::new(i)),
+                is_owned: pack_arg.is_owned,
+            });
         }
         args
     } else {
-        args.iter().map(|arg| codegen_operand(fx, arg)).collect::<Vec<_>>()
+        args.iter().map(|arg| codegen_call_argument_operand(fx, arg)).collect::<Vec<_>>()
     };
 
     // Pass the caller location for `#[track_caller]`.
     if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
         let caller_location = fx.get_caller_location(span);
-        args.push(caller_location);
+        args.push(CallArgument { value: caller_location, is_owned: false });
     }
 
     let args = args;
@@ -404,7 +416,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 );
             }
 
-            let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
+            let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0].value, idx);
             let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
@@ -441,7 +453,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 args.into_iter()
                     .enumerate()
                     .skip(if first_arg_override.is_some() { 1 } else { 0 })
-                    .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
+                    .map(|(i, arg)| {
+                        adjust_arg_for_abi(fx, arg.value, &fn_abi.args[i], arg.is_owned).into_iter()
+                    })
                     .flatten(),
             )
             .collect::<Vec<Value>>();
@@ -529,7 +543,7 @@ pub(crate) fn codegen_drop<'tcx>(
                         TypeAndMut { ty, mutbl: crate::rustc_hir::Mutability::Mut },
                     )),
                 );
-                let arg_value = adjust_arg_for_abi(fx, arg_value, &fn_abi.args[0]);
+                let arg_value = adjust_arg_for_abi(fx, arg_value, &fn_abi.args[0], true);
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
 
@@ -537,7 +551,7 @@ pub(crate) fn codegen_drop<'tcx>(
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(span);
                     call_args.extend(
-                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1]).into_iter(),
+                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1], false).into_iter(),
                     );
                 }
 
