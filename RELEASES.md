@@ -68,7 +68,7 @@ Stabilized APIs
 - [`VecDeque::partition_point`]
 
 Cargo
------------------------
+-----
 
 - [Added the `--prune <spec>` option to `cargo-tree` to remove a package from
   the dependency graph.][cargo/9520]
@@ -80,6 +80,20 @@ Cargo
   This variable points to a directory that integration tests and benches
   can use as a "scratchpad" for testing filesystem operations.
 
+Compatibility Notes
+-------------------
+- [Mixing Option and Result via `?` is no longer permitted in closures for inferred types.][86831]
+- [Previously unsound code is no longer permitted where different constructors in branches
+  could require different lifetimes.][85574]
+- As previously mentioned the [`std::arch` instrinsics now uses stricter const checking][83278]
+  than before and may reject some previously accepted code.
+- [`i128` multiplication on Cortex M0+ platforms currently unconditionally causes overflow
+   when compiled with `codegen-units = 1`.][86063]
+
+[85574]: https://github.com/rust-lang/rust/issues/85574
+[86831]: https://github.com/rust-lang/rust/issues/86831
+[86063]: https://github.com/rust-lang/rust/issues/86063
+[86831]: https://github.com/rust-lang/rust/issues/86831
 [79608]: https://github.com/rust-lang/rust/pull/79608
 [84988]: https://github.com/rust-lang/rust/pull/84988
 [84701]: https://github.com/rust-lang/rust/pull/84701
