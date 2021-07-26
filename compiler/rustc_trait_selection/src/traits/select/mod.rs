@@ -562,6 +562,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::PredicateKind::TypeEquate(lhs, rhs) => {
+                    match self.infcx.can_eq(obligation.param_env, lhs, rhs) {
+                        Ok(()) => Ok(EvaluatedToOk),
+                        Err(_) => Ok(EvaluatedToErr),
+                    }
+                }
+
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 

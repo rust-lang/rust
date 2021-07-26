@@ -492,6 +492,9 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
+
+    /// `where T = U`
+    TypeEquate(Ty<'tcx>, Ty<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -800,6 +803,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::TypeEquate(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
@@ -817,6 +821,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::TypeEquate(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }

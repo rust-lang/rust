@@ -1,0 +1,11 @@
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/feature-gate-type_equality_constraints.rs:9:22
+   |
+LL | impl<T> Baz<T> where T = i32 {
+   |                      ^^^^^^^ not supported
+   |
+   = help: add `#![feature(type_equality_constraints)]` to the crate attributes to enable
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+
+error: aborting due to previous error
+

@@ -302,6 +302,11 @@ fn predicate_references_self(
             // possible alternatives.
             if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
+        ty::PredicateKind::TypeEquate(lhs, rhs) => {
+            let has_self = lhs.walk().any(|arg| arg == self_ty.into())
+                || rhs.walk().any(|arg| arg == self_ty.into());
+            if has_self { Some(sp) } else { None }
+        }
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::TypeOutlives(..)
@@ -343,6 +348,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::TypeOutlives(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::TypeEquate(..)
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
     })

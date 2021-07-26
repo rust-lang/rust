@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/where-eq-assoc.rs:18:5
+   |
+LL | pub fn foo3<T:Iterator>(mut t: T) -> u32
+   |                                      --- expected `u32` because of return type
+...
+LL |     t.next().unwrap()
+   |     ^^^^^^^^^^^^^^^^^ expected `u32`, found associated type
+   |
+   = note:         expected type `u32`
+           found associated type `<T as Iterator>::Item`
+help: consider constraining the associated type `<T as Iterator>::Item` to `u32`
+   |
+LL | pub fn foo3<T:Iterator<Item = u32>>(mut t: T) -> u32
+   |                       ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq-assoc.rs:25:5
+   |
+LL | pub fn foo4<T:Iterator>(mut t: T) -> u32
+   |                                      --- expected `u32` because of return type
+...
+LL |     t.next().unwrap()
+   |     ^^^^^^^^^^^^^^^^^ expected `u32`, found associated type
+   |
+   = note:         expected type `u32`
+           found associated type `<T as Iterator>::Item`
+help: consider constraining the associated type `<T as Iterator>::Item` to `u32`
+   |
+LL | pub fn foo4<T:Iterator<Item = u32>>(mut t: T) -> u32
+   |                       ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

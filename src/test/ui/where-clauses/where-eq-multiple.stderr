@@ -1,0 +1,57 @@
+error[E0308]: mismatched types
+  --> $DIR/where-eq-multiple.rs:9:3
+   |
+LL |   foo8::<i32>();
+   |   ^^^^^^^^^^^ expected `i32`, found `i64`
+   |
+   = note: expected type `i64`
+              found type `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq-multiple.rs:9:3
+   |
+LL |   foo8::<i32>();
+   |   ^^^^^^^^^^^ expected `i32`, found `usize`
+   |
+   = note: expected type `usize`
+              found type `i32`
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq-multiple.rs:12:3
+   |
+LL |   foo8::<i64>();
+   |   ^^^^^^^^^^^ expected `i64`, found `i32`
+   |
+   = note: expected type `i32`
+              found type `i64`
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq-multiple.rs:12:3
+   |
+LL |   foo8::<i64>();
+   |   ^^^^^^^^^^^ expected `i64`, found `usize`
+   |
+   = note: expected type `usize`
+              found type `i64`
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq-multiple.rs:15:3
+   |
+LL |   foo8::<usize>();
+   |   ^^^^^^^^^^^^^ expected `usize`, found `i32`
+   |
+   = note: expected type `i32`
+              found type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq-multiple.rs:15:3
+   |
+LL |   foo8::<usize>();
+   |   ^^^^^^^^^^^^^ expected `usize`, found `i64`
+   |
+   = note: expected type `i64`
+              found type `usize`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

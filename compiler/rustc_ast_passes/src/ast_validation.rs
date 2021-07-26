@@ -1322,9 +1322,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             generics.span,
         );
 
-        for predicate in &generics.where_clause.predicates {
-            if let WherePredicate::EqPredicate(ref predicate) = *predicate {
-                deny_equality_constraints(self, predicate, generics);
+        if !self.session.features_untracked().type_equality_constraints {
+            for predicate in &generics.where_clause.predicates {
+                if let WherePredicate::EqPredicate(ref predicate) = *predicate {
+                    deny_equality_constraints(self, predicate, generics);
+                }
             }
         }
         walk_list!(self, visit_generic_param, &generics.params);
@@ -1546,6 +1548,9 @@ fn deny_equality_constraints(
         predicate.span,
         "equality constraints are not yet supported in `where` clauses",
     );
+    if this.session.is_nightly_build() {
+        err.help("add `#![feature(type_equality_constraints)]` to the crate attributes to enable");
+    }
     err.span_label(predicate.span, "not supported");
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.

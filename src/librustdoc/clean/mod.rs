@@ -327,6 +327,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
             ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
+            ty::PredicateKind::TypeEquate(..) => todo!(),
             ty::PredicateKind::ConstEvaluatable(..) => None,
 
             ty::PredicateKind::Subtype(..)

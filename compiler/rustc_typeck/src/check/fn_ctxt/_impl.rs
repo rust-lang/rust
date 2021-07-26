@@ -838,6 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::PredicateKind::WellFormed(..) => None,
                     ty::PredicateKind::ObjectSafe(..) => None,
                     ty::PredicateKind::ConstEvaluatable(..) => None,
+                    ty::PredicateKind::TypeEquate(..) => None,
                     ty::PredicateKind::ConstEquate(..) => None,
                     // N.B., this predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where

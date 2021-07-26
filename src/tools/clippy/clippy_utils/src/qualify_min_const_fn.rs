@@ -32,6 +32,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
                 | ty::PredicateKind::Projection(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::TypeEquate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),

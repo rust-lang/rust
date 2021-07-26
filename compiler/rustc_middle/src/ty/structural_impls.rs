@@ -198,6 +198,9 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
+            ty::PredicateKind::TypeEquate(lhs, rhs) => {
+                write!(f, "TypeEquate({:?}, {:?})", lhs, rhs)
+            }
         }
     }
 }
@@ -449,6 +452,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             }
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 tcx.lift(ty).map(ty::PredicateKind::TypeWellFormedFromEnv)
+            }
+            ty::PredicateKind::TypeEquate(lhs, rhs) => {
+                tcx.lift((lhs, rhs)).map(|(lhs, rhs)| ty::PredicateKind::TypeEquate(lhs, rhs))
             }
         }
     }

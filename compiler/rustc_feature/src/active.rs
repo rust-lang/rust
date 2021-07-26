@@ -680,6 +680,9 @@ declare_features! (
     /// Allows `#[derive(Default)]` and `#[default]` on enums.
     (active, derive_default_enum, "1.56.0", Some(86985), None),
 
+    /// Allows `where T = U` in where predicates.
+    (active, type_equality_constraints, "1.56.0", Some(87533), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

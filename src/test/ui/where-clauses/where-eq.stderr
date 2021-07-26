@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/where-eq.rs:14:3
+   |
+LL |   baz::<NotBar>();
+   |   ^^^^^^^^^^^^^ expected struct `NotBar`, found struct `Bar`
+   |
+   = note: expected struct `Bar`
+              found struct `NotBar`
+
+error[E0308]: mismatched types
+  --> $DIR/where-eq.rs:17:3
+   |
+LL |   baz2::<Bar>();
+   |   ^^^^^^^^^^^ expected struct `Bar`, found `i32`
+   |
+   = note: expected type `i32`
+            found struct `Bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

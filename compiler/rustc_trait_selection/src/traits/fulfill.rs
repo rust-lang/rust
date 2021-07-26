@@ -377,6 +377,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::TypeEquate(..)
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred = infcx.replace_bound_vars_with_placeholders(binder);
                     ProcessResult::Changed(mk_pending(vec![
@@ -488,6 +489,16 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                 err,
                             ))
                         }
+                    }
+                }
+
+                ty::PredicateKind::TypeEquate(lhs, rhs) => {
+                    match self.selcx.infcx().can_eq(obligation.param_env, lhs, rhs) {
+                        Ok(()) => ProcessResult::Changed(vec![]),
+                        Err(e) => ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
+                            ExpectedFound::new(false, lhs, rhs),
+                            e,
+                        )),
                     }
                 }
 

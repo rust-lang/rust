@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
             }))
         // FIXME: Decide what should be used here, `=` or `==`.
         // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
-        } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
+        } else if self.eat(&token::Eq) {
             let rhs_ty = self.parse_ty()?;
             Ok(ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                 span: lo.to(self.prev_token.span),
@@ -293,7 +293,15 @@ impl<'a> Parser<'a> {
                 id: ast::DUMMY_NODE_ID,
             }))
         } else {
-            self.unexpected()
+            if self.token == token::EqEq {
+                let err = self.struct_span_err(
+                    lo.to(self.prev_token.span),
+                    "type equality predicates are `=` not `==`",
+                );
+                Err(err)
+            } else {
+                self.unexpected()
+            }
         }
     }
 

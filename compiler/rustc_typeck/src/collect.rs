@@ -2294,8 +2294,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }))
             }
 
-            hir::WherePredicate::EqPredicate(..) => {
-                // FIXME(#20041)
+            hir::WherePredicate::EqPredicate(where_eq_pred) => {
+                let hir::WhereEqPredicate { hir_id: _, span, lhs_ty, rhs_ty } = where_eq_pred;
+                let lhs = icx.to_ty(&lhs_ty);
+                let rhs = icx.to_ty(&rhs_ty);
+                // FIXME(type_equality_constraints): prevent 2 ty::Params here which currently
+                // doesn't constrain types at all? It's still useful when programming though.
+                predicates
+                    .insert((ty::PredicateKind::TypeEquate(lhs, rhs).to_predicate(icx.tcx), *span));
             }
         }
     }

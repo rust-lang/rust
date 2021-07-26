@@ -295,9 +295,9 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
                 }
                 clean::WherePredicate::EqPredicate { lhs, rhs } => {
                     if f.alternate() {
-                        clause.push_str(&format!("{:#} == {:#}", lhs.print(cx), rhs.print(cx),));
+                        clause.push_str(&format!("{:#} = {:#}", lhs.print(cx), rhs.print(cx),));
                     } else {
-                        clause.push_str(&format!("{} == {}", lhs.print(cx), rhs.print(cx),));
+                        clause.push_str(&format!("{} = {}", lhs.print(cx), rhs.print(cx),));
                     }
                 }
             }

@@ -132,6 +132,10 @@ where
             ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
                 ty.visit_with(self)
             }
+            ty::PredicateKind::TypeEquate(lhs, rhs) => {
+                lhs.visit_with(self)?;
+                rhs.visit_with(self)
+            }
             ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
             ty::PredicateKind::ConstEvaluatable(defs, substs)
                 if self.def_id_visitor.tcx().features().const_evaluatable_checked =>

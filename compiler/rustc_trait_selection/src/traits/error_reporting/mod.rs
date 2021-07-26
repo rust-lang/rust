@@ -698,6 +698,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         )
                     }
 
+                    ty::PredicateKind::TypeEquate(..) => {
+                        // Errors for `TypeEquate` predicates show up as
+                        // `SelectionError::FIXME(type_equality_constraints)`,
+                        // not `Unimplemented`.
+                        span_bug!(
+                            span,
+                            "type-equate requirement gave wrong error: `{:?}`",
+                            obligation
+                        )
+                    }
+
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => span_bug!(
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"

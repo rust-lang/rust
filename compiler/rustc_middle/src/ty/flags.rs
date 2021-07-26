@@ -252,6 +252,10 @@ impl FlagComputation {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 self.add_ty(ty);
             }
+            ty::PredicateKind::TypeEquate(lhs, rhs) => {
+                self.add_ty(lhs);
+                self.add_ty(rhs);
+            }
         }
     }
 

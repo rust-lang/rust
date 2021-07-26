@@ -1,0 +1,8 @@
+error: type equality predicates are `=` not `==`
+  --> $DIR/where-eq-double-eq.rs:1:23
+   |
+LL | pub fn foo<T>() where T == u32 {}
+   |                       ^
+
+error: aborting due to previous error
+
