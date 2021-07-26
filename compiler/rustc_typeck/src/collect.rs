@@ -364,7 +364,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn default_constness_for_trait_bounds(&self) -> hir::Constness {
-        self.node().constness()
+        self.node().constness_for_typeck()
     }
 
     fn get_type_parameter_bounds(
