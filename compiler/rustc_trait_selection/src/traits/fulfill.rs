@@ -3,6 +3,7 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
+use rustc_hir as hir;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -228,11 +229,36 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 
+    fn select_all_with_constness_or_error(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        constness: rustc_hir::Constness,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+        self.select_with_constness_where_possible(infcx, constness)?;
+
+        let errors: Vec<_> = self
+            .predicates
+            .to_errors(CodeAmbiguity)
+            .into_iter()
+            .map(to_fulfillment_error)
+            .collect();
+        if errors.is_empty() { Ok(()) } else { Err(errors) }
+    }
+
     fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         let mut selcx = SelectionContext::new(infcx);
+        self.select(&mut selcx)
+    }
+
+    fn select_with_constness_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        constness: hir::Constness,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+        let mut selcx = SelectionContext::with_constness(infcx, constness);
         self.select(&mut selcx)
     }
 
