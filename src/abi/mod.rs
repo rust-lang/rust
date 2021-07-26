@@ -10,7 +10,6 @@ use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
 use cranelift_codegen::ir::{AbiParam, SigRef};
-use smallvec::smallvec;
 
 use self::pass_mode::*;
 use crate::prelude::*;
@@ -385,7 +384,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         Indirect(SigRef, Value),
     }
 
-    let (func_ref, first_arg) = match instance {
+    let (func_ref, first_arg_override) = match instance {
         // Trait object call
         Some(Instance { def: InstanceDef::Virtual(_, idx), .. }) => {
             if fx.clif_comments.enabled() {
@@ -400,18 +399,13 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
-            (CallTarget::Indirect(sig, method), smallvec![ptr])
+            (CallTarget::Indirect(sig, method), Some(ptr))
         }
 
         // Normal call
         Some(instance) => {
             let func_ref = fx.get_function_ref(instance);
-            (
-                CallTarget::Direct(func_ref),
-                args.get(0)
-                    .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                    .unwrap_or(smallvec![]),
-            )
+            (CallTarget::Direct(func_ref), None)
         }
 
         // Indirect call
@@ -425,12 +419,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
-            (
-                CallTarget::Indirect(sig, func),
-                args.get(0)
-                    .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                    .unwrap_or(smallvec![]),
-            )
+            (CallTarget::Indirect(sig, func), None)
         }
     };
 
@@ -443,11 +432,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             let regular_args_count = args.len();
             let mut call_args: Vec<Value> = return_ptr
                 .into_iter()
-                .chain(first_arg.into_iter())
+                .chain(first_arg_override.into_iter())
                 .chain(
                     args.into_iter()
                         .enumerate()
-                        .skip(1)
+                        .skip(if first_arg_override.is_some() { 1 } else { 0 })
                         .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
                         .flatten(),
                 )
