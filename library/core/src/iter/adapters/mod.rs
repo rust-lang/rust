@@ -24,6 +24,7 @@ mod take;
 mod take_while;
 mod zip;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     chain::Chain, cycle::Cycle, enumerate::Enumerate, filter::Filter, filter_map::FilterMap,
     flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,

@@ -28,7 +28,7 @@ pub enum AccessLevel {
 }
 
 /// Holds a map of accessibility levels for reachable HIR nodes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AccessLevels<Id = LocalDefId> {
     pub map: FxHashMap<Id, AccessLevel>,
 }
