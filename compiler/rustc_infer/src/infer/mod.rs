@@ -4,6 +4,7 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 
+use self::opaque_types::OpaqueTypeDecl;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
@@ -12,6 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -25,6 +27,7 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 pub use rustc_middle::ty::IntVarValue;
+use rustc_middle::ty::OpaqueTypeKey;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_session::config::BorrowckMode;
@@ -59,6 +62,7 @@ pub mod lattice;
 mod lexical_region_resolve;
 mod lub;
 pub mod nll_relate;
+pub mod opaque_types;
 pub mod outlives;
 pub mod region_constraints;
 pub mod resolve;
@@ -191,6 +195,19 @@ pub struct InferCtxtInner<'tcx> {
     region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
 
     undo_log: InferCtxtUndoLogs<'tcx>,
+
+    // Opaque types found in explicit return types and their
+    // associated fresh inference variable. Writeback resolves these
+    // variables to get the concrete type, which can be used to
+    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
+    pub opaque_types: VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>,
+
+    /// A map from inference variables created from opaque
+    /// type instantiations (`ty::Infer`) to the actual opaque
+    /// type (`ty::Opaque`). Used during fallback to map unconstrained
+    /// opaque type inference variables to their corresponding
+    /// opaque type.
+    pub opaque_types_vars: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -204,6 +221,8 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
+            opaque_types: Default::default(),
+            opaque_types_vars: Default::default(),
         }
     }
 

@@ -1,18 +1,15 @@
 use super::callee::DeferredCallResolution;
 use super::MaybeInProgressTables;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefIdMap, LocalDefId};
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{self, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::opaque_types::OpaqueTypeDecl;
 use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
 
 use std::cell::RefCell;
@@ -54,19 +51,6 @@ pub struct Inherited<'a, 'tcx> {
 
     pub(super) deferred_generator_interiors:
         RefCell<Vec<(hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
-
-    // Opaque types found in explicit return types and their
-    // associated fresh inference variable. Writeback resolves these
-    // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
-    pub(super) opaque_types: RefCell<VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>>,
-
-    /// A map from inference variables created from opaque
-    /// type instantiations (`ty::Infer`) to the actual opaque
-    /// type (`ty::Opaque`). Used during fallback to map unconstrained
-    /// opaque type inference variables to their corresponding
-    /// opaque type.
-    pub(super) opaque_types_vars: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
     pub(super) body_id: Option<hir::BodyId>,
 }
@@ -124,8 +108,6 @@ impl Inherited<'a, 'tcx> {
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
-            opaque_types: RefCell::new(Default::default()),
-            opaque_types_vars: RefCell::new(Default::default()),
             body_id,
         }
     }

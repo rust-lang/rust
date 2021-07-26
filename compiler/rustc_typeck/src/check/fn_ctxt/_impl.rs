@@ -385,8 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 value_span,
             ));
 
-        let mut opaque_types = self.opaque_types.borrow_mut();
-        let mut opaque_types_vars = self.opaque_types_vars.borrow_mut();
+        let mut infcx = self.infcx.inner.borrow_mut();
 
         for (ty, decl) in opaque_type_map {
             if let Some(feature) = feature {
@@ -402,8 +401,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            let _ = opaque_types.insert(ty, decl);
-            let _ = opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
+            let _ = infcx.opaque_types.insert(ty, decl);
+            let _ = infcx.opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
         }
 
         value
@@ -726,7 +725,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We treat this as a non-defining use by making the inference
                 // variable fall back to the opaque type itself.
                 if let FallbackMode::All = mode {
-                    if let Some(opaque_ty) = self.opaque_types_vars.borrow().get(ty) {
+                    if let Some(opaque_ty) = self.infcx.inner.borrow().opaque_types_vars.get(ty) {
                         debug!(
                             "fallback_if_possible: falling back opaque type var {:?} to {:?}",
                             ty, opaque_ty
