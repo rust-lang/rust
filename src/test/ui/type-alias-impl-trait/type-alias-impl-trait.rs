@@ -3,9 +3,7 @@
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+#![feature(type_alias_impl_trait)]
 
 fn main() {
     assert_eq!(foo().to_string(), "foo");

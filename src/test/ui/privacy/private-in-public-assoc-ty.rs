@@ -2,9 +2,7 @@
 // This test also ensures that the checks are performed even inside private modules.
 
 #![feature(associated_type_defaults)]
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+#![feature(type_alias_impl_trait)]
 
 mod m {
     struct Priv;

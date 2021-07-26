@@ -1,7 +1,5 @@
 // aux-build:foreign-crate.rs
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+#![feature(type_alias_impl_trait)]
 
 extern crate foreign_crate;
 

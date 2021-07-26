@@ -3,9 +3,7 @@
 // Tests that we don't incorrectly consider a lifetime to part
 // of the concrete type
 
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+#![feature(type_alias_impl_trait)]
 
 trait Future {}
 
