@@ -17,11 +17,11 @@ use vfs::ChangeKind;
 use crate::{
     config::Config,
     dispatch::{NotificationDispatcher, RequestDispatcher},
-    document::DocumentData,
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_cancelled, notification_is, Progress},
+    mem_docs::DocumentData,
     reload::{BuildDataProgress, ProjectWorkspaceProgress},
     Result,
 };
@@ -305,7 +305,7 @@ impl GlobalState {
                             let vfs = &mut self.vfs.write().0;
                             for (path, contents) in files {
                                 let path = VfsPath::from(path);
-                                if !self.mem_docs.contains_key(&path) {
+                                if !self.mem_docs.contains(&path) {
                                     vfs.set_file_contents(path, contents);
                                 }
                             }
@@ -582,7 +582,7 @@ impl GlobalState {
                     if this
                         .mem_docs
                         .insert(path.clone(), DocumentData::new(params.text_document.version))
-                        .is_some()
+                        .is_err()
                     {
                         log::error!("duplicate DidOpenTextDocument: {}", path)
                     }
@@ -628,7 +628,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if this.mem_docs.remove(&path).is_none() {
+                    if this.mem_docs.remove(&path).is_err() {
                         log::error!("orphan DidCloseTextDocument: {}", path);
                     }
 
@@ -719,7 +719,7 @@ impl GlobalState {
     fn maybe_update_diagnostics(&mut self) {
         let subscriptions = self
             .mem_docs
-            .keys()
+            .iter()
             .map(|path| self.vfs.read().0.file_id(path).unwrap())
             .collect::<Vec<_>>();
 
