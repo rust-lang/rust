@@ -3260,8 +3260,13 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    /// Returns `Constness::Const` when this node is a const fn/impl/item.
-    pub fn constness(&self) -> Constness {
+    /// Returns `Constness::Const` when this node is a const fn/impl/item,
+    ///
+    /// HACK(fee1-dead): or an associated type in a trait. This works because
+    /// only typeck cares about const trait predicates, so although the predicates
+    /// query would return const predicates when it does not need to be const,
+    /// it wouldn't have any effect.
+    pub fn constness_for_typeck(&self) -> Constness {
         match self {
             Node::Item(Item {
                 kind: ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
@@ -3279,6 +3284,7 @@ impl<'hir> Node<'hir> {
 
             Node::Item(Item { kind: ItemKind::Const(..), .. })
             | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
+            | Node::TraitItem(TraitItem { kind: TraitItemKind::Type(..), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => Constness::Const,
 
             _ => Constness::NotConst,

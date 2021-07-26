@@ -114,7 +114,7 @@ impl Inherited<'a, 'tcx> {
     pub(super) fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        Self::with_constness(infcx, def_id, tcx.hir().get(item_id).constness())
+        Self::with_constness(infcx, def_id, tcx.hir().get(item_id).constness_for_typeck())
     }
 
     pub(super) fn with_constness(

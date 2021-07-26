@@ -174,7 +174,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn default_constness_for_trait_bounds(&self) -> hir::Constness {
-        self.tcx.hir().get(self.body_id).constness()
+        self.tcx.hir().get(self.body_id).constness_for_typeck()
     }
 
     fn get_type_parameter_bounds(
