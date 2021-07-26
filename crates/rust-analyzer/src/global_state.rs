@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, VfsPath};
+use ide_db::base_db::CrateId;
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use project_model::{
@@ -20,11 +20,11 @@ use vfs::AnchoredPathBuf;
 use crate::{
     config::Config,
     diagnostics::{CheckFixes, DiagnosticCollection},
-    document::DocumentData,
     from_proto,
     line_index::{LineEndings, LineIndex},
     lsp_ext,
     main_loop::Task,
+    mem_docs::MemDocs,
     op_queue::OpQueue,
     reload::SourceRootConfig,
     request_metrics::{LatestRequests, RequestMetrics},
@@ -57,7 +57,7 @@ pub(crate) struct GlobalState {
     pub(crate) config: Arc<Config>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
+    pub(crate) mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) shutdown_requested: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
@@ -115,7 +115,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
-    mem_docs: FxHashMap<VfsPath, DocumentData>,
+    mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -147,7 +147,7 @@ impl GlobalState {
             config: Arc::new(config.clone()),
             analysis_host,
             diagnostics: Default::default(),
-            mem_docs: FxHashMap::default(),
+            mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
             last_reported_status: None,

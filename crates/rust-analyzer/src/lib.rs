@@ -33,7 +33,7 @@ mod line_index;
 mod request_metrics;
 mod lsp_utils;
 mod thread_pool;
-mod document;
+mod mem_docs;
 mod diff;
 mod op_queue;
 pub mod lsp_ext;
