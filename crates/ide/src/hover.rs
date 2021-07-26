@@ -673,6 +673,21 @@ mod tests {
         expect.assert_eq(hover.info.markup.as_str())
     }
 
+    fn check_hover_range_no_results(ra_fixture: &str) {
+        let (analysis, range) = fixture::range(ra_fixture);
+        let hover = analysis
+            .hover_range(
+                &HoverConfig {
+                    links_in_hover: false,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+                range,
+            )
+            .unwrap();
+        println!("AAA {:#?}", hover);
+        assert!(hover.is_none());
+    }
+
     #[test]
     fn hover_shows_type_of_an_expression() {
         check(
@@ -3937,7 +3952,7 @@ struct Foo;
     fn hover_range_math() {
         check_hover_range(
             r#"
-fn f() { let expr = $01 + 2 * 3$0 } 
+fn f() { let expr = $01 + 2 * 3$0 }
             "#,
             expect![[r#"
             ```rust
@@ -3947,7 +3962,7 @@ fn f() { let expr = $01 + 2 * 3$0 }
 
         check_hover_range(
             r#"
-fn f() { let expr = 1 $0+ 2 * $03 } 
+fn f() { let expr = 1 $0+ 2 * $03 }
             "#,
             expect![[r#"
             ```rust
@@ -3957,7 +3972,7 @@ fn f() { let expr = 1 $0+ 2 * $03 }
 
         check_hover_range(
             r#"
-fn f() { let expr = 1 + $02 * 3$0 } 
+fn f() { let expr = 1 + $02 * 3$0 }
             "#,
             expect![[r#"
             ```rust
@@ -3970,7 +3985,7 @@ fn f() { let expr = 1 + $02 * 3$0 }
     fn hover_range_arrays() {
         check_hover_range(
             r#"
-fn f() { let expr = $0[1, 2, 3, 4]$0 } 
+fn f() { let expr = $0[1, 2, 3, 4]$0 }
             "#,
             expect![[r#"
             ```rust
@@ -3980,7 +3995,7 @@ fn f() { let expr = $0[1, 2, 3, 4]$0 }
 
         check_hover_range(
             r#"
-fn f() { let expr = [1, 2, $03, 4]$0 } 
+fn f() { let expr = [1, 2, $03, 4]$0 }
             "#,
             expect![[r#"
             ```rust
@@ -3990,7 +4005,7 @@ fn f() { let expr = [1, 2, $03, 4]$0 }
 
         check_hover_range(
             r#"
-fn f() { let expr = [1, 2, $03$0, 4] } 
+fn f() { let expr = [1, 2, $03$0, 4] }
             "#,
             expect![[r#"
             ```rust
@@ -4020,6 +4035,53 @@ fn b() { f($0&[1, 2, 3, 4, 5]$0); }
             expect![[r#"
             ```rust
             &[i32; 5]
+            ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_nothing_when_invalid() {
+        check_hover_range_no_results(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b()$0 { f(&[1, 2, 3, 4, 5]); }$0
+            "#,
+        );
+
+        check_hover_range_no_results(
+            r#"
+fn f<T>$0(a: &[T]) { }
+fn b() { f(&[1, 2, 3,$0 4, 5]); }
+            "#,
+        );
+
+        check_hover_range_no_results(
+            r#"
+fn $0f() { let expr = [1, 2, 3, 4]$0 }
+            "#,
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_unit_for_statements() {
+        check_hover_range(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b() { $0f(&[1, 2, 3, 4, 5]); }$0
+            "#,
+            expect![[r#"
+            ```rust
+            ()
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr$0 = $0[1, 2, 3, 4] }
+            "#,
+            expect![[r#"
+            ```rust
+            ()
             ```"#]],
         );
     }
