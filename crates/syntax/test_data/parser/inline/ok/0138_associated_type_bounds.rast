@@ -1,24 +1,24 @@
-SOURCE_FILE@0..94
-  FN@0..93
+SOURCE_FILE@0..108
+  FN@0..107
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..12
       IDENT@3..12 "print_all"
-    GENERIC_PARAM_LIST@12..75
+    GENERIC_PARAM_LIST@12..89
       L_ANGLE@12..13 "<"
-      TYPE_PARAM@13..74
+      TYPE_PARAM@13..88
         NAME@13..14
           IDENT@13..14 "T"
         COLON@14..15 ":"
         WHITESPACE@15..16 " "
-        TYPE_BOUND_LIST@16..74
-          TYPE_BOUND@16..74
-            PATH_TYPE@16..74
-              PATH@16..74
-                PATH_SEGMENT@16..74
+        TYPE_BOUND_LIST@16..88
+          TYPE_BOUND@16..88
+            PATH_TYPE@16..88
+              PATH@16..88
+                PATH_SEGMENT@16..88
                   NAME_REF@16..24
                     IDENT@16..24 "Iterator"
-                  GENERIC_ARG_LIST@24..74
+                  GENERIC_ARG_LIST@24..88
                     L_ANGLE@24..25 "<"
                     TYPE_ARG@25..29
                       PATH_TYPE@25..29
@@ -41,55 +41,70 @@ SOURCE_FILE@0..94
                               IDENT@37..41 "Item"
                     COMMA@41..42 ","
                     WHITESPACE@42..43 " "
-                    ASSOC_TYPE_ARG@43..56
-                      NAME_REF@43..47
-                        IDENT@43..47 "Item"
-                      COLON@47..48 ":"
-                      WHITESPACE@48..49 " "
-                      TYPE_BOUND_LIST@49..56
-                        TYPE_BOUND@49..56
-                          PATH_TYPE@49..56
-                            PATH@49..56
-                              PATH_SEGMENT@49..56
-                                NAME_REF@49..56
-                                  IDENT@49..56 "Display"
-                    COMMA@56..57 ","
-                    WHITESPACE@57..58 " "
-                    ASSOC_TYPE_ARG@58..73
-                      NAME_REF@58..62
-                        IDENT@58..62 "Item"
-                      GENERIC_ARG_LIST@62..66
-                        L_ANGLE@62..63 "<"
-                        LIFETIME_ARG@63..65
-                          LIFETIME@63..65
-                            LIFETIME_IDENT@63..65 "'a"
-                        R_ANGLE@65..66 ">"
-                      WHITESPACE@66..67 " "
-                      EQ@67..68 "="
-                      WHITESPACE@68..69 " "
-                      PATH_TYPE@69..73
-                        PATH@69..73
-                          PATH_SEGMENT@69..73
-                            NAME_REF@69..73
-                              IDENT@69..73 "Item"
-                    R_ANGLE@73..74 ">"
-      R_ANGLE@74..75 ">"
-    PARAM_LIST@75..90
-      L_PAREN@75..76 "("
-      PARAM@76..89
-        IDENT_PAT@76..86
-          NAME@76..86
-            IDENT@76..86 "printables"
-        COLON@86..87 ":"
-        WHITESPACE@87..88 " "
-        PATH_TYPE@88..89
-          PATH@88..89
-            PATH_SEGMENT@88..89
-              NAME_REF@88..89
-                IDENT@88..89 "T"
-      R_PAREN@89..90 ")"
-    WHITESPACE@90..91 " "
-    BLOCK_EXPR@91..93
-      L_CURLY@91..92 "{"
-      R_CURLY@92..93 "}"
-  WHITESPACE@93..94 "\n"
+                    TYPE_ARG@43..55
+                      PATH_TYPE@43..55
+                        PATH@43..55
+                          PATH_SEGMENT@43..55
+                            NAME_REF@43..47
+                              IDENT@43..47 "Item"
+                            GENERIC_ARG_LIST@47..55
+                              COLON2@47..49 "::"
+                              L_ANGLE@49..50 "<"
+                              CONST_ARG@50..54
+                                LITERAL@50..54
+                                  TRUE_KW@50..54 "true"
+                              R_ANGLE@54..55 ">"
+                    COMMA@55..56 ","
+                    WHITESPACE@56..57 " "
+                    ASSOC_TYPE_ARG@57..70
+                      NAME_REF@57..61
+                        IDENT@57..61 "Item"
+                      COLON@61..62 ":"
+                      WHITESPACE@62..63 " "
+                      TYPE_BOUND_LIST@63..70
+                        TYPE_BOUND@63..70
+                          PATH_TYPE@63..70
+                            PATH@63..70
+                              PATH_SEGMENT@63..70
+                                NAME_REF@63..70
+                                  IDENT@63..70 "Display"
+                    COMMA@70..71 ","
+                    WHITESPACE@71..72 " "
+                    ASSOC_TYPE_ARG@72..87
+                      NAME_REF@72..76
+                        IDENT@72..76 "Item"
+                      GENERIC_ARG_LIST@76..80
+                        L_ANGLE@76..77 "<"
+                        LIFETIME_ARG@77..79
+                          LIFETIME@77..79
+                            LIFETIME_IDENT@77..79 "'a"
+                        R_ANGLE@79..80 ">"
+                      WHITESPACE@80..81 " "
+                      EQ@81..82 "="
+                      WHITESPACE@82..83 " "
+                      PATH_TYPE@83..87
+                        PATH@83..87
+                          PATH_SEGMENT@83..87
+                            NAME_REF@83..87
+                              IDENT@83..87 "Item"
+                    R_ANGLE@87..88 ">"
+      R_ANGLE@88..89 ">"
+    PARAM_LIST@89..104
+      L_PAREN@89..90 "("
+      PARAM@90..103
+        IDENT_PAT@90..100
+          NAME@90..100
+            IDENT@90..100 "printables"
+        COLON@100..101 ":"
+        WHITESPACE@101..102 " "
+        PATH_TYPE@102..103
+          PATH@102..103
+            PATH_SEGMENT@102..103
+              NAME_REF@102..103
+                IDENT@102..103 "T"
+      R_PAREN@103..104 ")"
+    WHITESPACE@104..105 " "
+    BLOCK_EXPR@105..107
+      L_CURLY@105..106 "{"
+      R_CURLY@106..107 "}"
+  WHITESPACE@107..108 "\n"
