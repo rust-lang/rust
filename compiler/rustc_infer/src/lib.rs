@@ -22,6 +22,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]
+#![feature(label_break_value)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

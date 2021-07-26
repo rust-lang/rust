@@ -37,11 +37,10 @@ LL |     for<'a> T: 'a,
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/issue-86483.rs:9:32
    |
-LL | pub trait IceIce<T>
-   |                  - help: consider adding an explicit lifetime bound...: `T: 'v`
-...
 LL |     type Ice<'v>: IntoIterator<Item = &'v T>;
-   |                                ^^^^^^^^^^^^ ...so that the reference type `&'v T` does not outlive the data it points at
+   |                                ^^^^^^^^^^^^ - help: consider adding a where clause: `where T: 'v`
+   |                                |
+   |                                ...so that the reference type `&'v T` does not outlive the data it points at
 
 error: aborting due to 3 previous errors
 

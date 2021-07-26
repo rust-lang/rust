@@ -1,0 +1,11 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-84931.rs:15:21
+   |
+LL |     type Item<'a> = &'a mut T;
+   |                  -  ^^^^^^^^^ ...so that the reference type `&'a mut T` does not outlive the data it points at
+   |                  |
+   |                  help: consider adding a where clause: `where T: 'a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.
