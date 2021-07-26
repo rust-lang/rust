@@ -399,21 +399,31 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 fake_reads: _,
             } => {
                 let closure_id = closure_id.expect_local();
-                let closure_def = if let Some((did, const_param_id)) =
-                    ty::WithOptConstParam::try_lookup(closure_id, self.tcx)
-                {
-                    ty::WithOptConstParam { did, const_param_did: Some(const_param_id) }
-                } else {
-                    ty::WithOptConstParam::unknown(closure_id)
-                };
-                let (closure_thir, expr) = self.tcx.thir_body(closure_def);
-                let closure_thir = &closure_thir.borrow();
-                let hir_context = self.tcx.hir().local_def_id_to_hir_id(closure_id);
-                let mut closure_visitor =
-                    UnsafetyVisitor { thir: closure_thir, hir_context, ..*self };
-                closure_visitor.visit_expr(&closure_thir[expr]);
-                // Unsafe blocks can be used in closures, make sure to take it into account
-                self.safety_context = closure_visitor.safety_context;
+                let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_id);
+
+                // Closures in AnonConsts are handled separately to avoid cycles (issue #87414).
+                if !matches!(
+                    self.tcx.hir().get(self.tcx.hir().enclosing_body_owner(closure_hir_id)),
+                    hir::Node::AnonConst(_)
+                ) {
+                    let closure_def = if let Some((did, const_param_id)) =
+                        ty::WithOptConstParam::try_lookup(closure_id, self.tcx)
+                    {
+                        ty::WithOptConstParam { did, const_param_did: Some(const_param_id) }
+                    } else {
+                        ty::WithOptConstParam::unknown(closure_id)
+                    };
+                    let (closure_thir, expr) = self.tcx.thir_body(closure_def);
+                    let closure_thir = &closure_thir.borrow();
+                    let mut closure_visitor = UnsafetyVisitor {
+                        thir: closure_thir,
+                        hir_context: closure_hir_id,
+                        ..*self
+                    };
+                    closure_visitor.visit_expr(&closure_thir[expr]);
+                    // Unsafe blocks can be used in closures, make sure to take it into account
+                    self.safety_context = closure_visitor.safety_context;
+                }
             }
             ExprKind::Field { lhs, .. } => {
                 let lhs = &self.thir[lhs];
@@ -597,11 +607,19 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    // Closures are handled by their owner, if it has a body
-    if tcx.is_closure(def.did.to_def_id()) {
-        let owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
-        let owner_hir_id = tcx.hir().local_def_id_to_hir_id(owner);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
+    // Closures are handled by their owner, if it has a body, except if the
+    // closure occurs in an AnonConst body to avoid a cycle (issue #87414)
+    if tcx.is_closure(def.did.to_def_id()) {
+        let encl_body_owner = tcx.hir().enclosing_body_owner(hir_id);
+        if matches!(tcx.hir().get(encl_body_owner), hir::Node::AnonConst(_)) {
+            tcx.ensure().thir_check_unsafety(tcx.hir().local_def_id(encl_body_owner));
+            return;
+        }
+
+        let owner = hir_id.owner;
+        let owner_hir_id = tcx.hir().local_def_id_to_hir_id(owner);
         if tcx.hir().maybe_body_owned_by(owner_hir_id).is_some() {
             tcx.ensure().thir_check_unsafety(owner);
             return;
@@ -615,7 +633,6 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
             BodyUnsafety::Unsafe(fn_sig.span)
