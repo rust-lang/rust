@@ -1,5 +1,5 @@
 error[E0277]: cannot add `NonConstAdd` to `NonConstAdd`
-  --> $DIR/assoc-type.rs:19:5
+  --> $DIR/assoc-type.rs:21:5
    |
 LL |     type Bar: std::ops::Add;
    |               ------------- required by this bound in `Foo::Bar`
