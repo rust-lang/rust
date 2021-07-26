@@ -21,7 +21,7 @@ export const reloadWorkspace = new lc.RequestType0<null, void>("rust-analyzer/re
 
 export const hover = new lc.RequestType<HoverParams, lc.Hover | null, void>("textDocument/hover");
 
-export interface HoverParams extends lc.WorkDoneProgressParams{
+export interface HoverParams extends lc.WorkDoneProgressParams {
     textDocument: lc.TextDocumentIdentifier;
     position: lc.Range | lc.Position;
 }
