@@ -36,7 +36,10 @@ use crate::{
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
-    lsp_ext::{self, InlayHint, InlayHintsParams, ViewCrateGraphParams, WorkspaceSymbolParams},
+    lsp_ext::{
+        self, InlayHint, InlayHintsParams, PositionOrRange, ViewCrateGraphParams,
+        WorkspaceSymbolParams,
+    },
     lsp_utils::all_edits_are_disjoint,
     to_proto, LspError, Result,
 };
@@ -867,42 +870,30 @@ pub(crate) fn handle_signature_help(
 
 pub(crate) fn handle_hover(
     snap: GlobalStateSnapshot,
-    params: lsp_types::HoverParams,
+    params: lsp_ext::HoverParams,
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
-    let position = from_proto::file_position(&snap, params.text_document_position_params)?;
-    let info = match snap.analysis.hover(&snap.config.hover(), position)? {
-        None => return Ok(None),
-        Some(info) => info,
-    };
-
-    let line_index = snap.file_line_index(position.file_id)?;
-    let range = to_proto::range(&line_index, info.range);
-    let hover = lsp_ext::Hover {
-        hover: lsp_types::Hover {
-            contents: HoverContents::Markup(to_proto::markup_content(info.info.markup)),
-            range: Some(range),
-        },
-        actions: prepare_hover_actions(&snap, &info.info.actions),
-    };
-
-    Ok(Some(hover))
-}
-
-pub(crate) fn handle_hover_range(
-    snap: GlobalStateSnapshot,
-    params: lsp_ext::HoverRangeParams,
-) -> Result<Option<lsp_ext::Hover>> {
-    let _p = profile::span("handle_hover_range");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let range = from_proto::file_range(&snap, params.text_document, params.range)?;
+    let hover_result = match params.position {
+        PositionOrRange::Position(position) => {
+            let position = from_proto::file_position(
+                &snap,
+                lsp_types::TextDocumentPositionParams::new(params.text_document, position),
+            )?;
+            snap.analysis.hover(&snap.config.hover(), position)?
+        }
+        PositionOrRange::Range(range) => {
+            let range = from_proto::file_range(&snap, params.text_document, range)?;
+            snap.analysis.hover_range(&snap.config.hover(), range)?
+        }
+    };
 
-    let info = match snap.analysis.hover_range(&snap.config.hover(), range)? {
+    let info = match hover_result {
         None => return Ok(None),
         Some(info) => info,
     };
 
-    let line_index = snap.file_line_index(range.file_id)?;
+    let line_index = snap.file_line_index(file_id)?;
     let range = to_proto::range(&line_index, info.range);
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {

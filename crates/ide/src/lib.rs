@@ -423,7 +423,7 @@ impl Analysis {
         self.with_db(|db| hover::hover(db, position, config))
     }
 
-    /// Returns a short text displaying the type for the expression.
+    /// Returns a short text displaying the type of the expression.
     pub fn hover_range(
         &self,
         config: &HoverConfig,

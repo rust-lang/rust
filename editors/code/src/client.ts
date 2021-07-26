@@ -57,45 +57,11 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
         middleware: {
             async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
                 const editor = vscode.window.activeTextEditor;
-                const selection = editor?.selection;
-                return selection?.contains(position)
-                  ? client
-                      .sendRequest(
-                        ra.hoverRange,
-                        {
-                          textDocument:
-                            client.code2ProtocolConverter.asTextDocumentIdentifier(
-                              document
-                            ),
-                          range: client.code2ProtocolConverter.asRange(
-                            editor?.selection
-                          ),
-                        },
-                        token
-                      )
-                      .then(
-                        (result) =>
-                          client.protocol2CodeConverter.asHover(result),
-                        (error) => {
-                          client.handleFailedRequest(
-                            lc.HoverRequest.type,
-                            undefined,
-                            error,
-                            null
-                          );
-                          return Promise.resolve(null);
-                        }
-                      )
-                  : client
-                      .sendRequest(
-                        lc.HoverRequest.type,
-                        client.code2ProtocolConverter.asTextDocumentPositionParams(
-                          document,
-                          position
-                        ),
-                        token
-                      )
-                      .then(
+                const positionOrRange = editor?.selection?.contains(position) ? client.code2ProtocolConverter.asRange(editor.selection) : client.code2ProtocolConverter.asPosition(position);
+                return client.sendRequest(ra.hover, {
+                    textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
+                    position: positionOrRange
+                }, token).then(
                         (result) => {
                           const hover =
                             client.protocol2CodeConverter.asHover(result);

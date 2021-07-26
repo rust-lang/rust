@@ -542,7 +542,6 @@ impl GlobalState {
             .on::<lsp_ext::CodeActionRequest>(handlers::handle_code_action)
             .on::<lsp_ext::CodeActionResolveRequest>(handlers::handle_code_action_resolve)
             .on::<lsp_ext::HoverRequest>(handlers::handle_hover)
-            .on::<lsp_ext::HoverRangeRequest>(handlers::handle_hover_range)
             .on::<lsp_ext::ExternalDocs>(handlers::handle_open_docs)
             .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
