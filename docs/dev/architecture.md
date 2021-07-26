@@ -461,9 +461,9 @@ Mind the code--architecture gap: at the moment, we are using fewer feature flags
 In Rust, it is easy (often too easy) to add serialization to any type by adding `#[derive(Serialize)]`.
 This easiness is misleading -- serializable types impose significant backwards compatability constraints.
 If a type is serializable, then it is a part of some IPC boundary.
-You often don't control the other side of this boundary, so changing serializable types are hard.
+You often don't control the other side of this boundary, so changing serializable types is hard.
 
-For this reason, the types in `ide`, `base_db` and bellow are not serializable by design.
+For this reason, the types in `ide`, `base_db` and below are not serializable by design.
 If such types need to cross an IPC boundary, then the client of rust-analyzer needs to provide custom, client-specific serialization format.
 This isolates backwards compatibility and migration concerns to a specific client.
 
