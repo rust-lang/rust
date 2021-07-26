@@ -1760,12 +1760,11 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
 }
-
-/// Truncate projections so that following rules are obeyed by the captured `place`:
+/// Truncate `place` so that an `unsafe` block isn't required to capture it.
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
-/// - No Index projections are captured, since arrays are captured completely.
-fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
+/// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
+fn restrict_precision_for_unsafe(mut place: Place<'tcx>) -> Place<'tcx> {
     if place.projections.is_empty() {
         // Nothing to do here
         return place;
@@ -1776,18 +1775,45 @@ fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
         return place;
     }
 
-    let mut truncated_length = usize::MAX;
+    if place.base_ty.is_union() {
+        place.projections.truncate(0);
+        return place;
+    }
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.is_unsafe_ptr() {
-            // Don't apply any projections on top of an unsafe ptr
-            truncated_length = truncated_length.min(i + 1);
+            // Don't apply any projections on top of an unsafe ptr.
+            place.projections.truncate(i + 1);
             break;
         }
+
+        if proj.ty.is_union() {
+            // Don't capture preicse fields of a union.
+            place.projections.truncate(i + 1);
+            break;
+        }
+    }
+
+    place
+}
+
+/// Truncate projections so that following rules are obeyed by the captured `place`:
+/// - No Index projections are captured, since arrays are captured completely.
+/// - No unsafe block is required to capture `place`
+/// Truncate projections so that following rules are obeyed by the captured `place`:
+fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
+    place = restrict_precision_for_unsafe(place);
+
+    if place.projections.is_empty() {
+        // Nothing to do here
+        return place;
+    }
+
+    for (i, proj) in place.projections.iter().enumerate() {
         match proj.kind {
             ProjectionKind::Index => {
                 // Arrays are completely captured, so we drop Index projections
-                truncated_length = truncated_length.min(i);
+                place.projections.truncate(i);
                 break;
             }
             ProjectionKind::Deref => {}
@@ -1795,10 +1821,6 @@ fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
             ProjectionKind::Subslice => {}  // We never capture this
         }
     }
-
-    let length = place.projections.len().min(truncated_length);
-
-    place.projections.truncate(length);
 
     place
 }
