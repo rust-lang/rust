@@ -9,7 +9,7 @@ use rustc_middle::ty::layout::FnAbiExt;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
-use cranelift_codegen::ir::AbiParam;
+use cranelift_codegen::ir::{AbiParam, SigRef};
 use smallvec::smallvec;
 
 use self::pass_mode::*;
@@ -380,9 +380,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         args.iter().map(|arg| codegen_operand(fx, arg)).collect::<Vec<_>>()
     };
 
-    //   | indirect call target
-    //   |         | the first argument to be passed
-    //   v         v
+    enum CallTarget {
+        Direct(FuncRef),
+        Indirect(SigRef, Value),
+    }
+
     let (func_ref, first_arg) = match instance {
         // Trait object call
         Some(Instance { def: InstanceDef::Virtual(_, idx), .. }) => {
@@ -390,20 +392,27 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
-                    format!("virtual call; self arg pass mode: {:?}", &fn_abi.args[0],),
+                    format!("virtual call; self arg pass mode: {:?}", &fn_abi.args[0]),
                 );
             }
+
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
-            (Some(method), smallvec![ptr])
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+            let sig = fx.bcx.import_signature(sig);
+
+            (CallTarget::Indirect(sig, method), smallvec![ptr])
         }
 
         // Normal call
-        Some(_) => (
-            None,
-            args.get(0)
-                .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                .unwrap_or(smallvec![]),
-        ),
+        Some(instance) => {
+            let func_ref = fx.get_function_ref(instance);
+            (
+                CallTarget::Direct(func_ref),
+                args.get(0)
+                    .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
+                    .unwrap_or(smallvec![]),
+            )
+        }
 
         // Indirect call
         None => {
@@ -411,9 +420,13 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(nop_inst, "indirect call");
             }
+
             let func = codegen_operand(fx, func).load_scalar(fx);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+            let sig = fx.bcx.import_signature(sig);
+
             (
-                Some(func),
+                CallTarget::Indirect(sig, func),
                 args.get(0)
                     .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
                     .unwrap_or(smallvec![]),
@@ -452,14 +465,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 assert_eq!(fn_abi.args.len(), regular_args_count);
             }
 
-            let call_inst = if let Some(func_ref) = func_ref {
-                let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
-                let sig = fx.bcx.import_signature(sig);
-                fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
-            } else {
-                let func_ref =
-                    fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
-                fx.bcx.ins().call(func_ref, &call_args)
+            let call_inst = match func_ref {
+                CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
+                CallTarget::Indirect(sig, func_ptr) => {
+                    fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
+                }
             };
 
             (call_inst, call_args)
