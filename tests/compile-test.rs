@@ -34,7 +34,16 @@ fn clippy_driver_path() -> PathBuf {
 //        as what we manually pass to `cargo` invocation
 fn third_party_crates() -> String {
     use std::collections::HashMap;
-    static CRATES: &[&str] = &["serde", "serde_derive", "regex", "clippy_lints", "syn", "quote"];
+    static CRATES: &[&str] = &[
+        "clippy_lints",
+        "clippy_utils",
+        "if_chain",
+        "quote",
+        "regex",
+        "serde",
+        "serde_derive",
+        "syn",
+    ];
     let dep_dir = cargo::TARGET_LIB.join("deps");
     let mut crates: HashMap<&str, PathBuf> = HashMap::with_capacity(CRATES.len());
     for entry in fs::read_dir(dep_dir).unwrap() {
