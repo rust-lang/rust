@@ -73,7 +73,7 @@ pub struct QuerySideEffects {
     /// Stores any diagnostics emitted during query execution.
     /// These diagnostics will be re-emitted if we mark
     /// the query as green.
-    pub diagnostics: ThinVec<Diagnostic>,
+    pub(super) diagnostics: ThinVec<Diagnostic>,
 }
 
 impl QuerySideEffects {
