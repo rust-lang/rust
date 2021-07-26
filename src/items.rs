@@ -741,7 +741,7 @@ pub(crate) fn format_impl(
                 // there is only one where-clause predicate
                 // recover the suppressed comma in single line where_clause formatting
                 if generics.where_clause.predicates.len() == 1 {
-                    result.push_str(",");
+                    result.push(',');
                 }
                 result.push_str(&format!("{}{{{}}}", sep, sep));
             } else {
@@ -1207,7 +1207,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
 
         let fits_single_line = !generic_bounds_str.contains('\n')
             && !where_str.contains('\n')
-            && generic_bounds_str.len() + where_str.len() + 1 <= shape.width;
+            && generic_bounds_str.len() + where_str.len() < shape.width;
         let space = if generic_bounds_str.is_empty() || where_str.is_empty() {
             Cow::from("")
         } else if fits_single_line {
@@ -1236,8 +1236,8 @@ pub(crate) fn format_trait_alias(
     let lhs = format!("{}trait {} =", vis_str, generics_str);
     // 1 = ";"
     let trait_alias_bounds = TraitAliasBounds {
-        generics,
         generic_bounds,
+        generics,
     };
     rewrite_assign_rhs(context, lhs, &trait_alias_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
@@ -1993,7 +1993,7 @@ impl Rewrite for ast::Param {
             let num_attrs = self.attrs.len();
             (
                 mk_sp(self.attrs[num_attrs - 1].span.hi(), self.pat.span.lo()),
-                param_attrs_result.contains("\n"),
+                param_attrs_result.contains('\n'),
             )
         } else {
             (mk_sp(self.span.lo(), self.span.lo()), false)
@@ -3265,22 +3265,16 @@ pub(crate) fn rewrite_extern_crate(
 
 /// Returns `true` for `mod foo;`, false for `mod foo { .. }`.
 pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
-    match item.kind {
-        ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _)) => false,
-        _ => true,
-    }
+    !matches!(
+        item.kind,
+        ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _))
+    )
 }
 
 pub(crate) fn is_use_item(item: &ast::Item) -> bool {
-    match item.kind {
-        ast::ItemKind::Use(_) => true,
-        _ => false,
-    }
+    matches!(item.kind, ast::ItemKind::Use(_))
 }
 
 pub(crate) fn is_extern_crate(item: &ast::Item) -> bool {
-    match item.kind {
-        ast::ItemKind::ExternCrate(..) => true,
-        _ => false,
-    }
+    matches!(item.kind, ast::ItemKind::ExternCrate(..))
 }
