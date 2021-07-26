@@ -652,6 +652,21 @@ mod tests {
         expect.assert_debug_eq(&hover.info.actions)
     }
 
+    fn check_hover_range(ra_fixture: &str, expect: Expect) {
+        let (analysis, range) = fixture::range(ra_fixture);
+        let hover = analysis
+            .hover_range(
+                &HoverConfig {
+                    links_in_hover: false,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+                range,
+            )
+            .unwrap()
+            .unwrap();
+        expect.assert_eq(hover.info.markup.as_str())
+    }
+
     #[test]
     fn hover_shows_type_of_an_expression() {
         check(
@@ -3909,6 +3924,97 @@ struct Foo;
                 pub macro Copy
                 ```
             "#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_math() {
+        check_hover_range(
+            r#"
+fn f() { let expr = $01 + 2 * 3$0 } 
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = 1 $0+ 2 * $03 } 
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = 1 + $02 * 3$0 } 
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_arrays() {
+        check_hover_range(
+            r#"
+fn f() { let expr = $0[1, 2, 3, 4]$0 } 
+            "#,
+            expect![[r#"
+            ```rust
+            [i32; 4]
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = [1, 2, $03, 4]$0 } 
+            "#,
+            expect![[r#"
+            ```rust
+            [i32; 4]
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = [1, 2, $03$0, 4] } 
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_functions() {
+        check_hover_range(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
+            "#,
+            expect![[r#"
+            ```rust
+            fn f<i32>(&[i32])
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b() { f($0&[1, 2, 3, 4, 5]$0); }
+            "#,
+            expect![[r#"
+            ```rust
+            &[i32; 5]
+            ```"#]],
         );
     }
 }
