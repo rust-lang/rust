@@ -51,6 +51,34 @@ fn main() {
     }
 }
 
+fn simple_loop() {
+    loop {
+        continue; // should lint here
+    }
+}
+
+fn simple_loop2() {
+    loop {
+        println!("bleh");
+        continue; // should lint here
+    }
+}
+
+#[rustfmt::skip]
+fn simple_loop3() {
+    loop {
+        continue // should lint here
+    }
+}
+
+#[rustfmt::skip]
+fn simple_loop4() {
+    loop {
+        println!("bleh");
+        continue // should lint here
+    }
+}
+
 mod issue_2329 {
     fn condition() -> bool {
         unimplemented!()
