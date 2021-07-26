@@ -667,7 +667,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// When the current body being handled is a closure, then we must make sure that
     /// - The parent closure only captures Places from the nested closure that are not local to it.
     ///
-    /// In the following example the closures `c` only captures `p.x`` even though `incr`
+    /// In the following example the closures `c` only captures `p.x` even though `incr`
     /// is a capture of the nested closure
     ///
     /// ```rust,ignore(cannot-test-this-because-pseudo-code)
