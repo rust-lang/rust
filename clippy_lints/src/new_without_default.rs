@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{Ty, TyS};
+use rustc_middle::ty::TyS;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -65,6 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
         if let hir::ItemKind::Impl(hir::Impl {
             of_trait: None,
             ref generics,
+            self_ty: impl_self_ty,
             items,
             ..
         }) = item.kind
@@ -132,6 +133,8 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 }
 
                                 let generics_sugg = snippet(cx, generics.span, "");
+                                let self_ty_fmt = self_ty.to_string();
+                                let self_type_snip = snippet(cx, impl_self_ty.span, &self_ty_fmt);
                                 span_lint_hir_and_then(
                                     cx,
                                     NEW_WITHOUT_DEFAULT,
@@ -139,14 +142,14 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                     impl_item.span,
                                     &format!(
                                         "you should consider adding a `Default` implementation for `{}`",
-                                        self_ty
+                                        self_type_snip
                                     ),
                                     |diag| {
                                         diag.suggest_prepend_item(
                                             cx,
                                             item.span,
-                                            "try this",
-                                            &create_new_without_default_suggest_msg(self_ty, &generics_sugg),
+                                            "try adding this",
+                                            &create_new_without_default_suggest_msg(&self_type_snip, &generics_sugg),
                                             Applicability::MaybeIncorrect,
                                         );
                                     },
@@ -160,12 +163,12 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     }
 }
 
-fn create_new_without_default_suggest_msg(ty: Ty<'_>, generics_sugg: &str) -> String {
+fn create_new_without_default_suggest_msg(self_type_snip: &str, generics_sugg: &str) -> String {
     #[rustfmt::skip]
     format!(
 "impl{} Default for {} {{
     fn default() -> Self {{
         Self::new()
     }}
-}}", generics_sugg, ty)
+}}", generics_sugg, self_type_snip)
 }
