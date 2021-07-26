@@ -21,5 +21,6 @@ fn main() {
     
     let _detached = std::thread::spawn(|| {
         X.with(|x| *x.borrow_mut() = Some(LoudDrop(1)));
+        loop {}
     });
 }
