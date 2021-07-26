@@ -17,7 +17,7 @@ To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or 
 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
 
-## `array_width` 
+## `array_width`
 
 Maximum width of an array literal before falling back to vertical formatting.
 
@@ -25,11 +25,11 @@ Maximum width of an array literal before falling back to vertical formatting.
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `array_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `array_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
-## `attr_fn_like_width` 
+## `attr_fn_like_width`
 
 Maximum width of the args of a function-like attributes before falling back to vertical formatting.
 
@@ -37,7 +37,7 @@ Maximum width of the args of a function-like attributes before falling back to v
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `attr_fn_like_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `attr_fn_like_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
@@ -295,7 +295,7 @@ where
 }
 ```
 
-## `chain_width` 
+## `chain_width`
 
 Maximum width of a chain to fit on one line.
 
@@ -303,7 +303,7 @@ Maximum width of a chain to fit on one line.
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `chain_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `chain_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
@@ -751,7 +751,7 @@ trait Lorem {
 }
 ```
 
-## `fn_call_width` 
+## `fn_call_width`
 
 Maximum width of the args of a function call before falling back to vertical formatting.
 
@@ -759,7 +759,7 @@ Maximum width of the args of a function call before falling back to vertical for
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `fn_call_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `fn_call_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
@@ -2124,7 +2124,7 @@ Don't reformat out of line modules
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: #3389)
 
-## `single_line_if_else_max_width` 
+## `single_line_if_else_max_width`
 
 Maximum line length for single line if-else expressions. A value of `0` (zero) results in if-else expressions always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
 
@@ -2132,7 +2132,7 @@ Maximum line length for single line if-else expressions. A value of `0` (zero) r
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `single_line_if_else_max_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `single_line_if_else_max_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
@@ -2313,7 +2313,7 @@ fn main() {
 
 See also: [`indent_style`](#indent_style).
 
-## `struct_lit_width` 
+## `struct_lit_width`
 
 Maximum width in the body of a struct literal before falling back to vertical formatting. A value of `0` (zero) results in struct literals always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
 
@@ -2321,11 +2321,11 @@ Maximum width in the body of a struct literal before falling back to vertical fo
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_lit_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_lit_width` will take precedence.
 
 See also [`max_width`](#max_width), [`use_small_heuristics`](#use_small_heuristics), and [`struct_lit_single_line`](#struct_lit_single_line)
 
-## `struct_variant_width` 
+## `struct_variant_width`
 
 Maximum width in the body of a struct variant before falling back to vertical formatting. A value of `0` (zero) results in struct literals always being broken into multiple lines. Note this occurs when `use_small_heuristics` is set to `Off`.
 
@@ -2333,7 +2333,7 @@ Maximum width in the body of a struct variant before falling back to vertical fo
 - **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
 - **Stable**: Yes
 
-By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_variant_width` will take precedence. 
+By default this option is set as a percentage of [`max_width`](#max_width) provided by [`use_small_heuristics`](#use_small_heuristics), but a value set directly for `struct_variant_width` will take precedence.
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
@@ -2530,7 +2530,7 @@ fn main() {
 
 This option can be used to simplify the management and bulk updates of the granular width configuration settings ([`fn_call_width`](#fn_call_width), [`attr_fn_like_width`](#attr_fn_like_width), [`struct_lit_width`](#struct_lit_width), [`struct_variant_width`](#struct_variant_width), [`array_width`](#array_width), [`chain_width`](#chain_width), [`single_line_if_else_max_width`](#single_line_if_else_max_width)), that respectively control when formatted constructs are multi-lined/vertical based on width.
 
-Note that explicitly provided values for the width configuration settings take precedence and override the calculated values determined by `use_small_heuristics`. 
+Note that explicitly provided values for the width configuration settings take precedence and override the calculated values determined by `use_small_heuristics`.
 
 - **Default value**: `"Default"`
 - **Possible values**: `"Default"`, `"Off"`, `"Max"`
@@ -2595,7 +2595,7 @@ fn main() {
 ```
 
 #### `Off`:
-When `use_small_heuristics` is set to `Off`, the granular width settings are functionally disabled and ignored. See the documentation for the respective width config options for specifics. 
+When `use_small_heuristics` is set to `Off`, the granular width settings are functionally disabled and ignored. See the documentation for the respective width config options for specifics.
 
 ```rust
 enum Lorem {

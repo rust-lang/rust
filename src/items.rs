@@ -6,7 +6,7 @@ use std::cmp::{max, min, Ordering};
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{symbol, BytePos, Span, DUMMY_SP};
+use rustc_span::{symbol, BytePos, Span};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
@@ -31,12 +31,7 @@ use crate::stmt::Stmt;
 use crate::utils::*;
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
-
-const DEFAULT_VISIBILITY: ast::Visibility = ast::Visibility {
-    kind: ast::VisibilityKind::Inherited,
-    span: DUMMY_SP,
-    tokens: None,
-};
+use crate::DEFAULT_VISIBILITY;
 
 fn type_annotation_separator(config: &Config) -> &str {
     colon_spaces(config)
@@ -976,7 +971,7 @@ impl<'a> StructParts<'a> {
         format_header(context, self.prefix, self.ident, self.vis, offset)
     }
 
-    fn from_variant(variant: &'a ast::Variant) -> Self {
+    pub(crate) fn from_variant(variant: &'a ast::Variant) -> Self {
         StructParts {
             prefix: "",
             ident: variant.ident,

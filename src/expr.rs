@@ -107,7 +107,9 @@ pub(crate) fn format_expr(
         }
         ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref struct_expr) => {
-            let ast::StructExpr { fields, path, rest } = &**struct_expr;
+            let ast::StructExpr {
+                fields, path, rest, ..
+            } = &**struct_expr;
             rewrite_struct_lit(context, path, fields, rest, &expr.attrs, expr.span, shape)
         }
         ast::ExprKind::Tup(ref items) => {

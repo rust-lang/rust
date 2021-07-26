@@ -15,7 +15,7 @@ set -ex
 # it again.
 #
 #which cargo-fmt || cargo install --force
-CFG_RELEASE=nightly CFG_RELEASE_CHANNEL=nightly cargo install --path . --force 
+CFG_RELEASE=nightly CFG_RELEASE_CHANNEL=nightly cargo install --path . --force
 
 echo "Integration tests for: ${INTEGRATION}"
 cargo fmt -- --version

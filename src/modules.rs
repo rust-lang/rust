@@ -318,7 +318,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.directory = directory;
         }
         match (sub_mod.ast_mod_kind, sub_mod.items) {
-            (Some(Cow::Borrowed(ast::ModKind::Loaded(items, ast::Inline::No, _))), _) => {
+            (Some(Cow::Borrowed(ast::ModKind::Loaded(items, _, _))), _) => {
                 self.visit_mod_from_ast(&items)
             }
             (Some(Cow::Owned(..)), Cow::Owned(items)) => self.visit_mod_outside_ast(items),

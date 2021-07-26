@@ -6,7 +6,7 @@ use rustc_ast::ast::{
 };
 use rustc_ast::ptr;
 use rustc_ast_pretty::pprust;
-use rustc_span::{sym, symbol, BytePos, ExpnId, Span, Symbol, SyntaxContext};
+use rustc_span::{sym, symbol, BytePos, LocalExpnId, Span, Symbol, SyntaxContext};
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
@@ -675,7 +675,7 @@ pub(crate) trait NodeIdExt {
 
 impl NodeIdExt for NodeId {
     fn root() -> NodeId {
-        NodeId::placeholder_from_expn_id(ExpnId::root())
+        NodeId::placeholder_from_expn_id(LocalExpnId::ROOT)
     }
 }
 
