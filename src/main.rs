@@ -14,10 +14,12 @@ Usage:
     cargo clippy [options] [--] [<opts>...]
 
 Common options:
-    --fix                    Automatically apply lint suggestions
-    --no-deps                Run Clippy only on the given crate
+    --no-deps                Run Clippy only on the given crate, without linting the dependencies 
+    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
     -h, --help               Print this message
     -V, --version            Print version info and exit
+
+Note: --no-deps flag is used with `cargo clippy --`. Example: `cargo clippy -- --no-deps`
 
 Other options are the same as `cargo check`.
 
