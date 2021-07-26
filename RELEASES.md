@@ -1,3 +1,127 @@
+Version 1.54.0 (2021-07-29)
+============================
+
+Language
+-----------------------
+
+- [You can now use macros for values in built-in attribute macros.][83366]
+  While a seemingly minor addition on its own, this enables a lot of
+  powerful functionality when combined correctly. Most notably you can
+  now include external documentation in your crate by writing the following.
+  ```rust
+  #![doc = include_str!("README.md")]
+  ```
+  You can also use this to include auto-generated modules:
+  ```rust
+  #[path = concat!(env!("OUT_DIR"), "/generated.rs")]
+  mod generated;
+  ```
+
+- [You can now cast between unsized slice types (and types which contain
+  unsized slices) in `const fn`.][85078]
+- [You can now use multiple generic lifetimes with `impl Trait` where the
+   lifetimes don't explicitly outlive another.][84701] In code this means
+   that you can now have `impl Trait<'a, 'b>` where as before you could
+   only have `impl Trait<'a, 'b> where 'b: 'a`.
+
+Compiler
+-----------------------
+
+- [Rustc will now search for custom JSON targets in
+  `/lib/rustlib/<target-triple>/target.json` where `/` is the "sysroot"
+  directory.][83800] You can find your sysroot directory by running
+  `rustc --print sysroot`.
+- [Added `wasm` as a `target_family` for WebAssembly platforms.][84072]
+- [You can now use `#[target_feature]` on safe functions when targeting
+  WebAssembly platforms.][84988]
+- [Improved debugger output for enums on Windows MSVC platforms.][85292]
+- [Added tier 3\* support for `bpfel-unknown-none`
+   and `bpfeb-unknown-none`.][79608]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+-----------------------
+
+- [`panic::panic_any` will now `#[track_caller]`.][85745]
+- [Added `OutOfMemory` as a variant of `io::ErrorKind`.][84744]
+- [ `proc_macro::Literal` now implements `FromStr`.][84717]
+- [The implementations of vendor intrinsics in core::arch have been
+   significantly refactored.][83278] The main user-visible changes are
+   a 50% reduction in the size of libcore.rlib and stricter validation
+   of constant operands passed to intrinsics. The latter is technically
+   a breaking change, but allows Rust to more closely match the C vendor
+   intrinsics API.
+
+Stabilized APIs
+---------------
+
+- [`BTreeMap::into_keys`]
+- [`BTreeMap::into_values`]
+- [`HashMap::into_keys`]
+- [`HashMap::into_values`]
+- [`arch::wasm32`]
+- [`VecDeque::binary_search`]
+- [`VecDeque::binary_search_by`]
+- [`VecDeque::binary_search_by_key`]
+- [`VecDeque::partition_point`]
+
+Cargo
+-----
+
+- [Added the `--prune <spec>` option to `cargo-tree` to remove a package from
+  the dependency graph.][cargo/9520]
+- [Added the `--depth` option to `cargo-tree` to print only to a certain depth
+  in the tree ][cargo/9499]
+- [Added the `no-proc-macro` value to `cargo-tree --edges` to hide procedural
+  macro dependencies.][cargo/9488]
+- [A new environment variable named `CARGO_TARGET_TMPDIR` is available.][cargo/9375]
+  This variable points to a directory that integration tests and benches
+  can use as a "scratchpad" for testing filesystem operations.
+
+Compatibility Notes
+-------------------
+- [Mixing Option and Result via `?` is no longer permitted in closures for inferred types.][86831]
+- [Previously unsound code is no longer permitted where different constructors in branches
+  could require different lifetimes.][85574]
+- As previously mentioned the [`std::arch` instrinsics now uses stricter const checking][83278]
+  than before and may reject some previously accepted code.
+- [`i128` multiplication on Cortex M0+ platforms currently unconditionally causes overflow
+   when compiled with `codegen-units = 1`.][86063]
+
+[85574]: https://github.com/rust-lang/rust/issues/85574
+[86831]: https://github.com/rust-lang/rust/issues/86831
+[86063]: https://github.com/rust-lang/rust/issues/86063
+[86831]: https://github.com/rust-lang/rust/issues/86831
+[79608]: https://github.com/rust-lang/rust/pull/79608
+[84988]: https://github.com/rust-lang/rust/pull/84988
+[84701]: https://github.com/rust-lang/rust/pull/84701
+[84072]: https://github.com/rust-lang/rust/pull/84072
+[85745]: https://github.com/rust-lang/rust/pull/85745
+[84744]: https://github.com/rust-lang/rust/pull/84744
+[85078]: https://github.com/rust-lang/rust/pull/85078
+[84717]: https://github.com/rust-lang/rust/pull/84717
+[83800]: https://github.com/rust-lang/rust/pull/83800
+[83366]: https://github.com/rust-lang/rust/pull/83366
+[83278]: https://github.com/rust-lang/rust/pull/83278
+[85292]: https://github.com/rust-lang/rust/pull/85292
+[cargo/9520]: https://github.com/rust-lang/cargo/pull/9520
+[cargo/9499]: https://github.com/rust-lang/cargo/pull/9499
+[cargo/9488]: https://github.com/rust-lang/cargo/pull/9488
+[cargo/9375]: https://github.com/rust-lang/cargo/pull/9375
+[`BTreeMap::into_keys`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.into_keys
+[`BTreeMap::into_values`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.into_values
+[`HashMap::into_keys`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.into_keys
+[`HashMap::into_values`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.into_values
+[`arch::wasm32`]: https://doc.rust-lang.org/core/arch/wasm32/index.html
+[`VecDeque::binary_search`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search
+[`VecDeque::binary_search_by`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search_by
+
+[`VecDeque::binary_search_by_key`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search_by_key
+
+[`VecDeque::partition_point`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.partition_point
+
 Version 1.53.0 (2021-06-17)
 ============================
 
@@ -81,13 +205,6 @@ Stabilised APIs
 - [`Vec::extend_from_within`]
 - [`array::from_mut`]
 - [`array::from_ref`]
-- [`char::MAX`]
-- [`char::REPLACEMENT_CHARACTER`]
-- [`char::UNICODE_VERSION`]
-- [`char::decode_utf16`]
-- [`char::from_digit`]
-- [`char::from_u32_unchecked`]
-- [`char::from_u32`]
 - [`cmp::max_by_key`]
 - [`cmp::max_by`]
 - [`cmp::min_by_key`]
@@ -120,6 +237,7 @@ Compatibility Notes
   In particular, this was known to be a problem in the `lexical-core` crate,
   but they have published fixes for semantic versions 0.4 through 0.7. To
   update this dependency alone, use `cargo update -p lexical-core`.
+- Incremental compilation remains off by default, unless one uses the `RUSTC_FORCE_INCREMENTAL=1` environment variable added in 1.52.1.
 
 Internal Only
 -------------
@@ -156,13 +274,6 @@ related tools.
 [cargo/9298]: https://github.com/rust-lang/cargo/pull/9298
 [cargo/9282]: https://github.com/rust-lang/cargo/pull/9282
 [cargo/9392]: https://github.com/rust-lang/cargo/pull/9392
-[`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
-[`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
-[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.UNICODE_VERSION
-[`char::decode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.decode_utf16
-[`char::from_u32`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32
-[`char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
-[`char::from_digit`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_digit
 [`AtomicBool::fetch_update`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicBool.html#method.fetch_update
 [`AtomicPtr::fetch_update`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicPtr.html#method.fetch_update
 [`BTreeMap::retain`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.retain
@@ -324,6 +435,7 @@ Compatibility Notes
 - [Rustc now catches more cases of `pub_use_of_private_extern_crate`][80763]
 - [Changes in how proc macros handle whitespace may lead to panics when used
   with older `proc-macro-hack` versions. A `cargo update` should be sufficient to fix this in all cases.][84136]
+- [Turn `#[derive]` into a regular macro attribute][79078]
 
 [84136]: https://github.com/rust-lang/rust/issues/84136
 [80763]: https://github.com/rust-lang/rust/pull/80763
@@ -350,6 +462,7 @@ Compatibility Notes
 [78429]: https://github.com/rust-lang/rust/pull/78429
 [82733]: https://github.com/rust-lang/rust/pull/82733
 [82594]: https://github.com/rust-lang/rust/pull/82594
+[79078]: https://github.com/rust-lang/rust/pull/79078
 [cargo/9181]: https://github.com/rust-lang/cargo/pull/9181
 [`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
 [`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
@@ -1760,6 +1873,7 @@ Language
 - [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
   that you can create an enum that has the exact layout and ABI of the type
   it contains.
+- [You can now use outer attribute procedural macros on inline modules.][64273]
 - [There are some *syntax-only* changes:][67131]
    - `default` is syntactically allowed before items in `trait` definitions.
    - Items in `impl`s (i.e. `const`s, `type`s, and `fn`s) may syntactically
@@ -1821,6 +1935,7 @@ Compatibility Notes
 [67935]: https://github.com/rust-lang/rust/pull/67935/
 [68339]: https://github.com/rust-lang/rust/pull/68339/
 [68122]: https://github.com/rust-lang/rust/pull/68122/
+[64273]: https://github.com/rust-lang/rust/pull/64273/
 [67712]: https://github.com/rust-lang/rust/pull/67712/
 [67887]: https://github.com/rust-lang/rust/pull/67887/
 [67131]: https://github.com/rust-lang/rust/pull/67131/

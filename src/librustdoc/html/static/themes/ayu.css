@@ -133,7 +133,6 @@ pre, .rustdoc.source .example-wrap {
 	color: #708090;
 	background-color: rgba(255, 236, 164, 0.06);
 	padding-right: 4px;
-	border-right: 1px solid #ffb44c;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
@@ -334,7 +333,7 @@ a.test-arrow:hover {
 	color: #999;
 }
 
-:target > code, :target > .in-band {
+:target, :target > * {
 	background: rgba(255, 236, 164, 0.06);
 	border-right: 3px solid rgba(255, 180, 76, 0.85);
 }
