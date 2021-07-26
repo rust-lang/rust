@@ -13,11 +13,11 @@ use rustc_span::Symbol;
 
 pub use self::qualifs::Qualif;
 
+pub mod check;
 mod ops;
 pub mod post_drop_elaboration;
 pub mod qualifs;
 mod resolver;
-pub mod validation;
 
 /// Information about the item currently being const-checked, as well as a reference to the global
 /// context.

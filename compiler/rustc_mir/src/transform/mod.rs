@@ -241,7 +241,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
 
     let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def.did) };
 
-    let mut validator = check_consts::validation::Validator::new(&ccx);
+    let mut validator = check_consts::check::Checker::new(&ccx);
     validator.check_body();
 
     // We return the qualifs in the return place for every MIR body, even though it is only used
