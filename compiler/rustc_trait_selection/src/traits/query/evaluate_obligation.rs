@@ -1,3 +1,6 @@
+use rustc_hir as hir;
+use rustc_middle::ty::PredicateKind;
+
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::{
@@ -46,6 +49,12 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
+        if let PredicateKind::Trait(pred) = obligation.predicate.kind().skip_binder() {
+            if let hir::Constness::Const = pred.constness {
+                // do not evaluate to holds when we have a const predicate.
+                return false;
+            }
+        }
         self.evaluate_obligation_no_overflow(obligation).must_apply_considering_regions()
     }
 

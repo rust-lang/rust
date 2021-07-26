@@ -1,8 +1,4 @@
-// ignore-test
-//
-// FIXME: This test should fail since, within a const impl of `Foo`, the bound on `Foo::Bar` should
-// require a const impl of `Add` for the associated type.
-
+// FIXME(fee1-dead): this should have a better error message
 #![feature(const_trait_impl)]
 
 struct NonConstAdd(i32);
@@ -21,6 +17,7 @@ trait Foo {
 
 impl const Foo for NonConstAdd {
     type Bar = NonConstAdd;
+    //~^ ERROR
 }
 
 fn main() {}
