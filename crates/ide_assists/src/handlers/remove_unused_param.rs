@@ -37,6 +37,8 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         _ => return None,
     };
     let func = param.syntax().ancestors().find_map(ast::Fn::cast)?;
+    let is_self_present =
+        param.syntax().parent()?.children().find_map(ast::SelfParam::cast).is_some();
 
     // check if fn is in impl Trait for ..
     if func
@@ -50,7 +52,16 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         return None;
     }
 
-    let param_position = func.param_list()?.params().position(|it| it == param)?;
+    let mut param_position = func.param_list()?.params().position(|it| it == param)?;
+    // param_list() does not take self param into consideration, hence this additional check is
+    // added. There are two cases to handle in this scenario, where functions are
+    // associative(functions not associative and not containting contain self, are not allowed), in
+    // this case param position is rightly set. If a method call is present which has self param,
+    // that needs to be handled and is added below in process_usage function to reduce this increment and
+    // not consider self param.
+    if is_self_present {
+        param_position += 1;
+    }
     let fn_def = {
         let func = ctx.sema.to_def(&func)?;
         Definition::ModuleDef(func.into())
@@ -71,7 +82,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         |builder| {
             builder.delete(range_to_remove(param.syntax()));
             for (file_id, references) in fn_def.usages(&ctx.sema).all() {
-                process_usages(ctx, builder, file_id, references, param_position);
+                process_usages(ctx, builder, file_id, references, param_position, is_self_present);
             }
         },
     )
@@ -83,11 +94,13 @@ fn process_usages(
     file_id: FileId,
     references: Vec<FileReference>,
     arg_to_remove: usize,
+    is_self_present: bool,
 ) {
     let source_file = ctx.sema.parse(file_id);
     builder.edit_file(file_id);
     for usage in references {
-        if let Some(text_range) = process_usage(&source_file, usage, arg_to_remove) {
+        if let Some(text_range) = process_usage(&source_file, usage, arg_to_remove, is_self_present)
+        {
             builder.delete(text_range);
         }
     }
@@ -96,15 +109,37 @@ fn process_usages(
 fn process_usage(
     source_file: &SourceFile,
     FileReference { range, .. }: FileReference,
-    arg_to_remove: usize,
+    mut arg_to_remove: usize,
+    is_self_present: bool,
 ) -> Option<TextRange> {
-    let call_expr: ast::CallExpr = find_node_at_range(source_file.syntax(), range)?;
-    let call_expr_range = call_expr.expr()?.syntax().text_range();
-    if !call_expr_range.contains_range(range) {
-        return None;
+    let call_expr_opt: Option<ast::CallExpr> = find_node_at_range(source_file.syntax(), range);
+    if let Some(call_expr) = call_expr_opt {
+        let call_expr_range = call_expr.expr()?.syntax().text_range();
+        if !call_expr_range.contains_range(range) {
+            return None;
+        }
+
+        let arg = call_expr.arg_list()?.args().nth(arg_to_remove)?;
+        return Some(range_to_remove(arg.syntax()));
     }
-    let arg = call_expr.arg_list()?.args().nth(arg_to_remove)?;
-    Some(range_to_remove(arg.syntax()))
+
+    let method_call_expr_opt: Option<ast::MethodCallExpr> =
+        find_node_at_range(source_file.syntax(), range);
+    if let Some(method_call_expr) = method_call_expr_opt {
+        let method_call_expr_range = method_call_expr.name_ref()?.syntax().text_range();
+        if !method_call_expr_range.contains_range(range) {
+            return None;
+        }
+
+        if is_self_present {
+            arg_to_remove -= 1;
+        }
+
+        let arg = method_call_expr.arg_list()?.args().nth(arg_to_remove)?;
+        return Some(range_to_remove(arg.syntax()));
+    }
+
+    return None;
 }
 
 fn range_to_remove(node: &SyntaxNode) -> TextRange {
@@ -315,10 +350,7 @@ fn bar() {
     }
 
     #[test]
-    fn remove_method_param() {
-        // FIXME: This is completely wrong:
-        //  * method call expressions are not handled
-        //  * assoc function syntax removes the wrong argument.
+    fn test_remove_method_param() {
         check_assist(
             remove_unused_param,
             r#"
@@ -327,7 +359,7 @@ impl S { fn f(&self, $0_unused: i32) {} }
 fn main() {
     S.f(92);
     S.f();
-    S.f(92, 92);
+    S.f(93, 92);
     S::f(&S, 92);
 }
 "#,
@@ -335,10 +367,10 @@ fn main() {
 struct S;
 impl S { fn f(&self) {} }
 fn main() {
-    S.f(92);
     S.f();
-    S.f(92, 92);
-    S::f(92);
+    S.f();
+    S.f(92);
+    S::f(&S);
 }
 "#,
         )
