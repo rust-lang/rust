@@ -157,6 +157,7 @@ mod sip;
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [`hash`]: Hash::hash
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Hash"]
 pub trait Hash {
     /// Feeds this value into the given [`Hasher`].
     ///
