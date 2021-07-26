@@ -73,7 +73,7 @@ pub(super) fn codegen_return_param<'tcx>(
         }
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
             let ret_param = block_params_iter.next().unwrap();
-            assert_eq!(fx.bcx.func.dfg.value_type(ret_param), pointer_ty(fx.tcx));
+            assert_eq!(fx.bcx.func.dfg.value_type(ret_param), fx.pointer_type);
             (
                 CPlace::for_ptr(Pointer::new(ret_param), fx.fn_abi.as_ref().unwrap().ret.layout),
                 smallvec![ret_param],

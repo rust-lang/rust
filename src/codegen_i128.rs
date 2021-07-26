@@ -40,9 +40,9 @@ pub(crate) fn maybe_codegen<'tcx>(
                 fx.lib_call(
                     "__multi3",
                     vec![
-                        AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
-                        AbiParam::new(pointer_ty(fx.tcx)),
-                        AbiParam::new(pointer_ty(fx.tcx)),
+                        AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
+                        AbiParam::new(fx.pointer_type),
+                        AbiParam::new(fx.pointer_type),
                     ],
                     vec![],
                     &args,
@@ -63,16 +63,16 @@ pub(crate) fn maybe_codegen<'tcx>(
                 assert!(rhs_extra.is_none());
                 (
                     vec![
-                        AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
-                        AbiParam::new(pointer_ty(fx.tcx)),
-                        AbiParam::new(pointer_ty(fx.tcx)),
+                        AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
+                        AbiParam::new(fx.pointer_type),
+                        AbiParam::new(fx.pointer_type),
                     ],
                     [out_place.to_ptr().get_addr(fx), lhs_ptr.get_addr(fx), rhs_ptr.get_addr(fx)],
                 )
             } else {
                 (
                     vec![
-                        AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
+                        AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
                         AbiParam::new(types::I128),
                         AbiParam::new(types::I128),
                     ],
@@ -109,7 +109,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 let args = [lhs_ptr.get_addr(fx), rhs_ptr.get_addr(fx)];
                 let ret = fx.lib_call(
                     name,
-                    vec![AbiParam::new(pointer_ty(fx.tcx)), AbiParam::new(pointer_ty(fx.tcx))],
+                    vec![AbiParam::new(fx.pointer_type), AbiParam::new(fx.pointer_type)],
                     vec![AbiParam::new(types::I64X2)],
                     &args,
                 )[0];

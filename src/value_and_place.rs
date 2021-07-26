@@ -34,10 +34,10 @@ fn codegen_field<'tcx>(
                 let (_, unsized_align) =
                     crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
 
-                let one = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 1);
+                let one = fx.bcx.ins().iconst(fx.pointer_type, 1);
                 let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
                 let and_lhs = fx.bcx.ins().iadd_imm(align_sub_1, unaligned_offset as i64);
-                let zero = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 0);
+                let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
                 let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
                 let offset = fx.bcx.ins().band(and_lhs, and_rhs);
 
