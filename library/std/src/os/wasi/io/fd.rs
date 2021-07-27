@@ -2,6 +2,10 @@
 
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
+// Tests for this module
+#[cfg(test)]
+mod tests;
+
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fmt;
 use crate::fs;

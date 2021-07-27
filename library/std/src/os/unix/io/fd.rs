@@ -2,6 +2,10 @@
 
 #![unstable(feature = "io_safety", issue = "87074")]
 
+// Tests for this module
+#[cfg(test)]
+mod tests;
+
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::fmt;
 use crate::fs;
