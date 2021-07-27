@@ -1447,8 +1447,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
             BuilderQ.CreateInBoundsGEP(ret, ArrayRef<Value *>(tid)));
       }
     } else {
-      if (auto ri = dyn_cast<Instruction>(ret))
-        erase(ri);
+      if (idx >= 0)
+        erase(cast<Instruction>(ret));
       IRBuilder<> entryBuilder(inversionAllocs);
       entryBuilder.setFastMathFlags(getFast());
       ret = (idx < 0) ? tape
@@ -1509,6 +1509,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       assert(malloc);
       bool isi1 = !ignoreType && malloc->getType()->isIntegerTy() &&
                   cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
+      assert(isa<PointerType>(cache->getType()));
+      assert(cast<PointerType>(cache->getType())->getElementType() ==
+             ret->getType());
       entryBuilder.CreateStore(ret, cache);
 
       auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ, lctx, cache,

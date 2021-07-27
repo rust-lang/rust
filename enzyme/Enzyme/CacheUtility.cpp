@@ -712,7 +712,6 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType) /
             8);
 
-    // if (i != sublimits.size() -1 || !ompOffset)
     // Allocate and store the required memory
     if (allocateInternal) {
 
@@ -849,19 +848,17 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
     }
 
     // Free the memory, if requested
-    if ((unsigned)i != sublimits.size() - 1 || !ompOffset)
-      if (shouldFree) {
-        if (CachePointerInvariantGroups.find(std::make_pair(
-                (Value *)alloc, i)) == CachePointerInvariantGroups.end()) {
-          MDNode *invgroup = MDNode::getDistinct(alloc->getContext(), {});
-          CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)] =
-              invgroup;
-        }
-        freeCache(
-            containedloops.back().first.preheader, sublimits, i, alloc,
-            byteSizeOfType, storeInto,
-            CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
+    if (shouldFree) {
+      if (CachePointerInvariantGroups.find(std::make_pair((Value *)alloc, i)) ==
+          CachePointerInvariantGroups.end()) {
+        MDNode *invgroup = MDNode::getDistinct(alloc->getContext(), {});
+        CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)] =
+            invgroup;
       }
+      freeCache(containedloops.back().first.preheader, sublimits, i, alloc,
+                byteSizeOfType, storeInto,
+                CachePointerInvariantGroups[std::make_pair((Value *)alloc, i)]);
+    }
 
     // If we are not the final iteration, lookup the next pointer by indexing
     // into the relevant location of the current chunk allocation

@@ -3072,6 +3072,75 @@ public:
             nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
             /*postopt*/ false, /*omp*/ true);
 
+        if (subdata->returns.find(AugmentedStruct::Tape) !=
+            subdata->returns.end()) {
+          auto tapeArg = newcalled->arg_end();
+          tapeArg--;
+          LoadInst *tape = nullptr;
+          for (auto u : tapeArg->users()) {
+            assert(!tape);
+            tape = cast<LoadInst>(u);
+          }
+          assert(tape);
+          std::vector<Value *> extracts;
+          if (subdata->tapeIndices.size() == 1) {
+            assert(subdata->tapeIndices.begin()->second == -1);
+            extracts.push_back(tape);
+          } else {
+            for (auto a : tape->users()) {
+              extracts.push_back(a);
+            }
+          }
+          std::vector<LoadInst *> geps;
+          for (auto E : extracts) {
+            AllocaInst *AI = nullptr;
+            for (auto U : E->users()) {
+              if (auto SI = dyn_cast<StoreInst>(U)) {
+                assert(SI->getValueOperand() == E);
+                AI = cast<AllocaInst>(SI->getPointerOperand());
+              }
+            }
+            if (AI) {
+              for (auto U : AI->users()) {
+                if (auto LI = dyn_cast<LoadInst>(U)) {
+                  geps.push_back(LI);
+                }
+              }
+            }
+          }
+          size_t freeCount = 0;
+          for (auto LI : geps) {
+            CallInst *freeCall = nullptr;
+            for (auto LU : LI->users()) {
+              if (auto CI = dyn_cast<CallInst>(LU)) {
+                if (auto F = CI->getCalledFunction()) {
+                  if (F->getName() == "free") {
+                    freeCall = CI;
+                    break;
+                  }
+                }
+              } else if (auto BC = dyn_cast<CastInst>(LU)) {
+                for (auto CU : BC->users()) {
+                  if (auto CI = dyn_cast<CallInst>(CU)) {
+                    if (auto F = CI->getCalledFunction()) {
+                      if (F->getName() == "free") {
+                        freeCall = CI;
+                        break;
+                      }
+                    }
+                  }
+                }
+                if (freeCall)
+                  break;
+              }
+            }
+            if (freeCall) {
+              freeCall->eraseFromParent();
+              freeCount++;
+            }
+          }
+        }
+
         Value *OutAlloc = nullptr;
         if (OutTypes.size()) {
           auto ST = StructType::get(newcalled->getContext(), OutFPTypes);
