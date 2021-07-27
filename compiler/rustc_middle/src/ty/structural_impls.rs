@@ -155,6 +155,9 @@ impl fmt::Debug for ty::ParamConst {
 
 impl fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let hir::Constness::Const = self.constness {
+            write!(f, "const ")?;
+        }
         write!(f, "TraitPredicate({:?})", self.trait_ref)
     }
 }
@@ -174,12 +177,7 @@ impl fmt::Debug for ty::Predicate<'tcx> {
 impl fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::PredicateKind::Trait(ref a, constness) => {
-                if let hir::Constness::Const = constness {
-                    write!(f, "const ")?;
-                }
-                a.fmt(f)
-            }
+            ty::PredicateKind::Trait(ref a) => a.fmt(f),
             ty::PredicateKind::Subtype(ref pair) => pair.fmt(f),
             ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
             ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
@@ -366,7 +364,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
-        tcx.lift(self.trait_ref).map(|trait_ref| ty::TraitPredicate { trait_ref })
+        tcx.lift(self.trait_ref)
+            .map(|trait_ref| ty::TraitPredicate { trait_ref, constness: self.constness })
     }
 }
 
@@ -419,9 +418,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
     type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
-            ty::PredicateKind::Trait(data, constness) => {
-                tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness))
-            }
+            ty::PredicateKind::Trait(data) => tcx.lift(data).map(ty::PredicateKind::Trait),
             ty::PredicateKind::Subtype(data) => tcx.lift(data).map(ty::PredicateKind::Subtype),
             ty::PredicateKind::RegionOutlives(data) => {
                 tcx.lift(data).map(ty::PredicateKind::RegionOutlives)
@@ -584,6 +581,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 
         Some(match self {
             Mismatch => Mismatch,
+            ConstnessMismatch(x) => ConstnessMismatch(x),
             UnsafetyMismatch(x) => UnsafetyMismatch(x),
             AbiMismatch(x) => AbiMismatch(x),
             Mutability => Mutability,

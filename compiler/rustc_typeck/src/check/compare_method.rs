@@ -1292,7 +1292,13 @@ pub fn check_type_bounds<'tcx>(
     };
 
     tcx.infer_ctxt().enter(move |infcx| {
-        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
+        let constness = impl_ty
+            .container
+            .impl_def_id()
+            .map(|did| tcx.impl_constness(did))
+            .unwrap_or(hir::Constness::NotConst);
+
+        let inh = Inherited::with_constness(infcx, impl_ty.def_id.expect_local(), constness);
         let infcx = &inh.infcx;
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -1334,7 +1340,9 @@ pub fn check_type_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) =
+            inh.fulfillment_cx.borrow_mut().select_all_with_constness_or_error(&infcx, constness)
+        {
             infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }

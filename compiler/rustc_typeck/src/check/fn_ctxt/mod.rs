@@ -174,7 +174,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn default_constness_for_trait_bounds(&self) -> hir::Constness {
-        self.tcx.hir().get(self.body_id).constness()
+        self.tcx.hir().get(self.body_id).constness_for_typeck()
     }
 
     fn get_type_parameter_bounds(
@@ -194,7 +194,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(data, _) if data.self_ty().is_param(index) => {
+                        ty::PredicateKind::Trait(data) if data.self_ty().is_param(index) => {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))
