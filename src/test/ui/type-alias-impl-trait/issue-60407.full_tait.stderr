@@ -1,9 +1,0 @@
-error[E0636]: the feature `type_alias_impl_trait` has already been declared
-  --> $DIR/issue-60407.rs:3:32
-   |
-LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-   |                                ^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0636`.
