@@ -57,6 +57,7 @@ mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
 mod passes;
+mod redundant_field_names;
 mod redundant_semicolon;
 mod traits;
 mod types;
@@ -83,6 +84,7 @@ use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
+use redundant_field_names::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -129,6 +131,7 @@ macro_rules! early_lint_passes {
                 WhileTrue: WhileTrue,
                 NonAsciiIdents: NonAsciiIdents,
                 IncompleteFeatures: IncompleteFeatures,
+                RedundantFieldNames: RedundantFieldNames,
                 RedundantSemicolons: RedundantSemicolons,
                 UnusedDocComment: UnusedDocComment,
             ]
