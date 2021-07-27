@@ -12,7 +12,7 @@ pub fn target() -> Target {
     let llvm_target = super::apple_base::ios_sim_llvm_target(arch);
 
     Target {
-        llvm_target: llvm_target,
+        llvm_target,
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),

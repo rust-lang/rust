@@ -704,8 +704,7 @@ impl<'tcx> Cx<'tcx> {
                                     ty: var_ty,
                                 };
                                 let lhs = self.thir.exprs.push(mk_const(self.tcx().mk_const(lhs)));
-                                let bin =
-                                    ExprKind::Binary { op: BinOp::Add, lhs: lhs, rhs: offset };
+                                let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
                                 self.thir.exprs.push(Expr {
                                     temp_lifetime,
                                     ty: var_ty,
@@ -719,7 +718,7 @@ impl<'tcx> Cx<'tcx> {
                         self.mirror_expr(source)
                     };
 
-                    ExprKind::Cast { source: source }
+                    ExprKind::Cast { source }
                 };
 
                 if let Some(user_ty) = user_ty {

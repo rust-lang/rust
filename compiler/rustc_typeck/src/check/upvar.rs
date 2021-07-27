@@ -1548,8 +1548,9 @@ fn apply_capture_kind_on_capture_ty(
 ) -> Ty<'tcx> {
     match capture_kind {
         ty::UpvarCapture::ByValue(_) => ty,
-        ty::UpvarCapture::ByRef(borrow) => tcx
-            .mk_ref(borrow.region, ty::TypeAndMut { ty: ty, mutbl: borrow.kind.to_mutbl_lossy() }),
+        ty::UpvarCapture::ByRef(borrow) => {
+            tcx.mk_ref(borrow.region, ty::TypeAndMut { ty, mutbl: borrow.kind.to_mutbl_lossy() })
+        }
     }
 }
 

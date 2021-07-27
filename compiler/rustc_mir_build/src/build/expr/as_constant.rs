@@ -30,7 +30,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Constant { span, user_ty: None, literal: literal.into() }
             }
             ExprKind::ConstBlock { value } => {
-                Constant { span: span, user_ty: None, literal: value.into() }
+                Constant { span, user_ty: None, literal: value.into() }
             }
             _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
         }

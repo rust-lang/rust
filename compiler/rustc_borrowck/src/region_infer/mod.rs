@@ -1751,7 +1751,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|&(category, span)| BlameConstraint {
                 category,
                 from_closure: true,
-                span: span,
+                span,
                 variance_info: constraint.variance_info,
             })
             .unwrap_or(BlameConstraint {

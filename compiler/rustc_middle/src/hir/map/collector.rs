@@ -141,7 +141,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         insert_vec_map(
             &mut nodes.nodes,
             hir_id.local_id,
-            ParentedNode { parent: self.parent_node.local_id, node: node },
+            ParentedNode { parent: self.parent_node.local_id, node },
         );
     }
 
