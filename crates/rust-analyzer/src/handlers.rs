@@ -873,8 +873,6 @@ pub(crate) fn handle_hover(
     params: lsp_ext::HoverParams,
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
-    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-
     let range = match params.position {
         PositionOrRange::Position(position) => Range::new(position, position),
         PositionOrRange::Range(range) => range,
@@ -886,7 +884,7 @@ pub(crate) fn handle_hover(
         Some(info) => info,
     };
 
-    let line_index = snap.file_line_index(file_id)?;
+    let line_index = snap.file_line_index(file_range.file_id)?;
     let range = to_proto::range(&line_index, info.range);
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {
