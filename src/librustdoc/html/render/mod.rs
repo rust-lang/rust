@@ -2007,6 +2007,9 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
             }
 
             sidebar.push_str("</div>");
+        } else if let CtorKind::Fn = s.struct_type {
+            sidebar
+                .push_str("<h3 class=\"sidebar-title\"><a href=\"#fields\">Tuple Fields</a></h3>");
         }
     }
 
