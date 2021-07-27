@@ -2,7 +2,7 @@
 
 #![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
-#![feature(bindings_after_at)]
+#![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]

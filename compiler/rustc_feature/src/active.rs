@@ -526,10 +526,6 @@ declare_features! (
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
 
-    /// Allows bindings in the subpattern of a binding pattern.
-    /// For example, you can write `x @ Some(y)`.
-    (active, bindings_after_at, "1.41.0", Some(65490), None),
-
     /// Allows `impl const Trait for T` syntax.
     (active, const_trait_impl, "1.42.0", Some(67792), None),
 

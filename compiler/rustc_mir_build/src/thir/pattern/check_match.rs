@@ -16,9 +16,8 @@ use rustc_middle::thir::PatKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -115,9 +114,6 @@ impl PatCtxt<'_, '_> {
 impl<'tcx> MatchVisitor<'_, 'tcx> {
     fn check_patterns(&mut self, pat: &Pat<'_>) {
         pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
-        if !self.tcx.features().bindings_after_at {
-            check_legality_of_bindings_in_at_patterns(self, pat);
-        }
         check_for_bindings_named_same_as_variants(self, pat);
     }
 
@@ -730,48 +726,5 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
             err.span_label(span, format!("value moved into `{}` here", name));
         }
         err.emit();
-    }
-}
-
-/// Forbids bindings in `@` patterns. This used to be is necessary for memory safety,
-/// because of the way rvalues were handled in the borrow check. (See issue #14587.)
-fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_>) {
-    AtBindingPatternVisitor { cx, bindings_allowed: true }.visit_pat(pat);
-
-    struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
-        cx: &'a MatchVisitor<'b, 'tcx>,
-        bindings_allowed: bool,
-    }
-
-    impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
-        type Map = intravisit::ErasedMap<'v>;
-
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
-        fn visit_pat(&mut self, pat: &Pat<'_>) {
-            match pat.kind {
-                hir::PatKind::Binding(.., ref subpat) => {
-                    if !self.bindings_allowed {
-                        feature_err(
-                            &self.cx.tcx.sess.parse_sess,
-                            sym::bindings_after_at,
-                            pat.span,
-                            "pattern bindings after an `@` are unstable",
-                        )
-                        .emit();
-                    }
-
-                    if subpat.is_some() {
-                        let bindings_were_allowed = self.bindings_allowed;
-                        self.bindings_allowed = false;
-                        intravisit::walk_pat(self, pat);
-                        self.bindings_allowed = bindings_were_allowed;
-                    }
-                }
-                _ => intravisit::walk_pat(self, pat),
-            }
-        }
     }
 }

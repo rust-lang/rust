@@ -2,8 +2,6 @@
 
 // Test copy
 
-#![feature(bindings_after_at)]
-
 struct A { a: i32, b: i32 }
 struct B { a: i32, b: C }
 struct D { a: i32, d: C }
