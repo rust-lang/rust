@@ -212,7 +212,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def.did) {
                     Ok(ecx.tcx.mir_for_ctfe_opt_const_arg(def))
                 } else {
-                    throw_unsup!(NoMirFor(def.did))
+                    let path = ecx.tcx.def_path_str(def.did);
+                    Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))
+                        .into())
                 }
             }
             _ => Ok(ecx.tcx.instance_mir(instance)),
@@ -247,20 +249,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         }
         // This is a const fn. Call it.
-        Ok(Some(match ecx.load_mir(instance.def, None) {
-            Ok(body) => body,
-            Err(err) => {
-                if let err_unsup!(NoMirFor(did)) = err.kind() {
-                    let path = ecx.tcx.def_path_str(*did);
-                    return Err(ConstEvalErrKind::NeedsRfc(format!(
-                        "calling extern function `{}`",
-                        path
-                    ))
-                    .into());
-                }
-                return Err(err);
-            }
-        }))
+        Ok(Some(ecx.load_mir(instance.def, None)?))
     }
 
     fn call_intrinsic(
