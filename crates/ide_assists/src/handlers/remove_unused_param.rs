@@ -53,12 +53,10 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
     }
 
     let mut param_position = func.param_list()?.params().position(|it| it == param)?;
-    // param_list() does not take self param into consideration, hence this additional check is
-    // added. There are two cases to handle in this scenario, where functions are
-    // associative(functions not associative and not containting contain self, are not allowed), in
-    // this case param position is rightly set. If a method call is present which has self param,
-    // that needs to be handled and is added below in process_usage function to reduce this increment and
-    // not consider self param.
+    // param_list() does not take the self param into consideration, hence this additional check
+    // is required. For associated functions, param_position is incremented here. For inherent
+    // calls we revet the increment below, in process_usage, as those calls will not have an
+    // explicit self parameter.
     if is_self_present {
         param_position += 1;
     }
