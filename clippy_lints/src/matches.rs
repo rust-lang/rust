@@ -1793,8 +1793,8 @@ mod redundant_pattern_match {
             || is_type_diagnostic_item(cx, ty, sym::Rc)
             || is_type_diagnostic_item(cx, ty, sym::Arc)
             || is_type_diagnostic_item(cx, ty, sym::cstring_type)
-            || match_type(cx, ty, &paths::BTREEMAP)
-            || match_type(cx, ty, &paths::LINKED_LIST)
+            || is_type_diagnostic_item(cx, ty, sym::BTreeMap)
+            || is_type_diagnostic_item(cx, ty, sym::LinkedList)
             || match_type(cx, ty, &paths::WEAK_RC)
             || match_type(cx, ty, &paths::WEAK_ARC)
         {

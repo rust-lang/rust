@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::paths;
+use clippy_utils::return_ty;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::DiagnosticBuilderExt;
-use clippy_utils::{get_trait_def_id, return_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -105,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             let self_def_id = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_def_id);
                             if TyS::same_type(self_ty, return_ty(cx, id));
-                            if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
+                            if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
                             then {
                                 if self.impling_types.is_none() {
                                     let mut impls = HirIdSet::default();

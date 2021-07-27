@@ -103,7 +103,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         // Allow `Borrow` or functions to be taken by value
-        let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
         let allowed_traits = [
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
@@ -167,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 let preds = preds.iter().filter(|t| t.self_ty() == ty).collect::<Vec<_>>();
 
                 (
-                    preds.iter().any(|t| t.def_id() == borrow_trait),
+                    preds.iter().any(|t| cx.tcx.is_diagnostic_item(sym::Borrow, t.def_id())),
                     !preds.is_empty() && {
                         let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_root_empty, ty);
                         preds.iter().all(|t| {

@@ -17,10 +17,9 @@ use rustc_typeck::hir_ty_to_ty;
 use if_chain::if_chain;
 
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
-use clippy_utils::paths;
+use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, match_def_path};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for public `impl` or `fn` missing generalization
@@ -337,7 +336,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                     return;
                 }
 
-                if match_def_path(self.cx, ty_did, &paths::HASHMAP) {
+                if self.cx.tcx.is_diagnostic_item(sym::hashmap_type, ty_did) {
                     if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
@@ -350,7 +349,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                             ),
                         );
                     }
-                } else if match_def_path(self.cx, ty_did, &paths::HASHSET) {
+                } else if self.cx.tcx.is_diagnostic_item(sym::hashset_type, ty_did) {
                     if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());

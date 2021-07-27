@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
-use clippy_utils::{expr_path_res, is_lint_allowed, match_any_def_paths, paths};
+use clippy_utils::{expr_path_res, is_lint_allowed, match_any_diagnostic_items, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -419,7 +419,7 @@ fn get_rptr_lm<'tcx>(ty: &'tcx Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(pathexp, []) = expr.kind {
         expr_path_res(cx, pathexp).opt_def_id().map_or(false, |id| {
-            match_any_def_paths(cx, id, &[&paths::PTR_NULL, &paths::PTR_NULL_MUT]).is_some()
+            match_any_diagnostic_items(cx, id, &[sym::ptr_null, sym::ptr_null_mut]).is_some()
         })
     } else {
         false
