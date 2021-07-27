@@ -726,3 +726,9 @@ fn bench_dedup_old_100000(b: &mut Bencher) {
 fn bench_dedup_new_100000(b: &mut Bencher) {
     bench_vec_dedup_new(b, 100000);
 }
+
+#[bench]
+fn bench_flat_map_collect(b: &mut Bencher) {
+    let v = vec![777u32; 500000];
+    b.iter(|| v.iter().flat_map(|color| color.rotate_left(8).to_be_bytes()).collect::<Vec<_>>());
+}
