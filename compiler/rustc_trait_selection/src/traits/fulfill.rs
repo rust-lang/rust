@@ -649,7 +649,12 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
-            if infcx.predicate_must_hold_considering_regions(obligation) {
+            //
+            // If the predicate is considered const, then we cannot use this because
+            // it will cause false negatives in the ui tests.
+            if !self.selcx.is_predicate_const(obligation.predicate)
+                && infcx.predicate_must_hold_considering_regions(obligation)
+            {
                 debug!(
                     "selecting trait at depth {} evaluated to holds",
                     obligation.recursion_depth
@@ -703,7 +708,12 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
-            if self.selcx.infcx().predicate_must_hold_considering_regions(obligation) {
+            //
+            // If the predicate is considered const, then we cannot use this because
+            // it will cause false negatives in the ui tests.
+            if !self.selcx.is_predicate_const(obligation.predicate)
+                && self.selcx.infcx().predicate_must_hold_considering_regions(obligation)
+            {
                 return ProcessResult::Changed(vec![]);
             } else {
                 tracing::debug!("Does NOT hold: {:?}", obligation);
