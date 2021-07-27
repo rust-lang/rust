@@ -76,8 +76,8 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .args(&["-p", "subcrate"])
-        .arg("--")
         .arg("--no-deps")
+        .arg("--")
         .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
         .args(&["--cfg", r#"feature="primary_package_test""#])
         .output()
