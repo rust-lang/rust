@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/no_inferrable_concrete_type.rs:9:12
+  --> $DIR/no_inferrable_concrete_type.rs:8:12
    |
 LL | type Foo = impl Copy;
    |            ^^^^^^^^^

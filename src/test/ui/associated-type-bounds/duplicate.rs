@@ -1,50 +1,110 @@
 #![feature(associated_type_bounds)]
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 #![feature(untagged_unions)]
 
 use std::iter;
 
-struct SI1<T: Iterator<Item: Copy, Item: Send>> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-struct SI2<T: Iterator<Item: Copy, Item: Copy>> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-struct SI3<T: Iterator<Item: 'static, Item: 'static>> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-struct SW1<T> where T: Iterator<Item: Copy, Item: Send> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-struct SW2<T> where T: Iterator<Item: Copy, Item: Copy> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-struct SW3<T> where T: Iterator<Item: 'static, Item: 'static> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+struct SI1<T: Iterator<Item: Copy, Item: Send>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    f: T,
+}
+struct SI2<T: Iterator<Item: Copy, Item: Copy>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    f: T,
+}
+struct SI3<T: Iterator<Item: 'static, Item: 'static>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    f: T,
+}
+struct SW1<T>
+where
+    T: Iterator<Item: Copy, Item: Send>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    f: T,
+}
+struct SW2<T>
+where
+    T: Iterator<Item: Copy, Item: Copy>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    f: T,
+}
+struct SW3<T>
+where
+    T: Iterator<Item: 'static, Item: 'static>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    f: T,
+}
 
-enum EI1<T: Iterator<Item: Copy, Item: Send>> { V(T) }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-enum EI2<T: Iterator<Item: Copy, Item: Copy>> { V(T) }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-enum EI3<T: Iterator<Item: 'static, Item: 'static>> { V(T) }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-enum EW1<T> where T: Iterator<Item: Copy, Item: Send> { V(T) }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-enum EW2<T> where T: Iterator<Item: Copy, Item: Copy> { V(T) }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-enum EW3<T> where T: Iterator<Item: 'static, Item: 'static> { V(T) }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+enum EI1<T: Iterator<Item: Copy, Item: Send>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    V(T),
+}
+enum EI2<T: Iterator<Item: Copy, Item: Copy>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    V(T),
+}
+enum EI3<T: Iterator<Item: 'static, Item: 'static>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    V(T),
+}
+enum EW1<T>
+where
+    T: Iterator<Item: Copy, Item: Send>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    V(T),
+}
+enum EW2<T>
+where
+    T: Iterator<Item: Copy, Item: Copy>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    V(T),
+}
+enum EW3<T>
+where
+    T: Iterator<Item: 'static, Item: 'static>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    V(T),
+}
 
-union UI1<T: Iterator<Item: Copy, Item: Send>> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-union UI2<T: Iterator<Item: Copy, Item: Copy>> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-union UI3<T: Iterator<Item: 'static, Item: 'static>> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-union UW1<T> where T: Iterator<Item: Copy, Item: Send> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-union UW2<T> where T: Iterator<Item: Copy, Item: Copy> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-union UW3<T> where T: Iterator<Item: 'static, Item: 'static> { f: T }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+union UI1<T: Iterator<Item: Copy, Item: Send>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    f: T,
+}
+union UI2<T: Iterator<Item: Copy, Item: Copy>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    f: T,
+}
+union UI3<T: Iterator<Item: 'static, Item: 'static>> {
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    f: T,
+}
+union UW1<T>
+where
+    T: Iterator<Item: Copy, Item: Send>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    f: T,
+}
+union UW2<T>
+where
+    T: Iterator<Item: Copy, Item: Copy>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    f: T,
+}
+union UW3<T>
+where
+    T: Iterator<Item: 'static, Item: 'static>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+    f: T,
+}
 
 fn FI1<T: Iterator<Item: Copy, Item: Send>>() {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
@@ -52,16 +112,34 @@ fn FI2<T: Iterator<Item: Copy, Item: Copy>>() {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 fn FI3<T: Iterator<Item: 'static, Item: 'static>>() {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-fn FW1<T>() where T: Iterator<Item: Copy, Item: Send> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-fn FW2<T>() where T: Iterator<Item: Copy, Item: Copy> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-fn FW3<T>() where T: Iterator<Item: 'static, Item: 'static> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+fn FW1<T>()
+where
+    T: Iterator<Item: Copy, Item: Send>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+fn FW2<T>()
+where
+    T: Iterator<Item: Copy, Item: Copy>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+fn FW3<T>()
+where
+    T: Iterator<Item: 'static, Item: 'static>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
 
-fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> { iter::empty() }
-fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> { iter::empty() }
-fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> { iter::empty() }
+fn FRPIT1() -> impl Iterator<Item: Copy, Item: Send> {
+    iter::empty()
+}
+fn FRPIT2() -> impl Iterator<Item: Copy, Item: Copy> {
+    iter::empty()
+}
+fn FRPIT3() -> impl Iterator<Item: 'static, Item: 'static> {
+    iter::empty()
+}
 fn FAPIT1(_: impl Iterator<Item: Copy, Item: Send>) {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 fn FAPIT2(_: impl Iterator<Item: Copy, Item: Copy>) {}
@@ -75,12 +153,21 @@ type TAI2<T: Iterator<Item: Copy, Item: Copy>> = T;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 type TAI3<T: Iterator<Item: 'static, Item: 'static>> = T;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-type TAW1<T> where T: Iterator<Item: Copy, Item: Send> = T;
+type TAW1<T>
+where
+    T: Iterator<Item: Copy, Item: Send>,
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-type TAW2<T> where T: Iterator<Item: Copy, Item: Copy> = T;
+= T;
+type TAW2<T>
+where
+    T: Iterator<Item: Copy, Item: Copy>,
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
+= T;
+type TAW3<T>
+where
+    T: Iterator<Item: 'static, Item: 'static>,
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+= T;
 
 type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
@@ -107,27 +194,57 @@ trait TRS2: Iterator<Item: Copy, Item: Copy> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 trait TRS3: Iterator<Item: 'static, Item: 'static> {}
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRW1<T> where T: Iterator<Item: Copy, Item: Send> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRW2<T> where T: Iterator<Item: Copy, Item: Copy> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRW3<T> where T: Iterator<Item: 'static, Item: 'static> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRSW1 where Self: Iterator<Item: Copy, Item: Send> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRSW2 where Self: Iterator<Item: Copy, Item: Copy> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRSW3 where Self: Iterator<Item: 'static, Item: 'static> {}
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-//~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRA1 { type A: Iterator<Item: Copy, Item: Send>; }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRA2 { type A: Iterator<Item: Copy, Item: Copy>; }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-trait TRA3 { type A: Iterator<Item: 'static, Item: 'static>; }
-//~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+trait TRW1<T>
+where
+    T: Iterator<Item: Copy, Item: Send>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+trait TRW2<T>
+where
+    T: Iterator<Item: Copy, Item: Copy>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+trait TRW3<T>
+where
+    T: Iterator<Item: 'static, Item: 'static>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+trait TRSW1
+where
+    Self: Iterator<Item: Copy, Item: Send>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    //~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+trait TRSW2
+where
+    Self: Iterator<Item: Copy, Item: Copy>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    //~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+trait TRSW3
+where
+    Self: Iterator<Item: 'static, Item: 'static>,
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+    //~| ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+{
+}
+trait TRA1 {
+    type A: Iterator<Item: Copy, Item: Send>;
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+}
+trait TRA2 {
+    type A: Iterator<Item: Copy, Item: Copy>;
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+}
+trait TRA3 {
+    type A: Iterator<Item: 'static, Item: 'static>;
+    //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
+}
 
 type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
 //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]

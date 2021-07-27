@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/declared_but_never_defined.rs:9:12
+  --> $DIR/declared_but_never_defined.rs:8:12
    |
 LL | type Bar = impl std::fmt::Debug;
    |            ^^^^^^^^^^^^^^^^^^^^

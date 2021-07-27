@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/type-alias-impl-trait-with-cycle-error.rs:6:12
+  --> $DIR/type-alias-impl-trait-with-cycle-error.rs:5:12
    |
 LL | type Foo = impl Fn() -> Foo;
    |            ^^^^^^^^^^^^^^^^

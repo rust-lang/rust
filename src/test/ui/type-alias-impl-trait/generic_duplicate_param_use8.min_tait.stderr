@@ -1,17 +1,17 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use8.rs:17:1
+  --> $DIR/generic_duplicate_param_use8.rs:16:1
    |
 LL | fn three<T: Debug, U: Debug>(_: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, u32)`, got `(U, u32)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use8.rs:13:1
+  --> $DIR/generic_duplicate_param_use8.rs:12:1
    |
 LL | fn two<T: Debug, U: Debug>(t: T, _: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use8.rs:10:18
+  --> $DIR/generic_duplicate_param_use8.rs:9:18
    |
 LL | type Two<T, U> = impl Debug;
    |                  ^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`

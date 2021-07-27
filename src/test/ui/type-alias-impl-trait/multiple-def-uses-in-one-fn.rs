@@ -2,7 +2,7 @@
 // This test used to cause unsoundness, since one of the two possible
 // resolutions was chosen at random instead of erroring due to conflicts.
 
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 type X<A, B> = impl Into<&'static A>;
 //~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied

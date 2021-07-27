@@ -1,0 +1,8 @@
+error: could not find defining uses
+  --> $DIR/type-alias-impl-trait-with-cycle-error2.rs:7:12
+   |
+LL | type Foo = impl Bar<Foo, Item = Foo>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

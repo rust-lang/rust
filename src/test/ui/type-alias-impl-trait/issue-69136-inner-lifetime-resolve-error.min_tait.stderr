@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:20:65
+  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:19:65
    |
 LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
    |             -                                                   ^^ undeclared lifetime

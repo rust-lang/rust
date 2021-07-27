@@ -1,17 +1,17 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use5.rs:19:1
+  --> $DIR/generic_duplicate_param_use5.rs:18:1
    |
 LL | fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, U)`, got `(U, T)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use5.rs:15:1
+  --> $DIR/generic_duplicate_param_use5.rs:14:1
    |
 LL | fn two<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use5.rs:11:18
+  --> $DIR/generic_duplicate_param_use5.rs:10:18
    |
 LL | type Two<T, U> = impl Debug;
    |                  ^^^^^^^^^^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -23,7 +23,7 @@ LL | type Two<T: std::fmt::Debug, U> = impl Debug;
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0277]: `U` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use5.rs:11:18
+  --> $DIR/generic_duplicate_param_use5.rs:10:18
    |
 LL | type Two<T, U> = impl Debug;
    |                  ^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`

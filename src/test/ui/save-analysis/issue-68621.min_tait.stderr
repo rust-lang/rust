@@ -1,5 +1,5 @@
 error: could not find defining uses
-  --> $DIR/issue-68621.rs:17:19
+  --> $DIR/issue-68621.rs:16:19
    |
 LL |     type Future = impl Trait;
    |                   ^^^^^^^^^^

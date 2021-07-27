@@ -1,5 +1,5 @@
 #![feature(unboxed_closures)]
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 type FunType = impl Fn<()>;
 //~^ could not find defining uses
