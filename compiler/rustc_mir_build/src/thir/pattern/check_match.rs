@@ -112,7 +112,7 @@ impl PatCtxt<'_, '_> {
 }
 
 impl<'tcx> MatchVisitor<'_, 'tcx> {
-    fn check_patterns(&mut self, pat: &Pat<'_>) {
+    fn check_patterns(&self, pat: &Pat<'_>) {
         pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
         check_for_bindings_named_same_as_variants(self, pat);
     }
@@ -150,18 +150,13 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
     ) {
+        let mut cx = self.new_cx(scrut.hir_id);
+
         for arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(&arm.pat);
             if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
                 self.check_patterns(pat);
-            }
-        }
-
-        let mut cx = self.new_cx(scrut.hir_id);
-
-        for arm in arms {
-            if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
                 let tpat = self.lower_pattern(&mut cx, pat, &mut false).0;
                 check_if_let_guard(&mut cx, &tpat, pat.hir_id);
             }
