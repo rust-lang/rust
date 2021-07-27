@@ -254,11 +254,38 @@ pub struct ConstArg {
     pub span: Span,
 }
 
+#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
+pub enum InferKind {
+    Const,
+    Type,
+}
+
+impl InferKind {
+    #[inline]
+    pub fn is_type(self) -> bool {
+        matches!(self, InferKind::Type)
+    }
+}
+
+#[derive(Encodable, Debug, HashStable_Generic)]
+pub struct InferArg {
+    pub hir_id: HirId,
+    pub kind: InferKind,
+    pub span: Span,
+}
+
+impl InferArg {
+    pub fn to_ty(&self) -> Ty<'_> {
+        Ty { kind: TyKind::Infer, span: self.span, hir_id: self.hir_id }
+    }
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub enum GenericArg<'hir> {
     Lifetime(Lifetime),
     Type(Ty<'hir>),
     Const(ConstArg),
+    Infer(InferArg),
 }
 
 impl GenericArg<'_> {
@@ -267,6 +294,7 @@ impl GenericArg<'_> {
             GenericArg::Lifetime(l) => l.span,
             GenericArg::Type(t) => t.span,
             GenericArg::Const(c) => c.span,
+            GenericArg::Infer(i) => i.span,
         }
     }
 
@@ -275,6 +303,7 @@ impl GenericArg<'_> {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
             GenericArg::Const(c) => c.value.hir_id,
+            GenericArg::Infer(i) => i.hir_id,
         }
     }
 
@@ -291,6 +320,7 @@ impl GenericArg<'_> {
             GenericArg::Lifetime(_) => "lifetime",
             GenericArg::Type(_) => "type",
             GenericArg::Const(_) => "constant",
+            GenericArg::Infer(_) => "inferred",
         }
     }
 
@@ -301,6 +331,7 @@ impl GenericArg<'_> {
             GenericArg::Const(_) => {
                 ast::ParamKindOrd::Const { unordered: feats.unordered_const_ty_params() }
             }
+            GenericArg::Infer(_) => ast::ParamKindOrd::Infer,
         }
     }
 }
@@ -342,27 +373,36 @@ impl GenericArgs<'_> {
                         break;
                     }
                     GenericArg::Const(_) => {}
+                    GenericArg::Infer(_) => {}
                 }
             }
         }
         panic!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
 
-    pub fn own_counts(&self) -> GenericParamCount {
-        // We could cache this as a property of `GenericParamCount`, but
-        // the aim is to refactor this away entirely eventually and the
-        // presence of this method will be a constant reminder.
-        let mut own_counts: GenericParamCount = Default::default();
+    #[inline]
+    pub fn has_type_params(&self) -> bool {
+        self.args.iter().any(|arg| matches!(arg, GenericArg::Type(_)))
+    }
 
-        for arg in self.args {
-            match arg {
-                GenericArg::Lifetime(_) => own_counts.lifetimes += 1,
-                GenericArg::Type(_) => own_counts.types += 1,
-                GenericArg::Const(_) => own_counts.consts += 1,
-            };
-        }
+    #[inline]
+    pub fn num_type_params(&self) -> usize {
+        self.args.iter().filter(|arg| matches!(arg, GenericArg::Type(_))).count()
+    }
 
-        own_counts
+    #[inline]
+    pub fn num_lifetime_params(&self) -> usize {
+        self.args.iter().filter(|arg| matches!(arg, GenericArg::Lifetime(_))).count()
+    }
+
+    #[inline]
+    pub fn has_lifetime_params(&self) -> bool {
+        self.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+    }
+
+    #[inline]
+    pub fn num_generic_params(&self) -> usize {
+        self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
 
     /// The span encompassing the text inside the surrounding brackets.
@@ -485,6 +525,7 @@ pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
     pub consts: usize,
+    pub infer: usize,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -3130,6 +3171,8 @@ pub enum Node<'hir> {
     Visibility(&'hir Visibility<'hir>),
 
     Crate(&'hir Mod<'hir>),
+
+    Infer(&'hir InferArg),
 }
 
 impl<'hir> Node<'hir> {
@@ -3198,6 +3241,7 @@ impl<'hir> Node<'hir> {
             | Node::Local(Local { hir_id, .. })
             | Node::Lifetime(Lifetime { hir_id, .. })
             | Node::Param(Param { hir_id, .. })
+            | Node::Infer(InferArg { hir_id, .. })
             | Node::GenericParam(GenericParam { hir_id, .. }) => Some(*hir_id),
             Node::TraitRef(TraitRef { hir_ref_id, .. }) => Some(*hir_ref_id),
             Node::PathSegment(PathSegment { hir_id, .. }) => *hir_id,

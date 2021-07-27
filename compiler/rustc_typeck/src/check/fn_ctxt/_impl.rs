@@ -581,6 +581,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+        match self.typeck_results.borrow().node_types().get(id) {
+            Some(&t) => Some(t),
+            None if self.is_tainted_by_errors() => Some(self.tcx.ty_error()),
+            None => None,
+        }
+    }
+
     /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub fn register_wf_obligation(
         &self,
@@ -1470,6 +1478,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
+                        self.fcx.ty_infer(Some(param), inf.span).into()
+                    }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                        let tcx = self.fcx.tcx();
+                        self.fcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
                     }
                     _ => unreachable!(),
                 }

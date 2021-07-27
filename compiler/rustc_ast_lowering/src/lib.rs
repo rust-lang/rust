@@ -51,7 +51,7 @@ use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
-use rustc_hir::{ConstArg, GenericArg, ParamName};
+use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
@@ -1243,48 +1243,59 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => {
-                // We parse const arguments as path types as we cannot distinguish them during
-                // parsing. We try to resolve that ambiguity by attempting resolution in both the
-                // type and value namespaces. If we resolved the path in the value namespace, we
-                // transform it into a generic const argument.
-                if let TyKind::Path(ref qself, ref path) = ty.kind {
-                    if let Some(partial_res) = self.resolver.get_partial_res(ty.id) {
-                        let res = partial_res.base_res();
-                        if !res.matches_ns(Namespace::TypeNS) {
-                            debug!(
-                                "lower_generic_arg: Lowering type argument as const argument: {:?}",
-                                ty,
-                            );
+                match ty.kind {
+                    TyKind::Infer if self.sess.features_untracked().generic_arg_infer => {
+                        let hir_id = self.lower_node_id(ty.id);
+                        return GenericArg::Infer(hir::InferArg {
+                            hir_id,
+                            span: ty.span,
+                            kind: InferKind::Type,
+                        });
+                    }
+                    // We parse const arguments as path types as we cannot distinguish them during
+                    // parsing. We try to resolve that ambiguity by attempting resolution in both the
+                    // type and value namespaces. If we resolved the path in the value namespace, we
+                    // transform it into a generic const argument.
+                    TyKind::Path(ref qself, ref path) => {
+                        if let Some(partial_res) = self.resolver.get_partial_res(ty.id) {
+                            let res = partial_res.base_res();
+                            if !res.matches_ns(Namespace::TypeNS) {
+                                debug!(
+                                    "lower_generic_arg: Lowering type argument as const argument: {:?}",
+                                    ty,
+                                );
 
-                            // Construct a AnonConst where the expr is the "ty"'s path.
+                                // Construct a AnonConst where the expr is the "ty"'s path.
 
-                            let parent_def_id = self.current_hir_id_owner.0;
-                            let node_id = self.resolver.next_node_id();
+                                let parent_def_id = self.current_hir_id_owner.0;
+                                let node_id = self.resolver.next_node_id();
 
-                            // Add a definition for the in-band const def.
-                            self.resolver.create_def(
-                                parent_def_id,
-                                node_id,
-                                DefPathData::AnonConst,
-                                ExpnId::root(),
-                                ty.span,
-                            );
+                                // Add a definition for the in-band const def.
+                                self.resolver.create_def(
+                                    parent_def_id,
+                                    node_id,
+                                    DefPathData::AnonConst,
+                                    ExpnId::root(),
+                                    ty.span,
+                                );
 
-                            let path_expr = Expr {
-                                id: ty.id,
-                                kind: ExprKind::Path(qself.clone(), path.clone()),
-                                span: ty.span,
-                                attrs: AttrVec::new(),
-                                tokens: None,
-                            };
+                                let path_expr = Expr {
+                                    id: ty.id,
+                                    kind: ExprKind::Path(qself.clone(), path.clone()),
+                                    span: ty.span,
+                                    attrs: AttrVec::new(),
+                                    tokens: None,
+                                };
 
-                            let ct = self.with_new_scopes(|this| hir::AnonConst {
-                                hir_id: this.lower_node_id(node_id),
-                                body: this.lower_const_body(path_expr.span, Some(&path_expr)),
-                            });
-                            return GenericArg::Const(ConstArg { value: ct, span: ty.span });
+                                let ct = self.with_new_scopes(|this| hir::AnonConst {
+                                    hir_id: this.lower_node_id(node_id),
+                                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
+                                });
+                                return GenericArg::Const(ConstArg { value: ct, span: ty.span });
+                            }
                         }
                     }
+                    _ => {}
                 }
                 GenericArg::Type(self.lower_ty_direct(&ty, itctx))
             }

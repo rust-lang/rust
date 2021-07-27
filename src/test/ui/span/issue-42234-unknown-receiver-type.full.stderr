@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `Option<_>`
-  --> $DIR/issue-42234-unknown-receiver-type.rs:7:7
+  --> $DIR/issue-42234-unknown-receiver-type.rs:10:7
    |
 LL |     let x: Option<_> = None;
    |         - consider giving `x` the explicit type `Option<_>`, where the type parameter `T` is specified
@@ -9,7 +9,7 @@ LL |     x.unwrap().method_that_could_exist_on_some_type();
    = note: type must be known at this point
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-42234-unknown-receiver-type.rs:13:10
+  --> $DIR/issue-42234-unknown-receiver-type.rs:16:10
    |
 LL |         .sum::<_>()
    |          ^^^ cannot infer type

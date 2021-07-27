@@ -680,6 +680,9 @@ declare_features! (
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
 
+    /// Infer generic args for both consts and types.
+    (active, generic_arg_infer, "1.55.0", Some(85077), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
