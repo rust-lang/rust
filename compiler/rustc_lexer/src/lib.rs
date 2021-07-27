@@ -273,24 +273,14 @@ pub fn is_whitespace(c: char) -> bool {
 /// a formal definition of valid identifier name.
 pub fn is_id_start(c: char) -> bool {
     // This is XID_Start OR '_' (which formally is not a XID_Start).
-    // We also add fast-path for ascii idents
-    ('a'..='z').contains(&c)
-        || ('A'..='Z').contains(&c)
-        || c == '_'
-        || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_start(c))
+    c == '_' || unicode_xid::UnicodeXID::is_xid_start(c)
 }
 
 /// True if `c` is valid as a non-first character of an identifier.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html) for
 /// a formal definition of valid identifier name.
 pub fn is_id_continue(c: char) -> bool {
-    // This is exactly XID_Continue.
-    // We also add fast-path for ascii idents
-    ('a'..='z').contains(&c)
-        || ('A'..='Z').contains(&c)
-        || ('0'..='9').contains(&c)
-        || c == '_'
-        || (c > '\x7f' && unicode_xid::UnicodeXID::is_xid_continue(c))
+    unicode_xid::UnicodeXID::is_xid_continue(c)
 }
 
 /// The passed string is lexically an identifier.
