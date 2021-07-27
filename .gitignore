@@ -74,5 +74,7 @@ __pycache__/
 
 ## Rustdoc GUI tests
 src/test/rustdoc-gui/src/**.lock
+**/package.json
+**/.package-cache
 
 # Before adding new lines, see the comment at the top.
