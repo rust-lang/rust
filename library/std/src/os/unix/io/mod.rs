@@ -32,9 +32,9 @@
 //!    other code using that file descriptor.
 //! This list doesn't include `mmap`, since `mmap` does do a proper borrow of
 //! its file descriptor argument. That said, `mmap` is unsafe for other
-//! reasons: it operates on raw pointers, and it has undefined behavior if the
-//! underlying storage is mutated. Mutations may come from other processes, or
-//! from the same process if the API provides `BorrowedFd` access, since as
+//! reasons: it operates on raw pointers, and it can have undefined behavior if
+//! the underlying storage is mutated. Mutations may come from other processes,
+//! or from the same process if the API provides `BorrowedFd` access, since as
 //! mentioned earlier, `BorrowedFd` values may be used in APIs which provide
 //! safe access to any system call. Consequently, code using `mmap` and
 //! presenting a safe API must take full responsibility for ensuring that safe
