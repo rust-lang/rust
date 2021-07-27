@@ -30,6 +30,13 @@ crate fn thir_body<'tcx>(
     (tcx.alloc_steal_thir(cx.thir), expr)
 }
 
+crate fn thir_tree<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner_def: ty::WithOptConstParam<LocalDefId>,
+) -> String {
+    format!("{:#?}", thir_body(tcx, owner_def).0.steal())
+}
+
 struct Cx<'tcx> {
     tcx: TyCtxt<'tcx>,
     thir: Thir<'tcx>,

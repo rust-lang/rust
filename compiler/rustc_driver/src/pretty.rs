@@ -14,6 +14,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
+use std::fmt::Write;
 use std::path::Path;
 
 pub use self::PpMode::*;
@@ -471,7 +472,6 @@ fn print_with_analysis(
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
     tcx.analysis(())?;
-
     let out = match ppm {
         Mir => {
             let mut out = Vec::new();
@@ -486,8 +486,18 @@ fn print_with_analysis(
         }
 
         ThirTree => {
-            // FIXME(rust-lang/project-thir-unsafeck#8)
-            todo!()
+            let mut out = String::new();
+            abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
+            debug!("pretty printing THIR tree");
+            for did in tcx.body_owners() {
+                let _ = writeln!(
+                    out,
+                    "{:?}:\n{}\n",
+                    did,
+                    tcx.thir_tree(ty::WithOptConstParam::unknown(did))
+                );
+            }
+            out
         }
 
         _ => unreachable!(),
