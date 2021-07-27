@@ -812,4 +812,39 @@ impl Foo for () {
 "#,
         )
     }
+
+    #[test]
+    fn does_not_requalify_self_as_crate() {
+        check_assist(
+            add_missing_default_members,
+            r"
+struct Wrapper<T>(T);
+
+trait T {
+    fn f(self) -> Wrapper<Self> {
+        Wrapper(self)
+    }
+}
+
+impl T for () {
+    $0
+}
+",
+            r"
+struct Wrapper<T>(T);
+
+trait T {
+    fn f(self) -> Wrapper<Self> {
+        Wrapper(self)
+    }
+}
+
+impl T for () {
+    $0fn f(self) -> Wrapper<Self> {
+        Wrapper(self)
+    }
+}
+",
+        );
+    }
 }
