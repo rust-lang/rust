@@ -58,6 +58,10 @@ pub struct OwnedHandle {
 /// where `INVALID_HANDLE_VALUE` is used as the sentry value, and null values
 /// are not used at all, such as in the return value of `CreateFileW`.
 ///
+/// The main thing you can do with an `OptionFileHandle` is to convert it into
+/// an `OwnedHandle` using its [`TryFrom`] implementation, and this conversion
+/// takes care of the check for `INVALID_HANDLE_VALUE`.
+///
 /// If this holds an owned handle, it closes the handle on drop.
 ///
 /// This uses `repr(transparent)` and has the representation of a host handle,
