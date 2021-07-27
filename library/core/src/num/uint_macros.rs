@@ -16,7 +16,7 @@ macro_rules! uint_impl {
         pub const MIN: Self = 0;
 
         /// The largest value that can be represented by this integer type,
-        #[doc = concat!("2<sup>", stringify!($BITS), "</sup> - 1.")]
+        #[doc = concat!("2<sup>", $BITS, "</sup> - 1.")]
         ///
         /// # Examples
         ///

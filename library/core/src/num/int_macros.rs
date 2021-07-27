@@ -4,7 +4,7 @@ macro_rules! int_impl {
      $reversed:expr, $le_bytes:expr, $be_bytes:expr,
      $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
         /// The smallest value that can be represented by this integer type,
-        #[doc = concat!("-2<sup>", stringify!($BITS_MINUS_ONE), "</sup>.")]
+        #[doc = concat!("-2<sup>", $BITS_MINUS_ONE, "</sup>.")]
         ///
         /// # Examples
         ///
@@ -17,7 +17,7 @@ macro_rules! int_impl {
         pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
 
         /// The largest value that can be represented by this integer type,
-        #[doc = concat!("2<sup>", stringify!($BITS_MINUS_ONE), "</sup> - 1.")]
+        #[doc = concat!("2<sup>", $BITS_MINUS_ONE, "</sup> - 1.")]
         ///
         /// # Examples
         ///
