@@ -54,9 +54,6 @@ jobs:
       if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
       shell: bash
 
-    - name: cargo-make
-      run: cargo install --force cargo-make
-
     - name: build
       run: |
         rustc -Vv
