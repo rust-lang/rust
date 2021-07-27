@@ -402,8 +402,6 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-    /// Could not find MIR for a function.
-    NoMirFor(DefId),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     //
@@ -421,7 +419,6 @@ impl fmt::Display for UnsupportedOpInfo {
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
             ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
-            NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({:?})", did),
         }

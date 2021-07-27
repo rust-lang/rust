@@ -21,7 +21,12 @@ use std::num::IntErrorKind;
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.limits = |tcx, ()| Limits {
         recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
-        move_size_limit: get_limit(tcx.hir().krate_attrs(), tcx.sess, sym::move_size_limit, 0),
+        move_size_limit: get_limit(
+            tcx.hir().krate_attrs(),
+            tcx.sess,
+            sym::move_size_limit,
+            tcx.sess.opts.debugging_opts.move_size_limit.unwrap_or(0),
+        ),
         type_length_limit: get_limit(
             tcx.hir().krate_attrs(),
             tcx.sess,
