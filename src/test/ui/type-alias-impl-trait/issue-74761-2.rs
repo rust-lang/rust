@@ -1,6 +1,5 @@
 #![feature(member_constraints)]
 #![feature(type_alias_impl_trait)]
-//~^ WARN incomplete
 
 pub trait A {
     type B;

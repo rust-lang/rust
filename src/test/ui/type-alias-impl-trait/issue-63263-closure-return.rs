@@ -5,7 +5,6 @@
 // check-pass
 
 #![feature(min_type_alias_impl_trait, type_alias_impl_trait)]
-//~^ WARN incomplete
 
 pub type Closure = impl FnOnce();
 

@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/issue-53678-generator-and-const-fn.rs:22:1
+  --> $DIR/issue-53678-generator-and-const-fn.rs:21:1
    |
 LL | fn main() {}
    | ^^^^^^^^^

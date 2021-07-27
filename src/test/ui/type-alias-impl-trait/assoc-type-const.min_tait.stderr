@@ -1,5 +1,5 @@
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/assoc-type-const.rs:9:12
+  --> $DIR/assoc-type-const.rs:8:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^

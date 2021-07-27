@@ -1,11 +1,11 @@
 error: could not find defining uses
-  --> $DIR/declared_but_not_defined_in_scope.rs:10:20
+  --> $DIR/declared_but_not_defined_in_scope.rs:9:20
    |
 LL |     pub type Boo = impl ::std::fmt::Debug;
    |                    ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/declared_but_not_defined_in_scope.rs:14:5
+  --> $DIR/declared_but_not_defined_in_scope.rs:13:5
    |
 LL |     pub type Boo = impl ::std::fmt::Debug;
    |                    ---------------------- the expected opaque type

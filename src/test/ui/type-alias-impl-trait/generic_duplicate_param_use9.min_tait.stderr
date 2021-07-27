@@ -1,17 +1,17 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use9.rs:24:1
+  --> $DIR/generic_duplicate_param_use9.rs:23:1
    |
 LL | fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(A, B, <A as Foo>::Bar)`, got `(A, B, i32)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use9.rs:20:1
+  --> $DIR/generic_duplicate_param_use9.rs:19:1
    |
 LL | fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `A: Foo` is not satisfied in `(A, B, <A as Foo>::Bar)`
-  --> $DIR/generic_duplicate_param_use9.rs:10:18
+  --> $DIR/generic_duplicate_param_use9.rs:9:18
    |
 LL | type Two<A, B> = impl Debug;
    |                  ^^^^^^^^^^ within `(A, B, <A as Foo>::Bar)`, the trait `Foo` is not implemented for `A`
@@ -23,7 +23,7 @@ LL | type Two<A: Foo, B> = impl Debug;
    |           ^^^^^
 
 error[E0277]: `A` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use9.rs:10:18
+  --> $DIR/generic_duplicate_param_use9.rs:9:18
    |
 LL | type Two<A, B> = impl Debug;
    |                  ^^^^^^^^^^ `A` cannot be formatted using `{:?}` because it doesn't implement `Debug`
@@ -35,7 +35,7 @@ LL | type Two<A: std::fmt::Debug, B> = impl Debug;
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0277]: `B` doesn't implement `Debug`
-  --> $DIR/generic_duplicate_param_use9.rs:10:18
+  --> $DIR/generic_duplicate_param_use9.rs:9:18
    |
 LL | type Two<A, B> = impl Debug;
    |                  ^^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`

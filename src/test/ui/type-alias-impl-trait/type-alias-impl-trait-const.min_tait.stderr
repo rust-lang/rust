@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-alias-impl-trait-const.rs:13:19
+  --> $DIR/type-alias-impl-trait-const.rs:12:19
    |
 LL | pub type Foo = impl Debug;
    |                ---------- the expected opaque type
@@ -11,7 +11,7 @@ LL | const _FOO: Foo = 5;
                      found type `{integer}`
 
 error: could not find defining uses
-  --> $DIR/type-alias-impl-trait-const.rs:10:16
+  --> $DIR/type-alias-impl-trait-const.rs:9:16
    |
 LL | pub type Foo = impl Debug;
    |                ^^^^^^^^^^

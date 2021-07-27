@@ -489,7 +489,7 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
 
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
-    (incomplete, type_alias_impl_trait, "1.38.0", Some(63063), None),
+    (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),

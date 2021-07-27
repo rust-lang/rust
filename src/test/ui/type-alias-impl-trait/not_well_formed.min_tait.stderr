@@ -1,5 +1,5 @@
 error[E0220]: associated type `Assoc` not found for `V`
-  --> $DIR/not_well_formed.rs:13:29
+  --> $DIR/not_well_formed.rs:11:29
    |
 LL | type Foo<V> = impl Trait<V::Assoc>;
    |                             ^^^^^ associated type `Assoc` not found

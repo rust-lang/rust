@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/different_defining_uses.rs:15:1
+  --> $DIR/different_defining_uses.rs:14:1
    |
 LL | fn bar() -> Foo {
    | ^^^^^^^^^^^^^^^ expected `&'static str`, got `i32`
    |
 note: previous use here
-  --> $DIR/different_defining_uses.rs:11:1
+  --> $DIR/different_defining_uses.rs:10:1
    |
 LL | fn foo() -> Foo {
    | ^^^^^^^^^^^^^^^

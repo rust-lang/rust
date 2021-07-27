@@ -1,5 +1,5 @@
 error[E0658]: type alias impl trait is not permitted here
-  --> $DIR/issue-52843-closure-constrain.rs:13:22
+  --> $DIR/issue-52843-closure-constrain.rs:12:22
    |
 LL |     let null = || -> Opaque { 0 };
    |                      ^^^^^^
@@ -8,13 +8,13 @@ LL |     let null = || -> Opaque { 0 };
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-52843-closure-constrain.rs:13:16
+  --> $DIR/issue-52843-closure-constrain.rs:12:16
    |
 LL |     let null = || -> Opaque { 0 };
    |                ^^^^^^^^^^^^^^^^^^ expected `String`, got `[type error]`
    |
 note: previous use here
-  --> $DIR/issue-52843-closure-constrain.rs:12:5
+  --> $DIR/issue-52843-closure-constrain.rs:11:5
    |
 LL |     fn _unused() -> Opaque { String::new() }
    |     ^^^^^^^^^^^^^^^^^^^^^^

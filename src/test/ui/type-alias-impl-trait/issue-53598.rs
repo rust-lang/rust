@@ -2,7 +2,6 @@
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait)]
 #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
 
 use std::fmt::Debug;
 
@@ -21,7 +20,7 @@ impl Foo for S2 {
     type Item = impl Debug;
 
     fn foo<T: Debug>(_: T) -> Self::Item {
-    //~^ Error type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+        //~^ Error type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
         S::<T>(Default::default())
     }
 }

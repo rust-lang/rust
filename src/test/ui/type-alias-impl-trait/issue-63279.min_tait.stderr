@@ -1,5 +1,5 @@
 error[E0658]: type alias impl trait is not permitted here
-  --> $DIR/issue-63279.rs:11:11
+  --> $DIR/issue-63279.rs:10:11
    |
 LL |     || -> Closure { || () }
    |           ^^^^^^^
@@ -7,8 +7,8 @@ LL |     || -> Closure { || () }
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:11:5: 11:28] as FnOnce<()>>::Output == ()`
-  --> $DIR/issue-63279.rs:8:16
+error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:10:5: 10:28] as FnOnce<()>>::Output == ()`
+  --> $DIR/issue-63279.rs:7:16
    |
 LL | type Closure = impl FnOnce();
    |                ^^^^^^^^^^^^^ expected `()`, found opaque type
