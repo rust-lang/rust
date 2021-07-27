@@ -851,12 +851,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         use FfiResult::*;
 
         if def.repr.transparent() {
-            // Can assume that only one field is not a ZST, so only check
+            // Can assume that at most one field is not a ZST, so only check
             // that field's type for FFI-safety.
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
                 self.check_field_type_for_ffi(cache, field, substs)
             } else {
-                bug!("malformed transparent type");
+                // All fields are ZSTs; this means that the type should behave
+                // like (), which is FFI-unsafe
+                FfiUnsafe {
+                    ty,
+                    reason: "this struct contains only zero-sized fields".into(),
+                    help: None,
+                }
             }
         } else {
             // We can't completely trust repr(C) markings; make sure the fields are
