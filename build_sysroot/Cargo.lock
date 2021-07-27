@@ -271,14 +271,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "term"
-version = "0.0.0"
-dependencies = [
- "core",
- "std",
-]
-
-[[package]]
 name = "test"
 version = "0.0.0"
 dependencies = [
@@ -290,7 +282,6 @@ dependencies = [
  "panic_unwind",
  "proc_macro",
  "std",
- "term",
 ]
 
 [[package]]
