@@ -25,13 +25,13 @@ pub(super) fn mangle(
     let prefix = "_R";
     let mut cx = SymbolMangler {
         tcx,
-        compress: Some(Box::new(CompressionCaches {
+        compress: Box::new(CompressionCaches {
             start_offset: prefix.len(),
 
             paths: FxHashMap::default(),
             types: FxHashMap::default(),
             consts: FxHashMap::default(),
-        })),
+        }),
         binders: vec![],
         out: String::from(prefix),
     };
@@ -81,7 +81,7 @@ struct BinderLevel {
 
 struct SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
-    compress: Option<Box<CompressionCaches<'tcx>>>,
+    compress: Box<CompressionCaches<'tcx>>,
     binders: Vec<BinderLevel>,
     out: String,
 }
@@ -177,7 +177,7 @@ impl SymbolMangler<'tcx> {
 
     fn print_backref(mut self, i: usize) -> Result<Self, !> {
         self.push("B");
-        self.push_integer_62((i - self.compress.as_ref().unwrap().start_offset) as u64);
+        self.push_integer_62((i - self.compress.start_offset) as u64);
         Ok(self)
     }
 
@@ -236,7 +236,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         def_id: DefId,
         substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
-        if let Some(&i) = self.compress.as_ref().and_then(|c| c.paths.get(&(def_id, substs))) {
+        if let Some(&i) = self.compress.paths.get(&(def_id, substs)) {
             return self.print_backref(i);
         }
         let start = self.out.len();
@@ -246,9 +246,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         // Only cache paths that do not refer to an enclosing
         // binder (which would change depending on context).
         if !substs.iter().any(|k| k.has_escaping_bound_vars()) {
-            if let Some(c) = &mut self.compress {
-                c.paths.insert((def_id, substs), start);
-            }
+            self.compress.paths.insert((def_id, substs), start);
         }
         Ok(self)
     }
@@ -367,7 +365,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             return Ok(self);
         }
 
-        if let Some(&i) = self.compress.as_ref().and_then(|c| c.types.get(&ty)) {
+        if let Some(&i) = self.compress.types.get(&ty) {
             return self.print_backref(i);
         }
         let start = self.out.len();
@@ -476,9 +474,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         // Only cache types that do not refer to an enclosing
         // binder (which would change depending on context).
         if !ty.has_escaping_bound_vars() {
-            if let Some(c) = &mut self.compress {
-                c.types.insert(ty, start);
-            }
+            self.compress.types.insert(ty, start);
         }
         Ok(self)
     }
@@ -545,7 +541,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     }
 
     fn print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        if let Some(&i) = self.compress.as_ref().and_then(|c| c.consts.get(&ct)) {
+        if let Some(&i) = self.compress.consts.get(&ct) {
             return self.print_backref(i);
         }
         let start = self.out.len();
@@ -583,9 +579,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         // Only cache consts that do not refer to an enclosing
         // binder (which would change depending on context).
         if !ct.has_escaping_bound_vars() {
-            if let Some(c) = &mut self.compress {
-                c.consts.insert(ct, start);
-            }
+            self.compress.consts.insert(ct, start);
         }
         Ok(self)
     }
