@@ -999,6 +999,19 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
+        self.compute_opaque_type_obligations(opaque_type_key, span);
+
+        ty_var
+    }
+
+    fn compute_opaque_type_obligations(
+        &mut self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        span: Span,
+    ) {
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
+        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
         debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
@@ -1019,7 +1032,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
-                    return ty_var;
+                    return;
                 }
             }
         }
@@ -1037,8 +1050,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!("instantiate_opaque_types: predicate={:?}", predicate);
             self.obligations.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
-
-        ty_var
     }
 }
 
