@@ -619,6 +619,8 @@ Such actions on the client side are appended to a hover bottom as command links:
 
 **Issue:** https://github.com/rust-analyzer/rust-analyzer/issues/6462
 
+**Experimental Server Capability:** `{ "openCargoToml": boolean }`
+
 This request is sent from client to server to open the current project's Cargo.toml
 
 **Method:** `experimental/openCargoToml`
