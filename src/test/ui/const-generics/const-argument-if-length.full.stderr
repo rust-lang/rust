@@ -5,7 +5,7 @@ LL | pub const fn is_zst<T: ?Sized>() -> usize {
    |                     - this type parameter needs to be `std::marker::Sized`
 LL |     if std::mem::size_of::<T>() == 0 {
    |                            ^ doesn't have a size known at compile-time
-   | 
+   |
   ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {

@@ -30,7 +30,7 @@ error[E0532]: expected unit struct, unit variant or constant, found tuple varian
    |
 LL |         XE::XEmpty5 => (),
    |         ^^^^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:7:5
    |
 LL |     XEmpty4,

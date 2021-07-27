@@ -6,7 +6,7 @@ LL | struct Sleep;
 ...
 LL |         self.sleep.poll(cx)
    |                    ^^^^ method not found in `Sleep`
-   | 
+   |
   ::: $SRC_DIR/core/src/future/future.rs:LL:COL
    |
 LL |     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;

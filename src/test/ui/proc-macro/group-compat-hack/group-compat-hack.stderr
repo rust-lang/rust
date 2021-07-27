@@ -3,7 +3,7 @@ warning: using an old version of `time-macros-impl`
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:27:5
    |
 LL |     impl_macros!(Foo);
@@ -20,7 +20,7 @@ warning: using an old version of `time-macros-impl`
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:44:5
    |
 LL |     impl_macros!(Foo);
@@ -36,7 +36,7 @@ warning: using an old version of `js-sys`
    |
 LL |         #[my_macro] struct Two($name);
    |                                ^^^^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:46:5
    |
 LL |     arrays!(Foo);
@@ -52,7 +52,7 @@ warning: using an old version of `actix-web`
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:55:5
    |
 LL |     tuple_from_req!(Foo);
@@ -68,7 +68,7 @@ warning: using an old version of `actix-web`
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:63:5
    |
 LL |     tuple_from_req!(Foo);
@@ -87,7 +87,7 @@ warning: using an old version of `time-macros-impl`
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:27:5
    |
 LL |     impl_macros!(Foo);
@@ -105,7 +105,7 @@ warning: using an old version of `time-macros-impl`
    |
 LL |         #[my_macro] struct One($name);
    |                                ^^^^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:44:5
    |
 LL |     impl_macros!(Foo);
@@ -122,7 +122,7 @@ warning: using an old version of `js-sys`
    |
 LL |         #[my_macro] struct Two($name);
    |                                ^^^^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:46:5
    |
 LL |     arrays!(Foo);
@@ -139,7 +139,7 @@ warning: using an old version of `actix-web`
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:55:5
    |
 LL |     tuple_from_req!(Foo);
@@ -156,7 +156,7 @@ warning: using an old version of `actix-web`
    |
 LL |         #[my_macro] struct Three($T);
    |                                  ^^
-   | 
+   |
   ::: $DIR/group-compat-hack.rs:63:5
    |
 LL |     tuple_from_req!(Foo);

@@ -6,7 +6,7 @@ LL |   struct R {
 ...
 LL |       let _j = i.clone();
    |                  ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
-   | 
+   |
   ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
 LL | / pub struct Box<

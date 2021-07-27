@@ -1344,7 +1344,11 @@ impl EmitterWriter {
                 let buffer_msg_line_offset = buffer.num_lines();
 
                 // Add spacing line
-                draw_col_separator(&mut buffer, buffer_msg_line_offset, max_line_num_len + 1);
+                draw_col_separator_no_space(
+                    &mut buffer,
+                    buffer_msg_line_offset,
+                    max_line_num_len + 1,
+                );
 
                 // Then, the secondary file indicator
                 buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);

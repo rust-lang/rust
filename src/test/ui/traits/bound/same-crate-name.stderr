@@ -3,7 +3,7 @@ error[E0277]: the trait bound `Foo: main::a::Bar` is not satisfied
    |
 LL |         a::try_foo(foo);
    |                    ^^^ the trait `main::a::Bar` is not implemented for `Foo`
-   | 
+   |
   ::: $DIR/auxiliary/crate_a1.rs:3:24
    |
 LL | pub fn try_foo(x: impl Bar) {}
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `DoesNotImplementTrait: main::a::Bar` is not satis
    |
 LL |         a::try_foo(implements_no_traits);
    |                    ^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `DoesNotImplementTrait`
-   | 
+   |
   ::: $DIR/auxiliary/crate_a1.rs:3:24
    |
 LL | pub fn try_foo(x: impl Bar) {}
@@ -32,7 +32,7 @@ error[E0277]: the trait bound `ImplementsWrongTraitConditionally<isize>: main::a
    |
 LL |         a::try_foo(other_variant_implements_mismatched_trait);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsWrongTraitConditionally<isize>`
-   | 
+   |
   ::: $DIR/auxiliary/crate_a1.rs:3:24
    |
 LL | pub fn try_foo(x: impl Bar) {}
@@ -50,7 +50,7 @@ error[E0277]: the trait bound `ImplementsTraitForUsize<isize>: main::a::Bar` is 
    |
 LL |         a::try_foo(other_variant_implements_correct_trait);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `main::a::Bar` is not implemented for `ImplementsTraitForUsize<isize>`
-   | 
+   |
   ::: $DIR/auxiliary/crate_a1.rs:3:24
    |
 LL | pub fn try_foo(x: impl Bar) {}

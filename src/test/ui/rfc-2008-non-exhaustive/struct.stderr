@@ -15,7 +15,7 @@ error[E0603]: tuple struct constructor `TupleStruct` is private
    |
 LL |     let ts_explicit = structs::TupleStruct(640, 480);
    |                                ^^^^^^^^^^^ private tuple struct constructor
-   | 
+   |
   ::: $DIR/auxiliary/structs.rs:11:24
    |
 LL | pub struct TupleStruct(pub u16, pub u16);

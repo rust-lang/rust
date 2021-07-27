@@ -9,7 +9,7 @@ LL |   trait Foo {
 ...
 LL |       let _z = y.clone();
    |                  ^^^^^ method cannot be called on `Box<dyn Foo>` due to unsatisfied trait bounds
-   | 
+   |
   ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
 LL | / pub struct Box<

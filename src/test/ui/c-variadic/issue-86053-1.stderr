@@ -63,7 +63,7 @@ error[E0412]: cannot find type `F` in this scope
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |                                                ^
-   | 
+   |
   ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL | pub trait Fn<Args>: FnMut<Args> {

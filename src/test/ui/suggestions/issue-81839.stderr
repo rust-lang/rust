@@ -13,7 +13,7 @@ LL | |         _ => cx.answer_str("hi"),
    | |              ^^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
 LL | |     }
    | |_____- `match` arms have incompatible types
-   | 
+   |
   ::: $DIR/auxiliary/issue-81839.rs:6:49
    |
 LL |       pub async fn answer_str(&self, _s: &str) -> Test {

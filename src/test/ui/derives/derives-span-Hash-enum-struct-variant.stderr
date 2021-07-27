@@ -6,7 +6,7 @@ LL | #[derive(Hash)]
 ...
 LL |      x: Error
    |      ^^^^^^^^ the trait `Hash` is not implemented for `Error`
-   | 
+   |
   ::: $SRC_DIR/core/src/hash/mod.rs:LL:COL
    |
 LL |     fn hash<H: Hasher>(&self, state: &mut H);

@@ -6,7 +6,7 @@ LL |     unsafe { intrinsics::unreachable() }
    |              |
    |              entering unreachable code
    |              inside `unreachable_unchecked` at $SRC_DIR/core/src/hint.rs:LL:COL
-   | 
+   |
   ::: $DIR/const_unsafe_unreachable_ub.rs:7:18
    |
 LL |         false => std::hint::unreachable_unchecked(),

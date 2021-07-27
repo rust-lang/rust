@@ -6,7 +6,7 @@ LL | fn g(_: impl Send) {}
 ...
 LL |     g(issue_67893::run())
    |     ^ `MutexGuard<'_, ()>` cannot be sent between threads safely
-   | 
+   |
   ::: $DIR/auxiliary/issue_67893.rs:7:20
    |
 LL | pub async fn run() {

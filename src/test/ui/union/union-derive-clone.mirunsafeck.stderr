@@ -3,7 +3,7 @@ error[E0277]: the trait bound `U1: Copy` is not satisfied
    |
 LL | #[derive(Clone)]
    |          ^^^^^ the trait `Copy` is not implemented for `U1`
-   | 
+   |
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
