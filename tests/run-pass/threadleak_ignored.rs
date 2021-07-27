@@ -18,9 +18,20 @@ thread_local! {
 
 fn main() {
     X.with(|x| *x.borrow_mut() = Some(LoudDrop(0)));
+
+    // Set up a channel so that we can learn when the other thread initialized `X`
+    // (so that we are sure there is something to drop).
+    let (send, recv) = std::sync::mpsc::channel::<()>();
     
-    let _detached = std::thread::spawn(|| {
+    let _detached = std::thread::spawn(move || {
         X.with(|x| *x.borrow_mut() = Some(LoudDrop(1)));
+        send.send(()).unwrap();
+        std::thread::yield_now();
         loop {}
     });
+
+    std::thread::yield_now();
+
+    // Wait until child thread has initialized its `X`.
+    let () = recv.recv().unwrap();
 }
