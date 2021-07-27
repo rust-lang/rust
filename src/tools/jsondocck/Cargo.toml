@@ -1,7 +1,6 @@
 [package]
 name = "jsondocck"
 version = "0.1.0"
-authors = ["Rune Tynan <runetynan@gmail.com>"]
 edition = "2018"
 
 [dependencies]

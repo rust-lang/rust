@@ -1,7 +1,6 @@
 [package]
 name = "rustc-std-workspace-alloc"
 version = "1.99.0"
-authors = ["Alex Crichton <alex@alexcrichton.com>"]
 license = 'MIT OR Apache-2.0'
 description = """
 Hack for the compiler's own build system

@@ -1,7 +1,6 @@
 [package]
 name = "cargotest2"
 version = "0.1.0"
-authors = ["Brian Anderson <banderson@mozilla.com>"]
 edition = "2018"
 
 [[bin]]

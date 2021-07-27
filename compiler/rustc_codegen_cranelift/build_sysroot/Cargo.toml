@@ -1,5 +1,4 @@
 [package]
-authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
 name = "sysroot"
 version = "0.0.0"
 

@@ -1,7 +1,6 @@
 [package]
 name = "expand-yaml-anchors"
 version = "0.1.0"
-authors = ["Pietro Albini <pietro@pietroalbini.org>"]
 edition = "2018"
 
 [dependencies]
