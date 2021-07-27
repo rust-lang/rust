@@ -1,5 +1,5 @@
 // ignore-windows: No libc on Windows
-// error-pattern: unsupported operation: the main thread terminated without waiting for other threads
+// error-pattern: the main thread terminated without waiting for all remaining threads
 
 // Check that we terminate the program when the main thread terminates.
 
@@ -10,7 +10,7 @@ extern crate libc;
 use std::{mem, ptr};
 
 extern "C" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {
-    ptr::null_mut()
+    loop {}
 }
 
 fn main() {
