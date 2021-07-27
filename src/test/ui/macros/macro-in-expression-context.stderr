@@ -1,5 +1,5 @@
 error: macro expansion ignores token `assert_eq` and any following
-  --> $DIR/macro-in-expression-context.rs:10:9
+  --> $DIR/macro-in-expression-context.rs:12:9
    |
 LL |         assert_eq!("B", "B");
    |         ^^^^^^^^^
@@ -23,6 +23,8 @@ LL |     foo!()
    = note: `#[warn(semicolon_in_expressions_from_macros)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: macro invocations at the end of a block are treated as expressions
+   = note: to ignore the value produced by the macro, add a semicolon after the invocation of `foo`
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error; 1 warning emitted
