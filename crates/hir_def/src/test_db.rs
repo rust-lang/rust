@@ -233,7 +233,7 @@ impl TestDB {
         events
             .into_iter()
             .filter_map(|e| match e.kind {
-                // This pretty horrible, but `Debug` is the only way to inspect
+                // This is pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
                 salsa::EventKind::WillExecute { database_key } => {
                     Some(format!("{:?}", database_key.debug(self)))
