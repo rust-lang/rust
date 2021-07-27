@@ -118,6 +118,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             "ssr": true,
             "onEnter": true,
             "parentModule": true,
+            "hoverRange": true,
             "runnables": {
                 "kinds": [ "cargo" ],
             },
