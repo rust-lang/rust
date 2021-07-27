@@ -21,7 +21,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
-use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -488,12 +488,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
+                                let substs = substs.unwrap();
+                                if substs.iter().any(|arg| match arg.unpack() {
+                                    GenericArgKind::Type(ty) => ty.references_error(),
+                                    _ => false,
+                                }) {
+                                    // Avoid ICE #86756 when type error recovery goes awry.
+                                    return tcx.ty_error().into();
+                                }
                                 self.astconv
                                     .normalize_ty(
                                         self.span,
                                         tcx.at(self.span).type_of(param.def_id).subst_spanned(
                                             tcx,
-                                            substs.unwrap(),
+                                            substs,
                                             Some(self.span),
                                         ),
                                     )
