@@ -662,6 +662,8 @@ interface TestInfo {
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/377
 
+**Experimental Server Capability:** { "hoverRange": boolean }
+
 This request build upon the current `textDocument/hover` to show the type of the expression currently selected.
 
 ```typescript

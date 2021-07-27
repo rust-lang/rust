@@ -874,21 +874,14 @@ pub(crate) fn handle_hover(
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let hover_result = match params.position {
-        PositionOrRange::Position(position) => {
-            let position = from_proto::file_position(
-                &snap,
-                lsp_types::TextDocumentPositionParams::new(params.text_document, position),
-            )?;
-            snap.analysis.hover(&snap.config.hover(), position)?
-        }
-        PositionOrRange::Range(range) => {
-            let range = from_proto::file_range(&snap, params.text_document, range)?;
-            snap.analysis.hover_range(&snap.config.hover(), range)?
-        }
+
+    let range = match params.position {
+        PositionOrRange::Position(position) => Range::new(position, position),
+        PositionOrRange::Range(range) => range,
     };
 
-    let info = match hover_result {
+    let file_range = from_proto::file_range(&snap, params.text_document, range)?;
+    let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
         None => return Ok(None),
         Some(info) => info,
     };

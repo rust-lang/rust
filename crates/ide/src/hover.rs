@@ -71,19 +71,41 @@ pub struct HoverResult {
     pub actions: Vec<HoverAction>,
 }
 
-/// Feature: Hover
-///
-/// Shows additional information, like the type of an expression or the documentation for a definition when "focusing" code.
-/// Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
-///
-/// image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif
+// Feature: Hover
+//
+// Shows additional information, like the type of an expression or the documentation for a definition when "focusing" code.
+// Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
+//
+// image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif
 pub(crate) fn hover(
     db: &RootDatabase,
-    position: FilePosition,
+    range: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = hir::Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
+    let file = sema.parse(range.file_id).syntax().clone();
+
+    // This means we're hovering over a range.
+    if !range.range.is_empty() {
+        let expr = find_node_at_range::<ast::Expr>(&file, range.range)?;
+        let ty = sema.type_of_expr(&expr)?;
+
+        if ty.is_unknown() {
+            return None;
+        }
+
+        let mut res = HoverResult::default();
+
+        res.markup = if config.markdown() {
+            Markup::fenced_block(&ty.display(db))
+        } else {
+            ty.display(db).to_string().into()
+        };
+
+        return Some(RangeInfo::new(range.range, res));
+    }
+
+    let position = FilePosition { file_id: range.file_id, offset: range.range.start() };
     let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
         IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
         T!['('] | T![')'] => 2,
@@ -197,6 +219,7 @@ pub(crate) fn hover(
     } else {
         ty.display(db).to_string().into()
     };
+
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -243,37 +266,6 @@ fn try_hover_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<RangeInfo
             ..Default::default()
         },
     ))
-}
-
-/// LSP Extension: Hover over a range
-///
-/// Gets the type of the expression closest to the selection if the user is hovering inside
-/// the selection. If not, it is handled by `handle_hover`.
-///
-/// https://user-images.githubusercontent.com/22298999/126914293-0ce49a92-545d-4005-a59e-9294fa2330d6.gif
-pub(crate) fn hover_range(
-    db: &RootDatabase,
-    range: FileRange,
-    config: &HoverConfig,
-) -> Option<RangeInfo<HoverResult>> {
-    let sema = hir::Semantics::new(db);
-    let file = sema.parse(range.file_id).syntax().clone();
-    let expr = find_node_at_range::<ast::Expr>(&file, range.range)?;
-    let ty = sema.type_of_expr(&expr)?;
-
-    if ty.is_unknown() {
-        return None;
-    }
-
-    let mut res = HoverResult::default();
-
-    res.markup = if config.markdown() {
-        Markup::fenced_block(&ty.display(db))
-    } else {
-        ty.display(db).to_string().into()
-    };
-
-    Some(RangeInfo::new(range.range, res))
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
@@ -565,7 +557,8 @@ fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> 
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FileLoader;
+    use ide_db::base_db::{FileLoader, FileRange};
+    use syntax::TextRange;
 
     use crate::{fixture, hover::HoverDocFormat, HoverConfig};
 
@@ -577,7 +570,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap();
         assert!(hover.is_none());
@@ -591,7 +584,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -611,7 +604,7 @@ mod tests {
                     links_in_hover: false,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -631,7 +624,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::PlainText),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -651,7 +644,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -661,7 +654,7 @@ mod tests {
     fn check_hover_range(ra_fixture: &str, expect: Expect) {
         let (analysis, range) = fixture::range(ra_fixture);
         let hover = analysis
-            .hover_range(
+            .hover(
                 &HoverConfig {
                     links_in_hover: false,
                     documentation: Some(HoverDocFormat::Markdown),
@@ -676,7 +669,7 @@ mod tests {
     fn check_hover_range_no_results(ra_fixture: &str) {
         let (analysis, range) = fixture::range(ra_fixture);
         let hover = analysis
-            .hover_range(
+            .hover(
                 &HoverConfig {
                     links_in_hover: false,
                     documentation: Some(HoverDocFormat::Markdown),

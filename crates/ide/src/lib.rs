@@ -418,18 +418,9 @@ impl Analysis {
     pub fn hover(
         &self,
         config: &HoverConfig,
-        position: FilePosition,
-    ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, position, config))
-    }
-
-    /// Returns a short text displaying the type of the expression.
-    pub fn hover_range(
-        &self,
-        config: &HoverConfig,
         range: FileRange,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover_range(db, range, config))
+        self.with_db(|db| hover::hover(db, range, config))
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.
