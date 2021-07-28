@@ -1,4 +1,6 @@
-#![feature(portable_simd)]
+#![feature(portable_simd, const_generics, const_evaluatable_checked)]
+#![allow(incomplete_features)]
+#![cfg(feature = "const_evaluatable_checked")]
 
 use core_simd::SimdU32;
 

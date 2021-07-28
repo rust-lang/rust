@@ -41,7 +41,12 @@ macro_rules! implement {
             pub fn fract(self) -> Self {
                 self - self.trunc()
             }
+        }
 
+        impl<const LANES: usize> crate::$type<LANES>
+        where
+            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+        {
             /// Rounds toward zero and converts to the same-width integer type, assuming that
             /// the value is finite and fits in that type.
             ///

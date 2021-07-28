@@ -1,6 +1,7 @@
 #![no_std]
 #![allow(incomplete_features)]
 #![feature(
+    const_evaluatable_checked,
     const_generics,
     platform_intrinsics,
     repr_simd,
@@ -20,8 +21,8 @@ mod reduction;
 mod select;
 pub use select::Select;
 
+#[cfg(feature = "const_evaluatable_checked")]
 mod to_bytes;
-pub use to_bytes::ToBytes;
 
 mod comparisons;
 mod fmt;
