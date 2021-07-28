@@ -1037,8 +1037,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(
                     w,
-                    "<h3>Fields of <b>{name}</b></h3><div>",
-                    name = variant.name.as_ref().unwrap()
+                    "<h3>{extra}Fields of <b>{name}</b></h3><div>",
+                    extra = if s.struct_type == CtorKind::Fn { "Tuple " } else { "" },
+                    name = variant.name.as_ref().unwrap(),
                 );
                 for field in &s.fields {
                     use crate::clean::StructFieldItem;
@@ -1176,21 +1177,21 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             _ => None,
         })
         .peekable();
-    if let CtorKind::Fictive = s.struct_type {
+    if let CtorKind::Fictive | CtorKind::Fn = s.struct_type {
         if fields.peek().is_some() {
             write!(
                 w,
                 "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                       Fields{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
+                     {}{}<a href=\"#fields\" class=\"anchor\"></a>\
+                 </h2>",
+                if let CtorKind::Fictive = s.struct_type { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it)
             );
             document_non_exhaustive(w, it);
-            for (field, ty) in fields {
-                let id = cx.derive_id(format!(
-                    "{}.{}",
-                    ItemType::StructField,
-                    field.name.as_ref().unwrap()
-                ));
+            for (index, (field, ty)) in fields.enumerate() {
+                let field_name =
+                    field.name.map_or_else(|| index.to_string(), |sym| (*sym.as_str()).to_string());
+                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
@@ -1199,7 +1200,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                      </span>",
                     item_type = ItemType::StructField,
                     id = id,
-                    name = field.name.as_ref().unwrap(),
+                    name = field_name,
                     ty = ty.print(cx)
                 );
                 document(w, cx, field, Some(it));
@@ -1507,7 +1508,10 @@ fn render_struct(
             if let Some(g) = g {
                 write!(w, "{}", print_where_clause(g, cx, 0, false),)
             }
-            w.write_str(";");
+            // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
+            if structhead {
+                w.write_str(";");
+            }
         }
         CtorKind::Const => {
             // Needed for PhantomData.
