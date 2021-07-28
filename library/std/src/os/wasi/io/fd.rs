@@ -65,7 +65,8 @@ impl BorrowedFd<'_> {
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
     pub unsafe fn borrow_raw_fd(fd: RawFd) -> Self {
-        assert_ne!(fd, -1_i32 as RawFd);
+        assert_ne!(fd, u32::MAX as RawFd);
+        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd, _phantom: PhantomData } }
     }
 }
@@ -103,10 +104,10 @@ impl FromRawFd for OwnedFd {
     /// # Safety
     ///
     /// The resource pointed to by `fd` must be open and suitable for assuming
-    /// ownership.
+    /// ownership. The resource must not require any cleanup other than `close`.
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        assert_ne!(fd, RawFd::MAX);
+        assert_ne!(fd, u32::MAX as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd } }
     }
