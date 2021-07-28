@@ -1890,7 +1890,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_macro_call(&mut self, mac: &MacroCall) {
-        let mut ast_id = AstIdWithPath::new(self.file_id(), mac.ast_id, (*mac.path).clone());
+        let ast_id = AstIdWithPath::new(self.file_id(), mac.ast_id, (*mac.path).clone());
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
         let mut error = None;
@@ -1941,11 +1941,6 @@ impl ModCollector<'_, '_> {
         }
 
         // Case 2: resolve in module scope, expand during name resolution.
-        // We rewrite simple path `macro_name` to `self::macro_name` to force resolve in module scope only.
-        if ast_id.path.is_ident() {
-            ast_id.path.kind = PathKind::Super(0);
-        }
-
         self.def_collector.unresolved_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
