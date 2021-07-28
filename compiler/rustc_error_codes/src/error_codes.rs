@@ -248,6 +248,7 @@ E0493: include_str!("./error_codes/E0493.md"),
 E0495: include_str!("./error_codes/E0495.md"),
 E0496: include_str!("./error_codes/E0496.md"),
 E0497: include_str!("./error_codes/E0497.md"),
+E0498: include_str!("./error_codes/E0498.md"),
 E0499: include_str!("./error_codes/E0499.md"),
 E0500: include_str!("./error_codes/E0500.md"),
 E0501: include_str!("./error_codes/E0501.md"),
@@ -604,7 +605,6 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0498,  // malformed plugin attribute
     E0514, // metadata version mismatch
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     // two dependencies have same (crate-name, disambiguator) but different SVH
