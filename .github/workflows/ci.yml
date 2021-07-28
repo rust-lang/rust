@@ -196,3 +196,28 @@ jobs:
       - name: Test (release)
         run: cross test --verbose --target=${{ matrix.target }} --release
 
+  features:
+    name: "Check cargo features (${{ matrix.features }} ${{ matrix.rustflags }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rustflags:
+          - ""
+          - "-Ctarget-feature=+avx512" # AVX-512 uses packed bit masks, so enable it to test more code paths
+        features:
+          - ""
+          - "--feature std"
+          - "--feature const_evaluatable_checked"
+          - "--feature std --feature const_evaluatable_checked"
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - name: Check build
+        run: cargo check --all-targets --no-default-features ${{ matrix.features }}
+        env:
+            RUSTFLAGS: ${{ matrix.rustflags }}
