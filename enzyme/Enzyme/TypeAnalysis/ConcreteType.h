@@ -290,7 +290,7 @@ public:
     bool Changed = false;
     using namespace llvm;
 
-    // Anything op Anyhting => Anything
+    // Anything op Anything => Anything
     if (SubTypeEnum == BaseType::Anything &&
         RHS.SubTypeEnum == BaseType::Anything) {
       return Changed;
@@ -436,6 +436,13 @@ public:
       case BinaryOperator::Sub:
         if (SubTypeEnum == BaseType::Anything ||
             RHS.SubTypeEnum == BaseType::Anything) {
+          if (SubTypeEnum != BaseType::Unknown) {
+            SubTypeEnum = BaseType::Unknown;
+            Changed = true;
+          }
+          break;
+        }
+        if (RHS.SubTypeEnum == BaseType::Pointer) {
           if (SubTypeEnum != BaseType::Unknown) {
             SubTypeEnum = BaseType::Unknown;
             Changed = true;

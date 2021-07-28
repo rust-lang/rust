@@ -1154,24 +1154,14 @@ std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo,
 }
 
 void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
-  auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
-
-  auto pointerAnalysis = getAnalysis(gep.getPointerOperand());
-  if (direction & DOWN)
-    updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
-
-  // If one of these is known to be a pointer, propagate it
-  if (direction & DOWN)
-    updateAnalysis(&gep, TypeTree(pointerAnalysis.Inner0()).Only(-1), &gep);
-  if (direction & UP)
-    updateAnalysis(gep.getPointerOperand(),
-                   TypeTree(getAnalysis(&gep).Inner0()).Only(-1), &gep);
-
   if (isa<UndefValue>(gep.getPointerOperand())) {
+    updateAnalysis(&gep, TypeTree(BaseType::Anything).Only(-1), &gep);
     return;
   }
 
-  std::vector<std::set<Value *>> idnext;
+  auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
+
+  auto pointerAnalysis = getAnalysis(gep.getPointerOperand());
 
   // If we know that the pointer operand is indeed a pointer, then the indicies
   // must be integers Note that we can't do this if we don't know the pointer
@@ -1190,6 +1180,35 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
       }
     }
   }
+
+  // If one of these is known to be a pointer, propagate it if either in bounds
+  // or all operands are integral/unknown
+  bool pointerPropagate = gep.isInBounds();
+  if (!pointerPropagate) {
+    bool allIntegral = true;
+    for (auto &ind : gep.indices()) {
+      auto CT = getAnalysis(ind).Inner0();
+      if (CT != BaseType::Integer && CT != BaseType::Anything) {
+        allIntegral = false;
+        break;
+      }
+    }
+    if (allIntegral)
+      pointerPropagate = true;
+  }
+
+  if (!pointerPropagate)
+    return;
+
+  if (direction & DOWN) {
+    updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
+    updateAnalysis(&gep, TypeTree(pointerAnalysis.Inner0()).Only(-1), &gep);
+  }
+  if (direction & UP)
+    updateAnalysis(gep.getPointerOperand(),
+                   TypeTree(getAnalysis(&gep).Inner0()).Only(-1), &gep);
+
+  std::vector<std::set<Value *>> idnext;
 
   for (auto &a : gep.indices()) {
     auto iset = fntypeinfo.knownIntegralValues(a, *DT, intseen);
@@ -2126,15 +2145,16 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     } else if (I.getOpcode() == BinaryOperator::Add ||
                I.getOpcode() == BinaryOperator::Sub) {
       for (int i = 0; i < 2; ++i) {
-        if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
-          if (CI->isNegative() || CI->isZero() ||
-              CI->getLimitedValue() <= 4096) {
-            // If add/sub with zero, small, or negative number, the result is
-            // equal to the type of the other operand (and we don't need to
-            // assume this was an "anything")
-            Result = getAnalysis(I.getOperand(1 - i)).Data0();
+        if (i == 1 || I.getOpcode() == BinaryOperator::Add)
+          if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+            if (CI->isNegative() || CI->isZero() ||
+                CI->getLimitedValue() <= 4096) {
+              // If add/sub with zero, small, or negative number, the result is
+              // equal to the type of the other operand (and we don't need to
+              // assume this was an "anything")
+              Result = getAnalysis(I.getOperand(1 - i)).Data0();
+            }
           }
-        }
       }
     } else if (I.getOpcode() == BinaryOperator::Mul) {
       for (int i = 0; i < 2; ++i) {
