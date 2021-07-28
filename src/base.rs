@@ -334,8 +334,6 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                         crate::optimize::peephole::maybe_unwrap_bool_not(&mut fx.bcx, discr);
                     let test_zero = if is_inverted { !test_zero } else { test_zero };
                     let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
-                    let discr =
-                        crate::optimize::peephole::make_branchable_value(&mut fx.bcx, discr);
                     if let Some(taken) = crate::optimize::peephole::maybe_known_branch_taken(
                         &fx.bcx, discr, test_zero,
                     ) {

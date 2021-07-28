@@ -67,19 +67,6 @@ pub(crate) fn codegen_binop<'tcx>(
                     let lhs = in_lhs.load_scalar(fx);
                     let rhs = in_rhs.load_scalar(fx);
 
-                    let (lhs, rhs) = if (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
-                        && (in_lhs.layout().ty.kind() == fx.tcx.types.i8.kind()
-                            || in_lhs.layout().ty.kind() == fx.tcx.types.i16.kind())
-                    {
-                        // FIXME(CraneStation/cranelift#896) icmp_imm.i8/i16 with eq/ne for signed ints is implemented wrong.
-                        (
-                            fx.bcx.ins().sextend(types::I32, lhs),
-                            fx.bcx.ins().sextend(types::I32, rhs),
-                        )
-                    } else {
-                        (lhs, rhs)
-                    };
-
                     return codegen_compare_bin_op(fx, bin_op, signed, lhs, rhs);
                 }
                 _ => {}

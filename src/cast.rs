@@ -14,21 +14,6 @@ pub(crate) fn clif_intcast(
         (_, _) if from == to => val,
 
         // extend
-        (_, types::I128) => {
-            let lo = if from == types::I64 {
-                val
-            } else if signed {
-                fx.bcx.ins().sextend(types::I64, val)
-            } else {
-                fx.bcx.ins().uextend(types::I64, val)
-            };
-            let hi = if signed {
-                fx.bcx.ins().sshr_imm(lo, 63)
-            } else {
-                fx.bcx.ins().iconst(types::I64, 0)
-            };
-            fx.bcx.ins().iconcat(lo, hi)
-        }
         (_, _) if to.wider_or_equal(from) => {
             if signed {
                 fx.bcx.ins().sextend(to, val)
@@ -38,10 +23,6 @@ pub(crate) fn clif_intcast(
         }
 
         // reduce
-        (types::I128, _) => {
-            let (lsb, _msb) = fx.bcx.ins().isplit(val);
-            if to == types::I64 { lsb } else { fx.bcx.ins().ireduce(to, lsb) }
-        }
         (_, _) => fx.bcx.ins().ireduce(to, val),
     }
 }

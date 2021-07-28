@@ -611,9 +611,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let (val, has_overflow) = checked_res.load_scalar_pair(fx);
             let clif_ty = fx.clif_type(T).unwrap();
 
-            // `select.i8` is not implemented by Cranelift.
-            let has_overflow = fx.bcx.ins().uextend(types::I32, has_overflow);
-
             let (min, max) = type_min_max_value(&mut fx.bcx, clif_ty, signed);
 
             let val = match (intrinsic, signed) {
@@ -640,21 +637,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         rotate_left, <T>(v x, v y) {
             let layout = fx.layout_of(T);
-            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
-                fx.bcx.ins().ireduce(types::I64, y)
-            } else {
-                y
-            };
             let res = fx.bcx.ins().rotl(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
         rotate_right, <T>(v x, v y) {
             let layout = fx.layout_of(T);
-            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
-                fx.bcx.ins().ireduce(types::I64, y)
-            } else {
-                y
-            };
             let res = fx.bcx.ins().rotr(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
@@ -692,35 +679,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
             // FIXME trap on `ctlz_nonzero` with zero arg.
-            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
-                // FIXME verify this algorithm is correct
-                let (lsb, msb) = fx.bcx.ins().isplit(arg);
-                let lsb_lz = fx.bcx.ins().clz(lsb);
-                let msb_lz = fx.bcx.ins().clz(msb);
-                let msb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, msb, 0);
-                let lsb_lz_plus_64 = fx.bcx.ins().iadd_imm(lsb_lz, 64);
-                let res = fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz);
-                fx.bcx.ins().uextend(types::I128, res)
-            } else {
-                fx.bcx.ins().clz(arg)
-            };
+            let res = fx.bcx.ins().clz(arg);
             let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         cttz | cttz_nonzero, <T> (v arg) {
             // FIXME trap on `cttz_nonzero` with zero arg.
-            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
-                // FIXME verify this algorithm is correct
-                let (lsb, msb) = fx.bcx.ins().isplit(arg);
-                let lsb_tz = fx.bcx.ins().ctz(lsb);
-                let msb_tz = fx.bcx.ins().ctz(msb);
-                let lsb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb, 0);
-                let msb_tz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
-                let res = fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz);
-                fx.bcx.ins().uextend(types::I128, res)
-            } else {
-                fx.bcx.ins().ctz(arg)
-            };
+            let res = fx.bcx.ins().ctz(arg);
             let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
