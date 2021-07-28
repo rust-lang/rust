@@ -1344,10 +1344,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     debug!("eq_opaque_type_and_type: equated");
 
-                    Ok(InferOk {
-                        value: Some(opaque_type_map),
-                        obligations: obligations.into_vec(),
-                    })
+                    Ok(InferOk { value: opaque_type_map, obligations: obligations.into_vec() })
                 },
                 || "input_output".to_string(),
             ),
@@ -1361,25 +1358,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
-        if let Some(opaque_type_map) = opaque_type_map {
-            for (opaque_type_key, opaque_decl) in opaque_type_map {
-                self.fully_perform_op(
-                    locations,
-                    ConstraintCategory::OpaqueType,
-                    CustomTypeOp::new(
-                        |infcx| {
-                            infcx.constrain_opaque_type(
-                                opaque_type_key,
-                                &opaque_decl,
-                                GenerateMemberConstraints::IfNoStaticBound,
-                                universal_region_relations,
-                            );
-                            Ok(InferOk { value: (), obligations: vec![] })
-                        },
-                        || "opaque_type_map".to_string(),
-                    ),
-                )?;
-            }
+        for (opaque_type_key, opaque_decl) in opaque_type_map {
+            self.fully_perform_op(
+                locations,
+                ConstraintCategory::OpaqueType,
+                CustomTypeOp::new(
+                    |infcx| {
+                        infcx.constrain_opaque_type(
+                            opaque_type_key,
+                            &opaque_decl,
+                            GenerateMemberConstraints::IfNoStaticBound,
+                            universal_region_relations,
+                        );
+                        Ok(InferOk { value: (), obligations: vec![] })
+                    },
+                    || "opaque_type_map".to_string(),
+                ),
+            )?;
         }
         Ok(())
     }
