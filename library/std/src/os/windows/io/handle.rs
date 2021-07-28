@@ -47,6 +47,13 @@ pub struct BorrowedHandle<'handle> {
 /// `INVALID_HANDLE_VALUE` instead of null, use [`OptionFileHandle`] instead
 /// of `Option<OwnedHandle>`.
 ///
+/// `OwnedHandle` uses [`CloseHandle`] to close its handle on drop. As such,
+/// it must not be used with handles to open registry keys which need to be
+/// closed with [`RegCloseKey`] instead.
+///
+/// [`CloseHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
+/// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
+///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
@@ -178,8 +185,14 @@ impl FromRawHandle for OwnedHandle {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must be open and suitable for assuming
-    /// ownership. The resource must not require any cleanup other than `CloseHandle`.
+    /// The resource pointed to by `raw` must be open and suitable for
+    /// assuming ownership. The resource must not require any cleanup other
+    /// than `CloseHandle`.
+    ///
+    /// In particular, it must not be used with handles to open registry
+    /// keys which need to be closed with [`RegCloseKey`] instead.
+    ///
+    /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
     #[inline]
     unsafe fn from_raw_handle(raw: RawHandle) -> Self {
         assert!(!raw.is_null());
