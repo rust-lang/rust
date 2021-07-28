@@ -10,14 +10,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Symbol};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `#[inline]` on trait methods without bodies
+    /// ### What it does
+    /// Checks for `#[inline]` on trait methods without bodies
     ///
-    /// **Why is this bad?** Only implementations of trait methods may be inlined.
+    /// ### Why is this bad?
+    /// Only implementations of trait methods may be inlined.
     /// The inline attribute is ignored for trait methods without bodies.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// trait Animal {
     ///     #[inline]

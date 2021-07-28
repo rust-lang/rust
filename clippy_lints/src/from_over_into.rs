@@ -8,14 +8,13 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Searches for implementations of the `Into<..>` trait and suggests to implement `From<..>` instead.
+    /// ### What it does
+    /// Searches for implementations of the `Into<..>` trait and suggests to implement `From<..>` instead.
     ///
-    /// **Why is this bad?** According the std docs implementing `From<..>` is preferred since it gives you `Into<..>` for free where the reverse isn't true.
+    /// ### Why is this bad?
+    /// According the std docs implementing `From<..>` is preferred since it gives you `Into<..>` for free where the reverse isn't true.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct StringWrapper(String);
     ///

@@ -9,17 +9,20 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for a read and a write to the same variable where
+    /// ### What it does
+    /// Checks for a read and a write to the same variable where
     /// whether the read occurs before or after the write depends on the evaluation
     /// order of sub-expressions.
     ///
-    /// **Why is this bad?** It is often confusing to read. In addition, the
+    /// ### Why is this bad?
+    /// It is often confusing to read. In addition, the
     /// sub-expression evaluation order for Rust is not well documented.
     ///
-    /// **Known problems:** Code which intentionally depends on the evaluation
+    /// ### Known problems
+    /// Code which intentionally depends on the evaluation
     /// order, or which is correct for any evaluation order.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut x = 0;
     ///
@@ -43,16 +46,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for diverging calls that are not match arms or
+    /// ### What it does
+    /// Checks for diverging calls that are not match arms or
     /// statements.
     ///
-    /// **Why is this bad?** It is often confusing to read. In addition, the
+    /// ### Why is this bad?
+    /// It is often confusing to read. In addition, the
     /// sub-expression evaluation order for Rust is not well documented.
     ///
-    /// **Known problems:** Someone might want to use `some_bool || panic!()` as a
+    /// ### Known problems
+    /// Someone might want to use `some_bool || panic!()` as a
     /// shorthand.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,no_run
     /// # fn b() -> bool { true }
     /// # fn c() -> bool { true }

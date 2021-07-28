@@ -6,15 +6,15 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** `exit()`  terminates the program and doesn't provide a
+    /// ### What it does
+    /// `exit()`  terminates the program and doesn't provide a
     /// stack trace.
     ///
-    /// **Why is this bad?** Ideally a program is terminated by finishing
+    /// ### Why is this bad?
+    /// Ideally a program is terminated by finishing
     /// the main function.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// std::process::exit(0)
     /// ```

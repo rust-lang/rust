@@ -5,18 +5,18 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for needlessly including a base struct on update
+    /// ### What it does
+    /// Checks for needlessly including a base struct on update
     /// when all fields are changed anyway.
     ///
     /// This lint is not applied to structs marked with
     /// [non_exhaustive](https://doc.rust-lang.org/reference/attributes/type_system.html).
     ///
-    /// **Why is this bad?** This will cost resources (because the base has to be
+    /// ### Why is this bad?
+    /// This will cost resources (because the base has to be
     /// somewhere), and make the code less readable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # struct Point {
     /// #     x: i32,

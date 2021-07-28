@@ -7,15 +7,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{edition::Edition, symbol::kw, Span, Symbol};
 
 declare_clippy_lint! {
-    /// **What it does:** Checking for imports with single component use path.
+    /// ### What it does
+    /// Checking for imports with single component use path.
     ///
-    /// **Why is this bad?** Import with single component use path such as `use cratename;`
+    /// ### Why is this bad?
+    /// Import with single component use path such as `use cratename;`
     /// is not necessary, and thus should be removed.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// use regex;
     ///

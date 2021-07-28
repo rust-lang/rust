@@ -5,15 +5,15 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is
+    /// ### What it does
+    /// Checks for usage of `std::mem::forget(t)` where `t` is
     /// `Drop`.
     ///
-    /// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its
+    /// ### Why is this bad?
+    /// `std::mem::forget(t)` prevents `t` from running its
     /// destructor, possibly causing leaks.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::mem;
     /// # use std::rc::Rc;

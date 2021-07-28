@@ -53,14 +53,14 @@ fn check_expr_asm_syntax(lint: &'static Lint, cx: &EarlyContext<'_>, expr: &Expr
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of Intel x86 assembly syntax.
+    /// ### What it does
+    /// Checks for usage of Intel x86 assembly syntax.
     ///
-    /// **Why is this bad?** The lint has been enabled to indicate a preference
+    /// ### Why is this bad?
+    /// The lint has been enabled to indicate a preference
     /// for AT&T x86 assembly syntax.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust,no_run
     /// # #![feature(asm)]
@@ -89,14 +89,14 @@ impl EarlyLintPass for InlineAsmX86IntelSyntax {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of AT&T x86 assembly syntax.
+    /// ### What it does
+    /// Checks for usage of AT&T x86 assembly syntax.
     ///
-    /// **Why is this bad?** The lint has been enabled to indicate a preference
+    /// ### Why is this bad?
+    /// The lint has been enabled to indicate a preference
     /// for Intel x86 assembly syntax.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust,no_run
     /// # #![feature(asm)]

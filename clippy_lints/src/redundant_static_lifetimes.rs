@@ -8,14 +8,14 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for constants and statics with an explicit `'static` lifetime.
+    /// ### What it does
+    /// Checks for constants and statics with an explicit `'static` lifetime.
     ///
-    /// **Why is this bad?** Adding `'static` to every reference can create very
+    /// ### Why is this bad?
+    /// Adding `'static` to every reference can create very
     /// complicated types.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
     /// &[...]

@@ -11,14 +11,14 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns about unnecessary type repetitions in trait bounds
+    /// ### What it does
+    /// This lint warns about unnecessary type repetitions in trait bounds
     ///
-    /// **Why is this bad?** Repeating the type for every bound makes the code
+    /// ### Why is this bad?
+    /// Repeating the type for every bound makes the code
     /// less readable than combining the bounds
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// pub fn foo<T>(t: T) where T: Copy, T: Clone {}
     /// ```
@@ -34,15 +34,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for cases where generics are being used and multiple
+    /// ### What it does
+    /// Checks for cases where generics are being used and multiple
     /// syntax specifications for trait bounds are used simultaneously.
     ///
-    /// **Why is this bad?** Duplicate bounds makes the code
+    /// ### Why is this bad?
+    /// Duplicate bounds makes the code
     /// less readable than specifing them only once.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn func<T: Clone + Default>(arg: T) where T: Clone + Default {}
     /// ```

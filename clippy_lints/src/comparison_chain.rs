@@ -6,16 +6,19 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks comparison chains written with `if` that can be
+    /// ### What it does
+    /// Checks comparison chains written with `if` that can be
     /// rewritten with `match` and `cmp`.
     ///
-    /// **Why is this bad?** `if` is not guaranteed to be exhaustive and conditionals can get
+    /// ### Why is this bad?
+    /// `if` is not guaranteed to be exhaustive and conditionals can get
     /// repetitive
     ///
-    /// **Known problems:** The match statement may be slower due to the compiler
+    /// ### Known problems
+    /// The match statement may be slower due to the compiler
     /// not inlining the call to cmp. See issue [#5354](https://github.com/rust-lang/rust-clippy/issues/5354)
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// # fn a() {}
     /// # fn b() {}

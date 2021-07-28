@@ -14,15 +14,15 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Detects closures called in the same expression where they
+    /// ### What it does
+    /// Detects closures called in the same expression where they
     /// are defined.
     ///
-    /// **Why is this bad?** It is unnecessarily adding to the expression's
+    /// ### Why is this bad?
+    /// It is unnecessarily adding to the expression's
     /// complexity.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// let a = (|| 42)()

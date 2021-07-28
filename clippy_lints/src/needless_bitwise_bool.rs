@@ -9,20 +9,19 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Checks for uses of bitwise and/or operators between booleans, where performance may be improved by using
     /// a lazy and.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// The bitwise operators do not support short-circuiting, so it may hinder code performance.
     /// Additionally, boolean logic "masked" as bitwise logic is not caught by lints like `unnecessary_fold`
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// This lint evaluates only when the right side is determined to have no side effects. At this time, that
     /// determination is quite conservative.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let (x,y) = (true, false);
     /// if x & !y {} // where both x and y are booleans

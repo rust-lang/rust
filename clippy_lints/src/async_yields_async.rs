@@ -7,15 +7,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for async blocks that yield values of types
+    /// ### What it does
+    /// Checks for async blocks that yield values of types
     /// that can themselves be awaited.
     ///
-    /// **Why is this bad?** An await is likely missing.
+    /// ### Why is this bad?
+    /// An await is likely missing.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// async fn foo() {}
     ///

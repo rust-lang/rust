@@ -36,29 +36,33 @@ use std::borrow::{Borrow, Cow};
 pub mod metadata_collector;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for various things we like to keep tidy in clippy.
+    /// ### What it does
+    /// Checks for various things we like to keep tidy in clippy.
     ///
-    /// **Why is this bad?** We like to pretend we're an example of tidy code.
+    /// ### Why is this bad?
+    /// We like to pretend we're an example of tidy code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:** Wrong ordering of the util::paths constants.
+    /// ### Example
+    /// Wrong ordering of the util::paths constants.
     pub CLIPPY_LINTS_INTERNAL,
     internal,
     "various things that will negatively affect your clippy experience"
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Ensures every lint is associated to a `LintPass`.
+    /// ### What it does
+    /// Ensures every lint is associated to a `LintPass`.
     ///
-    /// **Why is this bad?** The compiler only knows lints via a `LintPass`. Without
+    /// ### Why is this bad?
+    /// The compiler only knows lints via a `LintPass`. Without
     /// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
     /// know the name of the lint.
     ///
-    /// **Known problems:** Only checks for lints associated using the
+    /// ### Known problems
+    /// Only checks for lints associated using the
     /// `declare_lint_pass!`, `impl_lint_pass!`, and `lint_array!` macros.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// declare_lint! { pub LINT_1, ... }
     /// declare_lint! { pub LINT_2, ... }
@@ -73,15 +77,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `cx.span_lint*` and suggests to use the `utils::*`
+    /// ### What it does
+    /// Checks for calls to `cx.span_lint*` and suggests to use the `utils::*`
     /// variant of the function.
     ///
-    /// **Why is this bad?** The `utils::*` variants also add a link to the Clippy documentation to the
+    /// ### Why is this bad?
+    /// The `utils::*` variants also add a link to the Clippy documentation to the
     /// warning/error messages.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// cx.span_lint(LINT_NAME, "message");
@@ -97,14 +101,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `cx.outer().expn_data()` and suggests to use
+    /// ### What it does
+    /// Checks for calls to `cx.outer().expn_data()` and suggests to use
     /// the `cx.outer_expn_data()`
     ///
-    /// **Why is this bad?** `cx.outer_expn_data()` is faster and more concise.
+    /// ### Why is this bad?
+    /// `cx.outer_expn_data()` is faster and more concise.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// expr.span.ctxt().outer().expn_data()
@@ -120,14 +124,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Not an actual lint. This lint is only meant for testing our customized internal compiler
+    /// ### What it does
+    /// Not an actual lint. This lint is only meant for testing our customized internal compiler
     /// error message by calling `panic`.
     ///
-    /// **Why is this bad?** ICE in large quantities can damage your teeth
+    /// ### Why is this bad?
+    /// ICE in large quantities can damage your teeth
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// 🍦🍦🍦🍦🍦
@@ -138,14 +142,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for cases of an auto-generated lint without an updated description,
+    /// ### What it does
+    /// Checks for cases of an auto-generated lint without an updated description,
     /// i.e. `default lint description`.
     ///
-    /// **Why is this bad?** Indicates that the lint is not finished.
+    /// ### Why is this bad?
+    /// Indicates that the lint is not finished.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// declare_lint! { pub COOL_LINT, nursery, "default lint description" }
@@ -161,7 +165,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Lints `span_lint_and_then` function calls, where the
+    /// ### What it does
+    /// Lints `span_lint_and_then` function calls, where the
     /// closure argument has only one statement and that statement is a method
     /// call to `span_suggestion`, `span_help`, `span_note` (using the same
     /// span), `help` or `note`.
@@ -170,12 +175,11 @@ declare_clippy_lint! {
     /// wrapper functions `span_lint_and_sugg`, span_lint_and_help`, or
     /// `span_lint_and_note`.
     ///
-    /// **Why is this bad?** Using the wrapper `span_lint_and_*` functions, is more
+    /// ### Why is this bad?
+    /// Using the wrapper `span_lint_and_*` functions, is more
     /// convenient, readable and less error prone.
     ///
-    /// **Known problems:** None
-    ///
-    /// *Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
@@ -222,14 +226,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `utils::match_type()` on a type diagnostic item
+    /// ### What it does
+    /// Checks for calls to `utils::match_type()` on a type diagnostic item
     /// and suggests to use `utils::is_type_diagnostic_item()` instead.
     ///
-    /// **Why is this bad?** `utils::is_type_diagnostic_item()` does not require hardcoded paths.
+    /// ### Why is this bad?
+    /// `utils::is_type_diagnostic_item()` does not require hardcoded paths.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// utils::match_type(cx, ty, &paths::VEC)
@@ -245,30 +249,27 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Checks the paths module for invalid paths.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// It indicates a bug in the code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:** None.
+    /// ### Example
+    /// None.
     pub INVALID_PATHS,
     internal,
     "invalid path"
 }
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Checks for interning symbols that have already been pre-interned and defined as constants.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// It's faster and easier to use the symbol constant.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// let _ = sym!(f32);
@@ -284,13 +285,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for unnecessary conversion from Symbol to a string.
+    /// ### What it does
+    /// Checks for unnecessary conversion from Symbol to a string.
     ///
-    /// **Why is this bad?** It's faster use symbols directly intead of strings.
+    /// ### Why is this bad?
+    /// It's faster use symbols directly intead of strings.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// symbol.as_str() == "clippy";

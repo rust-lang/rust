@@ -20,19 +20,20 @@ use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for unnecessary repetition of structure name when a
+    /// ### What it does
+    /// Checks for unnecessary repetition of structure name when a
     /// replacement with `Self` is applicable.
     ///
-    /// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
+    /// ### Why is this bad?
+    /// Unnecessary repetition. Mixed use of `Self` and struct
     /// name
     /// feels inconsistent.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
     /// - False positive with assotiated types in traits (#4140)
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct Foo {}
     /// impl Foo {

@@ -10,13 +10,13 @@ use rustc_span::Span;
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for multiple inherent implementations of a struct
+    /// ### What it does
+    /// Checks for multiple inherent implementations of a struct
     ///
-    /// **Why is this bad?** Splitting the implementation of a type makes the code harder to navigate.
+    /// ### Why is this bad?
+    /// Splitting the implementation of a type makes the code harder to navigate.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// struct X;
     /// impl X {

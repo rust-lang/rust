@@ -10,15 +10,13 @@ use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Suggests alternatives for useless applications of `?` in terminating expressions
     ///
-    /// **Why is this bad?** There's no reason to use `?` to short-circuit when execution of the body will end there anyway.
+    /// ### Why is this bad?
+    /// There's no reason to use `?` to short-circuit when execution of the body will end there anyway.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct TO {
     ///     magic: Option<usize>,

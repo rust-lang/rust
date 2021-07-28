@@ -13,13 +13,13 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for explicit bounds checking when casting.
+    /// ### What it does
+    /// Checks for explicit bounds checking when casting.
     ///
-    /// **Why is this bad?** Reduces the readability of statements & is error prone.
+    /// ### Why is this bad?
+    /// Reduces the readability of statements & is error prone.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let foo: u32 = 5;
     /// # let _ =

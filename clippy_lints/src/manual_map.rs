@@ -16,14 +16,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, SyntaxContext};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usages of `match` which could be implemented using `map`
+    /// ### What it does
+    /// Checks for usages of `match` which could be implemented using `map`
     ///
-    /// **Why is this bad?** Using the `map` method is clearer and more concise.
+    /// ### Why is this bad?
+    /// Using the `map` method is clearer and more concise.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// match Some(0) {
     ///     Some(x) => Some(x + 1),

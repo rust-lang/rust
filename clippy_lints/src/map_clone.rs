@@ -15,16 +15,15 @@ use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `map(|x| x.clone())` or
+    /// ### What it does
+    /// Checks for usage of `map(|x| x.clone())` or
     /// dereferencing closures for `Copy` types, on `Iterator` or `Option`,
     /// and suggests `cloned()` or `copied()` instead
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let x = vec![42, 43];
     /// let y = x.iter();

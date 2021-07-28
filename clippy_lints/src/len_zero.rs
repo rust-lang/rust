@@ -18,17 +18,17 @@ use rustc_span::{
 };
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for getting the length of something via `.len()`
+    /// ### What it does
+    /// Checks for getting the length of something via `.len()`
     /// just to compare to zero, and suggests using `.is_empty()` where applicable.
     ///
-    /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
+    /// ### Why is this bad?
+    /// Some structures can answer `.is_empty()` much faster
     /// than calculating their length. So it is good to get into the habit of using
     /// `.is_empty()`, and having it is cheap.
     /// Besides, it makes the intent clearer than a manual comparison in some contexts.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// if x.len() == 0 {
     ///     ..
@@ -52,18 +52,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for items that implement `.len()` but not
+    /// ### What it does
+    /// Checks for items that implement `.len()` but not
     /// `.is_empty()`.
     ///
-    /// **Why is this bad?** It is good custom to have both methods, because for
+    /// ### Why is this bad?
+    /// It is good custom to have both methods, because for
     /// some data structures, asking about the length will be a costly operation,
     /// whereas `.is_empty()` can usually answer in constant time. Also it used to
     /// lead to false positives on the [`len_zero`](#len_zero) lint – currently that
     /// lint will ignore such entities.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// impl X {
     ///     pub fn len(&self) -> usize {
@@ -77,17 +77,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparing to an empty slice such as `""` or `[]`,
+    /// ### What it does
+    /// Checks for comparing to an empty slice such as `""` or `[]`,
     /// and suggests using `.is_empty()` where applicable.
     ///
-    /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
+    /// ### Why is this bad?
+    /// Some structures can answer `.is_empty()` much faster
     /// than checking for equality. So it is good to get into the habit of using
     /// `.is_empty()`, and having it is cheap.
     /// Besides, it makes the intent clearer than a manual comparison in some contexts.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```ignore
     /// if s == "" {

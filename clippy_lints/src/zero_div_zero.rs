@@ -6,13 +6,13 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `0.0 / 0.0`.
+    /// ### What it does
+    /// Checks for `0.0 / 0.0`.
     ///
-    /// **Why is this bad?** It's less readable than `f32::NAN` or `f64::NAN`.
+    /// ### Why is this bad?
+    /// It's less readable than `f32::NAN` or `f64::NAN`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let nan = 0.0f32 / 0.0;

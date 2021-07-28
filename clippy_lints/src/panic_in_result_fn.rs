@@ -8,14 +8,16 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `panic!`, `unimplemented!`, `todo!`, `unreachable!` or assertions in a function of type result.
+    /// ### What it does
+    /// Checks for usage of `panic!`, `unimplemented!`, `todo!`, `unreachable!` or assertions in a function of type result.
     ///
-    /// **Why is this bad?** For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence panicking macros should be avoided.
+    /// ### Why is this bad?
+    /// For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence panicking macros should be avoided.
     ///
-    /// **Known problems:** Functions called from a function returning a `Result` may invoke a panicking macro. This is not checked.
+    /// ### Known problems
+    /// Functions called from a function returning a `Result` may invoke a panicking macro. This is not checked.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// fn result_with_panic() -> Result<bool, String>
     /// {

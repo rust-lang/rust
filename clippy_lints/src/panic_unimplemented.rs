@@ -7,13 +7,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `panic!`.
+    /// ### What it does
+    /// Checks for usage of `panic!`.
     ///
-    /// **Why is this bad?** `panic!` will stop the execution of the executable
+    /// ### Why is this bad?
+    /// `panic!` will stop the execution of the executable
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```no_run
     /// panic!("even with a good reason");
     /// ```
@@ -23,13 +23,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `unimplemented!`.
+    /// ### What it does
+    /// Checks for usage of `unimplemented!`.
     ///
-    /// **Why is this bad?** This macro should not be present in production code
+    /// ### Why is this bad?
+    /// This macro should not be present in production code
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```no_run
     /// unimplemented!();
     /// ```
@@ -39,13 +39,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `todo!`.
+    /// ### What it does
+    /// Checks for usage of `todo!`.
     ///
-    /// **Why is this bad?** This macro should not be present in production code
+    /// ### Why is this bad?
+    /// This macro should not be present in production code
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```no_run
     /// todo!();
     /// ```
@@ -55,13 +55,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `unreachable!`.
+    /// ### What it does
+    /// Checks for usage of `unreachable!`.
     ///
-    /// **Why is this bad?** This macro can cause code to panic
+    /// ### Why is this bad?
+    /// This macro can cause code to panic
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```no_run
     /// unreachable!();
     /// ```

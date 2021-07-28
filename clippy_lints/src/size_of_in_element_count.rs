@@ -11,16 +11,16 @@ use rustc_middle::ty::{self, Ty, TyS, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Detects expressions where
+    /// ### What it does
+    /// Detects expressions where
     /// `size_of::<T>` or `size_of_val::<T>` is used as a
     /// count of elements of type `T`
     ///
-    /// **Why is this bad?** These functions expect a count
+    /// ### Why is this bad?
+    /// These functions expect a count
     /// of `T` and not a number of bytes
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,no_run
     /// # use std::ptr::copy_nonoverlapping;
     /// # use std::mem::size_of;

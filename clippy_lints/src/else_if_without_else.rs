@@ -7,14 +7,14 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of if expressions with an `else if` branch,
+    /// ### What it does
+    /// Checks for usage of if expressions with an `else if` branch,
     /// but without a final `else` branch.
     ///
-    /// **Why is this bad?** Some coding guidelines require this (e.g., MISRA-C:2004 Rule 14.10).
+    /// ### Why is this bad?
+    /// Some coding guidelines require this (e.g., MISRA-C:2004 Rule 14.10).
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn a() {}
     /// # fn b() {}

@@ -68,7 +68,7 @@ const CLIPPY_LINT_GROUP_PREFIX: &str = "clippy::";
 macro_rules! CONFIGURATION_SECTION_TEMPLATE {
     () => {
         r#"
-**Configuration**
+### Configuration
 This lint has the following configuration variables:
 
 {configurations}
@@ -118,18 +118,21 @@ const APPLICABILITY_NAME_INDEX: usize = 2;
 const APPLICABILITY_UNRESOLVED_STR: &str = "Unresolved";
 
 declare_clippy_lint! {
-    /// **What it does:** Collects metadata about clippy lints for the website.
+    /// ### What it does
+    /// Collects metadata about clippy lints for the website.
     ///
     /// This lint will be used to report problems of syntax parsing. You should hopefully never
     /// see this but never say never I guess ^^
     ///
-    /// **Why is this bad?** This is not a bad thing but definitely a hacky way to do it. See
+    /// ### Why is this bad?
+    /// This is not a bad thing but definitely a hacky way to do it. See
     /// issue [#4310](https://github.com/rust-lang/rust-clippy/issues/4310) for a discussion
     /// about the implementation.
     ///
-    /// **Known problems:** Hopefully none. It would be pretty uncool to have a problem here :)
+    /// ### Known problems
+    /// Hopefully none. It would be pretty uncool to have a problem here :)
     ///
-    /// **Example output:**
+    /// ### Example output
     /// ```json,ignore
     /// {
     ///     "id": "internal_metadata_collector",
@@ -138,7 +141,7 @@ declare_clippy_lint! {
     ///         "line": 1
     ///     },
     ///     "group": "clippy::internal",
-    ///     "docs": " **What it does:** Collects metadata about clippy lints for the website. [...] "
+    ///     "docs": " ### What it does\nCollects metadata about clippy lints for the website. [...] "
     /// }
     /// ```
     pub INTERNAL_METADATA_COLLECTOR,
@@ -378,7 +381,8 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// Collecting lint declarations like:
     /// ```rust, ignore
     /// declare_clippy_lint! {
-    ///     /// **What it does:** Something IDK.
+    ///     /// ### What it does
+    ///     /// Something IDK.
     ///     pub SOME_LINT,
     ///     internal,
     ///     "Who am I?"

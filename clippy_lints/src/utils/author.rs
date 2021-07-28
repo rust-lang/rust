@@ -13,9 +13,10 @@ use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Generates clippy code that detects the offending pattern
+    /// ### What it does
+    /// Generates clippy code that detects the offending pattern
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // ./tests/ui/my_lint.rs
     /// fn foo() {
