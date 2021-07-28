@@ -115,10 +115,6 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-fn strip_powerpc64_vectors(data_layout: String) -> String {
-    data_layout.replace("-v256:256:256-v512:512:512", "")
-}
-
 pub unsafe fn create_module(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
@@ -130,9 +126,12 @@ pub unsafe fn create_module(
 
     let mut target_data_layout = sess.target.data_layout.clone();
     if llvm_util::get_version() < (12, 0, 0) && sess.target.arch == "powerpc64" {
-        target_data_layout = strip_powerpc64_vectors(target_data_layout);
+        target_data_layout = target_data_layout.replace("-v256:256:256-v512:512:512", "");
     }
     if llvm_util::get_version() < (13, 0, 0) {
+        if sess.target.arch == "powerpc64" {
+            target_data_layout = target_data_layout.replace("-S128", "");
+        }
         if sess.target.arch == "wasm32" {
             target_data_layout = "e-m:e-p:32:32-i64:64-n32:64-S128".to_string();
         }
