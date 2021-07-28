@@ -779,6 +779,12 @@ impl UdpSocket {
     }
 }
 
+// In addition to the `impl`s here, `UdpSocket` also has `impl`s for
+// `AsFd`/`From<OwnedFd>`/`Into<OwnedFd>` and
+// `AsRawFd`/`IntoRawFd`/`FromRawFd`, on Unix and WASI, and
+// `AsSocket`/`From<OwnedSocket>`/`Into<OwnedSocket>` and
+// `AsRawSocket`/`IntoRawSocket`/`FromRawSocket` on Windows.
+
 impl AsInner<net_imp::UdpSocket> for UdpSocket {
     fn as_inner(&self) -> &net_imp::UdpSocket {
         &self.0

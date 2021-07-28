@@ -258,6 +258,12 @@ pub struct ChildStdin {
     inner: AnonPipe,
 }
 
+// In addition to the `impl`s here, `ChildStdin` also has `impl`s for
+// `AsFd`/`From<OwnedFd>`/`Into<OwnedFd>` and
+// `AsRawFd`/`IntoRawFd`/`FromRawFd`, on Unix and WASI, and
+// `AsHandle`/`From<OwnedHandle>`/`Into<OwnedHandle>` and
+// `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
+
 #[stable(feature = "process", since = "1.0.0")]
 impl Write for ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -335,6 +341,12 @@ pub struct ChildStdout {
     inner: AnonPipe,
 }
 
+// In addition to the `impl`s here, `ChildStdout` also has `impl`s for
+// `AsFd`/`From<OwnedFd>`/`Into<OwnedFd>` and
+// `AsRawFd`/`IntoRawFd`/`FromRawFd`, on Unix and WASI, and
+// `AsHandle`/`From<OwnedHandle>`/`Into<OwnedHandle>` and
+// `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
+
 #[stable(feature = "process", since = "1.0.0")]
 impl Read for ChildStdout {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -395,6 +407,12 @@ impl fmt::Debug for ChildStdout {
 pub struct ChildStderr {
     inner: AnonPipe,
 }
+
+// In addition to the `impl`s here, `ChildStderr` also has `impl`s for
+// `AsFd`/`From<OwnedFd>`/`Into<OwnedFd>` and
+// `AsRawFd`/`IntoRawFd`/`FromRawFd`, on Unix and WASI, and
+// `AsHandle`/`From<OwnedHandle>`/`Into<OwnedHandle>` and
+// `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
 
 #[stable(feature = "process", since = "1.0.0")]
 impl Read for ChildStderr {
