@@ -263,6 +263,7 @@ jobs:
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
+              CI_ONLY_WHEN_CHANNEL: nightly
             os: ubuntu-latest-xl
           - name: x86_64-gnu-aux
             os: ubuntu-latest-xl
