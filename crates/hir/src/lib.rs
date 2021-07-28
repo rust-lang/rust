@@ -351,6 +351,20 @@ impl ModuleDef {
         }
         acc
     }
+
+    pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
+        Some(match self {
+            ModuleDef::Module(it) => it.attrs(db),
+            ModuleDef::Function(it) => it.attrs(db),
+            ModuleDef::Adt(it) => it.attrs(db),
+            ModuleDef::Variant(it) => it.attrs(db),
+            ModuleDef::Const(it) => it.attrs(db),
+            ModuleDef::Static(it) => it.attrs(db),
+            ModuleDef::Trait(it) => it.attrs(db),
+            ModuleDef::TypeAlias(it) => it.attrs(db),
+            ModuleDef::BuiltinType(_) => return None,
+        })
+    }
 }
 
 impl HasVisibility for ModuleDef {
@@ -2724,6 +2738,32 @@ impl ScopeDef {
         }
 
         items
+    }
+
+    pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
+        match self {
+            ScopeDef::ModuleDef(it) => it.attrs(db),
+            ScopeDef::MacroDef(it) => Some(it.attrs(db)),
+            ScopeDef::GenericParam(it) => Some(it.attrs(db)),
+            ScopeDef::ImplSelfType(_)
+            | ScopeDef::AdtSelfType(_)
+            | ScopeDef::Local(_)
+            | ScopeDef::Label(_)
+            | ScopeDef::Unknown => None,
+        }
+    }
+
+    pub fn krate(&self, db: &dyn HirDatabase) -> Option<Crate> {
+        match self {
+            ScopeDef::ModuleDef(it) => it.module(db).map(|m| m.krate()),
+            ScopeDef::MacroDef(it) => it.module(db).map(|m| m.krate()),
+            ScopeDef::GenericParam(it) => Some(it.module(db).krate()),
+            ScopeDef::ImplSelfType(_) => None,
+            ScopeDef::AdtSelfType(it) => Some(it.module(db).krate()),
+            ScopeDef::Local(it) => Some(it.module(db).krate()),
+            ScopeDef::Label(it) => Some(it.module(db).krate()),
+            ScopeDef::Unknown => None,
+        }
     }
 }
 

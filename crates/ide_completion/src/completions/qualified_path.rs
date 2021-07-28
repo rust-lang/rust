@@ -102,6 +102,11 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     }
                 }
 
+                if ctx.is_scope_def_hidden(&def) {
+                    cov_mark::hit!(qualified_path_doc_hidden);
+                    continue;
+                }
+
                 let add_resolution = match def {
                     // Don't suggest attribute macros and derives.
                     hir::ScopeDef::MacroDef(mac) => mac.is_fn_like(),
@@ -119,7 +124,6 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     _ => true,
                 };
 
-                // FIXME: respect #[doc(hidden)] (see `CompletionContext::is_visible`)
                 if add_resolution {
                     acc.add_resolution(ctx, name, &def);
                 }
@@ -665,5 +669,35 @@ fn main() {
                 ev Bar ()
             "#]],
         );
+    }
+
+    #[test]
+    fn respects_doc_hidden() {
+        cov_mark::check!(qualified_path_doc_hidden);
+        check(
+            r#"
+//- /lib.rs crate:lib deps:dep
+fn f() {
+    dep::$0
+}
+
+//- /dep.rs crate:dep
+#[doc(hidden)]
+#[macro_export]
+macro_rules! m {
+    () => {}
+}
+
+#[doc(hidden)]
+pub fn f() {}
+
+#[doc(hidden)]
+pub struct S;
+
+#[doc(hidden)]
+pub mod m {}
+            "#,
+            expect![[r#""#]],
+        )
     }
 }

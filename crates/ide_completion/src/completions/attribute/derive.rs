@@ -54,7 +54,7 @@ fn get_derive_names_in_scope(
     ctx: &CompletionContext,
 ) -> FxHashMap<String, Option<hir::Documentation>> {
     let mut result = FxHashMap::default();
-    ctx.scope.process_all_names(&mut |name, scope_def| {
+    ctx.process_all_names(&mut |name, scope_def| {
         if let hir::ScopeDef::MacroDef(mac) = scope_def {
             if mac.kind() == hir::MacroKind::Derive {
                 result.insert(name.to_string(), mac.docs(ctx.db));
