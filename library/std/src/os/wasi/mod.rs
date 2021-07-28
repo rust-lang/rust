@@ -50,5 +50,5 @@ pub mod prelude {
     pub use super::fs::{DirEntryExt, FileExt, MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+    pub use super::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 }
