@@ -605,6 +605,13 @@ impl TcpStream {
     }
 }
 
+#[unstable(feature = "peek_trait", issue = "none")]
+impl Peek for TcpStream {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
+    }
+}
+
 // In addition to the `impl`s here, `TcpStream` also has `impl`s for
 // `AsFd`/`From<OwnedFd>`/`Into<OwnedFd>` and
 // `AsRawFd`/`IntoRawFd`/`FromRawFd`, on Unix and WASI, and

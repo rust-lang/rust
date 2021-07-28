@@ -445,6 +445,18 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     }
 }
 
+/// The `Peek` trait allows for reading bytes from a source, without removing that data from
+/// the queue.
+///
+/// This trait behaves like [`Read`], except the bytes are not removed from the source.
+#[unstable(feature = "peek_trait", issue = "none")]
+pub trait Peek {
+    /// This function behaves like [`Read::read`], except the bytes are not removed from the
+    /// source.
+    #[unstable(feature = "peek_trait", issue = "none")]
+    fn peek(&mut self, buf: &mut [u8]) -> Result<usize>;
+}
+
 /// The `Read` trait allows for reading bytes from a source.
 ///
 /// Implementors of the `Read` trait are called 'readers'.

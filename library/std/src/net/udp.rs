@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
+use crate::io::{self, Error, ErrorKind, Peek};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -776,6 +776,13 @@ impl UdpSocket {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
+    }
+}
+
+#[unstable(feature = "peek_trait", issue = "none")]
+impl Peek for UdpSocket {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
     }
 }
 

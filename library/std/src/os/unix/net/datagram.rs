@@ -19,7 +19,7 @@ use super::{sockaddr_un, SocketAddr};
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use crate::io::{IoSlice, IoSliceMut};
+use crate::io::{IoSlice, IoSliceMut, Peek};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
@@ -874,6 +874,13 @@ impl UnixDatagram {
     #[unstable(feature = "unix_socket_peek", issue = "76923")]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_flags(buf, libc::MSG_PEEK)
+    }
+}
+
+#[unstable(feature = "peek_trait", issue = "none")]
+impl Peek for UnixDatagram {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
     }
 }
 

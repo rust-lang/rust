@@ -573,6 +573,13 @@ impl UnixStream {
     }
 }
 
+#[unstable(feature = "peek_trait", issue = "none")]
+impl io::Peek for UnixStream {
+    fn peek(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.peek(buf)
+    }
+}
+
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl io::Read for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
