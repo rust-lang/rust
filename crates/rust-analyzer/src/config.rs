@@ -582,9 +582,6 @@ impl Config {
     pub fn code_action_group(&self) -> bool {
         self.experimental("codeActionGroup")
     }
-    pub fn experimental_hover_actions(&self) -> bool {
-        self.experimental("hoverActions")
-    }
     pub fn server_status_notification(&self) -> bool {
         self.experimental("serverStatusNotification")
     }
@@ -790,13 +787,13 @@ impl Config {
         }
     }
     pub fn hover_actions(&self) -> HoverActionsConfig {
+        let enable = self.experimental("hoverActions") && self.data.hoverActions_enable;
         HoverActionsConfig {
-            implementations: self.data.hoverActions_enable
-                && self.data.hoverActions_implementations,
-            references: self.data.hoverActions_enable && self.data.hoverActions_references,
-            run: self.data.hoverActions_enable && self.data.hoverActions_run,
-            debug: self.data.hoverActions_enable && self.data.hoverActions_debug,
-            goto_type_def: self.data.hoverActions_enable && self.data.hoverActions_gotoTypeDef,
+            implementations: enable && self.data.hoverActions_implementations,
+            references: enable && self.data.hoverActions_references,
+            run: enable && self.data.hoverActions_run,
+            debug: enable && self.data.hoverActions_debug,
+            goto_type_def: enable && self.data.hoverActions_gotoTypeDef,
         }
     }
     pub fn highlighting_strings(&self) -> bool {
