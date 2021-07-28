@@ -911,6 +911,9 @@ extern "rust-intrinsic" {
     /// cause [undefined behavior][ub] with this function. `transmute` should be
     /// the absolute last resort.
     ///
+    /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
+    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
+    ///
     /// The [nomicon](../../nomicon/transmutes.html) has additional
     /// documentation.
     ///
@@ -1128,8 +1131,6 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
-    // checks that prevent its use within `const fn`.
     #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
     #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;

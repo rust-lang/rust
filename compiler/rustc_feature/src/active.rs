@@ -413,9 +413,6 @@ declare_features! (
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
-    /// Allows accessing fields of unions inside `const` functions.
-    (active, const_fn_union, "1.27.0", Some(51909), None),
-
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
@@ -564,9 +561,6 @@ declare_features! (
 
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (incomplete, lazy_normalization_consts, "1.46.0", Some(72219), None),
-
-    /// Allows calling `transmute` in const fn
-    (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
     /// Allows `if let` guard in match arms.
     (incomplete, if_let_guard, "1.47.0", Some(51114), None),
