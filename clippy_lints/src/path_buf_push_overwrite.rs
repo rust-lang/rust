@@ -10,15 +10,15 @@ use rustc_span::symbol::sym;
 use std::path::{Component, Path};
 
 declare_clippy_lint! {
-    /// **What it does:*** Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)
+    /// ### What it does
+    ///* Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)
     /// calls on `PathBuf` that can cause overwrites.
     ///
-    /// **Why is this bad?** Calling `push` with a root path at the start can overwrite the
+    /// ### Why is this bad?
+    /// Calling `push` with a root path at the start can overwrite the
     /// previous defined path.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::path::PathBuf;
     ///

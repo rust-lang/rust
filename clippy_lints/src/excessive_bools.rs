@@ -8,19 +8,19 @@ use rustc_span::{sym, Span};
 use std::convert::TryInto;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for excessive
+    /// ### What it does
+    /// Checks for excessive
     /// use of bools in structs.
     ///
-    /// **Why is this bad?** Excessive bools in a struct
+    /// ### Why is this bad?
+    /// Excessive bools in a struct
     /// is often a sign that it's used as a state machine,
     /// which is much better implemented as an enum.
     /// If it's not the case, excessive bools usually benefit
     /// from refactoring into two-variant enums for better
     /// readability and API.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust
     /// struct S {
@@ -44,19 +44,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for excessive use of
+    /// ### What it does
+    /// Checks for excessive use of
     /// bools in function definitions.
     ///
-    /// **Why is this bad?** Calls to such functions
+    /// ### Why is this bad?
+    /// Calls to such functions
     /// are confusing and error prone, because it's
     /// hard to remember argument order and you have
     /// no type system support to back you up. Using
     /// two-variant enums instead of bools often makes
     /// API easier to use.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Bad:
     /// ```rust,ignore
     /// fn f(is_round: bool, is_hot: bool) { ... }

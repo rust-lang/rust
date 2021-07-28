@@ -24,20 +24,22 @@ use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions taking arguments by value, but not
+    /// ### What it does
+    /// Checks for functions taking arguments by value, but not
     /// consuming them in its
     /// body.
     ///
-    /// **Why is this bad?** Taking arguments by reference is more flexible and can
+    /// ### Why is this bad?
+    /// Taking arguments by reference is more flexible and can
     /// sometimes avoid
     /// unnecessary allocations.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// * This lint suggests taking an argument by reference,
     /// however sometimes it is better to let users decide the argument type
     /// (by using `Borrow` trait, for example), depending on how the function is used.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn foo(v: Vec<i32>) {
     ///     assert_eq!(v.len(), 42);

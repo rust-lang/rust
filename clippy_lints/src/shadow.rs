@@ -14,17 +14,20 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for bindings that shadow other bindings already in
+    /// ### What it does
+    /// Checks for bindings that shadow other bindings already in
     /// scope, while just changing reference level or mutability.
     ///
-    /// **Why is this bad?** Not much, in fact it's a very common pattern in Rust
+    /// ### Why is this bad?
+    /// Not much, in fact it's a very common pattern in Rust
     /// code. Still, some may opt to avoid it in their code base, they can set this
     /// lint to `Warn`.
     ///
-    /// **Known problems:** This lint, as the other shadowing related lints,
+    /// ### Known problems
+    /// This lint, as the other shadowing related lints,
     /// currently only catches very simple patterns.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// // Bad
@@ -39,18 +42,21 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for bindings that shadow other bindings already in
+    /// ### What it does
+    /// Checks for bindings that shadow other bindings already in
     /// scope, while reusing the original value.
     ///
-    /// **Why is this bad?** Not too much, in fact it's a common pattern in Rust
+    /// ### Why is this bad?
+    /// Not too much, in fact it's a common pattern in Rust
     /// code. Still, some argue that name shadowing like this hurts readability,
     /// because a value may be bound to different things depending on position in
     /// the code.
     ///
-    /// **Known problems:** This lint, as the other shadowing related lints,
+    /// ### Known problems
+    /// This lint, as the other shadowing related lints,
     /// currently only catches very simple patterns.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = 2;
     /// let x = x + 1;
@@ -66,21 +72,24 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for bindings that shadow other bindings already in
+    /// ### What it does
+    /// Checks for bindings that shadow other bindings already in
     /// scope, either without a initialization or with one that does not even use
     /// the original value.
     ///
-    /// **Why is this bad?** Name shadowing can hurt readability, especially in
+    /// ### Why is this bad?
+    /// Name shadowing can hurt readability, especially in
     /// large code bases, because it is easy to lose track of the active binding at
     /// any place in the code. This can be alleviated by either giving more specific
     /// names to bindings or introducing more scopes to contain the bindings.
     ///
-    /// **Known problems:** This lint, as the other shadowing related lints,
+    /// ### Known problems
+    /// This lint, as the other shadowing related lints,
     /// currently only catches very simple patterns. Note that
     /// `allow`/`warn`/`deny`/`forbid` attributes only work on the function level
     /// for this lint.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let y = 1;
     /// # let z = 2;

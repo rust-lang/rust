@@ -42,20 +42,20 @@ use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** The lint checks for `if`-statements appearing in loops
+    /// ### What it does
+    /// The lint checks for `if`-statements appearing in loops
     /// that contain a `continue` statement in either their main blocks or their
     /// `else`-blocks, when omitting the `else`-block possibly with some
     /// rearrangement of code can make the code easier to understand.
     ///
-    /// **Why is this bad?** Having explicit `else` blocks for `if` statements
+    /// ### Why is this bad?
+    /// Having explicit `else` blocks for `if` statements
     /// containing `continue` in their THEN branch adds unnecessary branching and
     /// nesting to the code. Having an else block containing just `continue` can
     /// also be better written by grouping the statements following the whole `if`
     /// statement within the THEN block and omitting the else block completely.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn condition() -> bool { false }
     /// # fn update_condition() {}

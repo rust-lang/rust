@@ -20,16 +20,19 @@ use rustc_span::{sym, MultiSpan};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
-    /// **What it does:** This lint checks for function arguments of type `&String`
+    /// ### What it does
+    /// This lint checks for function arguments of type `&String`
     /// or `&Vec` unless the references are mutable. It will also suggest you
     /// replace `.clone()` calls with the appropriate `.to_owned()`/`to_string()`
     /// calls.
     ///
-    /// **Why is this bad?** Requiring the argument to be of the specific size
+    /// ### Why is this bad?
+    /// Requiring the argument to be of the specific size
     /// makes the function less useful for no benefit; slices in the form of `&[T]`
     /// or `&str` usually suffice and can be obtained from other types, too.
     ///
-    /// **Known problems:** The lint does not follow data. So if you have an
+    /// ### Known problems
+    /// The lint does not follow data. So if you have an
     /// argument `x` and write `let y = x; y.clone()` the lint will not suggest
     /// changing that `.clone()` to `.to_owned()`.
     ///
@@ -59,7 +62,7 @@ declare_clippy_lint! {
     /// other crates referencing it, of which you may not be aware. Carefully
     /// deprecate the function before applying the lint suggestions in this case.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// // Bad
     /// fn foo(&Vec<u32>) { .. }
@@ -73,15 +76,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint checks for equality comparisons with `ptr::null`
+    /// ### What it does
+    /// This lint checks for equality comparisons with `ptr::null`
     ///
-    /// **Why is this bad?** It's easier and more readable to use the inherent
+    /// ### Why is this bad?
+    /// It's easier and more readable to use the inherent
     /// `.is_null()`
     /// method instead
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// // Bad
     /// if x == ptr::null {
@@ -99,19 +102,22 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint checks for functions that take immutable
+    /// ### What it does
+    /// This lint checks for functions that take immutable
     /// references and return mutable ones.
     ///
-    /// **Why is this bad?** This is trivially unsound, as one can create two
+    /// ### Why is this bad?
+    /// This is trivially unsound, as one can create two
     /// mutable references from the same (immutable!) source.
     /// This [error](https://github.com/rust-lang/rust/issues/39465)
     /// actually lead to an interim Rust release 1.15.1.
     ///
-    /// **Known problems:** To be on the conservative side, if there's at least one
+    /// ### Known problems
+    /// To be on the conservative side, if there's at least one
     /// mutable reference with the output lifetime, this lint will not trigger.
     /// In practice, this case is unlikely anyway.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// fn foo(&Foo) -> &mut Bar { .. }
     /// ```
@@ -121,13 +127,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint checks for invalid usages of `ptr::null`.
+    /// ### What it does
+    /// This lint checks for invalid usages of `ptr::null`.
     ///
-    /// **Why is this bad?** This causes undefined behavior.
+    /// ### Why is this bad?
+    /// This causes undefined behavior.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// // Bad. Undefined behavior
     /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }

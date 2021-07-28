@@ -15,17 +15,20 @@ use rustc_span::source_map::Spanned;
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expressions of the form `if c { true } else {
+    /// ### What it does
+    /// Checks for expressions of the form `if c { true } else {
     /// false }` (or vice versa) and suggests using the condition directly.
     ///
-    /// **Why is this bad?** Redundant code.
+    /// ### Why is this bad?
+    /// Redundant code.
     ///
-    /// **Known problems:** Maybe false positives: Sometimes, the two branches are
+    /// ### Known problems
+    /// Maybe false positives: Sometimes, the two branches are
     /// painstakingly documented (which we, of course, do not detect), so they *may*
     /// have some value. Even then, the documentation can be rewritten to match the
     /// shorter code.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// if x {
     ///     false
@@ -43,15 +46,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expressions of the form `x == true`,
+    /// ### What it does
+    /// Checks for expressions of the form `x == true`,
     /// `x != true` and order comparisons such as `x < true` (or vice versa) and
     /// suggest using the variable directly.
     ///
-    /// **Why is this bad?** Unnecessary code.
+    /// ### Why is this bad?
+    /// Unnecessary code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// if x == true {}
     /// if y == false {}

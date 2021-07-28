@@ -8,19 +8,16 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Checks for the usage of negated comparison operators on types which only implement
     /// `PartialOrd` (e.g., `f64`).
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// These operators make it easy to forget that the underlying types actually allow not only three
     /// potential Orderings (Less, Equal, Greater) but also a fourth one (Uncomparable). This is
     /// especially easy to miss if the operator based comparison result is negated.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// use std::cmp::Ordering;
     ///

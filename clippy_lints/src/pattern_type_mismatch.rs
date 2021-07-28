@@ -13,7 +13,8 @@ use rustc_span::source_map::Span;
 use std::iter;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for patterns that aren't exact representations of the types
+    /// ### What it does
+    /// Checks for patterns that aren't exact representations of the types
     /// they are applied to.
     ///
     /// To satisfy this lint, you will have to adjust either the expression that is matched
@@ -32,14 +33,12 @@ declare_clippy_lint! {
     /// this lint can still be used to highlight areas of interest and ensure a good understanding
     /// of ownership semantics.
     ///
-    /// **Why is this bad?** It isn't bad in general. But in some contexts it can be desirable
+    /// ### Why is this bad?
+    /// It isn't bad in general. But in some contexts it can be desirable
     /// because it increases ownership hints in the code, and will guard against some changes
     /// in ownership.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// This example shows the basic adjustments necessary to satisfy the lint. Note how
     /// the matched expression is explicitly dereferenced with `*` and the `inner` variable
     /// is bound to a shared borrow via `ref inner`.

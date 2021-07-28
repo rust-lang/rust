@@ -11,15 +11,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::convert::TryFrom;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for C-like enumerations that are
+    /// ### What it does
+    /// Checks for C-like enumerations that are
     /// `repr(isize/usize)` and have values that don't fit into an `i32`.
     ///
-    /// **Why is this bad?** This will truncate the variant value on 32 bit
+    /// ### Why is this bad?
+    /// This will truncate the variant value on 32 bit
     /// architectures, but works fine on 64 bit.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # #[cfg(target_pointer_width = "64")]
     /// #[repr(usize)]

@@ -10,13 +10,13 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use crate::rustc_target::abi::LayoutOf;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for local arrays that may be too large.
+    /// ### What it does
+    /// Checks for local arrays that may be too large.
     ///
-    /// **Why is this bad?** Large local arrays may cause stack overflow.
+    /// ### Why is this bad?
+    /// Large local arrays may cause stack overflow.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// let a = [0u32; 1_000_000];
     /// ```

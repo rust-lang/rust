@@ -13,16 +13,16 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usages of `Err(x)?`.
+    /// ### What it does
+    /// Checks for usages of `Err(x)?`.
     ///
-    /// **Why is this bad?** The `?` operator is designed to allow calls that
+    /// ### Why is this bad?
+    /// The `?` operator is designed to allow calls that
     /// can fail to be easily chained. For example, `foo()?.bar()` or
     /// `foo(bar()?)`. Because `Err(x)?` can't be used that way (it will
     /// always return), it is more clear to write `return Err(x)`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn foo(fail: bool) -> Result<i32, String> {
     ///     if fail {

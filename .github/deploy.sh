@@ -8,13 +8,12 @@ rm -rf out/master/ || exit 0
 echo "Making the docs for master"
 mkdir out/master/
 cp util/gh-pages/index.html out/master
-python3 ./util/export.py out/master/lints.json
+cp util/gh-pages/lints.json out/master
 
 if [[ -n $TAG_NAME ]]; then
   echo "Save the doc for the current tag ($TAG_NAME) and point stable/ to it"
-  cp -r out/master "out/$TAG_NAME"
-  rm -f out/stable
-  ln -s "$TAG_NAME" out/stable
+  cp -Tr out/master "out/$TAG_NAME"
+  ln -sf "$TAG_NAME" out/stable
 fi
 
 if [[ $BETA = "true" ]]; then
@@ -28,8 +27,8 @@ cp util/gh-pages/versions.html out/index.html
 echo "Making the versions.json file"
 python3 ./util/versions.py out
 
-cd out
 # Now let's go have some fun with the cloned repo
+cd out
 git config user.name "GHA CI"
 git config user.email "gha@ci.invalid"
 

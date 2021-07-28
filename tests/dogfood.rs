@@ -183,7 +183,7 @@ fn run_metadata_collection_lint() {
     use std::time::SystemTime;
 
     // Setup for validation
-    let metadata_output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("util/gh-pages/metadata_collection.json");
+    let metadata_output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("util/gh-pages/lints.json");
     let start_time = SystemTime::now();
 
     // Run collection as is

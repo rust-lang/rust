@@ -11,15 +11,15 @@ use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
+    /// ### What it does
+    /// Checks [regex](https://crates.io/crates/regex) creation
     /// (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`) for correct
     /// regex syntax.
     ///
-    /// **Why is this bad?** This will lead to a runtime panic.
+    /// ### Why is this bad?
+    /// This will lead to a runtime panic.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// Regex::new("|")
     /// ```
@@ -29,18 +29,21 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for trivial [regex](https://crates.io/crates/regex)
+    /// ### What it does
+    /// Checks for trivial [regex](https://crates.io/crates/regex)
     /// creation (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`).
     ///
-    /// **Why is this bad?** Matching the regex can likely be replaced by `==` or
+    /// ### Why is this bad?
+    /// Matching the regex can likely be replaced by `==` or
     /// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
     /// methods.
     ///
-    /// **Known problems:** If the same regex is going to be applied to multiple
+    /// ### Known problems
+    /// If the same regex is going to be applied to multiple
     /// inputs, the precomputations done by `Regex` construction can give
     /// significantly better performance than any of the `str`-based methods.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// Regex::new("^foobar")
     /// ```

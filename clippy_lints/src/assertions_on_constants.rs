@@ -8,14 +8,17 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.
+    /// ### What it does
+    /// Checks for `assert!(true)` and `assert!(false)` calls.
     ///
-    /// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a
+    /// ### Why is this bad?
+    /// Will be optimized out by the compiler or should probably be replaced by a
     /// `panic!()` or `unreachable!()`
     ///
-    /// **Known problems:** None
+    /// ### Known problems
+    /// None
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// assert!(false)
     /// assert!(true)

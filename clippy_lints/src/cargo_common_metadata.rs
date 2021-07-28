@@ -9,15 +9,15 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::DUMMY_SP;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks to see if all common metadata is defined in
+    /// ### What it does
+    /// Checks to see if all common metadata is defined in
     /// `Cargo.toml`. See: https://rust-lang-nursery.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata
     ///
-    /// **Why is this bad?** It will be more difficult for users to discover the
+    /// ### Why is this bad?
+    /// It will be more difficult for users to discover the
     /// purpose of the crate, and key information related to it.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```toml
     /// # This `Cargo.toml` is missing a description field:
     /// [package]

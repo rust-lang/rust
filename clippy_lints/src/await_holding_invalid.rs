@@ -8,10 +8,12 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to await while holding a
+    /// ### What it does
+    /// Checks for calls to await while holding a
     /// non-async-aware MutexGuard.
     ///
-    /// **Why is this bad?** The Mutex types found in std::sync and parking_lot
+    /// ### Why is this bad?
+    /// The Mutex types found in std::sync and parking_lot
     /// are not designed to operate in an async context across await points.
     ///
     /// There are two potential solutions. One is to use an asynx-aware Mutex
@@ -19,10 +21,10 @@ declare_clippy_lint! {
     /// other solution is to ensure the mutex is unlocked before calling await,
     /// either by introducing a scope or an explicit call to Drop::drop.
     ///
-    /// **Known problems:** Will report false positive for explicitly dropped guards ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)).
+    /// ### Known problems
+    /// Will report false positive for explicitly dropped guards ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)).
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// use std::sync::Mutex;
     ///
@@ -51,17 +53,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to await while holding a
+    /// ### What it does
+    /// Checks for calls to await while holding a
     /// `RefCell` `Ref` or `RefMut`.
     ///
-    /// **Why is this bad?** `RefCell` refs only check for exclusive mutable access
+    /// ### Why is this bad?
+    /// `RefCell` refs only check for exclusive mutable access
     /// at runtime. Holding onto a `RefCell` ref across an `await` suspension point
     /// risks panics from a mutable ref shared while other refs are outstanding.
     ///
-    /// **Known problems:** Will report false positive for explicitly dropped refs ([#6353](https://github.com/rust-lang/rust-clippy/issues/6353)).
+    /// ### Known problems
+    /// Will report false positive for explicitly dropped refs ([#6353](https://github.com/rust-lang/rust-clippy/issues/6353)).
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// use std::cell::RefCell;
     ///

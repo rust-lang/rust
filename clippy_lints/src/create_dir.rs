@@ -8,13 +8,13 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks usage of `std::fs::create_dir` and suggest using `std::fs::create_dir_all` instead.
+    /// ### What it does
+    /// Checks usage of `std::fs::create_dir` and suggest using `std::fs::create_dir_all` instead.
     ///
-    /// **Why is this bad?** Sometimes `std::fs::create_dir` is mistakenly chosen over `std::fs::create_dir_all`.
+    /// ### Why is this bad?
+    /// Sometimes `std::fs::create_dir` is mistakenly chosen over `std::fs::create_dir_all`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust
     /// std::fs::create_dir("foo");

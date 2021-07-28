@@ -8,14 +8,14 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `!` or `!=` in an if condition with an
+    /// ### What it does
+    /// Checks for usage of `!` or `!=` in an if condition with an
     /// else branch.
     ///
-    /// **Why is this bad?** Negations reduce the readability of statements.
+    /// ### Why is this bad?
+    /// Negations reduce the readability of statements.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let v: Vec<usize> = vec![];
     /// # fn a() {}

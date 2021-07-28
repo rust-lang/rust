@@ -9,18 +9,17 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{MultiSpan, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Finds nested `match` or `if let` expressions where the patterns may be "collapsed" together
+    /// ### What it does
+    /// Finds nested `match` or `if let` expressions where the patterns may be "collapsed" together
     /// without adding any branches.
     ///
     /// Note that this lint is not intended to find _all_ cases where nested match patterns can be merged, but only
     /// cases where merging would most likely make the code more readable.
     ///
-    /// **Why is this bad?** It is unnecessarily verbose and complex.
+    /// ### Why is this bad?
+    /// It is unnecessarily verbose and complex.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// fn func(opt: Option<Result<u64, String>>) {
     ///     let n = match opt {

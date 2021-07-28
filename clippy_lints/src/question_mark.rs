@@ -13,13 +13,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
+    /// ### What it does
+    /// Checks for expressions that could be replaced by the question mark operator.
     ///
-    /// **Why is this bad?** Question mark usage is more idiomatic.
+    /// ### Why is this bad?
+    /// Question mark usage is more idiomatic.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// if option.is_none() {
     ///     return None;

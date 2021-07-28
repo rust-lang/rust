@@ -13,15 +13,14 @@ use rustc_span::{symbol::sym, Span};
 use std::convert::TryInto;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `push` immediately after creating a new `Vec`.
+    /// ### What it does
+    /// Checks for calls to `push` immediately after creating a new `Vec`.
     ///
-    /// **Why is this bad?** The `vec![]` macro is both more performant and easier to read than
+    /// ### Why is this bad?
+    /// The `vec![]` macro is both more performant and easier to read than
     /// multiple `push` calls.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let mut v = Vec::new();
     /// v.push(0);
