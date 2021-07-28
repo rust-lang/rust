@@ -61,9 +61,9 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// It is a logic error for a key to be modified in such a way that the key's ordering relative to
 /// any other key, as determined by the [`Ord`] trait, changes while it is in the map. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
-/// The behavior resulting from such a logic error is not specified, but will not result in
-/// undefined behavior. This could include panics, incorrect results, aborts, memory leaks, and
-/// non-termination.
+/// The behavior resulting from such a logic error is not specified (it could include panics,
+/// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
+/// behavior.
 ///
 /// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
