@@ -1,8 +1,6 @@
 // check-pass
 
-#![feature(min_type_alias_impl_trait)]
 #![feature(type_alias_impl_trait)]
-//~^ WARNING: the feature `type_alias_impl_trait` is incomplete
 
 pub trait AssociatedImpl {
     type ImplTrait;

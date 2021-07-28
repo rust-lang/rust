@@ -1,7 +1,4 @@
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 
@@ -12,10 +9,12 @@ fn foo() -> Foo {
     ""
 }
 
-fn bar() -> Foo { //~ ERROR concrete type differs from previous
+fn bar() -> Foo {
+    //~^ ERROR concrete type differs from previous
     panic!()
 }
 
-fn boo() -> Foo { //~ ERROR concrete type differs from previous
+fn boo() -> Foo {
+    //~^ ERROR concrete type differs from previous
     loop {}
 }

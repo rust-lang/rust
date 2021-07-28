@@ -5,7 +5,7 @@ LL |         self.run(&mut self);
    |                  ^^^^^^^^^
    |                  |
    |                  cannot borrow as mutable
-   |                  try removing `&mut` here
+   |                  help: try removing `&mut` here
 
 error[E0502]: cannot borrow `self` as mutable because it is also borrowed as immutable
   --> $DIR/issue-34126.rs:6:18

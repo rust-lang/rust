@@ -5,6 +5,7 @@ impl Z {
     fn start(&mut self) {
         self.run(&mut self); //~ ERROR cannot borrow
         //~| ERROR cannot borrow
+        //~| HELP try removing `&mut` here
     }
 }
 

@@ -1145,7 +1145,7 @@ impl Build {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
             "beta" => {
-                if self.rust_info.is_git() {
+                if self.rust_info.is_git() && !self.config.ignore_git {
                     format!("{}-beta.{}", num, self.beta_prerelease_version())
                 } else {
                     format!("{}-beta", num)

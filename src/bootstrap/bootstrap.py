@@ -473,7 +473,7 @@ class RustBuild(object):
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_sha = subprocess.check_output([
                 "git", "log", "--author=bors", "--format=%H", "-n1",
-                "-m", "--first-parent",
+                "--no-patch", "--first-parent",
                 "--",
                 "{}/src/llvm-project".format(top_level),
                 "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
