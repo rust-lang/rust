@@ -677,6 +677,9 @@ declare_features! (
     /// Infer generic args for both consts and types.
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
 
+    /// Allows `#[derive(Default)]` and `#[default]` on enums.
+    (active, derive_default_enum, "1.56.0", Some(86985), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
