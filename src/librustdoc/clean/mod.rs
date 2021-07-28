@@ -1730,9 +1730,13 @@ impl Clean<Variant> for hir::VariantData<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Variant {
         match self {
             hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
-            hir::VariantData::Tuple(..) => {
-                Variant::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
-            }
+            // Important note here: `Variant::Tuple` is used on tuple structs which are not in an
+            // enum (so where converting from `ty::VariantDef`). In case we are in an enum, the kind
+            // is provided by the `Variant` wrapper directly, and since we need the fields' name
+            // (even for a tuple struct variant!), it's simpler to just store it as a
+            // `Variant::Struct` instead of a `Variant::Tuple` (otherwise it would force us to make
+            // a lot of changes when rendering them to generate the name as well).
+            hir::VariantData::Tuple(..) => Variant::Struct(self.clean(cx)),
             hir::VariantData::Unit(..) => Variant::CLike,
         }
     }
