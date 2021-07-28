@@ -766,7 +766,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| {
             if x.starts_with("codegen-backend=") {
-                Some(&x["codegen-backends=".len()..])
+                Some(&x["codegen-backend=".len()..])
             } else {
                 None
             }
