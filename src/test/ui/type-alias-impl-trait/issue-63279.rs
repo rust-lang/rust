@@ -2,10 +2,10 @@
 
 #![feature(type_alias_impl_trait)]
 
-type Closure = impl FnOnce(); //~ ERROR: type mismatch resolving
+type Closure = impl FnOnce();
 
 fn c() -> Closure {
-    || -> Closure { || () }
+    || -> Closure { || () } //~ ERROR: mismatched types
 }
 
 fn main() {}

@@ -6,8 +6,7 @@ type Test = impl Copy;
 
 fn test() -> Test {
     let y = || -> Test { () };
-    //~^ ERROR: concrete type differs from previous defining opaque type use
-    7
+    7 //~ ERROR mismatched types
 }
 
 fn main() {}

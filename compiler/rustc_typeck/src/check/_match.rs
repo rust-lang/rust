@@ -598,8 +598,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let impl_trait_ret_ty =
                     self.infcx.instantiate_opaque_types(id, self.body_id, self.param_env, ty, span);
-                let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
-                for o in impl_trait_ret_ty.obligations {
+                assert!(
+                    impl_trait_ret_ty.obligations.is_empty(),
+                    "we should never get new obligations here"
+                );
+                let obligations = self.fulfillment_cx.borrow().pending_obligations();
+                let mut suggest_box = !obligations.is_empty();
+                for o in obligations {
                     match o.predicate.kind().skip_binder() {
                         ty::PredicateKind::Trait(t, constness) => {
                             let pred = ty::PredicateKind::Trait(

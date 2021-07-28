@@ -374,23 +374,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             parent_def_id, value
         );
 
-        let (value, opaque_type_map) =
-            self.register_infer_ok_obligations(self.instantiate_opaque_types(
-                parent_def_id,
-                self.body_id,
-                self.param_env,
-                value,
-                value_span,
-            ));
-
-        let mut infcx = self.infcx.inner.borrow_mut();
-
-        for (ty, decl) in opaque_type_map {
-            let _ = infcx.opaque_types.insert(ty, decl);
-            let _ = infcx.opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
-        }
-
-        value
+        self.register_infer_ok_obligations(self.instantiate_opaque_types(
+            parent_def_id,
+            self.body_id,
+            self.param_env,
+            value,
+            value_span,
+        ))
     }
 
     /// Convenience method which tracks extra diagnostic information for normalization

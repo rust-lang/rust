@@ -1,14 +1,9 @@
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-74280.rs:8:13
+error[E0308]: mismatched types
+  --> $DIR/issue-74280.rs:9:5
    |
-LL |     let y = || -> Test { () };
-   |             ^^^^^^^^^^^^^^^^^ expected `i32`, got `()`
-   |
-note: previous use here
-  --> $DIR/issue-74280.rs:7:1
-   |
-LL | fn test() -> Test {
-   | ^^^^^^^^^^^^^^^^^
+LL |     7
+   |     ^ expected `()`, found integer
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

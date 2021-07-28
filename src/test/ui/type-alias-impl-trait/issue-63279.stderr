@@ -1,12 +1,17 @@
-error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:8:5: 8:28] as FnOnce<()>>::Output == ()`
-  --> $DIR/issue-63279.rs:5:16
+error[E0308]: mismatched types
+  --> $DIR/issue-63279.rs:8:5
    |
 LL | type Closure = impl FnOnce();
-   |                ^^^^^^^^^^^^^ expected `()`, found opaque type
+   |                ------------- the found opaque type
+...
+LL |     || -> Closure { || () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found a different closure
    |
-   = note: expected unit type `()`
-            found opaque type `impl FnOnce<()>`
+   = note: expected type `[closure@$DIR/issue-63279.rs:8:21: 8:26]`
+           found closure `[closure@$DIR/issue-63279.rs:8:5: 8:28]`
+   = note: no two closures, even if identical, have the same type
+   = help: consider boxing your closure and/or using it as a trait object
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0308`.

@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::free_regions::FreeRegionRelations;
-use rustc_infer::infer::opaque_types::{OpaqueTypeDecl, OpaqueTypeMap};
+use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
@@ -37,7 +37,7 @@ pub trait InferCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         value: T,
         value_span: Span,
-    ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)>;
+    ) -> InferOk<'tcx, T>;
 
     fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(&self, free_region_relations: &FRR);
 
@@ -99,7 +99,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         value: T,
         value_span: Span,
-    ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
+    ) -> InferOk<'tcx, T> {
         debug!(
             "instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
              param_env={:?}, value_span={:?})",
@@ -111,11 +111,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             body_id,
             param_env,
             value_span,
-            opaque_types: Default::default(),
             obligations: vec![],
         };
         let value = instantiator.instantiate_opaque_types_in_map(value);
-        InferOk { value: (value, instantiator.opaque_types), obligations: instantiator.obligations }
+        InferOk { value, obligations: instantiator.obligations }
     }
 
     /// Given the map `opaque_types` containing the opaque
@@ -862,7 +861,6 @@ struct Instantiator<'a, 'tcx> {
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     value_span: Span,
-    opaque_types: OpaqueTypeMap<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
 }
 
@@ -972,7 +970,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
-        if let Some(opaque_defn) = self.opaque_types.get(&opaque_type_key) {
+        if let Some(opaque_defn) = infcx.inner.borrow().opaque_types.get(&opaque_type_key) {
             debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
             return opaque_defn.concrete_ty;
         }
@@ -994,10 +992,15 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         // Foo, impl Bar)`.
         let definition_span = self.value_span;
 
-        self.opaque_types.insert(
-            OpaqueTypeKey { def_id, substs },
-            OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
-        );
+        {
+            let mut infcx = self.infcx.inner.borrow_mut();
+            infcx.opaque_types.insert(
+                OpaqueTypeKey { def_id, substs },
+                OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
+            );
+            infcx.opaque_types_vars.insert(ty_var, ty);
+        }
+
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
         self.compute_opaque_type_obligations(opaque_type_key, span);
 
