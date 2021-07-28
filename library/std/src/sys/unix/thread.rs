@@ -164,16 +164,23 @@ impl Thread {
         }
     }
 
+    #[cfg(target_os = "haiku")]
+    pub fn set_name(name: &CStr) {
+        unsafe {
+            let thread_self = libc::find_thread(ptr::null_mut());
+            libc::rename_thread(thread_self, name.as_ptr());
+        }
+    }
+
     #[cfg(any(
         target_env = "newlib",
-        target_os = "haiku",
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
         target_os = "vxworks"
     ))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Haiku, Emscripten, and VxWorks have no way to set a thread name.
+        // Newlib, Emscripten, and VxWorks have no way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {
