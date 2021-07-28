@@ -359,13 +359,13 @@ impl Span {
     }
 
     /// Creates an empty span pointing to directly before this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "none")]
+    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
     pub fn before(&self) -> Span {
         Span(self.0.before())
     }
 
     /// Creates an empty span pointing to directly after this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "none")]
+    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
     pub fn after(&self) -> Span {
         Span(self.0.after())
     }
