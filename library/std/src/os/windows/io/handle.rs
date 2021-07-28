@@ -75,7 +75,6 @@ pub struct OwnedHandle {
 /// so it can be used in FFI in places where a non-null handle is passed as a
 /// consumed argument or returned as an owned value, or it is
 /// `INVALID_HANDLE_VALUE` indicating an error or an otherwise absent value.
-///
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OptionFileHandle {
