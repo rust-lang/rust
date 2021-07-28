@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 3b2931972b33198b
+lsp_ext.rs hash: 5f96a69eb3a5ebc3
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -13,7 +13,7 @@ need to adjust this doc as well and ping this issue:
 This document describes LSP extensions used by rust-analyzer.
 It's a best effort document, when in doubt, consult the source (and send a PR with clarification ;-) ).
 We aim to upstream all non Rust-specific extensions to the protocol, but this is not a top priority.
-All capabilities are enabled via `experimental` field of `ClientCapabilities` or `ServerCapabilities`.
+All capabilities are enabled via the `experimental` field of `ClientCapabilities` or `ServerCapabilities`.
 Requests which we hope to upstream live under `experimental/` namespace.
 Requests, which are likely to always remain specific to `rust-analyzer` are under `rust-analyzer/` namespace.
 
@@ -29,7 +29,7 @@ https://clangd.llvm.org/extensions.html#utf-8-offsets
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/567
 
-The `initializationOptions` filed of the `InitializeParams` of the initialization request should contain `"rust-analyzer"` section of the configuration.
+The `initializationOptions` field of the `InitializeParams` of the initialization request should contain the `"rust-analyzer"` section of the configuration.
 
 `rust-analyzer` normally sends a `"workspace/configuration"` request with `{ "items": ["rust-analyzer"] }` payload.
 However, the server can't do this during initialization.
@@ -81,7 +81,7 @@ At the moment, rust-analyzer guarantees that only a single edit will have `Inser
 
 **Experimental Client Capability:** `{ "codeActionGroup": boolean }`
 
-If this capability is set, `CodeAction` returned from the server contain an additional field, `group`:
+If this capability is set, `CodeAction`s returned from the server contain an additional field, `group`:
 
 ```typescript
 interface CodeAction {
@@ -209,7 +209,7 @@ fn main() {
 
 **Experimental Server Capability:** `{ "onEnter": boolean }`
 
-This request is sent from client to server to handle <kbd>Enter</kbd> keypress.
+This request is sent from client to server to handle the <kbd>Enter</kbd> key press.
 
 **Method:** `experimental/onEnter`
 
@@ -657,6 +657,33 @@ interface TestInfo {
     runnable: Runnable;
 }
 ```
+
+## Hover Range
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/377
+
+**Experimental Server Capability:** { "hoverRange": boolean }
+
+This request build upon the current `textDocument/hover` to show the type of the expression currently selected.
+
+```typescript
+interface HoverParams extends lc.WorkDoneProgressParams {
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Range | lc.Position;
+}
+```
+
+Whenever the client sends a `Range`, it is understood as the current selection and any hover included in the range will show the type of the expression if possible.
+
+### Example
+
+```rust
+fn main() {
+    let expression = $01 + 2 * 3$0;
+}
+```
+
+Triggering a hover inside the selection above will show a result of `i32`.
 
 ## Move Item
 

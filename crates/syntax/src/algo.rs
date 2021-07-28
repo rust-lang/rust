@@ -173,7 +173,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
             }
     }
 
-    // FIXME: this is horrible inefficient. I bet there's a cool algorithm to diff trees properly.
+    // FIXME: this is horribly inefficient. I bet there's a cool algorithm to diff trees properly.
     fn go(diff: &mut TreeDiff, lhs: SyntaxElement, rhs: SyntaxElement) {
         let (lhs, rhs) = match lhs.as_node().zip(rhs.as_node()) {
             Some((lhs, rhs)) => (lhs, rhs),

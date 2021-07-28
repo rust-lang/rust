@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
 use ide_db::{
-    base_db::SourceDatabase,
+    base_db::{FileRange, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
     helpers::{
         generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
@@ -12,8 +12,12 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, AstToken, Direction,
-    SyntaxKind::*, SyntaxToken, T,
+    algo::{self, find_node_at_range},
+    ast,
+    display::fn_as_proc_macro_label,
+    match_ast, AstNode, AstToken, Direction,
+    SyntaxKind::*,
+    SyntaxToken, T,
 };
 
 use crate::{
@@ -69,17 +73,39 @@ pub struct HoverResult {
 
 // Feature: Hover
 //
-// Shows additional information, like type of an expression or documentation for definition when "focusing" code.
+// Shows additional information, like the type of an expression or the documentation for a definition when "focusing" code.
 // Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
 //
 // image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif[]
 pub(crate) fn hover(
     db: &RootDatabase,
-    position: FilePosition,
+    range: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = hir::Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
+    let file = sema.parse(range.file_id).syntax().clone();
+
+    // This means we're hovering over a range.
+    if !range.range.is_empty() {
+        let expr = find_node_at_range::<ast::Expr>(&file, range.range)?;
+        let ty = sema.type_of_expr(&expr)?;
+
+        if ty.is_unknown() {
+            return None;
+        }
+
+        let mut res = HoverResult::default();
+
+        res.markup = if config.markdown() {
+            Markup::fenced_block(&ty.display(db))
+        } else {
+            ty.display(db).to_string().into()
+        };
+
+        return Some(RangeInfo::new(range.range, res));
+    }
+
+    let position = FilePosition { file_id: range.file_id, offset: range.range.start() };
     let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
         IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
         T!['('] | T![')'] => 2,
@@ -94,8 +120,8 @@ pub(crate) fn hover(
     let mut range = None;
     let definition = match_ast! {
         match node {
-            // we don't use NameClass::referenced_or_defined here as we do not want to resolve
-            // field pattern shorthands to their definition
+            // We don't use NameClass::referenced_or_defined here as we do not want to resolve
+            // field pattern shorthands to their definition.
             ast::Name(name) => NameClass::classify(&sema, &name).map(|class| match class {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
                 NameClass::PatFieldShorthand { local_def, field_ref: _ } => Definition::Local(local_def),
@@ -193,6 +219,7 @@ pub(crate) fn hover(
     } else {
         ty.display(db).to_string().into()
     };
+
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -530,7 +557,8 @@ fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> 
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FileLoader;
+    use ide_db::base_db::{FileLoader, FileRange};
+    use syntax::TextRange;
 
     use crate::{fixture, hover::HoverDocFormat, HoverConfig};
 
@@ -542,7 +570,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap();
         assert!(hover.is_none());
@@ -556,7 +584,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -576,7 +604,7 @@ mod tests {
                     links_in_hover: false,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -596,7 +624,7 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::PlainText),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
@@ -616,11 +644,40 @@ mod tests {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                position,
+                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
             )
             .unwrap()
             .unwrap();
         expect.assert_debug_eq(&hover.info.actions)
+    }
+
+    fn check_hover_range(ra_fixture: &str, expect: Expect) {
+        let (analysis, range) = fixture::range(ra_fixture);
+        let hover = analysis
+            .hover(
+                &HoverConfig {
+                    links_in_hover: false,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+                range,
+            )
+            .unwrap()
+            .unwrap();
+        expect.assert_eq(hover.info.markup.as_str())
+    }
+
+    fn check_hover_range_no_results(ra_fixture: &str) {
+        let (analysis, range) = fixture::range(ra_fixture);
+        let hover = analysis
+            .hover(
+                &HoverConfig {
+                    links_in_hover: false,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+                range,
+            )
+            .unwrap();
+        assert!(hover.is_none());
     }
 
     #[test]
@@ -3880,6 +3937,144 @@ struct Foo;
                 pub macro Copy
                 ```
             "#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_math() {
+        check_hover_range(
+            r#"
+fn f() { let expr = $01 + 2 * 3$0 }
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = 1 $0+ 2 * $03 }
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = 1 + $02 * 3$0 }
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_arrays() {
+        check_hover_range(
+            r#"
+fn f() { let expr = $0[1, 2, 3, 4]$0 }
+            "#,
+            expect![[r#"
+            ```rust
+            [i32; 4]
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = [1, 2, $03, 4]$0 }
+            "#,
+            expect![[r#"
+            ```rust
+            [i32; 4]
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr = [1, 2, $03$0, 4] }
+            "#,
+            expect![[r#"
+            ```rust
+            i32
+            ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_functions() {
+        check_hover_range(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
+            "#,
+            expect![[r#"
+            ```rust
+            fn f<i32>(&[i32])
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b() { f($0&[1, 2, 3, 4, 5]$0); }
+            "#,
+            expect![[r#"
+            ```rust
+            &[i32; 5]
+            ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_nothing_when_invalid() {
+        check_hover_range_no_results(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b()$0 { f(&[1, 2, 3, 4, 5]); }$0
+            "#,
+        );
+
+        check_hover_range_no_results(
+            r#"
+fn f<T>$0(a: &[T]) { }
+fn b() { f(&[1, 2, 3,$0 4, 5]); }
+            "#,
+        );
+
+        check_hover_range_no_results(
+            r#"
+fn $0f() { let expr = [1, 2, 3, 4]$0 }
+            "#,
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_unit_for_statements() {
+        check_hover_range(
+            r#"
+fn f<T>(a: &[T]) { }
+fn b() { $0f(&[1, 2, 3, 4, 5]); }$0
+            "#,
+            expect![[r#"
+            ```rust
+            ()
+            ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn f() { let expr$0 = $0[1, 2, 3, 4] }
+            "#,
+            expect![[r#"
+            ```rust
+            ()
+            ```"#]],
         );
     }
 }

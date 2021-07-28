@@ -56,9 +56,15 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
         traceOutputChannel,
         middleware: {
             async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
-                return client.sendRequest(lc.HoverRequest.type, client.code2ProtocolConverter.asTextDocumentPositionParams(document, position), token).then(
+                const editor = vscode.window.activeTextEditor;
+                const positionOrRange = editor?.selection?.contains(position) ? client.code2ProtocolConverter.asRange(editor.selection) : client.code2ProtocolConverter.asPosition(position);
+                return client.sendRequest(ra.hover, {
+                    textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
+                    position: positionOrRange
+                }, token).then(
                     (result) => {
-                        const hover = client.protocol2CodeConverter.asHover(result);
+                        const hover =
+                            client.protocol2CodeConverter.asHover(result);
                         if (hover) {
                             const actions = (<any>result).actions;
                             if (actions) {
@@ -68,9 +74,15 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
                         return hover;
                     },
                     (error) => {
-                        client.handleFailedRequest(lc.HoverRequest.type, token, error, null);
+                        client.handleFailedRequest(
+                            lc.HoverRequest.type,
+                            token,
+                            error,
+                            null
+                        );
                         return Promise.resolve(null);
-                    });
+                    }
+                );
             },
             // Using custom handling of CodeActions to support action groups and snippet edits.
             // Note that this means we have to re-implement lazy edit resolving ourselves as well.

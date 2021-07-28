@@ -19,6 +19,13 @@ export const serverStatus = new lc.NotificationType<ServerStatusParams>("experim
 
 export const reloadWorkspace = new lc.RequestType0<null, void>("rust-analyzer/reloadWorkspace");
 
+export const hover = new lc.RequestType<HoverParams, lc.Hover | null, void>("textDocument/hover");
+
+export interface HoverParams extends lc.WorkDoneProgressParams {
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Range | lc.Position;
+}
+
 export interface SyntaxTreeParams {
     textDocument: lc.TextDocumentIdentifier;
     range: lc.Range | null;

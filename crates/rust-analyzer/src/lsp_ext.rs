@@ -376,9 +376,26 @@ pub struct SnippetTextEdit {
 pub enum HoverRequest {}
 
 impl Request for HoverRequest {
-    type Params = lsp_types::HoverParams;
+    type Params = HoverParams;
     type Result = Option<Hover>;
     const METHOD: &'static str = "textDocument/hover";
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HoverParams {
+    pub text_document: TextDocumentIdentifier,
+    pub position: PositionOrRange,
+
+    #[serde(flatten)]
+    pub work_done_progress_params: WorkDoneProgressParams,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum PositionOrRange {
+    Position(lsp_types::Position),
+    Range(lsp_types::Range),
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
