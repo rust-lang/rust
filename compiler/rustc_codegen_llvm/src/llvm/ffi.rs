@@ -490,6 +490,7 @@ pub enum DiagnosticKind {
     PGOProfile,
     Linker,
     Unsupported,
+    SrcMgr,
 }
 
 /// LLVMRustDiagnosticLevel
@@ -2264,12 +2265,16 @@ extern "C" {
         level_out: &mut DiagnosticLevel,
         cookie_out: &mut c_uint,
         message_out: &mut Option<&'a Twine>,
-        instruction_out: &mut Option<&'a Value>,
     );
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
+
+    pub fn LLVMRustGetSMDiagnostic(
+        DI: &'a DiagnosticInfo,
+        cookie_out: &mut c_uint,
+    ) -> &'a SMDiagnostic;
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(
         C: &Context,
