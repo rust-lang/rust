@@ -13,7 +13,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.in_use_tree() {
         // only show modules in a fresh UseTree
         cov_mark::hit!(unqualified_path_only_modules_in_import);
-        ctx.scope.process_all_names(&mut |name, res| {
+        ctx.process_all_names(&mut |name, res| {
             if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
                 acc.add_resolution(ctx, name, &res);
             }
@@ -29,7 +29,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         Some(ImmediateLocation::Visibility(_)) => return,
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             // only show macros in {Assoc}ItemList
-            ctx.scope.process_all_names(&mut |name, res| {
+            ctx.process_all_names(&mut |name, res| {
                 if let hir::ScopeDef::MacroDef(mac) = res {
                     if mac.is_fn_like() {
                         acc.add_macro(ctx, Some(name.clone()), mac);
@@ -42,7 +42,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             return;
         }
         Some(ImmediateLocation::TypeBound) => {
-            ctx.scope.process_all_names(&mut |name, res| {
+            ctx.process_all_names(&mut |name, res| {
                 let add_resolution = match res {
                     ScopeDef::MacroDef(mac) => mac.is_fn_like(),
                     ScopeDef::ModuleDef(hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_)) => {
@@ -83,7 +83,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         }
     }
 
-    ctx.scope.process_all_names(&mut |name, res| {
+    ctx.process_all_names(&mut |name, res| {
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) =
             res
         {
@@ -249,6 +249,60 @@ pub mod prelude {
                 md std
                 md core
                 st String
+            "#]],
+        );
+    }
+
+    #[test]
+    fn respects_doc_hidden() {
+        check(
+            r#"
+//- /lib.rs crate:lib deps:std
+fn f() {
+    format_$0
+}
+
+//- /std.rs crate:std
+#[doc(hidden)]
+#[macro_export]
+macro_rules! format_args_nl {
+    () => {}
+}
+
+pub mod prelude {
+    pub mod rust_2018 {}
+}
+            "#,
+            expect![[r#"
+                fn f() fn()
+                md std
+            "#]],
+        );
+    }
+
+    #[test]
+    fn respects_doc_hidden_in_assoc_item_list() {
+        check(
+            r#"
+//- /lib.rs crate:lib deps:std
+struct S;
+impl S {
+    format_$0
+}
+
+//- /std.rs crate:std
+#[doc(hidden)]
+#[macro_export]
+macro_rules! format_args_nl {
+    () => {}
+}
+
+pub mod prelude {
+    pub mod rust_2018 {}
+}
+            "#,
+            expect![[r#"
+                md std
             "#]],
         );
     }

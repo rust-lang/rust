@@ -1,7 +1,7 @@
 //! See `CompletionContext` structure.
 
 use base_db::SourceDatabaseExt;
-use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
+use hir::{Local, Name, ScopeDef, Semantics, SemanticsScope, Type};
 use ide_db::{
     base_db::{FilePosition, SourceDatabase},
     call_info::ActiveParameter,
@@ -370,6 +370,25 @@ impl<'a> CompletionContext<'a> {
         self.is_visible_impl(&item.visibility(self.db), &item.attrs(self.db), item.krate(self.db))
     }
 
+    pub(crate) fn is_scope_def_hidden(&self, scope_def: &ScopeDef) -> bool {
+        if let (Some(attrs), Some(krate)) = (scope_def.attrs(self.db), scope_def.krate(self.db)) {
+            return self.is_doc_hidden(&attrs, krate);
+        }
+
+        false
+    }
+
+    /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
+    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
+        self.scope.process_all_names(&mut |name, def| {
+            if self.is_scope_def_hidden(&def) {
+                return;
+            }
+
+            f(name, def);
+        })
+    }
+
     fn is_visible_impl(
         &self,
         vis: &hir::Visibility,
@@ -388,12 +407,20 @@ impl<'a> CompletionContext<'a> {
             return is_editable;
         }
 
+        !self.is_doc_hidden(attrs, defining_crate)
+    }
+
+    fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
+        let module = match self.scope.module() {
+            Some(it) => it,
+            None => return true,
+        };
         if module.krate() != defining_crate && attrs.has_doc_hidden() {
             // `doc(hidden)` items are only completed within the defining crate.
-            return false;
+            return true;
         }
 
-        true
+        false
     }
 
     fn fill_impl_def(&mut self) {
