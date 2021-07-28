@@ -44,9 +44,9 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
         FnAbi::of_fn_ptr(&RevealAllLayoutCx(fx.tcx), fn_ty.fn_sig(fx.tcx), &extra_args)
     };
     match fn_abi.ret.mode {
-        PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => true,
-        // FIXME Make it possible to return Cast and Indirect to an ssa var.
-        PassMode::Cast(_) | PassMode::Indirect { .. } => false,
+        PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => true,
+        // FIXME Make it possible to return Indirect to an ssa var.
+        PassMode::Indirect { .. } => false,
     }
 }
 
