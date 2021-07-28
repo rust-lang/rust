@@ -240,8 +240,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
-                // If this obligation was generated as a result of well-formed checking, see if we
-                // can get a better error message by performing HIR-based well formed checking.
+                // If this obligation was generated as a result of well-formedness checking, see if we
+                // can get a better error message by performing HIR-based well-formedness checking.
                 if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
                     root_obligation.cause.code.peel_derives()
                 {
