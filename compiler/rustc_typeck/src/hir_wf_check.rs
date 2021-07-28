@@ -38,20 +38,20 @@ fn diagnostic_hir_wf_check<'tcx>(
     // given the type `Option<MyStruct<u8>>`, we will check
     // `Option<MyStruct<u8>>`, `MyStruct<u8>`, and `u8`.
     // For each type, we perform a well-formed check, and see if we get
-    // an erorr that matches our expected predicate. We keep save
+    // an error that matches our expected predicate. We save
     // the `ObligationCause` corresponding to the *innermost* type,
     // which is the most specific type that we can point to.
     // In general, the different components of an `hir::Ty` may have
-    // completely differentr spans due to macro invocations. Pointing
+    // completely different spans due to macro invocations. Pointing
     // to the most accurate part of the type can be the difference
     // between a useless span (e.g. the macro invocation site)
-    // and a useful span (e.g. a user-provided type passed in to the macro).
+    // and a useful span (e.g. a user-provided type passed into the macro).
     //
     // This approach is quite inefficient - we redo a lot of work done
     // by the normal WF checker. However, this code is run at most once
     // per reported error - it will have no impact when compilation succeeds,
-    // and should only have an impact if a very large number of errors are
-    // displaydd to the user.
+    // and should only have an impact if a very large number of errors is
+    // displayed to the user.
     struct HirWfCheck<'tcx> {
         tcx: TyCtxt<'tcx>,
         predicate: ty::Predicate<'tcx>,
@@ -126,10 +126,12 @@ fn diagnostic_hir_wf_check<'tcx>(
         WellFormedLoc::Ty(_) => match hir.get(hir_id) {
             hir::Node::ImplItem(item) => match item.kind {
                 hir::ImplItemKind::TyAlias(ty) => Some(ty),
+                hir::ImplItemKind::Const(ty, _) => Some(ty),
                 ref item => bug!("Unexpected ImplItem {:?}", item),
             },
             hir::Node::TraitItem(item) => match item.kind {
                 hir::TraitItemKind::Type(_, ty) => ty,
+                hir::TraitItemKind::Const(ty, _) => Some(ty),
                 ref item => bug!("Unexpected TraitItem {:?}", item),
             },
             hir::Node::Item(item) => match item.kind {
