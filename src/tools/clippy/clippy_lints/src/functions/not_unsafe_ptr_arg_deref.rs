@@ -1,6 +1,7 @@
 use rustc_hir::{self as hir, intravisit, HirIdSet};
 use rustc_lint::LateContext;
 use rustc_middle::{hir::map::Map, ty};
+use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::type_is_unsafe_function;
@@ -21,13 +22,13 @@ pub(super) fn check_fn(
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, unsafety, decl, body, hir_id);
+    check_raw_ptr(cx, unsafety, decl, body, cx.tcx.hir().local_def_id(hir_id));
 }
 
 pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.hir_id());
+        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.def_id);
     }
 }
 
@@ -36,10 +37,10 @@ fn check_raw_ptr(
     unsafety: hir::Unsafety,
     decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
-    hir_id: hir::HirId,
+    def_id: LocalDefId,
 ) {
     let expr = &body.value;
-    if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(hir_id) {
+    if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
             .zip(decl.inputs.iter())
             .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))

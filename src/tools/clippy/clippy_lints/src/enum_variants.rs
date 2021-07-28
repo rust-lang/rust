@@ -297,7 +297,7 @@ impl LateLintPass<'_> for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.hir_id())) {
+            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id)) {
                 check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
             }
         }
