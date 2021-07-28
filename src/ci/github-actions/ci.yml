@@ -416,6 +416,10 @@ jobs:
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
+              # Only run this job on the nightly channel. Running this on beta
+              # could cause failures when `dev: 1` in `stage0.txt`, and running
+              # this on stable is useless.
+              CI_ONLY_WHEN_CHANNEL: nightly
             <<: *job-linux-xl
 
           - name: x86_64-gnu-aux
