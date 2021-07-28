@@ -22,8 +22,8 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// so it can be used in FFI in places where a handle is passed as an argument,
 /// it is not captured or consumed, and it is never null.
 ///
-/// Note that it *may* have the value `INVALID_HANDLE_VALUE`. See [here] for
-/// the full story.
+/// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
+/// sometimes a valid handle value. See [here] for the full story.
 ///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
 #[derive(Copy, Clone)]
@@ -42,10 +42,10 @@ pub struct BorrowedHandle<'handle> {
 /// so it can be used in FFI in places where a handle is passed as a consumed
 /// argument or returned as an owned value, and is never null.
 ///
-/// Note that it *may* have the value `INVALID_HANDLE_VALUE`. See [here] for
-/// the full story. For APIs like `CreateFileW` which report errors with
-/// `INVALID_HANDLE_VALUE` instead of null, use [`OptionFileHandle`] instead
-/// of `Option<OwnedHandle>`.
+/// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
+/// sometimes a valid handle value. See [here] for the full story. For APIs
+/// like `CreateFileW` which report errors with `INVALID_HANDLE_VALUE` instead
+/// of null, use [`OptionFileHandle`] instead of `Option<OwnedHandle>`.
 ///
 /// `OwnedHandle` uses [`CloseHandle`] to close its handle on drop. As such,
 /// it must not be used with handles to open registry keys which need to be
@@ -98,8 +98,14 @@ impl BorrowedHandle<'_> {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `handle` must remain open for the duration
-    /// of the returned `BorrowedHandle`, and it must not be null.
+    /// The resource pointed to by `handle` must be a valid open handle, it
+    /// must remain open for the duration of the returned `BorrowedHandle`, and
+    /// it must not be null.
+    ///
+    /// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
+    /// sometimes a valid handle value. See [here] for the full story.
+    ///
+    /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
     pub unsafe fn borrow_raw_handle(handle: RawHandle) -> Self {
@@ -182,6 +188,9 @@ impl IntoRawHandle for OwnedHandle {
 impl FromRawHandle for OwnedHandle {
     /// Constructs a new instance of `Self` from the given raw handle.
     ///
+    /// Use `OptionFileHandle` instead of `Option<OwnedHandle>` for APIs that
+    /// use `INVALID_HANDLE_VALUE` to indicate failure.
+    ///
     /// # Safety
     ///
     /// The resource pointed to by `handle` must be open and suitable for
@@ -191,7 +200,11 @@ impl FromRawHandle for OwnedHandle {
     /// In particular, it must not be used with handles to open registry
     /// keys which need to be closed with [`RegCloseKey`] instead.
     ///
+    /// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
+    /// sometimes a valid handle value. See [here] for the full story.
+    ///
     /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
+    /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         assert!(!handle.is_null());
@@ -200,14 +213,19 @@ impl FromRawHandle for OwnedHandle {
 }
 
 impl FromRawHandle for OptionFileHandle {
-    /// Constructs a new instance of `Self` from the given raw handle.
+    /// Constructs a new instance of `Self` from the given raw handle returned
+    /// from a Windows API that uses `INVALID_HANDLE_VALUE` to indicate
+    /// failure, such as `CreateFileW`.
+    ///
+    /// Use `Option<OwnedHandle>` instead of `OptionFileHandle` for APIs that
+    /// use null to indicate failure.
     ///
     /// # Safety
     ///
     /// The resource pointed to by `handle` must be either open and otherwise
-    /// unowned, or equal to `INVALID_HANDLE_VALUE``. Note that not all Windows
-    /// APIs use `INVALID_HANDLE_VALUE` for errors; see [here] for the full
-    /// story.
+    /// unowned, or equal to `INVALID_HANDLE_VALUE` (-1). It must not be null.
+    /// Note that not all Windows APIs use `INVALID_HANDLE_VALUE` for errors;
+    /// see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
