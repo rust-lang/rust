@@ -17,9 +17,10 @@
 //! Like raw pointers, `RawFd` values are primitive values. And in new code,
 //! they should be considered unsafe to do I/O on (analogous to dereferencing
 //! them). Rust did not always provide this guidance, so existing code in the
-//! Rust ecosystem often doesn't mark `RawFd` usage as unsafe. Libraries are
-//! encouraged to migrate, either by adding `unsafe` to APIs that dereference
-//! `RawFd` values, or by using to `BorrowedFd` or `OwnedFd` instead.
+//! Rust ecosystem often doesn't mark `RawFd` usage as unsafe. Once the
+//! `io_safety` feature is stable, libraries will be encouraged to migrate,
+//! either by adding `unsafe` to APIs that dereference `RawFd` values, or by
+//! using to `BorrowedFd` or `OwnedFd` instead.
 //!
 //! Like references, `BorrowedFd` values are tied to a lifetime, to ensure
 //! that they don't outlive the resource they point to. These are safe to

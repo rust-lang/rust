@@ -23,10 +23,10 @@
 //! And in new code, they should be considered unsafe to do I/O on (analogous
 //! to dereferencing them). Rust did not always provide this guidance, so
 //! existing code in the Rust ecosystem often doesn't mark `RawHandle` and
-//! `RawSocket` usage as unsafe. Libraries are encouraged to migrate, either by
-//! adding `unsafe` to APIs that dereference `RawHandle` and `RawSocket`
-//! values, or by using to `BorrowedHandle`, `BorrowedSocket`, `OwnedHandle`,
-//! or `OwnedSocket`.
+//! `RawSocket` usage as unsafe. Once the `io_safety` feature is stable,
+//! libraries will be encouraged to migrate, either by adding `unsafe` to APIs
+//! that dereference `RawHandle` and `RawSocket` values, or by using to
+//! `BorrowedHandle`, `BorrowedSocket`, `OwnedHandle`, or `OwnedSocket`.
 //!
 //! Like references, `BorrowedHandle` and `BorrowedSocket` values are tied to a
 //! lifetime, to ensure that they don't outlive the resource they point to.
