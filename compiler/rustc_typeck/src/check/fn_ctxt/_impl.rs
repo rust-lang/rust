@@ -29,12 +29,11 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
-use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
-use rustc_span::{hygiene::DesugaringKind, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -368,7 +367,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         parent_id: hir::HirId,
         value: T,
         value_span: Span,
-        feature: Option<Symbol>,
     ) -> T {
         let parent_def_id = self.tcx.hir().local_def_id(parent_id);
         debug!(
@@ -388,19 +386,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut infcx = self.infcx.inner.borrow_mut();
 
         for (ty, decl) in opaque_type_map {
-            if let Some(feature) = feature {
-                if let hir::OpaqueTyOrigin::TyAlias = decl.origin {
-                    if !self.tcx.features().enabled(feature) {
-                        feature_err(
-                            &self.tcx.sess.parse_sess,
-                            feature,
-                            value_span,
-                            "type alias impl trait is not permitted here",
-                        )
-                        .emit();
-                    }
-                }
-            }
             let _ = infcx.opaque_types.insert(ty, decl);
             let _ = infcx.opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
         }

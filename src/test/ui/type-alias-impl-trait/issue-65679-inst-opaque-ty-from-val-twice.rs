@@ -1,4 +1,5 @@
 // compile-flags: -Zsave-analysis
+// check-pass
 
 #![feature(type_alias_impl_trait, rustc_attrs)]
 
@@ -11,9 +12,7 @@ type T = impl Sized;
 
 fn take(_: fn() -> T) {}
 
-#[rustc_error]
 fn main() {
-    //~^ ERROR fatal error triggered by #[rustc_error]
     take(|| {});
     take(|| {});
 }

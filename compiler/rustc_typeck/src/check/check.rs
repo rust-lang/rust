@@ -94,69 +94,8 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
 
-    let feature = match tcx.hir().get(fn_id) {
-        // TAIT usage in function return position.
-        // Example:
-        //
-        // ```rust
-        // type Foo = impl Debug;
-        // fn bar() -> Foo { 42 }
-        // ```
-        Node::Item(hir::Item { kind: ItemKind::Fn(..), .. }) |
-        // TAIT usage in associated function return position.
-        //
-        // Example with a free type alias:
-        //
-        // ```rust
-        // type Foo = impl Debug;
-        // impl SomeTrait for SomeType {
-        //     fn bar() -> Foo { 42 }
-        // }
-        // ```
-        //
-        // Example with an associated TAIT:
-        //
-        // ```rust
-        // impl SomeTrait for SomeType {
-        //     type Foo = impl Debug;
-        //     fn bar() -> Self::Foo { 42 }
-        // }
-        // ```
-        Node::ImplItem(hir::ImplItem {
-            kind: hir::ImplItemKind::Fn(..), ..
-        }) => None,
-        // Forbid TAIT in trait declarations for now.
-        // Examples:
-        //
-        // ```rust
-        // type Foo = impl Debug;
-        // trait Bar {
-        //     fn bar() -> Foo;
-        // }
-        // trait Bop {
-        //     type Bop: PartialEq<Foo>;
-        // }
-        // ```
-        Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Fn(..),
-            ..
-        }) |
-        // Forbid TAIT in closure return position for now.
-        // Example:
-        //
-        // ```rust
-        // type Foo = impl Debug;
-        // let x = |y| -> Foo { 42 + y };
-        // ```
-        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => Some(sym::type_alias_impl_trait),
-        node => bug!("Item being checked wasn't a function/closure: {:?}", node),
-    };
-    let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(
-        fn_id,
-        declared_ret_ty,
-        decl.output.span(),
-        feature,
-    );
+    let revealed_ret_ty =
+        fcx.instantiate_opaque_types_from_value(fn_id, declared_ret_ty, decl.output.span());
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
