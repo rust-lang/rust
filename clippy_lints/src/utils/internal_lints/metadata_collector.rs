@@ -139,7 +139,7 @@ declare_clippy_lint! {
     ///         "line": 1
     ///     },
     ///     "group": "clippy::internal",
-    ///     "docs": " **What it does:** Collects metadata about clippy lints for the website. [...] "
+    ///     "docs": " ### What it does\nCollects metadata about clippy lints for the website. [...] "
     /// }
     /// ```
     pub INTERNAL_METADATA_COLLECTOR,
