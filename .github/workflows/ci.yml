@@ -207,9 +207,9 @@ jobs:
           - "-Ctarget-feature=+avx512" # AVX-512 uses packed bit masks, so enable it to test more code paths
         features:
           - ""
-          - "--feature std"
-          - "--feature const_evaluatable_checked"
-          - "--feature std --feature const_evaluatable_checked"
+          - "--features std"
+          - "--features const_evaluatable_checked"
+          - "--features std --features const_evaluatable_checked"
 
     steps:
       - uses: actions/checkout@v2
