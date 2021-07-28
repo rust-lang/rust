@@ -32,7 +32,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 #[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct BorrowedFd<'fd> {
-    raw: RawFd,
+    fd: RawFd,
     _phantom: PhantomData<&'fd OwnedFd>,
 }
 
@@ -52,7 +52,7 @@ pub struct BorrowedFd<'fd> {
 #[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedFd {
-    raw: RawFd,
+    fd: RawFd,
 }
 
 impl BorrowedFd<'_> {
@@ -60,13 +60,13 @@ impl BorrowedFd<'_> {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must remain open for the duration of
+    /// The resource pointed to by `fd` must remain open for the duration of
     /// the returned `BorrowedFd`, and it must not have the value `-1`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_fd(raw: RawFd) -> Self {
-        assert_ne!(raw, -1_i32 as RawFd);
-        unsafe { Self { raw, _phantom: PhantomData } }
+    pub unsafe fn borrow_raw_fd(fd: RawFd) -> Self {
+        assert_ne!(fd, -1_i32 as RawFd);
+        unsafe { Self { fd, _phantom: PhantomData } }
     }
 }
 
@@ -74,7 +74,7 @@ impl BorrowedFd<'_> {
 impl AsRawFd for BorrowedFd<'_> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.raw
+        self.fd
     }
 }
 
@@ -82,7 +82,7 @@ impl AsRawFd for BorrowedFd<'_> {
 impl AsRawFd for OwnedFd {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.raw
+        self.fd
     }
 }
 
@@ -90,9 +90,9 @@ impl AsRawFd for OwnedFd {
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        let raw = self.raw;
+        let fd = self.fd;
         forget(self);
-        raw
+        fd
     }
 }
 
@@ -102,13 +102,13 @@ impl FromRawFd for OwnedFd {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must be open and suitable for assuming
+    /// The resource pointed to by `fd` must be open and suitable for assuming
     /// ownership.
     #[inline]
-    unsafe fn from_raw_fd(raw: RawFd) -> Self {
-        assert_ne!(raw, RawFd::MAX);
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        assert_ne!(fd, RawFd::MAX);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { raw } }
+        unsafe { Self { fd } }
     }
 }
 
@@ -122,7 +122,7 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
-            let _ = libc::close(self.raw as raw::c_int);
+            let _ = libc::close(self.fd as raw::c_int);
         }
     }
 }
@@ -130,14 +130,14 @@ impl Drop for OwnedFd {
 #[unstable(feature = "io_safety", issue = "87074")]
 impl fmt::Debug for BorrowedFd<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BorrowedFd").field("fd", &self.raw).finish()
+        f.debug_struct("BorrowedFd").field("fd", &self.fd).finish()
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
 impl fmt::Debug for OwnedFd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OwnedFd").field("fd", &self.raw).finish()
+        f.debug_struct("OwnedFd").field("fd", &self.fd).finish()
     }
 }
 

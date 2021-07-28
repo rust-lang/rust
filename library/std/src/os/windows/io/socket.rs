@@ -28,7 +28,7 @@ use crate::sys::c;
 )]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct BorrowedSocket<'socket> {
-    raw: RawSocket,
+    socket: RawSocket,
     _phantom: PhantomData<&'socket OwnedSocket>,
 }
 
@@ -50,7 +50,7 @@ pub struct BorrowedSocket<'socket> {
 )]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedSocket {
-    raw: RawSocket,
+    socket: RawSocket,
 }
 
 impl BorrowedSocket<'_> {
@@ -63,32 +63,32 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_socket(raw: RawSocket) -> Self {
-        debug_assert_ne!(raw, c::INVALID_SOCKET as RawSocket);
-        Self { raw, _phantom: PhantomData }
+    pub unsafe fn borrow_raw_socket(socket: RawSocket) -> Self {
+        debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+        Self { socket, _phantom: PhantomData }
     }
 }
 
 impl AsRawSocket for BorrowedSocket<'_> {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.raw
+        self.socket
     }
 }
 
 impl AsRawSocket for OwnedSocket {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.raw
+        self.socket
     }
 }
 
 impl IntoRawSocket for OwnedSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        let raw = self.raw;
+        let socket = self.socket;
         forget(self);
-        raw
+        socket
     }
 }
 
@@ -97,12 +97,13 @@ impl FromRawSocket for OwnedSocket {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must be open and suitable for assuming
-    /// ownership. The resource must not require cleanup other than `closesocket`.
+    /// The resource pointed to by `socket` must be open and suitable for
+    /// assuming ownership. The resource must not require cleanup other than
+    /// `closesocket`.
     #[inline]
-    unsafe fn from_raw_socket(raw: RawSocket) -> Self {
-        debug_assert_ne!(raw, c::INVALID_SOCKET as RawSocket);
-        Self { raw }
+    unsafe fn from_raw_socket(socket: RawSocket) -> Self {
+        debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+        Self { socket }
     }
 }
 
@@ -110,20 +111,20 @@ impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::closesocket(self.raw);
+            let _ = c::closesocket(self.socket);
         }
     }
 }
 
 impl fmt::Debug for BorrowedSocket<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BorrowedSocket").field("socket", &self.raw).finish()
+        f.debug_struct("BorrowedSocket").field("socket", &self.socket).finish()
     }
 }
 
 impl fmt::Debug for OwnedSocket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OwnedSocket").field("socket", &self.raw).finish()
+        f.debug_struct("OwnedSocket").field("socket", &self.socket).finish()
     }
 }
 

@@ -30,7 +30,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct BorrowedHandle<'handle> {
-    raw: NonNull<c_void>,
+    handle: NonNull<c_void>,
     _phantom: PhantomData<&'handle OwnedHandle>,
 }
 
@@ -58,7 +58,7 @@ pub struct BorrowedHandle<'handle> {
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedHandle {
-    raw: NonNull<c_void>,
+    handle: NonNull<c_void>,
 }
 
 /// Similar to `Option<OwnedHandle>`, but intended for use in FFI interfaces
@@ -78,7 +78,7 @@ pub struct OwnedHandle {
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OptionFileHandle {
-    raw: RawHandle,
+    handle: RawHandle,
 }
 
 // The Windows [`HANDLE`] type may be transferred across and shared between
@@ -98,13 +98,13 @@ impl BorrowedHandle<'_> {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must remain open for the duration of
-    /// the returned `BorrowedHandle`, and it must not be null.
+    /// The resource pointed to by `handle` must remain open for the duration
+    /// of the returned `BorrowedHandle`, and it must not be null.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_handle(raw: RawHandle) -> Self {
-        assert!(!raw.is_null());
-        Self { raw: NonNull::new_unchecked(raw), _phantom: PhantomData }
+    pub unsafe fn borrow_raw_handle(handle: RawHandle) -> Self {
+        assert!(!handle.is_null());
+        Self { handle: NonNull::new_unchecked(handle), _phantom: PhantomData }
     }
 }
 
@@ -113,7 +113,7 @@ impl OptionFileHandle {
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
     pub const fn none() -> Self {
-        Self { raw: c::INVALID_HANDLE_VALUE }
+        Self { handle: c::INVALID_HANDLE_VALUE }
     }
 }
 
@@ -122,19 +122,19 @@ impl TryFrom<OptionFileHandle> for OwnedHandle {
 
     #[inline]
     fn try_from(option: OptionFileHandle) -> Result<Self, ()> {
-        let raw = option.raw;
+        let handle = option.handle;
         forget(option);
-        if let Some(non_null) = NonNull::new(raw) {
+        if let Some(non_null) = NonNull::new(handle) {
             if non_null.as_ptr() != c::INVALID_HANDLE_VALUE {
-                Ok(Self { raw: non_null })
+                Ok(Self { handle: non_null })
             } else {
                 Err(())
             }
         } else {
             // In theory, we ought to be able to assume that the pointer here
-            // is never null, change `option.raw` to `NonNull`, and obviate the
-            // the panic path here. Unfortunately, Win32 documentation doesn't
-            // explicitly guarantee this anywhere.
+            // is never null, change `option.handle` to `NonNull`, and obviate
+            // the the panic path here. Unfortunately, Win32 documentation
+            // doesn't explicitly guarantee this anywhere.
             //
             // APIs like [`CreateFileW`] itself have `HANDLE` arguments where a
             // null handle indicates an absent value, which wouldn't work if
@@ -150,32 +150,32 @@ impl TryFrom<OptionFileHandle> for OwnedHandle {
 impl From<OwnedHandle> for OptionFileHandle {
     #[inline]
     fn from(owned: OwnedHandle) -> Self {
-        let raw = owned.raw;
+        let handle = owned.handle;
         forget(owned);
-        Self { raw: raw.as_ptr() }
+        Self { handle: handle.as_ptr() }
     }
 }
 
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.raw.as_ptr()
+        self.handle.as_ptr()
     }
 }
 
 impl AsRawHandle for OwnedHandle {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.raw.as_ptr()
+        self.handle.as_ptr()
     }
 }
 
 impl IntoRawHandle for OwnedHandle {
     #[inline]
     fn into_raw_handle(self) -> RawHandle {
-        let raw = self.raw.as_ptr();
+        let handle = self.handle.as_ptr();
         forget(self);
-        raw
+        handle
     }
 }
 
@@ -184,7 +184,7 @@ impl FromRawHandle for OwnedHandle {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must be open and suitable for
+    /// The resource pointed to by `handle` must be open and suitable for
     /// assuming ownership. The resource must not require any cleanup other
     /// than `CloseHandle`.
     ///
@@ -193,9 +193,9 @@ impl FromRawHandle for OwnedHandle {
     ///
     /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
     #[inline]
-    unsafe fn from_raw_handle(raw: RawHandle) -> Self {
-        assert!(!raw.is_null());
-        Self { raw: NonNull::new_unchecked(raw) }
+    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+        assert!(!handle.is_null());
+        Self { handle: NonNull::new_unchecked(handle) }
     }
 }
 
@@ -204,16 +204,16 @@ impl FromRawHandle for OptionFileHandle {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `raw` must be either open and otherwise
+    /// The resource pointed to by `handle` must be either open and otherwise
     /// unowned, or equal to `INVALID_HANDLE_VALUE``. Note that not all Windows
     /// APIs use `INVALID_HANDLE_VALUE` for errors; see [here] for the full
     /// story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(raw: RawHandle) -> Self {
-        assert!(!raw.is_null());
-        Self { raw }
+    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+        assert!(!handle.is_null());
+        Self { handle }
     }
 }
 
@@ -221,7 +221,7 @@ impl Drop for OwnedHandle {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::CloseHandle(self.raw.as_ptr());
+            let _ = c::CloseHandle(self.handle.as_ptr());
         }
     }
 }
@@ -230,26 +230,26 @@ impl Drop for OptionFileHandle {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::CloseHandle(self.raw);
+            let _ = c::CloseHandle(self.handle);
         }
     }
 }
 
 impl fmt::Debug for BorrowedHandle<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BorrowedHandle").field("handle", &self.raw).finish()
+        f.debug_struct("BorrowedHandle").field("handle", &self.handle).finish()
     }
 }
 
 impl fmt::Debug for OwnedHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OwnedHandle").field("handle", &self.raw).finish()
+        f.debug_struct("OwnedHandle").field("handle", &self.handle).finish()
     }
 }
 
 impl fmt::Debug for OptionFileHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OptionFileHandle").field("handle", &self.raw).finish()
+        f.debug_struct("OptionFileHandle").field("handle", &self.handle).finish()
     }
 }
 
