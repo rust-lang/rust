@@ -268,7 +268,7 @@ git rebase master
 git push --force-with-lease (set origin to be the same as local)
 ```
 
-To avoid merges as per the [No-Merge Policy][#no-merge-policy], you may want to use
+To avoid merges as per the [No-Merge Policy](#no-merge-policy), you may want to use
 `git config pull.ff only` (this will apply the config to the local repo).
 to avoid merge conflicts while pulling, without needing
 `--ff-only` or `--rebase` while `git pull`ing
