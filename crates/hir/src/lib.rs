@@ -1599,6 +1599,21 @@ impl ItemInNs {
             ItemInNs::Macros(_) => None,
         }
     }
+
+    /// Returns the crate defining this item (or `None` if `self` is built-in).
+    pub fn krate(&self, db: &dyn HirDatabase) -> Option<Crate> {
+        match self {
+            ItemInNs::Types(did) | ItemInNs::Values(did) => did.module(db).map(|m| m.krate()),
+            ItemInNs::Macros(id) => id.module(db).map(|m| m.krate()),
+        }
+    }
+
+    pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
+        match self {
+            ItemInNs::Types(it) | ItemInNs::Values(it) => it.attrs(db),
+            ItemInNs::Macros(it) => Some(it.attrs(db)),
+        }
+    }
 }
 
 /// Invariant: `inner.as_assoc_item(db).is_some()`

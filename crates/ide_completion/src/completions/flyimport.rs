@@ -138,6 +138,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         import_assets
             .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
             .into_iter()
+            .filter(|import| {
+                !ctx.is_item_hidden(&import.item_to_import)
+                    && !ctx.is_item_hidden(&import.original_item)
+            })
             .sorted_by_key(|located_import| {
                 compute_fuzzy_completion_order_key(
                     &located_import.import_path,
@@ -1143,6 +1147,44 @@ mod bar {
         db.metho$0
     }
 }
+            "#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn respects_doc_hidden() {
+        check(
+            r#"
+//- /lib.rs crate:lib deps:dep
+fn f() {
+    ().fro$0
+}
+
+//- /dep.rs crate:dep
+#[doc(hidden)]
+pub trait Private {
+    fn frob(&self) {}
+}
+
+impl<T> Private for T {}
+            "#,
+            expect![[r#""#]],
+        );
+        check(
+            r#"
+//- /lib.rs crate:lib deps:dep
+fn f() {
+    ().fro$0
+}
+
+//- /dep.rs crate:dep
+pub trait Private {
+    #[doc(hidden)]
+    fn frob(&self) {}
+}
+
+impl<T> Private for T {}
             "#,
             expect![[r#""#]],
         );

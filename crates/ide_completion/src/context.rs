@@ -378,6 +378,15 @@ impl<'a> CompletionContext<'a> {
         false
     }
 
+    pub(crate) fn is_item_hidden(&self, item: &hir::ItemInNs) -> bool {
+        let attrs = item.attrs(self.db);
+        let krate = item.krate(self.db);
+        match (attrs, krate) {
+            (Some(attrs), Some(krate)) => self.is_doc_hidden(&attrs, krate),
+            _ => false,
+        }
+    }
+
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         self.scope.process_all_names(&mut |name, def| {
