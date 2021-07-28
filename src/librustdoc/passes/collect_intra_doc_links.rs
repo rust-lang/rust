@@ -1244,11 +1244,8 @@ impl LinkCollector<'_, '_> {
                     item.def_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
                 })
             {
-                let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
-                let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
-
-                if self.cx.tcx.privacy_access_levels(()).is_exported(hir_src)
-                    && !self.cx.tcx.privacy_access_levels(()).is_exported(hir_dst)
+                if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
+                    && !self.cx.tcx.privacy_access_levels(()).is_exported(dst_id)
                 {
                     privacy_error(self.cx, &diag_info, &path_str);
                 }

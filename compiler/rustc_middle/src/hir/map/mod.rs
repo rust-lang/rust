@@ -581,14 +581,6 @@ impl<'hir> Map<'hir> {
         self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
     }
 
-    /// Whether `hir_id` corresponds to a `mod` or a crate.
-    pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
-        matches!(
-            self.get(hir_id),
-            Node::Item(Item { kind: ItemKind::Mod(_), .. }) | Node::Crate(..)
-        )
-    }
-
     /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
     /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
