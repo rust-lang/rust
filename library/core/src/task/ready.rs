@@ -45,7 +45,7 @@
 ///     # Poll::Ready(())
 /// # }
 /// ```
-#[stable(feature = "ready_macro", since = "1.55.0")]
+#[stable(feature = "ready_macro", since = "1.56.0")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro ready($e:expr) {
     match $e {
