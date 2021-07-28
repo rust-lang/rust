@@ -98,7 +98,7 @@ impl FromRawSocket for OwnedSocket {
     /// # Safety
     ///
     /// The resource pointed to by `raw` must be open and suitable for assuming
-    /// ownership.
+    /// ownership. The resource must not require cleanup other than `closesocket`.
     #[inline]
     unsafe fn from_raw_socket(raw: RawSocket) -> Self {
         debug_assert_ne!(raw, c::INVALID_SOCKET as RawSocket);
