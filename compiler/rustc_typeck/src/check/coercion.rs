@@ -184,7 +184,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
         match unsize {
             Ok(_) => {
-                debug!("coerce: unsize successful");
+                debug!("coerce: unsize successful: {:?}", unsize);
                 return unsize;
             }
             Err(TypeError::ObjectUnsafeCoercion(did)) => {
@@ -603,6 +603,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     continue;
                 }
             };
+
+            
+            let InferOk { value: trait_pred2, obligations: obls } =
+            self.normalize_associated_types_in_as_infer_ok(self.cause.span, trait_pred);
+            
+            debug!("coerce_unsized: normalized {:?} to {:?}; obls: {:?}", trait_pred, trait_pred2, obls);
+            let trait_pred = trait_pred2;
+            // coercion.obligations.extend(obls);
+            
             match selcx.select(&obligation.with(trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
