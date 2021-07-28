@@ -318,17 +318,16 @@ impl<'tcx> CPlace<'tcx> {
         &self.inner
     }
 
-    pub(crate) fn no_place(layout: TyAndLayout<'tcx>) -> CPlace<'tcx> {
-        CPlace { inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None), layout }
-    }
-
     pub(crate) fn new_stack_slot(
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
         assert!(!layout.is_unsized());
         if layout.size.bytes() == 0 {
-            return CPlace::no_place(layout);
+            return CPlace {
+                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
+                layout,
+            };
         }
 
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {

@@ -58,8 +58,7 @@ pub(super) fn codegen_return_param<'tcx>(
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> CPlace<'tcx> {
     let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
-        PassMode::Ignore => (CPlace::no_place(fx.fn_abi.as_ref().unwrap().ret.layout), smallvec![]),
-        PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => {
+        PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => {
             let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
             (
                 super::make_local_place(
