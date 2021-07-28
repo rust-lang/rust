@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if item.ident.name == sym::len;
             if let ImplItemKind::Fn(sig, _) = &item.kind;
             if sig.decl.implicit_self.has_implicit_self();
-            if cx.access_levels.is_exported(item.hir_id());
+            if cx.access_levels.is_exported(item.def_id);
             if matches!(sig.decl.output, FnRetTy::Return(_));
             if let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id());
             if imp.of_trait.is_none();
@@ -207,7 +207,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.hir_id())
+    if cx.access_levels.is_exported(visited_trait.def_id)
         && trait_items.iter().any(|i| is_named_self(cx, i, sym::len))
     {
         let mut current_and_super_traits = DefIdSet::default();
@@ -331,11 +331,7 @@ fn check_for_is_empty(
             None,
             None,
         ),
-        Some(is_empty)
-            if !cx
-                .access_levels
-                .is_exported(cx.tcx.hir().local_def_id_to_hir_id(is_empty.def_id.expect_local())) =>
-        {
+        Some(is_empty) if !cx.access_levels.is_exported(is_empty.def_id.expect_local()) => {
             (
                 format!(
                     "{} `{}` has a public `len` method, but a private `is_empty` method",
