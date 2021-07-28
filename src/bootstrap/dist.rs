@@ -679,6 +679,7 @@ pub struct Analysis {
 
 impl Step for Analysis {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "analysis");
@@ -958,6 +959,7 @@ pub struct Cargo {
 
 impl Step for Cargo {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1014,6 +1016,7 @@ pub struct Rls {
 impl Step for Rls {
     type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "rls");
@@ -1059,6 +1062,7 @@ pub struct RustAnalyzer {
 
 impl Step for RustAnalyzer {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1114,6 +1118,7 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1164,6 +1169,7 @@ pub struct Miri {
 
 impl Step for Miri {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1223,6 +1229,7 @@ pub struct Rustfmt {
 
 impl Step for Rustfmt {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1276,6 +1283,7 @@ pub struct RustDemangler {
 
 impl Step for RustDemangler {
     type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1975,6 +1983,7 @@ pub struct LlvmTools {
 impl Step for LlvmTools {
     type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(&run.builder, "llvm-tools");
