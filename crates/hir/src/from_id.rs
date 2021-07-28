@@ -5,14 +5,13 @@
 
 use hir_def::{
     expr::{LabelId, PatId},
-    item_scope::ItemInNs,
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, GenericParamId,
     ModuleDefId, VariantId,
 };
 
 use crate::{
-    Adt, AssocItem, BuiltinType, DefWithBody, Field, GenericDef, GenericParam, Label, Local,
-    MacroDef, ModuleDef, Variant, VariantDef,
+    Adt, AssocItem, BuiltinType, DefWithBody, Field, GenericDef, GenericParam, ItemInNs, Label,
+    Local, ModuleDef, Variant, VariantDef,
 };
 
 macro_rules! from_id {
@@ -258,19 +257,22 @@ impl From<(DefWithBodyId, LabelId)> for Label {
     }
 }
 
-impl From<MacroDef> for ItemInNs {
-    fn from(macro_def: MacroDef) -> Self {
-        ItemInNs::Macros(macro_def.into())
+impl From<hir_def::item_scope::ItemInNs> for ItemInNs {
+    fn from(it: hir_def::item_scope::ItemInNs) -> Self {
+        match it {
+            hir_def::item_scope::ItemInNs::Types(it) => ItemInNs::Types(it.into()),
+            hir_def::item_scope::ItemInNs::Values(it) => ItemInNs::Values(it.into()),
+            hir_def::item_scope::ItemInNs::Macros(it) => ItemInNs::Macros(it.into()),
+        }
     }
 }
 
-impl From<ModuleDef> for ItemInNs {
-    fn from(module_def: ModuleDef) -> Self {
-        match module_def {
-            ModuleDef::Static(_) | ModuleDef::Const(_) | ModuleDef::Function(_) => {
-                ItemInNs::Values(module_def.into())
-            }
-            _ => ItemInNs::Types(module_def.into()),
+impl From<ItemInNs> for hir_def::item_scope::ItemInNs {
+    fn from(it: ItemInNs) -> Self {
+        match it {
+            ItemInNs::Types(it) => Self::Types(it.into()),
+            ItemInNs::Values(it) => Self::Values(it.into()),
+            ItemInNs::Macros(it) => Self::Macros(it.into()),
         }
     }
 }

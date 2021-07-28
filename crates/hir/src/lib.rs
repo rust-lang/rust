@@ -108,7 +108,6 @@ pub use {
         attr::{Attr, Attrs, AttrsWithOwner, Documentation},
         find_path::PrefixKind,
         import_map,
-        item_scope::ItemInNs, // FIXME: don't re-export ItemInNs, as it uses raw ids.
         nameres::ModuleSource,
         path::{ModPath, PathKind},
         type_ref::{Mutability, TypeRef},
@@ -194,9 +193,11 @@ impl Crate {
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
         let _p = profile::span("query_external_importables");
-        import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| match item {
-            ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id.into()),
-            ItemInNs::Macros(mac_id) => Either::Right(mac_id.into()),
+        import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| {
+            match ItemInNs::from(item) {
+                ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
+                ItemInNs::Macros(mac_id) => Either::Right(mac_id),
+            }
         })
     }
 
@@ -656,7 +657,7 @@ impl Module {
     /// Finds a path that can be used to refer to the given item from within
     /// this module, if possible.
     pub fn find_use_path(self, db: &dyn DefDatabase, item: impl Into<ItemInNs>) -> Option<ModPath> {
-        hir_def::find_path::find_path(db, item.into(), self.into())
+        hir_def::find_path::find_path(db, item.into().into(), self.into())
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -667,7 +668,7 @@ impl Module {
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path_prefixed(db, item.into(), self.into(), prefix_kind)
+        hir_def::find_path::find_path_prefixed(db, item.into().into(), self.into(), prefix_kind)
     }
 }
 
@@ -1563,6 +1564,39 @@ impl MacroDef {
         match self.kind() {
             MacroKind::Declarative | MacroKind::BuiltIn | MacroKind::ProcMacro => true,
             MacroKind::Attr | MacroKind::Derive => false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum ItemInNs {
+    Types(ModuleDef),
+    Values(ModuleDef),
+    Macros(MacroDef),
+}
+
+impl From<MacroDef> for ItemInNs {
+    fn from(it: MacroDef) -> Self {
+        Self::Macros(it)
+    }
+}
+
+impl From<ModuleDef> for ItemInNs {
+    fn from(module_def: ModuleDef) -> Self {
+        match module_def {
+            ModuleDef::Static(_) | ModuleDef::Const(_) | ModuleDef::Function(_) => {
+                ItemInNs::Values(module_def)
+            }
+            _ => ItemInNs::Types(module_def),
+        }
+    }
+}
+
+impl ItemInNs {
+    pub fn as_module_def(self) -> Option<ModuleDef> {
+        match self {
+            ItemInNs::Types(id) | ItemInNs::Values(id) => Some(id),
+            ItemInNs::Macros(_) => None,
         }
     }
 }

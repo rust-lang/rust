@@ -176,7 +176,7 @@ fn find_trait_method(
 }
 
 fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
-    let item_module_def = hir::ModuleDef::from(item.as_module_def_id()?);
+    let item_module_def = item.as_module_def()?;
 
     if let hir::ModuleDef::Trait(trait_) = item_module_def {
         Some(trait_)
