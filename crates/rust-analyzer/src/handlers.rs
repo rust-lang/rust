@@ -882,7 +882,11 @@ pub(crate) fn handle_hover(
             contents: HoverContents::Markup(to_proto::markup_content(info.info.markup)),
             range: Some(range),
         },
-        actions: prepare_hover_actions(&snap, &info.info.actions),
+        actions: if snap.config.hover_actions().none() {
+            Vec::new()
+        } else {
+            prepare_hover_actions(&snap, &info.info.actions)
+        },
     };
 
     Ok(Some(hover))
@@ -1594,10 +1598,6 @@ fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().none() || !snap.config.experimental_hover_actions() {
-        return Vec::new();
-    }
-
     actions
         .iter()
         .filter_map(|it| match it {
