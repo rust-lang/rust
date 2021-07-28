@@ -134,7 +134,8 @@ h1.fqn {
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
-#main > h2, #main > h3, #main > h4 {
+#main > h2, #main > h3, #main > h4,
+.sidebar-elems h2, .sidebar-elems h3, .sidebar-elems h4 {
 	border-bottom: 1px solid;
 }
 h3.code-header, h4.code-header {
