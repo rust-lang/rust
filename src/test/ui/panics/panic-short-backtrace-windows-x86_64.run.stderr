@@ -1,0 +1,3 @@
+thread 'main' panicked at 'd was called', $DIR/panic-short-backtrace-windows-x86_64.rs:43:5
+stack backtrace:
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
