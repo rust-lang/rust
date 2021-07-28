@@ -968,8 +968,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-
-        // FIXME https://github.com/bytecodealliance/wasmtime/issues/2647
         _ if intrinsic.as_str().starts_with("atomic_nand"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
