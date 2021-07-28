@@ -8,7 +8,6 @@ use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree}
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_parse::nt_to_tokenstream;
-use rustc_parse::parser::ForceCollect;
 use rustc_span::{Span, DUMMY_SP};
 
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
@@ -114,37 +113,22 @@ impl MultiItemModifier for ProcMacroDerive {
         let error_count_before = ecx.sess.parse_sess.span_diagnostic.err_count();
         let mut parser =
             rustc_parse::stream_to_parser(&ecx.sess.parse_sess, stream, Some("proc-macro derive"));
-        let mut items = vec![];
 
-        loop {
-            match parser.parse_item(ForceCollect::No) {
-                Ok(None) => break,
-                Ok(Some(item)) => {
-                    if is_stmt {
-                        items.push(Annotatable::Stmt(P(ecx.stmt_item(span, item))));
-                    } else {
-                        items.push(Annotatable::Item(item));
-                    }
+        let items = parser
+            .parse_items(&token::Eof)
+            .unwrap_or_else(|mut e| {
+                e.emit();
+                Vec::new()
+            })
+            .into_iter()
+            .map(|item| {
+                if is_stmt {
+                    Annotatable::Stmt(P(ecx.stmt_item(span, item)))
+                } else {
+                    Annotatable::Item(item)
                 }
-                Err(mut err) => {
-                    err.emit();
-                    break;
-                }
-            }
-        }
-
-        // check if the entire stream was parsed
-        if parser.token != token::Eof {
-            ecx.struct_span_err(
-                parser.token.span,
-                &format!(
-                    "expected item, found {}",
-                    rustc_parse::parser::token_descr(&parser.token)
-                ),
-            )
-            .span_label(parser.token.span, "expected item")
-            .emit();
-        }
+            })
+            .collect();
 
         // fail if there have been errors emitted
         if ecx.sess.parse_sess.span_diagnostic.err_count() > error_count_before {

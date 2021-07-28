@@ -54,7 +54,11 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, Span)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
+        let items = self.parse_items(term)?;
+        Ok((attrs, items, lo.to(self.prev_token.span)))
+    }
 
+    pub fn parse_items(&mut self, term: &TokenKind) -> PResult<'a, Vec<P<Item>>> {
         let mut items = vec![];
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
@@ -71,7 +75,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok((attrs, items, lo.to(self.prev_token.span)))
+        Ok(items)
     }
 }
 
