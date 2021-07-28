@@ -132,6 +132,14 @@ pub unsafe fn create_module(
     if llvm_util::get_version() < (12, 0, 0) && sess.target.arch == "powerpc64" {
         target_data_layout = strip_powerpc64_vectors(target_data_layout);
     }
+    if llvm_util::get_version() < (13, 0, 0) {
+        if sess.target.arch == "wasm32" {
+            target_data_layout = "e-m:e-p:32:32-i64:64-n32:64-S128".to_string();
+        }
+        if sess.target.arch == "wasm64" {
+            target_data_layout = "e-m:e-p:64:64-i64:64-n32:64-S128".to_string();
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
