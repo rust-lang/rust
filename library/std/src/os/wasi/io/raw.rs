@@ -1,4 +1,4 @@
-//! Unix-specific extensions to general I/O primitives.
+//! WASI-specific extensions to general I/O primitives.
 
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
