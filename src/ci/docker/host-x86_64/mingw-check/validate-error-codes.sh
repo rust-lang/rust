@@ -1,12 +1,7 @@
 #!/bin/bash
 # Checks that no error code explanation is removed.
 
-set -eo pipefail
-
-if [[ -z "$BASE_COMMIT" ]]; then
-    echo "not checking error code explanations removal"
-    exit 0
-fi
+set -euo pipefail
 
 echo "Check if an error code explanation was removed..."
 
