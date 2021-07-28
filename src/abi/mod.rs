@@ -14,7 +14,7 @@ use cranelift_codegen::ir::{AbiParam, SigRef};
 use self::pass_mode::*;
 use crate::prelude::*;
 
-pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
+pub(crate) use self::returning::codegen_return;
 
 fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
