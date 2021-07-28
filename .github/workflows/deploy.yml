@@ -39,10 +39,23 @@ jobs:
       if: github.ref == 'refs/heads/beta'
       run: echo "BETA=true" >> $GITHUB_ENV
 
-    - name: Use scripts and templates from master branch
+    # We need to check out all files that (transitively) depend on the
+    # structure of the gh-pages branch, so that we're able to change that
+    # structure without breaking the deployment.
+    - name: Use deploy files from master branch
       run: |
         git fetch --no-tags --prune --depth=1 origin master
-        git checkout origin/master -- .github/deploy.sh util/gh-pages/ util/*.py
+        git checkout origin/master -- .github/deploy.sh util/versions.py util/gh-pages/versions.html
+
+    # Generate lockfile for caching to avoid build problems with cached deps
+    - name: cargo generate-lockfile
+      run: cargo generate-lockfile
+
+    - name: Cache
+      uses: Swatinem/rust-cache@v1.3.0
+
+    - name: cargo collect-metadata
+      run: cargo collect-metadata
 
     - name: Deploy
       run: |

@@ -32,7 +32,7 @@ use clippy_utils::{
 };
 
 /// This is the output file of the lint collector.
-const OUTPUT_FILE: &str = "../util/gh-pages/metadata_collection.json";
+const OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
