@@ -28,7 +28,7 @@
 //!  - `close`, because that would end the dynamic lifetime of the resource
 //!    without ending the lifetime of the file descriptor.
 //!  - `dup2`/`dup3`, in the second argument, because this argument is
-//!    closed and replaced with a new resource, which may break the assumptions
+//!    closed and assigned a new resource, which may break the assumptions
 //!    other code using that file descriptor.
 //! This list doesn't include `mmap`, since `mmap` does do a proper borrow of
 //! its file descriptor argument. That said, `mmap` is unsafe for other
