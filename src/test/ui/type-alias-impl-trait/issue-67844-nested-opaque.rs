@@ -3,12 +3,11 @@
 // Ensures that we properly handle nested TAIT occurrences
 // with generic parameters
 
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 
-trait WithAssoc { type AssocType; }
+trait WithAssoc {
+    type AssocType;
+}
 
 trait WithParam<A> {}
 
@@ -22,7 +21,6 @@ struct MyStruct;
 impl WithAssoc for MyStruct {
     type AssocType = MyParam;
 }
-
 
 fn my_fun<A>() -> Return<A> {
     MyStruct

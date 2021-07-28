@@ -2,7 +2,7 @@
 // check-pass
 
 #![feature(trait_alias)]
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 /// look at this trait right here
 pub trait ThisTrait {

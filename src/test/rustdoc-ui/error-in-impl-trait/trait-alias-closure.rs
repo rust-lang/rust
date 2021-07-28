@@ -1,5 +1,5 @@
 // check-pass
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 pub trait ValidTrait {}
 type ImplTrait = impl ValidTrait;

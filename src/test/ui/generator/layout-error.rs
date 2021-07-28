@@ -3,10 +3,7 @@
 //
 // edition:2018
 
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 use std::future::Future;
 
 pub struct Task<F: Future>(F);
@@ -27,5 +24,5 @@ fn main() {
     type F = impl Future;
     // Check that statics are inhabited computes they layout.
     static POOL: Task<F> = Task::new();
-    Task::spawn(&POOL, || cb()); //[min_tait]~ ERROR type alias impl trait is not permitted here
+    Task::spawn(&POOL, || cb());
 }

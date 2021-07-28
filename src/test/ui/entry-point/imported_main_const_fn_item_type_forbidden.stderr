@@ -2,7 +2,7 @@ error[E0601]: `main` function not found in crate `imported_main_const_fn_item_ty
   --> $DIR/imported_main_const_fn_item_type_forbidden.rs:1:1
    |
 LL | / #![feature(imported_main)]
-LL | | #![feature(min_type_alias_impl_trait)]
+LL | | #![feature(type_alias_impl_trait)]
 LL | | #![allow(incomplete_features)]
 LL | |
 ...  |

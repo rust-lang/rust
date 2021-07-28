@@ -3,10 +3,7 @@
 // types in 'item' position when generic parameters are involved
 //
 // run-pass
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 
 trait Meow {
     type MeowType;
@@ -14,7 +11,8 @@ trait Meow {
 }
 
 impl<T, I> Meow for I
-    where I: Iterator<Item = T>
+where
+    I: Iterator<Item = T>,
 {
     type MeowType = impl Iterator<Item = T>;
     fn meow(self) -> Self::MeowType {

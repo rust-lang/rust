@@ -1,34 +1,15 @@
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/issue-74761-2.rs:12:14
-   |
-LL |     type B = impl core::fmt::Debug;
-   |              ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(min_type_alias_impl_trait)]` to the crate attributes to enable
-
-warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-74761-2.rs:2:12
-   |
-LL | #![feature(type_alias_impl_trait)]
-   |            ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-74761-2.rs:9:6
+  --> $DIR/issue-74761-2.rs:8:6
    |
 LL | impl<'a, 'b> A for () {
    |      ^^ unconstrained lifetime parameter
 
 error[E0207]: the lifetime parameter `'b` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-74761-2.rs:9:10
+  --> $DIR/issue-74761-2.rs:8:10
    |
 LL | impl<'a, 'b> A for () {
    |          ^^ unconstrained lifetime parameter
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0207, E0658.
-For more information about an error, try `rustc --explain E0207`.
+For more information about this error, try `rustc --explain E0207`.
