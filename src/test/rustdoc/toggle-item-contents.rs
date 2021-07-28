@@ -81,8 +81,8 @@ pub enum EnumStructVariant {
 }
 
 // @has 'toggle_item_contents/enum.LargeEnum.html'
-// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
-// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 13 variants'
+// @count - '//*[@class="rust enum"]//details[@class="rustdoc-toggle type-contents-toggle"]' 1
+// @has - '//*[@class="rust enum"]//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show 13 variants'
 pub enum LargeEnum {
     A, B, C, D, E, F(u8), G, H, I, J, K, L, M
 }
