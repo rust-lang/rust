@@ -486,7 +486,7 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
 
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
-    (incomplete, type_alias_impl_trait, "1.38.0", Some(63063), None),
+    (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
@@ -618,9 +618,6 @@ declare_features! (
 
     /// Allows macro attributes to observe output of `#[derive]`.
     (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
-
-    /// Allows the use of type alias impl trait in function return positions
-    (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
 
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),

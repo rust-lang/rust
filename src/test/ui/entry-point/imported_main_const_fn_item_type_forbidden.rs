@@ -1,5 +1,5 @@
 #![feature(imported_main)]
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 #![allow(incomplete_features)]
 //~^^^ ERROR `main` function not found in crate
 pub mod foo {
