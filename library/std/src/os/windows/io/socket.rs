@@ -145,6 +145,9 @@ impl AsSocket for BorrowedSocket<'_> {
 impl AsSocket for OwnedSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
+        // Safety: `OwnedSocket` and `BorrowedSocket` have the same validity
+        // invariants, and the `BorrowdSocket` is bounded by the lifetime
+        // of `&self`.
         unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
     }
 }

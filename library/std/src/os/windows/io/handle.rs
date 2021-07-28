@@ -282,6 +282,9 @@ impl AsHandle for BorrowedHandle<'_> {
 impl AsHandle for OwnedHandle {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
+        // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
+        // invariants, and the `BorrowdHandle` is bounded by the lifetime
+        // of `&self`.
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
