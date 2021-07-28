@@ -242,7 +242,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .unwrap_or(false) =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_label(span, "try removing `&mut` here");
+                err.span_suggestion(
+                    span,
+                    "try removing `&mut` here",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
             }
 
             // We want to suggest users use `let mut` for local (user
@@ -324,7 +329,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 } =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_label(span, "try removing `&mut` here");
+                err.span_suggestion(
+                    span,
+                    "try removing `&mut` here",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
             }
 
             PlaceRef { local, projection: [ProjectionElem::Deref] }
