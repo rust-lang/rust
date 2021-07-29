@@ -12,18 +12,20 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for naive byte counts
+    /// ### What it does
+    /// Checks for naive byte counts
     ///
-    /// **Why is this bad?** The [`bytecount`](https://crates.io/crates/bytecount)
+    /// ### Why is this bad?
+    /// The [`bytecount`](https://crates.io/crates/bytecount)
     /// crate has methods to count your bytes faster, especially for large slices.
     ///
-    /// **Known problems:** If you have predominantly small slices, the
+    /// ### Known problems
+    /// If you have predominantly small slices, the
     /// `bytecount::count(..)` method may actually be slower. However, if you can
     /// ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be
     /// faster in those cases.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # let vec = vec![1_u8];
     /// &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead

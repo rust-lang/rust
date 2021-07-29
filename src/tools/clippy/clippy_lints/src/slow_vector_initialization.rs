@@ -13,14 +13,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks slow zero-filled vector initialization
+    /// ### What it does
+    /// Checks slow zero-filled vector initialization
     ///
-    /// **Why is this bad?** These structures are non-idiomatic and less efficient than simply using
+    /// ### Why is this bad?
+    /// These structures are non-idiomatic and less efficient than simply using
     /// `vec![0; len]`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use core::iter::repeat;
     /// # let len = 4;

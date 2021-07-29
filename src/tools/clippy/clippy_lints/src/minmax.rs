@@ -8,15 +8,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
+    /// ### What it does
+    /// Checks for expressions where `std::cmp::min` and `max` are
     /// used to clamp values, but switched so that the result is constant.
     ///
-    /// **Why is this bad?** This is in all probability not the intended outcome. At
+    /// ### Why is this bad?
+    /// This is in all probability not the intended outcome. At
     /// the least it hurts readability of the code.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// min(0, max(100, x))
     /// ```

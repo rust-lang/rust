@@ -15,10 +15,12 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
+    /// ### What it does
+    /// Checks for deriving `Hash` but implementing `PartialEq`
     /// explicitly or vice versa.
     ///
-    /// **Why is this bad?** The implementation of these traits must agree (for
+    /// ### Why is this bad?
+    /// The implementation of these traits must agree (for
     /// example for use with `HashMap`) so it’s probably a bad idea to use a
     /// default-generated `Hash` implementation with an explicitly defined
     /// `PartialEq`. In particular, the following must hold for any type:
@@ -27,9 +29,7 @@ declare_clippy_lint! {
     /// k1 == k2 ⇒ hash(k1) == hash(k2)
     /// ```
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// #[derive(Hash)]
     /// struct Foo;
@@ -44,10 +44,12 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for deriving `Ord` but implementing `PartialOrd`
+    /// ### What it does
+    /// Checks for deriving `Ord` but implementing `PartialOrd`
     /// explicitly or vice versa.
     ///
-    /// **Why is this bad?** The implementation of these traits must agree (for
+    /// ### Why is this bad?
+    /// The implementation of these traits must agree (for
     /// example for use with `sort`) so it’s probably a bad idea to use a
     /// default-generated `Ord` implementation with an explicitly defined
     /// `PartialOrd`. In particular, the following must hold for any type
@@ -57,10 +59,7 @@ declare_clippy_lint! {
     /// k1.cmp(&k2) == k1.partial_cmp(&k2).unwrap()
     /// ```
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// #[derive(Ord, PartialEq, Eq)]
     /// struct Foo;
@@ -95,18 +94,21 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for explicit `Clone` implementations for `Copy`
+    /// ### What it does
+    /// Checks for explicit `Clone` implementations for `Copy`
     /// types.
     ///
-    /// **Why is this bad?** To avoid surprising behaviour, these traits should
+    /// ### Why is this bad?
+    /// To avoid surprising behaviour, these traits should
     /// agree and the behaviour of `Copy` cannot be overridden. In almost all
     /// situations a `Copy` type should have a `Clone` implementation that does
     /// nothing more than copy the object, which is what `#[derive(Copy, Clone)]`
     /// gets you.
     ///
-    /// **Known problems:** Bounds of generic types are sometimes wrong: https://github.com/rust-lang/rust/issues/26925
+    /// ### Known problems
+    /// Bounds of generic types are sometimes wrong: https://github.com/rust-lang/rust/issues/26925
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// #[derive(Copy)]
     /// struct Foo;
@@ -121,16 +123,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for deriving `serde::Deserialize` on a type that
+    /// ### What it does
+    /// Checks for deriving `serde::Deserialize` on a type that
     /// has methods using `unsafe`.
     ///
-    /// **Why is this bad?** Deriving `serde::Deserialize` will create a constructor
+    /// ### Why is this bad?
+    /// Deriving `serde::Deserialize` will create a constructor
     /// that may violate invariants hold by another constructor.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// use serde::Deserialize;
     ///

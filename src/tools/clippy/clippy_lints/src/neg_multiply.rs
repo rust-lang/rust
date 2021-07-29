@@ -7,13 +7,16 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for multiplication by -1 as a form of negation.
+    /// ### What it does
+    /// Checks for multiplication by -1 as a form of negation.
     ///
-    /// **Why is this bad?** It's more readable to just negate.
+    /// ### Why is this bad?
+    /// It's more readable to just negate.
     ///
-    /// **Known problems:** This only catches integers (for now).
+    /// ### Known problems
+    /// This only catches integers (for now).
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// x * -1
     /// ```

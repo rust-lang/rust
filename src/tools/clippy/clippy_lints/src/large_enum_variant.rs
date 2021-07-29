@@ -10,20 +10,22 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_target::abi::LayoutOf;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for large size differences between variants on
+    /// ### What it does
+    /// Checks for large size differences between variants on
     /// `enum`s.
     ///
-    /// **Why is this bad?** Enum size is bounded by the largest variant. Having a
+    /// ### Why is this bad?
+    /// Enum size is bounded by the largest variant. Having a
     /// large variant can penalize the memory layout of that enum.
     ///
-    /// **Known problems:** This lint obviously cannot take the distribution of
+    /// ### Known problems
+    /// This lint obviously cannot take the distribution of
     /// variants in your running program into account. It is possible that the
     /// smaller variants make up less than 1% of all instances, in which case
     /// the overhead is negligible and the boxing is counter-productive. Always
     /// measure the change this lint suggests.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// enum Test {

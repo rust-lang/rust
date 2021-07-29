@@ -15,8 +15,8 @@ pub fn run(port: u16, lint: Option<&str>) -> ! {
 
     loop {
         if mtime("util/gh-pages/lints.json") < mtime("clippy_lints/src") {
-            Command::new("python3")
-                .arg("util/export.py")
+            Command::new("cargo")
+                .arg("collect-metadata")
                 .spawn()
                 .unwrap()
                 .wait()

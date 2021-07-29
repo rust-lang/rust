@@ -18,14 +18,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for structure field patterns bound to wildcards.
+    /// ### What it does
+    /// Checks for structure field patterns bound to wildcards.
     ///
-    /// **Why is this bad?** Using `..` instead is shorter and leaves the focus on
+    /// ### Why is this bad?
+    /// Using `..` instead is shorter and leaves the focus on
     /// the fields that are actually bound.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # struct Foo {
     /// #     a: i32,
@@ -52,14 +52,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for function arguments having the similar names
+    /// ### What it does
+    /// Checks for function arguments having the similar names
     /// differing by an underscore.
     ///
-    /// **Why is this bad?** It affects code readability.
+    /// ### Why is this bad?
+    /// It affects code readability.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// fn foo(a: i32, _a: i32) {}
@@ -73,14 +73,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Detects expressions of the form `--x`.
+    /// ### What it does
+    /// Detects expressions of the form `--x`.
     ///
-    /// **Why is this bad?** It can mislead C/C++ programmers to think `x` was
+    /// ### Why is this bad?
+    /// It can mislead C/C++ programmers to think `x` was
     /// decremented.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut x = 3;
     /// --x;
@@ -91,14 +91,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns on hexadecimal literals with mixed-case letter
+    /// ### What it does
+    /// Warns on hexadecimal literals with mixed-case letter
     /// digits.
     ///
-    /// **Why is this bad?** It looks confusing.
+    /// ### Why is this bad?
+    /// It looks confusing.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let y = 0x1a9BAcD;
@@ -112,14 +112,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if literal suffixes are not separated by an
+    /// ### What it does
+    /// Warns if literal suffixes are not separated by an
     /// underscore.
     ///
-    /// **Why is this bad?** It is much less readable.
+    /// ### Why is this bad?
+    /// It is much less readable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let y = 123832i32;
@@ -133,17 +133,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if an integral constant literal starts with `0`.
+    /// ### What it does
+    /// Warns if an integral constant literal starts with `0`.
     ///
-    /// **Why is this bad?** In some languages (including the infamous C language
+    /// ### Why is this bad?
+    /// In some languages (including the infamous C language
     /// and most of its
     /// family), this marks an octal constant. In Rust however, this is a decimal
     /// constant. This could
     /// be confusing for both the writer and a reader of the constant.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// In Rust:
     /// ```rust
@@ -171,13 +171,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if a generic shadows a built-in type.
+    /// ### What it does
+    /// Warns if a generic shadows a built-in type.
     ///
-    /// **Why is this bad?** This gives surprising type errors.
+    /// ### Why is this bad?
+    /// This gives surprising type errors.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```ignore
     /// impl<u32> Foo<u32> {
@@ -192,14 +192,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for patterns in the form `name @ _`.
+    /// ### What it does
+    /// Checks for patterns in the form `name @ _`.
     ///
-    /// **Why is this bad?** It's almost always more readable to just use direct
+    /// ### Why is this bad?
+    /// It's almost always more readable to just use direct
     /// bindings.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let v = Some("abc");
     ///
@@ -221,19 +221,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for tuple patterns with a wildcard
+    /// ### What it does
+    /// Checks for tuple patterns with a wildcard
     /// pattern (`_`) is next to a rest pattern (`..`).
     ///
     /// _NOTE_: While `_, ..` means there is at least one element left, `..`
     /// means there are 0 or more elements left. This can make a difference
     /// when refactoring, but shouldn't result in errors in the refactored code,
     /// since the wildcard pattern isn't used anyway.
-    /// **Why is this bad?** The wildcard pattern is unneeded as the rest pattern
+    /// ### Why is this bad?
+    /// The wildcard pattern is unneeded as the rest pattern
     /// can match that element as well.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);

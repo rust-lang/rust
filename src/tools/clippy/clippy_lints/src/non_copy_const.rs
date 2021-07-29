@@ -24,10 +24,12 @@ use rustc_typeck::hir_ty_to_ty;
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
 declare_clippy_lint! {
-    /// **What it does:** Checks for declaration of `const` items which is interior
+    /// ### What it does
+    /// Checks for declaration of `const` items which is interior
     /// mutable (e.g., contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.).
     ///
-    /// **Why is this bad?** Consts are copied everywhere they are referenced, i.e.,
+    /// ### Why is this bad?
+    /// Consts are copied everywhere they are referenced, i.e.,
     /// every time you refer to the const a fresh instance of the `Cell` or `Mutex`
     /// or `AtomicXxxx` will be created, which defeats the whole purpose of using
     /// these types in the first place.
@@ -35,7 +37,8 @@ declare_clippy_lint! {
     /// The `const` should better be replaced by a `static` item if a global
     /// variable is wanted, or replaced by a `const fn` if a constructor is wanted.
     ///
-    /// **Known problems:** A "non-constant" const item is a legacy way to supply an
+    /// ### Known problems
+    /// A "non-constant" const item is a legacy way to supply an
     /// initialized value to downstream `static` items (e.g., the
     /// `std::sync::ONCE_INIT` constant). In this case the use of `const` is legit,
     /// and this lint should be suppressed.
@@ -52,7 +55,7 @@ declare_clippy_lint! {
     /// the interior mutable field is used or not. See issues
     /// [#5812](https://github.com/rust-lang/rust-clippy/issues/5812) and
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     ///
@@ -74,17 +77,20 @@ declare_clippy_lint! {
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
 declare_clippy_lint! {
-    /// **What it does:** Checks if `const` items which is interior mutable (e.g.,
+    /// ### What it does
+    /// Checks if `const` items which is interior mutable (e.g.,
     /// contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.) has been borrowed directly.
     ///
-    /// **Why is this bad?** Consts are copied everywhere they are referenced, i.e.,
+    /// ### Why is this bad?
+    /// Consts are copied everywhere they are referenced, i.e.,
     /// every time you refer to the const a fresh instance of the `Cell` or `Mutex`
     /// or `AtomicXxxx` will be created, which defeats the whole purpose of using
     /// these types in the first place.
     ///
     /// The `const` value should be stored inside a `static` item.
     ///
-    /// **Known problems:** When an enum has variants with interior mutability, use of its non
+    /// ### Known problems
+    /// When an enum has variants with interior mutability, use of its non
     /// interior mutable variants can generate false positives. See issue
     /// [#3962](https://github.com/rust-lang/rust-clippy/issues/3962)
     ///
@@ -93,7 +99,7 @@ declare_clippy_lint! {
     /// [#5812](https://github.com/rust-lang/rust-clippy/issues/5812) and
     /// [#3825](https://github.com/rust-lang/rust-clippy/issues/3825)
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);

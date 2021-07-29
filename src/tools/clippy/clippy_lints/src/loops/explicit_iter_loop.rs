@@ -1,8 +1,8 @@
 use super::EXPLICIT_ITER_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
-use clippy_utils::{match_trait_method, paths};
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
@@ -12,7 +12,7 @@ use rustc_span::sym;
 pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, arg: &Expr<'_>, method_name: &str) {
     let should_lint = match method_name {
         "iter" | "iter_mut" => is_ref_iterable_type(cx, self_arg),
-        "into_iter" if match_trait_method(cx, arg, &paths::INTO_ITERATOR) => {
+        "into_iter" if is_trait_method(cx, arg, sym::IntoIterator) => {
             let receiver_ty = cx.typeck_results().expr_ty(self_arg);
             let receiver_ty_adjusted = cx.typeck_results().expr_ty_adjusted(self_arg);
             let ref_receiver_ty = cx.tcx.mk_ref(
@@ -55,13 +55,13 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(e);
     is_iterable_array(ty, cx) ||
     is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-    match_type(cx, ty, &paths::LINKED_LIST) ||
+    is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
     is_type_diagnostic_item(cx, ty, sym::hashmap_type) ||
     is_type_diagnostic_item(cx, ty, sym::hashset_type) ||
     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
-    match_type(cx, ty, &paths::BINARY_HEAP) ||
-    match_type(cx, ty, &paths::BTREEMAP) ||
-    match_type(cx, ty, &paths::BTREESET)
+    is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
+    is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
+    is_type_diagnostic_item(cx, ty, sym::BTreeSet)
 }
 
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {

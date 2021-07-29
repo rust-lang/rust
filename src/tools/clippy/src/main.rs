@@ -14,6 +14,8 @@ Usage:
     cargo clippy [options] [--] [<opts>...]
 
 Common options:
+    --no-deps                Run Clippy only on the given crate, without linting the dependencies 
+    --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
     -h, --help               Print this message
     -V, --version            Print version info and exit
 
@@ -71,11 +73,16 @@ impl ClippyCmd {
     {
         let mut cargo_subcommand = "check";
         let mut args = vec![];
+        let mut clippy_args: Vec<String> = vec![];
 
         for arg in old_args.by_ref() {
             match arg.as_str() {
                 "--fix" => {
                     cargo_subcommand = "fix";
+                    continue;
+                },
+                "--no-deps" => {
+                    clippy_args.push("--no-deps".into());
                     continue;
                 },
                 "--" => break,
@@ -85,7 +92,7 @@ impl ClippyCmd {
             args.push(arg);
         }
 
-        let mut clippy_args: Vec<String> = old_args.collect();
+        clippy_args.append(&mut (old_args.collect()));
         if cargo_subcommand == "fix" && !clippy_args.iter().any(|arg| arg == "--no-deps") {
             clippy_args.push("--no-deps".into());
         }

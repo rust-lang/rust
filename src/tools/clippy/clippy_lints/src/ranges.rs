@@ -18,14 +18,14 @@ use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for zipping a collection with the range of
+    /// ### What it does
+    /// Checks for zipping a collection with the range of
     /// `0.._.len()`.
     ///
-    /// **Why is this bad?** The code is better expressed with `.enumerate()`.
+    /// ### Why is this bad?
+    /// The code is better expressed with `.enumerate()`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = vec![1];
     /// x.iter().zip(0..x.len());
@@ -41,13 +41,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for exclusive ranges where 1 is added to the
+    /// ### What it does
+    /// Checks for exclusive ranges where 1 is added to the
     /// upper bound, e.g., `x..(y+1)`.
     ///
-    /// **Why is this bad?** The code is more readable with an inclusive range
+    /// ### Why is this bad?
+    /// The code is more readable with an inclusive range
     /// like `x..=y`.
     ///
-    /// **Known problems:** Will add unnecessary pair of parentheses when the
+    /// ### Known problems
+    /// Will add unnecessary pair of parentheses when the
     /// expression is not wrapped in a pair but starts with a opening parenthesis
     /// and ends with a closing one.
     /// I.e., `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
@@ -61,7 +64,7 @@ declare_clippy_lint! {
     /// `RangeBounds` trait
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// for x..(y+1) { .. }
     /// ```
@@ -75,18 +78,21 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for inclusive ranges where 1 is subtracted from
+    /// ### What it does
+    /// Checks for inclusive ranges where 1 is subtracted from
     /// the upper bound, e.g., `x..=(y-1)`.
     ///
-    /// **Why is this bad?** The code is more readable with an exclusive range
+    /// ### Why is this bad?
+    /// The code is more readable with an exclusive range
     /// like `x..y`.
     ///
-    /// **Known problems:** This will cause a warning that cannot be fixed if
+    /// ### Known problems
+    /// This will cause a warning that cannot be fixed if
     /// the consumer of the range only accepts a specific range type, instead of
     /// the generic `RangeBounds` trait
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// for x..=(y-1) { .. }
     /// ```
@@ -100,16 +106,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for range expressions `x..y` where both `x` and `y`
+    /// ### What it does
+    /// Checks for range expressions `x..y` where both `x` and `y`
     /// are constant and `x` is greater or equal to `y`.
     ///
-    /// **Why is this bad?** Empty ranges yield no values so iterating them is a no-op.
+    /// ### Why is this bad?
+    /// Empty ranges yield no values so iterating them is a no-op.
     /// Moreover, trying to use a reversed range to index a slice will panic at run-time.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,no_run
     /// fn main() {
     ///     (10..=0).for_each(|x| println!("{}", x));
@@ -133,16 +138,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expressions like `x >= 3 && x < 8` that could
+    /// ### What it does
+    /// Checks for expressions like `x >= 3 && x < 8` that could
     /// be more readably expressed as `(3..8).contains(x)`.
     ///
-    /// **Why is this bad?** `contains` expresses the intent better and has less
+    /// ### Why is this bad?
+    /// `contains` expresses the intent better and has less
     /// failure modes (such as fencepost errors or using `||` instead of `&&`).
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // given
     /// let x = 6;

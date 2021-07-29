@@ -11,6 +11,7 @@ because that's clearly a non-descriptive name.
   - [Setup](#setup)
   - [Getting Started](#getting-started)
   - [Testing](#testing)
+    - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
   - [Edition 2018 tests](#edition-2018-tests)
   - [Testing manually](#testing-manually)
@@ -179,14 +180,11 @@ the auto-generated lint declaration to have a real description, something like t
 
 ```rust
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // example code
     /// ```
@@ -487,13 +485,13 @@ Please document your lint with a doc comment akin to the following:
 
 ```rust
 declare_clippy_lint! {
-    /// **What it does:** Checks for ... (describe what the lint matches).
+    /// ### What it does
+    /// Checks for ... (describe what the lint matches).
     ///
-    /// **Why is this bad?** Supply the reason for linting the code.
+    /// ### Why is this bad?
+    /// Supply the reason for linting the code.
     ///
-    /// **Known problems:** None. (Or describe where it could go wrong.)
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust,ignore
     /// // Bad

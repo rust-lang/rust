@@ -12,15 +12,18 @@ use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
+    /// ### What it does
+    /// Checks for `a = a op b` or `a = b commutative_op a`
     /// patterns.
     ///
-    /// **Why is this bad?** These can be written as the shorter `a op= b`.
+    /// ### Why is this bad?
+    /// These can be written as the shorter `a op= b`.
     ///
-    /// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
+    /// ### Known problems
+    /// While forbidden by the spec, `OpAssign` traits may have
     /// implementations that differ from the regular `Op` impl.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut a = 5;
     /// let b = 0;
@@ -37,17 +40,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
+    /// ### What it does
+    /// Checks for `a op= a op b` or `a op= b op a` patterns.
     ///
-    /// **Why is this bad?** Most likely these are bugs where one meant to write `a
+    /// ### Why is this bad?
+    /// Most likely these are bugs where one meant to write `a
     /// op= b`.
     ///
-    /// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
+    /// ### Known problems
+    /// Clippy cannot know for sure if `a op= a op b` should have
     /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
     /// If `a op= a op b` is really the correct behaviour it should be
     /// written as `a = a op a op b` as it's less confusing.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut a = 5;
     /// let b = 2;

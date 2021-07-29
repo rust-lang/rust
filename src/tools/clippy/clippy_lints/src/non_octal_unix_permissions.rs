@@ -9,15 +9,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for non-octal values used to set Unix file permissions.
+    /// ### What it does
+    /// Checks for non-octal values used to set Unix file permissions.
     ///
-    /// **Why is this bad?** They will be converted into octal, creating potentially
+    /// ### Why is this bad?
+    /// They will be converted into octal, creating potentially
     /// unintended file permissions.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// use std::fs::OpenOptions;
     /// use std::os::unix::fs::OpenOptionsExt;

@@ -9,17 +9,17 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for function/method calls with a mutable
+    /// ### What it does
+    /// Checks for function/method calls with a mutable
     /// parameter in `debug_assert!`, `debug_assert_eq!` and `debug_assert_ne!` macros.
     ///
-    /// **Why is this bad?** In release builds `debug_assert!` macros are optimized out by the
+    /// ### Why is this bad?
+    /// In release builds `debug_assert!` macros are optimized out by the
     /// compiler.
     /// Therefore mutating something in a `debug_assert!` macro results in different behaviour
     /// between a release and debug build.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// debug_assert_eq!(vec![3].pop(), Some(3));
     /// // or

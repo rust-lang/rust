@@ -13,14 +13,14 @@ use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for names that are very similar and thus confusing.
+    /// ### What it does
+    /// Checks for names that are very similar and thus confusing.
     ///
-    /// **Why is this bad?** It's hard to distinguish between names that differ only
+    /// ### Why is this bad?
+    /// It's hard to distinguish between names that differ only
     /// by a single character.
     ///
-    /// **Known problems:** None?
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let checked_exp = something;
     /// let checked_expr = something_else;
@@ -31,15 +31,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for too many variables whose name consists of a
+    /// ### What it does
+    /// Checks for too many variables whose name consists of a
     /// single character.
     ///
-    /// **Why is this bad?** It's hard to memorize what a variable means without a
+    /// ### Why is this bad?
+    /// It's hard to memorize what a variable means without a
     /// descriptive name.
     ///
-    /// **Known problems:** None?
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let (a, b, c, d, e, f, g) = (...);
     /// ```
@@ -49,15 +49,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks if you have variables whose name consists of just
+    /// ### What it does
+    /// Checks if you have variables whose name consists of just
     /// underscores and digits.
     ///
-    /// **Why is this bad?** It's hard to memorize what a variable means without a
+    /// ### Why is this bad?
+    /// It's hard to memorize what a variable means without a
     /// descriptive name.
     ///
-    /// **Known problems:** None?
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let _1 = 1;
     /// let ___1 = 1;
@@ -218,7 +218,6 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             if allowed_to_be_similar(&interned_name, existing_name.exemptions) {
                 continue;
             }
-            let mut split_at = None;
             match existing_name.len.cmp(&count) {
                 Ordering::Greater => {
                     if existing_name.len - count != 1
@@ -269,7 +268,6 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                                 // or too many chars differ (foo_x, boo_y) or (foox, booy)
                                 continue;
                             }
-                            split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
                         }
                     } else {
                         let second_i = interned_chars.next().expect("we know we have at least two chars");
@@ -282,7 +280,6 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                             // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
                             continue;
                         }
-                        split_at = interned_name.chars().next().map(char::len_utf8);
                     }
                 },
             }
@@ -293,17 +290,6 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                 "binding's name is too similar to existing binding",
                 |diag| {
                     diag.span_note(existing_name.span, "existing binding defined here");
-                    if let Some(split) = split_at {
-                        diag.span_help(
-                            ident.span,
-                            &format!(
-                                "separate the discriminating character by an \
-                                 underscore like: `{}_{}`",
-                                &interned_name[..split],
-                                &interned_name[split..]
-                            ),
-                        );
-                    }
                 },
             );
             return;

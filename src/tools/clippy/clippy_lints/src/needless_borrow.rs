@@ -17,15 +17,15 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for address of operations (`&`) that are going to
+    /// ### What it does
+    /// Checks for address of operations (`&`) that are going to
     /// be dereferenced immediately by the compiler.
     ///
-    /// **Why is this bad?** Suggests that the receiver of the expression borrows
+    /// ### Why is this bad?
+    /// Suggests that the receiver of the expression borrows
     /// the expression.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let x: &i32 = &&&&&&5;
@@ -39,13 +39,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `ref` bindings which create a reference to a reference.
+    /// ### What it does
+    /// Checks for `ref` bindings which create a reference to a reference.
     ///
-    /// **Why is this bad?** The address-of operator at the use site is clearer about the need for a reference.
+    /// ### Why is this bad?
+    /// The address-of operator at the use site is clearer about the need for a reference.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let x = Some("");

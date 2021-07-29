@@ -6,15 +6,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for erasing operations, e.g., `x * 0`.
+    /// ### What it does
+    /// Checks for erasing operations, e.g., `x * 0`.
     ///
-    /// **Why is this bad?** The whole expression can be replaced by zero.
+    /// ### Why is this bad?
+    /// The whole expression can be replaced by zero.
     /// This is most likely not the intended outcome and should probably be
     /// corrected
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = 1;
     /// 0 / x;

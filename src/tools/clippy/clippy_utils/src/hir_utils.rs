@@ -288,8 +288,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_body(l.value.body, r.value.body),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
-            (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) =>
-              self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
+            (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) => self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
             _ => false,
         }
     }
