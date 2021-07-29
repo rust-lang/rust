@@ -15,15 +15,15 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `let`-bindings, which are subsequently
+    /// ### What it does
+    /// Checks for `let`-bindings, which are subsequently
     /// returned.
     ///
-    /// **Why is this bad?** It is just extraneous code. Remove it to make your code
+    /// ### Why is this bad?
+    /// It is just extraneous code. Remove it to make your code
     /// more rusty.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn foo() -> String {
     ///     let x = String::new();
@@ -42,14 +42,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for return statements at the end of a block.
+    /// ### What it does
+    /// Checks for return statements at the end of a block.
     ///
-    /// **Why is this bad?** Removing the `return` and semicolon will make the code
+    /// ### Why is this bad?
+    /// Removing the `return` and semicolon will make the code
     /// more rusty.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn foo(x: usize) -> usize {
     ///     return x;

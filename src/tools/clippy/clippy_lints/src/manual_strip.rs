@@ -18,21 +18,17 @@ use rustc_span::source_map::Spanned;
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing using
     /// the pattern's length.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// Using `str:strip_{prefix,suffix}` is safer and may have better performance as there is no
     /// slicing which may panic and the compiler does not need to insert this panic code. It is
     /// also sometimes more readable as it removes the need for duplicating or storing the pattern
     /// used by `str::{starts,ends}_with` and in the slicing.
     ///
-    /// **Known problems:**
-    /// None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let s = "hello, world!";
     /// if s.starts_with("hello, ") {

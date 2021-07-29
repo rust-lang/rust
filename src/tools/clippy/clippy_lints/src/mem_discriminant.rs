@@ -9,14 +9,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls of `mem::discriminant()` on a non-enum type.
+    /// ### What it does
+    /// Checks for calls of `mem::discriminant()` on a non-enum type.
     ///
-    /// **Why is this bad?** The value of `mem::discriminant()` on non-enum types
+    /// ### Why is this bad?
+    /// The value of `mem::discriminant()` on non-enum types
     /// is unspecified.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::mem;
     ///

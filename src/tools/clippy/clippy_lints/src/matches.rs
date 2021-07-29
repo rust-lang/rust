@@ -35,14 +35,14 @@ use std::iter;
 use std::ops::Bound;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for matches with a single arm where an `if let`
+    /// ### What it does
+    /// Checks for matches with a single arm where an `if let`
     /// will usually suffice.
     ///
-    /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
+    /// ### Why is this bad?
+    /// Just readability – `if let` nests less than a `match`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn bar(stool: &str) {}
     /// # let x = Some("abc");
@@ -63,15 +63,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for matches with two arms where an `if let else` will
+    /// ### What it does
+    /// Checks for matches with two arms where an `if let else` will
     /// usually suffice.
     ///
-    /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
+    /// ### Why is this bad?
+    /// Just readability – `if let` nests less than a `match`.
     ///
-    /// **Known problems:** Personal style preferences may differ.
+    /// ### Known problems
+    /// Personal style preferences may differ.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// Using `match`:
     ///
     /// ```rust
@@ -102,16 +104,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for matches where all arms match a reference,
+    /// ### What it does
+    /// Checks for matches where all arms match a reference,
     /// suggesting to remove the reference and deref the matched expression
     /// instead. It also checks for `if let &foo = bar` blocks.
     ///
-    /// **Why is this bad?** It just makes the code less readable. That reference
+    /// ### Why is this bad?
+    /// It just makes the code less readable. That reference
     /// destructuring adds nothing to the code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// match x {
@@ -133,14 +135,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for matches where match expression is a `bool`. It
+    /// ### What it does
+    /// Checks for matches where match expression is a `bool`. It
     /// suggests to replace the expression with an `if...else` block.
     ///
-    /// **Why is this bad?** It makes the code less readable.
+    /// ### Why is this bad?
+    /// It makes the code less readable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn foo() {}
     /// # fn bar() {}
@@ -167,14 +169,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for overlapping match arms.
+    /// ### What it does
+    /// Checks for overlapping match arms.
     ///
-    /// **Why is this bad?** It is likely to be an error and if not, makes the code
+    /// ### Why is this bad?
+    /// It is likely to be an error and if not, makes the code
     /// less obvious.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = 5;
     /// match x {
@@ -189,15 +191,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for arm which matches all errors with `Err(_)`
+    /// ### What it does
+    /// Checks for arm which matches all errors with `Err(_)`
     /// and take drastic actions like `panic!`.
     ///
-    /// **Why is this bad?** It is generally a bad practice, similar to
+    /// ### Why is this bad?
+    /// It is generally a bad practice, similar to
     /// catching all exceptions in java with `catch(Exception)`
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x: Result<i32, &str> = Ok(3);
     /// match x {
@@ -211,14 +213,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for match which is used to add a reference to an
+    /// ### What it does
+    /// Checks for match which is used to add a reference to an
     /// `Option` value.
     ///
-    /// **Why is this bad?** Using `as_ref()` or `as_mut()` instead is shorter.
+    /// ### Why is this bad?
+    /// Using `as_ref()` or `as_mut()` instead is shorter.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x: Option<()> = None;
     ///
@@ -237,14 +239,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for wildcard enum matches using `_`.
+    /// ### What it does
+    /// Checks for wildcard enum matches using `_`.
     ///
-    /// **Why is this bad?** New enum variants added by library updates can be missed.
+    /// ### Why is this bad?
+    /// New enum variants added by library updates can be missed.
     ///
-    /// **Known problems:** Suggested replacements may be incorrect if guards exhaustively cover some
+    /// ### Known problems
+    /// Suggested replacements may be incorrect if guards exhaustively cover some
     /// variants, and also may not use correct path to enum if it's not present in the current scope.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
@@ -266,15 +271,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for wildcard enum matches for a single variant.
+    /// ### What it does
+    /// Checks for wildcard enum matches for a single variant.
     ///
-    /// **Why is this bad?** New enum variants added by library updates can be missed.
+    /// ### Why is this bad?
+    /// New enum variants added by library updates can be missed.
     ///
-    /// **Known problems:** Suggested replacements may not use correct path to enum
+    /// ### Known problems
+    /// Suggested replacements may not use correct path to enum
     /// if it's not present in the current scope.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # enum Foo { A, B, C }
     /// # let x = Foo::B;
@@ -298,14 +305,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for wildcard pattern used with others patterns in same match arm.
+    /// ### What it does
+    /// Checks for wildcard pattern used with others patterns in same match arm.
     ///
-    /// **Why is this bad?** Wildcard pattern already covers any other pattern as it will match anyway.
+    /// ### Why is this bad?
+    /// Wildcard pattern already covers any other pattern as it will match anyway.
     /// It makes the code less readable, especially to spot wildcard pattern use in match arm.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// match "foo" {
@@ -325,14 +332,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for matches being used to destructure a single-variant enum
+    /// ### What it does
+    /// Checks for matches being used to destructure a single-variant enum
     /// or tuple struct where a `let` will suffice.
     ///
-    /// **Why is this bad?** Just readability – `let` doesn't nest, whereas a `match` does.
+    /// ### Why is this bad?
+    /// Just readability – `let` doesn't nest, whereas a `match` does.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// enum Wrapper {
     ///     Data(i32),
@@ -360,14 +367,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for useless match that binds to only one value.
+    /// ### What it does
+    /// Checks for useless match that binds to only one value.
     ///
-    /// **Why is this bad?** Readability and needless complexity.
+    /// ### Why is this bad?
+    /// Readability and needless complexity.
     ///
-    /// **Known problems:**  Suggested replacements may be incorrect when `match`
+    /// ### Known problems
+    ///  Suggested replacements may be incorrect when `match`
     /// is actually binding temporary value, bringing a 'dropped while borrowed' error.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let a = 1;
     /// # let b = 2;
@@ -388,14 +398,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched.
+    /// ### What it does
+    /// Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched.
     ///
-    /// **Why is this bad?** Correctness and readability. It's like having a wildcard pattern after
+    /// ### Why is this bad?
+    /// Correctness and readability. It's like having a wildcard pattern after
     /// matching all enum variants explicitly.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # struct A { a: i32 }
     /// let a = A { a: 5 };
@@ -418,21 +428,23 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option`,
+    /// ### What it does
+    /// Lint for redundant pattern matching over `Result`, `Option`,
     /// `std::task::Poll` or `std::net::IpAddr`
     ///
-    /// **Why is this bad?** It's more concise and clear to just use the proper
+    /// ### Why is this bad?
+    /// It's more concise and clear to just use the proper
     /// utility function
     ///
-    /// **Known problems:** This will change the drop order for the matched type. Both `if let` and
+    /// ### Known problems
+    /// This will change the drop order for the matched type. Both `if let` and
     /// `while let` will drop the value at the end of the block, both `if` and `while` will drop the
     /// value before entering the block. For most types this change will not matter, but for a few
     /// types this will not be an acceptable change (e.g. locks). See the
     /// [reference](https://doc.rust-lang.org/reference/destructors.html#drop-scopes) for more about
     /// drop order.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # use std::task::Poll;
     /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -471,15 +483,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `match`  or `if let` expressions producing a
+    /// ### What it does
+    /// Checks for `match`  or `if let` expressions producing a
     /// `bool` that could be written using `matches!`
     ///
-    /// **Why is this bad?** Readability and needless complexity.
+    /// ### Why is this bad?
+    /// Readability and needless complexity.
     ///
-    /// **Known problems:** This lint falsely triggers, if there are arms with
+    /// ### Known problems
+    /// This lint falsely triggers, if there are arms with
     /// `cfg` attributes that remove an arm evaluating to `false`.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = Some(5);
     ///
@@ -504,17 +519,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `match` with identical arm bodies.
+    /// ### What it does
+    /// Checks for `match` with identical arm bodies.
     ///
-    /// **Why is this bad?** This is probably a copy & paste error. If arm bodies
+    /// ### Why is this bad?
+    /// This is probably a copy & paste error. If arm bodies
     /// are the same on purpose, you can factor them
     /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
     ///
-    /// **Known problems:** False positive possible with order dependent `match`
+    /// ### Known problems
+    /// False positive possible with order dependent `match`
     /// (see issue
     /// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// match foo {
     ///     Bar => bar(),
@@ -1793,8 +1811,8 @@ mod redundant_pattern_match {
             || is_type_diagnostic_item(cx, ty, sym::Rc)
             || is_type_diagnostic_item(cx, ty, sym::Arc)
             || is_type_diagnostic_item(cx, ty, sym::cstring_type)
-            || match_type(cx, ty, &paths::BTREEMAP)
-            || match_type(cx, ty, &paths::LINKED_LIST)
+            || is_type_diagnostic_item(cx, ty, sym::BTreeMap)
+            || is_type_diagnostic_item(cx, ty, sym::LinkedList)
             || match_type(cx, ty, &paths::WEAK_RC)
             || match_type(cx, ty, &paths::WEAK_ARC)
         {

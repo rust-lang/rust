@@ -6,4 +6,6 @@ disallowed-types = [
     "std::thread::Thread",
     "std::time::Instant",
     "std::io::Read",
+    "std::primitive::usize",
+    "bool"
 ]

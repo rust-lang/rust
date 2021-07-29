@@ -1,4 +1,4 @@
-#![warn(clippy::self_named_constructor)]
+#![warn(clippy::self_named_constructors)]
 
 struct ShouldSpawn;
 struct ShouldNotSpawn;

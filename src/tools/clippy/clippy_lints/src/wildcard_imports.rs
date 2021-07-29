@@ -13,15 +13,18 @@ use rustc_span::symbol::kw;
 use rustc_span::{sym, BytePos};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `use Enum::*`.
+    /// ### What it does
+    /// Checks for `use Enum::*`.
     ///
-    /// **Why is this bad?** It is usually better style to use the prefixed name of
+    /// ### Why is this bad?
+    /// It is usually better style to use the prefixed name of
     /// an enumeration variant, rather than importing variants.
     ///
-    /// **Known problems:** Old-style enumerations that prefix the variants are
+    /// ### Known problems
+    /// Old-style enumerations that prefix the variants are
     /// still around.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// use std::cmp::Ordering::*;
@@ -37,9 +40,11 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for wildcard imports `use _::*`.
+    /// ### What it does
+    /// Checks for wildcard imports `use _::*`.
     ///
-    /// **Why is this bad?** wildcard imports can pollute the namespace. This is especially bad if
+    /// ### Why is this bad?
+    /// wildcard imports can pollute the namespace. This is especially bad if
     /// you try to import something through a wildcard, that already has been imported by name from
     /// a different source:
     ///
@@ -52,8 +57,7 @@ declare_clippy_lint! {
     ///
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
-    /// **Exceptions:**
-    ///
+    /// ### Exceptions
     /// Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)
     /// provide modules named "prelude" specifically designed for wildcard import.
     ///
@@ -61,14 +65,14 @@ declare_clippy_lint! {
     ///
     /// These exceptions can be disabled using the `warn-on-all-wildcard-imports` configuration flag.
     ///
-    /// **Known problems:** If macros are imported through the wildcard, this macro is not included
+    /// ### Known problems
+    /// If macros are imported through the wildcard, this macro is not included
     /// by the suggestion and has to be added by hand.
     ///
     /// Applying the suggestion when explicit imports of the things imported with a glob import
     /// exist, may result in `unused_imports` warnings.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// use crate1::*;

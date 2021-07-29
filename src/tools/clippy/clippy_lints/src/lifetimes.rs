@@ -18,20 +18,22 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Symbol};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for lifetime annotations which can be removed by
+    /// ### What it does
+    /// Checks for lifetime annotations which can be removed by
     /// relying on lifetime elision.
     ///
-    /// **Why is this bad?** The additional lifetimes make the code look more
+    /// ### Why is this bad?
+    /// The additional lifetimes make the code look more
     /// complicated, while there is nothing out of the ordinary going on. Removing
     /// them leads to more readable code.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - We bail out if the function has a `where` clause where lifetimes
     /// are mentioned due to potenial false positives.
     /// - Lifetime bounds such as `impl Foo + 'a` and `T: 'a` must be elided with the
     /// placeholder notation `'_` because the fully elided notation leaves the type bound to `'static`.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad: unnecessary lifetime annotations
     /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
@@ -50,16 +52,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for lifetimes in generics that are never used
+    /// ### What it does
+    /// Checks for lifetimes in generics that are never used
     /// anywhere else.
     ///
-    /// **Why is this bad?** The additional lifetimes make the code look more
+    /// ### Why is this bad?
+    /// The additional lifetimes make the code look more
     /// complicated, while there is nothing out of the ordinary going on. Removing
     /// them leads to more readable code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad: unnecessary lifetimes
     /// fn unused_lifetime<'a>(x: u8) {

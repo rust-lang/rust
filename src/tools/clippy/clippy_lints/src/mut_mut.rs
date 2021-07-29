@@ -9,15 +9,15 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for instances of `mut mut` references.
+    /// ### What it does
+    /// Checks for instances of `mut mut` references.
     ///
-    /// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the
+    /// ### Why is this bad?
+    /// Multiple `mut`s don't add anything meaningful to the
     /// source. This is either a copy'n'paste error, or it shows a fundamental
     /// misunderstanding of references.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let mut y = 1;
     /// let x = &mut &mut y;

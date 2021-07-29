@@ -7,16 +7,18 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for imports ending in `::{self}`.
+    /// ### What it does
+    /// Checks for imports ending in `::{self}`.
     ///
-    /// **Why is this bad?** In most cases, this can be written much more cleanly by omitting `::{self}`.
+    /// ### Why is this bad?
+    /// In most cases, this can be written much more cleanly by omitting `::{self}`.
     ///
-    /// **Known problems:** Removing `::{self}` will cause any non-module items at the same path to also be imported.
+    /// ### Known problems
+    /// Removing `::{self}` will cause any non-module items at the same path to also be imported.
     /// This might cause a naming conflict (https://github.com/rust-lang/rustfmt/issues/3568). This lint makes no attempt
     /// to detect this scenario and that is why it is a restriction lint.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// use std::io::{self};
     /// ```

@@ -169,14 +169,11 @@ use rustc_session::{{declare_lint_pass, declare_tool_lint}};
 {pass_import}
 
 declare_clippy_lint! {{
-    /// **What it does:**
+    /// ### What it does
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // example code where clippy issues a warning
     /// ```

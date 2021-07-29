@@ -76,8 +76,8 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .args(&["-p", "subcrate"])
-        .arg("--")
         .arg("--no-deps")
+        .arg("--")
         .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
         .args(&["--cfg", r#"feature="primary_package_test""#])
         .output()
@@ -183,7 +183,7 @@ fn run_metadata_collection_lint() {
     use std::time::SystemTime;
 
     // Setup for validation
-    let metadata_output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("util/gh-pages/metadata_collection.json");
+    let metadata_output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("util/gh-pages/lints.json");
     let start_time = SystemTime::now();
 
     // Run collection as is

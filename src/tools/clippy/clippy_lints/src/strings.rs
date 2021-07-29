@@ -14,16 +14,15 @@ use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for string appends of the form `x = x + y` (without
+    /// ### What it does
+    /// Checks for string appends of the form `x = x + y` (without
     /// `let`!).
     ///
-    /// **Why is this bad?** It's not really bad, but some people think that the
+    /// ### Why is this bad?
+    /// It's not really bad, but some people think that the
     /// `.push_str(_)` method is more readable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let mut x = "Hello".to_owned();
     /// x = x + ", World";
@@ -38,11 +37,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for all instances of `x + _` where `x` is of type
+    /// ### What it does
+    /// Checks for all instances of `x + _` where `x` is of type
     /// `String`, but only if [`string_add_assign`](#string_add_assign) does *not*
     /// match.
     ///
-    /// **Why is this bad?** It's not bad in and of itself. However, this particular
+    /// ### Why is this bad?
+    /// It's not bad in and of itself. However, this particular
     /// `Add` implementation is asymmetric (the other operand need not be `String`,
     /// but `x` does), while addition as mathematically defined is symmetric, also
     /// the `String::push_str(_)` function is a perfectly good replacement.
@@ -52,10 +53,7 @@ declare_clippy_lint! {
     /// in other languages is actually fine, which is why we decided to make this
     /// particular lint `allow` by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let x = "Hello".to_owned();
     /// x + ", World";
@@ -66,13 +64,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for the `as_bytes` method called on string literals
+    /// ### What it does
+    /// Checks for the `as_bytes` method called on string literals
     /// that contain only ASCII characters.
     ///
-    /// **Why is this bad?** Byte string literals (e.g., `b"foo"`) can be used
+    /// ### Why is this bad?
+    /// Byte string literals (e.g., `b"foo"`) can be used
     /// instead. They are shorter but less discoverable than `as_bytes()`.
     ///
-    /// **Known Problems:**
+    /// ### Known problems
     /// `"str".as_bytes()` and the suggested replacement of `b"str"` are not
     /// equivalent because they have different types. The former is `&[u8]`
     /// while the latter is `&[u8; 3]`. That means in general they will have a
@@ -94,7 +94,7 @@ declare_clippy_lint! {
     /// `b"str"` but `&b"str"[..]`, which is a great deal of punctuation and not
     /// more readable than a function call.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let bs = "a byte string".as_bytes();
@@ -177,13 +177,13 @@ fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Check if the string is transformed to byte array and casted back to string.
+    /// ### What it does
+    /// Check if the string is transformed to byte array and casted back to string.
     ///
-    /// **Why is this bad?** It's unnecessary, the string can be used directly.
+    /// ### Why is this bad?
+    /// It's unnecessary, the string can be used directly.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
     /// ```
@@ -317,16 +317,15 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint checks for `.to_string()` method calls on values of type `&str`.
+    /// ### What it does
+    /// This lint checks for `.to_string()` method calls on values of type `&str`.
     ///
-    /// **Why is this bad?** The `to_string` method is also used on other types to convert them to a string.
+    /// ### Why is this bad?
+    /// The `to_string` method is also used on other types to convert them to a string.
     /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be better
     /// expressed with `.to_owned()`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // example code where clippy issues a warning
     /// let _ = "str".to_string();
@@ -366,14 +365,14 @@ impl LateLintPass<'_> for StrToString {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint checks for `.to_string()` method calls on values of type `String`.
+    /// ### What it does
+    /// This lint checks for `.to_string()` method calls on values of type `String`.
     ///
-    /// **Why is this bad?** The `to_string` method is also used on other types to convert them to a string.
+    /// ### Why is this bad?
+    /// The `to_string` method is also used on other types to convert them to a string.
     /// When called on a `String` it only clones the `String`, which can be better expressed with `.clone()`.
-    /// **Known problems:** None.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // example code where clippy issues a warning
     /// let msg = String::from("Hello World");

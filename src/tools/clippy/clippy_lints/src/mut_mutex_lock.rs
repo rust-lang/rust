@@ -8,17 +8,16 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `&mut Mutex::lock` calls
+    /// ### What it does
+    /// Checks for `&mut Mutex::lock` calls
     ///
-    /// **Why is this bad?** `Mutex::lock` is less efficient than
+    /// ### Why is this bad?
+    /// `Mutex::lock` is less efficient than
     /// calling `Mutex::get_mut`. In addition you also have a statically
     /// guarantee that the mutex isn't locked, instead of just a runtime
     /// guarantee.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// use std::sync::{Arc, Mutex};
     ///

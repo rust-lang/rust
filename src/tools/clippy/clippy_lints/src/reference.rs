@@ -10,15 +10,18 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::BytePos;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
+    /// ### What it does
+    /// Checks for usage of `*&` and `*&mut` in expressions.
     ///
-    /// **Why is this bad?** Immediately dereferencing a reference is no-op and
+    /// ### Why is this bad?
+    /// Immediately dereferencing a reference is no-op and
     /// makes the code less clear.
     ///
-    /// **Known problems:** Multiple dereference/addrof pairs are not handled so
+    /// ### Known problems
+    /// Multiple dereference/addrof pairs are not handled so
     /// the suggested fix for `x = **&&y` is `x = *&y`, which is still incorrect.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// let a = f(*&mut b);
@@ -101,13 +104,15 @@ impl EarlyLintPass for DerefAddrOf {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for references in expressions that use
+    /// ### What it does
+    /// Checks for references in expressions that use
     /// auto dereference.
     ///
-    /// **Why is this bad?** The reference is a no-op and is automatically
+    /// ### Why is this bad?
+    /// The reference is a no-op and is automatically
     /// dereferenced by the compiler and makes the code less clear.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// struct Point(u32, u32);
     /// let point = Point(30, 20);

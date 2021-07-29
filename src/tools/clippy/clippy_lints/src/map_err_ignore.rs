@@ -4,13 +4,13 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for instances of `map_err(|_| Some::Enum)`
+    /// ### What it does
+    /// Checks for instances of `map_err(|_| Some::Enum)`
     ///
-    /// **Why is this bad?** This `map_err` throws away the original error rather than allowing the enum to contain and report the cause of the error
+    /// ### Why is this bad?
+    /// This `map_err` throws away the original error rather than allowing the enum to contain and report the cause of the error
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// Before:
     /// ```rust
     /// use std::fmt;

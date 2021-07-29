@@ -8,14 +8,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for binding a unit value.
+    /// ### What it does
+    /// Checks for binding a unit value.
     ///
-    /// **Why is this bad?** A unit value cannot usefully be used anywhere. So
+    /// ### Why is this bad?
+    /// A unit value cannot usefully be used anywhere. So
     /// binding one is kind of pointless.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = {
     ///     1;
@@ -27,16 +27,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons to unit. This includes all binary
+    /// ### What it does
+    /// Checks for comparisons to unit. This includes all binary
     /// comparisons (like `==` and `<`) and asserts.
     ///
-    /// **Why is this bad?** Unit is always equal to itself, and thus is just a
+    /// ### Why is this bad?
+    /// Unit is always equal to itself, and thus is just a
     /// clumsily written constant. Mostly this happens when someone accidentally
     /// adds semicolons at the end of the operands.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn foo() {};
     /// # fn bar() {};
@@ -74,14 +74,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for passing a unit value as an argument to a function without using a
+    /// ### What it does
+    /// Checks for passing a unit value as an argument to a function without using a
     /// unit literal (`()`).
     ///
-    /// **Why is this bad?** This is likely the result of an accidental semicolon.
+    /// ### Why is this bad?
+    /// This is likely the result of an accidental semicolon.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// foo({
     ///     let a = bar();

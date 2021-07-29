@@ -13,16 +13,14 @@ use rustc_span::Span;
 use serde::{de, Deserialize};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks that common macros are used with consistent bracing.
+    /// ### What it does
+    /// Checks that common macros are used with consistent bracing.
     ///
-    /// **Why is this bad?** This is mostly a consistency lint although using () or []
+    /// ### Why is this bad?
+    /// This is mostly a consistency lint although using () or []
     /// doesn't give you a semicolon in item position, which can be unexpected.
     ///
-    /// **Known problems:**
-    /// None
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// vec!{1, 2, 3};
     /// ```

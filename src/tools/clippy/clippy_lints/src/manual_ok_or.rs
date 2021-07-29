@@ -13,15 +13,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
+    ///
     /// Finds patterns that reimplement `Option::ok_or`.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
+    ///
     /// Concise code helps focusing on behavior instead of boilerplate.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// let foo: Option<i32> = None;
     /// foo.map_or(Err("error"), |v| Ok(v));

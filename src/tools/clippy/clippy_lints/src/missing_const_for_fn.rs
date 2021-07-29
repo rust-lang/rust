@@ -13,16 +13,13 @@ use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
-    /// **What it does:**
-    ///
+    /// ### What it does
     /// Suggests the use of `const` in functions and methods where possible.
     ///
-    /// **Why is this bad?**
-    ///
+    /// ### Why is this bad?
     /// Not having the function const prevents callers of the function from being const as well.
     ///
-    /// **Known problems:**
-    ///
+    /// ### Known problems
     /// Const functions are currently still being worked on, with some features only being available
     /// on nightly. This lint does not consider all edge cases currently and the suggestions may be
     /// incorrect if you are using this lint on stable.
@@ -42,8 +39,7 @@ declare_clippy_lint! {
     /// can't be const as it calls a non-const function. Making `a` const and running Clippy again,
     /// will suggest to make `b` const, too.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # struct Foo {
     /// #     random_number: usize,

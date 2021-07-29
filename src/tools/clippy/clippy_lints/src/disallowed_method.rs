@@ -8,15 +8,14 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
 
 declare_clippy_lint! {
-    /// **What it does:** Denies the configured methods and functions in clippy.toml
+    /// ### What it does
+    /// Denies the configured methods and functions in clippy.toml
     ///
-    /// **Why is this bad?** Some methods are undesirable in certain contexts,
+    /// ### Why is this bad?
+    /// Some methods are undesirable in certain contexts,
     /// and it's beneficial to lint for them as needed.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml

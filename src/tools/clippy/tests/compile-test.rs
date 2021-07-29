@@ -1,5 +1,6 @@
 #![feature(test)] // compiletest_rs requires this attribute
 #![feature(once_cell)]
+#![feature(try_blocks)]
 
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
@@ -34,50 +35,60 @@ fn clippy_driver_path() -> PathBuf {
 //        as what we manually pass to `cargo` invocation
 fn third_party_crates() -> String {
     use std::collections::HashMap;
-    static CRATES: &[&str] = &["serde", "serde_derive", "regex", "clippy_lints", "syn", "quote"];
+    static CRATES: &[&str] = &[
+        "clippy_lints",
+        "clippy_utils",
+        "if_chain",
+        "quote",
+        "regex",
+        "serde",
+        "serde_derive",
+        "syn",
+    ];
     let dep_dir = cargo::TARGET_LIB.join("deps");
-    let mut crates: HashMap<&str, PathBuf> = HashMap::with_capacity(CRATES.len());
-    for entry in fs::read_dir(dep_dir).unwrap() {
-        let path = match entry {
-            Ok(entry) => entry.path(),
-            Err(_) => continue,
-        };
-        if let Some(name) = path.file_name().and_then(OsStr::to_str) {
-            for dep in CRATES {
-                if name.starts_with(&format!("lib{}-", dep))
-                    && name.rsplit('.').next().map(|ext| ext.eq_ignore_ascii_case("rlib")) == Some(true)
-                {
-                    if let Some(old) = crates.insert(dep, path.clone()) {
-                        // Check which action should be done in order to remove compiled deps.
-                        // If pre-installed version of compiler is used, `cargo clean` will do.
-                        // Otherwise (for bootstrapped compiler), the dependencies directory
-                        // must be removed manually.
-                        let suggested_action = if std::env::var_os("RUSTC_BOOTSTRAP").is_some() {
-                            "remove the stageN-tools directory"
-                        } else {
-                            "run `cargo clean`"
-                        };
-
-                        panic!(
-                            "\n---------------------------------------------------\n\n \
-                            Found multiple rlibs for crate `{}`: `{:?}` and `{:?}`.\n \
-                            Probably, you need to {} before running tests again.\n \
-                            \nFor details on that error see https://github.com/rust-lang/rust-clippy/issues/7343 \
-                            \n---------------------------------------------------\n",
-                            dep, old, path, suggested_action
-                        );
-                    }
-                    break;
-                }
-            }
+    let mut crates: HashMap<&str, Vec<PathBuf>> = HashMap::with_capacity(CRATES.len());
+    let mut flags = String::new();
+    for entry in fs::read_dir(dep_dir).unwrap().flatten() {
+        let path = entry.path();
+        if let Some(name) = try {
+            let name = path.file_name()?.to_str()?;
+            let (name, _) = name.strip_suffix(".rlib")?.strip_prefix("lib")?.split_once('-')?;
+            CRATES.iter().copied().find(|&c| c == name)?
+        } {
+            flags += &format!(" --extern {}={}", name, path.display());
+            crates.entry(name).or_default().push(path.clone());
         }
     }
+    crates.retain(|_, paths| paths.len() > 1);
+    if !crates.is_empty() {
+        let crate_names = crates.keys().map(|s| format!("`{}`", s)).collect::<Vec<_>>().join(", ");
+        // add backslashes for an easy copy-paste `rm` command
+        let paths = crates
+            .into_values()
+            .flatten()
+            .map(|p| strip_current_dir(&p).display().to_string())
+            .collect::<Vec<_>>()
+            .join(" \\\n");
+        // Check which action should be done in order to remove compiled deps.
+        // If pre-installed version of compiler is used, `cargo clean` will do.
+        // Otherwise (for bootstrapped compiler), the dependencies directory
+        // must be removed manually.
+        let suggested_action = if std::env::var_os("RUSTC_BOOTSTRAP").is_some() {
+            "removing the stageN-tools directory"
+        } else {
+            "running `cargo clean`"
+        };
 
-    let v: Vec<_> = crates
-        .into_iter()
-        .map(|(dep, path)| format!("--extern {}={}", dep, path.display()))
-        .collect();
-    v.join(" ")
+        panic!(
+            "\n----------------------------------------------------------------------\n\
+            ERROR: Found multiple rlibs for crates: {}\n\
+            Try {} or remove the following files:\n\n{}\n\n\
+            For details on this error see https://github.com/rust-lang/rust-clippy/issues/7343\n\
+            ----------------------------------------------------------------------\n",
+            crate_names, suggested_action, paths
+        );
+    }
+    flags
 }
 
 fn default_config() -> compiletest::Config {
@@ -303,4 +314,13 @@ impl Drop for VarGuard {
             Some(value) => set_var(self.key, value),
         }
     }
+}
+
+fn strip_current_dir(path: &Path) -> &Path {
+    if let Ok(curr) = env::current_dir() {
+        if let Ok(stripped) = path.strip_prefix(curr) {
+            return stripped;
+        }
+    }
+    path
 }

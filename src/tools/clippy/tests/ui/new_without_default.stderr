@@ -7,7 +7,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::new-without-default` implied by `-D warnings`
-help: try this
+help: try adding this
    |
 LL | impl Default for Foo {
 LL |     fn default() -> Self {
@@ -24,7 +24,7 @@ LL | |         Bar
 LL | |     }
    | |_____^
    |
-help: try this
+help: try adding this
    |
 LL | impl Default for Bar {
 LL |     fn default() -> Self {
@@ -41,7 +41,7 @@ LL | |         unimplemented!()
 LL | |     }
    | |_____^
    |
-help: try this
+help: try adding this
    |
 LL | impl<'c> Default for LtKo<'c> {
 LL |     fn default() -> Self {
@@ -58,7 +58,7 @@ LL | |         NewNotEqualToDerive { foo: 1 }
 LL | |     }
    | |_____^
    |
-help: try this
+help: try adding this
    |
 LL | impl Default for NewNotEqualToDerive {
 LL |     fn default() -> Self {
@@ -75,7 +75,7 @@ LL | |         Self(Default::default())
 LL | |     }
    | |_____^
    |
-help: try this
+help: try adding this
    |
 LL | impl<T> Default for FooGenerics<T> {
 LL |     fn default() -> Self {
@@ -92,7 +92,7 @@ LL | |         Self(Default::default())
 LL | |     }
    | |_____^
    |
-help: try this
+help: try adding this
    |
 LL | impl<T: Copy> Default for BarGenerics<T> {
 LL |     fn default() -> Self {
@@ -101,5 +101,23 @@ LL |     }
 LL | }
    |
 
-error: aborting due to 6 previous errors
+error: you should consider adding a `Default` implementation for `Foo<T>`
+  --> $DIR/new_without_default.rs:182:9
+   |
+LL | /         pub fn new() -> Self {
+LL | |             todo!()
+LL | |         }
+   | |_________^
+   |
+help: try adding this
+   |
+LL |     impl<T> Default for Foo<T> {
+LL |         fn default() -> Self {
+LL |             Self::new()
+LL |         }
+LL |     }
+LL | 
+ ...
+
+error: aborting due to 7 previous errors
 

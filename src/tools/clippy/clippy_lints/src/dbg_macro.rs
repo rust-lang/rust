@@ -8,14 +8,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of dbg!() macro.
+    /// ### What it does
+    /// Checks for usage of dbg!() macro.
     ///
-    /// **Why is this bad?** `dbg!` macro is intended as a debugging tool. It
+    /// ### Why is this bad?
+    /// `dbg!` macro is intended as a debugging tool. It
     /// should not be in version control.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// dbg!(true)

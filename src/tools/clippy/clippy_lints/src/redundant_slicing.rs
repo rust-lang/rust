@@ -10,17 +10,19 @@ use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for redundant slicing expressions which use the full range, and
+    /// ### What it does
+    /// Checks for redundant slicing expressions which use the full range, and
     /// do not change the type.
     ///
-    /// **Why is this bad?** It unnecessarily adds complexity to the expression.
+    /// ### Why is this bad?
+    /// It unnecessarily adds complexity to the expression.
     ///
-    /// **Known problems:** If the type being sliced has an implementation of `Index<RangeFull>`
+    /// ### Known problems
+    /// If the type being sliced has an implementation of `Index<RangeFull>`
     /// that actually changes anything then it can't be removed. However, this would be surprising
     /// to people reading the code and should have a note with it.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```ignore
     /// fn get_slice(x: &[u32]) -> &[u32] {
     ///     &x[..]

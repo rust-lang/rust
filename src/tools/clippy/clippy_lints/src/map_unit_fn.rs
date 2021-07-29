@@ -12,16 +12,15 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `option.map(f)` where f is a function
+    /// ### What it does
+    /// Checks for usage of `option.map(f)` where f is a function
     /// or closure that returns the unit type `()`.
     ///
-    /// **Why is this bad?** Readability, this can be written more clearly with
+    /// ### Why is this bad?
+    /// Readability, this can be written more clearly with
     /// an if let statement
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # fn do_stuff() -> Option<String> { Some(String::new()) }
     /// # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }
@@ -54,16 +53,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `result.map(f)` where f is a function
+    /// ### What it does
+    /// Checks for usage of `result.map(f)` where f is a function
     /// or closure that returns the unit type `()`.
     ///
-    /// **Why is this bad?** Readability, this can be written more clearly with
+    /// ### Why is this bad?
+    /// Readability, this can be written more clearly with
     /// an if let statement
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # fn do_stuff() -> Result<String, String> { Ok(String::new()) }
     /// # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }
