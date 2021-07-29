@@ -128,6 +128,9 @@ jobs:
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
         if: success() && !env.SKIP_JOB
+      - name: ensure backported commits are in upstream branches
+        run: src/ci/scripts/verify-backported-commits.sh
+        if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
         env:
@@ -499,6 +502,9 @@ jobs:
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
         if: success() && !env.SKIP_JOB
+      - name: ensure backported commits are in upstream branches
+        run: src/ci/scripts/verify-backported-commits.sh
+        if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
         env:
@@ -608,6 +614,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
+        if: success() && !env.SKIP_JOB
+      - name: ensure backported commits are in upstream branches
+        run: src/ci/scripts/verify-backported-commits.sh
         if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
