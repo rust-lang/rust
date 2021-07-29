@@ -45,7 +45,7 @@ pub struct BorrowedHandle<'handle> {
 /// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
 /// sometimes a valid handle value. See [here] for the full story. For APIs
 /// like `CreateFileW` which report errors with `INVALID_HANDLE_VALUE` instead
-/// of null, use [`OptionFileHandle`] instead of `Option<OwnedHandle>`.
+/// of null, use [`HandleOrInvalid`] instead of `Option<OwnedHandle>`.
 ///
 /// `OwnedHandle` uses [`CloseHandle`] to close its handle on drop. As such,
 /// it must not be used with handles to open registry keys which need to be
@@ -61,25 +61,21 @@ pub struct OwnedHandle {
     handle: NonNull<c_void>,
 }
 
-/// Similar to `Option<OwnedHandle>`, but intended for use in FFI interfaces
-/// where `INVALID_HANDLE_VALUE` is used as the sentry value, and null values
-/// are not used at all, such as in the return value of `CreateFileW`.
+/// FFI type for handles in return values or out parameters, where `INVALID_HANDLE_VALUE` is used
+/// as a sentry value to indicate errors, such as in the return value of `CreateFileW`. This uses
+/// `repr(transparent)` and has the representation of a host handle, so that it can be used in such
+/// FFI declarations.
 ///
-/// The main thing you can do with an `OptionFileHandle` is to convert it into
-/// an `OwnedHandle` using its [`TryFrom`] implementation, and this conversion
-/// takes care of the check for `INVALID_HANDLE_VALUE`.
+/// The only thing you can usefully do with a `HandleOrInvalid` is to convert it into an
+/// `OwnedHandle` using its [`TryFrom`] implementation; this conversion takes care of the check for
+/// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
+/// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// If this holds an owned handle, it closes the handle on drop.
-///
-/// This uses `repr(transparent)` and has the representation of a host handle,
-/// so it can be used in FFI in places where a non-null handle is passed as a
-/// consumed argument or returned as an owned value, or it is
-/// `INVALID_HANDLE_VALUE` indicating an error or an otherwise absent value.
+/// If this holds a valid handle, it will close the handle on drop.
 #[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
-pub struct OptionFileHandle {
-    handle: RawHandle,
-}
+#[derive(Debug)]
+pub struct HandleOrInvalid(Option<OwnedHandle>);
 
 // The Windows [`HANDLE`] type may be transferred across and shared between
 // thread boundaries (despite containing a `*mut void`, which in general isn't
@@ -87,10 +83,10 @@ pub struct OptionFileHandle {
 //
 // [`HANDLE`]: std::os::windows::raw::HANDLE
 unsafe impl Send for OwnedHandle {}
-unsafe impl Send for OptionFileHandle {}
+unsafe impl Send for HandleOrInvalid {}
 unsafe impl Send for BorrowedHandle<'_> {}
 unsafe impl Sync for OwnedHandle {}
-unsafe impl Sync for OptionFileHandle {}
+unsafe impl Sync for HandleOrInvalid {}
 unsafe impl Sync for BorrowedHandle<'_> {}
 
 impl BorrowedHandle<'_> {
@@ -114,51 +110,28 @@ impl BorrowedHandle<'_> {
     }
 }
 
-impl OptionFileHandle {
-    /// Return an empty `OptionFileHandle` with no resource.
-    #[inline]
-    #[unstable(feature = "io_safety", issue = "87074")]
-    pub const fn none() -> Self {
-        Self { handle: c::INVALID_HANDLE_VALUE }
-    }
-}
-
-impl TryFrom<OptionFileHandle> for OwnedHandle {
+impl TryFrom<HandleOrInvalid> for OwnedHandle {
     type Error = ();
 
     #[inline]
-    fn try_from(option: OptionFileHandle) -> Result<Self, ()> {
-        let handle = option.handle;
-        forget(option);
-        if let Some(non_null) = NonNull::new(handle) {
-            if non_null.as_ptr() != c::INVALID_HANDLE_VALUE {
-                Ok(Self { handle: non_null })
-            } else {
-                Err(())
-            }
+    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
+        // In theory, we ought to be able to assume that the pointer here is
+        // never null, use `OwnedHandle` rather than `Option<OwnedHandle>`, and
+        // obviate the the panic path here.  Unfortunately, Win32 documentation
+        // doesn't explicitly guarantee this anywhere.
+        //
+        // APIs like [`CreateFileW`] itself have `HANDLE` arguments where a
+        // null handle indicates an absent value, which wouldn't work if null
+        // were a valid handle value, so it seems very unlikely that it could
+        // ever return null. But who knows?
+        //
+        // [`CreateFileW`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
+        let owned_handle = handle_or_invalid.0.expect("A `HandleOrInvalid` was null!");
+        if owned_handle.handle.as_ptr() == c::INVALID_HANDLE_VALUE {
+            Err(())
         } else {
-            // In theory, we ought to be able to assume that the pointer here
-            // is never null, change `option.handle` to `NonNull`, and obviate
-            // the the panic path here. Unfortunately, Win32 documentation
-            // doesn't explicitly guarantee this anywhere.
-            //
-            // APIs like [`CreateFileW`] itself have `HANDLE` arguments where a
-            // null handle indicates an absent value, which wouldn't work if
-            // null were a valid handle value, so it seems very unlikely that
-            // it could ever return null. But who knows?
-            //
-            // [`CreateFileW`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
-            panic!("An `OptionFileHandle` was null!");
+            Ok(owned_handle)
         }
-    }
-}
-
-impl From<OwnedHandle> for OptionFileHandle {
-    #[inline]
-    fn from(owned: OwnedHandle) -> Self {
-        let handle = owned.handle;
-        forget(owned);
-        Self { handle: handle.as_ptr() }
     }
 }
 
@@ -188,7 +161,7 @@ impl IntoRawHandle for OwnedHandle {
 impl FromRawHandle for OwnedHandle {
     /// Constructs a new instance of `Self` from the given raw handle.
     ///
-    /// Use `OptionFileHandle` instead of `Option<OwnedHandle>` for APIs that
+    /// Use `HandleOrInvalid` instead of `Option<OwnedHandle>` for APIs that
     /// use `INVALID_HANDLE_VALUE` to indicate failure.
     ///
     /// # Safety
@@ -212,12 +185,12 @@ impl FromRawHandle for OwnedHandle {
     }
 }
 
-impl FromRawHandle for OptionFileHandle {
-    /// Constructs a new instance of `Self` from the given raw handle returned
+impl FromRawHandle for HandleOrInvalid {
+    /// Constructs a new instance of `Self` from the given `RawHandle` returned
     /// from a Windows API that uses `INVALID_HANDLE_VALUE` to indicate
     /// failure, such as `CreateFileW`.
     ///
-    /// Use `Option<OwnedHandle>` instead of `OptionFileHandle` for APIs that
+    /// Use `Option<OwnedHandle>` instead of `HandleOrInvalid` for APIs that
     /// use null to indicate failure.
     ///
     /// # Safety
@@ -230,8 +203,8 @@ impl FromRawHandle for OptionFileHandle {
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self {
-        assert!(!handle.is_null());
-        Self { handle }
+        // We require non-null here to catch errors earlier.
+        Self(Some(OwnedHandle::from_raw_handle(handle)))
     }
 }
 
@@ -240,15 +213,6 @@ impl Drop for OwnedHandle {
     fn drop(&mut self) {
         unsafe {
             let _ = c::CloseHandle(self.handle.as_ptr());
-        }
-    }
-}
-
-impl Drop for OptionFileHandle {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            let _ = c::CloseHandle(self.handle);
         }
     }
 }
@@ -262,12 +226,6 @@ impl fmt::Debug for BorrowedHandle<'_> {
 impl fmt::Debug for OwnedHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OwnedHandle").field("handle", &self.handle).finish()
-    }
-}
-
-impl fmt::Debug for OptionFileHandle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OptionFileHandle").field("handle", &self.handle).finish()
     }
 }
 

@@ -34,7 +34,7 @@ pub mod prelude {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::io::{
         AsHandle, AsSocket, BorrowedHandle, BorrowedSocket, FromRawHandle, FromRawSocket,
-        IntoRawHandle, IntoRawSocket, OptionFileHandle, OwnedHandle, OwnedSocket,
+        HandleOrInvalid, IntoRawHandle, IntoRawSocket, OwnedHandle, OwnedSocket,
     };
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
