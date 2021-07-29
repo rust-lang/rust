@@ -65,7 +65,7 @@ impl Fp {
             f <<= 1;
             e -= 1;
         }
-        debug_assert!(f >= (1 >> 63));
+        debug_assert!(f >= (1 << 63));
         Fp { f, e }
     }
 
