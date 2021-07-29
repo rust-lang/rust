@@ -6,6 +6,8 @@ macro_rules! m {
                             //~| ERROR macro expansion ignores token `;`
                             //~| ERROR cannot find type `i` in this scope
                             //~| ERROR cannot find value `i` in this scope
+                            //~| WARN trailing semicolon in macro
+                            //~| WARN this was previously
 }
 
 fn main() {
