@@ -46,45 +46,5 @@ index 4bc44e9..8e3c7a4 100644
  
  #[test]
  fn cell_allows_array_cycle() {
-diff --git a/library/core/tests/num/mod.rs b/library/core/tests/num/mod.rs
-index a17c094..5bb11d2 100644
---- a/library/core/tests/num/mod.rs
-+++ b/library/core/tests/num/mod.rs
-@@ -651,11 +651,12 @@ macro_rules! test_float {
-                 assert_eq!((9.0 as $fty).min($neginf), $neginf);
-                 assert_eq!(($neginf as $fty).min(-9.0), $neginf);
-                 assert_eq!((-9.0 as $fty).min($neginf), $neginf);
--                assert_eq!(($nan as $fty).min(9.0), 9.0);
--                assert_eq!(($nan as $fty).min(-9.0), -9.0);
--                assert_eq!((9.0 as $fty).min($nan), 9.0);
--                assert_eq!((-9.0 as $fty).min($nan), -9.0);
--                assert!(($nan as $fty).min($nan).is_nan());
-+                // Cranelift fmin has NaN propagation
-+                //assert_eq!(($nan as $fty).min(9.0), 9.0);
-+                //assert_eq!(($nan as $fty).min(-9.0), -9.0);
-+                //assert_eq!((9.0 as $fty).min($nan), 9.0);
-+                //assert_eq!((-9.0 as $fty).min($nan), -9.0);
-+                //assert!(($nan as $fty).min($nan).is_nan());
-             }
-             #[test]
-             fn max() {
-@@ -673,11 +674,12 @@ macro_rules! test_float {
-                 assert_eq!((9.0 as $fty).max($neginf), 9.0);
-                 assert_eq!(($neginf as $fty).max(-9.0), -9.0);
-                 assert_eq!((-9.0 as $fty).max($neginf), -9.0);
--                assert_eq!(($nan as $fty).max(9.0), 9.0);
--                assert_eq!(($nan as $fty).max(-9.0), -9.0);
--                assert_eq!((9.0 as $fty).max($nan), 9.0);
--                assert_eq!((-9.0 as $fty).max($nan), -9.0);
--                assert!(($nan as $fty).max($nan).is_nan());
-+                // Cranelift fmax has NaN propagation
-+                //assert_eq!(($nan as $fty).max(9.0), 9.0);
-+                //assert_eq!(($nan as $fty).max(-9.0), -9.0);
-+                //assert_eq!((9.0 as $fty).max($nan), 9.0);
-+                //assert_eq!((-9.0 as $fty).max($nan), -9.0);
-+                //assert!(($nan as $fty).max($nan).is_nan());
-             }
-             #[test]
-             fn rem_euclid() {
 -- 
 2.21.0 (Apple Git-122)

@@ -378,6 +378,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_reduce_min, (c v) {
+            // FIXME support floats
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
             simd_reduce(fx, v, None, ret, |fx, layout, a, b| {
                 let lt = fx.bcx.ins().icmp(if layout.ty.is_signed() {
@@ -390,6 +391,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_reduce_max, (c v) {
+            // FIXME support floats
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
             simd_reduce(fx, v, None, ret, |fx, layout, a, b| {
                 let gt = fx.bcx.ins().icmp(if layout.ty.is_signed() {
