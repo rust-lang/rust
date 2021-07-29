@@ -7,7 +7,7 @@ use crate::fmt;
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, const_format_args)]
 #[rustc_diagnostic_item = "core_panic_2015_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -21,13 +21,13 @@ pub macro panic_2015 {
         $crate::panicking::panic_str($msg)
     ),
     ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
+        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
     ),
 }
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic, const_format_args)]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2021 {
@@ -35,7 +35,7 @@ pub macro panic_2021 {
         $crate::panicking::panic("explicit panic")
     ),
     ($($t:tt)+) => (
-        $crate::panicking::panic_fmt($crate::format_args!($($t)+))
+        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
     ),
 }
 

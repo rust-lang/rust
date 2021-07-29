@@ -20,7 +20,7 @@ use crate::thread::Result;
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(libstd_sys_internals)]
+#[allow_internal_unstable(libstd_sys_internals, const_format_args)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -31,7 +31,7 @@ pub macro panic_2015 {
         $crate::rt::begin_panic($msg)
     }),
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
+        $crate::rt::begin_panic_fmt(&$crate::const_format_args!($fmt, $($arg)+))
     }),
 }
 

@@ -74,9 +74,14 @@ impl ConstCx<'mir, 'tcx> {
 
 /// Returns `true` if this `DefId` points to one of the official `panic` lang items.
 pub fn is_lang_panic_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    // We can allow calls to these functions because `hook_panic_fn` in
+    // `const_eval/machine.rs` ensures the calls are handled specially.
+    // Keep in sync with what that function handles!
     Some(def_id) == tcx.lang_items().panic_fn()
         || Some(def_id) == tcx.lang_items().panic_str()
         || Some(def_id) == tcx.lang_items().begin_panic_fn()
+        || Some(def_id) == tcx.lang_items().panic_fmt()
+        || Some(def_id) == tcx.lang_items().begin_panic_fmt()
 }
 
 pub fn rustc_allow_const_fn_unstable(
