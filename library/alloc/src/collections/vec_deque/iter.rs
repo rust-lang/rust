@@ -1,5 +1,5 @@
 use core::fmt;
-use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
+use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use core::ops::Try;
 
 use super::{count, wrap_index, RingSlices};
@@ -104,11 +104,8 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     #[inline]
     #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
-    where
-        Self: TrustedRandomAccess,
-    {
-        // Safety: The TrustedRandomAccess contract requires that callers only  pass an index
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
+        // Safety: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.
         unsafe {
             let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
@@ -177,6 +174,10 @@ unsafe impl<T> TrustedLen for Iter<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {
+unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<T> TrustedRandomAccessNoCoerce for Iter<'_, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
