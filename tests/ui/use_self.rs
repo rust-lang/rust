@@ -8,7 +8,7 @@
     clippy::should_implement_trait,
     clippy::upper_case_acronyms,
     clippy::from_over_into,
-    clippy::self_named_constructor
+    clippy::self_named_constructors
 )]
 
 #[macro_use]
