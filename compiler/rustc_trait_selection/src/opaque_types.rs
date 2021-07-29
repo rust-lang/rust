@@ -32,7 +32,6 @@ pub enum GenerateMemberConstraints {
 pub trait InferCtxtExt<'tcx> {
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
-        parent_def_id: LocalDefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
@@ -94,25 +93,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// - `value_span` -- the span where the value came from, used in error reporting
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
-        parent_def_id: LocalDefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
         value_span: Span,
     ) -> InferOk<'tcx, T> {
         debug!(
-            "instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
+            "instantiate_opaque_types(value={:?}, body_id={:?}, \
              param_env={:?}, value_span={:?})",
-            value, parent_def_id, body_id, param_env, value_span,
+            value, body_id, param_env, value_span,
         );
-        let mut instantiator = Instantiator {
-            infcx: self,
-            parent_def_id,
-            body_id,
-            param_env,
-            value_span,
-            obligations: vec![],
-        };
+        let mut instantiator =
+            Instantiator { infcx: self, body_id, param_env, value_span, obligations: vec![] };
         let value = instantiator.instantiate_opaque_types_in_map(value);
         InferOk { value, obligations: instantiator.obligations }
     }
@@ -857,7 +849,6 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
 struct Instantiator<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    parent_def_id: LocalDefId,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     value_span: Span,
@@ -910,7 +901,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     // ```
                     if let Some(def_id) = def_id.as_local() {
                         let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                        let parent_def_id = self.parent_def_id;
+                        let parent_def_id = self.infcx.defining_use_anchor;
                         let def_scope_default = || {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
                             parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
@@ -922,14 +913,14 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     impl_trait_fn: Some(parent),
                                     origin,
                                     ..
-                                }) => (parent == self.parent_def_id.to_def_id(), origin),
+                                }) => (parent == parent_def_id.to_def_id(), origin),
                                 // Named `type Foo = impl Bar;`
                                 hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: None,
                                     origin,
                                     ..
                                 }) => (
-                                    may_define_opaque_type(tcx, self.parent_def_id, opaque_hir_id),
+                                    may_define_opaque_type(tcx, parent_def_id, opaque_hir_id),
                                     origin,
                                 ),
                                 _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),

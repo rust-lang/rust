@@ -362,20 +362,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Replaces the opaque types from the given value with type variables,
     /// and records the `OpaqueTypeMap` for later use during writeback. See
     /// `InferCtxt::instantiate_opaque_types` for more details.
+    #[instrument(skip(self, value_span), level = "debug")]
     pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
         &self,
-        parent_id: hir::HirId,
         value: T,
         value_span: Span,
     ) -> T {
-        let parent_def_id = self.tcx.hir().local_def_id(parent_id);
-        debug!(
-            "instantiate_opaque_types_from_value(parent_def_id={:?}, value={:?})",
-            parent_def_id, value
-        );
-
         self.register_infer_ok_obligations(self.instantiate_opaque_types(
-            parent_def_id,
             self.body_id,
             self.param_env,
             value,

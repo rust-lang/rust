@@ -95,7 +95,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let declared_ret_ty = fn_sig.output();
 
     let revealed_ret_ty =
-        fcx.instantiate_opaque_types_from_value(fn_id, declared_ret_ty, decl.output.span());
+        fcx.instantiate_opaque_types_from_value(declared_ret_ty, decl.output.span());
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
@@ -651,7 +651,7 @@ fn check_opaque_meets_bounds<'tcx>(
         let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
         let _ = inh.register_infer_ok_obligations(
-            infcx.instantiate_opaque_types(def_id, hir_id, param_env, opaque_ty, span),
+            infcx.instantiate_opaque_types(hir_id, param_env, opaque_ty, span),
         );
 
         let opaque_type_map = infcx.inner.borrow().opaque_types.clone();

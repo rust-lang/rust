@@ -1305,7 +1305,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // (Note that the key of the map is both the def-id of `Foo` along with
                     // any generic parameters.)
                     let output_ty = obligations.add(infcx.instantiate_opaque_types(
-                        mir_def_id,
                         dummy_body_id,
                         param_env,
                         anon_ty,
