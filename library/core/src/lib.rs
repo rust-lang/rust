@@ -159,6 +159,7 @@
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
+#![feature(uint_add_signed)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 //

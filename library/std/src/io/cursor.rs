@@ -292,12 +292,7 @@ where
             SeekFrom::End(n) => (self.inner.as_ref().len() as u64, n),
             SeekFrom::Current(n) => (self.pos, n),
         };
-        let new_pos = if offset >= 0 {
-            base_pos.checked_add(offset as u64)
-        } else {
-            base_pos.checked_sub((offset.wrapping_neg()) as u64)
-        };
-        match new_pos {
+        match base_pos.checked_add_signed(offset) {
             Some(n) => {
                 self.pos = n;
                 Ok(self.pos)

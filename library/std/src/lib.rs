@@ -333,6 +333,7 @@
 #![feature(try_blocks)]
 #![feature(try_reserve)]
 #![feature(try_reserve_kind)]
+#![feature(uint_add_signed)]
 #![feature(unboxed_closures)]
 #![feature(unwrap_infallible)]
 #![feature(vec_into_raw_parts)]
