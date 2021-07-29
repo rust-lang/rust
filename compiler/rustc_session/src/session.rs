@@ -198,10 +198,6 @@ pub struct Session {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
 
-    /// Path for libraries that will take preference over libraries shipped by Rust.
-    /// Used by windows-gnu targets to priortize system mingw-w64 libraries.
-    pub system_library_path: OneThread<RefCell<Option<Option<PathBuf>>>>,
-
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
@@ -1375,7 +1371,6 @@ pub fn build_session(
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
-        system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
