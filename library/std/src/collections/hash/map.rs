@@ -971,7 +971,11 @@ where
     /// map.insert("b", 2);
     /// map.insert("c", 3);
     ///
-    /// let vec: Vec<&str> = map.into_keys().collect();
+    /// let mut vec: Vec<&str> = map.into_keys().collect();
+    /// // The `IntoKeys` iterator produces keys in arbitrary order, so the
+    /// // keys must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, ["a", "b", "c"]);
     /// ```
     #[inline]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -993,7 +997,11 @@ where
     /// map.insert("b", 2);
     /// map.insert("c", 3);
     ///
-    /// let vec: Vec<i32> = map.into_values().collect();
+    /// let mut vec: Vec<i32> = map.into_values().collect();
+    /// // The `IntoValues` iterator produces values in arbitrary order, so
+    /// // the values must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [1, 2, 3]);
     /// ```
     #[inline]
     #[stable(feature = "map_into_keys_values", since = "1.54.0")]
