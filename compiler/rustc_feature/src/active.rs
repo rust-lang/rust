@@ -678,10 +678,10 @@ declare_features! (
     (active, derive_default_enum, "1.56.0", Some(86985), None),
 
     /// Allows `for _ in _` loops in const contexts.
-    (active, const_for, "1.55.0", None, None),
+    (active, const_for, "1.56.0", Some(87575), None),
 
     /// Allows the `?` operator in const contexts.
-    (active, const_try, "1.55.0", None, None),
+    (active, const_try, "1.56.0", Some(74935), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
