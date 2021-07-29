@@ -16,7 +16,7 @@ use syntax::{
         AstNode,
     },
     ted,
-    SyntaxKind::{self, BLOCK_EXPR, BREAK_EXPR, COMMENT, PATH_EXPR, RETURN_EXPR},
+    SyntaxKind::{self, COMMENT},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
 
@@ -466,22 +466,17 @@ enum FunctionBody {
 }
 
 impl FunctionBody {
-    fn from_whole_node(node: SyntaxNode) -> Option<Self> {
-        match node.kind() {
-            PATH_EXPR => None,
-            BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()).map(Self::Expr),
-            RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()).map(Self::Expr),
-            BLOCK_EXPR => ast::BlockExpr::cast(node)
-                .filter(|it| it.is_standalone())
-                .map(Into::into)
-                .map(Self::Expr),
-            _ => ast::Expr::cast(node).map(Self::Expr),
+    fn from_expr(expr: ast::Expr) -> Option<Self> {
+        match expr {
+            ast::Expr::BreakExpr(it) => it.expr().map(Self::Expr),
+            ast::Expr::ReturnExpr(it) => it.expr().map(Self::Expr),
+            ast::Expr::BlockExpr(it) if !it.is_standalone() => None,
+            expr => Some(Self::Expr(expr)),
         }
     }
 
-    fn from_range(node: SyntaxNode, text_range: TextRange) -> Option<FunctionBody> {
-        let block = ast::BlockExpr::cast(node)?;
-        Some(Self::Span { parent: block, text_range })
+    fn from_range(parent: ast::BlockExpr, text_range: TextRange) -> FunctionBody {
+        Self::Span { parent, text_range }
     }
 
     fn indent_level(&self) -> IndentLevel {
@@ -592,44 +587,39 @@ struct OutlivedLocal {
 ///   ```
 ///
 fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<FunctionBody> {
-    // we have selected exactly the expr node
-    // wrap it before anything else
+    if let Some(stmt) = ast::Stmt::cast(node.clone()) {
+        return match stmt {
+            ast::Stmt::Item(_) => None,
+            ast::Stmt::ExprStmt(_) | ast::Stmt::LetStmt(_) => Some(FunctionBody::from_range(
+                node.parent().and_then(ast::BlockExpr::cast)?,
+                node.text_range(),
+            )),
+        };
+    }
+
+    let expr = ast::Expr::cast(node.clone())?;
+    // A node got selected fully
     if node.text_range() == selection_range {
-        let body = FunctionBody::from_whole_node(node.clone());
-        if body.is_some() {
-            return body;
-        }
+        return FunctionBody::from_expr(expr.clone());
     }
 
-    // we have selected a few statements in a block
-    // so covering_element returns the whole block
-    if node.kind() == BLOCK_EXPR {
+    // Covering element returned the parent block of one or multiple statements that have been selected
+    if let ast::Expr::BlockExpr(block) = expr {
         // Extract the full statements.
-        let statements_range = node
-            .children()
-            .filter(|c| selection_range.intersect(c.text_range()).is_some())
-            .fold(selection_range, |acc, c| acc.cover(c.text_range()));
-        let body = FunctionBody::from_range(node.clone(), statements_range);
-        if body.is_some() {
-            return body;
+        let mut statements_range = block
+            .statements()
+            .filter(|stmt| selection_range.intersect(stmt.syntax().text_range()).is_some())
+            .fold(selection_range, |acc, stmt| acc.cover(stmt.syntax().text_range()));
+        if let Some(e) = block
+            .tail_expr()
+            .filter(|it| selection_range.intersect(it.syntax().text_range()).is_some())
+        {
+            statements_range = statements_range.cover(e.syntax().text_range());
         }
+        return Some(FunctionBody::from_range(block, statements_range));
     }
 
-    // we have selected single statement
-    // `from_whole_node` failed because (let) statement is not and expression
-    // so we try to expand covering_element to parent and repeat the previous
-    if let Some(parent) = node.parent() {
-        if parent.kind() == BLOCK_EXPR {
-            // Extract the full statement.
-            let body = FunctionBody::from_range(parent, node.text_range());
-            if body.is_some() {
-                return body;
-            }
-        }
-    }
-
-    // select the closest containing expr (both ifs are used)
-    std::iter::once(node.clone()).chain(node.ancestors()).find_map(FunctionBody::from_whole_node)
+    node.ancestors().find_map(ast::Expr::cast).and_then(FunctionBody::from_expr)
 }
 
 /// list local variables that are referenced in `body`
@@ -3743,6 +3733,16 @@ async fn $0fun_name() {
 async fn some_function() {
 
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_does_not_extract_standalone_blocks() {
+        check_assist_not_applicable(
+            extract_function,
+            r#"
+fn main() $0{}$0
 "#,
         );
     }

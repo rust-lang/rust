@@ -229,7 +229,7 @@ fn rename_reference(
     let ident_kind = IdentifierKind::classify(new_name)?;
 
     if matches!(
-        def, // is target a lifetime?
+        def,
         Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
     ) {
         match ident_kind {
@@ -240,13 +240,13 @@ fn rename_reference(
             IdentifierKind::Lifetime => cov_mark::hit!(rename_lifetime),
         }
     } else {
-        match (ident_kind, def) {
-            (IdentifierKind::Lifetime, _) => {
+        match ident_kind {
+            IdentifierKind::Lifetime => {
                 cov_mark::hit!(rename_not_an_ident_ref);
                 bail!("Invalid name `{}`: not an identifier", new_name);
             }
-            (IdentifierKind::Ident, _) => cov_mark::hit!(rename_non_local),
-            (IdentifierKind::Underscore, _) => (),
+            IdentifierKind::Ident => cov_mark::hit!(rename_non_local),
+            IdentifierKind::Underscore => (),
         }
     }
 
@@ -325,6 +325,8 @@ pub fn source_edit_from_references(
 
 fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange, String)> {
     if let Some(_) = ast::RecordPatField::for_field_name(name) {
+        // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
+        // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
         if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
             return Some((
                 TextRange::empty(ident_pat.syntax().text_range().start()),
@@ -368,8 +370,6 @@ fn source_edit_from_name_ref(
                 None
             }
             // init shorthand
-            // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-            // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
             (None, Some(_)) if matches!(def, Definition::Field(_)) => {
                 cov_mark::hit!(test_rename_field_in_field_shorthand);
                 let s = name_ref.syntax().text_range().start();

@@ -617,22 +617,22 @@ fn main() {
     #[test]
     fn test_rename_struct_field() {
         check(
-            "j",
+            "foo",
             r#"
-struct Foo { i$0: i32 }
+struct Foo { field$0: i32 }
 
 impl Foo {
     fn new(i: i32) -> Self {
-        Self { i: i }
+        Self { field: i }
     }
 }
 "#,
             r#"
-struct Foo { j: i32 }
+struct Foo { foo: i32 }
 
 impl Foo {
     fn new(i: i32) -> Self {
-        Self { j: i }
+        Self { foo: i }
     }
 }
 "#,
@@ -643,22 +643,22 @@ impl Foo {
     fn test_rename_field_in_field_shorthand() {
         cov_mark::check!(test_rename_field_in_field_shorthand);
         check(
-            "j",
+            "field",
             r#"
-struct Foo { i$0: i32 }
+struct Foo { foo$0: i32 }
 
 impl Foo {
-    fn new(i: i32) -> Self {
-        Self { i }
+    fn new(foo: i32) -> Self {
+        Self { foo }
     }
 }
 "#,
             r#"
-struct Foo { j: i32 }
+struct Foo { field: i32 }
 
 impl Foo {
-    fn new(i: i32) -> Self {
-        Self { j: i }
+    fn new(foo: i32) -> Self {
+        Self { field: foo }
     }
 }
 "#,
