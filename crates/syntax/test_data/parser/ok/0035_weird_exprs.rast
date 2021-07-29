@@ -1093,7 +1093,7 @@ SOURCE_FILE@0..3813
                   MATCH_ARM_LIST@1853..1885
                     L_CURLY@1853..1854 "{"
                     WHITESPACE@1854..1855 " "
-                    MATCH_ARM@1855..1863
+                    MATCH_ARM@1855..1864
                       LITERAL_PAT@1855..1856
                         LITERAL@1855..1856
                           INT_NUMBER@1855..1856 "1"
@@ -1104,7 +1104,7 @@ SOURCE_FILE@0..3813
                         L_CURLY@1860..1861 "{"
                         WHITESPACE@1861..1862 " "
                         R_CURLY@1862..1863 "}"
-                    COMMA@1863..1864 ","
+                      COMMA@1863..1864 ","
                     WHITESPACE@1864..1865 " "
                     MATCH_ARM@1865..1883
                       WILDCARD_PAT@1865..1866

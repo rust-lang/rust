@@ -3,11 +3,10 @@ use std::convert::TryFrom;
 use ide_assists::utils::extract_trivial_expression;
 use itertools::Itertools;
 use syntax::{
-    algo::non_trivia_sibling,
     ast::{self, AstNode, AstToken, IsString},
-    Direction, NodeOrToken, SourceFile, SyntaxElement,
+    NodeOrToken, SourceFile, SyntaxElement,
     SyntaxKind::{self, USE_TREE, WHITESPACE},
-    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    SyntaxToken, TextRange, TextSize, T,
 };
 
 use text_edit::{TextEdit, TextEditBuilder};
@@ -204,13 +203,6 @@ fn remove_newline(
     edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
 }
 
-fn has_comma_after(node: &SyntaxNode) -> bool {
-    match non_trivia_sibling(node.clone().into(), Direction::Next) {
-        Some(n) => n.kind() == T![,],
-        _ => false,
-    }
-}
-
 fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
     let block_expr = ast::BlockExpr::cast(token.parent()?)?;
     if !block_expr.is_standalone() {
@@ -223,7 +215,7 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Op
 
     // Match block needs to have a comma after the block
     if let Some(match_arm) = block_expr.syntax().parent().and_then(ast::MatchArm::cast) {
-        if !has_comma_after(match_arm.syntax()) {
+        if match_arm.comma_token().is_none() {
             buf.push(',');
         }
     }

@@ -22,7 +22,7 @@ SOURCE_FILE@0..167
           MATCH_ARM_LIST@24..163
             L_CURLY@24..25 "{"
             WHITESPACE@25..34 "\n        "
-            MATCH_ARM@34..41
+            MATCH_ARM@34..42
               WILDCARD_PAT@34..35
                 UNDERSCORE@34..35 "_"
               WHITESPACE@35..36 " "
@@ -31,9 +31,9 @@ SOURCE_FILE@0..167
               TUPLE_EXPR@39..41
                 L_PAREN@39..40 "("
                 R_PAREN@40..41 ")"
-            COMMA@41..42 ","
+              COMMA@41..42 ","
             WHITESPACE@42..51 "\n        "
-            MATCH_ARM@51..83
+            MATCH_ARM@51..84
               WILDCARD_PAT@51..52
                 UNDERSCORE@51..52 "_"
               WHITESPACE@52..53 " "
@@ -70,9 +70,9 @@ SOURCE_FILE@0..167
               TUPLE_EXPR@81..83
                 L_PAREN@81..82 "("
                 R_PAREN@82..83 ")"
-            COMMA@83..84 ","
+              COMMA@83..84 ","
             WHITESPACE@84..93 "\n        "
-            MATCH_ARM@93..109
+            MATCH_ARM@93..110
               OR_PAT@93..98
                 IDENT_PAT@93..94
                   NAME@93..94
@@ -98,9 +98,9 @@ SOURCE_FILE@0..167
               TUPLE_EXPR@107..109
                 L_PAREN@107..108 "("
                 R_PAREN@108..109 ")"
-            COMMA@109..110 ","
+              COMMA@109..110 ","
             WHITESPACE@110..119 "\n        "
-            MATCH_ARM@119..137
+            MATCH_ARM@119..138
               PIPE@119..120 "|"
               WHITESPACE@120..121 " "
               OR_PAT@121..126
@@ -128,9 +128,9 @@ SOURCE_FILE@0..167
               TUPLE_EXPR@135..137
                 L_PAREN@135..136 "("
                 R_PAREN@136..137 ")"
-            COMMA@137..138 ","
+              COMMA@137..138 ","
             WHITESPACE@138..147 "\n        "
-            MATCH_ARM@147..156
+            MATCH_ARM@147..157
               PIPE@147..148 "|"
               WHITESPACE@148..149 " "
               IDENT_PAT@149..150
@@ -142,7 +142,7 @@ SOURCE_FILE@0..167
               TUPLE_EXPR@154..156
                 L_PAREN@154..155 "("
                 R_PAREN@155..156 ")"
-            COMMA@156..157 ","
+              COMMA@156..157 ","
             WHITESPACE@157..162 "\n    "
             R_CURLY@162..163 "}"
         SEMICOLON@163..164 ";"

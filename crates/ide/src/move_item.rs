@@ -205,16 +205,16 @@ fn main() {
 }
             "#,
             expect![[r#"
-fn main() {
-    match true {
-        false =>$0 {
-            println!("Test");
-        },
-        true => {
-            println!("Hello, world");
-        }
-    };
-}
+                fn main() {
+                    match true {
+                        false =>$0 {
+                            println!("Test");
+                        }
+                        true => {
+                            println!("Hello, world");
+                        },
+                    };
+                }
             "#]],
             Direction::Up,
         );
@@ -236,16 +236,16 @@ fn main() {
 }
             "#,
             expect![[r#"
-fn main() {
-    match true {
-        false => {
-            println!("Test");
-        },
-        true =>$0 {
-            println!("Hello, world");
-        }
-    };
-}
+                fn main() {
+                    match true {
+                        false => {
+                            println!("Test");
+                        }
+                        true =>$0 {
+                            println!("Hello, world");
+                        },
+                    };
+                }
             "#]],
             Direction::Down,
         );
