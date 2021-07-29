@@ -2,6 +2,7 @@ use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast::unwrap_or;
+use rustc_ast::NestedMetaItem;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
@@ -247,44 +248,18 @@ impl<'s> LintLevelsBuilder<'s> {
 
             // Before processing the lint names, look for a reason (RFC 2383)
             // at the end.
-            let mut reason = None;
             let tail_li = &metas[metas.len() - 1];
-            if let Some(item) = tail_li.meta_item() {
-                match item.kind {
-                    ast::MetaItemKind::Word => {} // actual lint names handled later
-                    ast::MetaItemKind::NameValue(ref name_value) => {
-                        if item.path == sym::reason {
-                            // FIXME (#55112): issue unused-attributes lint if we thereby
-                            // don't have any lint names (`#[level(reason = "foo")]`)
-                            if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                                if !self.sess.features_untracked().lint_reasons {
-                                    feature_err(
-                                        &self.sess.parse_sess,
-                                        sym::lint_reasons,
-                                        item.span,
-                                        "lint reasons are experimental",
-                                    )
-                                    .emit();
-                                }
-                                reason = Some(rationale);
-                            } else {
-                                bad_attr(name_value.span)
-                                    .span_label(name_value.span, "reason must be a string literal")
-                                    .emit();
-                            }
-                            // found reason, reslice meta list to exclude it
-                            metas.pop().unwrap();
-                        } else {
-                            bad_attr(item.span)
-                                .span_label(item.span, "bad attribute argument")
-                                .emit();
-                        }
-                    }
-                    ast::MetaItemKind::List(_) => {
-                        bad_attr(item.span).span_label(item.span, "bad attribute argument").emit();
-                    }
+            let reason = match try_parse_reason_metadata(tail_li, self.sess) {
+                ParseLintReasonResult::Ok(reason) => {
+                    metas.pop().unwrap();
+                    Some(reason)
                 }
-            }
+                ParseLintReasonResult::MalformedReason => {
+                    metas.pop().unwrap();
+                    None
+                }
+                ParseLintReasonResult::NotFound => None,
+            };
 
             for li in metas {
                 let sp = li.span();
@@ -566,6 +541,57 @@ impl<'s> LintLevelsBuilder<'s> {
     pub fn build_map(self) -> LintLevelMap {
         LintLevelMap { sets: self.sets, id_to_set: self.id_to_set }
     }
+}
+
+pub(crate) enum ParseLintReasonResult {
+    /// The reason was found and is returned as part of this value.
+    Ok(Symbol),
+    /// Indicates that the reason field was found but was malformed.
+    MalformedReason,
+    /// The checked item is not a reason field.
+    NotFound,
+}
+
+pub(crate) fn try_parse_reason_metadata(
+    item: &NestedMetaItem,
+    sess: &Session,
+) -> ParseLintReasonResult {
+    let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
+    if let Some(item) = item.meta_item() {
+        match item.kind {
+            ast::MetaItemKind::Word => {} // actual lint names handled later
+            ast::MetaItemKind::NameValue(ref name_value) => {
+                if item.path == sym::reason {
+                    // FIXME (#55112): issue unused-attributes lint if we thereby
+                    // don't have any lint names (`#[level(reason = "foo")]`)
+                    if let ast::LitKind::Str(rationale, _) = name_value.kind {
+                        if !sess.features_untracked().lint_reasons {
+                            feature_err(
+                                &sess.parse_sess,
+                                sym::lint_reasons,
+                                item.span,
+                                "lint reasons are experimental",
+                            )
+                            .emit();
+                        }
+                        return ParseLintReasonResult::Ok(rationale);
+                    } else {
+                        bad_attr(name_value.span)
+                            .span_label(name_value.span, "reason must be a string literal")
+                            .emit();
+                        return ParseLintReasonResult::MalformedReason;
+                    }
+                } else {
+                    bad_attr(item.span).span_label(item.span, "bad attribute argument").emit();
+                }
+            }
+            ast::MetaItemKind::List(_) => {
+                bad_attr(item.span).span_label(item.span, "bad attribute argument").emit();
+            }
+        }
+    }
+
+    ParseLintReasonResult::NotFound
 }
 
 pub fn is_known_lint_tool(m_item: Symbol, sess: &Session, attrs: &[ast::Attribute]) -> bool {
