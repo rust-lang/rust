@@ -779,6 +779,7 @@ void CanonicalizeLoops(Function *F, FunctionAnalysisManager &FAM) {
   PA.preserve<PostDominatorTreeAnalysis>();
   PA.preserve<TypeBasedAA>();
   PA.preserve<BasicAA>();
+  PA.preserve<ScopedNoAliasAA>();
   FAM.invalidate(*F, PA);
 }
 
@@ -801,6 +802,8 @@ PreProcessCache::PreProcessCache() {
   FAM.registerPass([] { return BasicAA(); });
   MAM.registerPass([] { return GlobalsAA(); });
 
+  FAM.registerPass([] { return ScopedNoAliasAA(); });
+
   // SCEVAA causes some breakage/segfaults
   // disable for now, consider enabling in future
   // FAM.registerPass([] { return SCEVAA(); });
@@ -813,6 +816,7 @@ PreProcessCache::PreProcessCache() {
     AM.registerFunctionAnalysis<BasicAA>();
     AM.registerFunctionAnalysis<TypeBasedAA>();
     AM.registerModuleAnalysis<GlobalsAA>();
+    AM.registerFunctionAnalysis<ScopedNoAliasAA>();
 
     // broken for different reasons
     // AM.registerFunctionAnalysis<SCEVAA>();
@@ -956,6 +960,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     AAResults AA2(FAM.getResult<TargetLibraryAnalysis>(*NewF));
     AA2.addAAResult(FAM.getResult<BasicAA>(*NewF));
     AA2.addAAResult(FAM.getResult<TypeBasedAA>(*NewF));
+    AA2.addAAResult(FAM.getResult<ScopedNoAliasAA>(*NewF));
 
     for (auto &g : NewF->getParent()->globals()) {
       bool inF = false;
@@ -1282,6 +1287,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     PA.preserve<PostDominatorTreeAnalysis>();
     PA.preserve<TypeBasedAA>();
     PA.preserve<BasicAA>();
+    PA.preserve<ScopedNoAliasAA>();
     PA.preserve<ScalarEvolutionAnalysis>();
 #if LLVM_VERSION_MAJOR > 6
     PA.preserve<PhiValuesAnalysis>();
@@ -1378,6 +1384,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     PA.preserve<PostDominatorTreeAnalysis>();
     PA.preserve<TypeBasedAA>();
     PA.preserve<BasicAA>();
+    PA.preserve<ScopedNoAliasAA>();
     PA.preserve<ScalarEvolutionAnalysis>();
 #if LLVM_VERSION_MAJOR > 6
     PA.preserve<PhiValuesAnalysis>();
