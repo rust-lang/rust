@@ -1,4 +1,3 @@
-mod append_instead_of_extend;
 mod bind_instead_of_map;
 mod bytes_nth;
 mod chars_cmp;
@@ -12,6 +11,7 @@ mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
 mod expect_fun_call;
 mod expect_used;
+mod extend_with_drain;
 mod filetype_is_file;
 mod filter_map;
 mod filter_map_identity;
@@ -1068,7 +1068,7 @@ declare_clippy_lint! {
     /// // Good
     /// a.append(&mut b);
     /// ```
-    pub APPEND_INSTEAD_OF_EXTEND,
+    pub EXTEND_WITH_DRAIN,
     perf,
     "using vec.append(&mut vec) to move the full range of a vecor to another"
 }
@@ -1821,7 +1821,7 @@ impl_lint_pass!(Methods => [
     IMPLICIT_CLONE,
     SUSPICIOUS_SPLITN,
     MANUAL_STR_REPEAT,
-    APPEND_INSTEAD_OF_EXTEND
+    EXTEND_WITH_DRAIN
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2085,7 +2085,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("extend", [arg]) => {
                 string_extend_chars::check(cx, expr, recv, arg);
-                append_instead_of_extend::check(cx, expr, recv, arg);
+                extend_with_drain::check(cx, expr, recv, arg);
             },
             ("filter_map", [arg]) => {
                 unnecessary_filter_map::check(cx, expr, arg);

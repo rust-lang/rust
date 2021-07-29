@@ -32,14 +32,14 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    pub SELF_NAMED_CONSTRUCTOR,
+    pub SELF_NAMED_CONSTRUCTORS,
     style,
     "method should not have the same name as the type it is implemented for"
 }
 
-declare_lint_pass!(SelfNamedConstructor => [SELF_NAMED_CONSTRUCTOR]);
+declare_lint_pass!(SelfNamedConstructors => [SELF_NAMED_CONSTRUCTORS]);
 
-impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructor {
+impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         match impl_item.kind {
             ImplItemKind::Fn(ref sig, _) => {
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructor {
             then {
                 span_lint(
                     cx,
-                    SELF_NAMED_CONSTRUCTOR,
+                    SELF_NAMED_CONSTRUCTORS,
                     impl_item.span,
                     &format!("constructor `{}` has the same name as the type", impl_item.ident.name),
                 );
