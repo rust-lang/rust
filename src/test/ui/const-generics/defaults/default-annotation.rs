@@ -13,7 +13,6 @@ pub struct ConstDefaultUnstable<const N: usize = 3>;
 
 #[stable(feature = "const_default_unstable", since="none")]
 pub struct ConstDefaultStable<const N: usize = {
-    #[stable(feature = "const_default_unstable_val", since="none")]
     3
 }>;
 

@@ -2281,7 +2281,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     synthetic: param
                         .attrs
                         .iter()
-                        .filter(|attr| self.sess.check_name(attr, sym::rustc_synthetic))
+                        .filter(|attr| attr.has_name(sym::rustc_synthetic))
                         .map(|_| hir::SyntheticTyParamKind::FromAttr)
                         .next(),
                 };

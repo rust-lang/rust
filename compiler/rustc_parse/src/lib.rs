@@ -13,9 +13,10 @@ use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_ast::AstLike;
 use rustc_ast::Attribute;
+use rustc_ast::{AttrItem, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, FatalError, Level, PResult};
+use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -323,4 +324,45 @@ pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
     let source = pprust::nonterminal_to_string(nt);
     let filename = FileName::macro_expansion_source_code(&source);
     parse_stream_from_source_str(filename, source, sess, Some(nt.span()))
+}
+
+pub fn parse_cfg_attr(
+    attr: &Attribute,
+    parse_sess: &ParseSess,
+) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
+    match attr.get_normal_item().args {
+        ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
+            let msg = "wrong `cfg_attr` delimiters";
+            crate::validate_attr::check_meta_bad_delim(parse_sess, dspan, delim, msg);
+            match parse_in(parse_sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
+                Ok(r) => return Some(r),
+                Err(mut e) => {
+                    e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                        .note(CFG_ATTR_NOTE_REF)
+                        .emit();
+                }
+            }
+        }
+        _ => error_malformed_cfg_attr_missing(attr.span, parse_sess),
+    }
+    None
+}
+
+const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
+const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
+    <https://doc.rust-lang.org/reference/conditional-compilation.html\
+    #the-cfg_attr-attribute>";
+
+fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
+    parse_sess
+        .span_diagnostic
+        .struct_span_err(span, "malformed `cfg_attr` attribute input")
+        .span_suggestion(
+            span,
+            "missing condition and attribute",
+            CFG_ATTR_GRAMMAR_HELP.to_string(),
+            Applicability::HasPlaceholders,
+        )
+        .note(CFG_ATTR_NOTE_REF)
+        .emit();
 }

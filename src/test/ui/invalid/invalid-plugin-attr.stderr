@@ -6,7 +6,7 @@ LL | #[plugin(bla)]
    |
    = note: `#[warn(deprecated)]` on by default
 
-error: unused attribute
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/invalid-plugin-attr.rs:4:1
    |
 LL | #[plugin(bla)]
@@ -18,11 +18,5 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/invalid-plugin-attr.rs:4:1
-   |
-LL | #[plugin(bla)]
-   | ^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 

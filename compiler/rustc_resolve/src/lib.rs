@@ -3382,9 +3382,8 @@ impl<'a> Resolver<'a> {
 
                 let parse_attrs = || {
                     let attrs = self.cstore().item_attrs(def_id, self.session);
-                    let attr = attrs
-                        .iter()
-                        .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                    let attr =
+                        attrs.iter().find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
                     let mut ret = vec![];
                     for meta in attr.meta_item_list()? {
                         match meta.literal()?.kind {

@@ -535,7 +535,7 @@ pub fn compile_declarative_macro(
 
     valid &= macro_check::check_meta_variables(&sess.parse_sess, def.id, def.span, &lhses, &rhses);
 
-    let (transparency, transparency_error) = attr::find_transparency(sess, &def.attrs, macro_rules);
+    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
             diag.span_err(span, &format!("unknown macro transparency: `{}`", value))

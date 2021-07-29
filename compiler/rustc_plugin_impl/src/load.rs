@@ -32,7 +32,7 @@ pub fn load_plugins(
     let mut plugins = Vec::new();
 
     for attr in &krate.attrs {
-        if !sess.check_name(attr, sym::plugin) {
+        if !attr.has_name(sym::plugin) {
             continue;
         }
 

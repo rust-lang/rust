@@ -148,7 +148,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         if self.tcx.features().staged_api {
-            if let Some(a) = attrs.iter().find(|a| self.tcx.sess.check_name(a, sym::deprecated)) {
+            if let Some(a) = attrs.iter().find(|a| a.has_name(sym::deprecated)) {
                 self.tcx
                     .sess
                     .struct_span_err(a.span, "`#[deprecated]` cannot be used in staged API")
@@ -350,7 +350,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         for attr in attrs {
             let name = attr.name_or_empty();
             if unstable_attrs.contains(&name) {
-                self.tcx.sess.mark_attr_used(attr);
                 struct_span_err!(
                     self.tcx.sess,
                     attr.span,

@@ -48,7 +48,7 @@ pub fn get_recursion_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {
 
 fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: usize) -> Limit {
     for attr in krate_attrs {
-        if !sess.check_name(attr, name) {
+        if !attr.has_name(name) {
             continue;
         }
 

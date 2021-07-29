@@ -236,8 +236,6 @@ impl<'s> LintLevelsBuilder<'s> {
                 Some(lvl) => lvl,
             };
 
-            self.sess.mark_attr_used(attr);
-
             let mut metas = unwrap_or!(attr.meta_item_list(), continue);
 
             if metas.is_empty() {

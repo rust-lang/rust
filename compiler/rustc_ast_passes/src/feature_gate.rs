@@ -268,7 +268,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_fn!(self, has_feature, attr.span, name, descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
-        if self.sess.check_name(attr, sym::doc) {
+        if attr.has_name(sym::doc) {
             for nested_meta in attr.meta_item_list().unwrap_or_default() {
                 macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
                     $(if nested_meta.has_name(sym::$name) {
@@ -287,7 +287,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         // Check for unstable modifiers on `#[link(..)]` attribute
-        if self.sess.check_name(attr, sym::link) {
+        if attr.has_name(sym::link) {
             for nested_meta in attr.meta_item_list().unwrap_or_default() {
                 if nested_meta.has_name(sym::modifiers) {
                     gate_feature_post!(
@@ -709,7 +709,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
 
     if !sess.opts.unstable_features.is_nightly_build() {
         let lang_features = &sess.features_untracked().declared_lang_features;
-        for attr in krate.attrs.iter().filter(|attr| sess.check_name(attr, sym::feature)) {
+        for attr in krate.attrs.iter().filter(|attr| attr.has_name(sym::feature)) {
             let mut err = struct_span_err!(
                 sess.parse_sess.span_diagnostic,
                 attr.span,

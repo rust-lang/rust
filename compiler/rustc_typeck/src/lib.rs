@@ -291,7 +291,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     for attr in tcx.get_attrs(main_def_id) {
-        if tcx.sess.check_name(attr, sym::track_caller) {
+        if attr.has_name(sym::track_caller) {
             tcx.sess
                 .struct_span_err(
                     attr.span,
@@ -405,7 +405,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 
                     let attrs = tcx.hir().attrs(start_id);
                     for attr in attrs {
-                        if tcx.sess.check_name(attr, sym::track_caller) {
+                        if attr.has_name(sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
                                     attr.span,

@@ -188,8 +188,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let attrs = attrs
                         .into_iter()
                         .filter(|attr| {
-                            !self.sess.check_name(attr, sym::rustc_main)
-                                && !self.sess.check_name(attr, sym::start)
+                            !attr.has_name(sym::rustc_main) && !attr.has_name(sym::start)
                         })
                         .chain(iter::once(allow_dead_code))
                         .collect();
