@@ -967,6 +967,34 @@ pub(crate) mod builtin {
         ($($e:ident),+ $(,)?) => {{ /* compiler built-in */ }};
     }
 
+    /// Concatenates literals into a byte slice.
+    ///
+    /// This macro takes any number of comma-separated literals, and concatenates them all into
+    /// one, yielding an expression of type `&[u8, _]`, which represents all of the literals
+    /// concatenated left-to-right. The literals passed can be any combination of:
+    ///
+    /// - byte literals (`b'r'`)
+    /// - byte strings (`b"Rust"`)
+    /// - arrays of bytes/numbers (`[b'A', 66, b'C']`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(concat_bytes)]
+    ///
+    /// # fn main() {
+    /// let s: &[u8; 6] = concat_bytes!(b'A', b"BC", [68, b'E', 70]);
+    /// assert_eq!(s, b"ABCDEF");
+    /// # }
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "concat_bytes", issue = "87555")]
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! concat_bytes {
+        ($($e:literal),+ $(,)?) => {{ /* compiler built-in */ }};
+    }
+
     /// Concatenates literals into a static string slice.
     ///
     /// This macro takes any number of comma-separated literals, yielding an
