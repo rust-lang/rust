@@ -542,7 +542,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.55"
+version = "0.1.56"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_lints",
@@ -575,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.55"
+version = "0.1.56"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_utils",
@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.55"
+version = "0.1.56"
 dependencies = [
  "if_chain",
  "itertools 0.9.0",
