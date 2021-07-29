@@ -19,7 +19,7 @@ use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::{MacroKind, SyntaxContext};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{BytePos, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use pulldown_cmark::LinkType;
@@ -1193,7 +1193,7 @@ impl LinkCollector<'_, '_> {
         let report_mismatch = |specified: Disambiguator, resolved: Disambiguator| {
             // The resolved item did not match the disambiguator; give a better error than 'not found'
             let msg = format!("incompatible link kind for `{}`", path_str);
-            let callback = |diag: &mut DiagnosticBuilder<'_>, sp| {
+            let callback = |diag: &mut DiagnosticBuilder<'_>, sp: Option<rustc_span::Span>| {
                 let note = format!(
                     "this link resolved to {} {}, which is not {} {}",
                     resolved.article(),
@@ -1201,8 +1201,12 @@ impl LinkCollector<'_, '_> {
                     specified.article(),
                     specified.descr()
                 );
-                diag.note(&note);
-                suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
+                if let Some(sp) = sp {
+                    diag.span_label(sp, &note);
+                } else {
+                    diag.note(&note);
+                }
+                suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
             };
             report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
         };
@@ -1699,6 +1703,51 @@ impl Suggestion {
             Self::RemoveDisambiguator => path_str.into(),
         }
     }
+
+    fn as_help_span(
+        &self,
+        path_str: &str,
+        ori_link: &str,
+        sp: rustc_span::Span,
+    ) -> Vec<(rustc_span::Span, String)> {
+        let inner_sp = match ori_link.find('(') {
+            Some(index) => sp.with_hi(sp.lo() + BytePos(index as _)),
+            None => sp,
+        };
+        let inner_sp = match ori_link.find('!') {
+            Some(index) => inner_sp.with_hi(inner_sp.lo() + BytePos(index as _)),
+            None => inner_sp,
+        };
+        let inner_sp = match ori_link.find('@') {
+            Some(index) => inner_sp.with_lo(inner_sp.lo() + BytePos(index as u32 + 1)),
+            None => inner_sp,
+        };
+        match self {
+            Self::Prefix(prefix) => {
+                // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
+                let mut sugg = vec![(sp.with_hi(inner_sp.lo()), format!("{}@", prefix))];
+                if sp.hi() != inner_sp.hi() {
+                    sugg.push((inner_sp.shrink_to_hi().with_hi(sp.hi()), String::new()));
+                }
+                sugg
+            }
+            Self::Function => {
+                let mut sugg = vec![(inner_sp.shrink_to_hi().with_hi(sp.hi()), "()".to_string())];
+                if sp.lo() != inner_sp.lo() {
+                    sugg.push((inner_sp.shrink_to_lo().with_lo(sp.lo()), String::new()));
+                }
+                sugg
+            }
+            Self::Macro => {
+                let mut sugg = vec![(inner_sp.shrink_to_hi(), "!".to_string())];
+                if sp.lo() != inner_sp.lo() {
+                    sugg.push((inner_sp.shrink_to_lo().with_lo(sp.lo()), String::new()));
+                }
+                sugg
+            }
+            Self::RemoveDisambiguator => return vec![(sp, path_str.into())],
+        }
+    }
 }
 
 /// Reports a diagnostic for an intra-doc link.
@@ -1732,7 +1781,16 @@ fn report_diagnostic(
     tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs);
+        let span =
+            super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs).map(|sp| {
+                if dox.bytes().nth(link_range.start) == Some(b'`')
+                    && dox.bytes().nth(link_range.end - 1) == Some(b'`')
+                {
+                    sp.with_lo(sp.lo() + BytePos(1)).with_hi(sp.hi() - BytePos(1))
+                } else {
+                    sp
+                }
+            });
 
         if let Some(sp) = span {
             diag.set_span(sp);
@@ -1938,9 +1996,8 @@ fn resolution_failure(
                                 disambiguator,
                                 diag,
                                 path_str,
-                                diag_info.dox,
+                                diag_info.ori_link,
                                 sp,
-                                &diag_info.link_range,
                             )
                         }
 
@@ -2007,7 +2064,7 @@ fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: A
             if let Some((fragment_offset, _)) =
                 diag_info.ori_link.char_indices().filter(|(_, x)| *x == '#').nth(anchor_idx)
             {
-                sp = sp.with_lo(sp.lo() + rustc_span::BytePos(fragment_offset as _));
+                sp = sp.with_lo(sp.lo() + BytePos(fragment_offset as _));
             }
             diag.span_label(sp, "invalid anchor");
         }
@@ -2075,14 +2132,7 @@ fn ambiguity_error(
 
         for res in candidates {
             let disambiguator = Disambiguator::from_res(res);
-            suggest_disambiguator(
-                disambiguator,
-                diag,
-                path_str,
-                diag_info.dox,
-                sp,
-                &diag_info.link_range,
-            );
+            suggest_disambiguator(disambiguator, diag, path_str, diag_info.ori_link, sp);
         }
     });
 }
@@ -2093,21 +2143,20 @@ fn suggest_disambiguator(
     disambiguator: Disambiguator,
     diag: &mut DiagnosticBuilder<'_>,
     path_str: &str,
-    dox: &str,
+    ori_link: &str,
     sp: Option<rustc_span::Span>,
-    link_range: &Range<usize>,
 ) {
     let suggestion = disambiguator.suggestion();
     let help = format!("to link to the {}, {}", disambiguator.descr(), suggestion.descr());
 
     if let Some(sp) = sp {
-        let msg = if dox.bytes().nth(link_range.start) == Some(b'`') {
-            format!("`{}`", suggestion.as_help(path_str))
+        let mut spans = suggestion.as_help_span(path_str, ori_link, sp);
+        if spans.len() > 1 {
+            diag.multipart_suggestion(&help, spans, Applicability::MaybeIncorrect);
         } else {
-            suggestion.as_help(path_str)
-        };
-
-        diag.span_suggestion(sp, &help, msg, Applicability::MaybeIncorrect);
+            let (sp, suggestion_text) = spans.pop().unwrap();
+            diag.span_suggestion_verbose(sp, &help, suggestion_text, Applicability::MaybeIncorrect);
+        }
     } else {
         diag.help(&format!("{}: {}", help, suggestion.as_help(path_str)));
     }
