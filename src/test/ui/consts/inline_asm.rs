@@ -1,6 +1,6 @@
-#![feature(llvm_asm)]
+#![feature(asm)]
 
-const _: () = unsafe { llvm_asm!("nop") };
+const _: () = unsafe { asm!("nop") };
 //~^ ERROR inline assembly
 
 fn main() {}

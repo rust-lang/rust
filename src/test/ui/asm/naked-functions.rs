@@ -4,6 +4,7 @@
 #![feature(naked_functions)]
 #![feature(or_patterns)]
 #![crate_type = "lib"]
+#![allow(deprecated)] // llvm_asm!
 
 #[repr(C)]
 pub struct P { x: u8, y: u16 }

@@ -2,6 +2,7 @@
 // only-x86_64
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 fn main() {
     unsafe {

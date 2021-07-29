@@ -9,6 +9,7 @@
 // dont-check-compiler-stdout - don't check for any AST change.
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 enum V {
     A(i32),

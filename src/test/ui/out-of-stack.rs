@@ -2,6 +2,7 @@
 
 #![allow(unused_must_use)]
 #![allow(unconditional_recursion)]
+#![allow(deprecated)] // llvm_asm!
 // ignore-android: FIXME (#20004)
 // ignore-emscripten no processes
 // ignore-sgx no processes

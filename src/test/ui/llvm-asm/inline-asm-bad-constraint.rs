@@ -4,6 +4,7 @@
 // ignore-emscripten
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 extern "C" {
     fn foo(a: usize);

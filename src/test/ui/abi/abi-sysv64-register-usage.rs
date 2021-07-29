@@ -7,6 +7,7 @@
 // ignore-aarch64
 
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 
 #[cfg(target_arch = "x86_64")]
 pub extern "sysv64" fn all_the_registers(rdi: i64, rsi: i64, rdx: i64,

@@ -1,4 +1,5 @@
 #![feature(llvm_asm)]
+#![allow(deprecated)] // llvm_asm!
 // compile-flags: -Ccodegen-units=1
 // build-fail
 // only-x86_64

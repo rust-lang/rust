@@ -1,5 +1,5 @@
 error[E0668]: malformed inline assembly
-  --> $DIR/issue-62046.rs:8:9
+  --> $DIR/issue-62046.rs:9:9
    |
 LL |         llvm_asm!("nop" : "+r"("r15"));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
