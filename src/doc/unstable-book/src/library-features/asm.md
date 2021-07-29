@@ -842,6 +842,7 @@ The compiler performs some additional checks on options:
     - Floating-point status (`FPSR` register).
   - RISC-V
     - Floating-point exception flags in `fcsr` (`fflags`).
+    - Vector extension state (`vtype`, `vl`, `vcsr`).
 - On x86, the direction flag (DF in `EFLAGS`) is clear on entry to an asm block and must be clear on exit.
   - Behavior is undefined if the direction flag is set on exiting an asm block.
 - The requirement of restoring the stack pointer and non-output registers to their original value only applies when exiting an `asm!` block.
