@@ -54,6 +54,7 @@ macro_rules! conversions {
         $(
             impl $ty {
                 #[inline(always)]
+                #[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
                 const fn v128(self) -> v128 {
                     unsafe { mem::transmute(self) }
                 }
@@ -813,24 +814,10 @@ pub const fn i8x16(
     a14: i8,
     a15: i8,
 ) -> v128 {
-    v128(
-        (a0 as u8 as i32)
-            | ((a1 as u8 as i32) << 8)
-            | ((a2 as u8 as i32) << 16)
-            | ((a3 as u8 as i32) << 24),
-        (a4 as u8 as i32)
-            | ((a5 as u8 as i32) << 8)
-            | ((a6 as u8 as i32) << 16)
-            | ((a7 as u8 as i32) << 24),
-        (a8 as u8 as i32)
-            | ((a9 as u8 as i32) << 8)
-            | ((a10 as u8 as i32) << 16)
-            | ((a11 as u8 as i32) << 24),
-        (a12 as u8 as i32)
-            | ((a13 as u8 as i32) << 8)
-            | ((a14 as u8 as i32) << 16)
-            | ((a15 as u8 as i32) << 24),
+    simd::i8x16(
+        a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
     )
+    .v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -860,10 +847,10 @@ pub const fn u8x16(
     a14: u8,
     a15: u8,
 ) -> v128 {
-    i8x16(
-        a0 as i8, a1 as i8, a2 as i8, a3 as i8, a4 as i8, a5 as i8, a6 as i8, a7 as i8, a8 as i8,
-        a9 as i8, a10 as i8, a11 as i8, a12 as i8, a13 as i8, a14 as i8, a15 as i8,
+    simd::u8x16(
+        a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
     )
+    .v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -890,12 +877,7 @@ pub const fn u8x16(
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn i16x8(a0: i16, a1: i16, a2: i16, a3: i16, a4: i16, a5: i16, a6: i16, a7: i16) -> v128 {
-    v128(
-        (a0 as u16 as i32) | ((a1 as i32) << 16),
-        (a2 as u16 as i32) | ((a3 as i32) << 16),
-        (a4 as u16 as i32) | ((a5 as i32) << 16),
-        (a6 as u16 as i32) | ((a7 as i32) << 16),
-    )
+    simd::i16x8(a0, a1, a2, a3, a4, a5, a6, a7).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -908,9 +890,7 @@ pub const fn i16x8(a0: i16, a1: i16, a2: i16, a3: i16, a4: i16, a5: i16, a6: i16
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn u16x8(a0: u16, a1: u16, a2: u16, a3: u16, a4: u16, a5: u16, a6: u16, a7: u16) -> v128 {
-    i16x8(
-        a0 as i16, a1 as i16, a2 as i16, a3 as i16, a4 as i16, a5 as i16, a6 as i16, a7 as i16,
-    )
+    simd::u16x8(a0, a1, a2, a3, a4, a5, a6, a7).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -924,7 +904,7 @@ pub const fn u16x8(a0: u16, a1: u16, a2: u16, a3: u16, a4: u16, a5: u16, a6: u16
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn i32x4(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
-    v128(a0, a1, a2, a3)
+    simd::i32x4(a0, a1, a2, a3).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -937,7 +917,7 @@ pub const fn i32x4(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn u32x4(a0: u32, a1: u32, a2: u32, a3: u32) -> v128 {
-    i32x4(a0 as i32, a1 as i32, a2 as i32, a3 as i32)
+    simd::u32x4(a0, a1, a2, a3).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -951,7 +931,7 @@ pub const fn u32x4(a0: u32, a1: u32, a2: u32, a3: u32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn i64x2(a0: i64, a1: i64) -> v128 {
-    v128(a0 as i32, (a0 >> 32) as i32, a1 as i32, (a1 >> 32) as i32)
+    simd::i64x2(a0, a1).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -964,7 +944,7 @@ pub const fn i64x2(a0: i64, a1: i64) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn u64x2(a0: u64, a1: u64) -> v128 {
-    i64x2(a0 as i64, a1 as i64)
+    simd::u64x2(a0, a1).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -976,7 +956,7 @@ pub const fn u64x2(a0: u64, a1: u64) -> v128 {
 #[cfg_attr(test, assert_instr(v128.const, a0 = 0.0, a1 = 1.0, a2 = 2.0, a3 = 3.0))]
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
-#[rustc_const_unstable(feature = "wasm_simd_const", issue = "72447")]
+#[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
 pub const fn f32x4(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
     simd::f32x4(a0, a1, a2, a3).v128()
 }
@@ -990,7 +970,7 @@ pub const fn f32x4(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
 #[cfg_attr(test, assert_instr(v128.const, a0 = 0.0, a1 = 1.0))]
 #[doc(alias("v128.const"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
-#[rustc_const_unstable(feature = "wasm_simd_const", issue = "72447")]
+#[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
 pub const fn f64x2(a0: f64, a1: f64) -> v128 {
     simd::f64x2(a0, a1).v128()
 }
