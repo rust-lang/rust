@@ -636,7 +636,7 @@ impl GlobalState {
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
                     apply_document_changes(&mut text, params.content_changes);
 
-                    vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
+                    vfs.set_file_contents(path, Some(text.into_bytes()));
                 }
                 Ok(())
             })?

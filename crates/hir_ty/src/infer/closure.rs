@@ -75,10 +75,7 @@ impl InferenceContext<'_> {
                                     safety: chalk_ir::Safety::Safe,
                                     variadic: false,
                                 },
-                                substitution: FnSubst(Substitution::from_iter(
-                                    &Interner,
-                                    sig_tys.clone(),
-                                )),
+                                substitution: FnSubst(Substitution::from_iter(&Interner, sig_tys)),
                             });
                         }
                     }
