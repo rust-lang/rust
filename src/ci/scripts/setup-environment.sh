@@ -6,6 +6,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+echo "Booray"
+
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Since matrix variables are readonly in Azure Pipelines, we take
