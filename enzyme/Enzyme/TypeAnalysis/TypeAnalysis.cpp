@@ -492,8 +492,14 @@ void TypeAnalyzer::addToWorkList(Value *Val) {
       llvm::errs() << "inst: " << *I << "\n";
     }
     assert(fntypeinfo.Function == I->getParent()->getParent());
-  } else if (auto Arg = dyn_cast<Argument>(Val))
+  } else if (auto Arg = dyn_cast<Argument>(Val)) {
+    if (fntypeinfo.Function != Arg->getParent()) {
+      llvm::errs() << "fn: " << *fntypeinfo.Function << "\n";
+      llvm::errs() << "argparen: " << *Arg->getParent() << "\n";
+      llvm::errs() << "val: " << *Arg << "\n";
+    }
     assert(fntypeinfo.Function == Arg->getParent());
+  }
 
   // Add to workList
   workList.insert(Val);
@@ -1951,44 +1957,110 @@ void TypeAnalyzer::dump() {
   llvm::errs() << "</analysis>\n";
 }
 
-void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
-  if (I.getOpcode() == BinaryOperator::FAdd ||
-      I.getOpcode() == BinaryOperator::FSub ||
-      I.getOpcode() == BinaryOperator::FMul ||
-      I.getOpcode() == BinaryOperator::FDiv ||
-      I.getOpcode() == BinaryOperator::FRem) {
-    auto ty = I.getType()->getScalarType();
+void TypeAnalyzer::visitAtomicRMWInst(llvm::AtomicRMWInst &I) {
+  Value *Args[2] = {nullptr, I.getOperand(1)};
+  TypeTree Ret = getAnalysis(&I);
+  auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
+  auto LoadSize = (DL.getTypeSizeInBits(I.getType()) + 7) / 8;
+  TypeTree LHS = getAnalysis(I.getOperand(0)).Lookup(LoadSize, DL);
+  TypeTree RHS = getAnalysis(I.getOperand(1));
+
+  switch (I.getOperation()) {
+  case AtomicRMWInst::Xchg: {
+    auto tmp = LHS;
+    LHS = RHS;
+    RHS = tmp;
+    break;
+  }
+  case AtomicRMWInst::Add:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::Add, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::Sub:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::Sub, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::And:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::And, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::Or:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::Or, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::Xor:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::Xor, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::FAdd:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::FAdd, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::FSub:
+    visitBinaryOperation(DL, I.getType(), BinaryOperator::FSub, Args, Ret, LHS,
+                         RHS);
+    break;
+  case AtomicRMWInst::Max:
+  case AtomicRMWInst::Min:
+  case AtomicRMWInst::UMax:
+  case AtomicRMWInst::UMin:
+  case AtomicRMWInst::Nand:
+  default:
+    break;
+  }
+
+  if (direction & UP) {
+    TypeTree ptr = LHS.PurgeAnything()
+                       .ShiftIndices(DL, /*start*/ 0, LoadSize, /*addOffset*/ 0)
+                       .Only(-1);
+    ptr.insert({-1}, BaseType::Pointer);
+    updateAnalysis(I.getOperand(0), ptr, &I);
+    updateAnalysis(I.getOperand(1), RHS, &I);
+  }
+
+  if (direction & DOWN) {
+    if (I.getType()->isIntOrIntVectorTy() && Ret[{-1}] == BaseType::Anything) {
+      if (mustRemainInteger(&I)) {
+        Ret = TypeTree(BaseType::Integer).Only(-1);
+      }
+    }
+    updateAnalysis(&I, Ret, &I);
+  }
+}
+
+void TypeAnalyzer::visitBinaryOperation(const DataLayout &dl, llvm::Type *T,
+                                        llvm::Instruction::BinaryOps Opcode,
+                                        Value *Args[2], TypeTree &Ret,
+                                        TypeTree &LHS, TypeTree &RHS) {
+  if (Opcode == BinaryOperator::FAdd || Opcode == BinaryOperator::FSub ||
+      Opcode == BinaryOperator::FMul || Opcode == BinaryOperator::FDiv ||
+      Opcode == BinaryOperator::FRem) {
+    auto ty = T->getScalarType();
     assert(ty->isFloatingPointTy());
     ConcreteType dt(ty);
-    if (direction & UP)
-      updateAnalysis(I.getOperand(0), TypeTree(dt).Only(-1), &I);
-    if (direction & UP)
-      updateAnalysis(I.getOperand(1), TypeTree(dt).Only(-1), &I);
+    if (direction & UP) {
+      LHS |= TypeTree(dt).Only(-1);
+      RHS |= TypeTree(dt).Only(-1);
+    }
     if (direction & DOWN)
-      updateAnalysis(&I, TypeTree(dt).Only(-1), &I);
+      Ret |= TypeTree(dt).Only(-1);
   } else {
-    auto &dl = I.getParent()->getParent()->getParent()->getDataLayout();
-    auto size = dl.getTypeSizeInBits(I.getType()) / 8;
-    auto AnalysisLHS = getAnalysis(I.getOperand(0)).Data0();
-    auto AnalysisRHS = getAnalysis(I.getOperand(1)).Data0();
-    auto AnalysisRet = getAnalysis(&I).Data0();
-    TypeTree Result;
+    auto size = (dl.getTypeSizeInBits(T) + 7) / 8;
+    auto AnalysisLHS = LHS.Data0();
+    auto AnalysisRHS = RHS.Data0();
+    auto AnalysisRet = Ret.Data0();
 
-    switch (I.getOpcode()) {
+    switch (Opcode) {
     case BinaryOperator::Sub:
       // ptr - ptr => int and int - int => int; thus int = a - b says only that
       // these are equal ptr - int => ptr and int - ptr => ptr; thus
       // howerver we do not want to propagate underlying ptr types since it's
       // legal to subtract unrelated pointer
       if (AnalysisRet[{}] == BaseType::Integer) {
-        if (direction & UP)
-          updateAnalysis(I.getOperand(0),
-                         TypeTree(AnalysisRHS[{}]).PurgeAnything().Only(-1),
-                         &I);
-        if (direction & UP)
-          updateAnalysis(I.getOperand(1),
-                         TypeTree(AnalysisLHS[{}]).PurgeAnything().Only(-1),
-                         &I);
+        if (direction & UP) {
+          LHS |= TypeTree(AnalysisRHS[{}]).PurgeAnything().Only(-1);
+          RHS |= TypeTree(AnalysisLHS[{}]).PurgeAnything().Only(-1);
+        }
       }
       break;
 
@@ -1996,22 +2068,20 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     case BinaryOperator::Mul:
       // if a + b or a * b == int, then a and b must be ints
       if (direction & UP)
-        updateAnalysis(I.getOperand(0),
-                       TypeTree(AnalysisRet.JustInt()[{}]).Only(-1), &I);
+        LHS |= TypeTree(AnalysisRet.JustInt()[{}]).Only(-1);
       if (direction & UP)
-        updateAnalysis(I.getOperand(1),
-                       TypeTree(AnalysisRet.JustInt()[{}]).Only(-1), &I);
+        RHS |= TypeTree(AnalysisRet.JustInt()[{}]).Only(-1);
       break;
 
     case BinaryOperator::Xor:
       if (direction & UP)
         for (int i = 0; i < 2; ++i) {
           Type *FT = nullptr;
-          if (!(FT = getAnalysis(&I).IsAllFloat(size)))
+          if (!(FT = Ret.IsAllFloat(size)))
             continue;
           // If & against 0b10000000000, the result is a float
           bool validXor = false;
-          if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+          if (auto CI = dyn_cast_or_null<ConstantInt>(Args[i])) {
             if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CI->getType()))
               continue;
             if (CI->isZero()) {
@@ -2019,7 +2089,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
               validXor = true;
             }
-          } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+          } else if (auto CV = dyn_cast_or_null<ConstantVector>(Args[i])) {
             validXor = true;
             if (dl.getTypeSizeInBits(FT) !=
                 dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
@@ -2030,7 +2100,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                 validXor = false;
               }
             }
-          } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+          } else if (auto CV = dyn_cast_or_null<ConstantDataVector>(Args[i])) {
             validXor = true;
             if (dl.getTypeSizeInBits(FT) !=
                 dl.getTypeSizeInBits(CV->getElementType()))
@@ -2043,18 +2113,18 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             }
           }
           if (validXor) {
-            updateAnalysis(I.getOperand(1 - i), TypeTree(FT).Only(-1), &I);
+            ((i == 0) ? RHS : LHS) |= TypeTree(FT).Only(-1);
           }
         }
       break;
     case BinaryOperator::Or:
       for (int i = 0; i < 2; ++i) {
         Type *FT = nullptr;
-        if (!(FT = getAnalysis(&I).IsAllFloat(size)))
+        if (!(FT = Ret.IsAllFloat(size)))
           continue;
         // If | against a number only or'ing the exponent, the result is a float
         bool validXor = false;
-        if (auto CIT = dyn_cast<ConstantInt>(I.getOperand(i))) {
+        if (auto CIT = dyn_cast_or_null<ConstantInt>(Args[i])) {
           if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CIT->getType()))
             continue;
           auto CI = CIT->getValue();
@@ -2070,7 +2140,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                     .isNullValue()))) {
             validXor = true;
           }
-        } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+        } else if (auto CV = dyn_cast_or_null<ConstantVector>(Args[i])) {
           validXor = true;
           if (dl.getTypeSizeInBits(FT) !=
               dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
@@ -2090,7 +2160,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             } else
               validXor = false;
           }
-        } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+        } else if (auto CV = dyn_cast_or_null<ConstantDataVector>(Args[i])) {
           validXor = true;
           if (dl.getTypeSizeInBits(FT) !=
               dl.getTypeSizeInBits(CV->getElementType()))
@@ -2112,180 +2182,201 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
           }
         }
         if (validXor) {
-          updateAnalysis(I.getOperand(1 - i), TypeTree(FT).Only(-1), &I);
+          ((i == 0) ? RHS : LHS) |= TypeTree(FT).Only(-1);
         }
       }
       break;
     default:
       break;
     }
-    Result = AnalysisLHS;
-    Result.binopIn(AnalysisRHS, I.getOpcode());
-
-    if (I.getOpcode() == BinaryOperator::And) {
-      for (int i = 0; i < 2; ++i) {
-        for (auto andval :
-             fntypeinfo.knownIntegralValues(I.getOperand(i), *DT, intseen)) {
-          if (andval <= 16 && andval >= 0) {
-            Result = TypeTree(BaseType::Integer);
-          } else if (andval < 0 && andval >= -64) {
-            // If a small negative number, this just masks off the lower bits
-            // in this case we can say that this is the same as the other
-            // operand
-            Result = getAnalysis(I.getOperand(1 - i)).Data0();
-          }
-        }
-        // If we and a constant against an integer, the result remains an
-        // integer
-        if (isa<ConstantInt>(I.getOperand(i)) &&
-            getAnalysis(I.getOperand(1 - i)).Inner0() == BaseType::Integer) {
-          Result = TypeTree(BaseType::Integer);
-        }
-      }
-    } else if (I.getOpcode() == BinaryOperator::Add ||
-               I.getOpcode() == BinaryOperator::Sub) {
-      for (int i = 0; i < 2; ++i) {
-        if (i == 1 || I.getOpcode() == BinaryOperator::Add)
-          if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
-            if (CI->isNegative() || CI->isZero() ||
-                CI->getLimitedValue() <= 4096) {
-              // If add/sub with zero, small, or negative number, the result is
-              // equal to the type of the other operand (and we don't need to
-              // assume this was an "anything")
-              Result = getAnalysis(I.getOperand(1 - i)).Data0();
-            }
-          }
-      }
-    } else if (I.getOpcode() == BinaryOperator::Mul) {
-      for (int i = 0; i < 2; ++i) {
-        // If we mul a constant against an integer, the result remains an
-        // integer
-        if (isa<ConstantInt>(I.getOperand(i)) &&
-            getAnalysis(I.getOperand(1 - i)).Inner0() == BaseType::Integer) {
-          Result = TypeTree(BaseType::Integer);
-        }
-      }
-    } else if (I.getOpcode() == BinaryOperator::Xor) {
-      for (int i = 0; i < 2; ++i) {
-        Type *FT;
-        if (!(FT = getAnalysis(I.getOperand(1 - i)).IsAllFloat(size)))
-          continue;
-        // If & against 0b10000000000, the result is a float
-        bool validXor = false;
-        if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
-          if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CI->getType()))
-            continue;
-          if (CI->isZero()) {
-            validXor = true;
-          } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
-            validXor = true;
-          }
-        } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
-          validXor = true;
-          if (dl.getTypeSizeInBits(FT) !=
-              dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
-            continue;
-          for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
-            auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
-            if (!(CI.isNullValue() || CI.isMinSignedValue())) {
-              validXor = false;
-            }
-          }
-        } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
-          validXor = true;
-          if (dl.getTypeSizeInBits(FT) !=
-              dl.getTypeSizeInBits(CV->getElementType()))
-            continue;
-          for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
-            auto CI = CV->getElementAsAPInt(i);
-            if (!(CI.isNullValue() || CI.isMinSignedValue())) {
-              validXor = false;
-            }
-          }
-        }
-        if (validXor) {
-          Result = ConcreteType(FT);
-        }
-      }
-    } else if (I.getOpcode() == BinaryOperator::Or) {
-      for (int i = 0; i < 2; ++i) {
-        Type *FT;
-        if (!(FT = getAnalysis(I.getOperand(1 - i)).IsAllFloat(size)))
-          continue;
-        // If & against 0b10000000000, the result is a float
-        bool validXor = false;
-        if (auto CIT = dyn_cast<ConstantInt>(I.getOperand(i))) {
-          if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CIT->getType()))
-            continue;
-          auto CI = CIT->getValue();
-          if (CI.isNullValue()) {
-            validXor = true;
-          } else if (
-              !CI.isNegative() &&
-              ((FT->isFloatTy() &&
-                (CI & ~0b01111111100000000000000000000000ULL).isNullValue()) ||
-               (FT->isDoubleTy() &&
-                (CI &
-                 ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
-                    .isNullValue()))) {
-            validXor = true;
-          }
-        } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
-          validXor = true;
-          if (dl.getTypeSizeInBits(FT) !=
-              dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
-            continue;
-          for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
-            auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
-            if (CI.isNullValue()) {
-            } else if (
-                !CI.isNegative() &&
-                ((FT->isFloatTy() &&
-                  (CI & ~0b01111111100000000000000000000000ULL)
-                      .isNullValue()) ||
-                 (FT->isDoubleTy() &&
-                  (CI &
-                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
-                      .isNullValue()))) {
-            } else
-              validXor = false;
-          }
-        } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
-          validXor = true;
-          if (dl.getTypeSizeInBits(FT) !=
-              dl.getTypeSizeInBits(CV->getElementType()))
-            continue;
-          for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
-            auto CI = CV->getElementAsAPInt(i);
-            if (CI.isNullValue()) {
-            } else if (
-                !CI.isNegative() &&
-                ((FT->isFloatTy() &&
-                  (CI & ~0b01111111100000000000000000000000ULL)
-                      .isNullValue()) ||
-                 (FT->isDoubleTy() &&
-                  (CI &
-                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
-                      .isNullValue()))) {
-            } else
-              validXor = false;
-          }
-        }
-        if (validXor) {
-          Result = ConcreteType(FT);
-        }
-      }
-    }
 
     if (direction & DOWN) {
-      if (I.getType()->isIntOrIntVectorTy() &&
-          Result[{}] == BaseType::Anything) {
-        if (mustRemainInteger(&I)) {
-          Result = TypeTree(BaseType::Integer);
+      TypeTree Result = AnalysisLHS;
+      Result.binopIn(AnalysisRHS, Opcode);
+
+      if (Opcode == BinaryOperator::And) {
+        for (int i = 0; i < 2; ++i) {
+          if (Args[i])
+            for (auto andval :
+                 fntypeinfo.knownIntegralValues(Args[i], *DT, intseen)) {
+              if (andval <= 16 && andval >= 0) {
+                Result = TypeTree(BaseType::Integer);
+              } else if (andval < 0 && andval >= -64) {
+                // If a small negative number, this just masks off the lower
+                // bits in this case we can say that this is the same as the
+                // other operand
+                Result = (i == 0 ? AnalysisRHS : AnalysisLHS);
+              }
+            }
+          // If we and a constant against an integer, the result remains an
+          // integer
+          if (Args[i] && isa<ConstantInt>(Args[i]) &&
+              (i == 0 ? AnalysisRHS : AnalysisLHS).Inner0() ==
+                  BaseType::Integer) {
+            Result = TypeTree(BaseType::Integer);
+          }
+        }
+      } else if (Opcode == BinaryOperator::Add ||
+                 Opcode == BinaryOperator::Sub) {
+        for (int i = 0; i < 2; ++i) {
+          if (i == 1 || Opcode == BinaryOperator::Add)
+            if (auto CI = dyn_cast_or_null<ConstantInt>(Args[i])) {
+              if (CI->isNegative() || CI->isZero() ||
+                  CI->getLimitedValue() <= 4096) {
+                // If add/sub with zero, small, or negative number, the result
+                // is equal to the type of the other operand (and we don't need
+                // to assume this was an "anything")
+                Result = (i == 0 ? AnalysisRHS : AnalysisLHS);
+              }
+            }
+        }
+      } else if (Opcode == BinaryOperator::Mul) {
+        for (int i = 0; i < 2; ++i) {
+          // If we mul a constant against an integer, the result remains an
+          // integer
+          if (Args[i] && isa<ConstantInt>(Args[i]) &&
+              (i == 0 ? AnalysisRHS : AnalysisLHS)[{}] == BaseType::Integer) {
+            Result = TypeTree(BaseType::Integer);
+          }
+        }
+      } else if (Opcode == BinaryOperator::Xor) {
+        for (int i = 0; i < 2; ++i) {
+          Type *FT;
+          if (!(FT = (i == 0 ? RHS : LHS).IsAllFloat(size)))
+            continue;
+          // If & against 0b10000000000, the result is a float
+          bool validXor = false;
+          if (auto CI = dyn_cast_or_null<ConstantInt>(Args[i])) {
+            if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CI->getType()))
+              continue;
+            if (CI->isZero()) {
+              validXor = true;
+            } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
+              validXor = true;
+            }
+          } else if (auto CV = dyn_cast_or_null<ConstantVector>(Args[i])) {
+            validXor = true;
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
+              continue;
+            for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+              auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+              if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+                validXor = false;
+              }
+            }
+          } else if (auto CV = dyn_cast_or_null<ConstantDataVector>(Args[i])) {
+            validXor = true;
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CV->getElementType()))
+              continue;
+            for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+              auto CI = CV->getElementAsAPInt(i);
+              if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+                validXor = false;
+              }
+            }
+          }
+          if (validXor) {
+            Result = ConcreteType(FT);
+          }
+        }
+      } else if (Opcode == BinaryOperator::Or) {
+        for (int i = 0; i < 2; ++i) {
+          Type *FT;
+          if (!(FT = (i == 0 ? RHS : LHS).IsAllFloat(size)))
+            continue;
+          // If & against 0b10000000000, the result is a float
+          bool validXor = false;
+          if (auto CIT = dyn_cast_or_null<ConstantInt>(Args[i])) {
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CIT->getType()))
+              continue;
+            auto CI = CIT->getValue();
+            if (CI.isNullValue()) {
+              validXor = true;
+            } else if (
+                !CI.isNegative() &&
+                ((FT->isFloatTy() &&
+                  (CI & ~0b01111111100000000000000000000000ULL)
+                      .isNullValue()) ||
+                 (FT->isDoubleTy() &&
+                  (CI &
+                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                      .isNullValue()))) {
+              validXor = true;
+            }
+          } else if (auto CV = dyn_cast_or_null<ConstantVector>(Args[i])) {
+            validXor = true;
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
+              continue;
+            for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+              auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+              if (CI.isNullValue()) {
+              } else if (
+                  !CI.isNegative() &&
+                  ((FT->isFloatTy() &&
+                    (CI & ~0b01111111100000000000000000000000ULL)
+                        .isNullValue()) ||
+                   (FT->isDoubleTy() &&
+                    (CI &
+                     ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                        .isNullValue()))) {
+              } else
+                validXor = false;
+            }
+          } else if (auto CV = dyn_cast_or_null<ConstantDataVector>(Args[i])) {
+            validXor = true;
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CV->getElementType()))
+              continue;
+            for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+              auto CI = CV->getElementAsAPInt(i);
+              if (CI.isNullValue()) {
+              } else if (
+                  !CI.isNegative() &&
+                  ((FT->isFloatTy() &&
+                    (CI & ~0b01111111100000000000000000000000ULL)
+                        .isNullValue()) ||
+                   (FT->isDoubleTy() &&
+                    (CI &
+                     ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                        .isNullValue()))) {
+              } else
+                validXor = false;
+            }
+          }
+          if (validXor) {
+            Result = ConcreteType(FT);
+          }
         }
       }
-      updateAnalysis(&I, Result.Only(-1), &I);
+
+      Ret = Result.Only(-1);
     }
+  }
+}
+void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
+  Value *Args[2] = {I.getOperand(0), I.getOperand(1)};
+  TypeTree Ret = getAnalysis(&I);
+  TypeTree LHS = getAnalysis(I.getOperand(0));
+  TypeTree RHS = getAnalysis(I.getOperand(1));
+  auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
+  visitBinaryOperation(DL, I.getType(), I.getOpcode(), Args, Ret, LHS, RHS);
+
+  if (direction & UP) {
+    updateAnalysis(I.getOperand(0), LHS, &I);
+    updateAnalysis(I.getOperand(1), RHS, &I);
+  }
+
+  if (direction & DOWN) {
+    if (I.getType()->isIntOrIntVectorTy() && Ret[{-1}] == BaseType::Anything) {
+      if (mustRemainInteger(&I)) {
+        Ret = TypeTree(BaseType::Integer).Only(-1);
+      }
+    }
+    updateAnalysis(&I, Ret, &I);
   }
 }
 
@@ -3274,8 +3365,21 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
     if (funcName == "MPI_Isend" || funcName == "MPI_Irecv") {
-      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
-                     &call);
+      TypeTree buf = TypeTree(BaseType::Pointer);
+
+      if (Constant *C = dyn_cast<Constant>(call.getOperand(2))) {
+        while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
+          C = CE->getOperand(0);
+        }
+        if (auto GV = dyn_cast<GlobalVariable>(C)) {
+          if (GV->getName() == "ompi_mpi_double") {
+            buf.insert({0}, Type::getDoubleTy(C->getContext()));
+          } else if (GV->getName() == "ompi_mpi_float") {
+            buf.insert({0}, Type::getFloatTy(C->getContext()));
+          }
+        }
+      }
+      updateAnalysis(call.getOperand(0), buf.Only(-1), &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
@@ -3327,29 +3431,42 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (funcName == "MPI_Reduce") {
+    if (funcName == "MPI_Reduce" || funcName == "PMPI_Reduce") {
+      // int MPI_Reduce(const void *sendbuf, void *recvbuf, int count,
+      // MPI_Datatype datatype,
+      //         MPI_Op op, int root, MPI_Comm comm)
+      // sendbuf
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      // recvbuf
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      // count
       updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
                      &call);
-      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
-                     &call);
-      updateAnalysis(call.getOperand(5), TypeTree(BaseType::Integer).Only(-1),
-                     &call);
+      // datatype
+      // op
+      // comm
+      // result
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (funcName == "MPI_Allreduce") {
+      // int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count,
+      //             MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
+      // sendbuf
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      // recvbuf
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      // count
       updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
                      &call);
-      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
-                     &call);
+      // datatype
+      // op
+      // comm
+      // result
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
@@ -3405,6 +3522,18 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(6), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
+    if (funcName == "MPI_Allgather") {
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;

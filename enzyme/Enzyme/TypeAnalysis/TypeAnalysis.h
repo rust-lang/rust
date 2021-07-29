@@ -298,7 +298,12 @@ public:
 
   void visitInsertValueInst(llvm::InsertValueInst &I);
 
+  void visitAtomicRMWInst(llvm::AtomicRMWInst &I);
+
   void visitBinaryOperator(llvm::BinaryOperator &I);
+  void visitBinaryOperation(const llvm::DataLayout &DL, llvm::Type *T,
+                            llvm::Instruction::BinaryOps, llvm::Value *Args[2],
+                            TypeTree &Ret, TypeTree &LHS, TypeTree &RHS);
 
   void visitIPOCall(llvm::CallInst &call, llvm::Function &fn);
 

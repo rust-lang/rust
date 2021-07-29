@@ -2593,7 +2593,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         Type *type = cast<PointerType>(arg->getType())->getElementType();
         auto shadow = new GlobalVariable(
             *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
-            ConstantAggregateZero::get(type), arg->getName() + "_shadow", arg,
+            Constant::getNullValue(type), arg->getName() + "_shadow", arg,
             arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
             arg->isExternallyInitialized());
         arg->setMetadata("enzyme_shadow",

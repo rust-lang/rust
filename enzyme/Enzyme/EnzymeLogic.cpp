@@ -86,6 +86,7 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 }
 
 struct CacheAnalysis {
+  TypeResults &TR;
   AAResults &AA;
   Function *oldFunc;
   ScalarEvolution &SE;
@@ -99,13 +100,14 @@ struct CacheAnalysis {
   bool omp;
   SmallVector<CallInst *, 0> kmpcCall;
   CacheAnalysis(
-      AAResults &AA, Function *oldFunc, ScalarEvolution &SE, LoopInfo &OrigLI,
-      DominatorTree &OrigDT, TargetLibraryInfo &TLI,
+      TypeResults &TR, AAResults &AA, Function *oldFunc, ScalarEvolution &SE,
+      LoopInfo &OrigLI, DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode,
       bool omp)
-      : AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), OrigDT(OrigDT),
-        TLI(TLI), unnecessaryInstructions(unnecessaryInstructions),
+      : TR(TR), AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI),
+        OrigDT(OrigDT), TLI(TLI),
+        unnecessaryInstructions(unnecessaryInstructions),
         uncacheable_args(uncacheable_args), mode(mode), omp(omp) {
 
     for (auto &BB : *oldFunc)
@@ -559,6 +561,9 @@ struct CacheAnalysis {
 #endif
 
       bool init_safe = !is_value_mustcache_from_origin(obj);
+      auto CD = TR.query(obj)[{-1}];
+      if (CD == BaseType::Integer || CD.isFloat())
+        init_safe = true;
       if (!init_safe && !isa<ConstantInt>(obj) && !isa<Function>(obj)) {
         EmitWarning("UncacheableOrigin", callsite_op->getDebugLoc(), oldFunc,
                     callsite_op->getParent(), "Callsite ", *callsite_op,
@@ -615,6 +620,10 @@ struct CacheAnalysis {
         return false;
 
       for (unsigned i = 0; i < args.size(); ++i) {
+        auto CD = TR.query(args[i])[{-1}];
+        if (CD == BaseType::Integer || CD.isFloat())
+          continue;
+
         if (llvm::isModSet(AA.getModRefInfo(
                 inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
           if (!isa<ConstantInt>(callsite_op->getArgOperand(i)))
@@ -1534,26 +1543,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       ++in_arg;
     }
   }
-  // TODO actually populate unnecessaryInstructions with what can be
-  // derived without activity info
-  SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
-  for (auto BB : guaranteedUnreachable) {
-    for (auto &I : *BB)
-      unnecessaryInstructionsTmp.insert(&I);
-  }
-  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc,
-                   PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
-                   gutils->OrigLI, gutils->OrigDT, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP,
-                   DerivativeMode::ReverseModePrimal, omp);
-  const std::map<CallInst *, const std::map<Argument *, bool>>
-      uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
-
-  const std::map<Instruction *, bool> can_modref_map =
-      CA.compute_uncacheable_load_map();
-  gutils->can_modref_map = &can_modref_map;
-
-  // gutils->forceContexts();
 
   FnTypeInfo typeInfo(gutils->oldFunc);
   {
@@ -1579,6 +1568,26 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.info.Function == gutils->oldFunc);
+
+  // TODO actually populate unnecessaryInstructions with what can be
+  // derived without activity info
+  SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
+  for (auto BB : guaranteedUnreachable) {
+    for (auto &I : *BB)
+      unnecessaryInstructionsTmp.insert(&I);
+  }
+  CacheAnalysis CA(TR, gutils->OrigAA, gutils->oldFunc,
+                   PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
+                   gutils->OrigLI, gutils->OrigDT, TLI,
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP,
+                   DerivativeMode::ReverseModePrimal, omp);
+  const std::map<CallInst *, const std::map<Argument *, bool>>
+      uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
+
+  const std::map<Instruction *, bool> can_modref_map =
+      CA.compute_uncacheable_load_map();
+  gutils->can_modref_map = &can_modref_map;
+
   gutils->forceActiveDetection(TR);
 
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
@@ -2780,28 +2789,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       ++in_arg;
     }
   }
-  // TODO populate with actual unnecessaryInstructions once the dependency
-  // cycle with activity analysis is removed
-  SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
-  for (auto BB : guaranteedUnreachable) {
-    for (auto &I : *BB)
-      unnecessaryInstructionsTmp.insert(&I);
-  }
-  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc,
-                   PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
-                   gutils->OrigLI, gutils->OrigDT, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP, mode, omp);
-  const std::map<CallInst *, const std::map<Argument *, bool>>
-      uncacheable_args_map =
-          (augmenteddata) ? augmenteddata->uncacheable_args_map
-                          : CA.compute_uncacheable_args_for_callsites();
-
-  const std::map<Instruction *, bool> can_modref_map =
-      augmenteddata ? augmenteddata->can_modref_map
-                    : CA.compute_uncacheable_load_map();
-  gutils->can_modref_map = &can_modref_map;
-
-  // gutils->forceContexts();
 
   FnTypeInfo typeInfo(gutils->oldFunc);
   {
@@ -2828,6 +2815,27 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.info.Function == gutils->oldFunc);
+
+  // TODO populate with actual unnecessaryInstructions once the dependency
+  // cycle with activity analysis is removed
+  SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
+  for (auto BB : guaranteedUnreachable) {
+    for (auto &I : *BB)
+      unnecessaryInstructionsTmp.insert(&I);
+  }
+  CacheAnalysis CA(TR, gutils->OrigAA, gutils->oldFunc,
+                   PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
+                   gutils->OrigLI, gutils->OrigDT, TLI,
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP, mode, omp);
+  const std::map<CallInst *, const std::map<Argument *, bool>>
+      uncacheable_args_map =
+          (augmenteddata) ? augmenteddata->uncacheable_args_map
+                          : CA.compute_uncacheable_args_for_callsites();
+
+  const std::map<Instruction *, bool> can_modref_map =
+      augmenteddata ? augmenteddata->can_modref_map
+                    : CA.compute_uncacheable_load_map();
+  gutils->can_modref_map = &can_modref_map;
 
   gutils->forceActiveDetection(TR);
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);

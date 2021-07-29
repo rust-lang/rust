@@ -560,6 +560,20 @@ public:
     eraseIfUnused(LI);
   }
 
+  void visitAtomicRMWInst(llvm::AtomicRMWInst &I) {
+    if (!gutils->isConstantInstruction(&I) || !gutils->isConstantValue(&I)) {
+      TR.dump();
+      llvm::errs() << "oldFunc: " << *gutils->newFunc << "\n";
+      llvm::errs() << "I: " << I << "\n";
+    }
+    assert(gutils->isConstantInstruction(&I));
+    assert(gutils->isConstantValue(&I));
+
+    if (Mode == DerivativeMode::ReverseModeGradient) {
+      eraseIfUnused(I, /*erase*/ true, /*check*/ false);
+    }
+  }
+
   void visitStoreInst(llvm::StoreInst &SI) {
     Value *orig_ptr = SI.getPointerOperand();
     Value *orig_val = SI.getValueOperand();

@@ -313,6 +313,38 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       auto dt = q[{i}];
       if (dt.isIntegral() || dt == BaseType::Anything) {
         SeenInteger = true;
+        if (i == -1)
+          break;
+      } else if (dt.isKnown()) {
+        AllIntegral = false;
+        break;
+      }
+    }
+
+    if (AllIntegral && SeenInteger) {
+      if (EnzymePrintActivity)
+        llvm::errs() << " constant instruction from TA " << *I << "\n";
+      InsertConstantInstruction(TR, I);
+      return true;
+    }
+  }
+  if (auto SI = dyn_cast<AtomicRMWInst>(I)) {
+    auto StoreSize = SI->getParent()
+                         ->getParent()
+                         ->getParent()
+                         ->getDataLayout()
+                         .getTypeSizeInBits(I->getType()) /
+                     8;
+
+    bool AllIntegral = true;
+    bool SeenInteger = false;
+    auto q = TR.query(SI->getOperand(0)).Data0();
+    for (int i = -1; i < (int)StoreSize; ++i) {
+      auto dt = q[{i}];
+      if (dt.isIntegral() || dt == BaseType::Anything) {
+        SeenInteger = true;
+        if (i == -1)
+          break;
       } else if (dt.isKnown()) {
         AllIntegral = false;
         break;
@@ -1062,6 +1094,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             if (isMemFreeLibMFunction(F->getName()) ||
                 F->getName() == "__fd_sincos_1") {
               continue;
+            }
+            for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+              if (F->getName().startswith(FuncName)) {
+                return true;
+              }
             }
 
             if (F->getName() == "__cxa_guard_acquire" ||
