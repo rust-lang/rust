@@ -8,7 +8,7 @@ use rustc_hir::{
     self as hir,
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
-    intravisit::{walk_ty, NestedVisitorMap, Visitor},
+    intravisit::{walk_inf, walk_ty, NestedVisitorMap, Visitor},
     Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -264,6 +264,11 @@ struct SkipTyCollector {
 impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     type Map = Map<'tcx>;
 
+    fn visit_infer(&mut self, inf: &hir::InferArg) {
+        self.types_to_skip.push(inf.hir_id);
+
+        walk_inf(self, inf);
+    }
     fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) {
         self.types_to_skip.push(hir_ty.hir_id);
 
