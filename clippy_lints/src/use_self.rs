@@ -8,9 +8,8 @@ use rustc_hir::{
     self as hir,
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
-    intravisit::{walk_ty, walk_inf, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path,
-    QPath, TyKind,
+    intravisit::{walk_inf, walk_ty, NestedVisitorMap, Visitor},
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -21,19 +20,20 @@ use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for unnecessary repetition of structure name when a
+    /// ### What it does
+    /// Checks for unnecessary repetition of structure name when a
     /// replacement with `Self` is applicable.
     ///
-    /// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
+    /// ### Why is this bad?
+    /// Unnecessary repetition. Mixed use of `Self` and struct
     /// name
     /// feels inconsistent.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
     /// - False positive with assotiated types in traits (#4140)
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct Foo {}
     /// impl Foo {
@@ -265,9 +265,9 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     type Map = Map<'tcx>;
 
     fn visit_infer(&mut self, inf: &hir::InferArg) {
-      self.types_to_skip.push(inf.hir_id);
+        self.types_to_skip.push(inf.hir_id);
 
-      walk_inf(self, inf)
+        walk_inf(self, inf);
     }
     fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) {
         self.types_to_skip.push(hir_ty.hir_id);

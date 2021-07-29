@@ -10,14 +10,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for double comparisons that could be simplified to a single expression.
+    /// ### What it does
+    /// Checks for double comparisons that could be simplified to a single expression.
     ///
     ///
-    /// **Why is this bad?** Readability.
+    /// ### Why is this bad?
+    /// Readability.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// # let y = 2;

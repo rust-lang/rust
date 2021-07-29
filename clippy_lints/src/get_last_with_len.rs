@@ -14,10 +14,12 @@ use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for using `x.get(x.len() - 1)` instead of
+    /// ### What it does
+    /// Checks for using `x.get(x.len() - 1)` instead of
     /// `x.last()`.
     ///
-    /// **Why is this bad?** Using `x.last()` is easier to read and has the same
+    /// ### Why is this bad?
+    /// Using `x.last()` is easier to read and has the same
     /// result.
     ///
     /// Note that using `x[x.len() - 1]` is semantically different from
@@ -27,10 +29,7 @@ declare_clippy_lint! {
     /// There is another lint (get_unwrap) that covers the case of using
     /// `x.get(index).unwrap()` instead of `x[index]`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let x = vec![2, 3, 5];

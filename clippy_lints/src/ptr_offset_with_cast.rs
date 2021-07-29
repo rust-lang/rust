@@ -8,15 +8,15 @@ use rustc_span::sym;
 use std::fmt;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of the `offset` pointer method with a `usize` casted to an
+    /// ### What it does
+    /// Checks for usage of the `offset` pointer method with a `usize` casted to an
     /// `isize`.
     ///
-    /// **Why is this bad?** If we’re always increasing the pointer address, we can avoid the numeric
+    /// ### Why is this bad?
+    /// If we’re always increasing the pointer address, we can avoid the numeric
     /// cast by using the `add` method instead.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let vec = vec![b'a', b'b', b'c'];
     /// let ptr = vec.as_ptr();

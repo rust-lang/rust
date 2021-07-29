@@ -11,15 +11,15 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions with too many parameters.
+    /// ### What it does
+    /// Checks for functions with too many parameters.
     ///
-    /// **Why is this bad?** Functions with lots of parameters are considered bad
+    /// ### Why is this bad?
+    /// Functions with lots of parameters are considered bad
     /// style and reduce readability (“what does the 5th parameter mean?”). Consider
     /// grouping some parameters into a new type.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # struct Color;
     /// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) {
@@ -32,16 +32,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions with a large amount of lines.
+    /// ### What it does
+    /// Checks for functions with a large amount of lines.
     ///
-    /// **Why is this bad?** Functions with a lot of lines are harder to understand
+    /// ### Why is this bad?
+    /// Functions with a lot of lines are harder to understand
     /// due to having to look at a larger amount of code to understand what the
     /// function is doing. Consider splitting the body of the function into
     /// multiple functions.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn im_too_long() {
     ///     println!("");
@@ -55,15 +55,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for public functions that dereference raw pointer
+    /// ### What it does
+    /// Checks for public functions that dereference raw pointer
     /// arguments but are not marked `unsafe`.
     ///
-    /// **Why is this bad?** The function should probably be marked `unsafe`, since
+    /// ### Why is this bad?
+    /// The function should probably be marked `unsafe`, since
     /// for an arbitrary raw pointer, there is no way of telling for sure if it is
     /// valid.
     ///
-    /// **Known problems:**
-    ///
+    /// ### Known problems
     /// * It does not check functions recursively so if the pointer is passed to a
     /// private non-`unsafe` function which does the dereferencing, the lint won't
     /// trigger.
@@ -71,7 +72,7 @@ declare_clippy_lint! {
     /// got from an argument in some other way (`fn foo(bar: &[*const u8])` or
     /// `some_argument.get_raw_ptr()`).
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// pub fn foo(x: *const u8) {
@@ -89,17 +90,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for a [`#[must_use]`] attribute on
+    /// ### What it does
+    /// Checks for a [`#[must_use]`] attribute on
     /// unit-returning functions and methods.
     ///
     /// [`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     ///
-    /// **Why is this bad?** Unit values are useless. The attribute is likely
+    /// ### Why is this bad?
+    /// Unit values are useless. The attribute is likely
     /// a remnant of a refactoring that removed the return type.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// #[must_use]
     /// fn useless() { }
@@ -110,19 +111,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for a [`#[must_use]`] attribute without
+    /// ### What it does
+    /// Checks for a [`#[must_use]`] attribute without
     /// further information on functions and methods that return a type already
     /// marked as `#[must_use]`.
     ///
     /// [`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     ///
-    /// **Why is this bad?** The attribute isn't needed. Not using the result
+    /// ### Why is this bad?
+    /// The attribute isn't needed. Not using the result
     /// will already be reported. Alternatively, one can add some text to the
     /// attribute to improve the lint message.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// #[must_use]
     /// fn double_must_use() -> Result<(), ()> {
@@ -135,16 +136,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for public functions that have no
+    /// ### What it does
+    /// Checks for public functions that have no
     /// [`#[must_use]`] attribute, but return something not already marked
     /// must-use, have no mutable arg and mutate no statics.
     ///
     /// [`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
     ///
-    /// **Why is this bad?** Not bad at all, this lint just shows places where
+    /// ### Why is this bad?
+    /// Not bad at all, this lint just shows places where
     /// you could add the attribute.
     ///
-    /// **Known problems:** The lint only checks the arguments for mutable
+    /// ### Known problems
+    /// The lint only checks the arguments for mutable
     /// types without looking if they are actually changed. On the other hand,
     /// it also ignores a broad range of potentially interesting side effects,
     /// because we cannot decide whether the programmer intends the function to
@@ -152,7 +156,7 @@ declare_clippy_lint! {
     /// positives. At least we don't lint if the result type is unit or already
     /// `#[must_use]`.
     ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// // this could be annotated with `#[must_use]`.
     /// fn id<T>(t: T) -> T { t }
@@ -163,20 +167,23 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for public functions that return a `Result`
+    /// ### What it does
+    /// Checks for public functions that return a `Result`
     /// with an `Err` type of `()`. It suggests using a custom type that
     /// implements `std::error::Error`.
     ///
-    /// **Why is this bad?** Unit does not implement `Error` and carries no
+    /// ### Why is this bad?
+    /// Unit does not implement `Error` and carries no
     /// further information about what went wrong.
     ///
-    /// **Known problems:** Of course, this lint assumes that `Result` is used
+    /// ### Known problems
+    /// Of course, this lint assumes that `Result` is used
     /// for a fallible operation (which is after all the intended use). However
     /// code may opt to (mis)use it as a basic two-variant-enum. In that case,
     /// the suggestion is misguided, and the code should use a custom enum
     /// instead.
     ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// pub fn read_u8() -> Result<u8, ()> { Err(()) }
     /// ```

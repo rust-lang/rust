@@ -1,21 +1,20 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::paths::INTO;
-use clippy_utils::{match_def_path, meets_msrv, msrvs};
+use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Searches for implementations of the `Into<..>` trait and suggests to implement `From<..>` instead.
+    /// ### What it does
+    /// Searches for implementations of the `Into<..>` trait and suggests to implement `From<..>` instead.
     ///
-    /// **Why is this bad?** According the std docs implementing `From<..>` is preferred since it gives you `Into<..>` for free where the reverse isn't true.
+    /// ### Why is this bad?
+    /// According the std docs implementing `From<..>` is preferred since it gives you `Into<..>` for free where the reverse isn't true.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct StringWrapper(String);
     ///
@@ -62,7 +61,7 @@ impl LateLintPass<'_> for FromOverInto {
         if_chain! {
             if let hir::ItemKind::Impl{ .. } = &item.kind;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
-            if match_def_path(cx, impl_trait_ref.def_id, &INTO);
+            if cx.tcx.is_diagnostic_item(sym::into_trait, impl_trait_ref.def_id);
 
             then {
                 span_lint_and_help(

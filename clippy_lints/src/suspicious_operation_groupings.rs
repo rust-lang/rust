@@ -13,20 +13,21 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Checks for unlikely usages of binary operators that are almost
     /// certainly typos and/or copy/paste errors, given the other usages
     /// of binary operators nearby.
-    /// **Why is this bad?**
+    ///
+    /// ### Why is this bad?
     /// They are probably bugs and if they aren't then they look like bugs
     /// and you should add a comment explaining why you are doing such an
     /// odd set of operations.
-    /// **Known problems:**
+    ///
+    /// ### Known problems
     /// There may be some false positives if you are trying to do something
     /// unusual that happens to look like a typo.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct Vec3 {
     ///     x: f64,

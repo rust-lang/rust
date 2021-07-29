@@ -6,14 +6,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks methods that contain a `self` argument but don't use it
+    /// ### What it does
+    /// Checks methods that contain a `self` argument but don't use it
     ///
-    /// **Why is this bad?** It may be clearer to define the method as an associated function instead
+    /// ### Why is this bad?
+    /// It may be clearer to define the method as an associated function instead
     /// of an instance method if it doesn't require `self`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// struct A;
     /// impl A {

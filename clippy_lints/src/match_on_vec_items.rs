@@ -10,13 +10,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `match vec[idx]` or `match vec[n..m]`.
+    /// ### What it does
+    /// Checks for `match vec[idx]` or `match vec[n..m]`.
     ///
-    /// **Why is this bad?** This can panic at runtime.
+    /// ### Why is this bad?
+    /// This can panic at runtime.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust, no_run
     /// let arr = vec![0, 1, 2, 3];
     /// let idx = 1;

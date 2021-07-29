@@ -9,13 +9,13 @@ use rustc_span::symbol::kw;
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** The lint checks for `self` in fn parameters that
+    /// ### What it does
+    /// The lint checks for `self` in fn parameters that
     /// specify the `Self`-type explicitly
-    /// **Why is this bad?** Increases the amount and decreases the readability of code
+    /// ### Why is this bad?
+    /// Increases the amount and decreases the readability of code
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// enum ValType {
     ///     I32,

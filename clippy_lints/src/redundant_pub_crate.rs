@@ -5,16 +5,15 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for items declared `pub(crate)` that are not crate visible because they
+    /// ### What it does
+    /// Checks for items declared `pub(crate)` that are not crate visible because they
     /// are inside a private module.
     ///
-    /// **Why is this bad?** Writing `pub(crate)` is misleading when it's redundant due to the parent
+    /// ### Why is this bad?
+    /// Writing `pub(crate)` is misleading when it's redundant due to the parent
     /// module's visibility.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// mod internal {
     ///     pub(crate) fn internal_fn() { }

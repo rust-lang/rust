@@ -7,10 +7,12 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** it lints if an exported function, method, trait method with default impl,
+    /// ### What it does
+    /// it lints if an exported function, method, trait method with default impl,
     /// or trait method impl is not `#[inline]`.
     ///
-    /// **Why is this bad?** In general, it is not. Functions can be inlined across
+    /// ### Why is this bad?
+    /// In general, it is not. Functions can be inlined across
     /// crates when that's profitable as long as any form of LTO is used. When LTO is disabled,
     /// functions that are not `#[inline]` cannot be inlined across crates. Certain types of crates
     /// might intend for most of the methods in their public API to be able to be inlined across
@@ -18,9 +20,7 @@ declare_clippy_lint! {
     /// sense. It allows the crate to require all exported methods to be `#[inline]` by default, and
     /// then opt out for specific methods where this might not make sense.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// pub fn foo() {} // missing #[inline]
     /// fn ok() {} // ok

@@ -13,17 +13,20 @@ use if_chain::if_chain;
 use itertools::Itertools;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks to see if multiple versions of a crate are being
+    /// ### What it does
+    /// Checks to see if multiple versions of a crate are being
     /// used.
     ///
-    /// **Why is this bad?** This bloats the size of targets, and can lead to
+    /// ### Why is this bad?
+    /// This bloats the size of targets, and can lead to
     /// confusing error messages when structs or traits are used interchangeably
     /// between different versions of a crate.
     ///
-    /// **Known problems:** Because this can be caused purely by the dependencies
+    /// ### Known problems
+    /// Because this can be caused purely by the dependencies
     /// themselves, it's not always possible to fix this issue.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```toml
     /// # This will pull in both winapi v0.3.x and v0.2.x, triggering a warning.
     /// [dependencies]

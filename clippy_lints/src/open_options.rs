@@ -8,15 +8,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{Span, Spanned};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for duplicate open options as well as combinations
+    /// ### What it does
+    /// Checks for duplicate open options as well as combinations
     /// that make no sense.
     ///
-    /// **Why is this bad?** In the best case, the code will be harder to read than
+    /// ### Why is this bad?
+    /// In the best case, the code will be harder to read than
     /// necessary. I don't know the worst case.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::fs::OpenOptions;
     ///

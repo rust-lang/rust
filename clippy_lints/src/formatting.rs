@@ -9,15 +9,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
+    /// ### What it does
+    /// Checks for use of the non-existent `=*`, `=!` and `=-`
     /// operators.
     ///
-    /// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or
+    /// ### Why is this bad?
+    /// This is either a typo of `*=`, `!=` or `-=` or
     /// confusing.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
     /// ```
@@ -27,15 +27,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks the formatting of a unary operator on the right hand side
+    /// ### What it does
+    /// Checks the formatting of a unary operator on the right hand side
     /// of a binary operator. It lints if there is no space between the binary and unary operators,
     /// but there is a space between the unary and its operand.
     ///
-    /// **Why is this bad?** This is either a typo in the binary operator or confusing.
+    /// ### Why is this bad?
+    /// This is either a typo in the binary operator or confusing.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// if foo <- 30 { // this should be `foo < -30` but looks like a different operator
     /// }
@@ -49,15 +49,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for formatting of `else`. It lints if the `else`
+    /// ### What it does
+    /// Checks for formatting of `else`. It lints if the `else`
     /// is followed immediately by a newline or the `else` seems to be missing.
     ///
-    /// **Why is this bad?** This is probably some refactoring remnant, even if the
+    /// ### Why is this bad?
+    /// This is probably some refactoring remnant, even if the
     /// code is correct, it might look confusing.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// if foo {
     /// } { // looks like an `else` is missing here
@@ -85,14 +85,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for possible missing comma in an array. It lints if
+    /// ### What it does
+    /// Checks for possible missing comma in an array. It lints if
     /// an array element is a binary operator expression and it lies on two lines.
     ///
-    /// **Why is this bad?** This could lead to unexpected results.
+    /// ### Why is this bad?
+    /// This could lead to unexpected results.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// let a = &[
     ///     -1, -2, -3 // <= no comma here

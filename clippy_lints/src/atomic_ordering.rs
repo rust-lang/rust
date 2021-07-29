@@ -8,16 +8,16 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of invalid atomic
+    /// ### What it does
+    /// Checks for usage of invalid atomic
     /// ordering in atomic loads/stores/exchanges/updates and
     /// memory fences.
     ///
-    /// **Why is this bad?** Using an invalid atomic ordering
+    /// ### Why is this bad?
+    /// Using an invalid atomic ordering
     /// will cause a panic at run-time.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,no_run
     /// # use std::sync::atomic::{self, AtomicU8, Ordering};
     ///

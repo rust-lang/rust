@@ -11,7 +11,6 @@ if_chain! {
     // unimplemented: field checks
     if arms.len() == 1;
     if let ExprKind::Loop(ref body, ref label, LoopSource::ForLoop) = arms[0].body.kind;
-    if let Some(trailing_expr) = &body.expr;
     if body.stmts.len() == 4;
     if let StmtKind::Local(ref local) = body.stmts[0].kind;
     if let PatKind::Binding(BindingAnnotation::Mutable, _, name, None) = local.pat.kind;
@@ -48,7 +47,6 @@ if_chain! {
     if name1.as_str() == "y";
     if let StmtKind::Expr(ref e1, _) = body.stmts[3].kind
     if let ExprKind::Block(ref block) = e1.kind;
-    if let Some(trailing_expr1) = &block.expr;
     if block.stmts.len() == 1;
     if let StmtKind::Local(ref local2) = block.stmts[0].kind;
     if let Some(ref init1) = local2.init;
@@ -56,6 +54,8 @@ if_chain! {
     if match_qpath(path9, &["y"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name2, None) = local2.pat.kind;
     if name2.as_str() == "z";
+    if block.expr.is_none();
+    if body.expr.is_none();
     if let PatKind::Binding(BindingAnnotation::Mutable, _, name3, None) = arms[0].pat.kind;
     if name3.as_str() == "iter";
     then {

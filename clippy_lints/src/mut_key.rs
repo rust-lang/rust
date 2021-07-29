@@ -1,26 +1,30 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{match_def_path, paths, trait_ref_of_method};
+use clippy_utils::trait_ref_of_method;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::symbol::sym;
 use std::iter;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for sets/maps with mutable key types.
+    /// ### What it does
+    /// Checks for sets/maps with mutable key types.
     ///
-    /// **Why is this bad?** All of `HashMap`, `HashSet`, `BTreeMap` and
+    /// ### Why is this bad?
+    /// All of `HashMap`, `HashSet`, `BTreeMap` and
     /// `BtreeSet` rely on either the hash or the order of keys be unchanging,
     /// so having types with interior mutability is a bad idea.
     ///
-    /// **Known problems:** It's correct to use a struct, that contains interior mutability
+    /// ### Known problems
+    /// It's correct to use a struct, that contains interior mutability
     /// as a key, when its `Hash` implementation doesn't access any of the interior mutable types.
     /// However, this lint is unable to recognize this, so it causes a false positive in theses cases.
     /// The `bytes` crate is a great example of this.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::cmp::{PartialEq, Eq};
     /// use std::collections::HashSet;
@@ -99,9 +103,9 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
 fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
     let ty = ty.peel_refs();
     if let Adt(def, substs) = ty.kind() {
-        if [&paths::HASHMAP, &paths::BTREEMAP, &paths::HASHSET, &paths::BTREESET]
+        if [sym::hashmap_type, sym::BTreeMap, sym::hashset_type, sym::BTreeMap]
             .iter()
-            .any(|path| match_def_path(cx, def.did, &**path))
+            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did))
             && is_mutable_type(cx, substs.type_at(0), span)
         {
             span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");

@@ -6,7 +6,8 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for integer arithmetic operations which could overflow or panic.
+    /// ### What it does
+    /// Checks for integer arithmetic operations which could overflow or panic.
     ///
     /// Specifically, checks for any operators (`+`, `-`, `*`, `<<`, etc) which are capable
     /// of overflowing according to the [Rust
@@ -14,13 +15,12 @@ declare_clippy_lint! {
     /// or which can panic (`/`, `%`). No bounds analysis or sophisticated reasoning is
     /// attempted.
     ///
-    /// **Why is this bad?** Integer overflow will trigger a panic in debug builds or will wrap in
+    /// ### Why is this bad?
+    /// Integer overflow will trigger a panic in debug builds or will wrap in
     /// release mode. Division by zero will cause a panic in either mode. In some applications one
     /// wants explicitly checked, wrapping or saturating arithmetic.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let a = 0;
     /// a + 1;
@@ -31,14 +31,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for float arithmetic.
+    /// ### What it does
+    /// Checks for float arithmetic.
     ///
-    /// **Why is this bad?** For some embedded systems or kernel development, it
+    /// ### Why is this bad?
+    /// For some embedded systems or kernel development, it
     /// can be useful to rule out floating-point numbers.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let a = 0.0;
     /// a + 1.0;

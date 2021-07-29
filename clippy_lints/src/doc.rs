@@ -30,15 +30,18 @@ use std::thread;
 use url::Url;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for the presence of `_`, `::` or camel-case words
+    /// ### What it does
+    /// Checks for the presence of `_`, `::` or camel-case words
     /// outside ticks in documentation.
     ///
-    /// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and
+    /// ### Why is this bad?
+    /// *Rustdoc* supports markdown formatting, `_`, `::` and
     /// camel-case probably indicates some code which should be included between
     /// ticks. `_` can also be used for emphasis in markdown, this lint tries to
     /// consider that.
     ///
-    /// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks
+    /// ### Known problems
+    /// Lots of bad docs won’t be fixed, what the lint checks
     /// for is limited, and there are still false positives. HTML elements and their
     /// content are not linted.
     ///
@@ -47,7 +50,7 @@ declare_clippy_lint! {
     /// `[`SmallVec<[T; INLINE_CAPACITY]>`]` and then [`SmallVec<[T; INLINE_CAPACITY]>`]: SmallVec
     /// would fail.
     ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// /// Do something with the foo_bar parameter. See also
     /// /// that::other::module::foo.
@@ -68,15 +71,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for the doc comments of publicly visible
+    /// ### What it does
+    /// Checks for the doc comments of publicly visible
     /// unsafe functions and warns if there is no `# Safety` section.
     ///
-    /// **Why is this bad?** Unsafe functions should document their safety
+    /// ### Why is this bad?
+    /// Unsafe functions should document their safety
     /// preconditions, so that users can be sure they are using them safely.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     ///# type Universe = ();
     /// /// This function should really be documented
@@ -102,16 +105,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks the doc comments of publicly visible functions that
+    /// ### What it does
+    /// Checks the doc comments of publicly visible functions that
     /// return a `Result` type and warns if there is no `# Errors` section.
     ///
-    /// **Why is this bad?** Documenting the type of errors that can be returned from a
+    /// ### Why is this bad?
+    /// Documenting the type of errors that can be returned from a
     /// function can help callers write code to handle the errors appropriately.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
-    ///
+    /// ### Examples
     /// Since the following function returns a `Result` it has an `# Errors` section in
     /// its doc comment:
     ///
@@ -131,16 +133,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks the doc comments of publicly visible functions that
+    /// ### What it does
+    /// Checks the doc comments of publicly visible functions that
     /// may panic and warns if there is no `# Panics` section.
     ///
-    /// **Why is this bad?** Documenting the scenarios in which panicking occurs
+    /// ### Why is this bad?
+    /// Documenting the scenarios in which panicking occurs
     /// can help callers who do not want to panic to avoid those situations.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
-    ///
+    /// ### Examples
     /// Since the following function may panic it has a `# Panics` section in
     /// its doc comment:
     ///
@@ -162,14 +163,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `fn main() { .. }` in doctests
+    /// ### What it does
+    /// Checks for `fn main() { .. }` in doctests
     ///
-    /// **Why is this bad?** The test can be shorter (and likely more readable)
+    /// ### Why is this bad?
+    /// The test can be shorter (and likely more readable)
     /// if the `fn main()` is left implicit.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
+    /// ### Examples
     /// ``````rust
     /// /// An example of a doctest with a `main()` function
     /// ///
