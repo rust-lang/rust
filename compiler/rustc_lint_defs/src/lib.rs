@@ -47,12 +47,31 @@ pub enum Applicability {
 }
 
 /// Setting for how to handle a lint.
+///
+/// See: https://doc.rust-lang.org/rustc/lints/levels.html
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {
+    /// The `allow` level will not issue any message.
     Allow,
+    /// The `expect` level will suppress the lint message but intern produce a message
+    /// if the lint wasn't issued in the expected scope. Expect should not be used as
+    /// an initial level for a lint.
+    ///
+    /// Note that this still means that the lint is enabled in this position and should
+    /// be passed onwards to the `LintContext` which will fulfill the expectation and
+    /// suppress the lint.
+    ///
+    /// See RFC 2383.
+    Expect,
+    /// The `warn` level will produce a warning if the lint was violated, however the
+    /// compiler will continue with its execution.
     Warn,
     ForceWarn,
+    /// The `deny` level will produce an error and stop further execution after the lint
+    /// pass is complete.
     Deny,
+    /// `Forbid` is equivalent to the `deny` level but can't be overwritten like the previous
+    /// levels.
     Forbid,
 }
 
@@ -63,6 +82,7 @@ impl Level {
     pub fn as_str(self) -> &'static str {
         match self {
             Level::Allow => "allow",
+            Level::Expect => "expect",
             Level::Warn => "warn",
             Level::ForceWarn => "force-warn",
             Level::Deny => "deny",
@@ -74,6 +94,7 @@ impl Level {
     pub fn from_str(x: &str) -> Option<Level> {
         match x {
             "allow" => Some(Level::Allow),
+            "expect" => Some(Level::Expect),
             "warn" => Some(Level::Warn),
             "deny" => Some(Level::Deny),
             "forbid" => Some(Level::Forbid),
@@ -85,6 +106,7 @@ impl Level {
     pub fn from_symbol(x: Symbol) -> Option<Level> {
         match x {
             sym::allow => Some(Level::Allow),
+            sym::expect => Some(Level::Expect),
             sym::warn => Some(Level::Warn),
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),

@@ -589,6 +589,11 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
+    /// Construct a builder at the `Expect` level with the `msg`.
+    pub fn struct_expect(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Expect, msg)
+    }
+
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
     pub fn struct_span_err(&self, span: impl Into<MultiSpan>, msg: &str) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_err(msg);
@@ -1101,6 +1106,7 @@ pub enum Level {
     Cancelled,
     FailureNote,
     Allow,
+    Expect,
 }
 
 impl fmt::Display for Level {
@@ -1126,7 +1132,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow | Cancelled => unreachable!(),
+            Allow | Expect | Cancelled => unreachable!(),
         }
         spec
     }
@@ -1141,6 +1147,7 @@ impl Level {
             FailureNote => "failure-note",
             Cancelled => panic!("Shouldn't call on cancelled error"),
             Allow => panic!("Shouldn't call on allowed error"),
+            Expect => panic!("Shouldn't call on expected error"),
         }
     }
 

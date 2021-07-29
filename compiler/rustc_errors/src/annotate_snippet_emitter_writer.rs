@@ -73,6 +73,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
         // FIXME(#59346): Not sure how to map these two levels
         Level::Cancelled | Level::FailureNote => AnnotationType::Error,
         Level::Allow => panic!("Should not call with Allow"),
+        Level::Expect => panic!("Should not call with Expect"),
     }
 }
 
