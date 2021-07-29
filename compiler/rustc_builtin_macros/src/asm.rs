@@ -529,8 +529,8 @@ fn expand_preparsed_asm(
                             lint::builtin::NAMED_ASM_LABELS,
                             span,
                             ecx.current_expansion.lint_node_id,
-                            "do not use named labels in inline assembly",
-                            BuiltinLintDiagnostics::NamedAsmLabel("only GAS local labels of the form `N:` where N is a number may be used in inline asm".to_string()),
+                            "avoid using named labels in inline assembly",
+                            BuiltinLintDiagnostics::NamedAsmLabel("only local labels of the form `<number>:` should be used in inline asm".to_string()),
                         );
                     }
                 } else {
@@ -539,8 +539,8 @@ fn expand_preparsed_asm(
                         lint::builtin::NAMED_ASM_LABELS,
                         template_sp,
                         ecx.current_expansion.lint_node_id,
-                        "do not use named labels in inline assembly",
-                        BuiltinLintDiagnostics::NamedAsmLabel("only GAS local labels of the form `N:` where N is a number may be used in inline asm".to_string()),
+                        "avoid using named labels in inline assembly",
+                        BuiltinLintDiagnostics::NamedAsmLabel("only local labels of the form `<number>:` should be used in inline asm".to_string()),
                     );
                 }
             }

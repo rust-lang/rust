@@ -8,42 +8,42 @@ pub static FOO: usize = 42;
 fn main() {
     unsafe {
         // Basic usage
-        asm!("bar: nop"); //~ ERROR do not use named labels
+        asm!("bar: nop"); //~ ERROR avoid using named labels
 
         // No following asm
-        asm!("abcd:"); //~ ERROR do not use named labels
+        asm!("abcd:"); //~ ERROR avoid using named labels
 
         // Multiple labels on one line
         asm!("foo: bar1: nop");
-        //~^ ERROR do not use named labels
-        //~| ERROR do not use named labels
+        //~^ ERROR avoid using named labels
+        //~| ERROR avoid using named labels
 
         // Multiple lines
-        asm!("foo1: nop", "nop"); //~ ERROR do not use named labels
+        asm!("foo1: nop", "nop"); //~ ERROR avoid using named labels
         asm!("foo2: foo3: nop", "nop");
-        //~^ ERROR do not use named labels
-        //~| ERROR do not use named labels
-        asm!("nop", "foo4: nop"); //~ ERROR do not use named labels
+        //~^ ERROR avoid using named labels
+        //~| ERROR avoid using named labels
+        asm!("nop", "foo4: nop"); //~ ERROR avoid using named labels
         asm!("foo5: nop", "foo6: nop");
-        //~^ ERROR do not use named labels
-        //~| ERROR do not use named labels
+        //~^ ERROR avoid using named labels
+        //~| ERROR avoid using named labels
 
         // Statement separator
         asm!("foo7: nop; foo8: nop");
-        //~^ ERROR do not use named labels
-        //~| ERROR do not use named labels
-        asm!("foo9: nop; nop"); //~ ERROR do not use named labels
-        asm!("nop; foo10: nop"); //~ ERROR do not use named labels
+        //~^ ERROR avoid using named labels
+        //~| ERROR avoid using named labels
+        asm!("foo9: nop; nop"); //~ ERROR avoid using named labels
+        asm!("nop; foo10: nop"); //~ ERROR avoid using named labels
 
         // Escaped newline
         asm!("bar2: nop\n bar3: nop");
-        //~^ ERROR do not use named labels
-        //~| ERROR do not use named labels
-        asm!("bar4: nop\n nop"); //~ ERROR do not use named labels
-        asm!("nop\n bar5: nop"); //~ ERROR do not use named labels
+        //~^ ERROR avoid using named labels
+        //~| ERROR avoid using named labels
+        asm!("bar4: nop\n nop"); //~ ERROR avoid using named labels
+        asm!("nop\n bar5: nop"); //~ ERROR avoid using named labels
         asm!("nop\n bar6: bar7: nop");
-        //~^ ERROR do not use named labels
-        //~| ERROR do not use named labels
+        //~^ ERROR avoid using named labels
+        //~| ERROR avoid using named labels
 
         // Raw strings
         asm!(
@@ -52,15 +52,15 @@ fn main() {
             blah3: nop
             "
         );
-        //~^^^^ ERROR do not use named labels
-        //~^^^^ ERROR do not use named labels
+        //~^^^^ ERROR avoid using named labels
+        //~^^^^ ERROR avoid using named labels
         asm!(
             r###"
             nop
             nop ; blah4: nop
             "###
         );
-        //~^^^ ERROR do not use named labels
+        //~^^^ ERROR avoid using named labels
 
         // Non-labels
         // should not trigger lint, but may be invalid asm
@@ -71,12 +71,12 @@ fn main() {
         asm!("1bar: blah: nop");
 
         // Only `blah1:` should trigger
-        asm!("blah1: 2bar: nop"); //~ ERROR do not use named labels
+        asm!("blah1: 2bar: nop"); //~ ERROR avoid using named labels
 
         // Duplicate labels
-        asm!("def: def: nop"); //~ ERROR do not use named labels
-        asm!("def: nop\ndef: nop"); //~ ERROR do not use named labels
-        asm!("def: nop; def: nop"); //~ ERROR do not use named labels
+        asm!("def: def: nop"); //~ ERROR avoid using named labels
+        asm!("def: nop\ndef: nop"); //~ ERROR avoid using named labels
+        asm!("def: nop; def: nop"); //~ ERROR avoid using named labels
 
         // Trying to break parsing
         asm!(":");
@@ -84,16 +84,16 @@ fn main() {
         asm!("::::");
 
         // 0x3A is a ':'
-        asm!("fooo\u{003A} nop"); //~ ERROR do not use named labels
-        asm!("foooo\x3A nop"); //~ ERROR do not use named labels
+        asm!("fooo\u{003A} nop"); //~ ERROR avoid using named labels
+        asm!("foooo\x3A nop"); //~ ERROR avoid using named labels
 
         // 0x0A is a newline
-        asm!("fooooo:\u{000A} nop"); //~ ERROR do not use named labels
-        asm!("foooooo:\x0A nop"); //~ ERROR do not use named labels
+        asm!("fooooo:\u{000A} nop"); //~ ERROR avoid using named labels
+        asm!("foooooo:\x0A nop"); //~ ERROR avoid using named labels
 
         // Intentionally breaking span finding
         // equivalent to "ABC: nop"
-        asm!("\x41\x42\x43\x3A\x20\x6E\x6F\x70"); //~ ERROR do not use named labels
+        asm!("\x41\x42\x43\x3A\x20\x6E\x6F\x70"); //~ ERROR avoid using named labels
 
         // Non-label colons - should pass
         // (most of these are stolen from other places)
@@ -108,7 +108,7 @@ fn main() {
             // cd: nop
             "
         );
-        //~^^^^ ERROR do not use named labels
+        //~^^^^ ERROR avoid using named labels
 
         // Tests usage of colons in non-label positions
         asm!(":lo12:FOO"); // this is apparently valid aarch64
@@ -116,7 +116,7 @@ fn main() {
         asm!(":bbb nop");
 
         // Test include_str in asm
-        asm!(include_str!("named-asm-labels.s")); //~ ERROR do not use named labels
+        asm!(include_str!("named-asm-labels.s")); //~ ERROR avoid using named labels
 
         // Test allowing or warning on the lint instead
         #[allow(named_asm_labels)]
@@ -126,7 +126,7 @@ fn main() {
 
         #[warn(named_asm_labels)]
         {
-            asm!("warned: nop"); //~ WARNING do not use named labels
+            asm!("warned: nop"); //~ WARNING avoid using named labels
         }
     }
 }
