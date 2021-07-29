@@ -1,4 +1,6 @@
-pub const DEFAULT_BUF_SIZE: usize = 8 * 1024;
+// Bare metal platforms usually have very small amounts of RAM
+// (in the order of hundreds of KB)
+pub const DEFAULT_BUF_SIZE: usize = if cfg!(target_os = "espidf") { 512 } else { 8 * 1024 };
 
 #[cfg(test)]
 #[allow(dead_code)] // not used on emscripten

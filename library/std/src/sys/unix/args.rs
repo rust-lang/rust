@@ -246,3 +246,15 @@ mod imp {
         Args { iter: res.into_iter() }
     }
 }
+
+#[cfg(target_os = "espidf")]
+mod imp {
+    use super::Args;
+
+    #[inline(always)]
+    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+
+    pub fn args() -> Args {
+        Args { iter: Vec::new().into_iter() }
+    }
+}

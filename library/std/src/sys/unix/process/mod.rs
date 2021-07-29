@@ -13,6 +13,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "vxworks")] {
         #[path = "process_vxworks.rs"]
         mod process_inner;
+    } else if #[cfg(target_os = "espidf")] {
+        #[path = "process_unsupported.rs"]
+        mod process_inner;
     } else {
         #[path = "process_unix.rs"]
         mod process_inner;

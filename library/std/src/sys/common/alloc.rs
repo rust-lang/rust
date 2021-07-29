@@ -14,7 +14,8 @@ use crate::ptr;
     target_arch = "asmjs",
     target_arch = "wasm32",
     target_arch = "hexagon",
-    target_arch = "riscv32"
+    target_arch = "riscv32",
+    target_arch = "xtensa"
 )))]
 pub const MIN_ALIGN: usize = 8;
 #[cfg(all(any(

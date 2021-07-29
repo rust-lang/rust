@@ -44,12 +44,17 @@ mod imp {
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    #[cfg(target_os = "espidf")]
+    fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "espidf")))]
     fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
         false
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "espidf"))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
         use crate::sync::atomic::{AtomicBool, Ordering};
         use crate::sys::os::errno;
