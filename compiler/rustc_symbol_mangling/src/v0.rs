@@ -25,13 +25,10 @@ pub(super) fn mangle(
     let prefix = "_R";
     let mut cx = SymbolMangler {
         tcx,
-        compress: Box::new(CompressionCaches {
-            start_offset: prefix.len(),
-
-            paths: FxHashMap::default(),
-            types: FxHashMap::default(),
-            consts: FxHashMap::default(),
-        }),
+        start_offset: prefix.len(),
+        paths: FxHashMap::default(),
+        types: FxHashMap::default(),
+        consts: FxHashMap::default(),
         binders: vec![],
         out: String::from(prefix),
     };
@@ -55,16 +52,6 @@ pub(super) fn mangle(
     cx.out
 }
 
-struct CompressionCaches<'tcx> {
-    // The length of the prefix in `out` (e.g. 2 for `_R`).
-    start_offset: usize,
-
-    // The values are start positions in `out`, in bytes.
-    paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
-    types: FxHashMap<Ty<'tcx>, usize>,
-    consts: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
-}
-
 struct BinderLevel {
     /// The range of distances from the root of what's
     /// being printed, to the lifetimes in a binder.
@@ -81,9 +68,15 @@ struct BinderLevel {
 
 struct SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
-    compress: Box<CompressionCaches<'tcx>>,
     binders: Vec<BinderLevel>,
     out: String,
+
+    /// The length of the prefix in `out` (e.g. 2 for `_R`).
+    start_offset: usize,
+    /// The values are start positions in `out`, in bytes.
+    paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
+    types: FxHashMap<Ty<'tcx>, usize>,
+    consts: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
 }
 
 impl SymbolMangler<'tcx> {
@@ -177,7 +170,7 @@ impl SymbolMangler<'tcx> {
 
     fn print_backref(mut self, i: usize) -> Result<Self, !> {
         self.push("B");
-        self.push_integer_62((i - self.compress.start_offset) as u64);
+        self.push_integer_62((i - self.start_offset) as u64);
         Ok(self)
     }
 
@@ -236,7 +229,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         def_id: DefId,
         substs: &'tcx [GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
-        if let Some(&i) = self.compress.paths.get(&(def_id, substs)) {
+        if let Some(&i) = self.paths.get(&(def_id, substs)) {
             return self.print_backref(i);
         }
         let start = self.out.len();
@@ -246,7 +239,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         // Only cache paths that do not refer to an enclosing
         // binder (which would change depending on context).
         if !substs.iter().any(|k| k.has_escaping_bound_vars()) {
-            self.compress.paths.insert((def_id, substs), start);
+            self.paths.insert((def_id, substs), start);
         }
         Ok(self)
     }
@@ -365,7 +358,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             return Ok(self);
         }
 
-        if let Some(&i) = self.compress.types.get(&ty) {
+        if let Some(&i) = self.types.get(&ty) {
             return self.print_backref(i);
         }
         let start = self.out.len();
@@ -474,7 +467,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         // Only cache types that do not refer to an enclosing
         // binder (which would change depending on context).
         if !ty.has_escaping_bound_vars() {
-            self.compress.types.insert(ty, start);
+            self.types.insert(ty, start);
         }
         Ok(self)
     }
@@ -541,7 +534,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
     }
 
     fn print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        if let Some(&i) = self.compress.consts.get(&ct) {
+        if let Some(&i) = self.consts.get(&ct) {
             return self.print_backref(i);
         }
         let start = self.out.len();
@@ -579,7 +572,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         // Only cache consts that do not refer to an enclosing
         // binder (which would change depending on context).
         if !ct.has_escaping_bound_vars() {
-            self.compress.consts.insert(ct, start);
+            self.consts.insert(ct, start);
         }
         Ok(self)
     }
