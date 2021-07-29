@@ -159,7 +159,7 @@ Current stable, released 2021-07-29
 ### Moves and Deprecations
 
 - Deprecate `pub_enum_variant_names` and `wrong_pub_self_convention` in favor of
-  the new `avoid_breaking_exported_api` config option (see
+  the new `avoid-breaking-exported-api` config option (see
   [Enhancements](#1-54-enhancements))
   [#7187](https://github.com/rust-lang/rust-clippy/pull/7187)
 - Move [`inconsistent_struct_constructor`] to `pedantic`
@@ -181,7 +181,7 @@ Current stable, released 2021-07-29
   [#7163](https://github.com/rust-lang/rust-clippy/pull/7163)
 - [`if_then_some_else_none`]: Now works with the MSRV config
   [#7177](https://github.com/rust-lang/rust-clippy/pull/7177)
-- Add `avoid_breaking_exported_api` config option for the lints
+- Add `avoid-breaking-exported-api` config option for the lints
   [`enum_variant_names`], [`large_types_passed_by_value`],
   [`trivially_copy_pass_by_ref`], [`unnecessary_wraps`],
   [`upper_case_acronyms`], and [`wrong_self_convention`]. We recommend to set
