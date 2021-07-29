@@ -97,6 +97,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let params = extracted_function_params(ctx, &body, locals_used.iter().copied());
 
+            let insert_comma = body
+                .parent()
+                .and_then(ast::MatchArm::cast)
+                .map_or(false, |it| it.comma_token().is_none());
             let fun = Function {
                 name: "fun_name".to_string(),
                 self_param,
@@ -110,7 +114,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
             let new_indent = IndentLevel::from_node(&insert_after);
             let old_indent = fun.body.indent_level();
 
-            builder.replace(target_range, format_replacement(ctx, &fun, old_indent, has_await));
+            builder.replace(target_range, make_call(ctx, &fun, old_indent, has_await));
+            if insert_comma {
+                builder.insert(target_range.end(), ",");
+            }
 
             let fn_def = format_function(ctx, module, &fun, old_indent, new_indent, has_await);
             let insert_offset = insert_after.text_range().end();
@@ -364,6 +371,13 @@ fn try_kind_of_ty(ty: hir::Type, ctx: &AssistContext) -> Option<TryKind> {
 }
 
 impl FunctionBody {
+    fn parent(&self) -> Option<SyntaxNode> {
+        match self {
+            FunctionBody::Expr(expr) => expr.syntax().parent(),
+            FunctionBody::Span { parent, .. } => Some(parent.syntax().clone()),
+        }
+    }
+
     fn from_expr(expr: ast::Expr) -> Option<Self> {
         match expr {
             ast::Expr::BreakExpr(it) => it.expr().map(Self::Expr),
@@ -978,7 +992,7 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     last_ancestor
 }
 
-fn format_replacement(
+fn make_call(
     ctx: &AssistContext,
     fun: &Function,
     indent: IndentLevel,
@@ -3767,6 +3781,56 @@ async fn some_function() {
             extract_function,
             r#"
 fn main() $0{}$0
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_adds_comma_for_match_arm() {
+        check_assist(
+            extract_function,
+            r#"
+fn main() {
+    match 6 {
+        100 => $0{ 100 }$0
+        _ => 0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 6 {
+        100 => fun_name(),
+        _ => 0,
+    }
+}
+
+fn $0fun_name() -> i32 {
+    100
+}
+"#,
+        );
+        check_assist(
+            extract_function,
+            r#"
+fn main() {
+    match 6 {
+        100 => $0{ 100 }$0,
+        _ => 0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 6 {
+        100 => fun_name(),
+        _ => 0,
+    }
+}
+
+fn $0fun_name() -> i32 {
+    100
+}
 "#,
         );
     }
