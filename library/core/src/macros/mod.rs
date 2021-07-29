@@ -1347,6 +1347,10 @@ pub(crate) mod builtin {
         issue = "70173",
         reason = "prefer using the new asm! syntax instead"
     )]
+    #[rustc_deprecated(
+        since = "1.56",
+        reason = "will be removed from the compiler, use asm! instead"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! llvm_asm {
