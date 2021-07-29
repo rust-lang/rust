@@ -12,11 +12,11 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
 help: to link to the module, prefix with `mod@`
    |
 LL | /// [mod@char]
-   |      ^^^^^^^^
+   |      ^^^^
 help: to link to the builtin type, prefix with `prim@`
    |
 LL | /// [prim@char]
-   |      ^^^^^^^^^
+   |      ^^^^^
 
 error: `char` is both a module and a builtin type
   --> $DIR/prim-conflict.rs:10:6
@@ -27,27 +27,33 @@ LL | /// [type@char]
 help: to link to the module, prefix with `mod@`
    |
 LL | /// [mod@char]
-   |      ^^^^^^^^
+   |      ^^^^
 help: to link to the builtin type, prefix with `prim@`
    |
 LL | /// [prim@char]
-   |      ^^^^^^^^^
+   |      ^^^^^
 
 error: incompatible link kind for `char`
   --> $DIR/prim-conflict.rs:19:6
    |
 LL | /// [struct@char]
-   |      ^^^^^^^^^^^ help: to link to the module, prefix with `mod@`: `mod@char`
+   |      ^^^^^^^^^^^ this link resolved to a module, which is not a struct
    |
-   = note: this link resolved to a module, which is not a struct
+help: to link to the module, prefix with `mod@`
+   |
+LL | /// [mod@char]
+   |      ^^^^
 
 error: incompatible link kind for `char`
   --> $DIR/prim-conflict.rs:26:10
    |
 LL |     //! [struct@char]
-   |          ^^^^^^^^^^^ help: to link to the builtin type, prefix with `prim@`: `prim@char`
+   |          ^^^^^^^^^^^ this link resolved to a builtin type, which is not a struct
    |
-   = note: this link resolved to a builtin type, which is not a struct
+help: to link to the builtin type, prefix with `prim@`
+   |
+LL |     //! [prim@char]
+   |          ^^^^^
 
 error: aborting due to 4 previous errors
 

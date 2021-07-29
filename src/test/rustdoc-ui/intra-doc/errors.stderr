@@ -92,37 +92,45 @@ error: unresolved link to `Vec::into_iter`
   --> $DIR/errors.rs:63:6
    |
 LL | /// [type@Vec::into_iter]
-   |      ^^^^^^^^^^^^^^^^^^^
-   |      |
-   |      this link resolves to the associated function `into_iter`, which is not in the type namespace
-   |      help: to link to the associated function, add parentheses: `Vec::into_iter()`
+   |      ^^^^^^^^^^^^^^^^^^^ this link resolves to the associated function `into_iter`, which is not in the type namespace
+   |
+help: to link to the associated function, add parentheses
+   |
+LL | /// [Vec::into_iter()]
+   |     --             ^^
 
 error: unresolved link to `S`
   --> $DIR/errors.rs:68:6
    |
 LL | /// [S!]
-   |      ^^
-   |      |
-   |      this link resolves to the struct `S`, which is not in the macro namespace
-   |      help: to link to the struct, prefix with `struct@`: `struct@S`
+   |      ^^ this link resolves to the struct `S`, which is not in the macro namespace
+   |
+help: to link to the struct, prefix with `struct@`
+   |
+LL | /// [struct@S]
+   |      ^^^^^^^--
 
 error: unresolved link to `S::h`
   --> $DIR/errors.rs:78:6
    |
 LL | /// [type@S::h]
-   |      ^^^^^^^^^
-   |      |
-   |      this link resolves to the associated function `h`, which is not in the type namespace
-   |      help: to link to the associated function, add parentheses: `S::h()`
+   |      ^^^^^^^^^ this link resolves to the associated function `h`, which is not in the type namespace
+   |
+help: to link to the associated function, add parentheses
+   |
+LL | /// [S::h()]
+   |     --   ^^
 
 error: unresolved link to `T::g`
   --> $DIR/errors.rs:86:6
    |
 LL | /// [type@T::g]
-   |      ^^^^^^^^^
-   |      |
-   |      this link resolves to the associated function `g`, which is not in the type namespace
-   |      help: to link to the associated function, add parentheses: `T::g()`
+   |      ^^^^^^^^^ this link resolves to the associated function `g`, which is not in the type namespace
+   |
+help: to link to the associated function, add parentheses
+   |
+LL | /// [T::g()]
+   |     --   ^^
 
 error: unresolved link to `T::h`
   --> $DIR/errors.rs:91:6
@@ -134,10 +142,12 @@ error: unresolved link to `m`
   --> $DIR/errors.rs:98:6
    |
 LL | /// [m()]
-   |      ^^^
-   |      |
-   |      this link resolves to the macro `m`, which is not in the value namespace
-   |      help: to link to the macro, add an exclamation mark: `m!`
+   |      ^^^ this link resolves to the macro `m`, which is not in the value namespace
+   |
+help: to link to the macro, add an exclamation mark
+   |
+LL | /// [m!()]
+   |       ^
 
 error: aborting due to 20 previous errors
 

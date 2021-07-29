@@ -1,8 +1,8 @@
 error: unresolved link to `S::fmt`
-  --> $DIR/assoc-item-not-in-scope.rs:4:14
+  --> $DIR/assoc-item-not-in-scope.rs:4:15
    |
 LL | /// Link to [`S::fmt`]
-   |              ^^^^^^^^ the struct `S` has no field or associated item named `fmt`
+   |               ^^^^^^ the struct `S` has no field or associated item named `fmt`
    |
 note: the lint level is defined here
   --> $DIR/assoc-item-not-in-scope.rs:1:9
