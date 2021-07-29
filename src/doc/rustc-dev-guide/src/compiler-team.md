@@ -80,6 +80,12 @@ group. One good way to find bugs is to look for
 or
 [E-mentor](https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-mentor).
 
+You can also dig through the graveyard of PRs that were
+[closed due to inactivity](https://github.com/rust-lang/rust/pulls?q=is%3Apr+label%3AS-inactive),
+some of them may contain work that is still useful - refer to the
+associated issues, if any - and only needs some finishing touches
+for which the original author didn't have time.
+
 ### r+ rights
 
 Once you have made a number of individual PRs to rustc, we will often
