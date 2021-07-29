@@ -23,7 +23,7 @@ pub(super) fn mangle(
     let substs = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs);
 
     let prefix = "_R";
-    let mut cx = SymbolMangler {
+    let mut cx = &mut SymbolMangler {
         tcx,
         start_offset: prefix.len(),
         paths: FxHashMap::default(),
@@ -49,7 +49,7 @@ pub(super) fn mangle(
     if let Some(instantiating_crate) = instantiating_crate {
         cx = cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
-    cx.out
+    std::mem::take(&mut cx.out)
 }
 
 struct BinderLevel {
@@ -153,13 +153,13 @@ impl SymbolMangler<'tcx> {
         self.push(ident);
     }
 
-    fn path_append_ns(
-        mut self,
-        print_prefix: impl FnOnce(Self) -> Result<Self, !>,
+    fn path_append_ns<'a>(
+        mut self: &'a mut Self,
+        print_prefix: impl FnOnce(&'a mut Self) -> Result<&'a mut Self, !>,
         ns: char,
         disambiguator: u64,
         name: &str,
-    ) -> Result<Self, !> {
+    ) -> Result<&'a mut Self, !> {
         self.push("N");
         self.out.push(ns);
         self = print_prefix(self)?;
@@ -168,17 +168,17 @@ impl SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_backref(mut self, i: usize) -> Result<Self, !> {
+    fn print_backref(&mut self, i: usize) -> Result<&mut Self, !> {
         self.push("B");
         self.push_integer_62((i - self.start_offset) as u64);
         Ok(self)
     }
 
-    fn in_binder<T>(
-        mut self,
+    fn in_binder<'a, T>(
+        mut self: &'a mut Self,
         value: &ty::Binder<'tcx, T>,
-        print_value: impl FnOnce(Self, &T) -> Result<Self, !>,
-    ) -> Result<Self, !>
+        print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
+    ) -> Result<&'a mut Self, !>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -211,7 +211,7 @@ impl SymbolMangler<'tcx> {
     }
 }
 
-impl Printer<'tcx> for SymbolMangler<'tcx> {
+impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
     type Error = !;
 
     type Path = Self;
@@ -303,7 +303,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_region(mut self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
+    fn print_region(self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
         let i = match *region {
             // Erased lifetimes use the index 0, for a
             // shorter mangling of `L_`.
@@ -577,7 +577,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
+    fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.push("C");
         let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
         self.push_disambiguator(stable_crate_id.to_u64());
