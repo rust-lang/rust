@@ -62,6 +62,31 @@ impl QueryStackFrame {
     }
 }
 
+/// Tracks 'side effects' for a particular query.
+/// This struct is saved to disk along with the query result,
+/// and loaded from disk if we mark the query as green.
+/// This allows us to 'replay' changes to global state
+/// that would otherwise only occur if we actually
+/// executed the query method.
+#[derive(Debug, Clone, Default, Encodable, Decodable)]
+pub struct QuerySideEffects {
+    /// Stores any diagnostics emitted during query execution.
+    /// These diagnostics will be re-emitted if we mark
+    /// the query as green.
+    pub(super) diagnostics: ThinVec<Diagnostic>,
+}
+
+impl QuerySideEffects {
+    pub fn is_empty(&self) -> bool {
+        let QuerySideEffects { diagnostics } = self;
+        diagnostics.is_empty()
+    }
+    pub fn append(&mut self, other: QuerySideEffects) {
+        let QuerySideEffects { diagnostics } = self;
+        diagnostics.extend(other.diagnostics);
+    }
+}
+
 pub trait QueryContext: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
@@ -74,17 +99,17 @@ pub trait QueryContext: HasDepContext {
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
 
-    /// Load diagnostics associated to the node in the previous session.
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;
+    /// Load side effects associated to the node in the previous session.
+    fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;
 
     /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
+    fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
 
     /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics_for_anon_node(
+    fn store_side_effects_for_anon_node(
         &self,
         dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
+        side_effects: QuerySideEffects,
     );
 
     /// Executes a job by changing the `ImplicitCtxt` to point to the
