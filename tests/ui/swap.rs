@@ -6,6 +6,7 @@
     clippy::no_effect,
     clippy::redundant_clone,
     redundant_semicolons,
+    dead_code,
     unused_assignments
 )]
 
@@ -55,6 +56,7 @@ fn unswappable_slice() {
     foo[1][0] = temp;
 
     // swap(foo[0][1], foo[1][0]) would fail
+    // this could use split_at_mut and mem::swap, but that is not much simpler.
 }
 
 fn vec() {
@@ -107,20 +109,21 @@ fn xor_unswappable_slice() {
     foo[0][1] ^= foo[1][0];
     foo[1][0] ^= foo[0][0];
     foo[0][1] ^= foo[1][0];
+
+    // swap(foo[0][1], foo[1][0]) would fail
+    // this could use split_at_mut and mem::swap, but that is not much simpler.
+}
+
+fn distinct_slice() {
+    let foo = &mut [vec![1, 2], vec![3, 4]];
+    let bar = &mut [vec![1, 2], vec![3, 4]];
+    let temp = foo[0][1];
+    foo[0][1] = bar[1][0];
+    bar[1][0] = temp;
 }
 
 #[rustfmt::skip]
 fn main() {
-    field();
-    array();
-    slice();
-    unswappable_slice();
-    vec();
-    xor_swap_locals();
-    xor_field_swap();
-    xor_slice_swap();
-    xor_no_swap();
-    xor_unswappable_slice();
 
     let mut a = 42;
     let mut b = 1337;
