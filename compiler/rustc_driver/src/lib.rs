@@ -764,13 +764,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("release: {}", unw(util::release_str()));
 
         let debug_flags = matches.opt_strs("Z");
-        let backend_name = debug_flags.iter().find_map(|x| {
-            if x.starts_with("codegen-backend=") {
-                Some(&x["codegen-backends=".len()..])
-            } else {
-                None
-            }
-        });
+        let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
         get_codegen_backend(&None, backend_name).print_version();
     }
 }
