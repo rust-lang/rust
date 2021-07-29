@@ -49,6 +49,7 @@ mod array_into_iter;
 pub mod builtin;
 mod context;
 mod early;
+mod expect;
 mod internal;
 mod late;
 mod levels;
@@ -99,6 +100,7 @@ pub use rustc_session::lint::{LintArray, LintPass};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
+    expect::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
