@@ -121,113 +121,6 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         },
     )
 }
-
-/// Analyses the function body for external control flow.
-fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<ControlFlow> {
-    let mut ret_expr = None;
-    let mut try_expr = None;
-    let mut break_expr = None;
-    let mut continue_expr = None;
-
-    let mut loop_depth = 0;
-
-    body.preorder_expr(&mut |expr| {
-        let expr = match expr {
-            WalkEvent::Enter(e) => e,
-            WalkEvent::Leave(
-                ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_),
-            ) => {
-                loop_depth -= 1;
-                return false;
-            }
-            WalkEvent::Leave(_) => return false,
-        };
-        match expr {
-            ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) => {
-                loop_depth += 1;
-            }
-            ast::Expr::ReturnExpr(it) => {
-                ret_expr = Some(it);
-            }
-            ast::Expr::TryExpr(it) => {
-                try_expr = Some(it);
-            }
-            ast::Expr::BreakExpr(it) if loop_depth == 0 => {
-                break_expr = Some(it);
-            }
-            ast::Expr::ContinueExpr(it) if loop_depth == 0 => {
-                continue_expr = Some(it);
-            }
-            _ => {}
-        }
-        false
-    });
-
-    let kind = match (try_expr, ret_expr, break_expr, continue_expr) {
-        (Some(e), None, None, None) => {
-            let func = e.syntax().ancestors().find_map(ast::Fn::cast)?;
-            let def = ctx.sema.to_def(&func)?;
-            let ret_ty = def.ret_type(ctx.db());
-            let kind = try_kind_of_ty(ret_ty, ctx)?;
-
-            Some(FlowKind::Try { kind })
-        }
-        (Some(_), Some(r), None, None) => match r.expr() {
-            Some(expr) => {
-                if let Some(kind) = expr_err_kind(&expr, ctx) {
-                    Some(FlowKind::TryReturn { expr, kind })
-                } else {
-                    cov_mark::hit!(external_control_flow_try_and_return_non_err);
-                    return None;
-                }
-            }
-            None => return None,
-        },
-        (Some(_), _, _, _) => {
-            cov_mark::hit!(external_control_flow_try_and_bc);
-            return None;
-        }
-        (None, Some(r), None, None) => match r.expr() {
-            Some(expr) => Some(FlowKind::ReturnValue(expr)),
-            None => Some(FlowKind::Return),
-        },
-        (None, Some(_), _, _) => {
-            cov_mark::hit!(external_control_flow_return_and_bc);
-            return None;
-        }
-        (None, None, Some(_), Some(_)) => {
-            cov_mark::hit!(external_control_flow_break_and_continue);
-            return None;
-        }
-        (None, None, Some(b), None) => match b.expr() {
-            Some(expr) => Some(FlowKind::BreakValue(expr)),
-            None => Some(FlowKind::Break),
-        },
-        (None, None, None, Some(_)) => Some(FlowKind::Continue),
-        (None, None, None, None) => None,
-    };
-
-    Some(ControlFlow { kind })
-}
-
-/// Checks is expr is `Err(_)` or `None`
-fn expr_err_kind(expr: &ast::Expr, ctx: &AssistContext) -> Option<TryKind> {
-    let func_name = match expr {
-        ast::Expr::CallExpr(call_expr) => call_expr.expr()?,
-        ast::Expr::PathExpr(_) => expr.clone(),
-        _ => return None,
-    };
-    let text = func_name.syntax().text();
-
-    if text == "Err" {
-        Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr)? })
-    } else if text == "None" {
-        Some(TryKind::Option)
-    } else {
-        None
-    }
-}
-
 #[derive(Debug)]
 struct Function {
     name: String,
@@ -261,6 +154,104 @@ enum FunType {
     Unit,
     Single(hir::Type),
     Tuple(Vec<hir::Type>),
+}
+
+/// Where to put extracted function definition
+#[derive(Debug)]
+enum Anchor {
+    /// Extract free function and put right after current top-level function
+    Freestanding,
+    /// Extract method and put right after current function in the impl-block
+    Method,
+}
+
+#[derive(Debug)]
+struct ControlFlow {
+    kind: Option<FlowKind>,
+}
+
+/// Control flow that is exported from extracted function
+///
+/// E.g.:
+/// ```rust,no_run
+/// loop {
+///     $0
+///     if 42 == 42 {
+///         break;
+///     }
+///     $0
+/// }
+/// ```
+#[derive(Debug, Clone)]
+enum FlowKind {
+    /// Return with value (`return $expr;`)
+    Return(Option<ast::Expr>),
+    Try {
+        kind: TryKind,
+    },
+    TryReturn {
+        expr: ast::Expr,
+        kind: TryKind,
+    },
+    /// Break with value (`break $expr;`)
+    Break(Option<ast::Expr>),
+    /// Continue
+    Continue,
+}
+
+#[derive(Debug, Clone)]
+enum TryKind {
+    Option,
+    Result { ty: hir::Type },
+}
+
+#[derive(Debug)]
+enum RetType {
+    Expr(hir::Type),
+    Stmt,
+}
+
+impl RetType {
+    fn is_unit(&self) -> bool {
+        match self {
+            RetType::Expr(ty) => ty.is_unit(),
+            RetType::Stmt => true,
+        }
+    }
+}
+
+/// Semantically same as `ast::Expr`, but preserves identity when using only part of the Block
+/// This is the future function body, the part that is being extracted.
+#[derive(Debug)]
+enum FunctionBody {
+    Expr(ast::Expr),
+    Span { parent: ast::BlockExpr, text_range: TextRange },
+}
+
+#[derive(Debug)]
+struct OutlivedLocal {
+    local: Local,
+    mut_usage_outside_body: bool,
+}
+
+/// Container of local variable usages
+///
+/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
+struct LocalUsages(ide_db::search::UsageSearchResult);
+
+impl LocalUsages {
+    fn find(ctx: &AssistContext, var: Local) -> Self {
+        Self(
+            Definition::Local(var)
+                .usages(&ctx.sema)
+                .in_scope(SearchScope::single_file(ctx.frange.file_id))
+                .all(),
+        )
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &FileReference> + '_ {
+        self.0.iter().flat_map(|(_, rs)| rs)
+    }
 }
 
 impl Function {
@@ -326,55 +317,11 @@ impl Param {
     }
 }
 
-#[derive(Debug)]
-struct ControlFlow {
-    kind: Option<FlowKind>,
-}
-
-/// Control flow that is exported from extracted function
-///
-/// E.g.:
-/// ```rust,no_run
-/// loop {
-///     $0
-///     if 42 == 42 {
-///         break;
-///     }
-///     $0
-/// }
-/// ```
-#[derive(Debug, Clone)]
-enum FlowKind {
-    /// Return without value (`return;`)
-    Return,
-    /// Return with value (`return $expr;`)
-    ReturnValue(ast::Expr),
-    Try {
-        kind: TryKind,
-    },
-    TryReturn {
-        expr: ast::Expr,
-        kind: TryKind,
-    },
-    /// Break without value (`return;`)
-    Break,
-    /// Break with value (`break $expr;`)
-    BreakValue(ast::Expr),
-    /// Continue
-    Continue,
-}
-
-#[derive(Debug, Clone)]
-enum TryKind {
-    Option,
-    Result { ty: hir::Type },
-}
-
 impl FlowKind {
     fn make_result_handler(&self, expr: Option<ast::Expr>) -> ast::Expr {
         match self {
-            FlowKind::Return | FlowKind::ReturnValue(_) => make::expr_return(expr),
-            FlowKind::Break | FlowKind::BreakValue(_) => make::expr_break(expr),
+            FlowKind::Return(_) => make::expr_return(expr),
+            FlowKind::Break(_) => make::expr_break(expr),
             FlowKind::Try { .. } | FlowKind::TryReturn { .. } => {
                 stdx::never!("cannot have result handler with try");
                 expr.unwrap_or_else(|| make::expr_return(None))
@@ -388,14 +335,14 @@ impl FlowKind {
 
     fn expr_ty(&self, ctx: &AssistContext) -> Option<hir::Type> {
         match self {
-            FlowKind::ReturnValue(expr)
-            | FlowKind::BreakValue(expr)
+            FlowKind::Return(Some(expr))
+            | FlowKind::Break(Some(expr))
             | FlowKind::TryReturn { expr, .. } => ctx.sema.type_of_expr(expr),
             FlowKind::Try { .. } => {
                 stdx::never!("try does not have defined expr_ty");
                 None
             }
-            FlowKind::Return | FlowKind::Break | FlowKind::Continue => None,
+            _ => None,
         }
     }
 }
@@ -414,29 +361,6 @@ fn try_kind_of_ty(ty: hir::Type, ctx: &AssistContext) -> Option<TryKind> {
         "Result" => Some(TryKind::Result { ty }),
         _ => None,
     }
-}
-
-#[derive(Debug)]
-enum RetType {
-    Expr(hir::Type),
-    Stmt,
-}
-
-impl RetType {
-    fn is_unit(&self) -> bool {
-        match self {
-            RetType::Expr(ty) => ty.is_unit(),
-            RetType::Stmt => true,
-        }
-    }
-}
-
-/// Semantically same as `ast::Expr`, but preserves identity when using only part of the Block
-/// This is the future function body, the part that is being extracted.
-#[derive(Debug)]
-enum FunctionBody {
-    Expr(ast::Expr),
-    Span { parent: ast::BlockExpr, text_range: TextRange },
 }
 
 impl FunctionBody {
@@ -567,43 +491,6 @@ impl FunctionBody {
     fn contains_node(&self, node: &SyntaxNode) -> bool {
         self.contains_range(node.text_range())
     }
-}
-
-impl HasTokenAtOffset for FunctionBody {
-    fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
-        match self {
-            FunctionBody::Expr(expr) => expr.syntax().token_at_offset(offset),
-            FunctionBody::Span { parent, text_range } => {
-                match parent.syntax().token_at_offset(offset) {
-                    TokenAtOffset::None => TokenAtOffset::None,
-                    TokenAtOffset::Single(t) => {
-                        if text_range.contains_range(t.text_range()) {
-                            TokenAtOffset::Single(t)
-                        } else {
-                            TokenAtOffset::None
-                        }
-                    }
-                    TokenAtOffset::Between(a, b) => {
-                        match (
-                            text_range.contains_range(a.text_range()),
-                            text_range.contains_range(b.text_range()),
-                        ) {
-                            (true, true) => TokenAtOffset::Between(a, b),
-                            (true, false) => TokenAtOffset::Single(a),
-                            (false, true) => TokenAtOffset::Single(b),
-                            (false, false) => TokenAtOffset::None,
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-struct OutlivedLocal {
-    local: Local,
-    mut_usage_outside_body: bool,
 }
 
 /// Try to guess what user wants to extract
@@ -808,26 +695,6 @@ fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Optio
     Some(false)
 }
 
-/// Container of local variable usages
-///
-/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
-struct LocalUsages(ide_db::search::UsageSearchResult);
-
-impl LocalUsages {
-    fn find(ctx: &AssistContext, var: Local) -> Self {
-        Self(
-            Definition::Local(var)
-                .usages(&ctx.sema)
-                .in_scope(SearchScope::single_file(ctx.frange.file_id))
-                .all(),
-        )
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &FileReference> + '_ {
-        self.0.iter().flat_map(|(_, rs)| rs)
-    }
-}
-
 trait HasTokenAtOffset {
     fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken>;
 }
@@ -835,6 +702,37 @@ trait HasTokenAtOffset {
 impl HasTokenAtOffset for SyntaxNode {
     fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
         SyntaxNode::token_at_offset(self, offset)
+    }
+}
+
+impl HasTokenAtOffset for FunctionBody {
+    fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
+        match self {
+            FunctionBody::Expr(expr) => expr.syntax().token_at_offset(offset),
+            FunctionBody::Span { parent, text_range } => {
+                match parent.syntax().token_at_offset(offset) {
+                    TokenAtOffset::None => TokenAtOffset::None,
+                    TokenAtOffset::Single(t) => {
+                        if text_range.contains_range(t.text_range()) {
+                            TokenAtOffset::Single(t)
+                        } else {
+                            TokenAtOffset::None
+                        }
+                    }
+                    TokenAtOffset::Between(a, b) => {
+                        match (
+                            text_range.contains_range(a.text_range()),
+                            text_range.contains_range(b.text_range()),
+                        ) {
+                            (true, true) => TokenAtOffset::Between(a, b),
+                            (true, false) => TokenAtOffset::Single(a),
+                            (false, true) => TokenAtOffset::Single(b),
+                            (false, false) => TokenAtOffset::None,
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -946,13 +844,104 @@ fn body_return_ty(ctx: &AssistContext, body: &FunctionBody) -> Option<RetType> {
     }
 }
 
-/// Where to put extracted function definition
-#[derive(Debug)]
-enum Anchor {
-    /// Extract free function and put right after current top-level function
-    Freestanding,
-    /// Extract method and put right after current function in the impl-block
-    Method,
+/// Analyses the function body for external control flow.
+fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<ControlFlow> {
+    let mut ret_expr = None;
+    let mut try_expr = None;
+    let mut break_expr = None;
+    let mut continue_expr = None;
+
+    let mut loop_depth = 0;
+
+    body.preorder_expr(&mut |expr| {
+        let expr = match expr {
+            WalkEvent::Enter(e) => e,
+            WalkEvent::Leave(
+                ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_),
+            ) => {
+                loop_depth -= 1;
+                return false;
+            }
+            WalkEvent::Leave(_) => return false,
+        };
+        match expr {
+            ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) => {
+                loop_depth += 1;
+            }
+            ast::Expr::ReturnExpr(it) => {
+                ret_expr = Some(it);
+            }
+            ast::Expr::TryExpr(it) => {
+                try_expr = Some(it);
+            }
+            ast::Expr::BreakExpr(it) if loop_depth == 0 => {
+                break_expr = Some(it);
+            }
+            ast::Expr::ContinueExpr(it) if loop_depth == 0 => {
+                continue_expr = Some(it);
+            }
+            _ => {}
+        }
+        false
+    });
+
+    let kind = match (try_expr, ret_expr, break_expr, continue_expr) {
+        (Some(e), None, None, None) => {
+            let func = e.syntax().ancestors().find_map(ast::Fn::cast)?;
+            let def = ctx.sema.to_def(&func)?;
+            let ret_ty = def.ret_type(ctx.db());
+            let kind = try_kind_of_ty(ret_ty, ctx)?;
+
+            Some(FlowKind::Try { kind })
+        }
+        (Some(_), Some(r), None, None) => match r.expr() {
+            Some(expr) => {
+                if let Some(kind) = expr_err_kind(&expr, ctx) {
+                    Some(FlowKind::TryReturn { expr, kind })
+                } else {
+                    cov_mark::hit!(external_control_flow_try_and_return_non_err);
+                    return None;
+                }
+            }
+            None => return None,
+        },
+        (Some(_), _, _, _) => {
+            cov_mark::hit!(external_control_flow_try_and_bc);
+            return None;
+        }
+        (None, Some(r), None, None) => Some(FlowKind::Return(r.expr())),
+        (None, Some(_), _, _) => {
+            cov_mark::hit!(external_control_flow_return_and_bc);
+            return None;
+        }
+        (None, None, Some(_), Some(_)) => {
+            cov_mark::hit!(external_control_flow_break_and_continue);
+            return None;
+        }
+        (None, None, Some(b), None) => Some(FlowKind::Break(b.expr())),
+        (None, None, None, Some(_)) => Some(FlowKind::Continue),
+        (None, None, None, None) => None,
+    };
+
+    Some(ControlFlow { kind })
+}
+
+/// Checks is expr is `Err(_)` or `None`
+fn expr_err_kind(expr: &ast::Expr, ctx: &AssistContext) -> Option<TryKind> {
+    let func_name = match expr {
+        ast::Expr::CallExpr(call_expr) => call_expr.expr()?,
+        ast::Expr::PathExpr(_) => expr.clone(),
+        _ => return None,
+    };
+    let text = func_name.syntax().text();
+
+    if text == "Err" {
+        Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr)? })
+    } else if text == "None" {
+        Some(TryKind::Option)
+    } else {
+        None
+    }
 }
 
 /// find where to put extracted function definition
@@ -1062,10 +1051,10 @@ impl FlowHandler {
                 let action = flow_kind.clone();
                 if *ret_ty == FunType::Unit {
                     match flow_kind {
-                        FlowKind::Return | FlowKind::Break | FlowKind::Continue => {
+                        FlowKind::Return(None) | FlowKind::Break(None) | FlowKind::Continue => {
                             FlowHandler::If { action }
                         }
-                        FlowKind::ReturnValue(_) | FlowKind::BreakValue(_) => {
+                        FlowKind::Return(_) | FlowKind::Break(_) => {
                             FlowHandler::IfOption { action }
                         }
                         FlowKind::Try { kind } | FlowKind::TryReturn { kind, .. } => {
@@ -1074,10 +1063,10 @@ impl FlowHandler {
                     }
                 } else {
                     match flow_kind {
-                        FlowKind::Return | FlowKind::Break | FlowKind::Continue => {
+                        FlowKind::Return(None) | FlowKind::Break(None) | FlowKind::Continue => {
                             FlowHandler::MatchOption { none: action }
                         }
-                        FlowKind::ReturnValue(_) | FlowKind::BreakValue(_) => {
+                        FlowKind::Return(_) | FlowKind::Break(_) => {
                             FlowHandler::MatchResult { err: action }
                         }
                         FlowKind::Try { kind } | FlowKind::TryReturn { kind, .. } => {
