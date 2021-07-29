@@ -876,7 +876,10 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| ty::TraitPredicate { trait_ref })
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness: hir::Constness::NotConst,
+        })
     }
 }
 
