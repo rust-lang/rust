@@ -1,4 +1,4 @@
-error: asm with `pure` option must have at least one output
+error: asm with the `pure` option must have at least one output
   --> $DIR/naked-functions.rs:126:14
    |
 LL |     asm!("", options(readonly, nostack), options(pure));

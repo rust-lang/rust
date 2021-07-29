@@ -273,7 +273,7 @@ fn parse_args<'a>(
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
         ecx.struct_span_err(
             args.options_spans.clone(),
-            "asm with `pure` option must have at least one output",
+            "asm with the `pure` option must have at least one output",
         )
         .emit();
     }
