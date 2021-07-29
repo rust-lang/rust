@@ -4,6 +4,7 @@ error[E0658]: `for` is not allowed in a `const`
 LL |     for _ in 0..5 {}
    |     ^^^^^^^^^^^^^^^^
    |
+   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
    = help: add `#![feature(const_for)]` to the crate attributes to enable
 
 error: aborting due to previous error
