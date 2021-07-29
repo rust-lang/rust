@@ -83,6 +83,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
                             .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
                         ty::ReLateBound(..) => region,
+                        ty::ReStatic => region,
                         _ => {
                             infcx.tcx.sess.delay_span_bug(
                                 span,
