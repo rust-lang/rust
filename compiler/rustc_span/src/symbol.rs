@@ -377,6 +377,7 @@ symbols! {
         char,
         client,
         clippy,
+        clobber_abi,
         clone,
         clone_closures,
         clone_from,

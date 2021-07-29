@@ -2027,6 +2027,7 @@ pub enum InlineAsmOperand {
 pub struct InlineAsm {
     pub template: Vec<InlineAsmTemplatePiece>,
     pub operands: Vec<(InlineAsmOperand, Span)>,
+    pub clobber_abi: Option<(Symbol, Span)>,
     pub options: InlineAsmOptions,
     pub line_spans: Vec<Span>,
 }

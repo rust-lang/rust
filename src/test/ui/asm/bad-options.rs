@@ -15,6 +15,14 @@ fn main() {
         asm!("{}", out(reg) foo, options(noreturn));
         //~^ ERROR asm outputs are not allowed with the `noreturn` option
     }
+
+    unsafe {
+        asm!("", clobber_abi("foo"));
+        //~^ ERROR invalid ABI for `clobber_abi`
+        asm!("{}", out(reg) foo, clobber_abi("C"));
+        //~^ ERROR asm with `clobber_abi` must specify explicit registers for outputs
+        asm!("", out("eax") foo, clobber_abi("C"));
+    }
 }
 
 global_asm!("", options(nomem));
