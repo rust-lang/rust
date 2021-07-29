@@ -600,6 +600,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
+ "indexmap",
  "itertools",
  "profile",
  "rustc-hash",

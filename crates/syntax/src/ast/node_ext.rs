@@ -103,6 +103,81 @@ impl ast::Expr {
             }
         }
     }
+
+    /// Preorder walk all the expression's child patterns.
+    pub fn walk_patterns(&self, cb: &mut dyn FnMut(ast::Pat)) {
+        let mut preorder = self.syntax().preorder();
+        while let Some(event) = preorder.next() {
+            let node = match event {
+                WalkEvent::Enter(node) => node,
+                WalkEvent::Leave(_) => continue,
+            };
+            match ast::Stmt::cast(node.clone()) {
+                Some(ast::Stmt::LetStmt(l)) => {
+                    if let Some(pat) = l.pat() {
+                        pat.walk(cb);
+                    }
+                    if let Some(expr) = l.initializer() {
+                        expr.walk_patterns(cb);
+                    }
+                    preorder.skip_subtree();
+                }
+                // Don't skip subtree since we want to process the expression child next
+                Some(ast::Stmt::ExprStmt(_)) => (),
+                // skip inner items which might have their own patterns
+                Some(ast::Stmt::Item(_)) => preorder.skip_subtree(),
+                None => {
+                    // skip const args, those are a different context
+                    if ast::GenericArg::can_cast(node.kind()) {
+                        preorder.skip_subtree();
+                    } else if let Some(expr) = ast::Expr::cast(node.clone()) {
+                        let is_different_context = match &expr {
+                            ast::Expr::EffectExpr(effect) => {
+                                matches!(
+                                    effect.effect(),
+                                    ast::Effect::Async(_)
+                                        | ast::Effect::Try(_)
+                                        | ast::Effect::Const(_)
+                                )
+                            }
+                            ast::Expr::ClosureExpr(_) => true,
+                            _ => false,
+                        };
+                        if is_different_context {
+                            preorder.skip_subtree();
+                        }
+                    } else if let Some(pat) = ast::Pat::cast(node) {
+                        preorder.skip_subtree();
+                        pat.walk(cb);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl ast::Pat {
+    /// Preorder walk all the pattern's sub patterns.
+    pub fn walk(&self, cb: &mut dyn FnMut(ast::Pat)) {
+        let mut preorder = self.syntax().preorder();
+        while let Some(event) = preorder.next() {
+            let node = match event {
+                WalkEvent::Enter(node) => node,
+                WalkEvent::Leave(_) => continue,
+            };
+            match ast::Pat::cast(node.clone()) {
+                Some(ast::Pat::ConstBlockPat(_)) => preorder.skip_subtree(),
+                Some(pat) => {
+                    cb(pat);
+                }
+                // skip const args
+                None if ast::GenericArg::can_cast(node.kind()) => {
+                    preorder.skip_subtree();
+                }
+                None => (),
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

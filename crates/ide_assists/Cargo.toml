@@ -13,6 +13,7 @@ cov-mark = "2.0.0-pre.1"
 rustc-hash = "1.1.0"
 itertools = "0.10.0"
 either = "1.6.1"
+indexmap = "1.6.2"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
