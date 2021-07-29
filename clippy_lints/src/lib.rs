@@ -329,7 +329,7 @@ mod regex;
 mod repeat_once;
 mod returns;
 mod self_assignment;
-mod self_named_constructor;
+mod self_named_constructors;
 mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
@@ -740,7 +740,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         mem_replace::MEM_REPLACE_WITH_DEFAULT,
         mem_replace::MEM_REPLACE_WITH_UNINIT,
-        methods::APPEND_INSTEAD_OF_EXTEND,
         methods::BIND_INSTEAD_OF_MAP,
         methods::BYTES_NTH,
         methods::CHARS_LAST_CMP,
@@ -751,6 +750,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::CLONE_ON_REF_PTR,
         methods::EXPECT_FUN_CALL,
         methods::EXPECT_USED,
+        methods::EXTEND_WITH_DRAIN,
         methods::FILETYPE_IS_FILE,
         methods::FILTER_MAP_IDENTITY,
         methods::FILTER_MAP_NEXT,
@@ -900,7 +900,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         self_assignment::SELF_ASSIGNMENT,
-        self_named_constructor::SELF_NAMED_CONSTRUCTOR,
+        self_named_constructors::SELF_NAMED_CONSTRUCTORS,
         semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED,
         serde_api::SERDE_API_MISUSE,
         shadow::SHADOW_REUSE,
@@ -1296,7 +1296,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(mem_replace::MEM_REPLACE_OPTION_WITH_NONE),
         LintId::of(mem_replace::MEM_REPLACE_WITH_DEFAULT),
         LintId::of(mem_replace::MEM_REPLACE_WITH_UNINIT),
-        LintId::of(methods::APPEND_INSTEAD_OF_EXTEND),
         LintId::of(methods::BIND_INSTEAD_OF_MAP),
         LintId::of(methods::BYTES_NTH),
         LintId::of(methods::CHARS_LAST_CMP),
@@ -1304,6 +1303,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::CLONE_DOUBLE_REF),
         LintId::of(methods::CLONE_ON_COPY),
         LintId::of(methods::EXPECT_FUN_CALL),
+        LintId::of(methods::EXTEND_WITH_DRAIN),
         LintId::of(methods::FILTER_MAP_IDENTITY),
         LintId::of(methods::FILTER_NEXT),
         LintId::of(methods::FLAT_MAP_IDENTITY),
@@ -1407,7 +1407,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(returns::LET_AND_RETURN),
         LintId::of(returns::NEEDLESS_RETURN),
         LintId::of(self_assignment::SELF_ASSIGNMENT),
-        LintId::of(self_named_constructor::SELF_NAMED_CONSTRUCTOR),
+        LintId::of(self_named_constructors::SELF_NAMED_CONSTRUCTORS),
         LintId::of(serde_api::SERDE_API_MISUSE),
         LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
@@ -1561,7 +1561,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(returns::LET_AND_RETURN),
         LintId::of(returns::NEEDLESS_RETURN),
-        LintId::of(self_named_constructor::SELF_NAMED_CONSTRUCTOR),
+        LintId::of(self_named_constructors::SELF_NAMED_CONSTRUCTORS),
         LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(to_digit_is_some::TO_DIGIT_IS_SOME),
@@ -1762,8 +1762,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(large_enum_variant::LARGE_ENUM_VARIANT),
         LintId::of(loops::MANUAL_MEMCPY),
         LintId::of(loops::NEEDLESS_COLLECT),
-        LintId::of(methods::APPEND_INSTEAD_OF_EXTEND),
         LintId::of(methods::EXPECT_FUN_CALL),
+        LintId::of(methods::EXTEND_WITH_DRAIN),
         LintId::of(methods::ITER_NTH),
         LintId::of(methods::MANUAL_STR_REPEAT),
         LintId::of(methods::OR_FUN_CALL),
@@ -2104,7 +2104,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let scripts = conf.allowed_scripts.clone();
     store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
     store.register_late_pass(|| box strlen_on_c_strings::StrlenOnCStrings);
-    store.register_late_pass(move || box self_named_constructor::SelfNamedConstructor);
+    store.register_late_pass(move || box self_named_constructors::SelfNamedConstructors);
 }
 
 #[rustfmt::skip]
