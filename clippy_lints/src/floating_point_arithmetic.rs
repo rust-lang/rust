@@ -18,16 +18,15 @@ use std::f64::consts as f64_consts;
 use sugg::Sugg;
 
 declare_clippy_lint! {
-    /// **What it does:** Looks for floating-point expressions that
+    /// ### What it does
+    /// Looks for floating-point expressions that
     /// can be expressed using built-in methods to improve accuracy
     /// at the cost of performance.
     ///
-    /// **Why is this bad?** Negatively impacts accuracy.
+    /// ### Why is this bad?
+    /// Negatively impacts accuracy.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let a = 3f32;
     /// let _ = a.powf(1.0 / 3.0);
@@ -49,16 +48,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Looks for floating-point expressions that
+    /// ### What it does
+    /// Looks for floating-point expressions that
     /// can be expressed using built-in methods to improve both
     /// accuracy and performance.
     ///
-    /// **Why is this bad?** Negatively impacts accuracy and performance.
+    /// ### Why is this bad?
+    /// Negatively impacts accuracy and performance.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// use std::f32::consts::E;
     ///

@@ -16,18 +16,17 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::has_iter_method;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `for_each` that would be more simply written as a
+    /// ### What it does
+    /// Checks for usage of `for_each` that would be more simply written as a
     /// `for` loop.
     ///
-    /// **Why is this bad?** `for_each` may be used after applying iterator transformers like
+    /// ### Why is this bad?
+    /// `for_each` may be used after applying iterator transformers like
     /// `filter` for better readability and performance. It may also be used to fit a simple
     /// operation on one line.
     /// But when none of these apply, a simple `for` loop is more idiomatic.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let v = vec![0, 1, 2];
     /// v.iter().for_each(|elem| {

@@ -12,12 +12,14 @@ use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine};
 
 declare_clippy_lint! {
-    /// **What it does:** This lint requires Future implementations returned from
+    /// ### What it does
+    /// This lint requires Future implementations returned from
     /// functions and methods to implement the `Send` marker trait. It is mostly
     /// used by library authors (public and internal) that target an audience where
     /// multithreaded executors are likely to be used for running these Futures.
     ///
-    /// **Why is this bad?** A Future implementation captures some state that it
+    /// ### Why is this bad?
+    /// A Future implementation captures some state that it
     /// needs to eventually produce its final value. When targeting a multithreaded
     /// executor (which is the norm on non-embedded devices) this means that this
     /// state may need to be transported to other threads, in other words the
@@ -31,10 +33,7 @@ declare_clippy_lint! {
     /// modifying the library where the offending Future implementation is
     /// produced.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// async fn not_send(bytes: std::rc::Rc<[u8]>) {}
     /// ```

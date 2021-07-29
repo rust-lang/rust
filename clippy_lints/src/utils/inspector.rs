@@ -8,10 +8,11 @@ use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Dumps every ast/hir node which has the `#[clippy::dump]`
+    /// ### What it does
+    /// Dumps every ast/hir node which has the `#[clippy::dump]`
     /// attribute
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// #[clippy::dump]
     /// extern crate foo;

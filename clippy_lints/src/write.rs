@@ -16,14 +16,14 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns when you use `println!("")` to
+    /// ### What it does
+    /// This lint warns when you use `println!("")` to
     /// print a newline.
     ///
-    /// **Why is this bad?** You should use `println!()`, which is simpler.
+    /// ### Why is this bad?
+    /// You should use `println!()`, which is simpler.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Bad
     /// println!("");
@@ -37,15 +37,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns when you use `print!()` with a format
+    /// ### What it does
+    /// This lint warns when you use `print!()` with a format
     /// string that ends in a newline.
     ///
-    /// **Why is this bad?** You should use `println!()` instead, which appends the
+    /// ### Why is this bad?
+    /// You should use `println!()` instead, which appends the
     /// newline.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let name = "World";
     /// print!("Hello {}!\n", name);
@@ -61,15 +61,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for printing on *stdout*. The purpose of this lint
+    /// ### What it does
+    /// Checks for printing on *stdout*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// **Why is this bad?** People often print on *stdout* while debugging an
+    /// ### Why is this bad?
+    /// People often print on *stdout* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
-    /// **Known problems:** Only catches `print!` and `println!` calls.
+    /// ### Known problems
+    /// Only catches `print!` and `println!` calls.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// println!("Hello world!");
     /// ```
@@ -79,15 +82,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for printing on *stderr*. The purpose of this lint
+    /// ### What it does
+    /// Checks for printing on *stderr*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// **Why is this bad?** People often print on *stderr* while debugging an
+    /// ### Why is this bad?
+    /// People often print on *stderr* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
-    /// **Known problems:** Only catches `eprint!` and `eprintln!` calls.
+    /// ### Known problems
+    /// Only catches `eprint!` and `eprintln!` calls.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// eprintln!("Hello world!");
     /// ```
@@ -97,13 +103,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for use of `Debug` formatting. The purpose of this
+    /// ### What it does
+    /// Checks for use of `Debug` formatting. The purpose of this
     /// lint is to catch debugging remnants.
     ///
-    /// **Why is this bad?** The purpose of the `Debug` trait is to facilitate
+    /// ### Why is this bad?
+    /// The purpose of the `Debug` trait is to facilitate
     /// debugging Rust code. It should not be used in user-facing output.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let foo = "bar";
     /// println!("{:?}", foo);
@@ -114,16 +122,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns about the use of literals as `print!`/`println!` args.
+    /// ### What it does
+    /// This lint warns about the use of literals as `print!`/`println!` args.
     ///
-    /// **Why is this bad?** Using literals as `println!` args is inefficient
+    /// ### Why is this bad?
+    /// Using literals as `println!` args is inefficient
     /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
-    /// **Known problems:** Will also warn with macro calls as arguments that expand to literals
+    /// ### Known problems
+    /// Will also warn with macro calls as arguments that expand to literals
     /// -- e.g., `println!("{}", env!("FOO"))`.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// println!("{}", "foo");
     /// ```
@@ -137,14 +148,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns when you use `writeln!(buf, "")` to
+    /// ### What it does
+    /// This lint warns when you use `writeln!(buf, "")` to
     /// print a newline.
     ///
-    /// **Why is this bad?** You should use `writeln!(buf)`, which is simpler.
+    /// ### Why is this bad?
+    /// You should use `writeln!(buf)`, which is simpler.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
@@ -160,16 +171,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns when you use `write!()` with a format
+    /// ### What it does
+    /// This lint warns when you use `write!()` with a format
     /// string that
     /// ends in a newline.
     ///
-    /// **Why is this bad?** You should use `writeln!()` instead, which appends the
+    /// ### Why is this bad?
+    /// You should use `writeln!()` instead, which appends the
     /// newline.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
@@ -186,16 +197,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns about the use of literals as `write!`/`writeln!` args.
+    /// ### What it does
+    /// This lint warns about the use of literals as `write!`/`writeln!` args.
     ///
-    /// **Why is this bad?** Using literals as `writeln!` args is inefficient
+    /// ### Why is this bad?
+    /// Using literals as `writeln!` args is inefficient
     /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
-    /// **Known problems:** Will also warn with macro calls as arguments that expand to literals
+    /// ### Known problems
+    /// Will also warn with macro calls as arguments that expand to literals
     /// -- e.g., `writeln!(buf, "{}", env!("FOO"))`.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();

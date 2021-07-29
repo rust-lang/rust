@@ -12,14 +12,14 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{edition::Edition, sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `#[macro_use] use...`.
+    /// ### What it does
+    /// Checks for `#[macro_use] use...`.
     ///
-    /// **Why is this bad?** Since the Rust 2018 edition you can import
+    /// ### Why is this bad?
+    /// Since the Rust 2018 edition you can import
     /// macro's directly, this is considered idiomatic.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// #[macro_use]
     /// use some_macro;

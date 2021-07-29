@@ -1,23 +1,27 @@
 use clippy_utils::consts::{constant_context, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{is_expr_path_def_path, paths};
+use clippy_utils::is_expr_diagnostic_item;
 use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmute calls which would receive a null pointer.
+    /// ### What it does
+    /// Checks for transmute calls which would receive a null pointer.
     ///
-    /// **Why is this bad?** Transmuting a null pointer is undefined behavior.
+    /// ### Why is this bad?
+    /// Transmuting a null pointer is undefined behavior.
     ///
-    /// **Known problems:** Not all cases can be detected at the moment of this writing.
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
     /// For example, variables which hold a null pointer and are then fed to a `transmute`
     /// call, aren't detectable yet.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
     /// ```
@@ -38,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
 
         if_chain! {
             if let ExprKind::Call(func, [arg]) = expr.kind;
-            if is_expr_path_def_path(cx, func, &paths::TRANSMUTE);
+            if is_expr_diagnostic_item(cx, func, sym::transmute);
 
             then {
                 // Catching transmute over constants that resolve to `null`.
@@ -67,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                 // `std::mem::transmute(std::ptr::null::<i32>())`
                 if_chain! {
                     if let ExprKind::Call(func1, []) = arg.kind;
-                    if is_expr_path_def_path(cx, func1, &paths::PTR_NULL);
+                    if is_expr_diagnostic_item(cx, func1, sym::ptr_null);
                     then {
                         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }

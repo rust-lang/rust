@@ -13,13 +13,15 @@ fn bad_return_type() -> fn() -> Sneaky {
     todo!()
 }
 
-fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {
-    todo!()
-}
+fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {}
 
-fn trait_obj(_: &dyn std::io::Read) {
-    todo!()
-}
+fn trait_obj(_: &dyn std::io::Read) {}
+
+fn full_and_single_path_prim(_: usize, _: bool) {}
+
+fn const_generics<const C: usize>() {}
+
+struct GenArg<const U: usize>([u8; U]);
 
 static BAD: foo::atomic::AtomicPtr<()> = foo::atomic::AtomicPtr::new(std::ptr::null_mut());
 
@@ -32,4 +34,5 @@ fn main() {
     let _: std::collections::BTreeMap<(), syn::TypePath> = Default::default();
     let _ = syn::Ident::new("", todo!());
     let _ = HashMap;
+    let _: usize = 64_usize;
 }

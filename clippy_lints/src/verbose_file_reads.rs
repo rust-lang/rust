@@ -7,15 +7,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for use of File::read_to_end and File::read_to_string.
+    /// ### What it does
+    /// Checks for use of File::read_to_end and File::read_to_string.
     ///
-    /// **Why is this bad?** `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
+    /// ### Why is this bad?
+    /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
     /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,no_run
     /// # use std::io::Read;
     /// # use std::fs::File;

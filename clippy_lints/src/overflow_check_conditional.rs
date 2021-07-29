@@ -6,14 +6,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Detects classic underflow/overflow checks.
+    /// ### What it does
+    /// Detects classic underflow/overflow checks.
     ///
-    /// **Why is this bad?** Most classic C underflow/overflow checks will fail in
+    /// ### Why is this bad?
+    /// Most classic C underflow/overflow checks will fail in
     /// Rust. Users can use functions like `overflowing_*` and `wrapping_*` instead.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let a = 1;
     /// # let b = 2;

@@ -73,14 +73,13 @@ use rustc_session::Session;
 /// use clippy_lints::declare_clippy_lint;
 ///
 /// declare_clippy_lint! {
-///     /// **What it does:** Checks for ... (describe what the lint matches).
+///     /// ### What it does
+///     /// Checks for ... (describe what the lint matches).
 ///     ///
-///     /// **Why is this bad?** Supply the reason for linting the code.
+///     /// ### Why is this bad?
+///     /// Supply the reason for linting the code.
 ///     ///
-///     /// **Known problems:** None. (Or describe where it could go wrong.)
-///     ///
-///     /// **Example:**
-///     ///
+///     /// ### Example
 ///     /// ```rust
 ///     /// // Bad
 ///     /// Insert a short example of code that triggers the lint

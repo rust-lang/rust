@@ -6,7 +6,8 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use unicode_script::{Script, UnicodeScript};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of unicode scripts other than those explicitly allowed
+    /// ### What it does
+    /// Checks for usage of unicode scripts other than those explicitly allowed
     /// by the lint config.
     ///
     /// This lint doesn't take into account non-text scripts such as `Unknown` and `Linear_A`.
@@ -19,7 +20,8 @@ declare_clippy_lint! {
     /// [aliases]: http://www.unicode.org/reports/tr24/tr24-31.html#Script_Value_Aliases
     /// [supported_scripts]: https://www.unicode.org/iso15924/iso15924-codes.html
     ///
-    /// **Why is this bad?** It may be not desired to have many different scripts for
+    /// ### Why is this bad?
+    /// It may be not desired to have many different scripts for
     /// identifiers in the codebase.
     ///
     /// Note that if you only want to allow plain English, you might want to use
@@ -27,9 +29,7 @@ declare_clippy_lint! {
     ///
     /// [`non_ascii_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#non-ascii-idents
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // Assuming that `clippy.toml` contains the following line:
     /// // allowed-locales = ["Latin", "Cyrillic"]

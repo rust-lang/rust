@@ -16,15 +16,14 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use std::iter;
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if a long integral or floating-point constant does
+    /// ### What it does
+    /// Warns if a long integral or floating-point constant does
     /// not contain underscores.
     ///
-    /// **Why is this bad?** Reading long numbers is difficult without separators.
+    /// ### Why is this bad?
+    /// Reading long numbers is difficult without separators.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let x: u64 = 61864918973511;
@@ -38,17 +37,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns for mistyped suffix in literals
+    /// ### What it does
+    /// Warns for mistyped suffix in literals
     ///
-    /// **Why is this bad?** This is most probably a typo
+    /// ### Why is this bad?
+    /// This is most probably a typo
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - Recommends a signed suffix, even though the number might be too big and an unsigned
     ///   suffix is required
     /// - Does not match on `_127` since that is a valid grouping for decimal and octal numbers
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Probably mistyped
     /// 2_32;
@@ -62,16 +62,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if an integral or floating-point constant is
+    /// ### What it does
+    /// Warns if an integral or floating-point constant is
     /// grouped inconsistently with underscores.
     ///
-    /// **Why is this bad?** Readers may incorrectly interpret inconsistently
+    /// ### Why is this bad?
+    /// Readers may incorrectly interpret inconsistently
     /// grouped digits.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// let x: u64 = 618_64_9189_73_511;
@@ -85,15 +84,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if hexadecimal or binary literals are not grouped
+    /// ### What it does
+    /// Warns if hexadecimal or binary literals are not grouped
     /// by nibble or byte.
     ///
-    /// **Why is this bad?** Negatively impacts readability.
+    /// ### Why is this bad?
+    /// Negatively impacts readability.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let x: u32 = 0xFFF_FFF;
     /// let y: u8 = 0b01_011_101;
@@ -104,16 +102,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if the digits of an integral or floating-point
+    /// ### What it does
+    /// Warns if the digits of an integral or floating-point
     /// constant are grouped into groups that
     /// are too large.
     ///
-    /// **Why is this bad?** Negatively impacts readability.
+    /// ### Why is this bad?
+    /// Negatively impacts readability.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let x: u64 = 6186491_8973511;
     /// ```
@@ -123,15 +120,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if there is a better representation for a numeric literal.
+    /// ### What it does
+    /// Warns if there is a better representation for a numeric literal.
     ///
-    /// **Why is this bad?** Especially for big powers of 2 a hexadecimal representation is more
+    /// ### Why is this bad?
+    /// Especially for big powers of 2 a hexadecimal representation is more
     /// readable than a decimal representation.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// `255` => `0xFF`
     /// `65_535` => `0xFFFF`
     /// `4_042_322_160` => `0xF0F0_F0F0`

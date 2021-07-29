@@ -1,10 +1,17 @@
 <!DOCTYPE html>
+<!--
+Welcome to a Clippy's lint list, at least the source code of it. If you are
+interested in contributing to this website checkout `util/gh-pages/index.html`
+inside the rust-clippy repository.
+
+Otherwise, have a great day =^.^=
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-    <title>ALL the Clippy Lints</title>
+    <title>Clippy Lints</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/github.min.css"/>
@@ -22,15 +29,95 @@
 
         .panel-heading { cursor: pointer; }
 
-        .panel-title { display: flex; }
+        .panel-title { display: flex; flex-wrap: wrap;}
         .panel-title .label { display: inline-block; }
 
-        .panel-title-name { flex: 1; }
+        .panel-title-name { flex: 1; min-width: 400px;}
         .panel-title-name span { vertical-align: bottom; }
 
         .panel .panel-title-name .anchor { display: none; }
         .panel:hover .panel-title-name .anchor { display: inline;}
 
+        .label {
+            padding-top: 0.3em;
+            padding-bottom: 0.3em;
+        }
+
+        .label-lint-group {
+            min-width: 8em;
+        }
+        .label-lint-level {
+            min-width: 4em;
+        }
+
+        .label-lint-level-allow {
+            background-color: #5cb85c;
+        }
+        .label-lint-level-warn {
+            background-color: #f0ad4e;
+        }
+        .label-lint-level-deny {
+            background-color: #d9534f;
+        }
+        .label-lint-level-none {
+            background-color: #777777;
+            opacity: 0.5;
+        }
+
+        .label-group-deprecated {
+            opacity: 0.5;
+        }
+
+        .label-doc-folding {
+            color: #000;
+            background-color: #fff;
+            border: 1px solid var(--theme-popup-border);
+        }
+        .label-doc-folding:hover {
+            background-color: #e6e6e6;
+        }
+
+        .lint-doc-md > h3 {
+            border-top: 1px solid var(--theme-popup-border);
+            padding: 10px 15px;
+            margin: 0 -15px;
+            font-size: 18px;
+        }
+        .lint-doc-md > h3:first-child {
+            border-top: none;
+            padding-top: 0px;
+        }
+
+        @media (max-width:749px) {
+            .lint-additional-info-container {
+                display: flex;
+                flex-flow: column;
+            }
+            .lint-additional-info-item + .lint-additional-info-item {
+                border-top: 1px solid var(--theme-popup-border);
+            }
+        }
+        @media (min-width:750px) {
+            .lint-additional-info-container {
+                display: flex;
+                flex-flow: row;
+            }
+            .lint-additional-info-item + .lint-additional-info-item {
+                border-left: 1px solid var(--theme-popup-border);
+            }
+        }
+
+        .lint-additional-info-item {
+            display: inline-flex;
+            min-width: 200px;
+            flex-grow: 1;
+            padding: 9px 5px 5px 15px;
+        }
+
+        .label-applicability {
+            background-color: #777777;
+            margin: auto 5px;
+        }
     </style>
     <style>
         /* Expanding the mdBoom theme*/
@@ -159,7 +246,7 @@
 
     <div class="container" ng-app="clippy" ng-controller="lintList">
         <div class="page-header">
-            <h1>ALL the Clippy Lints</h1>
+            <h1>Clippy Lints</h1>
         </div>
 
         <noscript>
@@ -181,9 +268,12 @@
                 <div class="panel-body row filter-panel">
                     <div class="col-md-6 form-inline">
                         <div class="form-group form-group-lg">
-                            <p class="h4">Lint levels</p>
+                            <p class="h4">
+                                Lint levels
+                                <a href="https://doc.rust-lang.org/rustc/lints/levels.html">(?)</a>
+                            </p>
                             <div class="checkbox" ng-repeat="(level, enabled) in levels">
-                                <label>
+                                <label class="text-capitalize">
                                     <input type="checkbox" ng-model="levels[level]" />
                                     {{level}}
                                 </label>
@@ -192,7 +282,10 @@
                     </div>
                     <div class="col-md-6 form-inline">
                         <div class="form-group form-group-lg">
-                            <p class="h4">Lint groups</p>
+                            <p class="h4">
+                                Lint groups
+                                <a href="https://github.com/rust-lang/rust-clippy/#clippy">(?)</a>
+                            </p>
                             <div class="checkbox" ng-repeat="(group, enabled) in groups">
                                 <label class="text-capitalize">
                                     <input type="checkbox" ng-model="groups[group]" />
@@ -216,9 +309,8 @@
                     </div>
                 </div>
             </div>
-
-            <article class="panel panel-default" id="{{lint.id}}"
-                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:bySearch | orderBy:'id' track by lint.id">
+            <!-- The order of the filters should be from most likely to remove a lint to least likely to improve performance. -->
+            <article class="panel panel-default" id="{{lint.id}}" ng-repeat="lint in data | filter:bySearch | filter:byGroups | filter:byLevels">
                 <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
                     <h2 class="panel-title">
                         <div class="panel-title-name">
@@ -227,29 +319,36 @@
                         </div>
 
                         <div class="panel-title-addons">
-                            <span class="label label-default text-capitalize">{{lint.group}}</span>
+                            <span class="label label-lint-group label-default label-group-{{lint.group}}">{{lint.group}}</span>
 
-                            <span ng-if="lint.level == 'Allow'" class="label label-success">Allow</span>
-                            <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
-                            <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
-                            <span ng-if="lint.level == 'Deprecated'" class="label label-default">Deprecated</span>
+                            <span class="label label-lint-level label-lint-level-{{lint.level}}">{{lint.level}}</span>
 
-                            <button class="btn btn-default btn-xs">
-                                <span ng-show="open[lint.id]">&minus;</span>
-                                <span ng-hide="open[lint.id]">&plus;</span>
-                            </button>
+
+                            <span class="label label-doc-folding" ng-show="open[lint.id]">&minus;</span>
+                            <span class="label label-doc-folding" ng-hide="open[lint.id]">&plus;</span>
                         </div>
                     </h2>
                 </header>
 
-                <ul class="list-group lint-docs" ng-if="lint.docs" ng-class="{collapse: true, in: open[lint.id]}">
-                    <li class="list-group-item" ng-repeat="(title, text) in lint.docs">
-                        <h4 class="list-group-item-heading">
-                            {{title}}
-                        </h4>
-                        <div class="list-group-item-text" ng-bind-html="text | markdown"></div>
-                        <a ng-if="title == 'Known problems'" href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+{{lint.id}}">Search on GitHub</a>
-                    </li>
+                <ul class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
+                    <div class="list-group-item lint-doc-md" ng-bind-html="lint.docs | markdown"></div>
+                    <div class="lint-additional-info-container">
+                        <!-- Applicability -->
+                        <div class="lint-additional-info-item">
+                            <span> Applicability: </span>
+                            <span class="label label-default label-applicability">{{lint.applicability.applicability}}</span>
+                            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a>
+                        </div>
+                        <!-- TODO xFrednet 2021-05-19: Somehow collect and show the version See rust-clippy#6492 -->
+                        <!-- Open related issues -->
+                        <div class="lint-additional-info-item">
+                            <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>
+                        </div>
+                        <!-- Jump to source -->
+                        <div class="lint-additional-info-item">
+                            <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{lint.id_span.path}}#L{{lint.id_span.line}}">View Source</a>
+                        </div>
+                    </div>
                 </ul>
             </article>
         </div>
@@ -310,22 +409,6 @@
             }
         }
 
-        function searchLint(lint, term) {
-            for (const field in lint.docs) {
-                // Continue if it's not a property
-                if (!lint.docs.hasOwnProperty(field)) {
-                    continue;
-                }
-
-                // Return if not found
-                if (lint.docs[field].toLowerCase().indexOf(term) !== -1) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         angular.module("clippy", [])
         .filter('markdown', function ($sce) {
             return function (text) {
@@ -350,13 +433,25 @@
         })
         .controller("lintList", function ($scope, $http, $timeout) {
             // Level filter
-            var LEVEL_FILTERS_DEFAULT = {Allow: true, Warn: true, Deny: true, Deprecated: true};
+            var LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
             $scope.levels = LEVEL_FILTERS_DEFAULT;
             $scope.byLevels = function (lint) {
                 return $scope.levels[lint.level];
             };
 
-            $scope.groups = {};
+            var GROUPS_FILTER_DEFAULT = {
+                cargo: true,
+                complexity: true,
+                correctness: true,
+                deprecated: false,
+                nursery: true,
+                pedantic: true,
+                perf: true,
+                restriction: true,
+                style: true,
+                suspicious: true,
+            };
+            $scope.groups = GROUPS_FILTER_DEFAULT;
             $scope.byGroups = function (lint) {
                 return $scope.groups[lint.group];
             };
@@ -377,12 +472,14 @@
                 // Search the description
                 // The use of `for`-loops instead of `foreach` enables us to return early
                 let terms = searchStr.split(" ");
+                let docsLowerCase = lint.docs.toLowerCase();
                 for (index = 0; index < terms.length; index++) {
-                    if (lint.id.indexOf(terms[index]) !== -1) {
+                    // This is more likely and will therefor be checked first
+                    if (docsLowerCase.indexOf(terms[index]) !== -1) {
                         continue;
                     }
 
-                    if (searchLint(lint, terms[index])) {
+                    if (lint.id.indexOf(terms[index]) !== -1) {
                         continue;
                     }
 
@@ -395,6 +492,8 @@
             // Get data
             $scope.open = {};
             $scope.loading = true;
+            // This will be used to jump into the source code of the version that this documentation is for.
+            $scope.docVersion = window.location.pathname.split('/')[2] || "master";
 
             if (window.location.hash.length > 1) {
                 $scope.search = window.location.hash.slice(1);
@@ -406,12 +505,6 @@
             .success(function (data) {
                 $scope.data = data;
                 $scope.loading = false;
-
-                // Initialize lint groups (the same structure is also used to enable filtering)
-                $scope.groups = data.reduce(function (result, val) {
-                    result[val.group] = true;
-                    return result;
-                }, {});
 
                 var selectedGroup = getQueryVariable("sel");
                 if (selectedGroup) {

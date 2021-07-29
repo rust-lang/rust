@@ -173,4 +173,16 @@ impl<T: Copy> BarGenerics<T> {
     }
 }
 
+pub mod issue7220 {
+    pub struct Foo<T> {
+        _bar: *mut T,
+    }
+
+    impl<T> Foo<T> {
+        pub fn new() -> Self {
+            todo!()
+        }
+    }
+}
+
 fn main() {}

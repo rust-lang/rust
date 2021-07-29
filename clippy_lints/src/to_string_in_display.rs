@@ -7,15 +7,15 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for uses of `to_string()` in `Display` traits.
+    /// ### What it does
+    /// Checks for uses of `to_string()` in `Display` traits.
     ///
-    /// **Why is this bad?** Usually `to_string` is implemented indirectly
+    /// ### Why is this bad?
+    /// Usually `to_string` is implemented indirectly
     /// via `Display`. Hence using it while implementing `Display` would
     /// lead to infinite recursion.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust
     /// use std::fmt;

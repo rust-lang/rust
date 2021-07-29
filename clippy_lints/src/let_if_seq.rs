@@ -9,14 +9,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for variable declarations immediately followed by a
+    /// ### What it does
+    /// Checks for variable declarations immediately followed by a
     /// conditional affectation.
     ///
-    /// **Why is this bad?** This is not idiomatic Rust.
+    /// ### Why is this bad?
+    /// This is not idiomatic Rust.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// let foo;
     ///

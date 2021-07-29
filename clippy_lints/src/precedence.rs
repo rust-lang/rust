@@ -25,7 +25,8 @@ const ALLOWED_ODD_FUNCTIONS: [&str; 14] = [
 ];
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for operations where precedence may be unclear
+    /// ### What it does
+    /// Checks for operations where precedence may be unclear
     /// and suggests to add parentheses. Currently it catches the following:
     /// * mixed usage of arithmetic and bit shifting/combining operators without
     /// parentheses
@@ -33,13 +34,12 @@ declare_clippy_lint! {
     /// numeric literal)
     ///   followed by a method call
     ///
-    /// **Why is this bad?** Not everyone knows the precedence of those operators by
+    /// ### Why is this bad?
+    /// Not everyone knows the precedence of those operators by
     /// heart, so expressions like these may trip others trying to reason about the
     /// code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
     /// * `-1i32.abs()` equals -1, while `(-1i32).abs()` equals 1
     pub PRECEDENCE,

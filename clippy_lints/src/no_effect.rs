@@ -9,15 +9,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::ops::Deref;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for statements which have no effect.
+    /// ### What it does
+    /// Checks for statements which have no effect.
     ///
-    /// **Why is this bad?** Similar to dead code, these statements are actually
+    /// ### Why is this bad?
+    /// Similar to dead code, these statements are actually
     /// executed. However, as they have no effect, all they do is make the code less
     /// readable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// 0;
     /// ```
@@ -27,15 +27,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expression statements that can be reduced to a
+    /// ### What it does
+    /// Checks for expression statements that can be reduced to a
     /// sub-expression.
     ///
-    /// **Why is this bad?** Expressions by themselves often have no side-effects.
+    /// ### Why is this bad?
+    /// Expressions by themselves often have no side-effects.
     /// Having such expressions reduces readability.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// compute_array()[0];
     /// ```

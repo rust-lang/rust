@@ -12,14 +12,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for manual swapping.
+    /// ### What it does
+    /// Checks for manual swapping.
     ///
-    /// **Why is this bad?** The `std::mem::swap` function exposes the intent better
+    /// ### Why is this bad?
+    /// The `std::mem::swap` function exposes the intent better
     /// without deinitializing or copying either variable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut a = 42;
     /// let mut b = 1337;
@@ -40,13 +40,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `foo = bar; bar = foo` sequences.
+    /// ### What it does
+    /// Checks for `foo = bar; bar = foo` sequences.
     ///
-    /// **Why is this bad?** This looks like a failed attempt to swap.
+    /// ### Why is this bad?
+    /// This looks like a failed attempt to swap.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let mut a = 1;
     /// # let mut b = 2;

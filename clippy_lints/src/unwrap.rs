@@ -13,13 +13,13 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
+    /// ### What it does
+    /// Checks for calls of `unwrap[_err]()` that cannot fail.
     ///
-    /// **Why is this bad?** Using `if let` or `match` is more idiomatic.
+    /// ### Why is this bad?
+    /// Using `if let` or `match` is more idiomatic.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let option = Some(0);
     /// # fn do_something_with(_x: usize) {}
@@ -43,14 +43,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls of `unwrap[_err]()` that will always fail.
+    /// ### What it does
+    /// Checks for calls of `unwrap[_err]()` that will always fail.
     ///
-    /// **Why is this bad?** If panicking is desired, an explicit `panic!()` should be used.
+    /// ### Why is this bad?
+    /// If panicking is desired, an explicit `panic!()` should be used.
     ///
-    /// **Known problems:** This lint only checks `if` conditions not assignments.
+    /// ### Known problems
+    /// This lint only checks `if` conditions not assignments.
     /// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let option = Some(0);
     /// # fn do_something_with(_x: usize) {}
