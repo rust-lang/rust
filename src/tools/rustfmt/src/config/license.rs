@@ -212,7 +212,23 @@ impl TemplateParser {
     }
 }
 
-pub(crate) fn load_and_compile_template(path: &str) -> Result<Regex, LicenseError> {
+pub(crate) fn load_and_compile_template(
+    root_dir: &Option<std::path::PathBuf>,
+    path: &str,
+) -> Result<Regex, LicenseError> {
+    let mut path = std::path::PathBuf::from(path);
+    if path.is_relative() {
+        if let Some(root_dir) = root_dir {
+            // The tempate path needs to be resolved relative to the .rustfmt config file
+            // rather than whatever dir cargo fmt was run from.
+            let current = std::env::current_dir().expect("pwd");
+            std::env::set_current_dir(root_dir).expect("alter pwd");
+            if let Ok(abs_path) = path.canonicalize() {
+                path = abs_path;
+            }
+            std::env::set_current_dir(current).expect("change pwd");
+        }
+    }
     let mut lt_file = File::open(&path)?;
     let mut lt_str = String::new();
     lt_file.read_to_string(&mut lt_str)?;

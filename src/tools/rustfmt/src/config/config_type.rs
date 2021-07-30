@@ -64,6 +64,8 @@ macro_rules! create_config {
             // if a license_template_path has been specified, successfully read, parsed and compiled
             // into a regex, it will be stored here
             pub license_template: Option<Regex>,
+            // The location from which to resolve relative dirs.
+            root_dir: Option<PathBuf>,
             // For each config item, we store a bool indicating whether it has
             // been accessed and the value, and a bool whether the option was
             // manually initialised, or taken from the default,
@@ -166,6 +168,7 @@ macro_rules! create_config {
                 self.set_license_template();
                 self.set_ignore(dir);
                 self.set_merge_imports();
+                self.set_root_dir(dir);
                 self
             }
 
@@ -390,7 +393,7 @@ macro_rules! create_config {
                 if self.was_set().license_template_path() {
                     let lt_path = self.license_template_path();
                     if lt_path.len() > 0 {
-                        match license::load_and_compile_template(&lt_path) {
+                        match license::load_and_compile_template(&self.root_dir, &lt_path) {
                             Ok(re) => self.license_template = Some(re),
                             Err(msg) => eprintln!("Warning for license template file {:?}: {}",
                                                 lt_path, msg),
@@ -403,6 +406,10 @@ macro_rules! create_config {
 
             fn set_ignore(&mut self, dir: &Path) {
                 self.ignore.2.add_prefix(dir);
+            }
+
+            fn set_root_dir(&mut self, dir: &Path) {
+                self.root_dir = Some(dir.to_path_buf());
             }
 
             fn set_merge_imports(&mut self) {
@@ -438,6 +445,7 @@ macro_rules! create_config {
             fn default() -> Config {
                 Config {
                     license_template: None,
+                    root_dir: None,
                     $(
                         $i: (Cell::new(false), false, $def, $stb),
                     )+
