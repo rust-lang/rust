@@ -3,7 +3,7 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 
 declare_lint! {
-    /// The `redundant_field_names` lint checks for fields in struct literals
+    /// The `redundant_field_initializers` lint checks for fields in struct literals
     /// where shorthands could be used.
     ///
     /// ### Example
@@ -24,14 +24,14 @@ declare_lint! {
     ///
     /// If the field and variable names are the same,
     /// the field name is redundant.
-    pub REDUNDANT_FIELD_NAMES,
+    pub REDUNDANT_FIELD_INITIALIZERS,
     Warn,
     "checks for fields in struct literals where shorthands could be used"
 }
 
-declare_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
+declare_lint_pass!(RedundantFieldInitializers => [REDUNDANT_FIELD_INITIALIZERS]);
 
-impl EarlyLintPass for RedundantFieldNames {
+impl EarlyLintPass for RedundantFieldInitializers {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if let ast::ExprKind::Struct(ref se) = expr.kind {
             for field in &se.fields {
@@ -43,7 +43,7 @@ impl EarlyLintPass for RedundantFieldNames {
                         && path.segments[0].ident == field.ident
                         && path.segments[0].args.is_none()
                     {
-                        cx.struct_span_lint(REDUNDANT_FIELD_NAMES, field.span, |lint| {
+                        cx.struct_span_lint(REDUNDANT_FIELD_INITIALIZERS, field.span, |lint| {
                             lint.build("redundant field names in struct initialization")
                                 .span_suggestion(
                                     field.span,

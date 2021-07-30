@@ -127,7 +127,7 @@ macro_rules! declare_combined_late_lint_pass {
         }
 
         impl $name {
-            #[allow(redundant_field_names)]
+            #[allow(redundant_field_initializers)]
             $v fn new() -> Self {
                 Self {
                     $($passes: $constructor,)*
@@ -255,7 +255,7 @@ macro_rules! declare_combined_early_lint_pass {
         }
 
         impl $name {
-            #[allow(redundant_field_names)]
+            #[allow(redundant_field_initializers)]
             $v fn new() -> Self {
                 Self {
                     $($passes: $constructor,)*
