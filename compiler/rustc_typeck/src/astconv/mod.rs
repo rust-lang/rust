@@ -124,6 +124,7 @@ struct ConvertedBinding<'a, 'tcx> {
 #[derive(Debug)]
 enum ConvertedBindingKind<'a, 'tcx> {
     Equality(Ty<'tcx>),
+    Const(&'tcx Const<'tcx>),
     Constraint(&'a [hir::GenericBound<'a>]),
 }
 
@@ -604,7 +605,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     hir::TypeBindingKind::Equality { ty } => {
                         ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty))
                     }
-                    hir::TypeBindingKind::Constraint { bounds } => {
+                    hir::TypeBindingKind::Const { ref c } => {
+                        let local_did = self.tcx().hir().local_def_id(c.hir_id);
+                        let c = Const::from_anon_const(self.tcx(), local_did);
+                        ConvertedBindingKind::Const(&c)
+                    }
+                    hir::TypeBindingKind::Constraint { ref bounds } => {
                         ConvertedBindingKind::Constraint(bounds)
                     }
                 };
@@ -1227,6 +1233,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             projection_ty, projection_ty.substs
                         );
                         ty::ProjectionPredicate { projection_ty, ty }
+                    }),
+                    binding.span,
+                ));
+            }
+            ConvertedBindingKind::Const(c) => {
+                bounds.const_bounds.push((
+                    projection_ty.map_bound(|projection_ty| ty::ConstPredicate {
+                        projection: projection_ty,
+                        c,
                     }),
                     binding.span,
                 ));

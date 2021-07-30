@@ -960,7 +960,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// returns a `hir::TypeBinding` representing `Item`.
     fn lower_assoc_ty_constraint(
         &mut self,
-        constraint: &AssocTyConstraint,
+        constraint: &AssocConstraint,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
@@ -997,10 +997,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         let kind = match constraint.kind {
-            AssocTyConstraintKind::Equality { ref ty } => {
+            AssocConstraintKind::Equality { ref ty } => {
                 hir::TypeBindingKind::Equality { ty: self.lower_ty(ty, itctx) }
             }
-            AssocTyConstraintKind::Bound { ref bounds } => {
+            AssocConstraintKind::ConstEquality { ref c } => {
+                hir::TypeBindingKind::Const { c: self.lower_anon_const(c) }
+            }
+            AssocConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
                 let mut parent_def_id = self.current_hir_id_owner;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.

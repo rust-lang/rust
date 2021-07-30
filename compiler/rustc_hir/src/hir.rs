@@ -2136,6 +2136,8 @@ pub enum TypeBindingKind<'hir> {
     Constraint { bounds: &'hir [GenericBound<'hir>] },
     /// E.g., `Foo<Bar = ()>`.
     Equality { ty: &'hir Ty<'hir> },
+    /// E.g., `Foo<N = 3>`.
+    Const { c: AnonConst },
 }
 
 impl TypeBinding<'_> {

@@ -738,8 +738,9 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                         | ast::GenericArg::Const(_) => false,
                                     },
                                     ast::AngleBracketedArg::Constraint(c) => match c.kind {
-                                        ast::AssocTyConstraintKind::Bound { .. } => true,
-                                        ast::AssocTyConstraintKind::Equality { ref ty } => {
+                                        ast::AssocConstraintKind::Bound { .. } => true,
+                                        ast::AssocConstraintKind::ConstEquality { .. } => false,
+                                        ast::AssocConstraintKind::Equality { ref ty } => {
                                             involves_impl_trait(ty)
                                         }
                                     },

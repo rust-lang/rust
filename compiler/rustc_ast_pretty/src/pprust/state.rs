@@ -952,16 +952,20 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocTyConstraint) {
+    pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocConstraint) {
         self.print_ident(constraint.ident);
         constraint.gen_args.as_ref().map(|args| self.print_generic_args(args, false));
         self.space();
         match &constraint.kind {
-            ast::AssocTyConstraintKind::Equality { ty } => {
+            ast::AssocConstraintKind::Equality { ty } => {
                 self.word_space("=");
                 self.print_type(ty);
             }
-            ast::AssocTyConstraintKind::Bound { bounds } => {
+            ast::AssocConstraintKind::ConstEquality { c } => {
+                self.word_space("=");
+                self.print_expr_anon_const(c);
+            }
+            ast::AssocConstraintKind::Bound { bounds } => {
                 self.print_type_bounds(":", &*bounds);
             }
         }

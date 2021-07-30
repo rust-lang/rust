@@ -1756,6 +1756,10 @@ impl<'a> State<'a> {
                         self.word_space("=");
                         self.print_type(ty);
                     }
+                    hir::TypeBindingKind::Const { ref c } => {
+                        self.word_space("=");
+                        self.print_anon_const(c);
+                    }
                     hir::TypeBindingKind::Constraint { bounds } => {
                         self.print_bounds(":", bounds);
                     }
