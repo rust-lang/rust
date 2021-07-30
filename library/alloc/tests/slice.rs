@@ -1802,7 +1802,7 @@ fn panic_safe() {
                 let mut input = (0..len)
                     .map(|id| DropCounter {
                         x: rng.next_u32() % modulus,
-                        id: id,
+                        id,
                         version: Cell::new(0),
                     })
                     .collect::<Vec<_>>();

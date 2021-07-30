@@ -10,7 +10,7 @@ struct CMap<'a> {
 
 fn CMap(buf: &[u8]) -> CMap {
     CMap {
-        buf: buf
+        buf
     }
 }
 

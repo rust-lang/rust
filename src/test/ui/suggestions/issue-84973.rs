@@ -27,7 +27,7 @@ where
     pub fn new(g: G) -> Self {
         Other {
             a: "hi",
-            g: g,
+            g,
         }
     }
 }

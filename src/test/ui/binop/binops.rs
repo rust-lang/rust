@@ -60,8 +60,8 @@ struct p {
 
 fn p(x: isize, y: isize) -> p {
     p {
-        x: x,
-        y: y
+        x,
+        y
     }
 }
 

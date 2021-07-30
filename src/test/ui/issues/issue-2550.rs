@@ -10,7 +10,7 @@ struct C {
 
 fn C(x: usize) -> C {
     C {
-        x: x
+        x
     }
 }
 

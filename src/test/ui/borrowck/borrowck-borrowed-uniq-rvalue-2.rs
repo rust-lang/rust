@@ -12,7 +12,7 @@ impl<'a> Drop for Defer<'a> {
 
 fn defer<'r>(x: &'r [&'r str]) -> Defer<'r> {
     Defer {
-        x: x
+        x
     }
 }
 

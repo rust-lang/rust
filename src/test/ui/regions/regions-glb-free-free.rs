@@ -7,7 +7,7 @@ mod argparse {
     }
 
     pub fn flag<'r>(name: &'r str, desc: &'r str) -> Flag<'r> {
-        Flag { name: name, desc: desc, max_count: 1, value: 0 }
+        Flag { name, desc, max_count: 1, value: 0 }
     }
 
     impl<'a> Flag<'a> {

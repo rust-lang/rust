@@ -10,7 +10,7 @@ trait ToString_ {
 impl ToString_ for Point {
     fn new(x: f64, y: f64) -> Point {
     //~^ ERROR method `new` is not a member of trait `ToString_`
-        Point { x: x, y: y }
+        Point { x, y }
     }
 
     fn to_string(&self) -> String {

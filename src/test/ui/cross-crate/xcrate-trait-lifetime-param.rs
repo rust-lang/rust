@@ -12,7 +12,7 @@ struct Reader<'a> {
 
 impl <'a> other::FromBuf<'a> for Reader<'a> {
     fn from_buf(b : &'a [u8]) -> Reader<'a> {
-        Reader { b : b }
+        Reader { b }
     }
 }
 

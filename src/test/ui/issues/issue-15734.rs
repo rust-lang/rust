@@ -8,10 +8,10 @@ struct Mat<T> { data: Vec<T>, cols: usize, }
 
 impl<T> Mat<T> {
     fn new(data: Vec<T>, cols: usize) -> Mat<T> {
-        Mat { data: data, cols: cols }
+        Mat { data, cols }
     }
     fn row<'a>(&'a self, row: usize) -> Row<&'a Mat<T>> {
-        Row { mat: self, row: row, }
+        Row { mat: self, row, }
     }
 }
 

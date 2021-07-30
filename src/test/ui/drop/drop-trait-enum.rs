@@ -65,7 +65,7 @@ pub fn main() {
 
     let (sender, receiver) = channel();
     let t = thread::spawn(move|| {
-        let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
+        let v = Foo::FailingVariant { on_drop: SendOnDrop { sender } };
     });
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
     assert_eq!(receiver.recv().ok(), None);
@@ -81,7 +81,7 @@ pub fn main() {
                                    SendOnDrop { sender: sender.clone() },
                                    sender.clone());
             v = Foo::SimpleVariant(sender.clone());
-            v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
+            v = Foo::FailingVariant { on_drop: SendOnDrop { sender } };
         })
     };
     assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);

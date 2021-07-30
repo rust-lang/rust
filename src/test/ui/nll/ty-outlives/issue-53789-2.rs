@@ -102,8 +102,8 @@ struct VecStrategy<T : Strategy> {
 fn vec<T : Strategy>(element: T, size: Range<usize>)
                      -> VecStrategy<T> {
     VecStrategy {
-        element: element,
-        size: size,
+        element,
+        size,
     }
 }
 

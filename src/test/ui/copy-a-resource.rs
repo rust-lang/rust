@@ -9,7 +9,7 @@ impl Drop for Foo {
 
 fn foo(i:isize) -> Foo {
     Foo {
-        i: i
+        i
     }
 }
 

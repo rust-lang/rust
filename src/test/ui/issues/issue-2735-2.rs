@@ -16,7 +16,7 @@ impl<'a> Drop for defer<'a> {
 
 fn defer(b: &Cell<bool>) -> defer {
     defer {
-        b: b
+        b
     }
 }
 

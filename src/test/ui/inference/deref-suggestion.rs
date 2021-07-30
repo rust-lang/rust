@@ -38,12 +38,14 @@ fn main() {
     let u = 3;
     let s = S { u };
     //~^ ERROR mismatched types
-    let s = S { u: u };
+    let u2 = u;
+    let s = S { u: u2 };
     //~^ ERROR mismatched types
     let i = &4;
     let r = R { i };
     //~^ ERROR mismatched types
-    let r = R { i: i };
+    let i2 = i;
+    let r = R { i: i2 };
     //~^ ERROR mismatched types
 
 

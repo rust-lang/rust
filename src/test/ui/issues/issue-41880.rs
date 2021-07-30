@@ -1,7 +1,7 @@
 fn iterate<T, F>(initial: T, f: F) -> Iterate<T, F> {
     Iterate {
         state: initial,
-        f: f,
+        f,
     }
 }
 

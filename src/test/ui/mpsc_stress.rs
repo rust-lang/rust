@@ -24,7 +24,7 @@ struct Barrier {
 impl Barrier {
     fn new(count: usize) -> Vec<Barrier> {
         let shared = Arc::new(AtomicUsize::new(0));
-        (0..count).map(|_| Barrier { shared: shared.clone(), count: count }).collect()
+        (0..count).map(|_| Barrier { shared: shared.clone(), count }).collect()
     }
 
     fn new2() -> (Barrier, Barrier) {

@@ -80,7 +80,7 @@ where
         Self: Sized,
         for<'a> &'a mut Map<Self, F>: Stream,
     {
-        Map { func: func, stream: self }
+        Map { func, stream: self }
     }
 
     fn filterx<F>(self, func: F) -> Filter<Self, F>
@@ -88,7 +88,7 @@ where
         Self: Sized,
         for<'a> &'a mut Filter<Self, F>: Stream,
     {
-        Filter { func: func, stream: self }
+        Filter { func, stream: self }
     }
 
     fn countx(mut self) -> usize

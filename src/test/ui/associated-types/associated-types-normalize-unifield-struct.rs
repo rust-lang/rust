@@ -17,7 +17,7 @@ impl OffsetState for Y {}
 pub fn now() -> DateTime<X> { from_utc(Y) }
 
 pub struct DateTime<Off: Offset> { pub offset: Off::State }
-pub fn from_utc<Off: Offset>(offset: Off::State) -> DateTime<Off> { DateTime { offset: offset } }
+pub fn from_utc<Off: Offset>(offset: Off::State) -> DateTime<Off> { DateTime { offset } }
 
 pub fn main() {
     let _x = now();

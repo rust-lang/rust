@@ -4,7 +4,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Lexer<'a> {
-        Lexer { input: input }
+        Lexer { input }
     }
 }
 
@@ -14,7 +14,7 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(lexer: &'a mut Lexer) -> Parser<'a> {
-        Parser { lexer: lexer }
+        Parser { lexer }
         //~^ ERROR explicit lifetime required in the type of `lexer` [E0621]
     }
 }

@@ -17,7 +17,7 @@ impl<T: fmt::Debug> ops::FnOnce<(),> for Debuger<T> {
 }
 
 fn make_shower<T>(x: T) -> Debuger<T> {
-    Debuger { x: x }
+    Debuger { x }
 }
 
 pub fn main() {

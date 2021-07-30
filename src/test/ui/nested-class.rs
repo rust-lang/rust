@@ -13,7 +13,7 @@ pub fn main() {
 
     fn b(i:isize) -> b {
         b {
-            i: i
+            i
         }
     }
 

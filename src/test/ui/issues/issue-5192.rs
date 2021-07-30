@@ -31,7 +31,7 @@ impl Scheduler {
 
     pub fn new(event_loop: Box<dyn EventLoop+'static>) -> Scheduler {
         Scheduler {
-            event_loop: event_loop,
+            event_loop,
         }
     }
 }

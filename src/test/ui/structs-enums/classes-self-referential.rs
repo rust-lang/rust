@@ -11,7 +11,7 @@ struct kitten {
 
 fn kitten(cat: Option<cat>) -> kitten {
     kitten {
-        cat: cat
+        cat
     }
 }
 

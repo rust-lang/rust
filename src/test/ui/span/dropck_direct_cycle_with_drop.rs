@@ -21,7 +21,7 @@ struct D<'a> {
 }
 
 impl<'a> D<'a> {
-    fn new(name: String) -> D<'a> { D { name: name, p: Cell::new(None) } }
+    fn new(name: String) -> D<'a> { D { name, p: Cell::new(None) } }
 }
 
 impl<'a> Drop for D<'a> {

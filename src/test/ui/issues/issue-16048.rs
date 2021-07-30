@@ -13,7 +13,7 @@ struct Foo<'a> {
 
 impl<'a> Test<'a> for Foo<'a> {
     fn new(buf: &'a mut [u8]) -> Foo<'a> {
-        Foo { buf: buf }
+        Foo { buf }
     }
 }
 

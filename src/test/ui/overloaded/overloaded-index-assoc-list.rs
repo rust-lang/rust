@@ -15,7 +15,7 @@ struct AssociationPair<K,V> {
 
 impl<K,V> AssociationList<K,V> {
     fn push(&mut self, key: K, value: V) {
-        self.pairs.push(AssociationPair {key: key, value: value});
+        self.pairs.push(AssociationPair {key, value});
     }
 }
 

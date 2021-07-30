@@ -16,8 +16,8 @@ error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at
    |
 LL | ) -> Struct {
    |      ^^^^^^ doesn't have a size known at compile-time
-LL |     Struct { r: r }
-   |     --------------- this returned value is of type `Struct`
+LL |     Struct { r }
+   |     ------------ this returned value is of type `Struct`
    |
    = help: within `Struct`, the trait `Sized` is not implemented for `(dyn A + 'static)`
 note: required because it appears within the type `Struct`

@@ -19,7 +19,7 @@ impl<'a> shrinky_pointer<'a> {
 
 fn shrinky_pointer(i: &Cell<isize>) -> shrinky_pointer {
     shrinky_pointer {
-        i: i
+        i
     }
 }
 

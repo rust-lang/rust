@@ -46,7 +46,7 @@ struct r {
 
 #[cfg(bogus)]
 fn r(i: isize) -> r {
-    r { i: i }
+    r { i }
 }
 
 struct r {
@@ -54,7 +54,7 @@ struct r {
 }
 
 fn r(i: isize) -> r {
-    r { i: i }
+    r { i }
 }
 
 #[cfg(bogus)]

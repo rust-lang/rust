@@ -15,7 +15,7 @@ impl<T> DerefCounter<T> {
         DerefCounter {
             count_imm: Cell::new(0),
             count_mut: 0,
-            value: value
+            value
         }
     }
 

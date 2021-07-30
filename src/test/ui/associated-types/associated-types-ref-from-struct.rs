@@ -16,7 +16,7 @@ struct TesterPair<T:Test> {
 
 impl<T:Test> TesterPair<T> {
     fn new(tester: T, value: T::V) -> TesterPair<T> {
-        TesterPair { tester: tester, value: value }
+        TesterPair { tester, value }
     }
 
     fn test(&self) -> bool {

@@ -450,7 +450,7 @@ struct S<'a> {
 
 impl<'a> Named for S<'a> {
     fn new(name: &'static str) -> S<'a> {
-        S { name: name, mark: Cell::new(0), next: Cell::new(None) }
+        S { name, mark: Cell::new(0), next: Cell::new(None) }
     }
     fn name(&self) -> &str { self.name }
 }
@@ -468,7 +468,7 @@ struct S2<'a> {
 
 impl<'a> Named for S2<'a> {
     fn new(name: &'static str) -> S2<'a> {
-        S2 { name: name, mark: Cell::new(0), next: Cell::new((None, None)) }
+        S2 { name, mark: Cell::new(0), next: Cell::new((None, None)) }
     }
     fn name(&self) -> &str { self.name }
 }
@@ -488,7 +488,7 @@ struct V<'a> {
 
 impl<'a> Named for V<'a> {
     fn new(name: &'static str) -> V<'a> {
-        V { name: name,
+        V { name,
             mark: Cell::new(0),
             contents: vec![Cell::new(None), Cell::new(None)]
         }
@@ -510,7 +510,7 @@ struct H<'a> {
 
 impl<'a> Named for H<'a> {
     fn new(name: &'static str) -> H<'a> {
-        H { name: name, mark: Cell::new(0), next: Cell::new(None) }
+        H { name, mark: Cell::new(0), next: Cell::new(None) }
     }
     fn name(&self) -> &str { self.name }
 }
@@ -541,7 +541,7 @@ struct HM<'a> {
 
 impl<'a> Named for HM<'a> {
     fn new(name: &'static str) -> HM<'a> {
-        HM { name: name,
+        HM { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -575,7 +575,7 @@ struct VD<'a> {
 
 impl<'a> Named for VD<'a> {
     fn new(name: &'static str) -> VD<'a> {
-        VD { name: name,
+        VD { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -596,7 +596,7 @@ struct VM<'a> {
 
 impl<'a> Named for VM<'a> {
     fn new(name: &'static str) -> VM<'a> {
-        VM { name: name,
+        VM { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -617,7 +617,7 @@ struct LL<'a> {
 
 impl<'a> Named for LL<'a> {
     fn new(name: &'static str) -> LL<'a> {
-        LL { name: name,
+        LL { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -638,7 +638,7 @@ struct BH<'a> {
 
 impl<'a> Named for BH<'a> {
     fn new(name: &'static str) -> BH<'a> {
-        BH { name: name,
+        BH { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -679,7 +679,7 @@ struct BTM<'a> {
 
 impl<'a> Named for BTM<'a> {
     fn new(name: &'static str) -> BTM<'a> {
-        BTM { name: name,
+        BTM { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -720,7 +720,7 @@ struct BTS<'a> {
 
 impl<'a> Named for BTS<'a> {
     fn new(name: &'static str) -> BTS<'a> {
-        BTS { name: name,
+        BTS { name,
              mark: Cell::new(0),
              contents: Cell::new(None)
         }
@@ -765,7 +765,7 @@ struct RCRC<'a>(Rc<RefCell<RCRCData<'a>>>);
 impl<'a> Named for RCRC<'a> {
     fn new(name: &'static str) -> Self {
         RCRC(Rc::new(RefCell::new(RCRCData {
-            name: name, mark: Cell::new(0), children: (None, None), })))
+            name, mark: Cell::new(0), children: (None, None), })))
     }
     fn name(&self) -> &str { self.0.borrow().name }
 }
@@ -802,7 +802,7 @@ struct ARCRC<'a>(Arc<RefCell<ARCRCData<'a>>>);
 impl<'a> Named for ARCRC<'a> {
     fn new(name: &'static str) -> Self {
         ARCRC(Arc::new(RefCell::new(ARCRCData {
-            name: name, mark: Cell::new(0), children: (None, None), })))
+            name, mark: Cell::new(0), children: (None, None), })))
     }
     fn name(&self) -> &str { self.0.borrow().name }
 }
@@ -885,7 +885,7 @@ struct ARCRW<'a>(Arc<RwLock<ARCRWData<'a>>>);
 impl<'a> Named for ARCRW<'a> {
     fn new(name: &'static str) -> Self {
         ARCRW(Arc::new(RwLock::new(ARCRWData {
-            name: name, mark: Cell::new(0), children: (None, None), })))
+            name, mark: Cell::new(0), children: (None, None), })))
     }
     fn name(&self) -> &str { self.0.read().unwrap().name }
 }

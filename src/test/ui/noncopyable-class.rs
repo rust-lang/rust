@@ -12,7 +12,7 @@ impl Drop for Bar {
 
 fn bar(x:isize) -> Bar {
     Bar {
-        x: x
+        x
     }
 }
 
@@ -24,7 +24,7 @@ struct Foo {
 
 fn foo(i:isize) -> Foo {
     Foo {
-        i: i,
+        i,
         j: bar(5)
     }
 }

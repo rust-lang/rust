@@ -3,7 +3,7 @@ struct R {
   i:isize
 }
 
-fn r(i:isize) -> R { R { i: i } }
+fn r(i:isize) -> R { R { i } }
 
 impl Drop for R {
     fn drop(&mut self) {}

@@ -12,7 +12,7 @@ struct List<'l> {
 }
 
 fn foo(field1: &i32, field2: Option<&i32>) -> i32 {
-    let list = List { field1: field1, field2: field2 };
+    let list = List { field1, field2 };
     *list.field1 + list.field2.cloned().unwrap_or(0)
 }
 

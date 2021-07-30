@@ -602,7 +602,7 @@ where Self::Item: Iterator<Item = String> {
             iters: self.collect(),
             cache: vec![],
             col_widths: None,
-            sep_width: sep_width,
+            sep_width,
         }
     }
 }
@@ -681,7 +681,7 @@ trait Chunks: Iterator + Sized {
         assert!(n > 0);
         ChunksIter {
             it: self,
-            n: n,
+            n,
         }
     }
 }

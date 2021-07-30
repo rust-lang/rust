@@ -14,6 +14,6 @@ impl Drop for Cat {
 
 
 #[rustc_dummy]
-fn cat(name: String) -> Cat { Cat{name: name,} }
+fn cat(name: String) -> Cat { Cat{name,} }
 
 fn main() { let _kitty = cat("Spotty".to_string()); }

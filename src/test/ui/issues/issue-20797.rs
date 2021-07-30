@@ -46,7 +46,7 @@ impl<S: Strategy> Subpaths<S> {
     /// Creates a directory walker with a root path and strategy.
     pub fn new(p: &S::P, strategy: S) -> io::Result<Subpaths<S>> {
         let stack = strategy.get_more(p)?;
-        Ok(Subpaths { stack: stack, strategy: strategy })
+        Ok(Subpaths { stack, strategy })
     }
 }
 

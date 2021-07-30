@@ -18,7 +18,7 @@ impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
 }
 
 fn foo<'ast, G>(f: Option<&'ast usize>, g: G) where G: FnOnce(&dyn PrinterSupport) {
-    let annotation = NoAnn { f: f };
+    let annotation = NoAnn { f };
     g(&annotation)
 }
 

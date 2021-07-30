@@ -37,8 +37,8 @@ mod priv_test {
     impl<X, Y> DerefWrapperHideX<X, Y> {
         pub fn new(x: X, y: Y) -> DerefWrapperHideX<X, Y> {
             DerefWrapperHideX {
-                x: x,
-                y: y
+                x,
+                y
             }
         }
     }

@@ -20,7 +20,7 @@ struct InjectedFailure;
 #[allow(unreachable_code)]
 fn main() {
     let log = panic::AssertUnwindSafe(RefCell::new(vec![]));
-    let d = |id| DropLogger { id: id, log: &log };
+    let d = |id| DropLogger { id, log: &log };
     let get = || -> Vec<_> {
         let mut m = log.0.borrow_mut();
         let n = m.drain(..);

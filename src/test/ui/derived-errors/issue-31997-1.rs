@@ -36,7 +36,7 @@ fn main() {
         let instance = words.iter().find(|a| a.starts_with("i-")).unwrap();
         let name = words[1].to_owned();
         let mut entry = map.entry(instance.to_owned()).or_insert(Instance {
-            name: name,
+            name,
             start: None,
             end: None,
         });

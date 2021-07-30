@@ -12,8 +12,8 @@ struct Field {
 impl Field {
     fn new(number: usize, state: Rc<Cell<usize>>) -> Field {
         Field {
-            number: number,
-            state: state
+            number,
+            state
         }
     }
 }

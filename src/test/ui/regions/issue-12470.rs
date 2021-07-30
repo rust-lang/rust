@@ -20,7 +20,7 @@ struct A<'a> {
 }
 
 fn make_a<'a>(p: &'a dyn X) -> A<'a> {
-    A { p: p }
+    A { p }
 }
 
 fn make_make_a<'a>() -> A<'a> {

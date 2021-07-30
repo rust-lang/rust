@@ -70,16 +70,16 @@ LL |     let s = S { u };
    |                 help: consider borrowing here: `u: &u`
 
 error[E0308]: mismatched types
-  --> $DIR/deref-suggestion.rs:41:20
+  --> $DIR/deref-suggestion.rs:42:20
    |
-LL |     let s = S { u: u };
-   |                    ^
+LL |     let s = S { u: u2 };
+   |                    ^^
    |                    |
    |                    expected `&u32`, found integer
-   |                    help: consider borrowing here: `&u`
+   |                    help: consider borrowing here: `&u2`
 
 error[E0308]: mismatched types
-  --> $DIR/deref-suggestion.rs:44:17
+  --> $DIR/deref-suggestion.rs:45:17
    |
 LL |     let r = R { i };
    |                 ^ expected `u32`, found `&{integer}`
@@ -90,18 +90,18 @@ LL |     let r = R { i: *i };
    |                 ~~~~~
 
 error[E0308]: mismatched types
-  --> $DIR/deref-suggestion.rs:46:20
+  --> $DIR/deref-suggestion.rs:48:20
    |
-LL |     let r = R { i: i };
-   |                    ^ expected `u32`, found `&{integer}`
+LL |     let r = R { i: i2 };
+   |                    ^^ expected `u32`, found `&{integer}`
    |
 help: consider dereferencing the borrow
    |
-LL |     let r = R { i: *i };
+LL |     let r = R { i: *i2 };
    |                    +
 
 error[E0308]: mismatched types
-  --> $DIR/deref-suggestion.rs:55:9
+  --> $DIR/deref-suggestion.rs:57:9
    |
 LL |         b
    |         ^ expected `i32`, found `&{integer}`
@@ -112,7 +112,7 @@ LL |         *b
    |         +
 
 error[E0308]: mismatched types
-  --> $DIR/deref-suggestion.rs:63:9
+  --> $DIR/deref-suggestion.rs:65:9
    |
 LL |         b
    |         ^ expected `i32`, found `&{integer}`
@@ -123,7 +123,7 @@ LL |         *b
    |         +
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/deref-suggestion.rs:68:12
+  --> $DIR/deref-suggestion.rs:70:12
    |
 LL |        let val = if true {
    |   _______________-

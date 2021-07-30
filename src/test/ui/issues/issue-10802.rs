@@ -27,7 +27,7 @@ impl MyTrait for Box<DroppableEnum> {}
 struct Whatever { w: Box<dyn MyTrait+'static> }
 impl  Whatever {
     fn new(w: Box<dyn MyTrait+'static>) -> Whatever {
-        Whatever { w: w }
+        Whatever { w }
     }
 }
 

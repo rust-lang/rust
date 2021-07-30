@@ -23,7 +23,7 @@ impl Product for Foo {
 }
 
 fn Foo(x: isize, y: isize) -> Foo {
-    Foo { x: x, y: y }
+    Foo { x, y }
 }
 
 pub fn main() {

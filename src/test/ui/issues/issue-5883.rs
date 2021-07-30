@@ -7,7 +7,7 @@ struct Struct {
 fn new_struct(
     r: dyn A + 'static //~ ERROR the size for values of type
 ) -> Struct {          //~ ERROR the size for values of type
-    Struct { r: r }
+    Struct { r }
 }
 
 fn main() {}

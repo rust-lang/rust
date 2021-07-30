@@ -55,11 +55,11 @@ struct TypeContext<'tcx, 'ast> {
 impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     fn new(ty_arena: &'tcx TyArena<'tcx>, ast_arena: &'ast AstArena<'ast>)
            -> TypeContext<'tcx, 'ast> {
-        TypeContext { ty_arena: ty_arena,
+        TypeContext { ty_arena,
                       types: Vec::new(),
                       type_table: HashMap::new(),
 
-                      ast_arena: ast_arena,
+                      ast_arena,
                       ast_counter: 0 }
     }
 
@@ -83,7 +83,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     fn ast(&mut self, a: AstKind<'ast>) -> Ast<'ast> {
         let id = self.ast_counter;
         self.ast_counter += 1;
-        self.ast_arena.alloc(AstStructure { id: NodeId {id:id}, kind: a })
+        self.ast_arena.alloc(AstStructure { id: NodeId {id}, kind: a })
     }
 }
 

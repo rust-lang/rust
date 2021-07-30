@@ -20,7 +20,7 @@ impl Foo {
         if cnt == 0 {
             FOO.with(|_| {});
         }
-        Foo { cnt: cnt }
+        Foo { cnt }
     }
 }
 

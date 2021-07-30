@@ -13,7 +13,7 @@ mod foo {
     pub fn make_secrets(a: u8, b: String) -> S {
         let val = unsafe { let p = COUNT.get(); let val = *p; *p = val + 1; val };
         println!("creating {}, uid {}", b, val);
-        S { a: a, b: b, secret_uid: val }
+        S { a, b, secret_uid: val }
     }
 
     impl Drop for S {

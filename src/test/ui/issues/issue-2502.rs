@@ -17,7 +17,7 @@ impl<'a> font<'a> {
 
 fn font(fontbuf: &Vec<u8> ) -> font {
     font {
-        fontbuf: fontbuf
+        fontbuf
     }
 }
 

@@ -3,8 +3,8 @@ error[E0621]: explicit lifetime required in the type of `x`
    |
 LL | fn thing<'a,Q>(x: &Q) -> Thing<'a,Q> {
    |                   -- help: add explicit lifetime `'a` to the type of `x`: `&'a Q`
-LL |     Thing { x: x }
-   |     ^^^^^^^^^^^^^^ lifetime `'a` required
+LL |     Thing { x }
+   |     ^^^^^^^^^^^ lifetime `'a` required
 
 error: aborting due to previous error
 

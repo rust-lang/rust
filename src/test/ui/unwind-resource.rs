@@ -21,7 +21,7 @@ impl Drop for complainer {
 fn complainer(tx: Sender<bool>) -> complainer {
     println!("Hello!");
     complainer {
-        tx: tx
+        tx
     }
 }
 

@@ -16,7 +16,7 @@ struct list<T> {
 impl<T:'static> list<T> {
     pub fn addEnd(&mut self, element: T) {
         let newList = list {
-            element: element,
+            element,
             next: None
         };
 

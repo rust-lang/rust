@@ -6,7 +6,7 @@ pub mod animal {
 
     impl Dog {
         pub fn new(age: usize) -> Dog {
-            Dog { age: age, dog_age: age * 7 }
+            Dog { age, dog_age: age * 7 }
         }
     }
 }

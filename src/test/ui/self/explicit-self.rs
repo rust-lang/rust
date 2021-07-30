@@ -49,7 +49,7 @@ struct A {
 
 fn thing(x: A) -> thing {
     thing {
-        x: x
+        x
     }
 }
 

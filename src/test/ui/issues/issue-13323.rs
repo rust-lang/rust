@@ -48,7 +48,7 @@ impl<T: Eq> Matcher<T> for EqualTo<T> {
 }
 
 fn equal_to<T: Eq>(expected: T) -> Box<EqualTo<T>> {
-    box EqualTo { expected: expected }
+    box EqualTo { expected }
 }
 
 pub fn main() {

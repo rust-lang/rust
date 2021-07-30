@@ -16,7 +16,7 @@ fn compute(i: mytype) -> isize {
 }
 
 pub fn main() {
-    let myval = mytype(Mytype{compute: compute, val: 30});
+    let myval = mytype(Mytype{compute, val: 30});
     println!("{}", compute(myval));
     let mytype(m) = myval;
     assert_eq!((m.compute)(myval), 50);

@@ -39,7 +39,7 @@ mod signatures {
     #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
     #[rustc_then_this_would_need(typeck)] //~ ERROR OK
     fn new_foo(x: u32, y: u32) -> WillChange {
-        WillChange { x: x, y: y }
+        WillChange { x, y }
     }
 
     #[rustc_then_this_would_need(type_of)] //~ ERROR OK

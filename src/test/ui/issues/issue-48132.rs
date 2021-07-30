@@ -20,7 +20,7 @@ where I: Iterator,
 {
     Outer {
         inner: Inner {
-            iterator: iterator,
+            iterator,
             item: Default::default(),
         }
     }

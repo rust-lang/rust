@@ -66,7 +66,7 @@ fn AsciiArt(width: usize, height: usize, fill: char) -> AsciiArt {
 
     // Rust code often returns values by omitting the trailing semi-colon
     // instead of using an explicit return statement.
-    AsciiArt {width: width, height: height, fill: fill, lines: lines}
+    AsciiArt {width, height, fill, lines}
 }
 
 // Methods particular to the AsciiArt struct.

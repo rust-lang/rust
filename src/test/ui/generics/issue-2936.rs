@@ -21,7 +21,7 @@ impl bar<isize> for cbar {
 
 fn cbar(x: isize) -> cbar {
     cbar {
-        x: x
+        x
     }
 }
 

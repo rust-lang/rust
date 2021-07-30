@@ -14,7 +14,7 @@ impl<T: Default + Add<u8, Output = T>, U: Default> Tr for S<T, U> {
     fn f(&self) -> Self {
         let s = Self { a: Default::default(), b: Default::default() };
         match s {
-            Self { a, b } => Self { a: a + 1, b: b }
+            Self { a, b } => Self { a: a + 1, b }
         }
     }
 }
@@ -23,7 +23,7 @@ impl<T: Default, U: Default + Add<u16, Output = U>> S<T, U> {
     fn g(&self) -> Self {
         let s = Self { a: Default::default(), b: Default::default() };
         match s {
-            Self { a, b } => Self { a: a, b: b + 1 }
+            Self { a, b } => Self { a, b: b + 1 }
         }
     }
 }

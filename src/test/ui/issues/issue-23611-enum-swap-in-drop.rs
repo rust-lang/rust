@@ -240,7 +240,7 @@ pub mod d {
                 counter += 1;
                 trails |= (1 << trail);
                 let ret = D {
-                    name: name, i: i, log: log, uid: ctr, trail: trail
+                    name, i, log, uid: ctr, trail
                 };
                 indent_println(trail, &format!("+-- Make {}", ret));
                 ret

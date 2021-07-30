@@ -64,7 +64,7 @@ impl Node {
 fn main() {
     let n = Node;
     let jsref = JSRef { node: &n };
-    let root = Root { jsref: jsref };
+    let root = Root { jsref };
 
     root.AddChild();
     jsref.AddChild();

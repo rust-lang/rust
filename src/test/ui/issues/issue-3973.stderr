@@ -3,7 +3,7 @@ error[E0407]: method `new` is not a member of trait `ToString_`
    |
 LL | /     fn new(x: f64, y: f64) -> Point {
 LL | |
-LL | |         Point { x: x, y: y }
+LL | |         Point { x, y }
 LL | |     }
    | |_____^ not a member of trait `ToString_`
 

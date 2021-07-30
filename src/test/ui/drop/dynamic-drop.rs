@@ -35,7 +35,7 @@ impl Drop for Allocator {
 impl Allocator {
     fn new(failing_op: usize) -> Self {
         Allocator {
-            failing_op: failing_op,
+            failing_op,
             cur_ops: Cell::new(0),
             data: RefCell::new(vec![])
         }

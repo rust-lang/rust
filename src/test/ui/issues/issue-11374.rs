@@ -7,7 +7,7 @@ pub struct Container<'a> {
 
 impl<'a> Container<'a> {
     pub fn wrap<'s>(reader: &'s mut dyn io::Read) -> Container<'s> {
-        Container { reader: reader }
+        Container { reader }
     }
 
     pub fn read_to(&mut self, vec: &mut [u8]) {

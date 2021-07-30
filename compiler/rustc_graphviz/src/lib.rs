@@ -154,7 +154,7 @@
 //! pub fn render_to<W: Write>(output: &mut W) {
 //!     let nodes = vec!["{x,y}","{x}","{y}","{}"];
 //!     let edges = vec![(0,1), (0,2), (1,3), (2,3)];
-//!     let graph = Graph { nodes: nodes, edges: edges };
+//!     let graph = Graph { nodes, edges };
 //!
 //!     dot::render(&graph, output).unwrap()
 //! }
@@ -216,7 +216,7 @@
 //! pub fn render_to<W: Write>(output: &mut W) {
 //!     let nodes = vec!["{x,y}","{x}","{y}","{}"];
 //!     let edges = vec![(0,1), (0,2), (1,3), (2,3)];
-//!     let graph = Graph { nodes: nodes, edges: edges };
+//!     let graph = Graph { nodes, edges };
 //!
 //!     dot::render(&graph, output).unwrap()
 //! }

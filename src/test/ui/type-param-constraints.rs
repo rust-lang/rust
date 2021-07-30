@@ -20,7 +20,7 @@ impl Drop for r {
 
 fn r(i:isize) -> r {
     r {
-        i: i
+        i
     }
 }
 

@@ -9,7 +9,7 @@ pub struct Data<T> {
 impl<T> Data<T> {
     pub const fn new(function: fn() -> T) -> Data<T> {
         Data {
-            function: function,
+            function,
         }
     }
 }

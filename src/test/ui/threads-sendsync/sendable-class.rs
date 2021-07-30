@@ -17,8 +17,8 @@ struct foo {
 
 fn foo(i:isize, j: char) -> foo {
     foo {
-        i: i,
-        j: j
+        i,
+        j
     }
 }
 

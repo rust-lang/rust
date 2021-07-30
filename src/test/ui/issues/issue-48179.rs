@@ -20,7 +20,7 @@ pub struct Wrapper<'a> {
 impl<'a, 'de> Wrapper<'a> {
     pub fn new(content: &'a Content) -> Self {
         Wrapper {
-            content: content,
+            content,
         }
     }
 }

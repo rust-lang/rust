@@ -8,7 +8,7 @@
 #![feature(box_syntax, core)]
 
 struct ncint { v: isize }
-fn ncint(v: isize) -> ncint { ncint { v: v } }
+fn ncint(v: isize) -> ncint { ncint { v } }
 
 struct NoFoo { copied: isize, nocopy: ncint, }
 impl NoFoo {

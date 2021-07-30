@@ -26,8 +26,8 @@ impl<A:Clone> Invokable<A> for Invoker<A> {
 
 fn f<A:Clone + 'static>(a: A, b: u16) -> Box<dyn Invokable<A>+'static> {
     box Invoker {
-        a: a,
-        b: b,
+        a,
+        b,
     } as Box<dyn Invokable<A>+'static>
 }
 

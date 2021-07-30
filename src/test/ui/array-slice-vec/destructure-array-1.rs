@@ -8,7 +8,7 @@ struct D { x: u8 }
 impl Drop for D { fn drop(&mut self) { } }
 
 fn main() {
-    fn d(x: u8) -> D { D { x: x } }
+    fn d(x: u8) -> D { D { x } }
 
     let d1 = foo([d(1), d(2), d(3), d(4)], 1);
     let d3 = foo([d(5), d(6), d(7), d(8)], 3);

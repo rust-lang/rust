@@ -11,7 +11,7 @@ struct Bar {
 
 pub fn main() {
     let (x, y, z) = (1, true, 2);
-    let a = Foo { x, y: y, z };
+    let a = Foo { x, y, z };
     assert_eq!(a.x, x);
     assert_eq!(a.y, y);
     assert_eq!(a.z, z);

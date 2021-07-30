@@ -16,7 +16,7 @@ impl<'a> Drop for r<'a> {
 
 fn r(i: &Cell<isize>) -> r {
     r {
-        i: i
+        i
     }
 }
 

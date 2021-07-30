@@ -22,7 +22,7 @@ Maybe it should technically be a kitten_maker.
 */
 fn cat(name: String) -> Cat {
     Cat {
-        name: name
+        name
     }
 }
 

@@ -14,7 +14,7 @@ impl<T> c1<T> {
 
 fn c1<T>(x: T) -> c1<T> {
     c1 {
-        x: x
+        x
     }
 }
 

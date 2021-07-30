@@ -19,7 +19,7 @@ impl Drop for test {
 
 fn test(f: isize) -> test {
     test {
-        f: f
+        f
     }
 }
 

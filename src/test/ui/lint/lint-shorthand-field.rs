@@ -37,7 +37,7 @@ fn main() {
 
         struct x;
 
-        match (Bar { x: x }) {
+        match (Bar { x }) {
             Bar { x: x } => {},
         }
     }

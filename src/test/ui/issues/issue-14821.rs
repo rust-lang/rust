@@ -11,7 +11,7 @@ struct Foo<'a> {
 }
 
 impl<'a> Foo<'a> {
-    pub fn new<'b>(x: &'b dyn SomeTrait, y: &'b dyn SomeTrait) -> Foo<'b> { Foo { x: x, y: y } }
+    pub fn new<'b>(x: &'b dyn SomeTrait, y: &'b dyn SomeTrait) -> Foo<'b> { Foo { x, y } }
 }
 
 fn main() {

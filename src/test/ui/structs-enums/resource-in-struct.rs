@@ -21,7 +21,7 @@ impl<'a> Drop for close_res<'a> {
 
 fn close_res(i: closable) -> close_res {
     close_res {
-        i: i
+        i
     }
 }
 

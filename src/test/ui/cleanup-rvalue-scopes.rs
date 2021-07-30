@@ -17,7 +17,7 @@ struct Box<T> { f: T }
 struct AddFlags { bits: u64 }
 
 fn AddFlags(bits: u64) -> AddFlags {
-    AddFlags { bits: bits }
+    AddFlags { bits }
 }
 
 fn arg(exp: u64, _x: &AddFlags) {
