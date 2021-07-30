@@ -3649,6 +3649,7 @@ dependencies = [
  "libc",
  "object 0.25.2",
  "pathdiff",
+ "regex",
  "rustc_apfloat",
  "rustc_ast",
  "rustc_attr",
