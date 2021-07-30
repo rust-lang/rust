@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, ExpnKind, Span};
 use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -381,6 +381,10 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
     }
 
     let source = let_source(tcx, id);
+    let span = match source {
+        LetSource::LetElse(span) => span,
+        _ => span,
+    };
     tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match source {
         LetSource::GenericLet => {
             emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
@@ -399,6 +403,14 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
                 "`if let` guard",
                 "guard is useless",
                 "removing the guard and adding a `let` inside the match arm"
+            );
+        }
+        LetSource::LetElse(..) => {
+            emit_diag!(
+                lint,
+                "`let...else`",
+                "`else` clause is useless",
+                "removing the `else` clause"
             );
         }
         LetSource::WhileLet => {
@@ -755,6 +767,7 @@ pub enum LetSource {
     GenericLet,
     IfLet,
     IfLetGuard,
+    LetElse(Span),
     WhileLet,
 }
 
@@ -767,6 +780,12 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
             ..
         }) if hir_id == pat_id => {
             return LetSource::IfLetGuard;
+        }
+        hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {
+            let expn_data = span.ctxt().outer_expn_data();
+            if let ExpnKind::Desugaring(DesugaringKind::LetElse) = expn_data.kind {
+                return LetSource::LetElse(expn_data.call_site);
+            }
         }
         _ => {}
     }
