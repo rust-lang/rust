@@ -1,0 +1,69 @@
+- // MIR for `<impl at $DIR/partial.rs:9:10: 9:19>::eq` before CopyPropagation
++ // MIR for `<impl at $DIR/partial.rs:9:10: 9:19>::eq` after CopyPropagation
+  
+  fn <impl at $DIR/partial.rs:9:10: 9:19>::eq(_1: &E, _2: &E) -> bool {
+      debug self => _1;                    // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      debug other => _2;                   // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _0: bool;                    // return place in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let _3: isize;                       // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _4: &E;                      // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let _5: &E;                          // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _7: &E;                      // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let _8: &E;                          // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _9: bool;                    // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _10: bool;                   // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _11: isize;                  // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _12: isize;                  // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _13: (&E, &E);               // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _14: &E;                     // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      let mut _15: &E;                     // in scope 0 at $DIR/partial.rs:9:10: 9:19
+      scope 1 {
+          debug __self_vi => _3;           // in scope 1 at $DIR/partial.rs:9:10: 9:19
+          let _6: isize;                   // in scope 1 at $DIR/partial.rs:9:10: 9:19
+          scope 2 {
+              debug __arg_1_vi => _6;      // in scope 2 at $DIR/partial.rs:9:10: 9:19
+          }
+      }
+  
+      bb0: {
+          _5 = _1;                         // scope 0 at $DIR/partial.rs:9:10: 9:19
+-         _4 = _5;                         // scope 0 at $DIR/partial.rs:9:10: 9:19
+-         _3 = discriminant((*_4));        // scope 0 at $DIR/partial.rs:9:10: 9:19
++         _4 = _1;                         // scope 0 at $DIR/partial.rs:9:10: 9:19
++         _3 = discriminant((*_1));        // scope 0 at $DIR/partial.rs:9:10: 9:19
+          _8 = _2;                         // scope 1 at $DIR/partial.rs:9:10: 9:19
+-         _7 = _8;                         // scope 1 at $DIR/partial.rs:9:10: 9:19
+-         _6 = discriminant((*_7));        // scope 1 at $DIR/partial.rs:9:10: 9:19
++         _7 = _2;                         // scope 1 at $DIR/partial.rs:9:10: 9:19
++         _6 = discriminant((*_2));        // scope 1 at $DIR/partial.rs:9:10: 9:19
+          _11 = _3;                        // scope 2 at $DIR/partial.rs:9:10: 9:19
+          _12 = _6;                        // scope 2 at $DIR/partial.rs:9:10: 9:19
+-         _10 = Eq(move _11, move _12);    // scope 2 at $DIR/partial.rs:9:10: 9:19
+-         _9 = move _10;                   // scope 2 at $DIR/partial.rs:9:10: 9:19
+-         switchInt(move _9) -> [false: bb2, otherwise: bb1]; // scope 2 at $DIR/partial.rs:9:10: 9:19
++         _10 = Eq(_3, _6);                // scope 2 at $DIR/partial.rs:9:10: 9:19
++         _9 = _10;                        // scope 2 at $DIR/partial.rs:9:10: 9:19
++         switchInt(_10) -> [false: bb2, otherwise: bb1]; // scope 2 at $DIR/partial.rs:9:10: 9:19
+      }
+  
+      bb1: {
+          _14 = _1;                        // scope 2 at $DIR/partial.rs:9:10: 9:19
+          _15 = _2;                        // scope 2 at $DIR/partial.rs:9:10: 9:19
+-         (_13.0: &E) = move _14;          // scope 2 at $DIR/partial.rs:9:10: 9:19
+-         (_13.1: &E) = move _15;          // scope 2 at $DIR/partial.rs:9:10: 9:19
++         (_13.0: &E) = _1;                // scope 2 at $DIR/partial.rs:9:10: 9:19
++         (_13.1: &E) = _2;                // scope 2 at $DIR/partial.rs:9:10: 9:19
+          _0 = const true;                 // scope 2 at $DIR/partial.rs:9:10: 9:19
+          goto -> bb3;                     // scope 2 at $DIR/partial.rs:9:10: 9:19
+      }
+  
+      bb2: {
+          _0 = const false;                // scope 2 at $DIR/partial.rs:9:10: 9:19
+          goto -> bb3;                     // scope 2 at $DIR/partial.rs:9:10: 9:19
+      }
+  
+      bb3: {
+          return;                          // scope 0 at $DIR/partial.rs:9:19: 9:19
+      }
+  }
+  

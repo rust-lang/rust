@@ -1,0 +1,63 @@
+- // MIR for `chain` before CopyPropagation
++ // MIR for `chain` after CopyPropagation
+  
+  fn chain(_1: T) -> T {
+      debug a => _1;                       // in scope 0 at $DIR/copy_propagation.rs:16:23: 16:28
+      let mut _2: T;                       // in scope 0 at $DIR/copy_propagation.rs:17:9: 17:14
+      let mut _4: T;                       // in scope 0 at $DIR/copy_propagation.rs:19:9: 19:10
+      let mut _5: T;                       // in scope 0 at $DIR/copy_propagation.rs:20:9: 20:10
+      let mut _6: T;                       // in scope 0 at $DIR/copy_propagation.rs:21:9: 21:10
+      let mut _7: T;                       // in scope 0 at $DIR/copy_propagation.rs:22:9: 22:10
+      let mut _8: T;                       // in scope 0 at $DIR/copy_propagation.rs:23:9: 23:10
+      scope 1 {
+          debug b => _2;                   // in scope 1 at $DIR/copy_propagation.rs:17:9: 17:14
+          let mut _3: T;                   // in scope 1 at $DIR/copy_propagation.rs:18:9: 18:14
+          scope 2 {
+              debug c => _3;               // in scope 2 at $DIR/copy_propagation.rs:18:9: 18:14
+              let mut _0: T;               // return place in scope 2 at $DIR/copy_propagation.rs:25:9: 25:10
+              let _9: T;                   // in scope 2 at $DIR/copy_propagation.rs:25:9: 25:10
+              scope 3 {
+                  debug d => _0;           // in scope 3 at $DIR/copy_propagation.rs:25:9: 25:10
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/copy_propagation.rs:17:9: 17:14
+          StorageLive(_3);                 // scope 1 at $DIR/copy_propagation.rs:18:9: 18:14
+          StorageLive(_4);                 // scope 2 at $DIR/copy_propagation.rs:19:9: 19:10
+          _4 = _1;                         // scope 2 at $DIR/copy_propagation.rs:19:9: 19:10
+-         _2 = move _4;                    // scope 2 at $DIR/copy_propagation.rs:19:5: 19:10
++         _2 = _1;                         // scope 2 at $DIR/copy_propagation.rs:19:5: 19:10
+          StorageDead(_4);                 // scope 2 at $DIR/copy_propagation.rs:19:9: 19:10
+          StorageLive(_5);                 // scope 2 at $DIR/copy_propagation.rs:20:9: 20:10
+-         _5 = _2;                         // scope 2 at $DIR/copy_propagation.rs:20:9: 20:10
+-         _3 = move _5;                    // scope 2 at $DIR/copy_propagation.rs:20:5: 20:10
++         _5 = _1;                         // scope 2 at $DIR/copy_propagation.rs:20:9: 20:10
++         _3 = _1;                         // scope 2 at $DIR/copy_propagation.rs:20:5: 20:10
+          StorageDead(_5);                 // scope 2 at $DIR/copy_propagation.rs:20:9: 20:10
+          StorageLive(_6);                 // scope 2 at $DIR/copy_propagation.rs:21:9: 21:10
+-         _6 = _3;                         // scope 2 at $DIR/copy_propagation.rs:21:9: 21:10
+-         _1 = move _6;                    // scope 2 at $DIR/copy_propagation.rs:21:5: 21:10
++         _6 = _1;                         // scope 2 at $DIR/copy_propagation.rs:21:9: 21:10
++         _1 = _6;                         // scope 2 at $DIR/copy_propagation.rs:21:5: 21:10
+          StorageDead(_6);                 // scope 2 at $DIR/copy_propagation.rs:21:9: 21:10
+          StorageLive(_7);                 // scope 2 at $DIR/copy_propagation.rs:22:9: 22:10
+          _7 = _1;                         // scope 2 at $DIR/copy_propagation.rs:22:9: 22:10
+-         _2 = move _7;                    // scope 2 at $DIR/copy_propagation.rs:22:5: 22:10
++         _2 = _1;                         // scope 2 at $DIR/copy_propagation.rs:22:5: 22:10
+          StorageDead(_7);                 // scope 2 at $DIR/copy_propagation.rs:22:9: 22:10
+          StorageLive(_8);                 // scope 2 at $DIR/copy_propagation.rs:23:9: 23:10
+-         _8 = _2;                         // scope 2 at $DIR/copy_propagation.rs:23:9: 23:10
+-         _3 = move _8;                    // scope 2 at $DIR/copy_propagation.rs:23:5: 23:10
++         _8 = _1;                         // scope 2 at $DIR/copy_propagation.rs:23:9: 23:10
++         _3 = _1;                         // scope 2 at $DIR/copy_propagation.rs:23:5: 23:10
+          StorageDead(_8);                 // scope 2 at $DIR/copy_propagation.rs:23:9: 23:10
+-         _0 = _3;                         // scope 2 at $DIR/copy_propagation.rs:25:13: 25:14
++         _0 = _1;                         // scope 2 at $DIR/copy_propagation.rs:25:13: 25:14
+          StorageDead(_3);                 // scope 1 at $DIR/copy_propagation.rs:27:1: 27:2
+          StorageDead(_2);                 // scope 0 at $DIR/copy_propagation.rs:27:1: 27:2
+          return;                          // scope 0 at $DIR/copy_propagation.rs:27:2: 27:2
+      }
+  }
+  

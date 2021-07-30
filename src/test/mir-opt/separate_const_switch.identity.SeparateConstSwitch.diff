@@ -17,13 +17,13 @@
           scope 2 {
               scope 8 (inlined <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) { // at $DIR/separate_const_switch.rs:29:8: 29:10
                   debug residual => _8;    // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
-                  let _16: i32;            // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
-                  let mut _17: i32;        // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
-                  let mut _18: i32;        // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
+                  let _14: i32;            // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
+                  let mut _15: i32;        // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
+                  let mut _16: i32;        // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
                   scope 9 {
-                      debug e => _16;      // in scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+                      debug e => _14;      // in scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
                       scope 10 (inlined <i32 as From<i32>>::from) { // at $DIR/separate_const_switch.rs:29:8: 29:10
-                          debug t => _18;  // in scope 10 at $DIR/separate_const_switch.rs:29:8: 29:10
+                          debug t => _16;  // in scope 10 at $DIR/separate_const_switch.rs:29:8: 29:10
                       }
                   }
               }
@@ -38,15 +38,13 @@
           debug self => _4;                // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
           let mut _10: isize;              // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
           let _11: i32;                    // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          let mut _12: i32;                // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          let _13: i32;                    // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          let mut _14: std::result::Result<std::convert::Infallible, i32>; // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          let mut _15: i32;                // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+          let _12: i32;                    // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+          let mut _13: std::result::Result<std::convert::Infallible, i32>; // in scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
           scope 6 {
               debug v => _11;              // in scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
           }
           scope 7 {
-              debug e => _13;              // in scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
+              debug e => _12;              // in scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
           }
       }
   
@@ -57,8 +55,8 @@
           _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:9
           StorageLive(_10);                // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
           _10 = discriminant(_4);          // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
--         switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-+         switchInt(move _10) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+-         switchInt(_10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
++         switchInt(_10) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
       }
   
       bb1: {
@@ -86,17 +84,17 @@
           _6 = ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>); // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
           StorageLive(_8);                 // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
           _8 = _6;                         // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
-          StorageLive(_16);                // scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _16 = move ((_8 as Err).0: i32); // scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageLive(_17);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageLive(_18);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _18 = move _16;                  // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _17 = move _18;                  // scope 10 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_18);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
-          ((_0 as Err).0: i32) = move _17; // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageLive(_14);                // scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
+          _14 = ((_8 as Err).0: i32);      // scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageLive(_15);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageLive(_16);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+          _16 = _14;                       // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+          _15 = _16;                       // scope 10 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageDead(_16);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+          ((_0 as Err).0: i32) = _15;      // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
           discriminant(_0) = 1;            // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_17);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_16);                // scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageDead(_15);                // scope 9 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageDead(_14);                // scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
           StorageDead(_8);                 // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
           StorageDead(_6);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
           StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:29:10: 29:11
@@ -106,18 +104,15 @@
   
 -     bb4: {
 +     bb3: {
-          StorageLive(_13);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _13 = move ((_4 as Err).0: i32); // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageLive(_14);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageLive(_15);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _15 = move _13;                  // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          ((_14 as Err).0: i32) = move _15; // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          discriminant(_14) = 1;           // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_15);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>) = move _14; // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageLive(_12);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+          _12 = ((_4 as Err).0: i32);      // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageLive(_13);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
+          ((_13 as Err).0: i32) = _12;     // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
+          discriminant(_13) = 1;           // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
+          ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>) = _13; // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
           discriminant(_3) = 1;            // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_14);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_13);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageDead(_13);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
+          StorageDead(_12);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
 -         goto -> bb1;                     // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
@@ -133,12 +128,9 @@
 -     bb6: {
 +     bb5: {
           StorageLive(_11);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _11 = move ((_4 as Ok).0: i32);  // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageLive(_12);                // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
-          _12 = move _11;                  // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
-          ((_3 as Continue).0: i32) = move _12; // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
+          _11 = ((_4 as Ok).0: i32);       // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
+          ((_3 as Continue).0: i32) = _11; // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
           discriminant(_3) = 0;            // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
-          StorageDead(_12);                // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10
           StorageDead(_11);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
 -         goto -> bb1;                     // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
 +         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10

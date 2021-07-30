@@ -19,15 +19,12 @@
 +         debug y => ((_0 as Ok).0: u32);  // in scope 1 at $DIR/simplify_try.rs:21:9: 21:10
       }
       scope 2 {
--         debug e => _6;                   // in scope 2 at $DIR/simplify_try.rs:22:13: 22:14
-+         debug e => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:22:13: 22:14
+          debug e => _6;                   // in scope 2 at $DIR/simplify_try.rs:22:13: 22:14
           scope 5 (inlined <i32 as From<i32>>::from) { // at $DIR/simplify_try.rs:22:37: 22:50
--             debug t => _9;               // in scope 5 at $DIR/simplify_try.rs:22:37: 22:50
-+             debug t => ((_0 as Err).0: i32); // in scope 5 at $DIR/simplify_try.rs:22:37: 22:50
+              debug t => _9;               // in scope 5 at $DIR/simplify_try.rs:22:37: 22:50
           }
           scope 6 (inlined from_error::<u32, i32>) { // at $DIR/simplify_try.rs:22:26: 22:51
--             debug e => _8;               // in scope 6 at $DIR/simplify_try.rs:22:26: 22:51
-+             debug e => ((_0 as Err).0: i32); // in scope 6 at $DIR/simplify_try.rs:22:26: 22:51
+              debug e => _8;               // in scope 6 at $DIR/simplify_try.rs:22:26: 22:51
           }
       }
       scope 3 {
@@ -43,7 +40,7 @@
           StorageLive(_3);                 // scope 0 at $DIR/simplify_try.rs:21:19: 21:33
           StorageLive(_4);                 // scope 0 at $DIR/simplify_try.rs:21:31: 21:32
           _4 = _1;                         // scope 0 at $DIR/simplify_try.rs:21:31: 21:32
-          _3 = move _4;                    // scope 4 at $DIR/simplify_try.rs:21:19: 21:33
+          _3 = _4;                         // scope 4 at $DIR/simplify_try.rs:21:19: 21:33
           StorageDead(_4);                 // scope 0 at $DIR/simplify_try.rs:21:32: 21:33
           _5 = discriminant(_3);           // scope 0 at $DIR/simplify_try.rs:22:9: 22:15
           switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try.rs:22:9: 22:15
@@ -66,18 +63,17 @@
       }
   
       bb2: {
--         StorageLive(_6);                 // scope 0 at $DIR/simplify_try.rs:22:13: 22:14
--         _6 = ((_3 as Err).0: i32);       // scope 0 at $DIR/simplify_try.rs:22:13: 22:14
--         StorageLive(_8);                 // scope 2 at $DIR/simplify_try.rs:22:37: 22:50
--         StorageLive(_9);                 // scope 2 at $DIR/simplify_try.rs:22:48: 22:49
--         _9 = _6;                         // scope 2 at $DIR/simplify_try.rs:22:48: 22:49
--         _8 = move _9;                    // scope 5 at $DIR/simplify_try.rs:22:37: 22:50
--         StorageDead(_9);                 // scope 2 at $DIR/simplify_try.rs:22:49: 22:50
--         ((_0 as Err).0: i32) = move _8;  // scope 6 at $DIR/simplify_try.rs:22:26: 22:51
--         discriminant(_0) = 1;            // scope 6 at $DIR/simplify_try.rs:22:26: 22:51
--         StorageDead(_8);                 // scope 2 at $DIR/simplify_try.rs:22:50: 22:51
--         StorageDead(_6);                 // scope 0 at $DIR/simplify_try.rs:22:50: 22:51
-+         _0 = move _3;                    // scope 6 at $DIR/simplify_try.rs:22:26: 22:51
+          StorageLive(_6);                 // scope 0 at $DIR/simplify_try.rs:22:13: 22:14
+          _6 = ((_3 as Err).0: i32);       // scope 0 at $DIR/simplify_try.rs:22:13: 22:14
+          StorageLive(_8);                 // scope 2 at $DIR/simplify_try.rs:22:37: 22:50
+          StorageLive(_9);                 // scope 2 at $DIR/simplify_try.rs:22:48: 22:49
+          _9 = _6;                         // scope 2 at $DIR/simplify_try.rs:22:48: 22:49
+          _8 = _9;                         // scope 5 at $DIR/simplify_try.rs:22:37: 22:50
+          StorageDead(_9);                 // scope 2 at $DIR/simplify_try.rs:22:49: 22:50
+          ((_0 as Err).0: i32) = _8;       // scope 6 at $DIR/simplify_try.rs:22:26: 22:51
+          discriminant(_0) = 1;            // scope 6 at $DIR/simplify_try.rs:22:26: 22:51
+          StorageDead(_8);                 // scope 2 at $DIR/simplify_try.rs:22:50: 22:51
+          StorageDead(_6);                 // scope 0 at $DIR/simplify_try.rs:22:50: 22:51
           StorageDead(_3);                 // scope 0 at $DIR/simplify_try.rs:24:6: 24:7
           StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:26:1: 26:2
           return;                          // scope 0 at $DIR/simplify_try.rs:26:2: 26:2

@@ -1,0 +1,58 @@
+// MIR for `<impl at $DIR/partial.rs:9:21: 9:31>::partial_cmp` before PreCodegen
+
+fn <impl at $DIR/partial.rs:9:21: 9:31>::partial_cmp(_1: &E, _2: &E) -> Option<std::cmp::Ordering> {
+    debug self => _1;                    // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    debug other => _2;                   // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let mut _0: std::option::Option<std::cmp::Ordering>; // return place in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let _3: isize;                       // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let mut _5: bool;                    // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let mut _6: isize;                   // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let mut _7: isize;                   // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let mut _8: &isize;                  // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let _9: &isize;                      // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let mut _10: &isize;                 // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    let _11: &isize;                     // in scope 0 at $DIR/partial.rs:9:21: 9:31
+    scope 1 {
+        debug __self_vi => _3;           // in scope 1 at $DIR/partial.rs:9:21: 9:31
+        let _4: isize;                   // in scope 1 at $DIR/partial.rs:9:21: 9:31
+        scope 2 {
+            debug __arg_1_vi => _4;      // in scope 2 at $DIR/partial.rs:9:21: 9:31
+        }
+    }
+
+    bb0: {
+        _3 = discriminant((*_1));        // scope 0 at $DIR/partial.rs:9:21: 9:31
+        _4 = discriminant((*_2));        // scope 1 at $DIR/partial.rs:9:21: 9:31
+        _6 = _3;                         // scope 2 at $DIR/partial.rs:9:21: 9:31
+        _7 = _4;                         // scope 2 at $DIR/partial.rs:9:21: 9:31
+        _5 = Eq(_6, _7);                 // scope 2 at $DIR/partial.rs:9:21: 9:31
+        switchInt(_5) -> [false: bb2, otherwise: bb1]; // scope 2 at $DIR/partial.rs:9:21: 9:31
+    }
+
+    bb1: {
+        ((_0 as Some).0: std::cmp::Ordering) = const Equal; // scope 2 at $DIR/partial.rs:9:21: 9:31
+                                         // ty::Const
+                                         // + ty: std::cmp::Ordering
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/partial.rs:9:21: 9:31
+                                         // + literal: Const { ty: std::cmp::Ordering, val: Value(Scalar(0x00)) }
+        discriminant(_0) = 1;            // scope 2 at $DIR/partial.rs:9:21: 9:31
+        goto -> bb3;                     // scope 2 at $DIR/partial.rs:9:21: 9:31
+    }
+
+    bb2: {
+        _9 = &_3;                        // scope 2 at $DIR/partial.rs:9:21: 9:31
+        _8 = _9;                         // scope 2 at $DIR/partial.rs:9:21: 9:31
+        _11 = &_4;                       // scope 2 at $DIR/partial.rs:9:21: 9:31
+        _10 = _11;                       // scope 2 at $DIR/partial.rs:9:21: 9:31
+        _0 = <isize as PartialOrd>::partial_cmp(move _8, move _10) -> bb3; // scope 2 at $DIR/partial.rs:9:21: 9:31
+                                         // mir::Constant
+                                         // + span: $DIR/partial.rs:9:21: 9:31
+                                         // + literal: Const { ty: for<'r, 's> fn(&'r isize, &'s isize) -> std::option::Option<std::cmp::Ordering> {<isize as std::cmp::PartialOrd>::partial_cmp}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        return;                          // scope 0 at $DIR/partial.rs:9:31: 9:31
+    }
+}
