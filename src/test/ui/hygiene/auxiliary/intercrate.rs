@@ -5,7 +5,7 @@ pub mod foo {
     mod bar {
         fn f() -> u32 { 1 }
         pub macro m() {
-            f();
+            f()
         }
     }
 }

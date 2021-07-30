@@ -71,6 +71,16 @@ impl<T: Sized> NonNull<T> {
     /// a `T`, which means this must not be used as a "not yet initialized"
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let ptr = NonNull::<u32>::dangling();
+    /// // Important: don't try to access the value of `ptr` without
+    /// // initializing it first! The pointer is not null but isn't valid either!
+    /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.36.0")]
     #[inline]
@@ -155,6 +165,18 @@ impl<T: ?Sized> NonNull<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u32;
+    /// let ptr = unsafe { NonNull::new_unchecked(&mut x as *mut _) };
+    ///
+    /// // NEVER DO THAT!!!
+    /// let ptr = unsafe { NonNull::<u32>::new_unchecked(std::ptr::null_mut()) };
+    /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
     #[inline]
@@ -164,6 +186,19 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u32;
+    /// let ptr = NonNull::<u32>::new(&mut x as *mut _).expect("ptr is null!");
+    ///
+    /// if let Some(ptr) = NonNull::<u32>::new(std::ptr::null_mut()) {
+    ///     unreachable!();
+    /// }
+    /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
@@ -205,6 +240,22 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u32;
+    /// let ptr = NonNull::new(&mut x).expect("ptr is null!");
+    ///
+    /// let x_value = unsafe { *ptr.as_ptr() };
+    /// assert_eq!(x_value, 0);
+    ///
+    /// unsafe { *ptr.as_ptr() += 2; }
+    /// let x_value = unsafe { *ptr.as_ptr() };
+    /// assert_eq!(x_value, 2);
+    /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
     #[inline]
@@ -238,6 +289,18 @@ impl<T: ?Sized> NonNull<T> {
     /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
     /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u32;
+    /// let ptr = NonNull::new(&mut x as *mut _).expect("ptr is null!");
+    ///
+    /// let ref_x = unsafe { ptr.as_ref() };
+    /// println!("{}", ref_x);
+    /// ```
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
@@ -274,6 +337,19 @@ impl<T: ?Sized> NonNull<T> {
     /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
     /// it is, the only safe approach is to ensure that they are indeed initialized.)
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u32;
+    /// let mut ptr = NonNull::new(&mut x).expect("null pointer");
+    ///
+    /// let x_ref = unsafe { ptr.as_mut() };
+    /// assert_eq!(*x_ref, 0);
+    /// *x_ref += 2;
+    /// assert_eq!(*x_ref, 2);
+    /// ```
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
@@ -285,6 +361,18 @@ impl<T: ?Sized> NonNull<T> {
     }
 
     /// Casts to a pointer of another type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut x = 0u32;
+    /// let ptr = NonNull::new(&mut x as *mut _).expect("null pointer");
+    ///
+    /// let casted_ptr = ptr.cast::<i8>();
+    /// let raw_ptr: *mut i8 = casted_ptr.as_ptr();
+    /// ```
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[rustc_const_stable(feature = "const_nonnull_cast", since = "1.36.0")]
     #[inline]

@@ -2,7 +2,8 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::source_map::DesugaringKind;
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
 use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::prefixes::PrefixSet;
@@ -384,36 +385,44 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
         };
-        if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-            let def_id = match *move_place.ty(self.body, self.infcx.tcx).ty.kind() {
-                ty::Adt(self_def, _) => self_def.did,
-                ty::Foreign(def_id)
-                | ty::FnDef(def_id, _)
-                | ty::Closure(def_id, _)
-                | ty::Generator(def_id, ..)
-                | ty::Opaque(def_id, _) => def_id,
-                _ => return err,
+        let ty = move_place.ty(self.body, self.infcx.tcx).ty;
+        let def_id = match *ty.kind() {
+            ty::Adt(self_def, _) => self_def.did,
+            ty::Foreign(def_id)
+            | ty::FnDef(def_id, _)
+            | ty::Closure(def_id, _)
+            | ty::Generator(def_id, ..)
+            | ty::Opaque(def_id, _) => def_id,
+            _ => return err,
+        };
+        let is_option = self.infcx.tcx.is_diagnostic_item(sym::option_type, def_id);
+        let is_result = self.infcx.tcx.is_diagnostic_item(sym::result_type, def_id);
+        if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
+            err.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                &format!(
+                    "consider borrowing the `{}`'s content",
+                    if is_option { "Option" } else { "Result" }
+                ),
+                ".as_ref()".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        } else if matches!(span.desugaring_kind(), Some(DesugaringKind::ForLoop(_))) {
+            let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
+                Some(def_id) => type_known_to_meet_bound_modulo_regions(
+                    &self.infcx,
+                    self.param_env,
+                    self.infcx.tcx.mk_imm_ref(self.infcx.tcx.lifetimes.re_erased, ty),
+                    def_id,
+                    DUMMY_SP,
+                ),
+                _ => false,
             };
-            let is_option = self.infcx.tcx.is_diagnostic_item(sym::option_type, def_id);
-            let is_result = self.infcx.tcx.is_diagnostic_item(sym::result_type, def_id);
-            if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
-                err.span_suggestion(
-                    span,
-                    &format!(
-                        "consider borrowing the `{}`'s content",
-                        if is_option { "Option" } else { "Result" }
-                    ),
-                    format!("{}.as_ref()", snippet),
-                    Applicability::MaybeIncorrect,
-                );
-            } else if matches!(span.desugaring_kind(), Some(DesugaringKind::ForLoop(_)))
-                && self.infcx.tcx.is_diagnostic_item(sym::vec_type, def_id)
-            {
-                // FIXME: suggest for anything that implements `IntoIterator`.
-                err.span_suggestion(
-                    span,
-                    "consider iterating over a slice of the `Vec<_>`'s content",
-                    format!("&{}", snippet),
+            if suggest {
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    &format!("consider iterating over a slice of the `{}`'s content", ty),
+                    "&".to_string(),
                     Applicability::MaybeIncorrect,
                 );
             }

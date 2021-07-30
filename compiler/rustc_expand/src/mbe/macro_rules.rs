@@ -45,6 +45,8 @@ crate struct ParserAnyMacro<'a> {
     lint_node_id: NodeId,
     is_trailing_mac: bool,
     arm_span: Span,
+    /// Whether or not this macro is defined in the current crate
+    is_local: bool,
 }
 
 crate fn annotate_err_with_kind(
@@ -124,6 +126,7 @@ impl<'a> ParserAnyMacro<'a> {
             lint_node_id,
             arm_span,
             is_trailing_mac,
+            is_local,
         } = *self;
         let snapshot = &mut parser.clone();
         let fragment = match parse_ast_fragment(parser, kind) {
@@ -138,13 +141,15 @@ impl<'a> ParserAnyMacro<'a> {
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
-            parser.sess.buffer_lint_with_diagnostic(
-                SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-                parser.token.span,
-                lint_node_id,
-                "trailing semicolon in macro used in expression position",
-                BuiltinLintDiagnostics::TrailingMacro(is_trailing_mac, macro_ident),
-            );
+            if is_local {
+                parser.sess.buffer_lint_with_diagnostic(
+                    SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+                    parser.token.span,
+                    lint_node_id,
+                    "trailing semicolon in macro used in expression position",
+                    BuiltinLintDiagnostics::TrailingMacro(is_trailing_mac, macro_ident),
+                );
+            }
             parser.bump();
         }
 
@@ -162,6 +167,7 @@ struct MacroRulesMacroExpander {
     lhses: Vec<mbe::TokenTree>,
     rhses: Vec<mbe::TokenTree>,
     valid: bool,
+    is_local: bool,
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
@@ -183,6 +189,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             input,
             &self.lhses,
             &self.rhses,
+            self.is_local,
         )
     }
 }
@@ -210,6 +217,7 @@ fn generic_extension<'cx>(
     arg: TokenStream,
     lhses: &[mbe::TokenTree],
     rhses: &[mbe::TokenTree],
+    is_local: bool,
 ) -> Box<dyn MacResult + 'cx> {
     let sess = &cx.sess.parse_sess;
 
@@ -311,6 +319,7 @@ fn generic_extension<'cx>(
                     lint_node_id: cx.current_expansion.lint_node_id,
                     is_trailing_mac: cx.current_expansion.is_trailing_mac,
                     arm_span,
+                    is_local,
                 });
             }
             Failure(token, msg) => match best_failure {
@@ -544,6 +553,9 @@ pub fn compile_declarative_macro(
         lhses,
         rhses,
         valid,
+        // Macros defined in the current crate have a real node id,
+        // whereas macros from an external crate have a dummy id.
+        is_local: def.id != DUMMY_NODE_ID,
     }))
 }
 
