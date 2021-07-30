@@ -5,7 +5,7 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{Ref, Ty};
+use rustc_middle::ty::{Adt, Ref, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::Underscore;
 use rustc_span::symbol::{sym, Ident};
@@ -255,16 +255,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name.name
             ));
 
-            let self_ty = self
+            let self_ty_name = self
                 .sess()
                 .source_map()
                 .span_to_snippet(self_ty_span)
                 .unwrap_or_else(|_| self_ty.to_string());
 
+            let self_ty_generics_count = match self_ty.kind() {
+                // Get the number of generics the self type has (if an Adt) unless we can determine that
+                // the user has written the self type with generics already which we (naively) do by looking
+                // for a "<" in `self_ty_name`.
+                Adt(def, _) if !self_ty_name.contains("<") => self.tcx.generics_of(def.did).count(),
+                _ => 0,
+            };
+            let self_ty_generics = if self_ty_generics_count > 0 {
+                format!("<{}>", vec!["_"; self_ty_generics_count].join(", "))
+            } else {
+                String::new()
+            };
             lint.span_suggestion(
                 span,
                 "disambiguate the associated function",
-                format!("<{} as {}>::{}", self_ty, trait_name, method_name.name,),
+                format!(
+                    "<{}{} as {}>::{}",
+                    self_ty_name, self_ty_generics, trait_name, method_name.name,
+                ),
                 Applicability::MachineApplicable,
             );
 
