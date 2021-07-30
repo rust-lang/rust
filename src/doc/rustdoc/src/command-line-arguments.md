@@ -94,7 +94,7 @@ $ rustdoc src/lib.rs --document-private-items
 By default, `rustdoc` only documents items that are publicly reachable.
 
 ```rust
-pub fn public() {} // this item is public and will documented
+pub fn public() {} // this item is public and will be documented
 mod private { // this item is private and will not be documented
     pub fn unreachable() {} // this item is public, but unreachable, so it will not be documented
 }
