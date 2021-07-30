@@ -170,8 +170,7 @@
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![deny(unsafe_op_in_unsafe_fn)]
-#![cfg_attr(bootstrap, deny(or_patterns_back_compat))]
-#![cfg_attr(not(bootstrap), deny(rust_2021_incompatible_or_patterns))]
+#![deny(rust_2021_incompatible_or_patterns)]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
