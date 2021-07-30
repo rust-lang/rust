@@ -645,12 +645,13 @@ pub fn eq_generic_bound(l: &GenericBound, r: &GenericBound) -> bool {
     }
 }
 
-pub fn eq_assoc_constraint(l: &AssocTyConstraint, r: &AssocTyConstraint) -> bool {
-    use AssocTyConstraintKind::*;
+pub fn eq_assoc_constraint(l: &AssocConstraint, r: &AssocConstraint) -> bool {
+    use AssocConstraintKind::*;
     eq_id(l.ident, r.ident)
         && match (&l.kind, &r.kind) {
             (Equality { ty: l }, Equality { ty: r }) => eq_ty(l, r),
             (Bound { bounds: l }, Bound { bounds: r }) => over(l, r, eq_generic_bound),
+            (ConstEquality { c: l }, ConstEquality { c: r }) => eq_anon_const(l, r),
             _ => false,
         }
 }
