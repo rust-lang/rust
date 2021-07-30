@@ -1928,7 +1928,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::OpaqueType
             | ObligationCauseCode::MiscObligation
             | ObligationCauseCode::WellFormed(..)
-            | ObligationCauseCode::MatchImpl(..) => {}
+            | ObligationCauseCode::MatchImpl(..)
+            | ObligationCauseCode::ReturnType
+            | ObligationCauseCode::ReturnValue(_)
+            | ObligationCauseCode::BlockTailExpression(_)
+            | ObligationCauseCode::LetElse => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -2338,9 +2342,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     predicate
                 ));
             }
-            ObligationCauseCode::ReturnType
-            | ObligationCauseCode::ReturnValue(_)
-            | ObligationCauseCode::BlockTailExpression(_) => (),
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");
                 if tcx.sess.opts.unstable_features.is_nightly_build() {

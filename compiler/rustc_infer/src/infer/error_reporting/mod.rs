@@ -781,6 +781,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
             }
+            ObligationCauseCode::LetElse => {
+                err.help("try adding a diverging expression, such as `return` or `panic!(..)`");
+                err.help("...or use `match` instead of `let...else`");
+            }
             _ => (),
         }
     }
@@ -2592,6 +2596,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             }
             IfExpression { .. } => Error0308("`if` and `else` have incompatible types"),
             IfExpressionWithNoElse => Error0317("`if` may be missing an `else` clause"),
+            LetElse => Error0308("`else` clause of `let...else` does not diverge"),
             MainFunctionType => Error0580("`main` function has wrong type"),
             StartFunctionType => Error0308("`#[start]` function has wrong type"),
             IntrinsicType => Error0308("intrinsic has wrong type"),
