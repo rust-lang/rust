@@ -95,12 +95,11 @@ impl<T> [T] {
     /// let a = [1, 2, 3];
     /// assert_eq!(a.len(), 3);
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "slice_len_fn")]
+    #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_union))]
     pub const fn len(&self) -> usize {
         // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
         // As of this writing this causes a "Const-stable functions can only call other

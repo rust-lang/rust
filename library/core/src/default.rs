@@ -161,8 +161,7 @@ pub fn default<T: Default>() -> T {
 }
 
 /// Derive macro generating an impl of the trait `Default`.
-#[cfg_attr(not(bootstrap), rustc_builtin_macro(Default, attributes(default)))]
-#[cfg_attr(bootstrap, rustc_builtin_macro)]
+#[rustc_builtin_macro(Default, attributes(default))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Default($item:item) {

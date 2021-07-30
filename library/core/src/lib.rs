@@ -87,7 +87,6 @@
 #![feature(const_refs_to_cell)]
 #![feature(const_panic)]
 #![feature(const_pin)]
-#![cfg_attr(bootstrap, feature(const_fn_union))]
 #![feature(const_impl_trait)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -170,8 +169,7 @@
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![deny(unsafe_op_in_unsafe_fn)]
-#![cfg_attr(bootstrap, deny(or_patterns_back_compat))]
-#![cfg_attr(not(bootstrap), deny(rust_2021_incompatible_or_patterns))]
+#![deny(rust_2021_incompatible_or_patterns)]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]

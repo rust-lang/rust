@@ -1931,7 +1931,6 @@ extern "rust-intrinsic" {
     ///
     /// (The implementation is allowed to branch on the results of comparisons,
     /// which is UB if any of their inputs are `undef`.)
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
     pub fn raw_eq<T>(a: &T, b: &T) -> bool;
 }
