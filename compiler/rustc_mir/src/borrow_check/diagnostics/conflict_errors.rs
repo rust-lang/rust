@@ -12,7 +12,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::dataflow::drop_flag_effects;
@@ -1393,18 +1393,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
-        let suggestion = match tcx.sess.source_map().span_to_snippet(args_span) {
-            Ok(mut string) => {
+        let (sugg_span, suggestion) = match tcx.sess.source_map().span_to_snippet(args_span) {
+            Ok(string) => {
                 if string.starts_with("async ") {
-                    string.insert_str(6, "move ");
+                    let pos = args_span.lo() + BytePos(6);
+                    (args_span.with_lo(pos).with_hi(pos), "move ".to_string())
                 } else if string.starts_with("async|") {
-                    string.insert_str(5, " move");
+                    let pos = args_span.lo() + BytePos(5);
+                    (args_span.with_lo(pos).with_hi(pos), " move".to_string())
                 } else {
-                    string.insert_str(0, "move ");
-                };
-                string
+                    (args_span.shrink_to_lo(), "move ".to_string())
+                }
             }
-            Err(_) => "move |<args>| <body>".to_string(),
+            Err(_) => (args_span, "move |<args>| <body>".to_string()),
         };
         let kind = match use_span.generator_kind() {
             Some(generator_kind) => match generator_kind {
@@ -1420,8 +1421,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let mut err =
             self.cannot_capture_in_long_lived_closure(args_span, kind, captured_var, var_span);
-        err.span_suggestion(
-            args_span,
+        err.span_suggestion_verbose(
+            sugg_span,
             &format!(
                 "to force the {} to take ownership of {} (and any \
                  other referenced variables), use the `move` keyword",

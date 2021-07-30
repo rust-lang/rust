@@ -478,10 +478,12 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:32:8
    |
 LL |     if &let 0 = 0 {}
-   |        ^^^^^^^^^^
-   |        |
-   |        expected `bool`, found `&bool`
-   |        help: consider removing the borrow: `let 0 = 0`
+   |        ^^^^^^^^^^ expected `bool`, found `&bool`
+   |
+help: consider removing the borrow
+   |
+LL |     if let 0 = 0 {}
+   |       --
 
 error[E0614]: type `bool` cannot be dereferenced
   --> $DIR/disallowed-positions.rs:36:8
@@ -678,10 +680,12 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:96:11
    |
 LL |     while &let 0 = 0 {}
-   |           ^^^^^^^^^^
-   |           |
-   |           expected `bool`, found `&bool`
-   |           help: consider removing the borrow: `let 0 = 0`
+   |           ^^^^^^^^^^ expected `bool`, found `&bool`
+   |
+help: consider removing the borrow
+   |
+LL |     while let 0 = 0 {}
+   |          --
 
 error[E0614]: type `bool` cannot be dereferenced
   --> $DIR/disallowed-positions.rs:100:11

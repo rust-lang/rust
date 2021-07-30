@@ -358,7 +358,7 @@ impl<'a> Parser<'a> {
             &format!("expected expression, found `{}`", pprust::token_to_string(&self.token),),
         );
         err.span_label(self.token.span, "expected expression");
-        self.sess.expr_parentheses_needed(&mut err, lhs.span, Some(pprust::expr_to_string(&lhs)));
+        self.sess.expr_parentheses_needed(&mut err, lhs.span);
         err.emit();
     }
 
@@ -696,20 +696,18 @@ impl<'a> Parser<'a> {
                         let expr =
                             mk_expr(self, lhs, self.mk_ty(path.span, TyKind::Path(None, path)));
 
-                        let expr_str = self
-                            .span_to_snippet(expr.span)
-                            .unwrap_or_else(|_| pprust::expr_to_string(&expr));
-
                         self.struct_span_err(self.token.span, &msg)
                             .span_label(
                                 self.look_ahead(1, |t| t.span).to(span_after_type),
                                 "interpreted as generic arguments",
                             )
                             .span_label(self.token.span, format!("not interpreted as {}", op_noun))
-                            .span_suggestion(
-                                expr.span,
+                            .multipart_suggestion(
                                 &format!("try {} the cast value", op_verb),
-                                format!("({})", expr_str),
+                                vec![
+                                    (expr.span.shrink_to_lo(), "(".to_string()),
+                                    (expr.span.shrink_to_hi(), ")".to_string()),
+                                ],
                                 Applicability::MachineApplicable,
                             )
                             .emit();

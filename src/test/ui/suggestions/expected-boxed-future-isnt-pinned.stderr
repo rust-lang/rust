@@ -5,13 +5,14 @@ LL | fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, 
    |        - this type parameter                            ----------------------- expected `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>` because of return type
 LL |     // We could instead use an `async` block, but this way we have no std spans.
 LL |     x
-   |     ^
-   |     |
-   |     expected struct `Pin`, found type parameter `F`
-   |     help: you need to pin and box this expression: `Box::pin(x)`
+   |     ^ expected struct `Pin`, found type parameter `F`
    |
    = note:      expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
            found type parameter `F`
+help: you need to pin and box this expression
+   |
+LL |     Box::pin(x)
+   |     ^^^^^^^^^ ^
 
 error[E0308]: mismatched types
   --> $DIR/expected-boxed-future-isnt-pinned.rs:18:5
@@ -31,14 +32,15 @@ error[E0308]: mismatched types
 LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
    |        - this type parameter
 LL |     Pin::new(x)
-   |              ^
-   |              |
-   |              expected struct `Box`, found type parameter `F`
-   |              help: store this in the heap by calling `Box::new`: `Box::new(x)`
+   |              ^ expected struct `Box`, found type parameter `F`
    |
    = note:      expected struct `Box<dyn Future<Output = i32> + Send>`
            found type parameter `F`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     Pin::new(Box::new(x))
+   |              ^^^^^^^^^ ^
 
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
   --> $DIR/expected-boxed-future-isnt-pinned.rs:22:5
