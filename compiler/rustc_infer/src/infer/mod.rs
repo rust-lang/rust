@@ -375,7 +375,7 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Some type parameter was instantiated with the given type,
     /// and that type must outlive some region.
-    RelateParamBound(Span, Ty<'tcx>),
+    RelateParamBound(Span, Ty<'tcx>, Option<Span>),
 
     /// The given region parameter was instantiated with a region
     /// that must outlive some other region.
@@ -1705,7 +1705,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
         match *self {
             Subtype(ref a) => a.span(),
             RelateObjectBound(a) => a,
-            RelateParamBound(a, _) => a,
+            RelateParamBound(a, ..) => a,
             RelateRegionParamBound(a) => a,
             Reborrow(a) => a,
             ReborrowUpvar(a, _) => a,

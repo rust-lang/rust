@@ -4,7 +4,13 @@ error[E0310]: the parameter type `U` may not live long enough
 LL | struct Foo<U> {
    |            - help: consider adding an explicit lifetime bound...: `U: 'static`
 LL |     bar: Bar<U>
-   |          ^^^^^^ ...so that the type `U` will meet its required lifetime bounds
+   |          ^^^^^^ ...so that the type `U` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/feature-gate-infer_static_outlives_requirements.rs:7:15
+   |
+LL | struct Bar<T: 'static> {
+   |               ^^^^^^^
 
 error: aborting due to previous error
 

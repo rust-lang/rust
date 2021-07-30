@@ -5,7 +5,12 @@ LL |     bar::<T::Output>()
    |     ^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<T as MyTrait<'a>>::Output: 'a`...
-   = note: ...so that the type `<T as MyTrait<'a>>::Output` will meet its required lifetime bounds
+   = note: ...so that the type `<T as MyTrait<'a>>::Output` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/projection-where-clause-env-wrong-bound.rs:29:8
+   |
+LL |     T: 'a,
+   |        ^^
 
 error: aborting due to previous error
 
