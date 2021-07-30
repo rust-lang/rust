@@ -1528,11 +1528,8 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_add_signed(self, rhs: $SignedT) -> (Self, bool) {
-            if rhs >= 0 {
-                self.overflowing_add(rhs as Self)
-            } else {
-                self.overflowing_sub(rhs.unsigned_abs())
-            }
+            let (res, overflowed) = self.overflowing_add(rhs as Self);
+            (res, overflowed ^ (rhs < 0))
         }
 
         /// Calculates `self` - `rhs`
