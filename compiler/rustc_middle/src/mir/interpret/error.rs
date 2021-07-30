@@ -404,7 +404,7 @@ pub enum UnsupportedOpInfo {
     Unsupported(String),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
-    /// Overwriting parts ofa  pointer; the resulting state cannot be represented in our
+    /// Overwriting parts of a pointer; the resulting state cannot be represented in our
     /// `Allocation` data structure.
     PartialPointerOverwrite(Pointer<AllocId>),
     //
