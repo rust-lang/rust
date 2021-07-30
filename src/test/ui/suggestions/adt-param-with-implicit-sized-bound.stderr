@@ -91,6 +91,10 @@ LL | struct X<T>(T);
    |          ^  - ...if indirection were used here: `Box<T>`
    |          |
    |          this could be changed to `T: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | struct Struct5<T>{
+   |                --
 
 error: aborting due to 5 previous errors
 

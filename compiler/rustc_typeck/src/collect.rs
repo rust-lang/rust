@@ -2230,7 +2230,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             let constness = match modifier {
                                 hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
                                 hir::TraitBoundModifier::None => constness,
-                                hir::TraitBoundModifier::Maybe => bug!("this wasn't handled"),
+                                // We ignore `where T: ?Sized`, it is already part of
+                                // type parameter `T`.
+                                hir::TraitBoundModifier::Maybe => continue,
                             };
 
                             let mut bounds = Bounds::default();
@@ -2259,6 +2261,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             );
                             predicates.extend(bounds.predicates(tcx, ty));
                         }
+
+                        hir::GenericBound::Unsized(_) => {}
 
                         hir::GenericBound::Outlives(lifetime) => {
                             let region =
@@ -2521,6 +2525,7 @@ fn predicates_from_bound<'tcx>(
             );
             bounds.predicates(astconv.tcx(), param_ty)
         }
+        hir::GenericBound::Unsized(_) => vec![],
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
