@@ -178,6 +178,15 @@ class ExperimentalFeatures implements lc.StaticFeature {
         caps.codeActionGroup = true;
         caps.hoverActions = true;
         caps.serverStatusNotification = true;
+        caps.commands = {
+            commands: [
+                "rust-analyzer.runSingle",
+                "rust-analyzer.debugSingle",
+                "rust-analyzer.showReferences",
+                "rust-analyzer.gotoLocation",
+                "editor.action.triggerParameterHints",
+            ]
+        };
         capabilities.experimental = caps;
     }
     initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {

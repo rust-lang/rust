@@ -353,6 +353,12 @@ Whether to show `Method References` lens. Only applies when
 Whether to show `References` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
 --
+[[rust-analyzer.lens.forceCustomCommands]]rust-analyzer.lens.forceCustomCommands (default: `true`)::
++
+--
+Internal config: use custom client-side commands even when the
+client doesn't set the corresponding capability.
+--
 [[rust-analyzer.linkedProjects]]rust-analyzer.linkedProjects (default: `[]`)::
 +
 --

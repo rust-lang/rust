@@ -789,6 +789,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.lens.forceCustomCommands": {
+                    "markdownDescription": "Internal config: use custom client-side commands even when the\nclient doesn't set the corresponding capability.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.linkedProjects": {
                     "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set\nof projects.\n\nElements must be paths pointing to `Cargo.toml`,\n`rust-project.json`, or JSON objects in `rust-project.json` format.",
                     "default": [],
