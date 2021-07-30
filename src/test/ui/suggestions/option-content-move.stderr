@@ -2,19 +2,23 @@ error[E0507]: cannot move out of `selection.1` which is behind a shared referenc
   --> $DIR/option-content-move.rs:11:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
-   |                    ^^^^^^^^^^^
-   |                    |
-   |                    move occurs because `selection.1` has type `Option<String>`, which does not implement the `Copy` trait
-   |                    help: consider borrowing the `Option`'s content: `selection.1.as_ref()`
+   |                    ^^^^^^^^^^^ move occurs because `selection.1` has type `Option<String>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the `Option`'s content
+   |
+LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
+   |                               ^^^^^^^^^
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
   --> $DIR/option-content-move.rs:29:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
-   |                    ^^^^^^^^^^^
-   |                    |
-   |                    move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
-   |                    help: consider borrowing the `Result`'s content: `selection.1.as_ref()`
+   |                    ^^^^^^^^^^^ move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the `Result`'s content
+   |
+LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
+   |                               ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
