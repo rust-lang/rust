@@ -34,7 +34,7 @@ pub use core::time::Duration;
 /// benchmarks or timing how long an operation takes.
 ///
 /// Note, however, that instants are not guaranteed to be **steady**. In other
-/// words, each tick of the underlying clock may not be the same length (e.g.
+/// words, each tick of the underlying clock might not be the same length (e.g.
 /// some seconds may be longer than others). An instant may jump forwards or
 /// experience time dilation (slow down or speed up), but it will never go
 /// backwards.
@@ -485,7 +485,7 @@ impl SystemTime {
     ///
     /// This function may fail as the underlying system clock is susceptible to
     /// drift and updates (e.g., the system clock could go backwards), so this
-    /// function may not always succeed. If successful, [`Ok`]`(`[`Duration`]`)` is
+    /// function might not always succeed. If successful, [`Ok`]`(`[`Duration`]`)` is
     /// returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
     ///

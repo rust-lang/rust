@@ -2274,7 +2274,7 @@ impl<T> [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 
-    /// Sorts the slice, but may not preserve the order of equal elements.
+    /// Sorts the slice, but might not preserve the order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
     /// (i.e., does not allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -2309,7 +2309,7 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| a.lt(b));
     }
 
-    /// Sorts the slice with a comparator function, but may not preserve the order of equal
+    /// Sorts the slice with a comparator function, but might not preserve the order of equal
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
@@ -2364,7 +2364,7 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| compare(a, b) == Ordering::Less);
     }
 
-    /// Sorts the slice with a key extraction function, but may not preserve the order of equal
+    /// Sorts the slice with a key extraction function, but might not preserve the order of equal
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place

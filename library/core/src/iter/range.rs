@@ -277,7 +277,7 @@ macro_rules! step_integer_impls {
                         //
                         // Casting to isize extends the width but preserves the sign.
                         // Use wrapping_sub in isize space and cast to usize to compute
-                        // the difference that may not fit inside the range of isize.
+                        // the difference that might not fit inside the range of isize.
                         Some((*end as isize).wrapping_sub(*start as isize) as usize)
                     } else {
                         None

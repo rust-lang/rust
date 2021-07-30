@@ -637,7 +637,7 @@ macro_rules! uint_impl {
 
         /// Returns the logarithm of the number with respect to an arbitrary base.
         ///
-        /// This method may not be optimized owing to implementation details;
+        /// This method might not be optimized owing to implementation details;
         /// `log2` can produce results more efficiently for base 2, and `log10`
         /// can produce results more efficiently for base 10.
         ///
@@ -745,7 +745,7 @@ macro_rules! uint_impl {
         ///
         /// Returns `None` if the number is zero, or if the base is not at least 2.
         ///
-        /// This method may not be optimized owing to implementation details;
+        /// This method might not be optimized owing to implementation details;
         /// `checked_log2` can produce results more efficiently for base 2, and
         /// `checked_log10` can produce results more efficiently for base 10.
         ///

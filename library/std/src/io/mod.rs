@@ -555,7 +555,7 @@ pub trait Read {
     /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
     ///
-    /// Correspondingly, however, *callers* of this method may not assume any guarantees
+    /// Correspondingly, however, *callers* of this method must not assume any guarantees
     /// about how the implementation uses `buf`. The trait is safe to implement,
     /// so it is possible that the code that's supposed to write to the buffer might also read
     /// from it. It is your responsibility to make sure that `buf` is initialized
@@ -1369,7 +1369,7 @@ pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
     /// This function will attempt to write the entire contents of `buf`, but
-    /// the entire write may not succeed, or the write may also generate an
+    /// the entire write might not succeed, or the write may also generate an
     /// error. A call to `write` represents *at most one* attempt to write to
     /// any wrapped object.
     ///

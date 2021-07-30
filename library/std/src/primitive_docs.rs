@@ -303,7 +303,7 @@ mod prim_never {}
 ///
 /// [`String`]: string/struct.String.html
 ///
-/// As always, remember that a human intuition for 'character' may not map to
+/// As always, remember that a human intuition for 'character' might not map to
 /// Unicode's definitions. For example, despite looking similar, the 'é'
 /// character is one Unicode code point while 'é' is two Unicode code points:
 ///

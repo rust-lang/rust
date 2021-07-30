@@ -163,7 +163,7 @@ pub auto trait RefUnwindSafe {}
 /// When using [`catch_unwind`] it may be the case that some of the closed over
 /// variables are not unwind safe. For example if `&mut T` is captured the
 /// compiler will generate a warning indicating that it is not unwind safe. It
-/// may not be the case, however, that this is actually a problem due to the
+/// might not be the case, however, that this is actually a problem due to the
 /// specific usage of [`catch_unwind`] if unwind safety is specifically taken into
 /// account. This wrapper struct is useful for a quick and lightweight
 /// annotation that a variable is indeed unwind safe.
@@ -406,7 +406,7 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
 ///
 /// # Notes
 ///
-/// Note that this function **may not catch all panics** in Rust. A panic in
+/// Note that this function **might not catch all panics** in Rust. A panic in
 /// Rust is not always implemented via unwinding, but can be implemented by
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
