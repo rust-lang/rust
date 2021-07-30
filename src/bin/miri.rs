@@ -1,5 +1,6 @@
 #![feature(rustc_private, bool_to_option, stmt_expr_attributes)]
 
+extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
@@ -12,12 +13,12 @@ use std::convert::TryFrom;
 use std::env;
 use std::num::NonZeroU64;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::str::FromStr;
 
 use hex::FromHexError;
 use log::debug;
 
+use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
 use rustc_errors::emitter::{ColorConfig, HumanReadableErrorType};
 use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
@@ -42,7 +43,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 // HACK: rustc will emit "crate ... required to be available in rlib format, but
                 // was not found in this form" errors once we use `tcx.dependency_formats()` if
                 // there's no rlib provided, so setting a dummy path here to workaround those errors.
-                Rc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
+                Lrc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
                 crate_source
             };
         });
