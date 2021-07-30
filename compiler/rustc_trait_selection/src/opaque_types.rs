@@ -965,10 +965,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
             return opaque_defn.concrete_ty;
         }
-        let span = tcx.def_span(def_id);
-        debug!("fold_opaque_ty {:?} {:?}", self.value_span, span);
-        let ty_var = infcx
-            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
+        let ty_var = infcx.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::TypeInference,
+            span: self.value_span,
+        });
 
         // Make sure that we are in fact defining the *entire* type
         // (e.g., `type Foo<T: Bound> = impl Bar;` needs to be
@@ -993,16 +993,12 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         }
 
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
-        self.compute_opaque_type_obligations(opaque_type_key, span);
+        self.compute_opaque_type_obligations(opaque_type_key);
 
         ty_var
     }
 
-    fn compute_opaque_type_obligations(
-        &mut self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        span: Span,
-    ) {
+    fn compute_opaque_type_obligations(&mut self, opaque_type_key: OpaqueTypeKey<'tcx>) {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
@@ -1014,7 +1010,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         let param_env = tcx.param_env(def_id);
         let InferOk { value: bounds, obligations } = infcx.partially_normalize_associated_types_in(
-            ObligationCause::misc(span, self.body_id),
+            ObligationCause::misc(self.value_span, self.body_id),
             param_env,
             bounds,
         );
@@ -1038,7 +1034,8 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             // This also instantiates nested instances of `impl Trait`.
             let predicate = self.instantiate_opaque_types_in_map(predicate);
 
-            let cause = traits::ObligationCause::new(span, self.body_id, traits::OpaqueType);
+            let cause =
+                traits::ObligationCause::new(self.value_span, self.body_id, traits::OpaqueType);
 
             // Require that the predicate holds for the concrete type.
             debug!("instantiate_opaque_types: predicate={:?}", predicate);

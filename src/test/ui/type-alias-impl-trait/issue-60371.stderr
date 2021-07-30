@@ -8,10 +8,10 @@ LL |     type Item = impl Bug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
-  --> $DIR/issue-60371.rs:10:17
+  --> $DIR/issue-60371.rs:12:40
    |
-LL |     type Item = impl Bug;
-   |                 ^^^^^^^^ the trait `Bug` is not implemented for `()`
+LL |     const FUN: fn() -> Self::Item = || ();
+   |                                        ^ the trait `Bug` is not implemented for `()`
    |
    = help: the following implementations were found:
              <&() as Bug>
