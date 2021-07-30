@@ -1332,6 +1332,23 @@ impl Foo for Bar {
 }
 
 #[test]
+fn doctest_replace_char_with_string() {
+    check_doc_test(
+        "replace_char_with_string",
+        r#####"
+fn main() {
+    find('{$0');
+}
+"#####,
+        r#####"
+fn main() {
+    find("{");
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_derive_with_manual_impl() {
     check_doc_test(
         "replace_derive_with_manual_impl",

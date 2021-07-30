@@ -1,10 +1,16 @@
-use syntax::{ast, ast::IsString, AstToken, SyntaxKind::STRING};
+use syntax::{
+    ast,
+    ast::IsString,
+    AstToken,
+    SyntaxKind::{CHAR, STRING},
+    TextRange, TextSize,
+};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_string_with_char
 //
-// Replace string with char.
+// Replace string literal with char literal.
 //
 // ```
 // fn main() {
@@ -33,30 +39,55 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext) -
         target,
         |edit| {
             let (left, right) = quote_offets.quotes;
-            edit.replace(left, String::from('\''));
-            edit.replace(right, String::from('\''));
+            edit.replace(left, '\'');
+            edit.replace(right, '\'');
+            if value == "'" {
+                edit.insert(left.end(), '\\');
+            }
+        },
+    )
+}
+
+// Assist: replace_char_with_string
+//
+// Replace a char literal with a string literal.
+//
+// ```
+// fn main() {
+//     find('{$0');
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     find("{");
+// }
+// ```
+pub(crate) fn replace_char_with_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let token = ctx.find_token_syntax_at_offset(CHAR)?;
+    let target = token.text_range();
+
+    acc.add(
+        AssistId("replace_char_with_string", AssistKind::RefactorRewrite),
+        "Replace char with string",
+        target,
+        |edit| {
+            if token.text() == "'\"'" {
+                edit.replace(token.text_range(), r#""\"""#);
+            } else {
+                let len = TextSize::of('\'');
+                edit.replace(TextRange::at(target.start(), len), '"');
+                edit.replace(TextRange::at(target.end() - len, len), '"');
+            }
         },
     )
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
-
-    #[test]
-    fn replace_string_with_char_target() {
-        check_assist_target(
-            replace_string_with_char,
-            r#"
-fn f() {
-    let s = "$0c";
-}
-"#,
-            r#""c""#,
-        );
-    }
 
     #[test]
     fn replace_string_with_char_assist() {
@@ -76,7 +107,7 @@ fn f() {
     }
 
     #[test]
-    fn replace_string_with_char_assist_with_emoji() {
+    fn replace_string_with_char_assist_with_multi_byte_char() {
         check_assist(
             replace_string_with_char,
             r#"
@@ -93,7 +124,7 @@ fn f() {
     }
 
     #[test]
-    fn replace_string_with_char_assist_not_applicable() {
+    fn replace_string_with_char_multiple_chars() {
         check_assist_not_applicable(
             replace_string_with_char,
             r#"
@@ -116,23 +147,6 @@ fn f() {
             r##"
 fn f() {
     format!('x', 92)
-}
-"##,
-        )
-    }
-
-    #[test]
-    fn replace_string_with_char_works_func_args() {
-        check_assist(
-            replace_string_with_char,
-            r#"
-fn f() {
-    find($0"x");
-}
-"#,
-            r##"
-fn f() {
-    find('x');
 }
 "##,
         )
@@ -186,6 +200,108 @@ fn f() {
     'X'
 }
 "##,
+        )
+    }
+
+    #[test]
+    fn replace_char_with_string_assist() {
+        check_assist(
+            replace_char_with_string,
+            r"
+fn f() {
+    let s = '$0c';
+}
+",
+            r#"
+fn f() {
+    let s = "c";
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_char_with_string_assist_with_multi_byte_char() {
+        check_assist(
+            replace_char_with_string,
+            r"
+fn f() {
+    let s = '$0😀';
+}
+",
+            r#"
+fn f() {
+    let s = "😀";
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_char_with_string_newline() {
+        check_assist(
+            replace_char_with_string,
+            r"
+fn f() {
+    find($0'\n');
+}
+",
+            r#"
+fn f() {
+    find("\n");
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_char_with_string_unicode_escape() {
+        check_assist(
+            replace_char_with_string,
+            r"
+fn f() {
+    find($0'\u{7FFF}');
+}
+",
+            r#"
+fn f() {
+    find("\u{7FFF}");
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_char_with_string_quote() {
+        check_assist(
+            replace_char_with_string,
+            r#"
+fn f() {
+    find($0'"');
+}
+"#,
+            r#"
+fn f() {
+    find("\"");
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_char_quote() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+fn f() {
+    find($0"'");
+}
+"#,
+            r#"
+fn f() {
+    find('\'');
+}
+"#,
         )
     }
 }

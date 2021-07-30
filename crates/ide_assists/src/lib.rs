@@ -194,6 +194,7 @@ mod handlers {
             add_missing_impl_members::add_missing_default_members,
             //
             replace_string_with_char::replace_string_with_char,
+            replace_string_with_char::replace_char_with_string,
             raw_string::make_raw_string,
             //
             extract_variable::extract_variable,
