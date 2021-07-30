@@ -253,6 +253,12 @@ pub(crate) fn emit_unescape_error(
             let msg = "invalid trailing slash in literal";
             handler.struct_span_err(span, msg).span_label(span, msg).emit();
         }
+        EscapeError::UnskippedWhitespaceWarning => {
+            let (c, char_span) = last_char();
+            let msg =
+                format!("non-ASCII whitespace symbol '{}' is not skipped", c.escape_unicode());
+            handler.struct_span_warn(span, &msg).span_label(char_span, &msg).emit();
+        }
     }
 }
 
