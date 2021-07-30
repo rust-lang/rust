@@ -275,9 +275,9 @@ interface SsrParams {
     parseOnly: bool,
     /// The current text document. This and `position` will be used to determine in what scope
     /// paths in `query` should be resolved.
-    textDocument: lc.TextDocumentIdentifier;
+    textDocument: TextDocumentIdentifier;
     /// Position where SSR was invoked.
-    position: lc.Position;
+    position: Position;
 }
 ```
 
@@ -664,15 +664,15 @@ interface TestInfo {
 
 **Experimental Server Capability:** { "hoverRange": boolean }
 
-This request build upon the current `textDocument/hover` to show the type of the expression currently selected.
+This extension allows passing a `Range` as a `position` field of `HoverParams`.
+The primary use-case is to use the hover request to show the type of the expression currently selected.
 
 ```typescript
-interface HoverParams extends lc.WorkDoneProgressParams {
-    textDocument: lc.TextDocumentIdentifier;
-    position: lc.Range | lc.Position;
+interface HoverParams extends WorkDoneProgressParams {
+    textDocument: TextDocumentIdentifier;
+    position: Range | Position;
 }
 ```
-
 Whenever the client sends a `Range`, it is understood as the current selection and any hover included in the range will show the type of the expression if possible.
 
 ### Example
@@ -699,8 +699,8 @@ This request is sent from client to server to move item under cursor or selectio
 
 ```typescript
 export interface MoveItemParams {
-    textDocument: lc.TextDocumentIdentifier,
-    range: lc.Range,
+    textDocument: TextDocumentIdentifier,
+    range: Range,
     direction: Direction
 }
 
