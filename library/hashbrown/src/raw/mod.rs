@@ -1456,7 +1456,8 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// This uses dynamic dispatch to reduce the amount of
     /// code generated, but it is eliminated by LLVM optimizations when inlined.
     #[allow(clippy::inline_always)]
-    #[inline(always)]
+    #[cfg_attr(feature = "inline-more", inline(always))]
+    #[cfg_attr(not(feature = "inline-more"), inline)]
     unsafe fn rehash_in_place(
         &mut self,
         hasher: &dyn Fn(&mut Self, usize) -> u64,
