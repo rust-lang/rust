@@ -107,6 +107,14 @@ public:
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
 
+  // Allocations which are known to always be freed before the
+  // reverse.
+  SmallPtrSet<const CallInst *, 1> allocationsWithGuaranteedFree;
+  // Deallocations that should be kept in the forward pass because
+  // they deallocation memory which isn't necessary for the reverse
+  // pass
+  SmallPtrSet<const CallInst *, 1> forwardDeallocations;
+
   // Map of primal block to corresponding block(s) in reverse
   std::map<BasicBlock *, std::vector<BasicBlock *>> reverseBlocks;
   // Map of block in reverse to corresponding primal block

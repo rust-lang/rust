@@ -47,11 +47,10 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
+#include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 #include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/CodeGen/UnreachableBlockElim.h"
-
-#include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Analysis/PhiValues.h"
@@ -97,6 +96,7 @@
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -935,6 +935,43 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     }
   }
 
+  // Assume allocations do not return null
+  {
+    TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(*F);
+    SmallVector<Instruction *, 0> CmpsToErase;
+    SmallVector<BasicBlock *, 0> BranchesToErase;
+    for (auto &BB : *NewF) {
+      for (auto &I : BB) {
+        if (auto IC = dyn_cast<ICmpInst>(&I)) {
+          if (!IC->isEquality())
+            continue;
+          for (int i = 0; i < 2; i++) {
+            if (isa<ConstantPointerNull>(IC->getOperand(1 - i)))
+              if (auto CI = dyn_cast<CallInst>(IC->getOperand(i))) {
+                if (CI->getCalledFunction() &&
+                    isAllocationFunction(*CI->getCalledFunction(), TLI)) {
+                  for (auto U : IC->users()) {
+                    if (auto BI = dyn_cast<BranchInst>(U))
+                      BranchesToErase.push_back(BI->getParent());
+                  }
+                  IC->replaceAllUsesWith(
+                      IC->getPredicate() == ICmpInst::ICMP_NE
+                          ? ConstantInt::getTrue(I.getContext())
+                          : ConstantInt::getFalse(I.getContext()));
+                  CmpsToErase.push_back(&I);
+                  break;
+                }
+              }
+          }
+        }
+      }
+    }
+    for (auto I : CmpsToErase)
+      I->eraseFromParent();
+    for (auto BE : BranchesToErase)
+      ConstantFoldTerminator(BE);
+  }
+
   {
     SimplifyMPIQueries(*NewF);
     PreservedAnalyses PA;
@@ -1240,59 +1277,6 @@ Function *PreProcessCache::preprocessForClone(Function *F,
       PreservedAnalyses PA;
       FAM.invalidate(*NewF, PA);
     }
-  }
-
-  {
-    std::vector<Instruction *> FreesToErase;
-    for (auto &BB : *NewF) {
-      for (auto &I : BB) {
-
-        if (auto CI = dyn_cast<CallInst>(&I)) {
-
-          Function *called = CI->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-#else
-          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-#endif
-          {
-            if (castinst->isCast()) {
-              if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                if (isDeallocationFunction(
-                        *fn, FAM.getResult<TargetLibraryAnalysis>(*NewF))) {
-                  called = fn;
-                }
-              }
-            }
-          }
-
-          if (called &&
-              isDeallocationFunction(
-                  *called, FAM.getResult<TargetLibraryAnalysis>(*NewF))) {
-            FreesToErase.push_back(CI);
-          }
-        }
-      }
-    }
-    // TODO we should ensure these are kept to avoid accidentially creating
-    // a memory leak
-    for (auto Free : FreesToErase) {
-      Free->eraseFromParent();
-    }
-    PreservedAnalyses PA;
-    PA.preserve<AssumptionAnalysis>();
-    PA.preserve<TargetLibraryAnalysis>();
-    PA.preserve<LoopAnalysis>();
-    PA.preserve<DominatorTreeAnalysis>();
-    PA.preserve<PostDominatorTreeAnalysis>();
-    PA.preserve<TypeBasedAA>();
-    PA.preserve<BasicAA>();
-    PA.preserve<ScopedNoAliasAA>();
-    PA.preserve<ScalarEvolutionAnalysis>();
-#if LLVM_VERSION_MAJOR > 6
-    PA.preserve<PhiValuesAnalysis>();
-#endif
-    FAM.invalidate(*NewF, PA);
   }
 
 #if LLVM_VERSION_MAJOR >= 12

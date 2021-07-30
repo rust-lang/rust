@@ -691,10 +691,67 @@ void calculateUnusedValuesInFunction(
     const std::vector<DIFFE_TYPE> &constant_args,
     const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<UsageKey, bool> PrimalSeen;
-  if (mode == DerivativeMode::ReverseModeGradient)
-    for (auto I : gutils->unnecessaryIntermediates) {
-      PrimalSeen[UsageKey(I, ValueType::Primal)] = false;
+  if (mode == DerivativeMode::ReverseModeGradient) {
+    for (auto pair : gutils->knownRecomputeHeuristic) {
+      if (!pair.second)
+        PrimalSeen[UsageKey(pair.first, ValueType::Primal)] = false;
     }
+  }
+  for (auto &BB : *gutils->oldFunc) {
+    if (oldUnreachable.count(&BB))
+      continue;
+    for (auto &I : BB) {
+      auto CI = dyn_cast<CallInst>(&I);
+      if (!CI)
+        continue;
+
+      Function *called = CI->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+      if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+#else
+      if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+#endif
+        if (castinst->isCast()) {
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            called = fn;
+          }
+        }
+      if (!called)
+        continue;
+      if (isDeallocationFunction(*called, gutils->TLI)) {
+
+        llvm::Value *val = CI->getArgOperand(0);
+        while (auto cast = dyn_cast<CastInst>(val))
+          val = cast->getOperand(0);
+
+        if (auto dc = dyn_cast<CallInst>(val)) {
+          if (dc->getCalledFunction() &&
+              isAllocationFunction(*dc->getCalledFunction(), gutils->TLI)) {
+
+            bool primalNeededInReverse =
+                is_value_needed_in_reverse<ValueType::Primal>(
+                    TR, gutils, val, mode, PrimalSeen, oldUnreachable);
+            bool hasPDFree = false;
+            if (dc->getParent() == CI->getParent() ||
+                gutils->OrigPDT.dominates(CI->getParent(), dc->getParent())) {
+              hasPDFree = true;
+            }
+
+            if (!primalNeededInReverse && hasPDFree) {
+              gutils->allocationsWithGuaranteedFree.insert(dc);
+              gutils->forwardDeallocations.insert(CI);
+            }
+          }
+        }
+      }
+      if (isAllocationFunction(*called, gutils->TLI)) {
+        if (hasMetadata(CI, "enzyme_fromstack")) {
+          gutils->allocationsWithGuaranteedFree.insert(CI);
+        }
+      }
+    }
+  }
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
@@ -801,6 +858,10 @@ void calculateUnusedValuesInFunction(
             }
           }
           if (called && isDeallocationFunction(*called, TLI)) {
+            if ((mode == DerivativeMode::ReverseModePrimal ||
+                 mode == DerivativeMode::ReverseModeCombined) &&
+                gutils->forwardDeallocations.count(obj_op))
+              return UseReq::Need;
             return UseReq::Recur;
           }
           Intrinsic::ID ID = Intrinsic::not_intrinsic;
@@ -880,7 +941,7 @@ void calculateUnusedValuesInFunction(
         return UseReq::Recur;
       });
 #if 0
-  llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
+  llvm::errs() << "unnecessaryValues of " << func.getName() << ": mode=" << to_string(mode) << "\n";
   for (auto a : unnecessaryValues) {
     llvm::errs() << *a << "\n";
   }

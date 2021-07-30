@@ -110,6 +110,12 @@ public:
                      bool check = true) {
     bool used =
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
+    if (!used) {
+      auto found = gutils->knownRecomputeHeuristic.find(&I);
+      if (found != gutils->knownRecomputeHeuristic.end() &&
+          !gutils->unnecessaryIntermediates.count(&I))
+        used = true;
+    }
     auto iload = gutils->getNewFromOriginal((Value *)&I);
     if (used && check)
       return;
@@ -4035,7 +4041,8 @@ public:
       } else {
         std::map<UsageKey, bool> Seen;
         for (auto pair : gutils->knownRecomputeHeuristic)
-          Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+          if (!pair.second)
+            Seen[UsageKey(pair.first, ValueType::Primal)] = false;
         primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, orig, Mode, Seen, oldUnreachable);
       }
@@ -4880,18 +4887,43 @@ public:
         }
       }
 
+      std::map<UsageKey, bool> Seen;
+      for (auto pair : gutils->knownRecomputeHeuristic)
+        if (!pair.second)
+          Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+      bool primalNeededInReverse =
+          is_value_needed_in_reverse<ValueType::Primal>(TR, gutils, orig, Mode,
+                                                        Seen, oldUnreachable);
+      bool hasPDFree = gutils->allocationsWithGuaranteedFree.count(orig);
+      if (!primalNeededInReverse && hasPDFree) {
+        if (Mode == DerivativeMode::ReverseModeGradient) {
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+        } else {
+          if (hasMetadata(orig, "enzyme_fromstack")) {
+            IRBuilder<> B(newCall);
+            if (auto CI = dyn_cast<ConstantInt>(orig->getArgOperand(0))) {
+              B.SetInsertPoint(gutils->inversionAllocs);
+            }
+            auto replacement = B.CreateAlloca(
+                Type::getInt8Ty(orig->getContext()),
+                gutils->getNewFromOriginal(orig->getArgOperand(0)));
+            gutils->replaceAWithB(newCall, replacement);
+            gutils->erase(newCall);
+          }
+        }
+        return;
+      }
+
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
       if (Mode != DerivativeMode::ReverseModeCombined) {
-        if ((is_value_needed_in_reverse<ValueType::Primal>(
-                 TR, gutils, orig, Mode, oldUnreachable) &&
+        if ((primalNeededInReverse &&
              !gutils->unnecessaryIntermediates.count(orig)) ||
-            hasMetadata(orig, "enzyme_fromstack")) {
+            hasPDFree) {
           Value *nop = gutils->cacheForReverse(BuilderZ, newCall,
                                                getIndex(orig, CacheType::Self));
-          if (Mode == DerivativeMode::ReverseModeGradient &&
-              hasMetadata(orig, "enzyme_fromstack")) {
+          if (Mode == DerivativeMode::ReverseModeGradient && hasPDFree) {
             IRBuilder<> Builder2(call.getParent());
             getReverseBuilder(Builder2);
             freeKnownAllocation(Builder2, lookup(nop, Builder2), *called,
@@ -5049,19 +5081,16 @@ public:
         gutils->erase(placeholder);
       }
 
+      if (gutils->forwardDeallocations.count(orig)) {
+        if (Mode == DerivativeMode::ReverseModeGradient) {
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+        }
+        return;
+      }
+
       llvm::Value *val = orig->getArgOperand(0);
       while (auto cast = dyn_cast<CastInst>(val))
         val = cast->getOperand(0);
-
-      if (auto dc = dyn_cast<CallInst>(val)) {
-        if (dc->getCalledFunction() &&
-            isAllocationFunction(*dc->getCalledFunction(), gutils->TLI)) {
-          // llvm::errs() << "erasing free(orig): " << *orig << "\n";
-          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
-          return;
-        }
-      }
-
       if (isa<ConstantPointerNull>(val)) {
         llvm::errs() << "removing free of null pointer\n";
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
