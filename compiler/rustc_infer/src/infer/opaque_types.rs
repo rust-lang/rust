@@ -192,7 +192,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         origin: hir::OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
-        let tcx = infcx.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Use the same type variable if the exact same opaque type appears more
@@ -201,27 +200,30 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!("re-using cached concrete type {:?}", opaque_defn.concrete_ty.kind());
             return opaque_defn.concrete_ty;
         }
-        let span = tcx.def_span(def_id);
-        debug!("fold_opaque_ty {:?} {:?}", self.value_span, span);
-        let ty_var = infcx
-            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
-
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        let definition_span = self.value_span;
+        let span = self.value_span;
+
+        let ty_var = infcx
+            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
 
         {
             let mut infcx = self.infcx.inner.borrow_mut();
             let key = OpaqueTypeKey { def_id, substs };
             infcx.opaque_types.insert(
                 key,
-                OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
+                OpaqueTypeDecl {
+                    opaque_type: ty,
+                    definition_span: span,
+                    concrete_ty: ty_var,
+                    origin,
+                },
             );
             infcx.opaque_types_vars.insert(ty_var, ty);
-            infcx.register_obligation_for_opaque_type_queue.push((key, definition_span));
+            infcx.register_obligation_for_opaque_type_queue.push((key, span));
         }
 
         debug!("generated new type inference var {:?}", ty_var.kind());
