@@ -448,10 +448,8 @@ fn match_arm(p: &mut Parser) {
     //         _ => ()
     //     }
     // }
-    if blocklike.is_block() {
-        p.eat(T![,]);
-    } else if !p.at(T!['}']) {
-        p.expect(T![,]);
+    if !p.eat(T![,]) && !blocklike.is_block() && !p.at(T!['}']) {
+        p.error("expected `,`");
     }
     m.complete(p, MATCH_ARM);
 }
