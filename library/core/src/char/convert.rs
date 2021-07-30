@@ -218,6 +218,8 @@ impl const From<u8> for char {
 }
 
 /// An error which can be returned when parsing a char.
+///
+/// This `struct` is created when using the [`char::from_str`] method.
 #[stable(feature = "char_from_str", since = "1.20.0")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParseCharError {
@@ -300,7 +302,10 @@ impl TryFrom<u32> for char {
     }
 }
 
-/// The error type returned when a conversion from u32 to char fails.
+/// The error type returned when a conversion from [`prim@u32`] to [`prim@char`] fails.
+///
+/// This `struct` is created by the [`char::try_from<u32>`](char#impl-TryFrom<u32>) method.
+/// See its documentation for more.
 #[stable(feature = "try_from", since = "1.34.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct CharTryFromError(());
