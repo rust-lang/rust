@@ -162,16 +162,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         if let Some(must_use_op) = must_use_op {
             cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
                 let mut lint = lint.build(&format!("unused {} that must be used", must_use_op));
-                lint.note(&format!("the {} produces a value", must_use_op));
-                if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
-                    lint.span_suggestion(
-                        expr.span,
-                        "use `let _ = ...` to ignore it",
-                        format!("let _ = {}", snippet),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit()
-                }
+                lint.span_label(expr.span, &format!("the {} produces a value", must_use_op));
+                lint.span_suggestion_verbose(
+                    expr.span.shrink_to_lo(),
+                    "use `let _ = ...` to ignore the resulting value",
+                    "let _ = ".to_string(),
+                    Applicability::MachineApplicable,
+                );
                 lint.emit();
             });
             op_warned = true;
