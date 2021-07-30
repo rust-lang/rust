@@ -99,6 +99,25 @@ fn test_unescape_char_good() {
 }
 
 #[test]
+fn test_unescape_str_warn() {
+    fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
+        let mut unescaped = Vec::with_capacity(literal.len());
+        unescape_literal(literal, Mode::Str, &mut |range, res| unescaped.push((range, res)));
+        assert_eq!(unescaped, expected);
+    }
+
+    check(
+        "\\\n \u{a0} x",
+        &[
+            (0..5, Err(EscapeError::UnskippedWhitespaceWarning)),
+            (3..5, Ok('\u{a0}')),
+            (5..6, Ok(' ')),
+            (6..7, Ok('x')),
+        ],
+    );
+}
+
+#[test]
 fn test_unescape_str_good() {
     fn check(literal_text: &str, expected: &str) {
         let mut buf = Ok(String::with_capacity(literal_text.len()));
