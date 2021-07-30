@@ -64,7 +64,7 @@ fn f() {
     match () {
         () => (),
         #[cfg(a)] () => (),
-      //^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
     }
 
     #[cfg(a)] 0          // Trailing expression of block
