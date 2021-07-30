@@ -24,6 +24,8 @@ pub use super::{
 ///     that shows how to do this at `src/test/run-make/obtain-borrowck/`.
 /// *   This function will also panic if computation of Polonius facts
 ///     (`-Zpolonius` flag) is not enabled.
+///
+/// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
 pub fn get_body_with_borrowck_facts<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
