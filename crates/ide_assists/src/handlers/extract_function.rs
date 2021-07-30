@@ -74,20 +74,12 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
     let (locals_used, has_await, self_param) = analyze_body(&ctx.sema, &body);
 
     let anchor = if self_param.is_some() { Anchor::Method } else { Anchor::Freestanding };
-    let insert_after = scope_for_fn_insertion(&body, anchor)?;
+    let insert_after = node_to_insert_after(&body, anchor)?;
     let module = ctx.sema.scope(&insert_after).module()?;
 
-    let vars_defined_in_body_and_outlive =
-        vars_defined_in_body_and_outlive(ctx, &body, node.parent().as_ref().unwrap_or(&node));
     let ret_ty = body_return_ty(ctx, &body)?;
+    let ret_values = ret_values(ctx, &body, node.parent().as_ref().unwrap_or(&node));
 
-    // FIXME: we compute variables that outlive here just to check `never!` condition
-    //        this requires traversing whole `body` (cheap) and finding all references (expensive)
-    //        maybe we can move this check to `edit` closure somehow?
-    if stdx::never!(!vars_defined_in_body_and_outlive.is_empty() && !ret_ty.is_unit()) {
-        // We should not have variables that outlive body if we have expression block
-        return None;
-    }
     let control_flow = external_control_flow(ctx, &body)?;
 
     let target_range = body.text_range();
@@ -97,22 +89,35 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         "Extract into function",
         target_range,
         move |builder| {
+            let ret_values: Vec<_> = ret_values.collect();
+            if stdx::never!(!ret_values.is_empty() && !ret_ty.is_unit()) {
+                // We should not have variables that outlive body if we have expression block
+                return;
+            }
+
             let params = extracted_function_params(ctx, &body, locals_used.iter().copied());
 
+            let insert_comma = body
+                .parent()
+                .and_then(ast::MatchArm::cast)
+                .map_or(false, |it| it.comma_token().is_none());
             let fun = Function {
                 name: "fun_name".to_string(),
-                self_param: self_param.map(|(_, pat)| pat),
+                self_param,
                 params,
                 control_flow,
                 ret_ty,
                 body,
-                vars_defined_in_body_and_outlive,
+                vars_defined_in_body_and_outlive: ret_values,
             };
 
             let new_indent = IndentLevel::from_node(&insert_after);
             let old_indent = fun.body.indent_level();
 
-            builder.replace(target_range, format_replacement(ctx, &fun, old_indent, has_await));
+            builder.replace(target_range, make_call(ctx, &fun, old_indent, has_await));
+            if insert_comma {
+                builder.insert(target_range.end(), ",");
+            }
 
             let fn_def = format_function(ctx, module, &fun, old_indent, new_indent, has_await);
             let insert_offset = insert_after.text_range().end();
@@ -123,135 +128,6 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         },
     )
 }
-
-fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<ControlFlow> {
-    let mut ret_expr = None;
-    let mut try_expr = None;
-    let mut break_expr = None;
-    let mut continue_expr = None;
-    let (syntax, text_range) = match body {
-        FunctionBody::Expr(expr) => (expr.syntax(), expr.syntax().text_range()),
-        FunctionBody::Span { parent, text_range } => (parent.syntax(), *text_range),
-    };
-
-    let mut nested_loop = None;
-    let mut nested_scope = None;
-
-    for e in syntax.preorder() {
-        let e = match e {
-            WalkEvent::Enter(e) => e,
-            WalkEvent::Leave(e) => {
-                if nested_loop.as_ref() == Some(&e) {
-                    nested_loop = None;
-                }
-                if nested_scope.as_ref() == Some(&e) {
-                    nested_scope = None;
-                }
-                continue;
-            }
-        };
-        if nested_scope.is_some() {
-            continue;
-        }
-        if !text_range.contains_range(e.text_range()) {
-            continue;
-        }
-        match e.kind() {
-            SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR => {
-                if nested_loop.is_none() {
-                    nested_loop = Some(e);
-                }
-            }
-            SyntaxKind::FN
-            | SyntaxKind::CONST
-            | SyntaxKind::STATIC
-            | SyntaxKind::IMPL
-            | SyntaxKind::MODULE => {
-                if nested_scope.is_none() {
-                    nested_scope = Some(e);
-                }
-            }
-            SyntaxKind::RETURN_EXPR => {
-                ret_expr = Some(ast::ReturnExpr::cast(e).unwrap());
-            }
-            SyntaxKind::TRY_EXPR => {
-                try_expr = Some(ast::TryExpr::cast(e).unwrap());
-            }
-            SyntaxKind::BREAK_EXPR if nested_loop.is_none() => {
-                break_expr = Some(ast::BreakExpr::cast(e).unwrap());
-            }
-            SyntaxKind::CONTINUE_EXPR if nested_loop.is_none() => {
-                continue_expr = Some(ast::ContinueExpr::cast(e).unwrap());
-            }
-            _ => {}
-        }
-    }
-
-    let kind = match (try_expr, ret_expr, break_expr, continue_expr) {
-        (Some(e), None, None, None) => {
-            let func = e.syntax().ancestors().find_map(ast::Fn::cast)?;
-            let def = ctx.sema.to_def(&func)?;
-            let ret_ty = def.ret_type(ctx.db());
-            let kind = try_kind_of_ty(ret_ty, ctx)?;
-
-            Some(FlowKind::Try { kind })
-        }
-        (Some(_), Some(r), None, None) => match r.expr() {
-            Some(expr) => {
-                if let Some(kind) = expr_err_kind(&expr, ctx) {
-                    Some(FlowKind::TryReturn { expr, kind })
-                } else {
-                    cov_mark::hit!(external_control_flow_try_and_return_non_err);
-                    return None;
-                }
-            }
-            None => return None,
-        },
-        (Some(_), _, _, _) => {
-            cov_mark::hit!(external_control_flow_try_and_bc);
-            return None;
-        }
-        (None, Some(r), None, None) => match r.expr() {
-            Some(expr) => Some(FlowKind::ReturnValue(expr)),
-            None => Some(FlowKind::Return),
-        },
-        (None, Some(_), _, _) => {
-            cov_mark::hit!(external_control_flow_return_and_bc);
-            return None;
-        }
-        (None, None, Some(_), Some(_)) => {
-            cov_mark::hit!(external_control_flow_break_and_continue);
-            return None;
-        }
-        (None, None, Some(b), None) => match b.expr() {
-            Some(expr) => Some(FlowKind::BreakValue(expr)),
-            None => Some(FlowKind::Break),
-        },
-        (None, None, None, Some(_)) => Some(FlowKind::Continue),
-        (None, None, None, None) => None,
-    };
-
-    Some(ControlFlow { kind })
-}
-
-/// Checks is expr is `Err(_)` or `None`
-fn expr_err_kind(expr: &ast::Expr, ctx: &AssistContext) -> Option<TryKind> {
-    let func_name = match expr {
-        ast::Expr::CallExpr(call_expr) => call_expr.expr()?,
-        ast::Expr::PathExpr(_) => expr.clone(),
-        _ => return None,
-    };
-    let text = func_name.syntax().text();
-
-    if text == "Err" {
-        Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr)? })
-    } else if text == "None" {
-        Some(TryKind::Option)
-    } else {
-        None
-    }
-}
-
 #[derive(Debug)]
 struct Function {
     name: String,
@@ -272,11 +148,6 @@ struct Param {
     is_copy: bool,
 }
 
-#[derive(Debug)]
-struct ControlFlow {
-    kind: Option<FlowKind>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ParamKind {
     Value,
@@ -290,6 +161,104 @@ enum FunType {
     Unit,
     Single(hir::Type),
     Tuple(Vec<hir::Type>),
+}
+
+/// Where to put extracted function definition
+#[derive(Debug)]
+enum Anchor {
+    /// Extract free function and put right after current top-level function
+    Freestanding,
+    /// Extract method and put right after current function in the impl-block
+    Method,
+}
+
+#[derive(Debug)]
+struct ControlFlow {
+    kind: Option<FlowKind>,
+}
+
+/// Control flow that is exported from extracted function
+///
+/// E.g.:
+/// ```rust,no_run
+/// loop {
+///     $0
+///     if 42 == 42 {
+///         break;
+///     }
+///     $0
+/// }
+/// ```
+#[derive(Debug, Clone)]
+enum FlowKind {
+    /// Return with value (`return $expr;`)
+    Return(Option<ast::Expr>),
+    Try {
+        kind: TryKind,
+    },
+    TryReturn {
+        expr: ast::Expr,
+        kind: TryKind,
+    },
+    /// Break with value (`break $expr;`)
+    Break(Option<ast::Expr>),
+    /// Continue
+    Continue,
+}
+
+#[derive(Debug, Clone)]
+enum TryKind {
+    Option,
+    Result { ty: hir::Type },
+}
+
+#[derive(Debug)]
+enum RetType {
+    Expr(hir::Type),
+    Stmt,
+}
+
+impl RetType {
+    fn is_unit(&self) -> bool {
+        match self {
+            RetType::Expr(ty) => ty.is_unit(),
+            RetType::Stmt => true,
+        }
+    }
+}
+
+/// Semantically same as `ast::Expr`, but preserves identity when using only part of the Block
+/// This is the future function body, the part that is being extracted.
+#[derive(Debug)]
+enum FunctionBody {
+    Expr(ast::Expr),
+    Span { parent: ast::BlockExpr, text_range: TextRange },
+}
+
+#[derive(Debug)]
+struct OutlivedLocal {
+    local: Local,
+    mut_usage_outside_body: bool,
+}
+
+/// Container of local variable usages
+///
+/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
+struct LocalUsages(ide_db::search::UsageSearchResult);
+
+impl LocalUsages {
+    fn find(ctx: &AssistContext, var: Local) -> Self {
+        Self(
+            Definition::Local(var)
+                .usages(&ctx.sema)
+                .in_scope(SearchScope::single_file(ctx.frange.file_id))
+                .all(),
+        )
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &FileReference> + '_ {
+        self.0.iter().flat_map(|(_, rs)| rs)
+    }
 }
 
 impl Function {
@@ -355,50 +324,11 @@ impl Param {
     }
 }
 
-/// Control flow that is exported from extracted function
-///
-/// E.g.:
-/// ```rust,no_run
-/// loop {
-///     $0
-///     if 42 == 42 {
-///         break;
-///     }
-///     $0
-/// }
-/// ```
-#[derive(Debug, Clone)]
-enum FlowKind {
-    /// Return without value (`return;`)
-    Return,
-    /// Return with value (`return $expr;`)
-    ReturnValue(ast::Expr),
-    Try {
-        kind: TryKind,
-    },
-    TryReturn {
-        expr: ast::Expr,
-        kind: TryKind,
-    },
-    /// Break without value (`return;`)
-    Break,
-    /// Break with value (`break $expr;`)
-    BreakValue(ast::Expr),
-    /// Continue
-    Continue,
-}
-
-#[derive(Debug, Clone)]
-enum TryKind {
-    Option,
-    Result { ty: hir::Type },
-}
-
 impl FlowKind {
     fn make_result_handler(&self, expr: Option<ast::Expr>) -> ast::Expr {
         match self {
-            FlowKind::Return | FlowKind::ReturnValue(_) => make::expr_return(expr),
-            FlowKind::Break | FlowKind::BreakValue(_) => make::expr_break(expr),
+            FlowKind::Return(_) => make::expr_return(expr),
+            FlowKind::Break(_) => make::expr_break(expr),
             FlowKind::Try { .. } | FlowKind::TryReturn { .. } => {
                 stdx::never!("cannot have result handler with try");
                 expr.unwrap_or_else(|| make::expr_return(None))
@@ -412,14 +342,14 @@ impl FlowKind {
 
     fn expr_ty(&self, ctx: &AssistContext) -> Option<hir::Type> {
         match self {
-            FlowKind::ReturnValue(expr)
-            | FlowKind::BreakValue(expr)
+            FlowKind::Return(Some(expr))
+            | FlowKind::Break(Some(expr))
             | FlowKind::TryReturn { expr, .. } => ctx.sema.type_of_expr(expr),
             FlowKind::Try { .. } => {
                 stdx::never!("try does not have defined expr_ty");
                 None
             }
-            FlowKind::Return | FlowKind::Break | FlowKind::Continue => None,
+            _ => None,
         }
     }
 }
@@ -440,29 +370,14 @@ fn try_kind_of_ty(ty: hir::Type, ctx: &AssistContext) -> Option<TryKind> {
     }
 }
 
-#[derive(Debug)]
-enum RetType {
-    Expr(hir::Type),
-    Stmt,
-}
-
-impl RetType {
-    fn is_unit(&self) -> bool {
+impl FunctionBody {
+    fn parent(&self) -> Option<SyntaxNode> {
         match self {
-            RetType::Expr(ty) => ty.is_unit(),
-            RetType::Stmt => true,
+            FunctionBody::Expr(expr) => expr.syntax().parent(),
+            FunctionBody::Span { parent, .. } => Some(parent.syntax().clone()),
         }
     }
-}
 
-/// Semantically same as `ast::Expr`, but preserves identity when using only part of the Block
-#[derive(Debug)]
-enum FunctionBody {
-    Expr(ast::Expr),
-    Span { parent: ast::BlockExpr, text_range: TextRange },
-}
-
-impl FunctionBody {
     fn from_expr(expr: ast::Expr) -> Option<Self> {
         match expr {
             ast::Expr::BreakExpr(it) => it.expr().map(Self::Expr),
@@ -488,11 +403,7 @@ impl FunctionBody {
             FunctionBody::Expr(expr) => Some(expr.clone()),
             FunctionBody::Span { parent, text_range } => {
                 let tail_expr = parent.tail_expr()?;
-                if text_range.contains_range(tail_expr.syntax().text_range()) {
-                    Some(tail_expr)
-                } else {
-                    None
-                }
+                text_range.contains_range(tail_expr.syntax().text_range()).then(|| tail_expr)
             }
         }
     }
@@ -515,6 +426,29 @@ impl FunctionBody {
                     .filter(|it| text_range.contains_range(it.syntax().text_range()))
                 {
                     expr.walk(cb);
+                }
+            }
+        }
+    }
+
+    fn preorder_expr(&self, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
+        match self {
+            FunctionBody::Expr(expr) => expr.preorder(cb),
+            FunctionBody::Span { parent, text_range } => {
+                parent
+                    .statements()
+                    .filter(|stmt| text_range.contains_range(stmt.syntax().text_range()))
+                    .filter_map(|stmt| match stmt {
+                        ast::Stmt::ExprStmt(expr_stmt) => expr_stmt.expr(),
+                        ast::Stmt::Item(_) => None,
+                        ast::Stmt::LetStmt(stmt) => stmt.initializer(),
+                    })
+                    .for_each(|expr| expr.preorder(cb));
+                if let Some(expr) = parent
+                    .tail_expr()
+                    .filter(|it| text_range.contains_range(it.syntax().text_range()))
+                {
+                    expr.preorder(cb);
                 }
             }
         }
@@ -556,7 +490,7 @@ impl FunctionBody {
     fn text_range(&self) -> TextRange {
         match self {
             FunctionBody::Expr(expr) => expr.syntax().text_range(),
-            FunctionBody::Span { parent: _, text_range } => *text_range,
+            &FunctionBody::Span { text_range, .. } => text_range,
         }
     }
 
@@ -564,50 +498,13 @@ impl FunctionBody {
         self.text_range().contains_range(range)
     }
 
-    fn preceedes_range(&self, range: TextRange) -> bool {
+    fn precedes_range(&self, range: TextRange) -> bool {
         self.text_range().end() <= range.start()
     }
 
     fn contains_node(&self, node: &SyntaxNode) -> bool {
         self.contains_range(node.text_range())
     }
-}
-
-impl HasTokenAtOffset for FunctionBody {
-    fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
-        match self {
-            FunctionBody::Expr(expr) => expr.syntax().token_at_offset(offset),
-            FunctionBody::Span { parent, text_range } => {
-                match parent.syntax().token_at_offset(offset) {
-                    TokenAtOffset::None => TokenAtOffset::None,
-                    TokenAtOffset::Single(t) => {
-                        if text_range.contains_range(t.text_range()) {
-                            TokenAtOffset::Single(t)
-                        } else {
-                            TokenAtOffset::None
-                        }
-                    }
-                    TokenAtOffset::Between(a, b) => {
-                        match (
-                            text_range.contains_range(a.text_range()),
-                            text_range.contains_range(b.text_range()),
-                        ) {
-                            (true, true) => TokenAtOffset::Between(a, b),
-                            (true, false) => TokenAtOffset::Single(a),
-                            (false, true) => TokenAtOffset::Single(b),
-                            (false, false) => TokenAtOffset::None,
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-struct OutlivedLocal {
-    local: Local,
-    mut_usage_outside_body: bool,
 }
 
 /// Try to guess what user wants to extract
@@ -668,7 +565,7 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
 fn analyze_body(
     sema: &Semantics<RootDatabase>,
     body: &FunctionBody,
-) -> (FxIndexSet<Local>, bool, Option<(Local, ast::SelfParam)>) {
+) -> (FxIndexSet<Local>, bool, Option<ast::SelfParam>) {
     // FIXME: currently usages inside macros are not found
     let mut has_await = false;
     let mut self_param = None;
@@ -692,7 +589,7 @@ fn analyze_body(
                     match local_ref.source(sema.db).value {
                         Either::Right(it) => {
                             stdx::always!(
-                                self_param.replace((local_ref, it)).is_none(),
+                                self_param.replace(it).is_none(),
                                 "body references two different self params"
                             );
                         }
@@ -743,7 +640,7 @@ fn extracted_function_params(
 }
 
 fn has_usages_after_body(usages: &LocalUsages, body: &FunctionBody) -> bool {
-    usages.iter().any(|reference| body.preceedes_range(reference.range))
+    usages.iter().any(|reference| body.precedes_range(reference.range))
 }
 
 /// checks if relevant var is used with `&mut` access inside body
@@ -812,26 +709,6 @@ fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Optio
     Some(false)
 }
 
-/// Container of local variable usages
-///
-/// Semanticall same as `UsageSearchResult`, but provides more convenient interface
-struct LocalUsages(ide_db::search::UsageSearchResult);
-
-impl LocalUsages {
-    fn find(ctx: &AssistContext, var: Local) -> Self {
-        Self(
-            Definition::Local(var)
-                .usages(&ctx.sema)
-                .in_scope(SearchScope::single_file(ctx.frange.file_id))
-                .all(),
-        )
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &FileReference> + '_ {
-        self.0.iter().flat_map(|(_, rs)| rs.iter())
-    }
-}
-
 trait HasTokenAtOffset {
     fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken>;
 }
@@ -839,6 +716,37 @@ trait HasTokenAtOffset {
 impl HasTokenAtOffset for SyntaxNode {
     fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
         SyntaxNode::token_at_offset(self, offset)
+    }
+}
+
+impl HasTokenAtOffset for FunctionBody {
+    fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
+        match self {
+            FunctionBody::Expr(expr) => expr.syntax().token_at_offset(offset),
+            FunctionBody::Span { parent, text_range } => {
+                match parent.syntax().token_at_offset(offset) {
+                    TokenAtOffset::None => TokenAtOffset::None,
+                    TokenAtOffset::Single(t) => {
+                        if text_range.contains_range(t.text_range()) {
+                            TokenAtOffset::Single(t)
+                        } else {
+                            TokenAtOffset::None
+                        }
+                    }
+                    TokenAtOffset::Between(a, b) => {
+                        match (
+                            text_range.contains_range(a.text_range()),
+                            text_range.contains_range(b.text_range()),
+                        ) {
+                            (true, true) => TokenAtOffset::Between(a, b),
+                            (true, false) => TokenAtOffset::Single(a),
+                            (false, true) => TokenAtOffset::Single(b),
+                            (false, false) => TokenAtOffset::None,
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -868,13 +776,16 @@ fn path_element_of_reference(
 }
 
 /// list local variables defined inside `body`
-fn locals_defined_in_body(body: &FunctionBody, ctx: &AssistContext) -> FxIndexSet<Local> {
+fn locals_defined_in_body(
+    sema: &Semantics<RootDatabase>,
+    body: &FunctionBody,
+) -> FxIndexSet<Local> {
     // FIXME: this doesn't work well with macros
     //        see https://github.com/rust-analyzer/rust-analyzer/pull/7535#discussion_r570048550
     let mut res = FxIndexSet::default();
     body.walk_pat(&mut |pat| {
         if let ast::Pat::IdentPat(pat) = pat {
-            if let Some(local) = ctx.sema.to_def(&pat) {
+            if let Some(local) = sema.to_def(&pat) {
                 res.insert(local);
             }
         }
@@ -882,17 +793,42 @@ fn locals_defined_in_body(body: &FunctionBody, ctx: &AssistContext) -> FxIndexSe
     res
 }
 
-/// list local variables defined inside `body` that should be returned from extracted function
-fn vars_defined_in_body_and_outlive(
-    ctx: &AssistContext,
+/// Local variables defined inside `body` that are accessed outside of it
+fn ret_values<'a>(
+    ctx: &'a AssistContext,
     body: &FunctionBody,
     parent: &SyntaxNode,
-) -> Vec<OutlivedLocal> {
-    let vars_defined_in_body = locals_defined_in_body(body, ctx);
-    vars_defined_in_body
+) -> impl Iterator<Item = OutlivedLocal> + 'a {
+    let parent = parent.clone();
+    let range = body.text_range();
+    locals_defined_in_body(&ctx.sema, body)
         .into_iter()
-        .filter_map(|var| var_outlives_body(ctx, body, var, parent))
-        .collect()
+        .filter_map(move |local| local_outlives_body(ctx, range, local, &parent))
+}
+
+/// Returns usage details if local variable is used after(outside of) body
+fn local_outlives_body(
+    ctx: &AssistContext,
+    body_range: TextRange,
+    local: Local,
+    parent: &SyntaxNode,
+) -> Option<OutlivedLocal> {
+    let usages = LocalUsages::find(ctx, local);
+    let mut has_mut_usages = false;
+    let mut any_outlives = false;
+    for usage in usages.iter() {
+        if body_range.end() <= usage.range.start() {
+            has_mut_usages |= reference_is_exclusive(usage, parent, ctx);
+            any_outlives |= true;
+            if has_mut_usages {
+                break; // no need to check more elements we have all the info we wanted
+            }
+        }
+    }
+    if !any_outlives {
+        return None;
+    }
+    Some(OutlivedLocal { local, mut_usage_outside_body: has_mut_usages })
 }
 
 /// checks if the relevant local was defined before(outside of) body
@@ -912,25 +848,6 @@ fn either_syntax(value: &Either<ast::IdentPat, ast::SelfParam>) -> &SyntaxNode {
     }
 }
 
-/// returns usage details if local variable is used after(outside of) body
-fn var_outlives_body(
-    ctx: &AssistContext,
-    body: &FunctionBody,
-    var: Local,
-    parent: &SyntaxNode,
-) -> Option<OutlivedLocal> {
-    let usages = LocalUsages::find(ctx, var);
-    let has_usages = usages.iter().any(|reference| body.preceedes_range(reference.range));
-    if !has_usages {
-        return None;
-    }
-    let has_mut_usages = usages
-        .iter()
-        .filter(|reference| body.preceedes_range(reference.range))
-        .any(|reference| reference_is_exclusive(reference, parent, ctx));
-    Some(OutlivedLocal { local: var, mut_usage_outside_body: has_mut_usages })
-}
-
 fn body_return_ty(ctx: &AssistContext, body: &FunctionBody) -> Option<RetType> {
     match body.tail_expr() {
         Some(expr) => {
@@ -940,55 +857,142 @@ fn body_return_ty(ctx: &AssistContext, body: &FunctionBody) -> Option<RetType> {
         None => Some(RetType::Stmt),
     }
 }
-/// Where to put extracted function definition
-#[derive(Debug)]
-enum Anchor {
-    /// Extract free function and put right after current top-level function
-    Freestanding,
-    /// Extract method and put right after current function in the impl-block
-    Method,
+
+/// Analyses the function body for external control flow.
+fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<ControlFlow> {
+    let mut ret_expr = None;
+    let mut try_expr = None;
+    let mut break_expr = None;
+    let mut continue_expr = None;
+
+    let mut loop_depth = 0;
+
+    body.preorder_expr(&mut |expr| {
+        let expr = match expr {
+            WalkEvent::Enter(e) => e,
+            WalkEvent::Leave(
+                ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_),
+            ) => {
+                loop_depth -= 1;
+                return false;
+            }
+            WalkEvent::Leave(_) => return false,
+        };
+        match expr {
+            ast::Expr::LoopExpr(_) | ast::Expr::ForExpr(_) | ast::Expr::WhileExpr(_) => {
+                loop_depth += 1;
+            }
+            ast::Expr::ReturnExpr(it) => {
+                ret_expr = Some(it);
+            }
+            ast::Expr::TryExpr(it) => {
+                try_expr = Some(it);
+            }
+            ast::Expr::BreakExpr(it) if loop_depth == 0 => {
+                break_expr = Some(it);
+            }
+            ast::Expr::ContinueExpr(it) if loop_depth == 0 => {
+                continue_expr = Some(it);
+            }
+            _ => {}
+        }
+        false
+    });
+
+    let kind = match (try_expr, ret_expr, break_expr, continue_expr) {
+        (Some(e), None, None, None) => {
+            let func = e.syntax().ancestors().find_map(ast::Fn::cast)?;
+            let def = ctx.sema.to_def(&func)?;
+            let ret_ty = def.ret_type(ctx.db());
+            let kind = try_kind_of_ty(ret_ty, ctx)?;
+
+            Some(FlowKind::Try { kind })
+        }
+        (Some(_), Some(r), None, None) => match r.expr() {
+            Some(expr) => {
+                if let Some(kind) = expr_err_kind(&expr, ctx) {
+                    Some(FlowKind::TryReturn { expr, kind })
+                } else {
+                    cov_mark::hit!(external_control_flow_try_and_return_non_err);
+                    return None;
+                }
+            }
+            None => return None,
+        },
+        (Some(_), _, _, _) => {
+            cov_mark::hit!(external_control_flow_try_and_bc);
+            return None;
+        }
+        (None, Some(r), None, None) => Some(FlowKind::Return(r.expr())),
+        (None, Some(_), _, _) => {
+            cov_mark::hit!(external_control_flow_return_and_bc);
+            return None;
+        }
+        (None, None, Some(_), Some(_)) => {
+            cov_mark::hit!(external_control_flow_break_and_continue);
+            return None;
+        }
+        (None, None, Some(b), None) => Some(FlowKind::Break(b.expr())),
+        (None, None, None, Some(_)) => Some(FlowKind::Continue),
+        (None, None, None, None) => None,
+    };
+
+    Some(ControlFlow { kind })
+}
+
+/// Checks is expr is `Err(_)` or `None`
+fn expr_err_kind(expr: &ast::Expr, ctx: &AssistContext) -> Option<TryKind> {
+    let func_name = match expr {
+        ast::Expr::CallExpr(call_expr) => call_expr.expr()?,
+        ast::Expr::PathExpr(_) => expr.clone(),
+        _ => return None,
+    };
+    let text = func_name.syntax().text();
+
+    if text == "Err" {
+        Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr)? })
+    } else if text == "None" {
+        Some(TryKind::Option)
+    } else {
+        None
+    }
 }
 
 /// find where to put extracted function definition
 ///
 /// Function should be put right after returned node
-fn scope_for_fn_insertion(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNode> {
-    match body {
-        FunctionBody::Expr(e) => scope_for_fn_insertion_node(e.syntax(), anchor),
-        FunctionBody::Span { parent, .. } => scope_for_fn_insertion_node(parent.syntax(), anchor),
-    }
-}
-
-fn scope_for_fn_insertion_node(node: &SyntaxNode, anchor: Anchor) -> Option<SyntaxNode> {
+fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNode> {
+    let node = match body {
+        FunctionBody::Expr(e) => e.syntax(),
+        FunctionBody::Span { parent, .. } => parent.syntax(),
+    };
     let mut ancestors = node.ancestors().peekable();
     let mut last_ancestor = None;
     while let Some(next_ancestor) = ancestors.next() {
         match next_ancestor.kind() {
             SyntaxKind::SOURCE_FILE => break,
+            SyntaxKind::ITEM_LIST if !matches!(anchor, Anchor::Freestanding) => continue,
             SyntaxKind::ITEM_LIST => {
-                if !matches!(anchor, Anchor::Freestanding) {
-                    continue;
-                }
                 if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::MODULE) {
                     break;
                 }
             }
+            SyntaxKind::ASSOC_ITEM_LIST if !matches!(anchor, Anchor::Method) => {
+                continue;
+            }
             SyntaxKind::ASSOC_ITEM_LIST => {
-                if !matches!(anchor, Anchor::Method) {
-                    continue;
-                }
                 if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::IMPL) {
                     break;
                 }
             }
-            _ => {}
+            _ => (),
         }
         last_ancestor = Some(next_ancestor);
     }
     last_ancestor
 }
 
-fn format_replacement(
+fn make_call(
     ctx: &AssistContext,
     fun: &Function,
     indent: IndentLevel,
@@ -1061,10 +1065,10 @@ impl FlowHandler {
                 let action = flow_kind.clone();
                 if *ret_ty == FunType::Unit {
                     match flow_kind {
-                        FlowKind::Return | FlowKind::Break | FlowKind::Continue => {
+                        FlowKind::Return(None) | FlowKind::Break(None) | FlowKind::Continue => {
                             FlowHandler::If { action }
                         }
-                        FlowKind::ReturnValue(_) | FlowKind::BreakValue(_) => {
+                        FlowKind::Return(_) | FlowKind::Break(_) => {
                             FlowHandler::IfOption { action }
                         }
                         FlowKind::Try { kind } | FlowKind::TryReturn { kind, .. } => {
@@ -1073,10 +1077,10 @@ impl FlowHandler {
                     }
                 } else {
                     match flow_kind {
-                        FlowKind::Return | FlowKind::Break | FlowKind::Continue => {
+                        FlowKind::Return(None) | FlowKind::Break(None) | FlowKind::Continue => {
                             FlowHandler::MatchOption { none: action }
                         }
-                        FlowKind::ReturnValue(_) | FlowKind::BreakValue(_) => {
+                        FlowKind::Return(_) | FlowKind::Break(_) => {
                             FlowHandler::MatchResult { err: action }
                         }
                         FlowKind::Try { kind } | FlowKind::TryReturn { kind, .. } => {
@@ -3777,6 +3781,56 @@ async fn some_function() {
             extract_function,
             r#"
 fn main() $0{}$0
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_adds_comma_for_match_arm() {
+        check_assist(
+            extract_function,
+            r#"
+fn main() {
+    match 6 {
+        100 => $0{ 100 }$0
+        _ => 0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 6 {
+        100 => fun_name(),
+        _ => 0,
+    }
+}
+
+fn $0fun_name() -> i32 {
+    100
+}
+"#,
+        );
+        check_assist(
+            extract_function,
+            r#"
+fn main() {
+    match 6 {
+        100 => $0{ 100 }$0,
+        _ => 0,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 6 {
+        100 => fun_name(),
+        _ => 0,
+    }
+}
+
+fn $0fun_name() -> i32 {
+    100
+}
 "#,
         );
     }
