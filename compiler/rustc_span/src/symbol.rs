@@ -496,6 +496,7 @@ symbols! {
         core_panic_macro,
         cosf32,
         cosf64,
+        count,
         cr,
         crate_id,
         crate_in_paths,
