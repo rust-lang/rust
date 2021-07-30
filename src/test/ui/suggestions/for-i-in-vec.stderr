@@ -1,12 +1,25 @@
 error[E0507]: cannot move out of `self.v` which is behind a shared reference
-  --> $DIR/for-i-in-vec.rs:10:18
+  --> $DIR/for-i-in-vec.rs:11:18
    |
 LL |         for _ in self.v {
-   |                  ^^^^^^
-   |                  |
-   |                  move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
-   |                  help: consider iterating over a slice of the `Vec<_>`'s content: `&self.v`
+   |                  ^^^^^^ move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
+   |
+help: consider iterating over a slice of the `Vec<u32>`'s content
+   |
+LL |         for _ in &self.v {
+   |                  ^
 
-error: aborting due to previous error
+error[E0507]: cannot move out of `self.h` which is behind a shared reference
+  --> $DIR/for-i-in-vec.rs:13:18
+   |
+LL |         for _ in self.h {
+   |                  ^^^^^^ move occurs because `self.h` has type `HashMap<i32, i32>`, which does not implement the `Copy` trait
+   |
+help: consider iterating over a slice of the `HashMap<i32, i32>`'s content
+   |
+LL |         for _ in &self.h {
+   |                  ^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0507`.
