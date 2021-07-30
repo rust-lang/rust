@@ -338,9 +338,9 @@ pub unsafe trait Allocator {
         Ok(new_ptr)
     }
 
-    /// Creates a "by reference" adaptor for this instance of `Allocator`.
+    /// Creates a "by reference" adapter for this instance of `Allocator`.
     ///
-    /// The returned adaptor also implements `Allocator` and will simply borrow this.
+    /// The returned adapter also implements `Allocator` and will simply borrow this.
     #[inline(always)]
     fn by_ref(&self) -> &Self
     where
