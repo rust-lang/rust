@@ -6,13 +6,13 @@ trait Ashl: DInt {
         let n_h = Self::H::BITS;
         if shl & n_h != 0 {
             // we only need `self.lo()` because `self.hi()` will be shifted out entirely
-            (self.lo() << (shl - n_h)).widen_hi()
+            self.lo().wrapping_shl(shl - n_h).widen_hi()
         } else if shl == 0 {
             self
         } else {
             Self::from_lo_hi(
-                self.lo() << shl,
-                self.lo().logical_shr(n_h - shl) | (self.hi() << shl),
+                self.lo().wrapping_shl(shl),
+                self.lo().logical_shr(n_h - shl) | self.hi().wrapping_shl(shl),
             )
         }
     }
@@ -28,16 +28,16 @@ trait Ashr: DInt {
         let n_h = Self::H::BITS;
         if shr & n_h != 0 {
             Self::from_lo_hi(
-                self.hi() >> (shr - n_h),
+                self.hi().wrapping_shr(shr - n_h),
                 // smear the sign bit
-                self.hi() >> (n_h - 1),
+                self.hi().wrapping_shr(n_h - 1),
             )
         } else if shr == 0 {
             self
         } else {
             Self::from_lo_hi(
-                self.lo().logical_shr(shr) | (self.hi() << (n_h - shr)),
-                self.hi() >> shr,
+                self.lo().logical_shr(shr) | self.hi().wrapping_shl(n_h - shr),
+                self.hi().wrapping_shr(shr),
             )
         }
     }
@@ -57,7 +57,7 @@ trait Lshr: DInt {
             self
         } else {
             Self::from_lo_hi(
-                self.lo().logical_shr(shr) | (self.hi() << (n_h - shr)),
+                self.lo().logical_shr(shr) | self.hi().wrapping_shl(n_h - shr),
                 self.hi().logical_shr(shr),
             )
         }
