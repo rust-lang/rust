@@ -19,9 +19,7 @@
 
 // revisions: no thin fat
 //[no]compile-flags: -C lto=no
-// FIXME(#83854) running this revision with 1 CGU triggers llvm assert in register allocator
-//  when executed in i686-gnu-nopt runner.
-//[thin]compile-flags: -C lto=thin -Ccodegen-units=2
+//[thin]compile-flags: -C lto=thin
 //[fat]compile-flags: -C lto=fat
 
 #![feature(core_panic)]
