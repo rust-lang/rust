@@ -298,6 +298,8 @@ impl<'a> Parser<'a> {
             Some(init) => {
                 if self.eat_keyword(kw::Else) {
                     let els = self.parse_block()?;
+                    self.check_let_else_init_bool_expr(&init);
+                    self.check_let_else_init_trailing_brace(&init);
                     LocalKind::InitElse(init, els)
                 } else {
                     LocalKind::Init(init)
@@ -306,6 +308,50 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+    }
+
+    fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
+        if let ast::ExprKind::Binary(op, ..) = init.kind {
+            if op.node.lazy() {
+                let suggs = vec![
+                    (init.span.shrink_to_lo(), "(".to_string()),
+                    (init.span.shrink_to_hi(), ")".to_string()),
+                ];
+                self.struct_span_err(
+                    init.span,
+                    &format!(
+                        "a `{}` expression cannot be directly assigned in `let...else`",
+                        op.node.to_string()
+                    ),
+                )
+                .multipart_suggestion(
+                    "wrap the expression in parenthesis",
+                    suggs,
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            }
+        }
+    }
+
+    fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
+        if let Some(trailing) = classify::expr_trailing_brace(init) {
+            let err_span = trailing.span.with_lo(trailing.span.hi() - BytePos(1));
+            let suggs = vec![
+                (trailing.span.shrink_to_lo(), "(".to_string()),
+                (trailing.span.shrink_to_hi(), ")".to_string()),
+            ];
+            self.struct_span_err(
+                err_span,
+                "right curly brace `}` before `else` in a `let...else` statement not allowed",
+            )
+            .multipart_suggestion(
+                "try wrapping the expression in parenthesis",
+                suggs,
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        }
     }
 
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
