@@ -1657,8 +1657,8 @@ trait RawTableClone {
     unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self));
 }
 impl<T: Clone, A: Allocator + Clone> RawTableClone for RawTable<T, A> {
-    #[cfg_attr(feature = "inline-more", inline)]
     default_fn! {
+        #[cfg_attr(feature = "inline-more", inline)]
         unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self)) {
             self.clone_from_impl(source, on_panic);
         }
