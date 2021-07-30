@@ -523,3 +523,8 @@ pub struct CompletionResolveData {
     pub full_import_path: String,
     pub imported_name: String,
 }
+
+#[derive(Debug, Deserialize, Default)]
+pub struct ClientCommandOptions {
+    pub commands: Vec<String>,
+}

@@ -18,6 +18,7 @@ use vfs::AbsPath;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
+    config::Config,
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, OffsetEncoding},
     lsp_ext, semantic_tokens, Result,
@@ -190,8 +191,7 @@ pub(crate) fn snippet_text_edit_vec(
 }
 
 pub(crate) fn completion_items(
-    insert_replace_support: bool,
-    enable_imports_on_the_fly: bool,
+    config: &Config,
     line_index: &LineIndex,
     tdpp: lsp_types::TextDocumentPositionParams,
     items: Vec<CompletionItem>,
@@ -199,23 +199,14 @@ pub(crate) fn completion_items(
     let max_relevance = items.iter().map(|it| it.relevance().score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
-        completion_item(
-            &mut res,
-            insert_replace_support,
-            enable_imports_on_the_fly,
-            line_index,
-            &tdpp,
-            max_relevance,
-            item,
-        )
+        completion_item(&mut res, config, line_index, &tdpp, max_relevance, item)
     }
     res
 }
 
 fn completion_item(
     acc: &mut Vec<lsp_types::CompletionItem>,
-    insert_replace_support: bool,
-    enable_imports_on_the_fly: bool,
+    config: &Config,
     line_index: &LineIndex,
     tdpp: &lsp_types::TextDocumentPositionParams,
     max_relevance: u32,
@@ -230,7 +221,7 @@ fn completion_item(
         let source_range = item.source_range();
         for indel in item.text_edit().iter() {
             if indel.delete.contains_range(source_range) {
-                let insert_replace_support = insert_replace_support.then(|| tdpp.position);
+                let insert_replace_support = config.insert_replace_support().then(|| tdpp.position);
                 text_edit = Some(if indel.delete == source_range {
                     self::completion_text_edit(line_index, insert_replace_support, indel.clone())
                 } else {
@@ -269,14 +260,14 @@ fn completion_item(
         lsp_item.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
     }
 
-    if item.trigger_call_info() {
+    if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
         lsp_item.command = Some(command::trigger_parameter_hints());
     }
 
     if item.is_snippet() {
         lsp_item.insert_text_format = Some(lsp_types::InsertTextFormat::Snippet);
     }
-    if enable_imports_on_the_fly {
+    if config.completion().enable_imports_on_the_fly {
         if let Some(import_edit) = item.import_to_add() {
             let import_path = &import_edit.import.import_path;
             if let Some(import_name) = import_path.segments().last() {
@@ -992,6 +983,7 @@ pub(crate) fn code_lens(
     snap: &GlobalStateSnapshot,
     annotation: Annotation,
 ) -> Result<()> {
+    let client_commands_config = snap.config.client_commands();
     match annotation.kind {
         AnnotationKind::Runnable(run) => {
             let line_index = snap.file_line_index(run.nav.file_id)?;
@@ -1008,7 +1000,7 @@ pub(crate) fn code_lens(
             let r = runnable(snap, run)?;
 
             let lens_config = snap.config.lens();
-            if lens_config.run {
+            if lens_config.run && client_commands_config.run_single {
                 let command = command::run_single(&r, &title);
                 acc.push(lsp_types::CodeLens {
                     range: annotation_range,
@@ -1016,7 +1008,7 @@ pub(crate) fn code_lens(
                     data: None,
                 })
             }
-            if lens_config.debug && can_debug {
+            if lens_config.debug && can_debug && client_commands_config.debug_single {
                 let command = command::debug_single(&r);
                 acc.push(lsp_types::CodeLens {
                     range: annotation_range,
@@ -1026,6 +1018,9 @@ pub(crate) fn code_lens(
             }
         }
         AnnotationKind::HasImpls { position: file_position, data } => {
+            if !client_commands_config.show_reference {
+                return Ok(());
+            }
             let line_index = snap.file_line_index(file_position.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
             let url = url(snap, file_position.file_id);
@@ -1069,6 +1064,9 @@ pub(crate) fn code_lens(
             })
         }
         AnnotationKind::HasReferences { position: file_position, data } => {
+            if !client_commands_config.show_reference {
+                return Ok(());
+            }
             let line_index = snap.file_line_index(file_position.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
             let url = url(snap, file_position.file_id);
@@ -1207,87 +1205,8 @@ mod tests {
     use std::sync::Arc;
 
     use ide::Analysis;
-    use ide_db::helpers::{
-        insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
-        SnippetCap,
-    };
 
     use super::*;
-
-    #[test]
-    fn test_completion_with_ref() {
-        let fixture = r#"
-        struct Foo;
-        fn foo(arg: &Foo) {}
-        fn main() {
-            let arg = Foo;
-            foo($0)
-        }"#;
-
-        let (offset, text) = test_utils::extract_offset(fixture);
-        let line_index = LineIndex {
-            index: Arc::new(ide::LineIndex::new(&text)),
-            endings: LineEndings::Unix,
-            encoding: OffsetEncoding::Utf16,
-        };
-        let (analysis, file_id) = Analysis::from_single_file(text);
-
-        let file_position = ide_db::base_db::FilePosition { file_id, offset };
-        let mut items = analysis
-            .completions(
-                &ide::CompletionConfig {
-                    enable_postfix_completions: true,
-                    enable_imports_on_the_fly: true,
-                    enable_self_on_the_fly: true,
-                    add_call_parenthesis: true,
-                    add_call_argument_snippets: true,
-                    snippet_cap: SnippetCap::new(true),
-                    insert_use: InsertUseConfig {
-                        granularity: ImportGranularity::Item,
-                        prefix_kind: PrefixKind::Plain,
-                        enforce_granularity: true,
-                        group: true,
-                        skip_glob_imports: true,
-                    },
-                },
-                file_position,
-            )
-            .unwrap()
-            .unwrap();
-        items.retain(|c| c.label().ends_with("arg"));
-        let items = completion_items(
-            false,
-            false,
-            &line_index,
-            lsp_types::TextDocumentPositionParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: "file://main.rs".parse().unwrap(),
-                },
-                position: position(&line_index, file_position.offset),
-            },
-            items,
-        );
-        let items: Vec<(String, Option<String>)> =
-            items.into_iter().map(|c| (c.label, c.sort_text)).collect();
-
-        expect_test::expect![[r#"
-            [
-                (
-                    "&arg",
-                    Some(
-                        "fffffff9",
-                    ),
-                ),
-                (
-                    "arg",
-                    Some(
-                        "fffffffd",
-                    ),
-                ),
-            ]
-        "#]]
-        .assert_debug_eq(&items);
-    }
 
     #[test]
     fn conv_fold_line_folding_only_fixup() {

@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 5f96a69eb3a5ebc3
+lsp_ext.rs hash: ad52054176909945
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -741,5 +741,25 @@ const enum WorkspaceSymbolSearchScope {
 const enum WorkspaceSymbolSearchKind {
     OnlyTypes = "onlyTypes",
     AllSymbols = "allSymbols"
+}
+```
+
+## Client Commands
+
+**Experimental Client Capability:** `{ "commands?": ClientCommandOptions }`
+
+Certain LSP types originating on the server, notably code lenses, embed commands.
+Commands can be serviced either by the server or by the client.
+However, the server doesn't know which commands are available on the client.
+
+This extensions allows the client to communicate this info.
+
+
+```typescript
+export interface ClientCommandOptions {
+	/**
+	 * The commands to be executed on the client
+	 */
+	commands: string[];
 }
 ```
