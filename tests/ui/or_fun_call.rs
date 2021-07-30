@@ -18,6 +18,19 @@ fn or_fun_call() {
         }
     }
 
+    struct FakeDefault;
+    impl FakeDefault {
+        fn default() -> Self {
+            FakeDefault
+        }
+    }
+
+    impl Default for FakeDefault {
+        fn default() -> Self {
+            FakeDefault
+        }
+    }
+
     enum Enum {
         A(i32),
     }
@@ -52,6 +65,12 @@ fn or_fun_call() {
 
     let with_default_type = Some(1);
     with_default_type.unwrap_or(u64::default());
+
+    let self_default = None::<FakeDefault>;
+    self_default.unwrap_or(<FakeDefault>::default());
+
+    let real_default = None::<FakeDefault>;
+    real_default.unwrap_or(<FakeDefault as Default>::default());
 
     let with_vec = Some(vec![1]);
     with_vec.unwrap_or(vec![]);
