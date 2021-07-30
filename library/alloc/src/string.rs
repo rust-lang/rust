@@ -1350,13 +1350,14 @@ impl String {
     /// assert_eq!(s, "foobar");
     /// ```
     ///
-    /// The exact order may be useful for tracking external state, like an index.
+    /// Because the elements are visited exactly once in the original order,
+    /// external state may be used to decide which elements to keep.
     ///
     /// ```
     /// let mut s = String::from("abcde");
     /// let keep = [false, true, true, false, true];
-    /// let mut i = 0;
-    /// s.retain(|_| (keep[i], i += 1).0);
+    /// let mut iter = keep.iter();
+    /// s.retain(|_| *iter.next().unwrap());
     /// assert_eq!(s, "bce");
     /// ```
     #[inline]
