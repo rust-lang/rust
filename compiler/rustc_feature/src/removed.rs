@@ -153,7 +153,7 @@ declare_features! (
      Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
 
     /// Allows the use of type alias impl trait in function return positions
-    (removed, min_type_alias_impl_trait, "1.55.0", Some(63063), None,
+    (removed, min_type_alias_impl_trait, "1.56.0", Some(63063), None,
      Some("removed in favor of full type_alias_impl_trait")),
 
     // -------------------------------------------------------------------------

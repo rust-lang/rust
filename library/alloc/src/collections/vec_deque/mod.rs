@@ -2107,7 +2107,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [2, 4]);
     /// ```
     ///
-    /// The exact order may be useful for tracking external state, like an index.
+    /// Because the elements are visited exactly once in the original order,
+    /// external state may be used to decide which elements to keep.
     ///
     /// ```
     /// use std::collections::VecDeque;
@@ -2116,8 +2117,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.extend(1..6);
     ///
     /// let keep = [false, true, true, false, true];
-    /// let mut i = 0;
-    /// buf.retain(|_| (keep[i], i += 1).0);
+    /// let mut iter = keep.iter();
+    /// buf.retain(|_| *iter.next().unwrap());
     /// assert_eq!(buf, [2, 3, 5]);
     /// ```
     #[stable(feature = "vec_deque_retain", since = "1.4.0")]

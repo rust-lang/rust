@@ -939,7 +939,7 @@ impl FromInner<c_int> for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "netbsd"))]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let mut p = PathBuf::from("/proc/self/fd");
             p.push(&fd.to_string());
@@ -976,7 +976,12 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
-        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "vxworks")))]
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "vxworks",
+            target_os = "netbsd"
+        )))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms
             None
