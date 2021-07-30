@@ -359,14 +359,10 @@ impl ast::MatchArmList {
         let mut elements = Vec::new();
         let position = match self.arms().last() {
             Some(last_arm) => {
-                let comma = last_arm
-                    .syntax()
-                    .siblings_with_tokens(Direction::Next)
-                    .find(|it| it.kind() == T![,]);
-                if needs_comma(&last_arm) && comma.is_none() {
-                    elements.push(make::token(SyntaxKind::COMMA).into());
+                if needs_comma(&last_arm) {
+                    ted::append_child(last_arm.syntax(), make::token(SyntaxKind::COMMA));
                 }
-                Position::after(comma.unwrap_or_else(|| last_arm.syntax().clone().into()))
+                Position::after(last_arm.syntax().clone())
             }
             None => match self.l_curly_token() {
                 Some(it) => Position::after(it),
@@ -377,12 +373,12 @@ impl ast::MatchArmList {
         elements.push(make::tokens::whitespace(&format!("\n{}", indent)).into());
         elements.push(arm.syntax().clone().into());
         if needs_comma(&arm) {
-            elements.push(make::token(SyntaxKind::COMMA).into());
+            ted::append_child(arm.syntax(), make::token(SyntaxKind::COMMA));
         }
         ted::insert_all(position, elements);
 
         fn needs_comma(arm: &ast::MatchArm) -> bool {
-            arm.expr().map_or(false, |e| !e.is_block_like())
+            arm.expr().map_or(false, |e| !e.is_block_like()) && arm.comma_token().is_none()
         }
     }
 }

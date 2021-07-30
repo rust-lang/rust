@@ -21,7 +21,7 @@ SOURCE_FILE@0..58
         MATCH_ARM_LIST@24..55
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
-          MATCH_ARM@34..48
+          MATCH_ARM@34..49
             WILDCARD_PAT@34..35
               UNDERSCORE@34..35 "_"
             WHITESPACE@35..36 " "
@@ -39,7 +39,7 @@ SOURCE_FILE@0..58
             TUPLE_EXPR@46..48
               L_PAREN@46..47 "("
               R_PAREN@47..48 ")"
-          COMMA@48..49 ","
+            COMMA@48..49 ","
           WHITESPACE@49..54 "\n    "
           R_CURLY@54..55 "}"
       WHITESPACE@55..56 "\n"

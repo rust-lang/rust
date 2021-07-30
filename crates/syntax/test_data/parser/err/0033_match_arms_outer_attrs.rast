@@ -21,7 +21,7 @@ SOURCE_FILE@0..89
         MATCH_ARM_LIST@24..86
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
-          MATCH_ARM@34..41
+          MATCH_ARM@34..42
             WILDCARD_PAT@34..35
               UNDERSCORE@34..35 "_"
             WHITESPACE@35..36 " "
@@ -30,9 +30,9 @@ SOURCE_FILE@0..89
             TUPLE_EXPR@39..41
               L_PAREN@39..40 "("
               R_PAREN@40..41 ")"
-          COMMA@41..42 ","
+            COMMA@41..42 ","
           WHITESPACE@42..51 "\n        "
-          MATCH_ARM@51..58
+          MATCH_ARM@51..59
             WILDCARD_PAT@51..52
               UNDERSCORE@51..52 "_"
             WHITESPACE@52..53 " "
@@ -41,7 +41,7 @@ SOURCE_FILE@0..89
             TUPLE_EXPR@56..58
               L_PAREN@56..57 "("
               R_PAREN@57..58 ")"
-          COMMA@58..59 ","
+            COMMA@58..59 ","
           WHITESPACE@59..68 "\n        "
           MATCH_ARM@68..80
             ATTR@68..80

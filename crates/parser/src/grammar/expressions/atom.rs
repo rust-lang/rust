@@ -400,20 +400,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
             error_block(p, "expected match arm");
             continue;
         }
-
-        // test match_arms_commas
-        // fn foo() {
-        //     match () {
-        //         _ => (),
-        //         _ => {}
-        //         _ => ()
-        //     }
-        // }
-        if match_arm(p).is_block() {
-            p.eat(T![,]);
-        } else if !p.at(T!['}']) {
-            p.expect(T![,]);
-        }
+        match_arm(p);
     }
     p.expect(T!['}']);
     m.complete(p, MATCH_ARM_LIST);
@@ -429,7 +416,7 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 //         | X => (),
 //     };
 // }
-fn match_arm(p: &mut Parser) -> BlockLike {
+fn match_arm(p: &mut Parser) {
     let m = p.start();
     // test match_arms_outer_attributes
     // fn foo() {
@@ -452,8 +439,19 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     }
     p.expect(T![=>]);
     let blocklike = expr_stmt(p).1;
+
+    // test match_arms_commas
+    // fn foo() {
+    //     match () {
+    //         _ => (),
+    //         _ => {}
+    //         _ => ()
+    //     }
+    // }
+    if !p.eat(T![,]) && !blocklike.is_block() && !p.at(T!['}']) {
+        p.error("expected `,`");
+    }
     m.complete(p, MATCH_ARM);
-    blocklike
 }
 
 // test match_guard

@@ -203,18 +203,18 @@ fn main() {
         }
     };
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    match true {
-        false =>$0 {
-            println!("Test");
-        },
-        true => {
-            println!("Hello, world");
-        }
-    };
-}
+                fn main() {
+                    match true {
+                        false =>$0 {
+                            println!("Test");
+                        }
+                        true => {
+                            println!("Hello, world");
+                        },
+                    };
+                }
             "#]],
             Direction::Up,
         );
@@ -234,18 +234,18 @@ fn main() {
         }
     };
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    match true {
-        false => {
-            println!("Test");
-        },
-        true =>$0 {
-            println!("Hello, world");
-        }
-    };
-}
+                fn main() {
+                    match true {
+                        false => {
+                            println!("Test");
+                        }
+                        true =>$0 {
+                            println!("Hello, world");
+                        },
+                    };
+                }
             "#]],
             Direction::Down,
         );
@@ -265,18 +265,18 @@ fn main() {
         }
     };
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    match true {
-        true => {
-            println!("Hello, world");
-        },
-        false => {
-            println!("Test");
-        }
-    };
-}
+                fn main() {
+                    match true {
+                        true => {
+                            println!("Hello, world");
+                        },
+                        false => {
+                            println!("Test");
+                        }
+                    };
+                }
             "#]],
             Direction::Up,
         );
@@ -290,12 +290,12 @@ fn main() {
     let test = 123;
     let test2$0$0 = 456;
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    let test2$0 = 456;
-    let test = 123;
-}
+                fn main() {
+                    let test2$0 = 456;
+                    let test = 123;
+                }
             "#]],
             Direction::Up,
         );
@@ -309,12 +309,12 @@ fn main() {
     println!("Hello, world");
     println!("All I want to say is...");$0$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    println!("All I want to say is...");$0
-    println!("Hello, world");
-}
+                fn main() {
+                    println!("All I want to say is...");$0
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -327,15 +327,15 @@ fn main() {
         println!("Test");
     }$0$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    if true {
-        println!("Test");
-    }$0
+                fn main() {
+                    if true {
+                        println!("Test");
+                    }$0
 
-    println!("Hello, world");
-}
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -348,15 +348,15 @@ fn main() {
         println!("Test");
     }$0$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    for i in 0..10 {
-        println!("Test");
-    }$0
+                fn main() {
+                    for i in 0..10 {
+                        println!("Test");
+                    }$0
 
-    println!("Hello, world");
-}
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -369,15 +369,15 @@ fn main() {
         println!("Test");
     }$0$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    loop {
-        println!("Test");
-    }$0
+                fn main() {
+                    loop {
+                        println!("Test");
+                    }$0
 
-    println!("Hello, world");
-}
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -390,15 +390,15 @@ fn main() {
         println!("Test");
     }$0$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    while true {
-        println!("Test");
-    }$0
+                fn main() {
+                    while true {
+                        println!("Test");
+                    }$0
 
-    println!("Hello, world");
-}
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -409,13 +409,13 @@ fn main() {
 
     return 123;$0$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    return 123;$0
+                fn main() {
+                    return 123;$0
 
-    println!("Hello, world");
-}
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -429,12 +429,12 @@ fn main() {
     println!("All I want to say is...");$0$0
     println!("Hello, world");
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    println!("All I want to say is...");
-    println!("Hello, world");
-}
+                fn main() {
+                    println!("All I want to say is...");
+                    println!("Hello, world");
+                }
             "#]],
             Direction::Up,
         );
@@ -447,11 +447,11 @@ fn main() {
 fn main() {}
 
 fn foo() {}$0$0
-            "#,
+"#,
             expect![[r#"
-fn foo() {}$0
+                fn foo() {}$0
 
-fn main() {}
+                fn main() {}
             "#]],
             Direction::Up,
         );
@@ -466,13 +466,13 @@ struct Yay;
 trait Wow {}
 
 impl Wow for Yay $0$0{}
-            "#,
+"#,
             expect![[r#"
-struct Yay;
+                struct Yay;
 
-impl Wow for Yay $0{}
+                impl Wow for Yay $0{}
 
-trait Wow {}
+                trait Wow {}
             "#]],
             Direction::Up,
         );
@@ -484,10 +484,10 @@ trait Wow {}
             r#"
 use std::vec::Vec;
 use std::collections::HashMap$0$0;
-            "#,
+"#,
             expect![[r#"
-use std::collections::HashMap$0;
-use std::vec::Vec;
+                use std::collections::HashMap$0;
+                use std::vec::Vec;
             "#]],
             Direction::Up,
         );
@@ -505,16 +505,16 @@ fn main() {
         _ => {}
     };$0
 }
-            "#,
+"#,
             expect![[r#"
-fn main() {
-    match test {
-        456 => {},
-        _ => {}
-    };
+                fn main() {
+                    match test {
+                        456 => {},
+                        _ => {}
+                    };
 
-    let test = 123;
-}
+                    let test = 123;
+                }
             "#]],
             Direction::Up,
         );
@@ -529,22 +529,22 @@ fn test(one: i32, two$0$0: u32) {}
 fn main() {
     test(123, 456);
 }
-            "#,
+"#,
             expect![[r#"
-fn test(two$0: u32, one: i32) {}
+                fn test(two$0: u32, one: i32) {}
 
-fn main() {
-    test(123, 456);
-}
+                fn main() {
+                    test(123, 456);
+                }
             "#]],
             Direction::Up,
         );
         check(
             r#"
 fn f($0$0arg: u8, arg2: u16) {}
-            "#,
+"#,
             expect![[r#"
-fn f(arg2: u16, $0arg: u8) {}
+                fn f(arg2: u16, $0arg: u8) {}
             "#]],
             Direction::Down,
         );
@@ -559,13 +559,13 @@ fn test(one: i32, two: u32) {}
 fn main() {
     test(123, 456$0$0);
 }
-            "#,
+"#,
             expect![[r#"
-fn test(one: i32, two: u32) {}
+                fn test(one: i32, two: u32) {}
 
-fn main() {
-    test(456$0, 123);
-}
+                fn main() {
+                    test(456$0, 123);
+                }
             "#]],
             Direction::Up,
         );
@@ -580,13 +580,13 @@ fn test(one: i32, two: u32) {}
 fn main() {
     test(123$0$0, 456);
 }
-            "#,
+"#,
             expect![[r#"
-fn test(one: i32, two: u32) {}
+                fn test(one: i32, two: u32) {}
 
-fn main() {
-    test(456, 123$0);
-}
+                fn main() {
+                    test(456, 123$0);
+                }
             "#]],
             Direction::Down,
         );
@@ -601,13 +601,13 @@ fn test(one: i32, two: u32) {}
 fn main() {
     test(123$0$0, 456);
 }
-            "#,
+"#,
             expect![[r#"
-fn test(one: i32, two: u32) {}
+                fn test(one: i32, two: u32) {}
 
-fn main() {
-    test(123, 456);
-}
+                fn main() {
+                    test(123, 456);
+                }
             "#]],
             Direction::Up,
         );
@@ -620,11 +620,11 @@ fn main() {
 struct Test<A, B$0$0>(A, B);
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-struct Test<B$0, A>(A, B);
+                struct Test<B$0, A>(A, B);
 
-fn main() {}
+                fn main() {}
             "#]],
             Direction::Up,
         );
@@ -639,13 +639,13 @@ struct Test<A, B>(A, B);
 fn main() {
     let t = Test::<i32, &str$0$0>(123, "yay");
 }
-            "#,
+"#,
             expect![[r#"
-struct Test<A, B>(A, B);
+                struct Test<A, B>(A, B);
 
-fn main() {
-    let t = Test::<&str$0, i32>(123, "yay");
-}
+                fn main() {
+                    let t = Test::<&str$0, i32>(123, "yay");
+                }
             "#]],
             Direction::Up,
         );
@@ -661,14 +661,14 @@ enum Hello {
 }
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-enum Hello {
-    Two$0,
-    One
-}
+                enum Hello {
+                    Two$0,
+                    One
+                }
 
-fn main() {}
+                fn main() {}
             "#]],
             Direction::Up,
         );
@@ -685,15 +685,15 @@ trait Two {}
 fn test<T: One + Two$0$0>(t: T) {}
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-trait One {}
+                trait One {}
 
-trait Two {}
+                trait Two {}
 
-fn test<T: Two$0 + One>(t: T) {}
+                fn test<T: Two$0 + One>(t: T) {}
 
-fn main() {}
+                fn main() {}
             "#]],
             Direction::Up,
         );
@@ -722,27 +722,27 @@ impl Yay for Test {
         println!("Mmmm");
     }
 }
-            "#,
+"#,
             expect![[r#"
-struct Test;
+                struct Test;
 
-trait Yay {
-    type One;
+                trait Yay {
+                    type One;
 
-    type Two;
+                    type Two;
 
-    fn inner();
-}
+                    fn inner();
+                }
 
-impl Yay for Test {
-    type One = i32;
+                impl Yay for Test {
+                    type One = i32;
 
-    fn inner() {$0
-        println!("Mmmm");
-    }
+                    fn inner() {$0
+                        println!("Mmmm");
+                    }
 
-    type Two = u32;
-}
+                    type Two = u32;
+                }
             "#]],
             Direction::Up,
         );
@@ -761,17 +761,17 @@ fn test() {
         fn inner() {}
     }
 }
-            "#,
+"#,
             expect![[r#"
-fn test() {
-    mod hi {$0
-        fn inner() {}
-    }
+                fn test() {
+                    mod hi {$0
+                        fn inner() {}
+                    }
 
-    mod hello {
-        fn inner() {}
-    }
-}
+                    mod hello {
+                        fn inner() {}
+                    }
+                }
             "#]],
             Direction::Up,
         );
@@ -788,16 +788,16 @@ enum FooBar {
 }
 
 fn main() {}
-            "#,
-            expect![[r#"
-fn main() {}
+"#,
+            expect![[r##"
+                fn main() {}
 
-$0#[derive(Debug)]
-enum FooBar {
-    Foo,
-    Bar,
-}
-            "#]],
+                $0#[derive(Debug)]
+                enum FooBar {
+                    Foo,
+                    Bar,
+                }
+            "##]],
             Direction::Down,
         );
         check(
@@ -808,14 +808,14 @@ $0$0enum FooBar {
 }
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-fn main() {}
+                fn main() {}
 
-$0enum FooBar {
-    Foo,
-    Bar,
-}
+                $0enum FooBar {
+                    Foo,
+                    Bar,
+                }
             "#]],
             Direction::Down,
         );
@@ -828,15 +828,15 @@ trait SomeTrait {}
 $0$0impl SomeTrait for Test {}
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-struct Test;
+                struct Test;
 
-$0impl SomeTrait for Test {}
+                $0impl SomeTrait for Test {}
 
-trait SomeTrait {}
+                trait SomeTrait {}
 
-fn main() {}
+                fn main() {}
             "#]],
             Direction::Up,
         );
@@ -852,14 +852,14 @@ enum FooBar {
 }$0$0
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-fn main() {}
+                fn main() {}
 
-enum FooBar {
-    Foo,
-    Bar,
-}$0
+                enum FooBar {
+                    Foo,
+                    Bar,
+                }$0
             "#]],
             Direction::Down,
         );
@@ -872,15 +872,15 @@ trait SomeTrait {}
 impl SomeTrait for Test {}$0$0
 
 fn main() {}
-            "#,
+"#,
             expect![[r#"
-struct Test;
+                struct Test;
 
-impl SomeTrait for Test {}$0
+                impl SomeTrait for Test {}$0
 
-trait SomeTrait {}
+                trait SomeTrait {}
 
-fn main() {}
+                fn main() {}
             "#]],
             Direction::Up,
         );

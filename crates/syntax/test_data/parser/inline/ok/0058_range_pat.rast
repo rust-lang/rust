@@ -20,7 +20,7 @@ SOURCE_FILE@0..112
         MATCH_ARM_LIST@25..109
           L_CURLY@25..26 "{"
           WHITESPACE@26..35 "\n        "
-          MATCH_ARM@35..50
+          MATCH_ARM@35..51
             RANGE_PAT@35..44
               LITERAL_PAT@35..36
                 LITERAL@35..36
@@ -37,9 +37,9 @@ SOURCE_FILE@0..112
             TUPLE_EXPR@48..50
               L_PAREN@48..49 "("
               R_PAREN@49..50 ")"
-          COMMA@50..51 ","
+            COMMA@50..51 ","
           WHITESPACE@51..60 "\n        "
-          MATCH_ARM@60..77
+          MATCH_ARM@60..78
             RANGE_PAT@60..71
               LITERAL_PAT@60..63
                 LITERAL@60..63
@@ -56,9 +56,9 @@ SOURCE_FILE@0..112
             TUPLE_EXPR@75..77
               L_PAREN@75..76 "("
               R_PAREN@76..77 ")"
-          COMMA@77..78 ","
+            COMMA@77..78 ","
           WHITESPACE@78..87 "\n        "
-          MATCH_ARM@87..102
+          MATCH_ARM@87..103
             RANGE_PAT@87..97
               LITERAL_PAT@87..90
                 LITERAL@87..90
@@ -74,7 +74,7 @@ SOURCE_FILE@0..112
             TUPLE_EXPR@100..102
               L_PAREN@100..101 "("
               R_PAREN@101..102 ")"
-          COMMA@102..103 ","
+            COMMA@102..103 ","
           WHITESPACE@103..108 "\n    "
           R_CURLY@108..109 "}"
       WHITESPACE@109..110 "\n"

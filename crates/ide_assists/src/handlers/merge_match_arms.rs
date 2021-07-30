@@ -72,7 +72,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                     .join(" | ")
             };
 
-            let arm = format!("{} => {}", pats, current_expr.syntax().text());
+            let arm = format!("{} => {},", pats, current_expr.syntax().text());
 
             if let [first, .., last] = &*arms_to_merge {
                 let start = first.syntax().text_range().start();
@@ -118,7 +118,7 @@ enum X { A, B, C }
 fn main() {
     let x = X::A;
     let y = match x {
-        X::A | X::B => { 1i32 }
+        X::A | X::B => { 1i32 },
         X::C => { 2i32 }
     }
 }
@@ -183,7 +183,7 @@ fn main() {
     let x = X::A;
     let y = match x {
         X::A => { 1i32 },
-        _ => { 2i32 }
+        _ => { 2i32 },
     }
 }
 "#,

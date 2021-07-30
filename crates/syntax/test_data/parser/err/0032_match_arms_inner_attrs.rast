@@ -22,7 +22,7 @@ SOURCE_FILE@0..293
           MATCH_ARM_LIST@24..101
             L_CURLY@24..25 "{"
             WHITESPACE@25..34 "\n        "
-            MATCH_ARM@34..41
+            MATCH_ARM@34..42
               WILDCARD_PAT@34..35
                 UNDERSCORE@34..35 "_"
               WHITESPACE@35..36 " "
@@ -31,7 +31,7 @@ SOURCE_FILE@0..293
               TUPLE_EXPR@39..41
                 L_PAREN@39..40 "("
                 R_PAREN@40..41 ")"
-            COMMA@41..42 ","
+              COMMA@41..42 ","
             WHITESPACE@42..51 "\n        "
             MATCH_ARM@51..78
               ATTR@51..52
@@ -53,7 +53,7 @@ SOURCE_FILE@0..293
                     R_PAREN@76..77 ")"
                 R_BRACK@77..78 "]"
             WHITESPACE@78..87 "\n        "
-            MATCH_ARM@87..94
+            MATCH_ARM@87..95
               WILDCARD_PAT@87..88
                 UNDERSCORE@87..88 "_"
               WHITESPACE@88..89 " "
@@ -62,7 +62,7 @@ SOURCE_FILE@0..293
               TUPLE_EXPR@92..94
                 L_PAREN@92..93 "("
                 R_PAREN@93..94 ")"
-            COMMA@94..95 ","
+              COMMA@94..95 ","
             WHITESPACE@95..100 "\n    "
             R_CURLY@100..101 "}"
       WHITESPACE@101..107 "\n\n    "
@@ -77,7 +77,7 @@ SOURCE_FILE@0..293
           MATCH_ARM_LIST@116..185
             L_CURLY@116..117 "{"
             WHITESPACE@117..126 "\n        "
-            MATCH_ARM@126..133
+            MATCH_ARM@126..134
               WILDCARD_PAT@126..127
                 UNDERSCORE@126..127 "_"
               WHITESPACE@127..128 " "
@@ -86,9 +86,9 @@ SOURCE_FILE@0..293
               TUPLE_EXPR@131..133
                 L_PAREN@131..132 "("
                 R_PAREN@132..133 ")"
-            COMMA@133..134 ","
+              COMMA@133..134 ","
             WHITESPACE@134..143 "\n        "
-            MATCH_ARM@143..150
+            MATCH_ARM@143..151
               WILDCARD_PAT@143..144
                 UNDERSCORE@143..144 "_"
               WHITESPACE@144..145 " "
@@ -97,7 +97,7 @@ SOURCE_FILE@0..293
               TUPLE_EXPR@148..150
                 L_PAREN@148..149 "("
                 R_PAREN@149..150 ")"
-            COMMA@150..151 ","
+              COMMA@150..151 ","
             WHITESPACE@151..160 "\n        "
             MATCH_ARM@160..179
               ATTR@160..161
@@ -165,7 +165,7 @@ SOURCE_FILE@0..293
                   R_PAREN@248..249 ")"
               R_BRACK@249..250 "]"
           WHITESPACE@250..259 "\n        "
-          MATCH_ARM@259..266
+          MATCH_ARM@259..267
             WILDCARD_PAT@259..260
               UNDERSCORE@259..260 "_"
             WHITESPACE@260..261 " "
@@ -174,9 +174,9 @@ SOURCE_FILE@0..293
             TUPLE_EXPR@264..266
               L_PAREN@264..265 "("
               R_PAREN@265..266 ")"
-          COMMA@266..267 ","
+            COMMA@266..267 ","
           WHITESPACE@267..276 "\n        "
-          MATCH_ARM@276..283
+          MATCH_ARM@276..284
             WILDCARD_PAT@276..277
               UNDERSCORE@276..277 "_"
             WHITESPACE@277..278 " "
@@ -185,7 +185,7 @@ SOURCE_FILE@0..293
             TUPLE_EXPR@281..283
               L_PAREN@281..282 "("
               R_PAREN@282..283 ")"
-          COMMA@283..284 ","
+            COMMA@283..284 ","
           WHITESPACE@284..289 "\n    "
           R_CURLY@289..290 "}"
       WHITESPACE@290..291 "\n"
@@ -194,11 +194,11 @@ SOURCE_FILE@0..293
 error 52..52: expected `[`
 error 52..52: expected pattern
 error 53..53: expected FAT_ARROW
-error 78..78: expected COMMA
+error 78..78: expected `,`
 error 161..161: expected `[`
 error 161..161: expected pattern
 error 162..162: expected FAT_ARROW
 error 232..232: expected `[`
 error 232..232: expected pattern
 error 233..233: expected FAT_ARROW
-error 250..250: expected COMMA
+error 250..250: expected `,`

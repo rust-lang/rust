@@ -66,7 +66,7 @@ SOURCE_FILE@0..139
                 R_PAREN@111..112 ")"
             R_BRACK@112..113 "]"
           WHITESPACE@113..122 "\n        "
-          MATCH_ARM@122..129
+          MATCH_ARM@122..130
             WILDCARD_PAT@122..123
               UNDERSCORE@122..123 "_"
             WHITESPACE@123..124 " "
@@ -75,7 +75,7 @@ SOURCE_FILE@0..139
             TUPLE_EXPR@127..129
               L_PAREN@127..128 "("
               R_PAREN@128..129 ")"
-          COMMA@129..130 ","
+            COMMA@129..130 ","
           WHITESPACE@130..135 "\n    "
           R_CURLY@135..136 "}"
       WHITESPACE@136..137 "\n"
