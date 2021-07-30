@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/issue-74280.rs:8:13
+   |
+LL |     let y = || -> Test { () };
+   |             ^^^^^^^^^^^^^^^^^ expected `i32`, got `()`
+   |
+note: previous use here
+  --> $DIR/issue-74280.rs:7:1
+   |
+LL | fn test() -> Test {
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
