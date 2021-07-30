@@ -5,6 +5,11 @@ use crate::fmt;
 use super::from_u32_unchecked;
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
+///
+/// This `struct` is created by the [`decode_utf16`] method on [`char`]. See its
+/// documentation for more.
+///
+/// [`decode_utf16`]: char::decode_utf16
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 #[derive(Clone, Debug)]
 pub struct DecodeUtf16<I>
@@ -16,6 +21,8 @@ where
 }
 
 /// An error that can be returned when decoding UTF-16 code points.
+///
+/// This `struct` is created when using the [`DecodeUtf16`] type.
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DecodeUtf16Error {
