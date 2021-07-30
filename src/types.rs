@@ -141,7 +141,7 @@ pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
-    Binding(&'a ast::AssocTyConstraint),
+    Binding(&'a ast::AssocConstraint),
 }
 
 impl<'a> SegmentParam<'a> {
@@ -176,9 +176,9 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
-impl Rewrite for ast::AssocTyConstraint {
+impl Rewrite for ast::AssocConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        use ast::AssocTyConstraintKind::{Bound, Equality};
+        use ast::AssocConstraintKind::{Bound, Equality, ConstEquality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
@@ -192,8 +192,8 @@ impl Rewrite for ast::AssocTyConstraint {
 
         let infix = match (&self.kind, context.config.type_punctuation_density()) {
             (Bound { .. }, _) => ": ",
-            (Equality { .. }, TypeDensity::Wide) => " = ",
-            (Equality { .. }, TypeDensity::Compressed) => "=",
+            (ConstEquality { .. } | Equality { .. }, TypeDensity::Wide) => " = ",
+            (ConstEquality { .. } | Equality { .. }, TypeDensity::Compressed) => "=",
         };
         result.push_str(infix);
 
@@ -206,11 +206,12 @@ impl Rewrite for ast::AssocTyConstraint {
     }
 }
 
-impl Rewrite for ast::AssocTyConstraintKind {
+impl Rewrite for ast::AssocConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::AssocTyConstraintKind::Equality { ty } => ty.rewrite(context, shape),
-            ast::AssocTyConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
+            ast::AssocConstraintKind::Equality { ty } => ty.rewrite(context, shape),
+            ast::AssocConstraintKind::ConstEquality { c } => c.rewrite(context, shape),
+            ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
 }
