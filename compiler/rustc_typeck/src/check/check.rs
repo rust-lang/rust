@@ -94,8 +94,12 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
 
-    let revealed_ret_ty =
-        fcx.instantiate_opaque_types_from_value(declared_ret_ty, decl.output.span());
+    let revealed_ret_ty = fcx.inh.register_infer_ok_obligations(fcx.instantiate_opaque_types(
+        body.value.hir_id,
+        param_env,
+        declared_ret_ty,
+        decl.output.span(),
+    ));
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());

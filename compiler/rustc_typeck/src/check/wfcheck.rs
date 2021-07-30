@@ -11,6 +11,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
+use rustc_infer::infer::opaque_types::may_define_opaque_type;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -20,7 +21,6 @@ use rustc_middle::ty::{
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-use rustc_trait_selection::opaque_types::may_define_opaque_type;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 

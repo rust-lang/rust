@@ -35,7 +35,6 @@ use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
@@ -357,23 +356,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bounds, substs, result, spans,
         );
         (result, spans)
-    }
-
-    /// Replaces the opaque types from the given value with type variables,
-    /// and records the `OpaqueTypeMap` for later use during writeback. See
-    /// `InferCtxt::instantiate_opaque_types` for more details.
-    #[instrument(skip(self, value_span), level = "debug")]
-    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
-        &self,
-        value: T,
-        value_span: Span,
-    ) -> T {
-        self.register_infer_ok_obligations(self.instantiate_opaque_types(
-            self.body_id,
-            self.param_env,
-            value,
-            value_span,
-        ))
     }
 
     /// Convenience method which tracks extra diagnostic information for normalization
@@ -725,6 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
+        // TODO self.register_obligations_for_opaque_types();
         let result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if let Err(mut errors) = result {
             mutate_fulfillment_errors(&mut errors);
