@@ -2796,6 +2796,7 @@ Released 2018-09-13
 [`missing_safety_doc`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 [`mistyped_literal_suffixes`]: https://rust-lang.github.io/rust-clippy/master/index.html#mistyped_literal_suffixes
 [`mixed_case_hex_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#mixed_case_hex_literals
+[`mod_module_files`]: https://rust-lang.github.io/rust-clippy/master/index.html#mod_module_files
 [`module_inception`]: https://rust-lang.github.io/rust-clippy/master/index.html#module_inception
 [`module_name_repetitions`]: https://rust-lang.github.io/rust-clippy/master/index.html#module_name_repetitions
 [`modulo_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#modulo_arithmetic
@@ -2904,6 +2905,7 @@ Released 2018-09-13
 [`search_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#search_is_some
 [`self_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_assignment
 [`self_named_constructors`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_named_constructors
+[`self_named_module_files`]: https://rust-lang.github.io/rust-clippy/master/index.html#self_named_module_files
 [`semicolon_if_nothing_returned`]: https://rust-lang.github.io/rust-clippy/master/index.html#semicolon_if_nothing_returned
 [`serde_api_misuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#serde_api_misuse
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse

@@ -1,0 +1,19 @@
+error: `mod.rs` files are required, found `/bad/inner.rs`
+  --> $DIR/bad/inner.rs:1:1
+   |
+LL | pub mod stuff;
+   | ^
+   |
+   = note: `-D clippy::self-named-module-files` implied by `-D warnings`
+   = help: move `/bad/inner.rs` to `/bad/inner/mod.rs`
+
+error: `mod.rs` files are required, found `/bad/inner/stuff.rs`
+  --> $DIR/bad/inner/stuff.rs:1:1
+   |
+LL | pub mod most;
+   | ^
+   |
+   = help: move `/bad/inner/stuff.rs` to `/bad/inner/stuff/mod.rs`
+
+error: aborting due to 2 previous errors
+

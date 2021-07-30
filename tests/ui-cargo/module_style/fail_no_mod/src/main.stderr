@@ -1,0 +1,11 @@
+error: `mod.rs` files are not allowed, found `/bad/mod.rs`
+  --> $DIR/bad/mod.rs:1:1
+   |
+LL | pub struct Thing;
+   | ^
+   |
+   = note: `-D clippy::mod-module-files` implied by `-D warnings`
+   = help: move `/bad/mod.rs` to `/bad.rs`
+
+error: aborting due to previous error
+
