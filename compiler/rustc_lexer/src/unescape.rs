@@ -60,6 +60,9 @@ pub enum EscapeError {
     /// After a line ending with '\', the next line contains whitespace
     /// characters that are not skipped.
     UnskippedWhitespaceWarning,
+
+    /// After a line ending with '\', multiple lines are skipped.
+    MultipleSkippedLinesWarning,
 }
 
 impl EscapeError {
@@ -67,6 +70,7 @@ impl EscapeError {
     pub fn is_fatal(&self) -> bool {
         match self {
             EscapeError::UnskippedWhitespaceWarning => false,
+            EscapeError::MultipleSkippedLinesWarning => false,
             _ => true,
         }
     }
@@ -320,6 +324,11 @@ where
             .bytes()
             .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
             .unwrap_or(str.len());
+        if str[1..first_non_space].contains('\n') {
+            // The +1 accounts for the escaping slash.
+            let end = start + first_non_space + 1;
+            callback(start..end, Err(EscapeError::MultipleSkippedLinesWarning));
+        }
         let tail = &str[first_non_space..];
         if let Some(c) = tail.chars().nth(0) {
             // For error reporting, we would like the span to contain the character that was not
