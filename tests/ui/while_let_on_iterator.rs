@@ -357,6 +357,15 @@ fn issue7510() {
     println!("{}", it.0.next().unwrap());
 }
 
+fn exact_match_with_single_field() {
+    struct S<T>(T);
+    let mut s = S(0..10);
+    // Don't lint. `s.0` is used inside the loop.
+    while let Some(_) = s.0.next() {
+        let _ = &mut s.0;
+    }
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {

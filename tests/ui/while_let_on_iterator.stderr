@@ -123,7 +123,7 @@ LL |     while let Some(x) = it.0.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut *it.0`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:362:5
+  --> $DIR/while_let_on_iterator.rs:371:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`

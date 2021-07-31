@@ -146,7 +146,7 @@ fn is_expr_same_child_or_parent_field(cx: &LateContext<'_>, expr: &Expr<'_>, fie
     match expr.kind {
         ExprKind::Field(base, name) => {
             if let Some((head_field, tail_fields)) = fields.split_first() {
-                if name.name == *head_field && is_expr_same_field(cx, base, fields, path_res) {
+                if name.name == *head_field && is_expr_same_field(cx, base, tail_fields, path_res) {
                     return true;
                 }
                 // Check if the expression is a parent field
