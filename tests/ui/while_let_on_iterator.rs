@@ -334,6 +334,29 @@ fn issue7249() {
     x();
 }
 
+fn issue7510() {
+    let mut it = 0..10;
+    let it = &mut it;
+    // Needs to reborrow `it` as the binding isn't mutable
+    while let Some(x) = it.next() {
+        if x % 2 == 0 {
+            break;
+        }
+    }
+    println!("{}", it.next().unwrap());
+
+    struct S<T>(T);
+    let mut it = 0..10;
+    let it = S(&mut it);
+    // Needs to reborrow `it.0` as the binding isn't mutable
+    while let Some(x) = it.0.next() {
+        if x % 2 == 0 {
+            break;
+        }
+    }
+    println!("{}", it.0.next().unwrap());
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {
