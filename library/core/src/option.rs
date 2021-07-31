@@ -1408,6 +1408,8 @@ impl<T, U> Option<(T, U)> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(unzip_option)]
+    ///
     /// let x = Some((1, "hi"));
     /// let y = None::<(u8, u32)>;
     ///
