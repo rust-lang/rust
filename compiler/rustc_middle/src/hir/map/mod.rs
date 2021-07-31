@@ -266,7 +266,6 @@ impl<'hir> Map<'hir> {
                 ExprKind::Closure(.., Some(_)) => DefKind::Generator,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
-            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             Node::GenericParam(param) => match param.kind {
                 GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
                 GenericParamKind::Type { .. } => DefKind::TyParam,
@@ -636,8 +635,6 @@ impl<'hir> Map<'hir> {
     /// in a module, trait, or impl.
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
         if let Some((hir_id, _node)) = self.parent_owner_iter(hir_id).next() {
-            // A MacroDef does not have children.
-            debug_assert!(!matches!(_node, OwnerNode::MacroDef(_)));
             hir_id
         } else {
             CRATE_HIR_ID
@@ -765,13 +762,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_macro_def(&self, id: HirId) -> &'hir MacroDef<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
-            Some(Owner { node: OwnerNode::MacroDef(macro_def) }) => macro_def,
-            _ => bug!("expected macro def, found {}", self.node_to_string(id)),
-        }
-    }
-
     pub fn expect_expr(&self, id: HirId) -> &'hir Expr<'hir> {
         match self.find(id) {
             Some(Node::Expr(expr)) => expr,
@@ -791,7 +781,6 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
             Node::Ctor(..) => self.name(self.get_parent_item(id)),
-            Node::MacroDef(md) => md.ident.name,
             _ => return None,
         })
     }
@@ -858,7 +847,6 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
-            Node::MacroDef(macro_def) => macro_def.span,
             Node::Crate(item) => item.inner,
         };
         Some(span)
@@ -1109,7 +1097,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         Some(Node::Lifetime(_)) => node_str("lifetime"),
         Some(Node::GenericParam(ref param)) => format!("generic_param {:?}{}", param, id_str),
         Some(Node::Visibility(ref vis)) => format!("visibility {:?}{}", vis, id_str),
-        Some(Node::MacroDef(_)) => format!("macro {}{}", path_str(), id_str),
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
