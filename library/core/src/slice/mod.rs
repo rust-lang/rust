@@ -99,6 +99,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
     #[inline]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_union))]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     pub const fn len(&self) -> usize {
         // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
