@@ -73,8 +73,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
-        let generator_types =
-            check_fn(self, self.param_env, liberated_sig, decl, expr.hir_id, body, gen).1;
+        let return_type_pre_known = !liberated_sig.output().is_ty_infer();
+
+        let generator_types = check_fn(
+            self,
+            self.param_env,
+            liberated_sig,
+            decl,
+            expr.hir_id,
+            body,
+            gen,
+            return_type_pre_known,
+        )
+        .1;
 
         let parent_substs = InternalSubsts::identity_for_item(
             self.tcx,

@@ -78,6 +78,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     fn_id: hir::HirId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
+    return_type_pre_known: bool,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     let mut fn_sig = fn_sig;
 
@@ -87,6 +88,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
     fcx.ps.set(UnsafetyState::function(fn_sig.unsafety, fn_id));
+    fcx.return_type_pre_known = return_type_pre_known;
 
     let tcx = fcx.tcx;
     let sess = tcx.sess;

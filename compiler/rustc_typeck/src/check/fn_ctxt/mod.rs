@@ -111,6 +111,12 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'a, 'tcx>,
+
+    /// True if the function or closure's return type is known before
+    /// entering the function/closure, i.e. if the return type is
+    /// either given explicitly or inferred from, say, an `Fn*` trait
+    /// bound. Used for diagnostic purposes only.
+    pub(super) return_type_pre_known: bool,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -137,6 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             inh,
+            return_type_pre_known: true,
         }
     }
 
