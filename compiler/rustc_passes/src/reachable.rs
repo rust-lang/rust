@@ -263,6 +263,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Use(..)
                     | hir::ItemKind::OpaqueTy(..)
                     | hir::ItemKind::TyAlias(..)
+                    | hir::ItemKind::Macro(..)
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }

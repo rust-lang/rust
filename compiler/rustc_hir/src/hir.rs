@@ -670,9 +670,6 @@ pub struct ModuleItems {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    // Attributes from non-exported macros, kept only for collecting the library feature list.
-    pub non_exported_macro_attrs: &'hir [Attribute],
-
     pub owners: IndexVec<LocalDefId, Option<OwnerNode<'hir>>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
@@ -767,32 +764,6 @@ impl Crate<'_> {
             Some(OwnerNode::Item(item)) => Some(*item),
             _ => None,
         })
-    }
-
-    pub fn exported_macros<'hir>(&'hir self) -> impl Iterator<Item = &'hir MacroDef<'hir>> + 'hir {
-        self.owners.iter().filter_map(|owner| match owner {
-            Some(OwnerNode::MacroDef(macro_def)) => Some(*macro_def),
-            _ => None,
-        })
-    }
-}
-
-/// A macro definition, in this crate or imported from another.
-///
-/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
-#[derive(Debug)]
-pub struct MacroDef<'hir> {
-    pub ident: Ident,
-    pub vis: Visibility<'hir>,
-    pub def_id: LocalDefId,
-    pub span: Span,
-    pub ast: ast::MacroDef,
-}
-
-impl MacroDef<'_> {
-    #[inline]
-    pub fn hir_id(&self) -> HirId {
-        HirId::make_owner(self.def_id)
     }
 }
 
@@ -2602,7 +2573,7 @@ pub struct PolyTraitRef<'hir> {
 
 pub type Visibility<'hir> = Spanned<VisibilityKind<'hir>>;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum VisibilityKind<'hir> {
     Public,
     Crate(CrateSugar),
@@ -2791,6 +2762,8 @@ pub enum ItemKind<'hir> {
     Const(&'hir Ty<'hir>, BodyId),
     /// A function declaration.
     Fn(FnSig<'hir>, Generics<'hir>, BodyId),
+    /// A MBE macro definition (`macro_rules!` or `macro`).
+    Macro(ast::MacroDef),
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
@@ -2856,6 +2829,7 @@ impl ItemKind<'_> {
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
+            ItemKind::Macro(..) => "macro",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
             ItemKind::GlobalAsm(..) => "global asm item",

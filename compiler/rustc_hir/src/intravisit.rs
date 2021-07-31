@@ -466,9 +466,6 @@ pub trait Visitor<'v>: Sized {
         walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, _id: HirId, _attr: &'v Attribute) {}
-    fn visit_macro_def(&mut self, macro_def: &'v MacroDef<'v>) {
-        walk_macro_def(self, macro_def)
-    }
     fn visit_vis(&mut self, vis: &'v Visibility<'v>) {
         walk_vis(self, vis)
     }
@@ -484,17 +481,11 @@ pub trait Visitor<'v>: Sized {
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     let top_mod = krate.module();
     visitor.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
-    walk_list!(visitor, visit_macro_def, krate.exported_macros());
     for (&id, attrs) in krate.attrs.iter() {
         for a in *attrs {
             visitor.visit_attribute(id, a)
         }
     }
-}
-
-pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef<'v>) {
-    visitor.visit_id(macro_def.hir_id());
-    visitor.visit_ident(macro_def.ident);
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>, mod_hir_id: HirId) {
@@ -586,6 +577,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             item.span,
             item.hir_id(),
         ),
+        ItemKind::Macro(_) => {
+            visitor.visit_id(item.hir_id());
+        }
         ItemKind::Mod(ref module) => {
             // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_mod(module, item.span, item.hir_id())

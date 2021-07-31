@@ -578,6 +578,33 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
+    fn print_mac_def(
+        &mut self,
+        macro_def: &ast::MacroDef,
+        ident: &Ident,
+        sp: &Span,
+        print_visibility: impl FnOnce(&mut Self),
+    ) {
+        let (kw, has_bang) = if macro_def.macro_rules {
+            ("macro_rules", true)
+        } else {
+            print_visibility(self);
+            ("macro", false)
+        };
+        self.print_mac_common(
+            Some(MacHeader::Keyword(kw)),
+            has_bang,
+            Some(*ident),
+            macro_def.body.delim(),
+            &macro_def.body.inner_tokens(),
+            true,
+            *sp,
+        );
+        if macro_def.body.need_semicolon() {
+            self.word(";");
+        }
+    }
+
     fn print_path(&mut self, path: &ast::Path, colons_before_params: bool, depth: usize) {
         self.maybe_print_comment(path.span.lo());
 
@@ -1305,24 +1332,9 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                let (kw, has_bang) = if macro_def.macro_rules {
-                    ("macro_rules", true)
-                } else {
-                    self.print_visibility(&item.vis);
-                    ("macro", false)
-                };
-                self.print_mac_common(
-                    Some(MacHeader::Keyword(kw)),
-                    has_bang,
-                    Some(item.ident),
-                    macro_def.body.delim(),
-                    &macro_def.body.inner_tokens(),
-                    true,
-                    item.span,
-                );
-                if macro_def.body.need_semicolon() {
-                    self.word(";");
-                }
+                self.print_mac_def(macro_def, &item.ident, &item.span, |state| {
+                    state.print_visibility(&item.vis)
+                });
             }
         }
         self.ann.post(self, AnnNode::Item(item))

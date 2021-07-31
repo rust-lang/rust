@@ -642,6 +642,11 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
+            hir::ItemKind::Macro(ref macro_def) => {
+                self.print_mac_def(macro_def, &item.ident, &item.span, |state| {
+                    state.print_visibility(&item.vis)
+                });
+            }
             hir::ItemKind::Mod(ref _mod) => {
                 self.head(visibility_qualified(&item.vis, "mod"));
                 self.print_ident(item.ident);

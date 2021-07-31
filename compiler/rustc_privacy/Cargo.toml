@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 rustc_middle = { path = "../rustc_middle" }
+rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }

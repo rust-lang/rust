@@ -1,8 +1,8 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 use crate::hir::{
-    BodyId, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item, ItemId, MacroDef, Mod,
-    TraitItem, TraitItemId, Ty, VisibilityKind,
+    BodyId, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item, ItemId, Mod, TraitItem,
+    TraitItemId, Ty, VisibilityKind,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 use rustc_span::def_id::DefPathHash;
@@ -185,19 +185,6 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
-            vis.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-        });
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for MacroDef<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let MacroDef { ident, def_id: _, ref ast, ref vis, span } = *self;
-
-        hcx.hash_hir_item_like(|hcx| {
-            ident.name.hash_stable(hcx, hasher);
-            ast.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         });

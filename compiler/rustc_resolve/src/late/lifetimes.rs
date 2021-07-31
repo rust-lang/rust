@@ -740,6 +740,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
             hir::ItemKind::ExternCrate(_)
             | hir::ItemKind::Use(..)
+            | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..) => {

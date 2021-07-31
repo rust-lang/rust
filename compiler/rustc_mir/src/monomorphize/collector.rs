@@ -1149,6 +1149,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
         match item.kind {
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)
+            | hir::ItemKind::Macro(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Trait(..)

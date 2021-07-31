@@ -10,7 +10,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
@@ -218,6 +217,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
                 ItemKind::Fn(..) => DefKind::Fn,
+                ItemKind::Macro(..) => DefKind::Macro(MacroKind::Bang),
                 ItemKind::Mod(..) => DefKind::Mod,
                 ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
                 ItemKind::TyAlias(..) => DefKind::TyAlias,
@@ -540,15 +540,6 @@ impl<'hir> Map<'hir> {
 
         for id in &module.foreign_items {
             visitor.visit_foreign_item(self.foreign_item(*id));
-        }
-    }
-
-    pub fn visit_exported_macros_in_krate<V>(&self, visitor: &mut V)
-    where
-        V: Visitor<'hir>,
-    {
-        for macro_def in self.krate().exported_macros() {
-            visitor.visit_macro_def(macro_def);
         }
     }
 
@@ -1013,7 +1004,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.untracked_crate.non_exported_macro_attrs.hash_stable(&mut hcx, &mut stable_hasher);
 
     let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
@@ -1062,6 +1052,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
                 ItemKind::Static(..) => "static",
                 ItemKind::Const(..) => "const",
                 ItemKind::Fn(..) => "fn",
+                ItemKind::Macro(..) => "macro",
                 ItemKind::Mod(..) => "mod",
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",

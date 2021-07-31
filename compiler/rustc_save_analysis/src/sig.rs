@@ -416,6 +416,14 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
+            hir::ItemKind::Macro(_) => {
+                let mut text = "macro".to_owned();
+                let name = self.ident.to_string();
+                text.push_str(&name);
+                text.push_str(&"! {}");
+
+                Ok(text_sig(text))
+            }
             hir::ItemKind::Mod(ref _mod) => {
                 let mut text = "mod ".to_owned();
                 let name = self.ident.to_string();
