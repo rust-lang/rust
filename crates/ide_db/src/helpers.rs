@@ -271,7 +271,20 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
             ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_) => cb(expr),
         },
         ast::Expr::IfExpr(if_) => {
-            if_.blocks().for_each(|block| for_each_tail_expr(&ast::Expr::BlockExpr(block), cb))
+            let mut if_ = if_.clone();
+            loop {
+                if let Some(block) = if_.then_branch() {
+                    for_each_tail_expr(&ast::Expr::BlockExpr(block), cb);
+                }
+                match if_.else_branch() {
+                    Some(ast::ElseBranch::IfExpr(it)) => if_ = it,
+                    Some(ast::ElseBranch::Block(block)) => {
+                        for_each_tail_expr(&ast::Expr::BlockExpr(block), cb);
+                        break;
+                    }
+                    None => break,
+                }
+            }
         }
         ast::Expr::LoopExpr(l) => {
             for_each_break_expr(l.label(), l.loop_body(), &mut |b| cb(&ast::Expr::BreakExpr(b)))

@@ -7,6 +7,7 @@
 
 mod deconstruct_pat;
 mod pat_util;
+
 pub(crate) mod usefulness;
 
 use hir_def::{body::Body, EnumVariantId, LocalFieldId, VariantId};

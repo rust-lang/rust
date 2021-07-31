@@ -624,11 +624,7 @@ impl<'a> CompletionContext<'a> {
     fn classify_name(&mut self, name: ast::Name) {
         if let Some(bind_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
             self.is_pat_or_const = Some(PatternRefutability::Refutable);
-            // if any of these is here our bind pat can't be a const pat anymore
-            let complex_ident_pat = bind_pat.at_token().is_some()
-                || bind_pat.ref_token().is_some()
-                || bind_pat.mut_token().is_some();
-            if complex_ident_pat {
+            if !bind_pat.is_simple_ident() {
                 self.is_pat_or_const = None;
             } else {
                 let irrefutable_pat = bind_pat.syntax().ancestors().find_map(|node| {

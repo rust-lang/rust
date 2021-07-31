@@ -9,6 +9,8 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
+use crate::Type;
+
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
         pub enum AnyDiagnostic {$(
@@ -142,6 +144,7 @@ pub struct MissingOkOrSomeInTailExpr {
     pub expr: InFile<AstPtr<ast::Expr>>,
     // `Some` or `Ok` depending on whether the return type is Result or Option
     pub required: String,
+    pub expected: Type,
 }
 
 #[derive(Debug)]

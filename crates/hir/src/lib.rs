@@ -1216,7 +1216,14 @@ impl Function {
                 }
                 BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr, required } => {
                     match source_map.expr_syntax(expr) {
-                        Ok(expr) => acc.push(MissingOkOrSomeInTailExpr { expr, required }.into()),
+                        Ok(expr) => acc.push(
+                            MissingOkOrSomeInTailExpr {
+                                expr,
+                                required,
+                                expected: self.ret_type(db),
+                            }
+                            .into(),
+                        ),
                         Err(SyntheticSyntax) => (),
                     }
                 }
