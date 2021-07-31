@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
-use syntax::ast::Fn;
+use syntax::ast;
 
 use crate::{
     item::{CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance, ImportEdit},
@@ -40,7 +40,7 @@ struct FunctionRender<'a> {
     name: String,
     receiver: Option<hir::Name>,
     func: hir::Function,
-    ast_node: Fn,
+    ast_node: ast::Fn,
     is_method: bool,
 }
 
