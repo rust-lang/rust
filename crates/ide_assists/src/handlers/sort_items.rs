@@ -285,7 +285,11 @@ $0enum Bar {
             sort_items,
             r#"
 $0trait Bar {
-    fn a() {}
+    fn a() {
+
+    }
+
+    // comment for c
     fn c() {}
     fn z() {}
     fn b() {}
@@ -293,8 +297,12 @@ $0trait Bar {
         "#,
             r#"
 trait Bar {
-    fn a() {}
+    fn a() {
+
+    }
+
     fn b() {}
+    // comment for c
     fn c() {}
     fn z() {}
 }
@@ -311,6 +319,9 @@ struct Bar;
 $0impl Bar {
     fn c() {}
     fn a() {}
+    /// long
+    /// doc
+    /// comment
     fn z() {}
     fn d() {}
 }
@@ -321,6 +332,9 @@ impl Bar {
     fn a() {}
     fn c() {}
     fn d() {}
+    /// long
+    /// doc
+    /// comment
     fn z() {}
 }
         "#,
