@@ -110,6 +110,7 @@ mod handlers {
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
     mod split_import;
+    mod sort_items;
     mod toggle_ignore;
     mod unmerge_use;
     mod unwrap_block;
@@ -181,6 +182,7 @@ mod handlers {
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
+            sort_items::sort_items,
             split_import::split_import,
             toggle_ignore::toggle_ignore,
             unmerge_use::unmerge_use,
