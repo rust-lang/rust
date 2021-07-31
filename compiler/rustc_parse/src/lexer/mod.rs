@@ -505,7 +505,8 @@ impl<'a> StringReader<'a> {
     // identifier tokens.
     fn report_unknown_prefix(&self, start: BytePos) {
         let prefix_span = self.mk_sp(start, self.pos);
-        let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
+        let prefix_str = self.str_from_to(start, self.pos);
+        let msg = format!("prefix `{}` is unknown", prefix_str);
 
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
@@ -513,12 +514,19 @@ impl<'a> StringReader<'a> {
             // In Rust 2021, this is a hard error.
             let mut err = self.sess.span_diagnostic.struct_span_err(prefix_span, &msg);
             err.span_label(prefix_span, "unknown prefix");
-            if expn_data.is_root() {
+            if prefix_str == "rb" {
+                err.span_suggestion_verbose(
+                    prefix_span,
+                    "use `br` for a raw byte string",
+                    "br".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if expn_data.is_root() {
                 err.span_suggestion_verbose(
                     prefix_span.shrink_to_hi(),
                     "consider inserting whitespace here",
                     " ".into(),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             }
             err.note("prefixed identifiers and literals are reserved since Rust 2021");
