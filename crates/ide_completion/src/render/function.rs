@@ -40,6 +40,20 @@ struct FunctionRender<'a> {
     name: String,
     receiver: Option<hir::Name>,
     func: hir::Function,
+    /// NB: having `ast::Fn` here might or might not be a good idea. The problem
+    /// with it is that, to get an `ast::`, you want to parse the corresponding
+    /// source file. So, when flyimport completions suggest a bunch of
+    /// functions, we spend quite some time parsing many files.
+    ///
+    /// We need ast because we want to access parameter names (patterns). We can
+    /// add them to the hir of the function itself, but parameter names are not
+    /// something hir cares otherwise.
+    ///
+    /// Alternatively we can reconstruct params from the function body, but that
+    /// would require parsing anyway.
+    ///
+    /// It seems that just using `ast` is the best choice -- most of parses
+    /// should be cached anyway.
     ast_node: ast::Fn,
     is_method: bool,
 }
