@@ -2,7 +2,7 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
-    env,
+    env, fmt,
     io::{stderr, Write},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -278,9 +278,9 @@ fn print(
     let detail = tree[curr].detail.as_ref().map(|it| format!(" @ {}", it)).unwrap_or_default();
     writeln!(
         out,
-        "{}{:5}ms - {}{}",
+        "{}{} - {}{}",
         current_indent,
-        tree[curr].duration.as_millis(),
+        ms(tree[curr].duration),
         tree[curr].label,
         detail,
     )
@@ -302,14 +302,25 @@ fn print(
     }
 
     for (child_msg, (duration, count)) in short_children.iter() {
-        let millis = duration.as_millis();
-        writeln!(out, "    {}{:5}ms - {} ({} calls)", current_indent, millis, child_msg, count)
+        writeln!(out, "    {}{} - {} ({} calls)", current_indent, ms(*duration), child_msg, count)
             .expect("printing profiling info");
     }
 
     let unaccounted = tree[curr].duration - accounted_for;
     if tree.children(curr).next().is_some() && unaccounted > longer_than {
-        writeln!(out, "    {}{:5}ms - ???", current_indent, unaccounted.as_millis())
+        writeln!(out, "    {}{} - ???", current_indent, ms(unaccounted))
             .expect("printing profiling info");
+    }
+}
+
+#[allow(non_camel_case_types)]
+struct ms(Duration);
+
+impl fmt::Display for ms {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0.as_millis() {
+            0 => f.write_str("    0  "),
+            n => write!(f, "{:5}ms", n),
+        }
     }
 }
