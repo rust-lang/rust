@@ -24,10 +24,12 @@ error: non-ASCII character in byte constant
   --> $DIR/byte-string-literals.rs:6:7
    |
 LL |     b"é";
-   |       ^
-   |       |
-   |       byte constant must be ASCII
-   |       help: use a \xHH escape for a non-ASCII byte: `\xE9`
+   |       ^ byte constant must be ASCII
+   |
+help: if you meant to use the unicode code point for 'é', use a \xHH escape
+   |
+LL |     b"\xE9";
+   |       ^^^^
 
 error: raw byte string must be ASCII
   --> $DIR/byte-string-literals.rs:7:10
