@@ -47,6 +47,12 @@ crate static CLIPBOARD_SVG: &[u8] = include_bytes!("static/images/clipboard.svg"
 /// The file contents of `down-arrow.svg`, the icon used for the crate choice combobox.
 crate static DOWN_ARROW_SVG: &[u8] = include_bytes!("static/images/down-arrow.svg");
 
+/// The file contents of `toggle-minus.svg`, the icon used for opened toggles.
+crate static TOGGLE_MINUS_PNG: &[u8] = include_bytes!("static/images/toggle-minus.svg");
+
+/// The file contents of `toggle-plus.svg`, the icon used for closed toggles.
+crate static TOGGLE_PLUS_PNG: &[u8] = include_bytes!("static/images/toggle-plus.svg");
+
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.
 crate static COPYRIGHT: &[u8] = include_bytes!("static/COPYRIGHT.txt");
@@ -63,10 +69,6 @@ crate static RUST_LOGO: &[u8] = include_bytes!("static/images/rust-logo.png");
 crate static RUST_FAVICON_SVG: &[u8] = include_bytes!("static/images/favicon.svg");
 crate static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/images/favicon-16x16.png");
 crate static RUST_FAVICON_PNG_32: &[u8] = include_bytes!("static/images/favicon-32x32.png");
-
-/// The pixel art buttons
-crate static MINUS_PNG_DATAURL: &str = include_str!("static/images/minus-17x17.png.url");
-crate static PLUS_PNG_DATAURL: &str = include_str!("static/images/plus-17x17.png.url");
 
 crate static PAGE: &str = include_str!("templates/page.html");
 

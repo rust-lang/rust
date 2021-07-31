@@ -1512,7 +1512,8 @@ details.rustdoc-toggle > summary::before {
 	cursor: pointer;
 	width: 17px;
 	height: max(17px, 1.1em);
-	background: data-url(plus-17x17.png) no-repeat top left;
+	background-repeat: no-repeat;
+	background-position: top left;
 	display: inline-block;
 	vertical-align: middle;
 	opacity: .5;
@@ -1531,10 +1532,6 @@ details.rustdoc-toggle > summary::after {
 details.rustdoc-toggle > summary.hideme::after {
 	/* "hideme" toggles already have a description when they're contracted */
 	content: "";
-}
-
-details.rustdoc-toggle > summary:focus::before {
-	outline: dotted 1px;
 }
 
 details.rustdoc-toggle > summary:focus::before,
@@ -1591,7 +1588,8 @@ details.rustdoc-toggle[open] > summary::before,
 details.rustdoc-toggle[open] > summary.hideme::before {
 	width: 17px;
 	height: max(17px, 1.1em);
-	background: data-url(minus-17x17.png) no-repeat top left;
+	background-repeat: no-repeat;
+	background-position: top left;
 	display: inline-block;
 	content: "";
 }
@@ -1604,16 +1602,13 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 details.undocumented > summary::before {
 	padding-left: 17px;
 	height: max(17px, 1.1em);
-	background: data-url(plus-17x17.png) no-repeat top left;
+	background-repeat: no-repeat;
+	background-position: top left;
 	content: "Show hidden undocumented items";
 	cursor: pointer;
 	font-size: 16px;
 	font-weight: 300;
 	opacity: .5;
-}
-
-details.undocumented > summary:focus::before {
-	outline: dotted 1px;
 }
 
 details.undocumented > summary:focus::before,
@@ -1624,7 +1619,8 @@ details.undocumented > summary:hover::before {
 details.undocumented[open] > summary::before {
 	padding-left: 17px;
 	height: max(17px, 1.1em);
-	background: data-url(minus-17x17.png) no-repeat top left;
+	background-repeat: no-repeat
+	background-position: top left;
 	content: "Hide undocumented items";
 }
 
