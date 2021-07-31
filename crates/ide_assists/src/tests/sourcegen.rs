@@ -17,9 +17,10 @@ use super::check_doc_test;
         .to_string();
         for assist in assists.iter() {
             for (idx, section) in assist.sections.iter().enumerate() {
-                let id = if idx == 0 { assist.id.clone() } else { format!("{}_{}", &assist.id, idx)};
+                let test_id =
+                    if idx == 0 { assist.id.clone() } else { format!("{}_{}", &assist.id, idx) };
                 let test = format!(
-                r######"
+                    r######"
 #[test]
 fn doctest_{}() {{
     check_doc_test(
@@ -29,13 +30,13 @@ r#####"
 {}"#####)
 }}
 "######,
-                    &id,
-                    &id,
+                    &test_id,
+                    &assist.id,
                     reveal_hash_comments(&section.before),
                     reveal_hash_comments(&section.after)
                 );
-    
-                buf.push_str(&test)    
+
+                buf.push_str(&test)
             }
         }
         let buf = sourcegen::add_preamble("sourcegen_assists_docs", sourcegen::reformat(buf));
@@ -58,7 +59,8 @@ r#####"
         fs::write(dst, contents).unwrap();
     }
 }
-#[derive(Debug)]struct Section {
+#[derive(Debug)]
+struct Section {
     doc: String,
     before: String,
     after: String,
@@ -68,7 +70,7 @@ r#####"
 struct Assist {
     id: String,
     location: sourcegen::Location,
-    sections: Vec<Section>
+    sections: Vec<Section>,
 }
 
 impl Assist {
@@ -106,14 +108,14 @@ impl Assist {
                         "\n\n{}: assist docs should be proper sentences, with capitalization and a full stop at the end.\n\n{}\n\n",
                         &assist.id, doc,
                     );
-    
+
                     let before = take_until(lines.by_ref(), "```");
-    
+
                     assert_eq!(lines.next().unwrap().as_str(), "->");
                     assert_eq!(lines.next().unwrap().as_str(), "```");
                     let after = take_until(lines.by_ref(), "```");
 
-                    assist.sections.push(Section{doc, before, after});
+                    assist.sections.push(Section { doc, before, after });
                 }
 
                 acc.push(assist)
@@ -139,16 +141,15 @@ impl fmt::Display for Assist {
             f,
             "[discrete]\n=== `{}`
 **Source:** {}",
-            self.id,
-            self.location,
-            );
+            self.id, self.location,
+        );
 
         for section in &self.sections {
             let before = section.before.replace("$0", "┃"); // Unicode pseudo-graphics bar
             let after = section.after.replace("$0", "┃");
-            let _= writeln!(
+            let _ = writeln!(
                 f,
-"
+                "
 {}
 
 .Before
@@ -161,7 +162,7 @@ impl fmt::Display for Assist {
                 section.doc,
                 hide_hash_comments(&before),
                 hide_hash_comments(&after)
-            );    
+            );
         }
 
         Ok(())

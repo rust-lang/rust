@@ -62,7 +62,6 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // ->
 // ```
 // enum Animal {
-//   // variants sorted
 //   Cat { weight: f64, name: String },
 //   Dog(String, f64),
 // }
@@ -79,7 +78,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // enum Animal {
 //   Dog(String, f64),
-//   Cat { name: String, weight: f64 }, // Cat fields sorted
+//   Cat { name: String, weight: f64 },
 // }
 // ```
 pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {

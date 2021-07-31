@@ -1539,7 +1539,7 @@ struct Foo { first: String, second: u32 }
 #[test]
 fn doctest_sort_items_1() {
     check_doc_test(
-        "sort_items_1",
+        "sort_items",
         r#####"
 trait $0Bar {
     fn second(&self) -> u32;
@@ -1558,7 +1558,7 @@ trait Bar {
 #[test]
 fn doctest_sort_items_2() {
     check_doc_test(
-        "sort_items_2",
+        "sort_items",
         r#####"
 struct Baz;
 impl $0Baz {
@@ -1579,7 +1579,7 @@ impl Baz {
 #[test]
 fn doctest_sort_items_3() {
     check_doc_test(
-        "sort_items_3",
+        "sort_items",
         r#####"
 en$0um Animal {
   Dog(String, f64),
@@ -1588,7 +1588,6 @@ en$0um Animal {
 "#####,
         r#####"
 enum Animal {
-  // variants sorted
   Cat { weight: f64, name: String },
   Dog(String, f64),
 }
@@ -1599,7 +1598,7 @@ enum Animal {
 #[test]
 fn doctest_sort_items_4() {
     check_doc_test(
-        "sort_items_4",
+        "sort_items",
         r#####"
 enum Animal {
   Dog(String, f64),
@@ -1609,7 +1608,7 @@ enum Animal {
         r#####"
 enum Animal {
   Dog(String, f64),
-  Cat { name: String, weight: f64 }, // Cat fields sorted
+  Cat { name: String, weight: f64 },
 }
 "#####,
     )
