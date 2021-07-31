@@ -155,6 +155,7 @@ pub(crate) fn hover(
                     if let res@Some(_) = try_hover_for_lint(&attr, &token) {
                         return res;
                     } else {
+                        range = Some(token.text_range());
                         try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro)
                     }
                 } else {
@@ -3906,7 +3907,7 @@ pub macro Copy {}
 struct Foo;
             "#,
             expect![[r#"
-                *(Copy)*
+                *Copy*
 
                 ```rust
                 test
@@ -3927,7 +3928,7 @@ mod foo {
 struct Foo;
             "#,
             expect![[r#"
-                *(foo::Copy)*
+                *Copy*
 
                 ```rust
                 test
