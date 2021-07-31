@@ -8,7 +8,7 @@ use syntax::{
     ted, AstNode,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::get_methods};
+use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: reorder_impl
 //
