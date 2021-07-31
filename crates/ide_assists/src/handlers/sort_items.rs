@@ -1,11 +1,10 @@
 use std::cmp::Ordering;
 
-use hir::known::Option;
 use itertools::Itertools;
 
 use syntax::{
     ast::{self, NameOwner},
-    ted, AstNode,
+    ted, AstNode, TextRange,
 };
 
 use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
@@ -18,9 +17,42 @@ pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     } else if let Some(impl_ast) = ctx.find_node_at_offset::<ast::Impl>() {
         add_sort_methods_assist(acc, impl_ast.assoc_item_list()?)
     } else if let Some(struct_ast) = ctx.find_node_at_offset::<ast::Struct>() {
-        add_sort_fields_assist(acc, struct_ast.field_list()?)
+        match struct_ast.field_list() {
+            Some(ast::FieldList::RecordFieldList(it)) => add_sort_fields_assist(acc, it),
+            _ => None,
+        }
+    } else if let Some(union_ast) = ctx.find_node_at_offset::<ast::Union>() {
+        add_sort_fields_assist(acc, union_ast.record_field_list()?)
     } else {
         None
+    }
+}
+
+trait AddRewrite {
+    fn add_rewrite<T: AstNode>(
+        &mut self,
+        label: &str,
+        old: Vec<T>,
+        new: Vec<T>,
+        target: TextRange,
+    ) -> Option<()>;
+}
+
+impl AddRewrite for Assists {
+    fn add_rewrite<T: AstNode>(
+        &mut self,
+        label: &str,
+        old: Vec<T>,
+        new: Vec<T>,
+        target: TextRange,
+    ) -> Option<()> {
+        self.add(AssistId("sort_items", AssistKind::RefactorRewrite), label, target, |builder| {
+            let mutable: Vec<_> = old.into_iter().map(|it| builder.make_mut(it)).collect();
+            mutable
+                .into_iter()
+                .zip(new)
+                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
+        })
     }
 }
 
@@ -33,29 +65,14 @@ fn add_sort_methods_assist(acc: &mut Assists, item_list: ast::AssocItemList) -> 
         return None;
     }
 
-    acc.add(
-        AssistId("sort_items", AssistKind::RefactorRewrite),
-        "Sort methods alphabetically",
-        item_list.syntax().text_range(),
-        |builder| {
-            let methods = methods.into_iter().map(|fn_| builder.make_mut(fn_)).collect::<Vec<_>>();
-            methods
-                .into_iter()
-                .zip(sorted)
-                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
-        },
-    )
+    acc.add_rewrite("Sort methods alphabetically", methods, sorted, item_list.syntax().text_range())
 }
 
-fn add_sort_fields_assist(acc: &mut Assists, field_list: ast::FieldList) -> Option<()> {
-    fn record_fields(field_list: &ast::FieldList) -> Option<Vec<ast::RecordField>> {
-        match field_list {
-            ast::FieldList::RecordFieldList(it) => Some(it.fields().collect()),
-            ast::FieldList::TupleFieldList(_) => None,
-        }
-    }
-
-    let fields = record_fields(&field_list)?;
+fn add_sort_fields_assist(
+    acc: &mut Assists,
+    record_field_list: ast::RecordFieldList,
+) -> Option<()> {
+    let fields: Vec<_> = record_field_list.fields().collect();
     let sorted = sort_by_name(&fields);
 
     if fields == sorted {
@@ -63,17 +80,11 @@ fn add_sort_fields_assist(acc: &mut Assists, field_list: ast::FieldList) -> Opti
         return None;
     }
 
-    acc.add(
-        AssistId("sort_items", AssistKind::RefactorRewrite),
-        "Sort methods alphabetically",
-        field_list.syntax().text_range(),
-        |builder| {
-            let methods = fields.into_iter().map(|fn_| builder.make_mut(fn_)).collect::<Vec<_>>();
-            methods
-                .into_iter()
-                .zip(sorted)
-                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
-        },
+    acc.add_rewrite(
+        "Sort fields alphabetically",
+        fields,
+        sorted,
+        record_field_list.syntax().text_range(),
     )
 }
 
@@ -139,6 +150,22 @@ $0impl Bar {
             sort_items,
             r#"
 $0struct Bar {
+    a: u32,
+    b: u8,
+    c: u64,
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn not_applicable_if_union_sorted() {
+        cov_mark::check!(not_applicable_if_sorted);
+
+        check_assist_not_applicable(
+            sort_items,
+            r#"
+$0union Bar {
     a: u32,
     b: u8,
     c: u64,
@@ -255,6 +282,27 @@ struct Bar {
     a: usize,
     aaa: u8,
     b: u8,
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn sort_union() {
+        check_assist(
+            sort_items,
+            r#"
+$0union Bar {
+    b: u8,
+    a: u32,
+    c: u64,
+}
+        "#,
+            r#"
+union Bar {
+    a: u32,
+    b: u8,
+    c: u64,
 }
         "#,
         )
