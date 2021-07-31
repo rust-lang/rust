@@ -756,16 +756,17 @@ fn vtable_trait_first_method_offset<'tcx>(
 }
 
 /// Find slot offset for trait vptr within vtable entries of another trait
-/// FIXME: This function is not yet used. Remove `#[allow(dead_code)]` when it's used in upcoming pr.
-#[allow(dead_code)]
-fn vtable_trait_vptr_slot_offset<'tcx>(
+pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
     tcx: TyCtxt<'tcx>,
     key: (
-        ty::PolyTraitRef<'tcx>, // trait_to_be_found
-        ty::PolyTraitRef<'tcx>, // trait_owning_vtable
+        ty::PolyTraitRef<'tcx>, // trait owning vtable
+        ty::PolyTraitRef<'tcx>, // super trait ref
     ),
 ) -> Option<usize> {
-    let (trait_to_be_found, trait_owning_vtable) = key;
+    let (trait_owning_vtable, super_trait_ref) = key;
+    let super_trait_did = super_trait_ref.def_id();
+    // FIXME: take substsref part into account here after upcasting coercion allows the same def_id occur
+    // multiple times.
 
     let vtable_segment_callback = {
         let mut vptr_offset = 0;
@@ -776,7 +777,7 @@ fn vtable_trait_vptr_slot_offset<'tcx>(
                 }
                 VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
                     vptr_offset += util::count_own_vtable_entries(tcx, trait_ref);
-                    if trait_ref == trait_to_be_found {
+                    if trait_ref.def_id() == super_trait_did {
                         if emit_vptr {
                             return ControlFlow::Break(Some(vptr_offset));
                         } else {
@@ -810,6 +811,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_entries,
+        vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
         mir_abstract_const: |tcx, def_id| {
             let def_id = def_id.expect_local();

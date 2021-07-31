@@ -121,4 +121,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         Ok((Size::from_bytes(size), align))
     }
+
+    pub fn read_new_vtable_after_trait_upcasting_from_vtable(
+        &self,
+        vtable: Pointer<Option<M::PointerTag>>,
+        idx: u64,
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+        let pointer_size = self.pointer_size();
+
+        let vtable = self
+            .memory
+            .get(
+                vtable,
+                pointer_size * idx.checked_add(1).unwrap(),
+                self.tcx.data_layout.pointer_align.abi,
+            )?
+            .expect("cannot be a ZST");
+        let new_vtable = self
+            .scalar_to_ptr(vtable.read_ptr_sized(pointer_size * idx)?.check_init()?)
+            .into_pointer_or_addr()
+            .expect("should be a pointer");
+
+        Ok(new_vtable)
+    }
 }
