@@ -869,7 +869,7 @@ impl Config {
                     backends.iter().map(|s| INTERNER.intern_str(s)).collect();
             }
 
-            config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
+            config.rust_codegen_units = Some(1);
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
