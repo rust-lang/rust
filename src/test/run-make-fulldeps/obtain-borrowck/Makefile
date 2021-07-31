@@ -9,9 +9,15 @@ include ../tools.mk
 DRIVER_BINARY := "$(TMPDIR)"/driver
 SYSROOT := $(shell $(RUSTC) --print sysroot)
 
+ifdef IS_MSVC
+LIBSTD := -L "$(SYSROOT)\\lib\\rustlib\\$(TARGET)\\lib"
+else
+LIBSTD :=
+endif
+
 all:
 	$(RUSTC) driver.rs -o "$(DRIVER_BINARY)"
-	$(TARGET_RPATH_ENV) "$(DRIVER_BINARY)" --sysroot $(SYSROOT) test.rs -o "$(TMPDIR)/driver_test" > "$(TMPDIR)"/output.stdout
+	$(TARGET_RPATH_ENV) "$(DRIVER_BINARY)" --sysroot $(SYSROOT) $(LIBSTD) test.rs -o "$(TMPDIR)/driver_test" > "$(TMPDIR)"/output.stdout
 
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/output.stdout output.stdout
