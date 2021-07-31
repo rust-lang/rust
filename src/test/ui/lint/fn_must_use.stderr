@@ -47,13 +47,23 @@ warning: unused comparison that must be used
   --> $DIR/fn_must_use.rs:74:5
    |
 LL |     2 == 3;
-   |     ^^^^^^
+   |     ^^^^^^ the comparison produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = 2 == 3;
+   |     ^^^^^^^
 
 warning: unused comparison that must be used
   --> $DIR/fn_must_use.rs:75:5
    |
 LL |     m == n;
-   |     ^^^^^^
+   |     ^^^^^^ the comparison produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = m == n;
+   |     ^^^^^^^
 
 warning: 8 warnings emitted
 
