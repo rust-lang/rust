@@ -270,7 +270,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         cx.type_lowering.borrow_mut().insert(
             (self.ty, variant_index),
-            TypeLowering { lltype: llty, field_remapping: field_remapping },
+            TypeLowering { lltype: llty, field_remapping },
         );
 
         if let Some((llty, layout)) = defer {

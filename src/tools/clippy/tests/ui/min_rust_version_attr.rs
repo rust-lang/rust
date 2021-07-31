@@ -51,11 +51,6 @@ pub fn manual_strip_msrv() {
     }
 }
 
-pub fn redundant_fieldnames() {
-    let start = 0;
-    let _ = RangeFrom { start: start };
-}
-
 pub fn redundant_static_lifetime() {
     const VAR_ONE: &'static str = "Test constant #1";
 }
@@ -140,7 +135,6 @@ fn unnest_or_patterns() {
 fn main() {
     filter_map_next();
     checked_conversion();
-    redundant_fieldnames();
     redundant_static_lifetime();
     option_as_ref_deref();
     match_like_matches();

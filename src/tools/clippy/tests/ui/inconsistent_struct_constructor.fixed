@@ -1,7 +1,7 @@
 // run-rustfix
 // edition:2018
 #![warn(clippy::inconsistent_struct_constructor)]
-#![allow(clippy::redundant_field_names)]
+#![allow(redundant_field_initializers)]
 #![allow(clippy::unnecessary_operation)]
 #![allow(clippy::no_effect)]
 #![allow(dead_code)]

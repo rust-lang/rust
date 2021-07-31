@@ -1,9 +1,6 @@
 // run-rustfix
-#![warn(clippy::redundant_field_names)]
-#![allow(clippy::no_effect, dead_code, unused_variables)]
-
-#[macro_use]
-extern crate derive_new;
+#![deny(redundant_field_initializers)]
+#![allow(dead_code, unused_variables)]
 
 use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 
@@ -19,11 +16,6 @@ struct Person {
     foo: u8,
 }
 
-#[derive(new)]
-pub struct S {
-    v: String,
-}
-
 fn main() {
     let gender: u8 = 42;
     let age = 0;
@@ -32,7 +24,9 @@ fn main() {
 
     let me = Person {
         gender: gender,
+        //~^ ERROR redundant field names
         age: age,
+        //~^ ERROR redundant field names
 
         name,          //should be ok
         buzz: fizz,    //should be ok
@@ -53,11 +47,14 @@ fn main() {
     let _: Vec<_> = (start..end).collect();
 
     // hand-written Range family structs are linted
-    let _ = RangeFrom { start: start };
-    let _ = RangeTo { end: end };
-    let _ = Range { start: start, end: end };
+    let _ = RangeFrom { start: start }; //~ ERROR redundant field names
+    let _ = RangeTo { end: end }; //~ ERROR redundant field names
+    let _ = Range {
+        start: start, //~ ERROR redundant field names
+        end: end //~ ERROR redundant field names
+    };
     let _ = RangeInclusive::new(start, end);
-    let _ = RangeToInclusive { end: end };
+    let _ = RangeToInclusive { end: end }; //~ ERROR redundant field names
 }
 
 fn issue_3476() {

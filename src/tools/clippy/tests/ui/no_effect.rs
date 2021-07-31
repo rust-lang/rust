@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(clippy::deref_addrof)]
-#![allow(clippy::redundant_field_names)]
+#![allow(redundant_field_initializers)]
 #![feature(untagged_unions)]
 
 struct Unit;

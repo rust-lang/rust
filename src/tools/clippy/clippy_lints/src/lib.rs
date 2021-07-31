@@ -321,7 +321,6 @@ mod ranges;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
-mod redundant_field_names;
 mod redundant_pub_crate;
 mod redundant_slicing;
 mod redundant_static_lifetimes;
@@ -896,7 +895,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         redundant_clone::REDUNDANT_CLONE,
         redundant_closure_call::REDUNDANT_CLOSURE_CALL,
         redundant_else::REDUNDANT_ELSE,
-        redundant_field_names::REDUNDANT_FIELD_NAMES,
         redundant_pub_crate::REDUNDANT_PUB_CRATE,
         redundant_slicing::REDUNDANT_SLICING,
         redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
@@ -1409,7 +1407,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(ranges::REVERSED_EMPTY_RANGES),
         LintId::of(redundant_clone::REDUNDANT_CLONE),
         LintId::of(redundant_closure_call::REDUNDANT_CLOSURE_CALL),
-        LintId::of(redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(redundant_slicing::REDUNDANT_SLICING),
         LintId::of(redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(reference::DEREF_ADDROF),
@@ -1570,7 +1567,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(ptr_eq::PTR_EQ),
         LintId::of(question_mark::QUESTION_MARK),
         LintId::of(ranges::MANUAL_RANGE_CONTAINS),
-        LintId::of(redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(returns::LET_AND_RETURN),
         LintId::of(returns::NEEDLESS_RETURN),
@@ -1908,7 +1904,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustive::new(msrv)));
     store.register_late_pass(move || Box::new(manual_strip::ManualStrip::new(msrv)));
     store.register_early_pass(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv)));
-    store.register_early_pass(move || Box::new(redundant_field_names::RedundantFieldNames::new(msrv)));
     store.register_late_pass(move || Box::new(checked_conversions::CheckedConversions::new(msrv)));
     store.register_late_pass(move || Box::new(mem_replace::MemReplace::new(msrv)));
     store.register_late_pass(move || Box::new(ranges::Ranges::new(msrv)));
@@ -1918,7 +1913,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(needless_question_mark::NeedlessQuestionMark));
     store.register_late_pass(move || Box::new(casts::Casts::new(msrv)));
     store.register_early_pass(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(msrv)));
-
     store.register_late_pass(|| Box::new(size_of_in_element_count::SizeOfInElementCount));
     store.register_late_pass(|| Box::new(map_clone::MapClone));
     store.register_late_pass(|| Box::new(map_err_ignore::MapErrIgnore));
