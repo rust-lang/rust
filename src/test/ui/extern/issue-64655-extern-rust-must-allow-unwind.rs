@@ -40,9 +40,7 @@
 //[no1]compile-flags: -C opt-level=1 -C lto=no
 //[no2]compile-flags: -C opt-level=2 -C lto=no
 //[no3]compile-flags: -C opt-level=3 -C lto=no
-// FIXME(#83854) running this revision with 1 CGU triggers llvm assert in register allocator
-//  when executed in dist-i586-gnu-i586-i686-musl runner.
-//[thin0]compile-flags: -C opt-level=0 -C lto=thin -Ccodegen-units=2
+//[thin0]compile-flags: -C opt-level=0 -C lto=thin
 //[thin1]compile-flags: -C opt-level=1 -C lto=thin
 //[thin2]compile-flags: -C opt-level=2 -C lto=thin
 //[thin3]compile-flags: -C opt-level=3 -C lto=thin
