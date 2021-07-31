@@ -533,6 +533,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Injected => semantic_tokens::INJECTED,
             HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HlMod::Mutable => semantic_tokens::MUTABLE,
+            HlMod::Reference => semantic_tokens::REFERENCE,
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::Async => semantic_tokens::ASYNC,
             HlMod::Library => semantic_tokens::LIBRARY,

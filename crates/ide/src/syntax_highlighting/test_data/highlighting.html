@@ -35,6 +35,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
+.reference          { font-style: italic; font-weight: bold; }
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
@@ -68,12 +69,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="keyword">where</span> <span class="type_param">Self</span><span class="colon">:</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="keyword">where</span> <span class="self_type">Self</span><span class="colon">:</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
-        <span class="self_keyword">self</span><span class="operator">.</span><span class="field public">x</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+        <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field public">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
@@ -86,8 +87,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="self_keyword mutable">self</span><span class="operator">.</span><span class="field public">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration">quop</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
-        <span class="self_keyword">self</span><span class="operator">.</span><span class="field public">x</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+        <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field public">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
@@ -105,8 +106,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="self_keyword mutable">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration">quop</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
-        <span class="self_keyword">self</span><span class="operator">.</span><span class="field">x</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
+        <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
@@ -197,20 +198,20 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> <span class="operator">=</span> <span class="numeric_literal">42</span><span class="semicolon">;</span>
     <span class="variable mutable">x</span> <span class="arithmetic mutable">+=</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration mutable">y</span> <span class="operator">=</span> <span class="operator">&</span><span class="keyword">mut</span> <span class="variable mutable">x</span><span class="semicolon">;</span>
-    <span class="keyword">let</span> <span class="variable declaration">z</span> <span class="operator">=</span> <span class="operator">&</span><span class="variable mutable">y</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration reference">z</span> <span class="operator">=</span> <span class="operator">&</span><span class="variable mutable">y</span><span class="semicolon">;</span>
 
-    <span class="keyword">let</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field public">x</span><span class="colon">:</span> <span class="variable declaration">z</span><span class="comma">,</span> <span class="field">y</span> <span class="brace">}</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field public">x</span><span class="colon">:</span> <span class="variable">z</span><span class="comma">,</span> <span class="field">y</span> <span class="brace">}</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field public">x</span><span class="colon">:</span> <span class="variable declaration">z</span><span class="comma">,</span> <span class="field">y</span> <span class="brace">}</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field public">x</span><span class="colon">:</span> <span class="variable reference">z</span><span class="comma">,</span> <span class="field">y</span> <span class="brace">}</span><span class="semicolon">;</span>
 
     <span class="variable">y</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="field public">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">foo2</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">x</span><span class="comma">,</span> <span class="field public">y</span><span class="colon">:</span> <span class="variable mutable">x</span> <span class="brace">}</span><span class="semicolon">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated mutable">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated consuming">baz</span><span class="parenthesis">(</span><span class="variable consuming">foo2</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">copy</span> <span class="operator">=</span> <span class="struct">FooCopy</span> <span class="brace">{</span> <span class="field">x</span> <span class="brace">}</span><span class="semicolon">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated reference">quop</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated mutable">qux</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated">baz</span><span class="parenthesis">(</span><span class="variable mutable">copy</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 

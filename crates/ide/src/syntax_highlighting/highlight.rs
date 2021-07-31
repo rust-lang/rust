@@ -375,11 +375,11 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 if let Some(item) = func.as_assoc_item(db) {
                     h |= HlMod::Associated;
                     match func.self_param(db) {
-                        Some(sp) => {
-                            if let hir::Access::Exclusive = sp.access(db) {
-                                h |= HlMod::Mutable;
-                            }
-                        }
+                        Some(sp) => match sp.access(db) {
+                            hir::Access::Exclusive => h |= HlMod::Mutable,
+                            hir::Access::Shared => h |= HlMod::Reference,
+                            _ => {}
+                        },
                         None => h |= HlMod::Static,
                     }
 
@@ -460,6 +460,8 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 if s.is_mut(db) {
                     h |= HlMod::Mutable;
                     h |= HlMod::Unsafe;
+                } else {
+                    h |= HlMod::Reference;
                 }
 
                 h
@@ -490,6 +492,9 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             }
             if ty.as_callable(db).is_some() || ty.impls_fnonce(db) {
                 h |= HlMod::Callable;
+            }
+            if local.is_ref(db) || ty.is_reference() {
+                h |= HlMod::Reference;
             }
             h
         }
@@ -549,7 +554,7 @@ fn highlight_method_call(
 
     if let Some(self_param) = func.self_param(sema.db) {
         match self_param.access(sema.db) {
-            hir::Access::Shared => (),
+            hir::Access::Shared => h |= HlMod::Reference,
             hir::Access::Exclusive => h |= HlMod::Mutable,
             hir::Access::Owned => {
                 if let Some(receiver_ty) =
