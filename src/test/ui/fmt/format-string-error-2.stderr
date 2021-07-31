@@ -19,7 +19,7 @@ error: invalid format string: expected `'}'`, found `'b'`
    |
 LL |     format!("{ \
    |              - because of this opening brace
-LL | 
+LL |                \
 LL |     b");
    |     ^ expected `}` in format string
    |
