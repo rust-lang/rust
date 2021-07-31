@@ -86,7 +86,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
         target,
         move |edit| {
             let match_expr = {
-                let else_arm = make_else_arm(else_block, &cond_bodies, ctx);
+                let else_arm = make_else_arm(ctx, else_block, &cond_bodies);
                 let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
                     let body = body.reset_indent().indent(IndentLevel(1));
                     match pat {
@@ -119,12 +119,12 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
 }
 
 fn make_else_arm(
-    else_block: Option<ast::BlockExpr>,
-    cond_bodies: &Vec<(Either<ast::Pat, ast::Expr>, ast::BlockExpr)>,
     ctx: &AssistContext,
+    else_block: Option<ast::BlockExpr>,
+    conditionals: &[(Either<ast::Pat, ast::Expr>, ast::BlockExpr)],
 ) -> ast::MatchArm {
     if let Some(else_block) = else_block {
-        let pattern = if let [(Either::Left(pat), _)] = &**cond_bodies {
+        let pattern = if let [(Either::Left(pat), _)] = conditionals {
             ctx.sema
                 .type_of_pat(&pat)
                 .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))

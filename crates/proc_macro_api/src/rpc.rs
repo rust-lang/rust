@@ -218,7 +218,7 @@ mod vec_token_tree {
     use super::{TokenTree, TokenTreeDef};
     use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 
-    pub(super) fn serialize<S>(value: &Vec<TokenTree>, serializer: S) -> Result<S::Ok, S::Error>
+    pub(super) fn serialize<S>(value: &[TokenTree], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
