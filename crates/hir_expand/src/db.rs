@@ -22,7 +22,9 @@ use crate::{
 ///
 /// If an invocation produces more tokens than this limit, it will not be stored in the database and
 /// an error will be emitted.
-const TOKEN_LIMIT: Limit = Limit::new(524288);
+///
+/// Actual max for `analysis-stats .` at some point: 30672.
+static TOKEN_LIMIT: Limit = Limit::new(524_288);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
