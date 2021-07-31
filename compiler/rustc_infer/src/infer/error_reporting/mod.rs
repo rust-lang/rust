@@ -71,7 +71,7 @@ use rustc_middle::ty::{
     subst::{GenericArgKind, Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
+use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter};
@@ -1485,31 +1485,49 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let count = values.len();
                     let kind = key.descr();
                     let mut returned_async_output_error = false;
-                    for sp in values {
-                        err.span_label(
-                            *sp,
-                            format!(
-                                "{}{}{} {}{}",
-                                if sp.is_desugaring(DesugaringKind::Async)
-                                    && !returned_async_output_error
-                                {
-                                    "checked the `Output` of this `async fn`, "
-                                } else if count == 1 {
-                                    "the "
-                                } else {
-                                    ""
-                                },
-                                if count > 1 { "one of the " } else { "" },
-                                target,
-                                kind,
-                                pluralize!(count),
-                            ),
-                        );
-                        if sp.is_desugaring(DesugaringKind::Async)
-                            && returned_async_output_error == false
-                        {
-                            err.note("while checking the return type of the `async fn`");
+                    for &sp in values {
+                        if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
+                            if &[sp] != err.span.primary_spans() {
+                                let mut span: MultiSpan = sp.into();
+                                span.push_span_label(
+                                    sp,
+                                    format!(
+                                        "checked the `Output` of this `async fn`, {}{} {}{}",
+                                        if count > 1 { "one of the " } else { "" },
+                                        target,
+                                        kind,
+                                        pluralize!(count),
+                                    ),
+                                );
+                                err.span_note(
+                                    span,
+                                    "while checking the return type of the `async fn`",
+                                );
+                            } else {
+                                err.span_label(
+                                    sp,
+                                    format!(
+                                        "checked the `Output` of this `async fn`, {}{} {}{}",
+                                        if count > 1 { "one of the " } else { "" },
+                                        target,
+                                        kind,
+                                        pluralize!(count),
+                                    ),
+                                );
+                                err.note("while checking the return type of the `async fn`");
+                            }
                             returned_async_output_error = true;
+                        } else {
+                            err.span_label(
+                                sp,
+                                format!(
+                                    "{}{} {}{}",
+                                    if count == 1 { "the " } else { "one of the " },
+                                    target,
+                                    kind,
+                                    pluralize!(count),
+                                ),
+                            );
                         }
                     }
                 }
