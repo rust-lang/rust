@@ -493,3 +493,26 @@ pub(crate) fn add_method_to_adt(
 
     builder.insert(start_offset, buf);
 }
+
+pub fn useless_type_special_case(field_name: &str, field_ty: &String) -> Option<(String, String)> {
+    if field_ty.to_string() == "String" {
+        cov_mark::hit!(useless_type_special_case);
+        return Some(("&str".to_string(), format!("self.{}.as_str()", field_name)));
+    }
+    if let Some(arg) = ty_ctor(field_ty, "Vec") {
+        return Some((format!("&[{}]", arg), format!("self.{}.as_slice()", field_name)));
+    }
+    if let Some(arg) = ty_ctor(field_ty, "Box") {
+        return Some((format!("&{}", arg), format!("self.{}.as_ref()", field_name)));
+    }
+    if let Some(arg) = ty_ctor(field_ty, "Option") {
+        return Some((format!("Option<&{}>", arg), format!("self.{}.as_ref()", field_name)));
+    }
+    None
+}
+
+// FIXME: This should rely on semantic info.
+fn ty_ctor(ty: &String, ctor: &str) -> Option<String> {
+    let res = ty.to_string().strip_prefix(ctor)?.strip_prefix('<')?.strip_suffix('>')?.to_string();
+    Some(res)
+}

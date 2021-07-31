@@ -12,6 +12,7 @@ use syntax::{
 };
 
 use crate::{
+    utils::useless_type_special_case,
     utils::{render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
@@ -257,7 +258,17 @@ fn fn_args(
             None => String::from("arg"),
         });
         arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
-            Some(ty) => ty,
+            Some(ty) => {
+                if ty.len() > 0 && ty.starts_with('&') {
+                    if let Some((new_ty, _)) = useless_type_special_case("", &ty[1..].to_owned()) {
+                        new_ty
+                    } else {
+                        ty
+                    }
+                } else {
+                    ty
+                }
+            }
             None => String::from("()"),
         });
     }

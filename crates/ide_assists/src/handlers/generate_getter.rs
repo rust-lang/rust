@@ -2,6 +2,7 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 
 use crate::{
+    utils::useless_type_special_case,
     utils::{find_impl_block_end, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
@@ -99,7 +100,7 @@ pub(crate) fn generate_getter_impl(
             let (ty, body) = if mutable {
                 (format!("&mut {}", field_ty), format!("&mut self.{}", field_name))
             } else {
-                useless_type_special_case(&field_name.to_string(), &field_ty)
+                useless_type_special_case(&field_name.to_string(), &field_ty.to_string())
                     .unwrap_or_else(|| (format!("&{}", field_ty), format!("&self.{}", field_name)))
             };
 
@@ -134,29 +135,6 @@ pub(crate) fn generate_getter_impl(
             }
         },
     )
-}
-
-fn useless_type_special_case(field_name: &str, field_ty: &ast::Type) -> Option<(String, String)> {
-    if field_ty.to_string() == "String" {
-        cov_mark::hit!(useless_type_special_case);
-        return Some(("&str".to_string(), format!("self.{}.as_str()", field_name)));
-    }
-    if let Some(arg) = ty_ctor(field_ty, "Vec") {
-        return Some((format!("&[{}]", arg), format!("self.{}.as_slice()", field_name)));
-    }
-    if let Some(arg) = ty_ctor(field_ty, "Box") {
-        return Some((format!("&{}", arg), format!("self.{}.as_ref()", field_name)));
-    }
-    if let Some(arg) = ty_ctor(field_ty, "Option") {
-        return Some((format!("Option<&{}>", arg), format!("self.{}.as_ref()", field_name)));
-    }
-    None
-}
-
-// FIXME: This should rely on semantic info.
-fn ty_ctor(ty: &ast::Type, ctor: &str) -> Option<String> {
-    let res = ty.to_string().strip_prefix(ctor)?.strip_prefix('<')?.strip_suffix('>')?.to_string();
-    Some(res)
 }
 
 #[cfg(test)]
