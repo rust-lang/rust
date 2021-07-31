@@ -20,7 +20,6 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // struct Foo {foo: i32, bar: i32};
 // const test: Foo = Foo {foo: 1, bar: 0}
 // ```
-//
 pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let record = ctx
         .find_node_at_offset::<ast::RecordExpr>()

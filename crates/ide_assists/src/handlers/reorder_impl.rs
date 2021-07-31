@@ -44,7 +44,6 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 //     fn c() {}
 // }
 // ```
-//
 pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;

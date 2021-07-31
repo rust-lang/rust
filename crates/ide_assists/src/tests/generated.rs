@@ -1524,6 +1524,98 @@ fn main() {
 }
 
 #[test]
+fn doctest_sort_items() {
+    check_doc_test(
+        "sort_items",
+        r#####"
+struct $0Foo { second: u32, first: String }
+"#####,
+        r#####"
+struct Foo { first: String, second: u32 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_sort_items_1() {
+    check_doc_test(
+        "sort_items_1",
+        r#####"
+trait $0Bar {
+    fn second(&self) -> u32;
+    fn first(&self) -> String;
+}
+"#####,
+        r#####"
+trait Bar {
+    fn first(&self) -> String;
+    fn second(&self) -> u32;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_sort_items_2() {
+    check_doc_test(
+        "sort_items_2",
+        r#####"
+struct Baz;
+impl $0Baz {
+    fn second(&self) -> u32;
+    fn first(&self) -> String;
+}
+"#####,
+        r#####"
+struct Baz;
+impl Baz {
+    fn first(&self) -> String;
+    fn second(&self) -> u32;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_sort_items_3() {
+    check_doc_test(
+        "sort_items_3",
+        r#####"
+en$0um Animal {
+  Dog(String, f64),
+  Cat { weight: f64, name: String },
+}
+"#####,
+        r#####"
+enum Animal {
+  // variants sorted
+  Cat { weight: f64, name: String },
+  Dog(String, f64),
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_sort_items_4() {
+    check_doc_test(
+        "sort_items_4",
+        r#####"
+enum Animal {
+  Dog(String, f64),
+  Cat {$0 weight: f64, name: String },
+}
+"#####,
+        r#####"
+enum Animal {
+  Dog(String, f64),
+  Cat { name: String, weight: f64 }, // Cat fields sorted
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_split_import() {
     check_doc_test(
         "split_import",
