@@ -113,6 +113,7 @@ impl Target {
             ItemKind::Fn(..) => Target::Fn,
             ItemKind::Mod(..) => Target::Mod,
             ItemKind::ForeignMod { .. } => Target::ForeignMod,
+            ItemKind::Macro { .. } => Target::MacroDef,
             ItemKind::GlobalAsm(..) => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
             ItemKind::OpaqueTy(..) => Target::OpaqueTy,

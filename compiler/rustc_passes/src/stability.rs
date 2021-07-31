@@ -613,14 +613,16 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
-        // Inherent impls and foreign modules serve only as containers for other items,
-        // they don't have their own stability. They still can be annotated as unstable
-        // and propagate this unstability to children, but this annotation is completely
-        // optional. They inherit stability from their parents when unannotated.
+        // Inherent impls, foreign modules, and non exported macros serve only as
+        // containers for other items, they don't have their own stability. They still can
+        // be annotated as unstable and propagate this unstability to children, but this
+        // annotation is completely optional. They inherit stability from their parents
+        // when unannotated.
         if !matches!(
             i.kind,
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
+                | hir::ItemKind::Macro { is_exported: false, .. }
         ) {
             self.check_missing_stability(i.def_id, i.span);
         }
@@ -663,11 +665,6 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         self.check_missing_stability(i.def_id, i.span);
         intravisit::walk_foreign_item(self, i);
     }
-
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        self.check_missing_stability(md.def_id, md.span);
-    }
-
     // Note that we don't need to `check_missing_stability` for default generic parameters,
     // as we assume that any default generic parameters without attributes are automatically
     // stable (assuming they have not inherited instability from their parent).

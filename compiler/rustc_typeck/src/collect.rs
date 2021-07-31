@@ -750,6 +750,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::ExternCrate(_)
         | hir::ItemKind::Use(..)
         | hir::ItemKind::Mod(_)
+        | hir::ItemKind::Macro { .. }
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in items {

@@ -1036,6 +1036,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         self.local_def_id(def_index),
                     );
                     let ident = self.item_ident(def_index, sess);
+
                     callback(Export { ident, res, vis: ty::Visibility::Public, span: ident.span });
                 }
             }
@@ -1100,7 +1101,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
-                    callback(Export { res, ident, vis, span });
+
+                    if !kind.is_macro() {
+                        callback(Export { res, ident, vis, span });
+                    }
+
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
                     match kind {

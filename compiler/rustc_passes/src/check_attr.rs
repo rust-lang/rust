@@ -1509,6 +1509,13 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        // Historically we've run more checks on non-exported than exported macros,
+        // so this lets us continue to run them while maintaining backwards compatibility.
+        // In the long run, the checks should be harmonized.
+        if let ItemKind::Macro { is_exported: false, .. } = item.kind {
+            check_non_exported_macro_for_invalid_attrs(self.tcx, item);
+        }
+
         let target = Target::from_item(item);
         self.check_attributes(item.hir_id(), &item.span, target, Some(ItemLike::Item(item)));
         intravisit::walk_item(self, item)
@@ -1581,11 +1588,6 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_variant(self, variant, generics, item_id)
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
-        self.check_attributes(macro_def.hir_id(), &macro_def.span, Target::MacroDef, None);
-        intravisit::walk_macro_def(self, macro_def);
-    }
-
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         self.check_attributes(param.hir_id, &param.span, Target::Param, None);
 
@@ -1634,7 +1636,9 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     }
 }
 
-fn check_invalid_macro_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
+fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
+    let attrs = tcx.hir().attrs(item.hir_id());
+
     for attr in attrs {
         if tcx.sess.check_name(attr, sym::inline) {
             struct_span_err!(
@@ -1655,8 +1659,6 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     if module_def_id.is_top_level_module() {
         check_attr_visitor.check_attributes(CRATE_HIR_ID, &DUMMY_SP, Target::Mod, None);
         check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
-        tcx.hir().visit_exported_macros_in_krate(check_attr_visitor);
-        check_invalid_macro_level_attr(tcx, tcx.hir().krate().non_exported_macro_attrs);
     }
 }
 

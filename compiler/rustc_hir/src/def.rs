@@ -218,6 +218,13 @@ impl DefKind {
             | DefKind::Impl => None,
         }
     }
+
+    pub fn is_macro(self) -> bool {
+        match self {
+            DefKind::Macro(..) => true,
+            _ => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.

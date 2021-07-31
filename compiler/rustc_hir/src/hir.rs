@@ -670,9 +670,6 @@ pub struct ModuleItems {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    // Attributes from non-exported macros, kept only for collecting the library feature list.
-    pub non_exported_macro_attrs: &'hir [Attribute],
-
     pub owners: IndexVec<LocalDefId, Option<OwnerNode<'hir>>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
@@ -768,13 +765,6 @@ impl Crate<'_> {
             _ => None,
         })
     }
-
-    pub fn exported_macros<'hir>(&'hir self) -> impl Iterator<Item = &'hir MacroDef<'hir>> + 'hir {
-        self.owners.iter().filter_map(|owner| match owner {
-            Some(OwnerNode::MacroDef(macro_def)) => Some(*macro_def),
-            _ => None,
-        })
-    }
 }
 
 /// A macro definition, in this crate or imported from another.
@@ -782,6 +772,7 @@ impl Crate<'_> {
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(Debug)]
 pub struct MacroDef<'hir> {
+    pub is_exported: bool,
     pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub def_id: LocalDefId,
@@ -2605,7 +2596,7 @@ pub struct PolyTraitRef<'hir> {
 
 pub type Visibility<'hir> = Spanned<VisibilityKind<'hir>>;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum VisibilityKind<'hir> {
     Public,
     Crate(CrateSugar),
@@ -2789,6 +2780,8 @@ pub enum ItemKind<'hir> {
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
+    /// A MBE macro (`macro_rules!` or `macro`).
+    Macro { is_exported: bool, macro_def: MacroDef<'hir> },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
@@ -2852,6 +2845,7 @@ impl ItemKind<'_> {
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
+            ItemKind::Macro { .. } => "macro",
             ItemKind::GlobalAsm(..) => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::OpaqueTy(..) => "opaque type",

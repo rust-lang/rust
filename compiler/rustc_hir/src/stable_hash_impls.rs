@@ -193,7 +193,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for MacroDef<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let MacroDef { ident, def_id: _, ref ast, ref vis, span } = *self;
+        let MacroDef { is_exported: _, ident, def_id: _, ref ast, ref vis, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);

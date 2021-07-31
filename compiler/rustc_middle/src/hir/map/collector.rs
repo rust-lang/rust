@@ -394,20 +394,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         }
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'hir MacroDef<'hir>) {
-        // Exported macros are visited directly from the crate root,
-        // so they do not have `parent_node` set.
-        // Find the correct enclosing module from their DefKey.
-        let def_key = self.definitions.def_key(macro_def.def_id);
-        let parent = def_key.parent.map_or(hir::CRATE_HIR_ID, |local_def_index| {
-            self.definitions.local_def_id_to_hir_id(LocalDefId { local_def_index })
-        });
-        self.insert_owner(macro_def.def_id, OwnerNode::MacroDef(macro_def));
-        self.with_parent(parent, |this| {
-            this.insert_nested(macro_def.def_id);
-        });
-    }
-
     fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics<'hir>, item_id: HirId) {
         self.insert(v.span, v.id, Node::Variant(v));
         self.with_parent(v.id, |this| {

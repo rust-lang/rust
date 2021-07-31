@@ -4,6 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
@@ -659,6 +660,28 @@ impl<'a> State<'a> {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
                 self.bclose(item.span);
+            }
+            hir::ItemKind::Macro { ref macro_def, .. } => {
+                let (kw, has_bang) = if macro_def.ast.macro_rules {
+                    ("macro_rules", true)
+                } else {
+                    self.print_visibility(&item.vis);
+                    ("macro", false)
+                };
+
+                self.print_mac_common(
+                    Some(MacHeader::Keyword(kw)),
+                    has_bang,
+                    Some(item.ident),
+                    macro_def.ast.body.delim(),
+                    &macro_def.ast.body.inner_tokens(),
+                    true,
+                    item.span,
+                );
+
+                if macro_def.ast.body.need_semicolon() {
+                    self.word(";");
+                }
             }
             hir::ItemKind::GlobalAsm(ref asm) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));

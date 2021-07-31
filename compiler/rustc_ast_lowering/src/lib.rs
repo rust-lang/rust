@@ -103,7 +103,6 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// The items being lowered are collected here.
     owners: IndexVec<LocalDefId, Option<hir::OwnerNode<'hir>>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
-    non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
@@ -330,7 +329,6 @@ pub fn lower_crate<'a, 'hir>(
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         attrs: BTreeMap::default(),
-        non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
@@ -551,7 +549,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let krate = hir::Crate {
-            non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             owners: self.owners,
             bodies: self.bodies,
             body_ids,
@@ -598,13 +595,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.owners[id.def_id] = Some(hir::OwnerNode::TraitItem(item));
         self.modules.entry(self.current_module).or_default().trait_items.insert(id);
         id
-    }
-
-    fn insert_macro_def(&mut self, item: hir::MacroDef<'hir>) {
-        let def_id = item.def_id;
-        let item = self.arena.alloc(item);
-        self.owners.ensure_contains_elem(def_id, || None);
-        self.owners[def_id] = Some(hir::OwnerNode::MacroDef(item));
     }
 
     fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {

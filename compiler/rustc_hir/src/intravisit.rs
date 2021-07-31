@@ -484,7 +484,6 @@ pub trait Visitor<'v>: Sized {
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     let top_mod = krate.module();
     visitor.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
-    walk_list!(visitor, visit_macro_def, krate.exported_macros());
     for (&id, attrs) in krate.attrs.iter() {
         for a in *attrs {
             visitor.visit_attribute(id, a)
@@ -593,6 +592,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::ForeignMod { abi: _, items } => {
             visitor.visit_id(item.hir_id());
             walk_list!(visitor, visit_foreign_item_ref, items);
+        }
+        ItemKind::Macro { ref macro_def, .. } => {
+            visitor.visit_id(item.hir_id());
+            visitor.visit_macro_def(macro_def)
         }
         ItemKind::GlobalAsm(asm) => {
             visitor.visit_id(item.hir_id());
