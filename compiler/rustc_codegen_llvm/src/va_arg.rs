@@ -146,11 +146,11 @@ fn emit_aapcs_va_arg(
     let top = in_reg.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
-    let mut reg_addr = in_reg.gep(top, &[reg_off_v]);
+    let mut reg_addr = in_reg.gep(bx.type_i8(), top, &[reg_off_v]);
     if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
         // On big-endian systems the value is right-aligned in its slot.
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
-        reg_addr = in_reg.gep(reg_addr, &[offset]);
+        reg_addr = in_reg.gep(bx.type_i8(), reg_addr, &[offset]);
     }
     let reg_type = layout.llvm_type(bx);
     let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));

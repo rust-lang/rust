@@ -121,9 +121,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.inbounds_gep(ptr, &[offset])
             }
             sym::arith_offset => {
+                let ty = substs.type_at(0);
+                let layout = bx.layout_of(ty);
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
-                bx.gep(ptr, &[offset])
+                bx.gep(bx.backend_type(layout), ptr, &[offset])
             }
             sym::copy => {
                 copy_intrinsic(

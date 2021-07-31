@@ -1394,8 +1394,9 @@ extern "C" {
 
     pub fn LLVMBuildStore(B: &Builder<'a>, Val: &'a Value, Ptr: &'a Value) -> &'a Value;
 
-    pub fn LLVMBuildGEP(
+    pub fn LLVMBuildGEP2(
         B: &Builder<'a>,
+        Ty: &'a Type,
         Pointer: &'a Value,
         Indices: *const &'a Value,
         NumIndices: c_uint,

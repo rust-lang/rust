@@ -640,10 +640,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
+    fn gep(&mut self, ty: &'ll Type, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildGEP(
+            llvm::LLVMBuildGEP2(
                 self.llbuilder,
+                ty,
                 ptr,
                 indices.as_ptr(),
                 indices.len() as c_uint,

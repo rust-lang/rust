@@ -109,7 +109,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
                     // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
                     let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-                    bx.gep(byte_ptr, &[bx.const_usize(offset.bytes())])
+                    bx.gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) => {
                     // All fields of Scalar and ScalarPair layouts must have been handled by this point.
@@ -189,7 +189,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
         // Cast and adjust pointer.
         let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-        let byte_ptr = bx.gep(byte_ptr, &[offset]);
+        let byte_ptr = bx.gep(bx.cx().type_i8(), byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected.
         let ll_fty = bx.cx().backend_type(field);
