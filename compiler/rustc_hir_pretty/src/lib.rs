@@ -121,7 +121,6 @@ impl<'a> State<'a> {
             // printing.
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(&a),
-            Node::MacroDef(_) => panic!("cannot print MacroDef"),
             Node::Crate(..) => panic!("cannot print Crate"),
         }
     }
