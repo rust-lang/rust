@@ -164,6 +164,7 @@ impl ast::IfExpr {
     pub fn then_branch(&self) -> Option<ast::BlockExpr> {
         self.blocks().next()
     }
+
     pub fn else_branch(&self) -> Option<ElseBranch> {
         let res = match self.blocks().nth(1) {
             Some(block) => ElseBranch::Block(block),

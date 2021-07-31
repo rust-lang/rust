@@ -1,5 +1,5 @@
 use hir::db::AstDatabase;
-use ide_db::{assists::Assist, source_change::SourceChange};
+use ide_db::{assists::Assist, helpers::for_each_tail_expr, source_change::SourceChange};
 use syntax::AstNode;
 use text_edit::TextEdit;
 
@@ -33,10 +33,15 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingOkOrSomeInTailExpr) -> Op
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
     let tail_expr = d.expr.value.to_node(&root);
     let tail_expr_range = tail_expr.syntax().text_range();
-    let replacement = format!("{}({})", d.required, tail_expr.syntax());
-    let edit = TextEdit::replace(tail_expr_range, replacement);
+    let mut builder = TextEdit::builder();
+    for_each_tail_expr(&tail_expr, &mut |expr| {
+        if ctx.sema.type_of_expr(expr).as_ref() != Some(&d.expected) {
+            builder.insert(expr.syntax().text_range().start(), format!("{}(", d.required));
+            builder.insert(expr.syntax().text_range().end(), ")".to_string());
+        }
+    });
     let source_change =
-        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), builder.finish());
     let name = if d.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
     Some(vec![fix("wrap_tail_expr", name, source_change, tail_expr_range)])
 }
@@ -63,6 +68,35 @@ fn div(x: i32, y: i32) -> Option<i32> {
         return None;
     }
     Some(x / y)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_option_tails() {
+        check_fix(
+            r#"
+//- minicore: option, result
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        0
+    } else if true {
+        100
+    } else {
+        None
+    }$0
+}
+"#,
+            r#"
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        Some(0)
+    } else if true {
+        Some(100)
+    } else {
+        None
+    }
 }
 "#,
         );

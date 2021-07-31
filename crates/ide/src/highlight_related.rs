@@ -533,6 +533,9 @@ fn foo() ->$0 u32 {
             5
          // ^
         }
+    } else if false {
+        0
+     // ^
     } else {
         match 5 {
             6 => 100,
