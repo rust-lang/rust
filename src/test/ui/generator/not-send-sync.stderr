@@ -1,22 +1,21 @@
 error[E0277]: `Cell<i32>` cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:16:5
    |
-LL |     fn assert_send<T: Send>(_: T) {}
-   |                       ---- required by this bound in `assert_send`
-...
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ `Cell<i32>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
    = note: required because of the requirements on the impl of `Send` for `&Cell<i32>`
    = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:16:17: 20:6]`
+note: required by a bound in `assert_send`
+  --> $DIR/not-send-sync.rs:7:23
+   |
+LL |     fn assert_send<T: Send>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_send`
 
 error: generator cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:9:5
    |
-LL |     fn assert_sync<T: Sync>(_: T) {}
-   |                       ---- required by this bound in `assert_sync`
-...
 LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ generator is not `Sync`
    |
@@ -30,6 +29,11 @@ LL |         yield;
    |         ^^^^^ yield occurs here, with `a` maybe used later
 LL |     });
    |     - `a` is later dropped here
+note: required by a bound in `assert_sync`
+  --> $DIR/not-send-sync.rs:6:23
+   |
+LL |     fn assert_sync<T: Sync>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_sync`
 
 error: aborting due to 2 previous errors
 

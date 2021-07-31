@@ -20,7 +20,7 @@ impl ImplementedForUnitButNotNever for () {}
 
 fn foo<T: ImplementedForUnitButNotNever>(_t: T) {}
 //~^ NOTE required by this bound in `foo`
-
+//~| NOTE required by a bound in `foo`
 fn smeg() {
     let _x = return;
     foo(_x);

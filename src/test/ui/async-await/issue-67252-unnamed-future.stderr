@@ -1,9 +1,6 @@
 error: future cannot be sent between threads safely
   --> $DIR/issue-67252-unnamed-future.rs:18:5
    |
-LL | fn spawn<T: Send>(_: T) {}
-   |             ---- required by this bound in `spawn`
-...
 LL |     spawn(async {
    |     ^^^^^ future created by async block is not `Send`
    |
@@ -17,6 +14,11 @@ LL |         AFuture.await;
    |         ^^^^^^^^^^^^^ await occurs here, with `_a` maybe used later
 LL |     });
    |     - `_a` is later dropped here
+note: required by a bound in `spawn`
+  --> $DIR/issue-67252-unnamed-future.rs:6:13
+   |
+LL | fn spawn<T: Send>(_: T) {}
+   |             ^^^^ required by this bound in `spawn`
 
 error: aborting due to previous error
 

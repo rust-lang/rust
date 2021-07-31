@@ -58,9 +58,12 @@ error[E0277]: the trait bound `(): Try` is not satisfied
    |
 LL |     try_trait_generic::<()>();
    |                         ^^ the trait `Try` is not implemented for `()`
-...
+   |
+note: required by a bound in `try_trait_generic`
+  --> $DIR/try-operator-on-main.rs:17:25
+   |
 LL | fn try_trait_generic<T: Try>() -> T {
-   |                         --- required by this bound in `try_trait_generic`
+   |                         ^^^ required by this bound in `try_trait_generic`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/try-operator-on-main.rs:19:5

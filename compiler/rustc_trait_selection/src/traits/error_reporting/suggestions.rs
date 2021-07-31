@@ -1962,7 +1962,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);
-                let msg = format!("required by this bound in `{}`", item_name);
+                let mut multispan = MultiSpan::from(span);
                 if let Some(ident) = tcx.opt_item_name(item_def_id) {
                     let sm = tcx.sess.source_map();
                     let same_line =
@@ -1971,16 +1971,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             _ => true,
                         };
                     if !ident.span.overlaps(span) && !same_line {
-                        err.span_label(ident.span, "required by a bound in this");
+                        multispan
+                            .push_span_label(ident.span, "required by a bound in this".to_string());
                     }
                 }
+                let descr = format!("required by a bound in `{}`", item_name);
                 if span != DUMMY_SP {
-                    err.span_label(span, &msg);
+                    let msg = format!("required by this bound in `{}`", item_name);
+                    multispan.push_span_label(span, msg);
+                    err.span_note(multispan, &descr);
                 } else {
-                    err.span_note(
-                        tcx.def_span(item_def_id),
-                        &format!("required by a bound in `{}`", item_name),
-                    );
+                    err.span_note(tcx.def_span(item_def_id), &descr);
                 }
             }
             ObligationCauseCode::ObjectCastObligation(object_ty) => {

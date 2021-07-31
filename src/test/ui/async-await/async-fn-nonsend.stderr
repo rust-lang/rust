@@ -1,9 +1,6 @@
 error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:49:5
    |
-LL | fn assert_send(_: impl Send) {}
-   |                        ---- required by this bound in `assert_send`
-...
 LL |     assert_send(local_dropped_before_await());
    |     ^^^^^^^^^^^ future returned by `local_dropped_before_await` is not `Send`
    |
@@ -18,13 +15,15 @@ LL |     fut().await;
    |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
 LL | }
    | - `x` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/async-fn-nonsend.rs:46:24
+   |
+LL | fn assert_send(_: impl Send) {}
+   |                        ^^^^ required by this bound in `assert_send`
 
 error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:51:5
    |
-LL | fn assert_send(_: impl Send) {}
-   |                        ---- required by this bound in `assert_send`
-...
 LL |     assert_send(non_send_temporary_in_match());
    |     ^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
    |
@@ -39,13 +38,15 @@ LL |         Some(_) => fut().await,
 ...
 LL | }
    | - `non_send()` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/async-fn-nonsend.rs:46:24
+   |
+LL | fn assert_send(_: impl Send) {}
+   |                        ^^^^ required by this bound in `assert_send`
 
 error: future cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:53:5
    |
-LL | fn assert_send(_: impl Send) {}
-   |                        ---- required by this bound in `assert_send`
-...
 LL |     assert_send(non_sync_with_method_call());
    |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
@@ -61,6 +62,11 @@ LL |         fut().await;
 LL |     }
 LL | }
    | - `f` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/async-fn-nonsend.rs:46:24
+   |
+LL | fn assert_send(_: impl Send) {}
+   |                        ^^^^ required by this bound in `assert_send`
 
 error: aborting due to 3 previous errors
 

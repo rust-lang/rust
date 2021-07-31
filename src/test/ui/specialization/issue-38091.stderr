@@ -11,11 +11,14 @@ LL | #![feature(specialization)]
 error[E0277]: the trait bound `(): Valid` is not satisfied
   --> $DIR/issue-38091.rs:12:5
    |
-LL |     type Ty: Valid;
-   |              ----- required by this bound in `Iterate::Ty`
-...
 LL |     default type Ty = ();
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Valid` is not implemented for `()`
+   |
+note: required by a bound in `Iterate::Ty`
+  --> $DIR/issue-38091.rs:5:14
+   |
+LL |     type Ty: Valid;
+   |              ^^^^^ required by this bound in `Iterate::Ty`
 
 error: aborting due to previous error; 1 warning emitted
 

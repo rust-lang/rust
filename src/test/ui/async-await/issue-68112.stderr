@@ -1,9 +1,6 @@
 error: future cannot be sent between threads safely
   --> $DIR/issue-68112.rs:34:5
    |
-LL | fn require_send(_: impl Send) {}
-   |                         ---- required by this bound in `require_send`
-...
 LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ future created by async block is not `Send`
    |
@@ -13,13 +10,15 @@ note: future is not `Send` as it awaits another future which is not `Send`
    |
 LL |         let _ = non_send_fut.await;
    |                 ^^^^^^^^^^^^ await occurs here on type `impl Future`, which is not `Send`
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:11:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
 
 error: future cannot be sent between threads safely
   --> $DIR/issue-68112.rs:43:5
    |
-LL | fn require_send(_: impl Send) {}
-   |                         ---- required by this bound in `require_send`
-...
 LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ future created by async block is not `Send`
    |
@@ -29,13 +28,15 @@ note: future is not `Send` as it awaits another future which is not `Send`
    |
 LL |         let _ = make_non_send_future1().await;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ await occurs here on type `impl Future`, which is not `Send`
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:11:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
 
 error[E0277]: `RefCell<i32>` cannot be shared between threads safely
   --> $DIR/issue-68112.rs:60:5
    |
-LL | fn require_send(_: impl Send) {}
-   |                         ---- required by this bound in `require_send`
-...
 LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
    |
@@ -50,6 +51,11 @@ LL |     require_send(send_fut);
    = note: required because it appears within the type `[static generator@$DIR/issue-68112.rs:55:26: 59:6]`
    = note: required because it appears within the type `from_generator::GenFuture<[static generator@$DIR/issue-68112.rs:55:26: 59:6]>`
    = note: required because it appears within the type `impl Future`
+note: required by a bound in `require_send`
+  --> $DIR/issue-68112.rs:11:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
 
 error: aborting due to 3 previous errors
 

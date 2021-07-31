@@ -4,12 +4,12 @@ error[E0283]: type annotations needed
 LL |     T: FnMut(&'a ()),
    |        ^^^^^^^^^^^^^ cannot infer type for type parameter `T`
    |
-  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   = note: cannot satisfy `T: FnMut<(&'a (),)>`
+note: required by a bound in `FnMut`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL | pub trait FnMut<Args>: FnOnce<Args> {
-   | ----------------------------------- required by this bound in `FnMut`
-   |
-   = note: cannot satisfy `T: FnMut<(&'a (),)>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FnMut`
 
 error: aborting due to previous error
 

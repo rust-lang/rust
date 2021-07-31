@@ -23,11 +23,14 @@ LL |     size_of_copy::<dyn Misc + Copy>();
 error[E0277]: the trait bound `dyn Misc: Copy` is not satisfied
   --> $DIR/issue-32963.rs:8:5
    |
-LL | fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
-   |                    ---- required by this bound in `size_of_copy`
-...
 LL |     size_of_copy::<dyn Misc + Copy>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `dyn Misc`
+   |
+note: required by a bound in `size_of_copy`
+  --> $DIR/issue-32963.rs:5:20
+   |
+LL | fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
+   |                    ^^^^ required by this bound in `size_of_copy`
 
 error: aborting due to 3 previous errors
 

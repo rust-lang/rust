@@ -1,13 +1,15 @@
 error[E0277]: can't compare `S` with `S`
   --> $DIR/call-generic-method-nonconst.rs:19:34
    |
-LL | const fn equals_self<T: PartialEq>(t: &T) -> bool {
-   |                         --------- required by this bound in `equals_self`
-...
 LL | pub const EQ: bool = equals_self(&S);
    |                                  ^^ no implementation for `S == S`
    |
    = help: the trait `PartialEq` is not implemented for `S`
+note: required by a bound in `equals_self`
+  --> $DIR/call-generic-method-nonconst.rs:12:25
+   |
+LL | const fn equals_self<T: PartialEq>(t: &T) -> bool {
+   |                         ^^^^^^^^^ required by this bound in `equals_self`
 
 error: aborting due to previous error
 

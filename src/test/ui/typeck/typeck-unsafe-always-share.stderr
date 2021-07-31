@@ -1,31 +1,32 @@
 error[E0277]: `UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:19:10
    |
-LL | fn test<T: Sync>(s: T) {}
-   |            ---- required by this bound in `test`
-...
 LL |     test(us);
    |          ^^ `UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `UnsafeCell<MySync<{integer}>>`
+note: required by a bound in `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:12
+   |
+LL | fn test<T: Sync>(s: T) {}
+   |            ^^^^ required by this bound in `test`
 
 error[E0277]: `UnsafeCell<NoSync>` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:23:10
    |
-LL | fn test<T: Sync>(s: T) {}
-   |            ---- required by this bound in `test`
-...
 LL |     test(uns);
    |          ^^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
+note: required by a bound in `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:12
+   |
+LL | fn test<T: Sync>(s: T) {}
+   |            ^^^^ required by this bound in `test`
 
 error[E0277]: `UnsafeCell<NoSync>` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:27:5
    |
-LL | fn test<T: Sync>(s: T) {}
-   |            ---- required by this bound in `test`
-...
 LL |     test(ms);
    |     ^^^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
    |
@@ -35,17 +36,24 @@ note: required because it appears within the type `MySync<NoSync>`
    |
 LL | struct MySync<T> {
    |        ^^^^^^
+note: required by a bound in `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:12
+   |
+LL | fn test<T: Sync>(s: T) {}
+   |            ^^^^ required by this bound in `test`
 
 error[E0277]: `NoSync` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:30:10
    |
-LL | fn test<T: Sync>(s: T) {}
-   |            ---- required by this bound in `test`
-...
 LL |     test(NoSync);
    |          ^^^^^^ `NoSync` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `NoSync`
+note: required by a bound in `test`
+  --> $DIR/typeck-unsafe-always-share.rs:15:12
+   |
+LL | fn test<T: Sync>(s: T) {}
+   |            ^^^^ required by this bound in `test`
 
 error: aborting due to 4 previous errors
 
