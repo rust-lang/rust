@@ -1,135 +1,168 @@
-error[E0277]: `dyn Baz` doesn't implement `std::fmt::Debug`
-  --> $DIR/invalid-upcast.rs:35:35
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:54:35
    |
 LL |     let _: &dyn std::fmt::Debug = baz;
-   |                                   ^^^ `dyn Baz` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Baz`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `dyn Baz`
-   = note: required for the cast to the object type `dyn std::fmt::Debug`
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Baz`
 
-error[E0277]: `dyn Baz` cannot be sent between threads safely
-  --> $DIR/invalid-upcast.rs:37:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:56:24
    |
 LL |     let _: &dyn Send = baz;
-   |                        ^^^ `dyn Baz` cannot be sent between threads safely
+   |            ---------   ^^^ expected trait `Send`, found trait `Baz`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Send` is not implemented for `dyn Baz`
-   = note: required for the cast to the object type `dyn std::marker::Send`
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Baz`
 
-error[E0277]: `dyn Baz` cannot be shared between threads safely
-  --> $DIR/invalid-upcast.rs:39:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:58:24
    |
 LL |     let _: &dyn Sync = baz;
-   |                        ^^^ `dyn Baz` cannot be shared between threads safely
+   |            ---------   ^^^ expected trait `Sync`, found trait `Baz`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Sync` is not implemented for `dyn Baz`
-   = note: required for the cast to the object type `dyn std::marker::Sync`
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Baz`
 
-error[E0277]: the trait bound `dyn Baz: Bar` is not satisfied
-  --> $DIR/invalid-upcast.rs:42:25
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:61:25
    |
 LL |     let bar: &dyn Bar = baz;
-   |                         ^^^ the trait `Bar` is not implemented for `dyn Baz`
+   |              --------   ^^^ expected trait `Bar`, found trait `Baz`
+   |              |
+   |              expected due to this
    |
-   = note: required for the cast to the object type `dyn Bar`
+   = note: expected reference `&dyn Bar`
+              found reference `&dyn Baz`
 
-error[E0277]: `dyn Bar` doesn't implement `std::fmt::Debug`
-  --> $DIR/invalid-upcast.rs:44:35
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:63:35
    |
 LL |     let _: &dyn std::fmt::Debug = bar;
-   |                                   ^^^ `dyn Bar` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Bar`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `dyn Bar`
-   = note: required for the cast to the object type `dyn std::fmt::Debug`
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Bar`
 
-error[E0277]: `dyn Bar` cannot be sent between threads safely
-  --> $DIR/invalid-upcast.rs:46:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:65:24
    |
 LL |     let _: &dyn Send = bar;
-   |                        ^^^ `dyn Bar` cannot be sent between threads safely
+   |            ---------   ^^^ expected trait `Send`, found trait `Bar`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Send` is not implemented for `dyn Bar`
-   = note: required for the cast to the object type `dyn std::marker::Send`
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Bar`
 
-error[E0277]: `dyn Bar` cannot be shared between threads safely
-  --> $DIR/invalid-upcast.rs:48:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:67:24
    |
 LL |     let _: &dyn Sync = bar;
-   |                        ^^^ `dyn Bar` cannot be shared between threads safely
+   |            ---------   ^^^ expected trait `Sync`, found trait `Bar`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Sync` is not implemented for `dyn Bar`
-   = note: required for the cast to the object type `dyn std::marker::Sync`
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Bar`
 
-error[E0277]: the trait bound `dyn Baz: Foo` is not satisfied
-  --> $DIR/invalid-upcast.rs:51:25
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:70:25
    |
 LL |     let foo: &dyn Foo = baz;
-   |                         ^^^ the trait `Foo` is not implemented for `dyn Baz`
+   |              --------   ^^^ expected trait `Foo`, found trait `Baz`
+   |              |
+   |              expected due to this
    |
-   = note: required for the cast to the object type `dyn Foo`
+   = note: expected reference `&dyn Foo`
+              found reference `&dyn Baz`
 
-error[E0277]: `dyn Foo` doesn't implement `std::fmt::Debug`
-  --> $DIR/invalid-upcast.rs:53:35
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:72:35
    |
 LL |     let _: &dyn std::fmt::Debug = foo;
-   |                                   ^^^ `dyn Foo` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Foo`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `dyn Foo`
-   = note: required for the cast to the object type `dyn std::fmt::Debug`
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Foo`
 
-error[E0277]: `dyn Foo` cannot be sent between threads safely
-  --> $DIR/invalid-upcast.rs:55:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:74:24
    |
 LL |     let _: &dyn Send = foo;
-   |                        ^^^ `dyn Foo` cannot be sent between threads safely
+   |            ---------   ^^^ expected trait `Send`, found trait `Foo`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Send` is not implemented for `dyn Foo`
-   = note: required for the cast to the object type `dyn std::marker::Send`
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Foo`
 
-error[E0277]: `dyn Foo` cannot be shared between threads safely
-  --> $DIR/invalid-upcast.rs:57:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:76:24
    |
 LL |     let _: &dyn Sync = foo;
-   |                        ^^^ `dyn Foo` cannot be shared between threads safely
+   |            ---------   ^^^ expected trait `Sync`, found trait `Foo`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Sync` is not implemented for `dyn Foo`
-   = note: required for the cast to the object type `dyn std::marker::Sync`
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Foo`
 
-error[E0277]: the trait bound `dyn Bar: Foo` is not satisfied
-  --> $DIR/invalid-upcast.rs:60:25
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:79:25
    |
 LL |     let foo: &dyn Foo = bar;
-   |                         ^^^ the trait `Foo` is not implemented for `dyn Bar`
+   |              --------   ^^^ expected trait `Foo`, found trait `Bar`
+   |              |
+   |              expected due to this
    |
-   = note: required for the cast to the object type `dyn Foo`
+   = note: expected reference `&dyn Foo`
+              found reference `&dyn Bar`
 
-error[E0277]: `dyn Foo` doesn't implement `std::fmt::Debug`
-  --> $DIR/invalid-upcast.rs:62:35
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:81:35
    |
 LL |     let _: &dyn std::fmt::Debug = foo;
-   |                                   ^^^ `dyn Foo` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Foo`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `dyn Foo`
-   = note: required for the cast to the object type `dyn std::fmt::Debug`
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Foo`
 
-error[E0277]: `dyn Foo` cannot be sent between threads safely
-  --> $DIR/invalid-upcast.rs:64:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:83:24
    |
 LL |     let _: &dyn Send = foo;
-   |                        ^^^ `dyn Foo` cannot be sent between threads safely
+   |            ---------   ^^^ expected trait `Send`, found trait `Foo`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Send` is not implemented for `dyn Foo`
-   = note: required for the cast to the object type `dyn std::marker::Send`
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Foo`
 
-error[E0277]: `dyn Foo` cannot be shared between threads safely
-  --> $DIR/invalid-upcast.rs:66:24
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:85:24
    |
 LL |     let _: &dyn Sync = foo;
-   |                        ^^^ `dyn Foo` cannot be shared between threads safely
+   |            ---------   ^^^ expected trait `Sync`, found trait `Foo`
+   |            |
+   |            expected due to this
    |
-   = help: the trait `std::marker::Sync` is not implemented for `dyn Foo`
-   = note: required for the cast to the object type `dyn std::marker::Sync`
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Foo`
 
 error: aborting due to 15 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.

@@ -1,17 +1,18 @@
 # `trait_upcasting`
 
-The tracking issue for this feature is: [#31436]
+The tracking issue for this feature is: [#65991]
 
 [#65991]: https://github.com/rust-lang/rust/issues/65991
 
 ------------------------
 
-The `trait_upcasting` feature adds support for trait upcasting. This allows a
-trait object of type `dyn Foo` to be cast to a trait object of type `dyn Bar`
-so long as `Foo: Bar`.
+The `trait_upcasting` feature adds support for trait upcasting coercion. This allows a
+trait object of type `dyn Bar` to be cast to a trait object of type `dyn Foo`
+so long as `Bar: Foo`.
 
 ```rust,edition2018
 #![feature(trait_upcasting)]
+#![allow(incomplete_features)]
 
 trait Foo {}
 
@@ -21,6 +22,6 @@ impl Foo for i32 {}
 
 impl<T: Foo + ?Sized> Bar for T {}
 
-let foo: &dyn Foo = &123;
-let bar: &dyn Bar = foo;
+let bar: &dyn Bar = &123;
+let foo: &dyn Foo = bar;
 ```

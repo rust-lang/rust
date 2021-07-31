@@ -1,41 +1,67 @@
 // run-pass
+// ignore-compare-mode-nll
 
 #![feature(trait_upcasting)]
+#![allow(incomplete_features)]
 
 trait Foo: PartialEq<i32> + std::fmt::Debug + Send + Sync {
-    fn a(&self) -> i32 { 10 }
+    fn a(&self) -> i32 {
+        10
+    }
 
-    fn z(&self) -> i32 { 11 }
+    fn z(&self) -> i32 {
+        11
+    }
 
-    fn y(&self) -> i32 { 12 }
+    fn y(&self) -> i32 {
+        12
+    }
 }
 
 trait Bar: Foo {
-    fn b(&self) -> i32 { 20 }
+    fn b(&self) -> i32 {
+        20
+    }
 
-    fn w(&self) -> i32 { 21 }
+    fn w(&self) -> i32 {
+        21
+    }
 }
 
 trait Baz: Bar {
-    fn c(&self) -> i32 { 30 }
+    fn c(&self) -> i32 {
+        30
+    }
 }
 
 impl Foo for i32 {
-    fn a(&self) -> i32 { 100 }
+    fn a(&self) -> i32 {
+        100
+    }
 }
 
 impl Bar for i32 {
-    fn b(&self) -> i32 { 200 }
+    fn b(&self) -> i32 {
+        200
+    }
 }
 
 impl Baz for i32 {
-    fn c(&self) -> i32 { 300 }
+    fn c(&self) -> i32 {
+        300
+    }
 }
 
 // Note: upcast lifetime means a shorter lifetime.
-fn upcast_baz<'a: 'b, 'b, T>(v: Box<dyn Baz + 'a>, _l: &'b T) -> Box<dyn Baz + 'b> { v }
-fn upcast_bar<'a: 'b, 'b, T>(v: Box<dyn Bar + 'a>, _l: &'b T) -> Box<dyn Bar + 'b> { v }
-fn upcast_foo<'a: 'b, 'b, T>(v: Box<dyn Foo + 'a>, _l: &'b T) -> Box<dyn Foo + 'b> { v }
+fn upcast_baz<'a: 'b, 'b, T>(v: Box<dyn Baz + 'a>, _l: &'b T) -> Box<dyn Baz + 'b> {
+    v
+}
+fn upcast_bar<'a: 'b, 'b, T>(v: Box<dyn Bar + 'a>, _l: &'b T) -> Box<dyn Bar + 'b> {
+    v
+}
+fn upcast_foo<'a: 'b, 'b, T>(v: Box<dyn Foo + 'a>, _l: &'b T) -> Box<dyn Foo + 'b> {
+    v
+}
 
 fn main() {
     let v = Box::new(1);
