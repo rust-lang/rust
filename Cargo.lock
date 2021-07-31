@@ -81,7 +81,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object 0.26.0",
+ "object",
  "rustc-demangle",
 ]
 
@@ -1000,15 +1000,6 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.25.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a38f2be3697a57b4060074ff41b44c16870d916ad7877c17696e063257482bc7"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "object"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c55827317fb4c08822499848a14237d2874d6f139828893017237e7ab93eb386"
@@ -1151,7 +1142,7 @@ dependencies = [
  "jod-thread",
  "log",
  "memmap2",
- "object 0.25.3",
+ "object",
  "paths",
  "profile",
  "serde",
@@ -1170,7 +1161,7 @@ dependencies = [
  "libloading",
  "mbe",
  "memmap2",
- "object 0.25.3",
+ "object",
  "paths",
  "proc_macro_api",
  "proc_macro_test",
@@ -1317,9 +1308,9 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
 name = "rowan"
-version = "0.13.0-pre.7"
+version = "0.13.0-pre.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9a7c0b71a45f8ba80c74d55a7d4b3ec611042d3b98ee56835b6af7b5e9f3f83"
+checksum = "9635096edc6dc0fe4a8eea7f17307229e2c4f9b8481f4949e221abe7d94ae6ee"
 dependencies = [
  "countme",
  "hashbrown",

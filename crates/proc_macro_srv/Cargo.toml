@@ -9,7 +9,13 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-object = { version = "0.25.3", default-features = false, features = ["std", "read_core", "elf", "macho", "pe"] }
+object = { version = "0.26", default-features = false, features = [
+    "std",
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
+] }
 libloading = "0.7.0"
 memmap2 = "0.3.0"
 
