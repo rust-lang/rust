@@ -34,8 +34,8 @@ impl UsageSearchResult {
         self.references.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&FileId, &Vec<FileReference>)> + '_ {
-        self.references.iter()
+    pub fn iter(&self) -> impl Iterator<Item = (&FileId, &[FileReference])> + '_ {
+        self.references.iter().map(|(file_id, refs)| (file_id, &**refs))
     }
 
     pub fn file_ranges(&self) -> impl Iterator<Item = FileRange> + '_ {
