@@ -1185,10 +1185,6 @@ impl ResolverAstLowering for Resolver<'_> {
         self.definitions.init_def_id_to_hir_id_mapping(mapping)
     }
 
-    fn lint_buffer(&mut self) -> &mut LintBuffer {
-        &mut self.lint_buffer
-    }
-
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
