@@ -487,12 +487,24 @@ pub fn configure_and_expand(
         }
     });
 
+    sess.time("early_lint_checks", || {
+        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
+        rustc_lint::check_ast_node(
+            sess,
+            false,
+            lint_store,
+            resolver.registered_tools(),
+            lint_buffer,
+            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+            &krate,
+        )
+    });
+
     Ok(krate)
 }
 
 pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
-    lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
     krate: Rc<ast::Crate>,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
@@ -505,19 +517,6 @@ pub fn lower_to_hir<'res, 'tcx>(
         rustc_parse::nt_to_tokenstream,
         arena,
     );
-
-    sess.time("early_lint_checks", || {
-        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
-        rustc_lint::check_ast_node(
-            sess,
-            false,
-            lint_store,
-            resolver.registered_tools(),
-            lint_buffer,
-            rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-            &*krate,
-        )
-    });
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -852,9 +851,8 @@ pub fn create_global_ctxt<'tcx>(
     dep_graph.assert_ignored();
 
     let sess = &compiler.session();
-    let krate = resolver
-        .borrow_mut()
-        .access(|resolver| lower_to_hir(sess, &lint_store, resolver, krate, hir_arena));
+    let krate =
+        resolver.borrow_mut().access(|resolver| lower_to_hir(sess, resolver, krate, hir_arena));
     let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);

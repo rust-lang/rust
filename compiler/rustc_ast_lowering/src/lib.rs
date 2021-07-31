@@ -57,7 +57,6 @@ use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::lint::LintBuffer;
 use rustc_session::parse::feature_err;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
@@ -179,8 +178,6 @@ pub trait ResolverAstLowering {
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
 
     fn definitions(&self) -> &Definitions;
-
-    fn lint_buffer(&mut self) -> &mut LintBuffer;
 
     fn next_node_id(&mut self) -> NodeId;
 

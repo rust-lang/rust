@@ -1204,10 +1204,6 @@ impl ResolverAstLowering for Resolver<'_> {
         &self.definitions
     }
 
-    fn lint_buffer(&mut self) -> &mut LintBuffer {
-        &mut self.lint_buffer
-    }
-
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
