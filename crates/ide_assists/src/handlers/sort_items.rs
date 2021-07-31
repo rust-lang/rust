@@ -26,6 +26,10 @@ pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         }
     } else if let Some(union_ast) = ctx.find_node_at_offset::<ast::Union>() {
         add_sort_fields_assist(acc, union_ast.record_field_list()?)
+    } else if let Some(enum_struct_variant_ast) = ctx.find_node_at_offset::<ast::RecordFieldList>()
+    {
+        // should be above enum and below struct
+        add_sort_fields_assist(acc, enum_struct_variant_ast)
     } else if let Some(enum_ast) = ctx.find_node_at_offset::<ast::Enum>() {
         add_sort_variants_assist(acc, enum_ast.variant_list()?)
     } else {
@@ -427,6 +431,29 @@ enum Bar {
     b = 14,
     c(u32, usize),
     d{ first: u32, second: usize},
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn sort_struct_enum_variant() {
+        check_assist(
+            sort_items,
+            r#"
+enum Bar {
+    d$0{ second: usize, first: u32 },
+    b = 14,
+    a,
+    c(u32, usize),
+}
+        "#,
+            r#"
+enum Bar {
+    d{ first: u32, second: usize },
+    b = 14,
+    a,
+    c(u32, usize),
 }
         "#,
         )
