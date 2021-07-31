@@ -147,7 +147,7 @@ mod ops {
     pub use self::try_trait::Try;
 }
 
-mov convert {
+mod convert {
     pub trait From<T> {}
     impl<T> From<T> for T {}
 }
@@ -567,8 +567,8 @@ fn deref_trait() {
     check_types(
         r#"
 //- minicore: deref
-struct Arc<T>;
-impl<T> core::ops::Deref for Arc<T> {
+struct Arc<T: ?Sized>;
+impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -589,9 +589,9 @@ fn deref_trait_with_inference_var() {
     check_types(
         r#"
 //- minicore: deref
-struct Arc<T>;
-fn new_arc<T>() -> Arc<T> { Arc }
-impl<T> core::ops::Deref for Arc<T> {
+struct Arc<T: ?Sized>;
+fn new_arc<T: ?Sized>() -> Arc<T> { Arc }
+impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -631,7 +631,7 @@ fn deref_trait_with_question_mark_size() {
     check_types(
         r#"
 //- minicore: deref
-struct Arc<T>;
+struct Arc<T: ?Sized>;
 impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
@@ -2431,8 +2431,8 @@ fn dyn_trait_through_chalk() {
     check_types(
         r#"
 //- minicore: deref
-struct Box<T> {}
-impl<T> core::ops::Deref for Box<T> {
+struct Box<T: ?Sized> {}
+impl<T: ?Sized> core::ops::Deref for Box<T> {
     type Target = T;
 }
 trait Trait {
