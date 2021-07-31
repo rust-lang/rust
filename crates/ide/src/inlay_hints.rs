@@ -194,8 +194,12 @@ fn get_bind_pat_hints(
     if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
     }
+
     acc.push(InlayHint {
-        range: pat.syntax().text_range(),
+        range: match pat.name() {
+            Some(name) => name.syntax().text_range(),
+            None => pat.syntax().text_range(),
+        },
         kind: InlayKind::TypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
             .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
@@ -800,6 +804,28 @@ fn main() {
     }
 
     #[test]
+    fn type_hints_bindings_after_at() {
+        check_types(
+            r#"
+//- minicore: option
+fn main() {
+    let ref foo @ bar @ ref mut baz = 0;
+          //^^^ &i32
+                //^^^ i32
+                              //^^^ &mut i32
+    let [x @ ..] = [0];
+       //^ [i32; 1]
+    if let x @ Some(_) = Some(0) {}
+         //^ Option<i32>
+    let foo @ (bar, baz) = (3, 3);
+      //^^^ (i32, i32)
+             //^^^ i32
+                  //^^^ i32
+}"#,
+        );
+    }
+
+    #[test]
     fn default_generic_types_should_not_be_displayed() {
         check(
             r#"
@@ -839,7 +865,7 @@ impl<T> Iterator for SomeIter<T> {
 
 fn main() {
     let mut some_iter = SomeIter::new();
-      //^^^^^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
+          //^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
       some_iter.push(iter::repeat(2).take(2));
     let iter_of_iters = some_iter.take(2);
       //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
@@ -938,7 +964,7 @@ fn main() {
       //^^^^ i32
     let test: i32 = 33;
     let mut test = 33;
-      //^^^^^^^^ i32
+          //^^^^ i32
     let _ = 22;
     let test = "test";
       //^^^^ &str
@@ -1048,7 +1074,7 @@ impl<T> IntoIterator for Vec<T> {
 
 fn main() {
     let mut data = Vec::new();
-      //^^^^^^^^ Vec<&str>
+          //^^^^ Vec<&str>
     data.push("foo");
     for i in
 
@@ -1076,7 +1102,7 @@ impl<T> IntoIterator for Vec<T> {
 
 fn main() {
     let mut data = Vec::new();
-      //^^^^^^^^ Vec<&str>
+          //^^^^ Vec<&str>
     data.push("foo");
     for i in data {
       //^ &str
@@ -1153,7 +1179,7 @@ fn main() {
             r#"
 fn main() {
     let mut start = 0;
-      //^^^^^^^^^ i32
+          //^^^^^ i32
     (0..2).for_each(|increment| { start += increment; });
                    //^^^^^^^^^ i32
 
