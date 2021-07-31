@@ -2966,7 +2966,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       // TODO consider allowing the inverted pointer to become a scev
       if (!isa<PHINode>(NewV) ||
           cast<PHINode>(NewV)->getNumIncomingValues() == 0) {
-        bb.SetInsertPoint(bb.GetInsertBlock()->getFirstNonPHI());
+        bb.SetInsertPoint(bb.GetInsertBlock(), bb.GetInsertBlock()->begin());
       }
       auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
       invertedPointers[phi] = which;
