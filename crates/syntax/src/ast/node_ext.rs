@@ -64,13 +64,45 @@ impl ast::Pat {
                 WalkEvent::Enter(node) => node,
                 WalkEvent::Leave(_) => continue,
             };
-            match ast::Pat::cast(node.clone()) {
-                Some(ast::Pat::ConstBlockPat(_)) => preorder.skip_subtree(),
+            let kind = node.kind();
+            match ast::Pat::cast(node) {
+                Some(pat @ ast::Pat::ConstBlockPat(_)) => {
+                    preorder.skip_subtree();
+                    cb(pat);
+                }
                 Some(pat) => {
                     cb(pat);
                 }
                 // skip const args
-                None if ast::GenericArg::can_cast(node.kind()) => {
+                None if ast::GenericArg::can_cast(kind) => {
+                    preorder.skip_subtree();
+                }
+                None => (),
+            }
+        }
+    }
+}
+
+impl ast::Type {
+    /// Preorder walk all the type's sub types.
+    pub fn walk(&self, cb: &mut dyn FnMut(ast::Type)) {
+        let mut preorder = self.syntax().preorder();
+        while let Some(event) = preorder.next() {
+            let node = match event {
+                WalkEvent::Enter(node) => node,
+                WalkEvent::Leave(_) => continue,
+            };
+            let kind = node.kind();
+            match ast::Type::cast(node) {
+                Some(ty @ ast::Type::MacroType(_)) => {
+                    preorder.skip_subtree();
+                    cb(ty)
+                }
+                Some(ty) => {
+                    cb(ty);
+                }
+                // skip const args
+                None if ast::ConstArg::can_cast(kind) => {
                     preorder.skip_subtree();
                 }
                 None => (),

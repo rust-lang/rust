@@ -1,8 +1,5 @@
 use hir::HirDisplay;
-use syntax::{
-    ast::{self, AstNode, LetStmt},
-    TextRange,
-};
+use syntax::ast::{self, AstNode, LetStmt, Param};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -22,40 +19,46 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let let_stmt = ctx.find_node_at_offset::<LetStmt>()?;
-    let module = ctx.sema.scope(let_stmt.syntax()).module()?;
-    let expr = let_stmt.initializer()?;
-    // Must be a binding
-    let pat = match let_stmt.pat()? {
-        ast::Pat::IdentPat(bind_pat) => bind_pat,
-        _ => return None,
+    let (ascribed_ty, expr, pat) = if let Some(let_stmt) = ctx.find_node_at_offset::<LetStmt>() {
+        let cursor_in_range = {
+            let eq_range = let_stmt.eq_token()?.text_range();
+            ctx.offset() < eq_range.start()
+        };
+        if !cursor_in_range {
+            cov_mark::hit!(add_explicit_type_not_applicable_if_cursor_after_equals);
+            return None;
+        }
+
+        (let_stmt.ty(), let_stmt.initializer(), let_stmt.pat()?)
+    } else if let Some(param) = ctx.find_node_at_offset::<Param>() {
+        if param.syntax().ancestors().nth(2).and_then(ast::ClosureExpr::cast).is_none() {
+            cov_mark::hit!(add_explicit_type_not_applicable_in_fn_param);
+            return None;
+        }
+        (param.ty(), None, param.pat()?)
+    } else {
+        return None;
     };
+
+    let module = ctx.sema.scope(pat.syntax()).module()?;
     let pat_range = pat.syntax().text_range();
 
-    // Assist should only be applicable if cursor is between 'let' and '='
-    let cursor_in_range = {
-        let stmt_range = let_stmt.syntax().text_range();
-        let eq_range = let_stmt.eq_token()?.text_range();
-        let let_range = TextRange::new(stmt_range.start(), eq_range.start());
-        let_range.contains_range(ctx.frange.range)
-    };
-    if !cursor_in_range {
-        cov_mark::hit!(add_explicit_type_not_applicable_if_cursor_after_equals);
-        return None;
-    }
-
-    // Assist not applicable if the type has already been specified
-    // and it has no placeholders
-    let ascribed_ty = let_stmt.ty();
+    // Don't enable the assist if there is a type ascription without any placeholders
     if let Some(ty) = &ascribed_ty {
-        if ty.syntax().descendants().find_map(ast::InferType::cast).is_none() {
+        let mut contains_infer_ty = false;
+        ty.walk(&mut |ty| contains_infer_ty |= matches!(ty, ast::Type::InferType(_)));
+        if !contains_infer_ty {
             cov_mark::hit!(add_explicit_type_not_applicable_if_ty_already_specified);
             return None;
         }
     }
 
-    // Infer type
-    let (ty, _) = ctx.sema.type_of_expr_with_coercion(&expr)?;
+    let ty = match (pat, expr) {
+        (ast::Pat::IdentPat(_), Some(expr)) => ctx.sema.type_of_expr_with_coercion(&expr)?.0,
+        (pat, _) => ctx.sema.type_of_pat(&pat)?,
+    };
+
+    // Unresolved or unnameable types can't be annotated
     if ty.contains_unknown() || ty.is_closure() {
         cov_mark::hit!(add_explicit_type_not_applicable_if_ty_not_inferred);
         return None;
@@ -89,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    fn add_explicit_type_works_for_simple_expr() {
+    fn add_explicit_type_simple() {
         check_assist(
             add_explicit_type,
             r#"fn f() { let a$0 = 1; }"#,
@@ -98,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn add_explicit_type_works_for_underscore() {
+    fn add_explicit_type_simple_on_infer_ty() {
         check_assist(
             add_explicit_type,
             r#"fn f() { let a$0: _ = 1; }"#,
@@ -107,19 +110,16 @@ mod tests {
     }
 
     #[test]
-    fn add_explicit_type_works_for_nested_underscore() {
+    fn add_explicit_type_simple_nested_infer_ty() {
         check_assist(
             add_explicit_type,
             r#"
-enum Option<T> { Some(T), None }
-
+//- minicore: option
 fn f() {
     let a$0: Option<_> = Option::Some(1);
 }
 "#,
             r#"
-enum Option<T> { Some(T), None }
-
 fn f() {
     let a: Option<i32> = Option::Some(1);
 }
@@ -128,7 +128,7 @@ fn f() {
     }
 
     #[test]
-    fn add_explicit_type_works_for_macro_call() {
+    fn add_explicit_type_macro_call_expr() {
         check_assist(
             add_explicit_type,
             r"macro_rules! v { () => {0u64} } fn f() { let a$0 = v!(); }",
@@ -137,61 +137,28 @@ fn f() {
     }
 
     #[test]
-    fn add_explicit_type_works_for_macro_call_recursive() {
-        check_assist(
-            add_explicit_type,
-            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a$0 = v!(); }"#,
-            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a: u64 = v!(); }"#,
-        );
-    }
-
-    #[test]
-    fn add_explicit_type_not_applicable_if_ty_not_inferred() {
+    fn add_explicit_type_not_applicable_unresolved() {
         cov_mark::check!(add_explicit_type_not_applicable_if_ty_not_inferred);
         check_assist_not_applicable(add_explicit_type, r#"fn f() { let a$0 = None; }"#);
     }
 
     #[test]
-    fn add_explicit_type_not_applicable_if_ty_already_specified() {
+    fn add_explicit_type_not_applicable_closure_expr() {
+        check_assist_not_applicable(add_explicit_type, r#"fn f() { let a$0 = || {}; }"#);
+    }
+
+    #[test]
+    fn add_explicit_type_not_applicable_ty_already_specified() {
         cov_mark::check!(add_explicit_type_not_applicable_if_ty_already_specified);
         check_assist_not_applicable(add_explicit_type, r#"fn f() { let a$0: i32 = 1; }"#);
     }
 
     #[test]
-    fn add_explicit_type_not_applicable_if_specified_ty_is_tuple() {
-        check_assist_not_applicable(
-            add_explicit_type,
-            r#"fn f() { let a$0: (i32, i32) = (3, 4); }"#,
-        );
-    }
-
-    #[test]
-    fn add_explicit_type_not_applicable_if_cursor_after_equals() {
+    fn add_explicit_type_not_applicable_cursor_after_equals_of_let() {
         cov_mark::check!(add_explicit_type_not_applicable_if_cursor_after_equals);
         check_assist_not_applicable(
             add_explicit_type,
             r#"fn f() {let a =$0 match 1 {2 => 3, 3 => 5};}"#,
-        )
-    }
-
-    #[test]
-    fn add_explicit_type_not_applicable_if_cursor_before_let() {
-        check_assist_not_applicable(
-            add_explicit_type,
-            r#"fn f() $0{let a = match 1 {2 => 3, 3 => 5};}"#,
-        )
-    }
-
-    #[test]
-    fn closure_parameters_are_not_added() {
-        check_assist_not_applicable(
-            add_explicit_type,
-            r#"
-fn main() {
-    let multiply_by_two$0 = |i| i * 3;
-    let six = multiply_by_two(2);
-}
-"#,
         )
     }
 
@@ -275,6 +242,55 @@ fn f() {
             r#"
 fn f() {
     let x: *const [i32] = &[3];
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_explicit_type_not_applicable_fn_param() {
+        cov_mark::check!(add_explicit_type_not_applicable_in_fn_param);
+        check_assist_not_applicable(add_explicit_type, r#"fn f(x$0: ()) {}"#);
+    }
+
+    #[test]
+    fn add_explicit_type_ascribes_closure_param() {
+        check_assist(
+            add_explicit_type,
+            r#"
+fn f() {
+    |y$0| {
+        let x: i32 = y;
+    };
+}
+"#,
+            r#"
+fn f() {
+    |y: i32| {
+        let x: i32 = y;
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_explicit_type_ascribes_closure_param_already_ascribed() {
+        check_assist(
+            add_explicit_type,
+            r#"
+//- minicore: option
+fn f() {
+    |mut y$0: Option<_>| {
+        y = Some(3);
+    };
+}
+"#,
+            r#"
+fn f() {
+    |mut y: Option<i32>| {
+        y = Some(3);
+    };
 }
 "#,
         );
