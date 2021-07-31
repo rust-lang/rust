@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/type-checking-test-4.rs:17:13
+   |
+LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
+   |             ^ lifetime mismatch
+   |
+   = note: expected trait object `dyn Bar<'static, 'a>`
+              found trait object `dyn Bar<'static, 'static>`
+note: the lifetime `'a` as defined on the function body at 16:16...
+  --> $DIR/type-checking-test-4.rs:16:16
+   |
+LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
+   |                ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0308]: mismatched types
+  --> $DIR/type-checking-test-4.rs:22:13
+   |
+LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
+   |             ^ lifetime mismatch
+   |
+   = note: expected trait object `dyn Bar<'a, 'static>`
+              found trait object `dyn Bar<'static, 'static>`
+note: the lifetime `'a` as defined on the function body at 21:16...
+  --> $DIR/type-checking-test-4.rs:21:16
+   |
+LL | fn test_wrong2<'a>(x: &dyn Foo<'static>, y: &'a u32) {
+   |                ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/type-checking-test-4.rs:27:27
+   |
+LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                       ------------ this data with lifetime `'a`...
+LL |     let y = x as &dyn Bar<'_, '_>;
+   |             -             ^^
+   |             |
+   |             ...is captured here...
+LL |
+LL |     y.get_b() // ERROR
+   |     --------- ...and is required to live as long as `'static` here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0759.
+For more information about an error, try `rustc --explain E0308`.

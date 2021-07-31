@@ -683,6 +683,10 @@ declare_features! (
     /// Allows the `?` operator in const contexts.
     (active, const_try, "1.56.0", Some(74935), None),
 
+    /// Allows upcasting trait objects via supertraits.
+    /// Trait upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (incomplete, trait_upcasting, "1.56.0", Some(65991), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

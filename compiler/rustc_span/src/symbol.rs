@@ -1270,6 +1270,7 @@ symbols! {
         trace_macros,
         track_caller,
         trait_alias,
+        trait_upcasting,
         transmute,
         transparent,
         transparent_enums,
