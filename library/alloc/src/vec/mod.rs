@@ -1372,9 +1372,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
         #[inline(never)]
+        #[track_caller]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {}) should be < len (is {})", index, len);
         }
