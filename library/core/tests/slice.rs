@@ -135,6 +135,48 @@ fn test_partition_point() {
 }
 
 #[test]
+fn test_iterator_advance_by() {
+    let v = &[0, 1, 2, 3, 4];
+
+    for i in 0..=v.len() {
+        let mut iter = v.iter();
+        iter.advance_by(i).unwrap();
+        assert_eq!(iter.as_slice(), &v[i..]);
+    }
+
+    let mut iter = v.iter();
+    assert_eq!(iter.advance_by(v.len() + 1), Err(v.len()));
+    assert_eq!(iter.as_slice(), &[]);
+
+    let mut iter = v.iter();
+    iter.advance_by(3).unwrap();
+    assert_eq!(iter.as_slice(), &v[3..]);
+    iter.advance_by(2).unwrap();
+    assert_eq!(iter.as_slice(), &[]);
+}
+
+#[test]
+fn test_iterator_advance_back_by() {
+    let v = &[0, 1, 2, 3, 4];
+
+    for i in 0..=v.len() {
+        let mut iter = v.iter();
+        iter.advance_back_by(i).unwrap();
+        assert_eq!(iter.as_slice(), &v[..v.len() - i]);
+    }
+
+    let mut iter = v.iter();
+    assert_eq!(iter.advance_back_by(v.len() + 1), Err(v.len()));
+    assert_eq!(iter.as_slice(), &[]);
+
+    let mut iter = v.iter();
+    iter.advance_back_by(3).unwrap();
+    assert_eq!(iter.as_slice(), &v[..v.len() - 3]);
+    iter.advance_back_by(2).unwrap();
+    assert_eq!(iter.as_slice(), &[]);
+}
+
+#[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     for i in 0..v.len() {
