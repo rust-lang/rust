@@ -173,8 +173,14 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// let mut x = 0u32;
     /// let ptr = unsafe { NonNull::new_unchecked(&mut x as *mut _) };
+    /// ```
     ///
-    /// // NEVER DO THAT!!!
+    /// *Incorrect* usage of this function:
+    ///
+    /// ```rust,no_run
+    /// use std::ptr::NonNull;
+    ///
+    /// // NEVER DO THAT!!! This is undefined behavior. ⚠️
     /// let ptr = unsafe { NonNull::<u32>::new_unchecked(std::ptr::null_mut()) };
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
