@@ -99,6 +99,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// (&mut into_iter).for_each(core::mem::drop);
     /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
     /// ```
+    ///
+    /// This method is used by in-place iteration, refer to the vec::in_place_collect
+    /// documentation for an overview.
     #[cfg(not(no_global_oom_handling))]
     pub(super) fn forget_allocation_drop_remaining(&mut self) {
         let remaining = self.as_raw_mut_slice();
@@ -325,6 +328,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
     }
 }
 
+// In addition to the SAFETY invariants of the following three unsafe traits
+// also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {}

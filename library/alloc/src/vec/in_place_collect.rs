@@ -1,3 +1,132 @@
+//! Inplace iterate-and-collect specialization for `Vec`
+//!
+//! The specialization in this module applies to iterators in the shape of
+//! `source.adapter().adapter().adapter().collect::<Vec<U>>()`
+//! where `source` is an owning iterator obtained from [`Vec<T>`], [`Box<[T]>`] (by conversion to `Vec`)
+//! or [`BinaryHeap<T>`], the adapters each consume one or more items per step
+//! (represented by [`InPlaceIterable`]), provide transitive access to `source` (via [`SourceIter`])
+//! and thus the underlying allocation. And finally the layouts of `T` and `U` must
+//! have the same size and alignment, this is currently ensured via const eval instead of trait
+//! bounds.
+//!
+//! [`BinaryHeap<T>`]: crate::collections::BinaryHeap
+//! [`Box<[T]>`]: crate::boxed::Box
+//!
+//! By extension some other collections which use `collect::Vec<_>()` internally in their
+//! `FromIterator` implementation benefit from this too.
+//!
+//! Access to the underlying source goes through a further layer of indirection via the private
+//! trait [`AsIntoIter`] to hide the implementation detail that other collections may use
+//! `vec::IntoIter` internally.
+//!
+//! In-place iteration depends on the interaction of several unsafe traits, implementation
+//! details of multiple parts in the iterator pipeline and often requires holistic reasoning
+//! across multiple structs since iterators are executed cooperatively rather than having
+//! a central evaluator/visitor struct executing all iterator components.
+//!
+//! # Reading from and writing to the same allocation
+//!
+//! By its nature collecting in place means that the reader and writer side of the iterator
+//! use the same allocation. Since `fold()` and co. take a reference to the iterator for the
+//! duration of the iteration that means we can't interleave the step of reading a value
+//! and getting a reference to write to. Instead raw pointers must be used on the reader
+//! and writer side.
+//!
+//! That writes never clobber a yet-to-be-read item is ensured by the [`InPlaceIterable`] requirements.
+//!
+//! # Layout constraints
+//!
+//! [`Allocator`] requires that `allocate()` and `deallocate()` have matching alignment and size.
+//! Additionally this specialization doesn't make sense for ZSTs as there is no reallocation to
+//! avoid and it would make pointer arithmetic more difficult.
+//!
+//! [`Allocator`]: core::alloc::Allocator
+//!
+//! # Drop- and panic-safety
+//!
+//! Iteration can panic, requiring dropping the already written parts but also the remainder of
+//! the source. Iteration can also leave some source items unconsumed which must be dropped.
+//! All those drops in turn can panic which then must either leak the allocation or abort to avoid
+//! double-drops.
+//!
+//! These tasks are handled by [`InPlaceDrop`] and [`vec::IntoIter::forget_allocation_drop_remaining()`]
+//!
+//! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
+//!
+//! # O(1) collect
+//!
+//! The main iteration itself is further specialized when the iterator implements
+//! [`TrustedRandomAccessNoCoerce`] to let the optimizer see that it is a counted loop with a single
+//! induction variable. This can turn some iterators into a noop, i.e. it reduces them from O(n) to
+//! O(1). This particular optimization is quite fickle and doesn't always work, see [#79308]
+//!
+//! [#79308]: https://github.com/rust-lang/rust/issues/79308
+//!
+//! Since unchecked accesses through that trait do not advance the read pointer of `IntoIter`
+//! this would interact unsoundly with the requirements about dropping the tail described above.
+//! But since the normal `Drop` implementation of `IntoIter` would suffer from the same problem it
+//! is only correct for `TrustedRandomAccessNoCoerce` to be implemented when the items don't
+//! have a destructor. Thus that implicit requirement also makes the specialization safe to use for
+//! in-place collection.
+//!
+//! # Adapter implementations
+//!
+//! The invariants for adapters are documented in [`SourceIter`] and [`InPlaceIterable`], but
+//! getting them right can be rather subtle for multiple, sometimes non-local reasons.
+//! For example `InPlaceIterable` would be valid to implement for [`Peekable`], except
+//! that it is stateful, cloneable and `IntoIter`'s clone implementation shortens the underlying
+//! allocation which means if the iterator has been peeked and then gets cloned there no longer is
+//! enough room, thus breaking an invariant (#85322).
+//!
+//! [#85322]: https://github.com/rust-lang/rust/issues/85322
+//! [`Peekable`]: core::iter::Peekable
+//!
+//!
+//! # Examples
+//!
+//! Some cases that are optimized by this specialization, more can be found in the `Vec`
+//! benchmarks:
+//!
+//! ```rust
+//! # #[allow(dead_code)]
+//! /// Converts a usize vec into an isize one.
+//! pub fn cast(vec: Vec<usize>) -> Vec<isize> {
+//!   // Does not allocate, free or panic. On optlevel>=2 it does not loop.
+//!   // Of course this particular case could and should be written with `into_raw_parts` and
+//!   // `from_raw_parts` instead.
+//!   vec.into_iter().map(|u| u as isize).collect()
+//! }
+//! ```
+//!
+//! ```rust
+//! # #[allow(dead_code)]
+//! /// Drops remaining items in `src` and if the layouts of `T` and `U` match it
+//! /// returns an empty Vec backed by the original allocation. Otherwise it returns a new
+//! /// empty vec.
+//! pub fn recycle_allocation<T, U>(src: Vec<T>) -> Vec<U> {
+//!   src.into_iter().filter_map(|_| None).collect()
+//! }
+//! ```
+//!
+//! ```rust
+//! let vec = vec![13usize; 1024];
+//! let _ = vec.into_iter()
+//!   .enumerate()
+//!   .filter_map(|(idx, val)| if idx % 2 == 0 { Some(val+idx) } else {None})
+//!   .collect::<Vec<_>>();
+//!
+//! // is equivalent to the following, but doesn't require bounds checks
+//!
+//! let mut vec = vec![13usize; 1024];
+//! let mut write_idx = 0;
+//! for idx in 0..vec.len() {
+//!    if idx % 2 == 0 {
+//!       vec[write_idx] = vec[idx] + idx;
+//!       write_idx += 1;
+//!    }
+//! }
+//! vec.truncate(write_idx);
+//! ```
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
@@ -16,11 +145,8 @@ where
     I: Iterator<Item = T> + SourceIter<Source: AsIntoIter> + InPlaceIterableMarker,
 {
     default fn from_iter(mut iterator: I) -> Self {
-        // Additional requirements which cannot expressed via trait bounds. We rely on const eval
-        // instead:
-        // a) no ZSTs as there would be no allocation to reuse and pointer arithmetic would panic
-        // b) size match as required by Alloc contract
-        // c) alignments match as required by Alloc contract
+        // See "Layout constraints" section in the module documentation. We rely on const
+        // optimization here since these conditions currently cannot be expressed as trait bounds
         if mem::size_of::<T>() == 0
             || mem::size_of::<T>()
                 != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
@@ -58,21 +184,13 @@ where
             );
         }
 
-        // drop any remaining values at the tail of the source
-        // but prevent drop of the allocation itself once IntoIter goes out of scope
-        // if the drop panics then we also leak any elements collected into dst_buf
+        // Drop any remaining values at the tail of the source but prevent drop of the allocation
+        // itself once IntoIter goes out of scope.
+        // If the drop panics then we also leak any elements collected into dst_buf.
         //
-        // FIXME: Since `SpecInPlaceCollect::collect_in_place` above might use
-        // `__iterator_get_unchecked` internally, this call might be operating on
-        // a `vec::IntoIter` with incorrect internal state regarding which elements
-        // have already been “consumed”. However, the `TrustedRandomIteratorNoCoerce`
-        // implementation of `vec::IntoIter` is only present if the `Vec` elements
-        // don’t have a destructor, so it doesn’t matter if elements are “dropped multiple times”
-        // in this case.
-        // This argument technically currently lacks justification from the `# Safety` docs for
-        // `SourceIter`/`InPlaceIterable` and/or `TrustedRandomAccess`, so it might be possible that
-        // someone could inadvertently create new library unsoundness
-        // involving this `.forget_allocation_drop_remaining()` call.
+        // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
+        // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
+        // module documenttation why this is ok anyway.
         src.forget_allocation_drop_remaining();
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
@@ -155,7 +273,21 @@ where
     }
 }
 
-// internal helper trait for in-place iteration specialization.
+/// Internal helper trait for in-place iteration specialization.
+///
+/// Currently this is only implemented by [`vec::IntoIter`] - returning a reference to itself - and
+/// [`binary_heap::IntoIter`] which returns a reference to its inner representation.
+///
+/// Since this is an internal trait it hides the implementation detail `binary_heap::IntoIter`
+/// uses `vec::IntoIter` internally.
+///
+/// [`vec::IntoIter`]: super::IntoIter
+/// [`binary_heap::IntoIter`]: crate::collections::binary_heap::IntoIter
+///
+/// # Safety
+///
+/// In-place iteration relies on implementation details of `vec::IntoIter`, most importantly that
+/// it does not create references to the whole allocation during iteration, only raw pointers
 #[rustc_specialization_trait]
 pub(crate) unsafe trait AsIntoIter {
     type Item;
