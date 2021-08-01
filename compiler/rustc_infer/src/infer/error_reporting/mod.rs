@@ -1481,11 +1481,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 target: &str,
                 types: &FxHashMap<TyCategory, FxHashSet<Span>>,
             ) {
-                for (key, values) in types.iter() {
-                    let count = values.len();
-                    let kind = key.descr();
+                for (ty_category, spans) in types.iter() {
+                    let count = spans.len();
+                    let kind = ty_category.descr();
                     let mut returned_async_output_error = false;
-                    for sp in values {
+                    for sp in spans {
                         if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
                             err.span_label(*sp, format!("{}", "async functions return futures"));
                             err.note("while checking the return type of the `async fn`");
