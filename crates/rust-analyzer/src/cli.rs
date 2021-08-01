@@ -1,6 +1,6 @@
 //! Various batch processing tasks, intended primarily for debugging.
 
-pub(crate) mod load_cargo;
+pub mod load_cargo;
 mod analysis_stats;
 mod diagnostics;
 mod progress_report;

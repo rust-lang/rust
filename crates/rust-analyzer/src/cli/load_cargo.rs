@@ -14,13 +14,17 @@ use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{ProjectFolders, SourceRootConfig};
 
-pub(crate) struct LoadCargoConfig {
-    pub(crate) load_out_dirs_from_check: bool,
-    pub(crate) with_proc_macro: bool,
-    pub(crate) prefill_caches: bool,
+// Note: Since this type is used by external tools that use rust-analyzer as a library
+// what otherwise would be `pub(crate)` has to be `pub` here instead.
+pub struct LoadCargoConfig {
+    pub load_out_dirs_from_check: bool,
+    pub with_proc_macro: bool,
+    pub prefill_caches: bool,
 }
 
-pub(crate) fn load_workspace_at(
+// Note: Since this function is used by external tools that use rust-analyzer as a library
+// what otherwise would be `pub(crate)` has to be `pub` here instead.
+pub fn load_workspace_at(
     root: &Path,
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
@@ -33,7 +37,12 @@ pub(crate) fn load_workspace_at(
     load_workspace(workspace, cargo_config, load_config, progress)
 }
 
-fn load_workspace(
+// Note: Since this function is used by external tools that use rust-analyzer as a library
+// what otherwise would be `pub(crate)` has to be `pub` here instead.
+//
+// The reason both, `load_workspace_at` and `load_workspace` are `pub` is that some of
+// these tools need access to `ProjectWorkspace`, too, which `load_workspace_at` hides.
+pub fn load_workspace(
     mut ws: ProjectWorkspace,
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
