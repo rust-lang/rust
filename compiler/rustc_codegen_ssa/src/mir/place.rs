@@ -103,7 +103,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     if offset == a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi) =>
                 {
                     // Offset matches second field.
-                    bx.struct_gep(self.llval, 1)
+                    let ty = bx.backend_type(self.layout);
+                    bx.struct_gep(ty, self.llval, 1)
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
                     // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
@@ -119,7 +120,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                         self.layout
                     );
                 }
-                _ => bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix)),
+                _ => {
+                    let ty = bx.backend_type(self.layout);
+                    bx.struct_gep(ty, self.llval, bx.cx().backend_field_index(self.layout, ix))
+                }
             };
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
