@@ -261,28 +261,23 @@ impl<'a, 'tcx> LintExpectationChecker<'a, 'tcx> {
         id: hir::HirId,
     ) {
         let parent_id = self.tcx.hir().get_parent_node(id);
-        let level = self.tcx.lint_level_at_node(builtin::UNFULFILLED_LINT_EXPECTATION, parent_id).0;
+        let level =
+            self.tcx.lint_level_at_node(builtin::UNFULFILLED_LINT_EXPECTATIONS, parent_id).0;
         if level == Level::Expect {
             // This diagnostic is actually expected. It has to be added manually to
             // `self.emitted_lints` because we only collect expected diagnostics at
             // the start. It would therefore not be included in the backlog.
-            let expect_lint_name = builtin::UNFULFILLED_LINT_EXPECTATION.name.to_ascii_lowercase();
-            if let CheckLintNameResult::Ok(&[expect_lint_id]) =
-                self.store.check_lint_name(self.sess, &expect_lint_name, None, self.crate_attrs)
-            {
-                self.emitted_lints.push(LintIdEmission::new(expect_lint_id, span.into()));
-            } else {
-                unreachable!(
-                    "the `unfulfilled_lint_expectation` lint should be registered when this code is executed"
-                );
-            }
+            self.emitted_lints.push(LintIdEmission::new(
+                LintId::of(builtin::UNFULFILLED_LINT_EXPECTATIONS),
+                span.into(),
+            ));
 
             // The diagnostic will still be emitted as usual to make sure that it's
             // stored in cache.
         }
 
         self.tcx.struct_span_lint_hir(
-            builtin::UNFULFILLED_LINT_EXPECTATION,
+            builtin::UNFULFILLED_LINT_EXPECTATIONS,
             parent_id,
             span,
             |diag| {

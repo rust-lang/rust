@@ -1,10 +1,10 @@
 warning: this lint expectation is unfulfilled
   --> $DIR/expecting_missed_expectations.rs:15:1
    |
-LL | #[expect(unfulfilled_lint_expectation, reason = "this should issue a warning")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[expect(unfulfilled_lint_expectations, reason = "this should issue a warning")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unfulfilled_lint_expectation)]` on by default
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
    = note: this should issue a warning
 
 warning: 1 warning emitted

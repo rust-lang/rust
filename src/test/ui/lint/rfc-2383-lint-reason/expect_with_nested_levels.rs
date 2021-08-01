@@ -3,8 +3,8 @@
 #![feature(lint_reasons)]
 
 #[expect(unused_mut, reason = "This should trigger because `unused_mut` was allow")]
-//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectation]
-//~| NOTE `#[warn(unfulfilled_lint_expectation)]` on by default
+//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE `#[warn(unfulfilled_lint_expectations)]` on by default
 //~| NOTE This should trigger because `unused_mut` was allow
 mod foo {
   fn bar() {
@@ -14,7 +14,7 @@ mod foo {
 }
 
 #[expect(unused_mut, reason = "This should trigger because `unused_mut` is no longer expected")]
-//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectation]
+//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
 //~| NOTE This should trigger because `unused_mut` is no longer expected
 mod oof {
     #[warn(unused_mut, reason = "We no longer expect it in this scope")]

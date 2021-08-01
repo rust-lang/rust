@@ -3,8 +3,8 @@
 #![feature(lint_reasons)]
 
 #[expect(unused_variables, reason = "All emissions should be consumed by the nested expect")]
-//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectation]
-//~| NOTE #[warn(unfulfilled_lint_expectation)]` on by default
+//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
+//~| NOTE #[warn(unfulfilled_lint_expectations)]` on by default
 //~| NOTE All emissions should be consumed by the nested expect
 mod oof {
     #[expect(unused_variables, reason = "This should collect all unused variable emissions")]

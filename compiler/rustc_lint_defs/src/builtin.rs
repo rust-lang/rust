@@ -457,7 +457,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unfulfilled_lint_expectation` lint detects lint trigger expectations
+    /// The `unfulfilled_lint_expectations` lint detects lint trigger expectations
     /// that have not been fulfilled.
     ///
     /// ### Example
@@ -483,7 +483,7 @@ declare_lint! {
     /// Part of RFC 2383. The progress is being tracked in [#54503]
     ///
     /// [#54503]: https://github.com/rust-lang/rust/issues/54503
-    pub UNFULFILLED_LINT_EXPECTATION,
+    pub UNFULFILLED_LINT_EXPECTATIONS,
     Warn,
     "unfulfilled lint expectation",
     @feature_gate = rustc_span::sym::lint_reasons;
@@ -2931,7 +2931,7 @@ declare_lint_pass! {
         UNUSED_CRATE_DEPENDENCIES,
         UNUSED_QUALIFICATIONS,
         UNKNOWN_LINTS,
-        UNFULFILLED_LINT_EXPECTATION,
+        UNFULFILLED_LINT_EXPECTATIONS,
         UNUSED_VARIABLES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,

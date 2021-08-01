@@ -863,6 +863,11 @@ impl HandlerInner {
 
         if diagnostic.level == Allow {
             return;
+        } else if diagnostic.level == Level::Expect {
+            if let Ok(emission) = LintEmission::try_from(diagnostic) {
+                self.expected_lint_emissions.push(emission);
+            }
+            return;
         }
 
         if let Some(ref code) = diagnostic.code {
@@ -879,14 +884,6 @@ impl HandlerInner {
         // Only emit the diagnostic if we've been asked to deduplicate and
         // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            if diagnostic.level == Level::Expect {
-                if let Ok(emission) = LintEmission::try_from(diagnostic) {
-                    self.expected_lint_emissions.push(emission);
-                }
-                // Diagnostics with the level `Expect` shouldn't be emitted or effect internal counters.
-                return;
-            }
-
             self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;

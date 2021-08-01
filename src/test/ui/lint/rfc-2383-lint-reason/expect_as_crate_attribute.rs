@@ -3,6 +3,6 @@
 #![feature(lint_reasons)]
 
 #![expect(unused_mut)]
-//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectation]
+//~^ WARNING this lint expectation is unfulfilled [unfulfilled_lint_expectations]
 
 fn main() {}
