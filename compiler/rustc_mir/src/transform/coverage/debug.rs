@@ -369,10 +369,10 @@ impl DebugCounters {
                     }
                     return format!("({})", self.format_counter_kind(counter_kind));
                 }
-                return self.format_counter_kind(counter_kind).to_string();
+                return self.format_counter_kind(counter_kind);
             }
         }
-        format!("#{}", operand.index().to_string())
+        format!("#{}", operand.index())
     }
 }
 

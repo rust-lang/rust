@@ -222,8 +222,8 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                                 let id_to_set = *ids.iter().min().unwrap();
 
                                 // Sort the id list so that the algorithm is deterministic
-                                let mut ids = ids.into_iter().collect::<SmallVec<[_; 8]>>();
-                                ids.sort();
+                                let mut ids = ids.into_iter().collect::<SmallVec<[usize; 8]>>();
+                                ids.sort_unstable();
 
                                 let mut region = connected_regions.remove(&id_to_set).unwrap();
                                 region.idents.extend_from_slice(&idents_to_add);
@@ -266,8 +266,8 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                     // for each pair of impl blocks in the same connected region.
                     for (_id, region) in connected_regions.into_iter() {
                         let mut impl_blocks =
-                            region.impl_blocks.into_iter().collect::<SmallVec<[_; 8]>>();
-                        impl_blocks.sort();
+                            region.impl_blocks.into_iter().collect::<SmallVec<[usize; 8]>>();
+                        impl_blocks.sort_unstable();
                         for (i, &impl1_items_idx) in impl_blocks.iter().enumerate() {
                             let &(&impl1_def_id, impl_items1) = &impls_items[impl1_items_idx];
                             for &impl2_items_idx in impl_blocks[(i + 1)..].iter() {

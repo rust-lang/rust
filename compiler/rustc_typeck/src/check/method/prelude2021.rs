@@ -265,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Get the number of generics the self type has (if an Adt) unless we can determine that
                 // the user has written the self type with generics already which we (naively) do by looking
                 // for a "<" in `self_ty_name`.
-                Adt(def, _) if !self_ty_name.contains("<") => self.tcx.generics_of(def.did).count(),
+                Adt(def, _) if !self_ty_name.contains('<') => self.tcx.generics_of(def.did).count(),
                 _ => 0,
             };
             let self_ty_generics = if self_ty_generics_count > 0 {
