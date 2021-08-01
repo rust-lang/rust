@@ -21,7 +21,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
-    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
         let (ty, poly_trait_ref) = self.tcx.erase_regions((ty, poly_trait_ref));
@@ -34,7 +34,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let vtable_ptr = self.memory.global_base_pointer(Pointer::from(vtable_allocation))?;
 
-        Ok(vtable_ptr)
+        Ok(vtable_ptr.into())
     }
 
     /// Resolves the function at the specified slot in the provided
@@ -126,21 +126,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         vtable: Pointer<Option<M::PointerTag>>,
         idx: u64,
-    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
         let pointer_size = self.pointer_size();
 
-        let vtable = self
-            .memory
-            .get(
-                vtable,
-                pointer_size * idx.checked_add(1).unwrap(),
-                self.tcx.data_layout.pointer_align.abi,
-            )?
-            .expect("cannot be a ZST");
+        let vtable_slot = vtable.offset(pointer_size * idx, self)?;
         let new_vtable = self
-            .scalar_to_ptr(vtable.read_ptr_sized(pointer_size * idx)?.check_init()?)
-            .into_pointer_or_addr()
-            .expect("should be a pointer");
+            .memory
+            .get(vtable_slot, pointer_size, self.tcx.data_layout.pointer_align.abi)?
+            .expect("cannot be a ZST");
+
+        let new_vtable = self.scalar_to_ptr(new_vtable.read_ptr_sized(Size::ZERO)?.check_init()?);
 
         Ok(new_vtable)
     }
