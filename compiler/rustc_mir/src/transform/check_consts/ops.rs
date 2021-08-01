@@ -255,7 +255,7 @@ impl NonConstOp for CellBorrow {
         );
         err.span_label(
             span,
-            format!("this borrow of an interior mutable value may end up in the final value"),
+            "this borrow of an interior mutable value may end up in the final value",
         );
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
             err.help(

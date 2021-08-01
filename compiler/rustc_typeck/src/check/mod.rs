@@ -791,7 +791,7 @@ fn fn_sig_suggestion<'tcx>(
             })
         })
         .chain(std::iter::once(if sig.c_variadic { Some("...".to_string()) } else { None }))
-        .filter_map(|arg| arg)
+        .flatten()
         .collect::<Vec<String>>()
         .join(", ");
     let output = sig.output();

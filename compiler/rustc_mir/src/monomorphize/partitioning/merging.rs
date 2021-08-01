@@ -46,7 +46,7 @@ pub fn merge_codegen_units<'tcx>(
         // Record that `second_smallest` now contains all the stuff that was in
         // `smallest` before.
         let mut consumed_cgu_names = cgu_contents.remove(&smallest.name()).unwrap();
-        cgu_contents.get_mut(&second_smallest.name()).unwrap().extend(consumed_cgu_names.drain(..));
+        cgu_contents.get_mut(&second_smallest.name()).unwrap().append(&mut consumed_cgu_names);
 
         debug!(
             "CodegenUnit {} merged into CodegenUnit {}",

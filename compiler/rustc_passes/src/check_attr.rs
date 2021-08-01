@@ -855,7 +855,7 @@ impl CheckAttrVisitor<'tcx> {
                         hir_id,
                         meta.span(),
                         |lint| {
-                            lint.build(&format!("invalid `doc` attribute")).emit();
+                            lint.build(&"invalid `doc` attribute").emit();
                         },
                     );
                     is_valid = false;

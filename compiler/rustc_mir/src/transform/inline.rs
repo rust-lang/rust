@@ -614,8 +614,8 @@ impl Inliner<'tcx> {
                         .vars_and_temps_iter()
                         .map(|local| callee_body.local_decls[local].clone()),
                 );
-                caller_body.source_scopes.extend(callee_body.source_scopes.drain(..));
-                caller_body.var_debug_info.extend(callee_body.var_debug_info.drain(..));
+                caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
+                caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
                 caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
 
                 caller_body[callsite.block].terminator = Some(Terminator {

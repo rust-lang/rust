@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
                 (expr_text, true)
             } else {
-                (format!("(..)"), false)
+                ("(..)".to_string(), false)
             };
 
         let adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =

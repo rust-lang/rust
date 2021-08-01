@@ -731,7 +731,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if suggestions.peek().is_some() {
                         err.span_suggestions(
                             path_segment.ident.span,
-                            &format!("use mutable method"),
+                            "use mutable method",
                             suggestions,
                             Applicability::MaybeIncorrect,
                         );

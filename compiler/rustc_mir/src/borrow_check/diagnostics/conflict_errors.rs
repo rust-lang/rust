@@ -320,7 +320,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         .map(|n| format!("`{}`", n))
                                         .unwrap_or_else(|| "the mutable reference".to_string()),
                                 ),
-                                format!("&mut *"),
+                                "&mut *".to_string(),
                                 Applicability::MachineApplicable,
                             );
                         }

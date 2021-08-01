@@ -576,7 +576,7 @@ pub fn is_known_lint_tool(m_item: Symbol, sess: &Session, attrs: &[ast::Attribut
     // NOTE: does no error handling; error handling is done by rustc_resolve.
     sess.filter_by_name(attrs, sym::register_tool)
         .filter_map(|attr| attr.meta_item_list())
-        .flat_map(std::convert::identity)
+        .flatten()
         .filter_map(|nested_meta| nested_meta.ident())
         .map(|ident| ident.name)
         .any(|name| name == m_item)

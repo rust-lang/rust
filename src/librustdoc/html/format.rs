@@ -488,7 +488,7 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
     let cache = &cx.cache();
     let relative_to = &cx.current;
     fn to_module_fqp(shortty: ItemType, fqp: &[String]) -> &[String] {
-        if shortty == ItemType::Module { &fqp[..] } else { &fqp[..fqp.len() - 1] }
+        if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
     }
 
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
@@ -509,7 +509,7 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
                     match cache.extern_locations[&did.krate] {
                         ExternalLocation::Remote(ref s) => {
                             let s = s.trim_end_matches('/');
-                            let mut s = vec![&s[..]];
+                            let mut s = vec![s];
                             s.extend(module_fqp[..].iter().map(String::as_str));
                             s
                         }

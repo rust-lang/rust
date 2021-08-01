@@ -1867,7 +1867,7 @@ fn parse_extern_dep_specs(
             )
         });
 
-        let locparts: Vec<_> = loc.split(":").collect();
+        let locparts: Vec<_> = loc.split(':').collect();
         let spec = match &locparts[..] {
             ["raw", ..] => {
                 // Don't want `:` split string

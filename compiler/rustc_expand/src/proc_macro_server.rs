@@ -834,7 +834,7 @@ fn ident_name_compatibility_hack(
                                 .flat_map(|c| c.as_os_str().to_str())
                                 .find(|c| c.starts_with("js-sys"))
                             {
-                                let mut version = c.trim_start_matches("js-sys-").split(".");
+                                let mut version = c.trim_start_matches("js-sys-").split('.');
                                 if version.next() == Some("0")
                                     && version.next() == Some("3")
                                     && version

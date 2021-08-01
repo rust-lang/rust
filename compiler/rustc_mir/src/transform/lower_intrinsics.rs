@@ -147,8 +147,8 @@ fn validate_simd_shuffle(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) 
     match &args[2] {
         Operand::Constant(_) => {} // all good
         _ => {
-            let msg = format!("last argument of `simd_shuffle` is required to be a `const` item");
-            tcx.sess.span_err(span, &msg);
+            let msg = "last argument of `simd_shuffle` is required to be a `const` item";
+            tcx.sess.span_err(span, msg);
         }
     }
 }
