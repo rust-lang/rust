@@ -110,7 +110,7 @@ FN@0..17
 
 (significant amount of implementation work here was done by [CAD97](https://github.com/cad97)).
 
-To reduce the amount of allocations, the GreenNode is a DST, which uses a single allocation for header and children. Thus, it is only usable behind a pointer
+To reduce the amount of allocations, the GreenNode is a [DST](https://doc.rust-lang.org/reference/dynamically-sized-types.html), which uses a single allocation for header and children. Thus, it is only usable behind a pointer.
 
 ```
 *-----------+------+----------+------------+--------+--------+-----+--------*
