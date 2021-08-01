@@ -540,6 +540,7 @@ impl<'tcx> TyCtxt<'tcx> {
             expanded_cache: FxHashMap::default(),
             primary_def_id: Some(def_id),
             found_recursion: false,
+            found_any_recursion: false,
             check_recursion: true,
             tcx: self,
         };
@@ -560,6 +561,7 @@ struct OpaqueTypeExpander<'tcx> {
     expanded_cache: FxHashMap<(DefId, SubstsRef<'tcx>), Ty<'tcx>>,
     primary_def_id: Option<DefId>,
     found_recursion: bool,
+    found_any_recursion: bool,
     /// Whether or not to check for recursive opaque types.
     /// This is `true` when we're explicitly checking for opaque type
     /// recursion, and 'false' otherwise to avoid unnecessary work.
@@ -569,7 +571,7 @@ struct OpaqueTypeExpander<'tcx> {
 
 impl<'tcx> OpaqueTypeExpander<'tcx> {
     fn expand_opaque_ty(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) -> Option<Ty<'tcx>> {
-        if self.found_recursion {
+        if self.found_any_recursion {
             return None;
         }
         let substs = substs.fold_with(self);
@@ -591,6 +593,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
         } else {
             // If another opaque type that we contain is recursive, then it
             // will report the error, so we don't have to.
+            self.found_any_recursion = true;
             self.found_recursion = def_id == *self.primary_def_id.as_ref().unwrap();
             None
         }
@@ -1078,6 +1081,7 @@ pub fn normalize_opaque_types(
         expanded_cache: FxHashMap::default(),
         primary_def_id: None,
         found_recursion: false,
+        found_any_recursion: false,
         check_recursion: false,
         tcx,
     };
