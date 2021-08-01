@@ -965,6 +965,11 @@ fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_tra
                     "add `#[derive(PartialEq)]` or manually implement `PartialEq` for `{}`",
                     ty
                 ));
+            } else if missing_trait == "std::cmp::PartialOrd" {
+                err.note(&format!(
+                    "add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `{}`",
+                    ty
+                ));
             }
         }
     }

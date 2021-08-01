@@ -97,6 +97,7 @@ LL |     a == a;
    |     A
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `A`
+   = note: add `#[derive(PartialEq)]` or manually implement `PartialEq` for `A`
 
 error[E0369]: binary operation `!=` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:26:7
@@ -107,6 +108,7 @@ LL |     a != a;
    |     A
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `A`
+   = note: add `#[derive(PartialEq)]` or manually implement `PartialEq` for `A`
 
 error[E0369]: binary operation `<` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:28:7
@@ -117,6 +119,7 @@ LL |     a < a;
    |     A
    |
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+   = note: add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `A`
 
 error[E0369]: binary operation `<=` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:30:7
@@ -127,6 +130,7 @@ LL |     a <= a;
    |     A
    |
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+   = note: add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `A`
 
 error[E0369]: binary operation `>` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:32:7
@@ -137,6 +141,7 @@ LL |     a > a;
    |     A
    |
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+   = note: add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `A`
 
 error[E0369]: binary operation `>=` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:34:7
@@ -147,6 +152,7 @@ LL |     a >= a;
    |     A
    |
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `A`
+   = note: add `#[derive(PartialOrd)]` or manually implement `PartialOrd` for `A`
 
 error: aborting due to 15 previous errors
 
