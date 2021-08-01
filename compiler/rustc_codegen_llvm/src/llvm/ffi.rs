@@ -1402,8 +1402,9 @@ extern "C" {
         NumIndices: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
-    pub fn LLVMBuildInBoundsGEP(
+    pub fn LLVMBuildInBoundsGEP2(
         B: &Builder<'a>,
+        Ty: &'a Type,
         Pointer: &'a Value,
         Indices: *const &'a Value,
         NumIndices: c_uint,

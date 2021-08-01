@@ -168,8 +168,11 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 let ptr_ty = cx.type_i8p();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
                 let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
-                let gep =
-                    bx.inbounds_gep(llvtable, &[bx.const_usize(u64::try_from(entry_idx).unwrap())]);
+                let gep = bx.inbounds_gep(
+                    ptr_ty,
+                    llvtable,
+                    &[bx.const_usize(u64::try_from(entry_idx).unwrap())],
+                );
                 let new_vptr = bx.load(ptr_ty, gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
                 // Vtable loads are invariant.

@@ -544,7 +544,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             .val
             .store(&mut body_bx, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
+        let next = body_bx.inbounds_gep(
+            self.backend_type(cg_elem.layout),
+            current,
+            &[self.const_usize(1)],
+        );
         body_bx.br(header_bx.llbb());
         header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
 
@@ -653,10 +657,16 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn inbounds_gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
+    fn inbounds_gep(
+        &mut self,
+        ty: &'ll Type,
+        ptr: &'ll Value,
+        indices: &[&'ll Value],
+    ) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildInBoundsGEP(
+            llvm::LLVMBuildInBoundsGEP2(
                 self.llbuilder,
+                ty,
                 ptr,
                 indices.as_ptr(),
                 indices.len() as c_uint,

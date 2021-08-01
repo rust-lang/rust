@@ -50,12 +50,12 @@ fn emit_direct_ptr_va_arg(
 
     let aligned_size = size.align_to(slot_size).bytes() as i32;
     let full_direct_size = bx.cx().const_i32(aligned_size);
-    let next = bx.inbounds_gep(addr, &[full_direct_size]);
+    let next = bx.inbounds_gep(bx.type_i8(), addr, &[full_direct_size]);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
     if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
-        let adjusted = bx.inbounds_gep(addr, &[adjusted_size]);
+        let adjusted = bx.inbounds_gep(bx.type_i8(), addr, &[adjusted_size]);
         (bx.bitcast(adjusted, bx.cx().type_ptr_to(llty)), addr_align)
     } else {
         (bx.bitcast(addr, bx.cx().type_ptr_to(llty)), addr_align)

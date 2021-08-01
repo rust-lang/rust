@@ -384,7 +384,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         };
 
         PlaceRef {
-            llval: bx.inbounds_gep(self.llval, &[bx.cx().const_usize(0), llindex]),
+            llval: bx.inbounds_gep(
+                bx.cx().backend_type(self.layout),
+                self.llval,
+                &[bx.cx().const_usize(0), llindex],
+            ),
             llextra: None,
             layout,
             align: self.align.restrict_for_offset(offset),
