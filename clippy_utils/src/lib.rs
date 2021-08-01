@@ -67,6 +67,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
@@ -626,7 +627,12 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 }
 
 /// Checks if the top level expression can be moved into a closure as is.
-pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, jump_targets: &[HirId]) -> bool {
+pub fn can_move_expr_to_closure_no_visit(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    jump_targets: &[HirId],
+    ignore_locals: &HirIdSet,
+) -> bool {
     match expr.kind {
         ExprKind::Break(Destination { target_id: Ok(id), .. }, _)
         | ExprKind::Continue(Destination { target_id: Ok(id), .. })
@@ -642,15 +648,24 @@ pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Exp
         | ExprKind::LlvmInlineAsm(_) => false,
         // Accessing a field of a local value can only be done if the type isn't
         // partially moved.
-        ExprKind::Field(base_expr, _)
-            if matches!(
-                base_expr.kind,
-                ExprKind::Path(QPath::Resolved(_, Path { res: Res::Local(_), .. }))
-            ) && can_partially_move_ty(cx, cx.typeck_results().expr_ty(base_expr)) =>
-        {
+        ExprKind::Field(
+            &Expr {
+                hir_id,
+                kind:
+                    ExprKind::Path(QPath::Resolved(
+                        _,
+                        Path {
+                            res: Res::Local(local_id),
+                            ..
+                        },
+                    )),
+                ..
+            },
+            _,
+        ) if !ignore_locals.contains(local_id) && can_partially_move_ty(cx, cx.typeck_results().node_type(hir_id)) => {
             // TODO: check if the local has been partially moved. Assume it has for now.
             false
-        }
+        },
         _ => true,
     }
 }
@@ -659,7 +674,11 @@ pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Exp
 pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
+        // Stack of potential break targets contained in the expression.
         loops: Vec<HirId>,
+        /// Local variables created in the expression. These don't need to be captured.
+        locals: HirIdSet,
+        /// Whether this expression can be turned into a closure.
         allow_closure: bool,
     }
     impl Visitor<'tcx> for V<'_, 'tcx> {
@@ -677,9 +696,15 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
                 self.visit_block(b);
                 self.loops.pop();
             } else {
-                self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops);
+                self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops, &self.locals);
                 walk_expr(self, e);
             }
+        }
+
+        fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
+            p.each_binding_or_first(&mut |_, id, _, _| {
+                self.locals.insert(id);
+            });
         }
     }
 
@@ -687,6 +712,7 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
         cx,
         allow_closure: true,
         loops: Vec::new(),
+        locals: HirIdSet::default(),
     };
     v.visit_expr(expr);
     v.allow_closure

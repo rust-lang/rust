@@ -4,7 +4,7 @@
 #![warn(clippy::map_entry)]
 #![feature(asm)]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::hash::Hash;
 
 macro_rules! m {
@@ -146,13 +146,12 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
     if !m.contains_key(&k) {
         insert!(m, k, v);
     }
-}
 
-fn btree_map<K: Eq + Ord + Copy, V: Copy>(m: &mut BTreeMap<K, V>, k: K, v: V, v2: V) {
-    // insert then do something, use if let
+    // or_insert_with. Partial move of a local declared in the closure is ok.
     if !m.contains_key(&k) {
+        let x = (String::new(), String::new());
+        let _ = x.0;
         m.insert(k, v);
-        foo();
     }
 }
 
