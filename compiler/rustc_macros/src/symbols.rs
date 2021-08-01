@@ -207,7 +207,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             #keyword_stream
         }
 
-        #[cfg_attr(bootstrap, allow(rustc::default_hash_types))]
         #[allow(non_upper_case_globals)]
         #[doc(hidden)]
         pub mod sym_generated {
