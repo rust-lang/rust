@@ -5651,6 +5651,7 @@ public:
       auto callval = orig->getCalledValue();
 #endif
 
+      assert(!gutils->isConstantValue(callval));
       newcalled = gutils->invertPointerM(callval, Builder2);
 
       auto ft = cast<FunctionType>(

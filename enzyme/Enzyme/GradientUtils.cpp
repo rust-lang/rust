@@ -2398,7 +2398,8 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   return res;
 }
 
-Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
+Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM,
+                                     bool nullShadow) {
   assert(oval);
   if (auto inst = dyn_cast<Instruction>(oval)) {
     assert(inst->getParent()->getParent() == oldFunc);
@@ -2413,6 +2414,36 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     return oval;
   } else if (auto cint = dyn_cast<ConstantInt>(oval)) {
     return cint;
+  } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {
+      Vals.push_back(cast<Constant>(
+          invertPointerM(CD->getElementAsConstant(i), BuilderM)));
+    }
+    return ConstantDataArray::get(CD->getContext(), Vals);
+  } else if (auto CD = dyn_cast<ConstantArray>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      Vals.push_back(
+          cast<Constant>(invertPointerM(CD->getOperand(i), BuilderM)));
+    }
+    return ConstantArray::get(CD->getType(), Vals);
+  } else if (auto CD = dyn_cast<ConstantStruct>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      Vals.push_back(
+          cast<Constant>(invertPointerM(CD->getOperand(i), BuilderM)));
+    }
+    return ConstantStruct::get(CD->getType(), Vals);
+  } else if (auto CD = dyn_cast<ConstantVector>(oval)) {
+    SmallVector<Constant *, 1> Vals;
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      Vals.push_back(
+          cast<Constant>(invertPointerM(CD->getOperand(i), BuilderM)));
+    }
+    return ConstantVector::get(Vals);
+  } else if (isa<ConstantData>(oval) && nullShadow) {
+    return Constant::getNullValue(oval->getType());
   }
 
   if (isConstantValue(oval)) {
@@ -2591,11 +2622,15 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       // Create global variable locally if not externally visible
       if (arg->hasInternalLinkage() || arg->hasPrivateLinkage()) {
         Type *type = cast<PointerType>(arg->getType())->getElementType();
+        IRBuilder<> B(inversionAllocs);
         auto shadow = new GlobalVariable(
             *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
-            Constant::getNullValue(type), arg->getName() + "_shadow", arg,
-            arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
-            arg->isExternallyInitialized());
+            arg->getInitializer()
+                ? cast<Constant>(invertPointerM(arg->getInitializer(), B,
+                                                /*nullShadow*/ true))
+                : Constant::getNullValue(type),
+            arg->getName() + "_shadow", arg, arg->getThreadLocalMode(),
+            arg->getType()->getAddressSpace(), arg->isExternallyInitialized());
         arg->setMetadata("enzyme_shadow",
                          MDTuple::get(shadow->getContext(),
                                       {ConstantAsMetadata::get(shadow)}));

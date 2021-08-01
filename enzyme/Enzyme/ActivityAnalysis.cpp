@@ -563,22 +563,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   // All function pointers are considered active in case an augmented primal
   // or reverse is needed
-  if (isa<Function>(Val)) {
+  if (isa<Function>(Val) || isa<InlineAsm>(Val)) {
     return false;
   }
-
-  // Undef, metadata, non-global constants, and blocks are inactive
-  if (isa<UndefValue>(Val) || isa<MetadataAsValue>(Val) ||
-      isa<ConstantData>(Val) || isa<ConstantAggregate>(Val) ||
-      isa<BasicBlock>(Val)) {
-    return true;
-  }
-  if (isa<InlineAsm>(Val)) {
-    return false;
-    llvm::errs() << *TR.info.Function << "\n";
-    llvm::errs() << *Val << "\n";
-  }
-  assert(!isa<InlineAsm>(Val));
 
   /// If we've already shown this value to be inactive
   if (ConstantValues.find(Val) != ConstantValues.end()) {
@@ -588,6 +575,38 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   /// If we've already shown this value to be active
   if (ActiveValues.find(Val) != ActiveValues.end()) {
     return false;
+  }
+
+  if (auto CD = dyn_cast<ConstantDataSequential>(Val)) {
+    // inductively assume inactive
+    ConstantValues.insert(CD);
+    for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {
+      if (!isConstantValue(TR, CD->getElementAsConstant(i))) {
+        ConstantValues.erase(CD);
+        ActiveValues.insert(CD);
+        return false;
+      }
+    }
+    return true;
+  }
+  if (auto CD = dyn_cast<ConstantAggregate>(Val)) {
+    // inductively assume inactive
+    ConstantValues.insert(CD);
+    for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
+      if (!isConstantValue(TR, CD->getOperand(i))) {
+        ConstantValues.erase(CD);
+        ActiveValues.insert(CD);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Undef, metadata, non-global constants, and blocks are inactive
+  if (isa<UndefValue>(Val) || isa<MetadataAsValue>(Val) ||
+      isa<ConstantData>(Val) || isa<ConstantAggregate>(Val) ||
+      isa<BasicBlock>(Val)) {
+    return true;
   }
 
   if (auto II = dyn_cast<IntrinsicInst>(Val)) {
@@ -679,7 +698,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     if (GI->isConstant() && isConstantValue(TR, GI->getInitializer())) {
       InsertConstantValue(TR, Val);
       if (EnzymePrintActivity)
-        llvm::errs() << " VALUE const global " << *Val << "\n";
+        llvm::errs() << " VALUE const global " << *Val
+                     << " init: " << *GI->getInitializer() << "\n";
       return true;
     }
 
