@@ -1,6 +1,7 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_errors::Applicability;
+use rustc_middle::lint::in_external_macro;
 
 declare_lint! {
     /// The `redundant_field_initializers` lint checks for fields in struct literals
@@ -33,6 +34,9 @@ declare_lint_pass!(RedundantFieldInitializers => [REDUNDANT_FIELD_INITIALIZERS])
 
 impl EarlyLintPass for RedundantFieldInitializers {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
+        if in_external_macro(cx.sess(), expr.span) {
+            return;
+        }
         if let ast::ExprKind::Struct(ref se) = expr.kind {
             for field in &se.fields {
                 if field.is_shorthand {
