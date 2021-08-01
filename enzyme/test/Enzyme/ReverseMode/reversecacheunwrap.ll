@@ -109,11 +109,11 @@ attributes #4 = { "enzyme_inactive" }
 ; CHECK-NEXT:   br i1 %exitcond70, label %invertfor.inc30, label %for.cond8.preheader
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond8.preheader
-; CHECK-NEXT:   %3 = bitcast i64* %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %3)
-; CHECK-NEXT:   %4 = bitcast double** %[[i1]] to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %4)
-; CHECK-NEXT:   ret void
+; CHECK-DAG:   %[[a3:.+]] = bitcast i64* %[[i0]] to i8*
+; CHECK-DAG:   tail call void @free(i8* nonnull %[[a3]])
+; CHECK-DAG:   %[[a4:.+]] = bitcast double** %[[i1]] to i8*
+; CHECK-DAG:   tail call void @free(i8* nonnull %[[a4]])
+; CHECK-DAG:   ret void
 
 ; CHECK: invertfor.cond8.preheader:                        ; preds = %invertfor.body15
 ; CHECK-NEXT:   %5 = icmp eq i64 %"iv'ac.0", 0

@@ -3311,6 +3311,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
+    if (funcName == "__dynamic_cast" ||
+        funcName == "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base" ||
+        funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      return;
+    }
 
     /// MPI
     if (funcName == "MPI_Init") {
@@ -4485,9 +4491,6 @@ TypeTree TypeResults::query(Value *val) {
   }
   if (auto arg = dyn_cast<Argument>(val)) {
     assert(arg->getParent() == info.Function);
-  }
-  for (auto &pair : info.Arguments) {
-    assert(pair.first->getParent() == info.Function);
   }
   return analysis.query(val, info);
 }

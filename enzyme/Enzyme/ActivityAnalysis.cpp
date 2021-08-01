@@ -79,7 +79,8 @@ cl::opt<bool>
 #include <unordered_map>
 
 const char *KnownInactiveFunctionsStartingWith[] = {
-    "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io", "$ss5print"};
+    "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io", "$ss5print",
+    "_ZNSt7__cxx1112basic_string"};
 
 std::set<std::string> KnownInactiveFunctions = {
     "__assert_fail",
@@ -725,7 +726,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     if (EnzymePrintActivity)
       llvm::errs() << "pre attempting(" << (int)directions
                    << ") just used in module for: " << *GI << " dir"
-                   << (char)directions << " justusedin:" << usedJustInThisModule
+                   << (int)directions << " justusedin:" << usedJustInThisModule
                    << "\n";
 
     if (directions == 3 && usedJustInThisModule) {

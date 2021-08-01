@@ -561,9 +561,11 @@ struct CacheAnalysis {
 #endif
 
       bool init_safe = !is_value_mustcache_from_origin(obj);
-      auto CD = TR.query(obj)[{-1}];
-      if (CD == BaseType::Integer || CD.isFloat())
-        init_safe = true;
+      if (!init_safe) {
+        auto CD = TR.query(obj)[{-1}];
+        if (CD == BaseType::Integer || CD.isFloat())
+          init_safe = true;
+      }
       if (!init_safe && !isa<ConstantInt>(obj) && !isa<Function>(obj)) {
         EmitWarning("UncacheableOrigin", callsite_op->getDebugLoc(), oldFunc,
                     callsite_op->getParent(), "Callsite ", *callsite_op,

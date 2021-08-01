@@ -1644,11 +1644,17 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           auto tofree = scopeFrees[found->first];
           scopeFrees.erase(found->first);
           for (auto freeinst : tofree) {
-            std::deque<Value *> ops = {freeinst->getArgOperand(0)};
+            // This deque contains a list of operations
+            // we can erasing upon erasing the free (and so on).
+            // Since multiple operations can have the same operand,
+            // this deque can contain the same value multiple times.
+            // To remedy this we use a tracking value handle which will
+            // be set to null when erased.
+            std::deque<WeakTrackingVH> ops = {freeinst->getArgOperand(0)};
             erase(freeinst);
 
             while (ops.size()) {
-              auto z = dyn_cast<Instruction>(ops[0]);
+              auto z = dyn_cast_or_null<Instruction>(ops[0]);
               ops.pop_front();
               if (z && z->getNumUses() == 0) {
                 for (unsigned i = 0; i < z->getNumOperands(); ++i) {

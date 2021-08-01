@@ -4476,6 +4476,103 @@ public:
         return;
       }
 
+      // Functions that only modify pointers and don't allocate memory,
+      // needs to be run on shadow in primal
+      if (funcName ==
+          "_ZSt29_Rb_tree_insert_and_rebalancebPSt18_Rb_tree_node_baseS0_RS_") {
+        if (Mode == DerivativeMode::ReverseModeGradient) {
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+          return;
+        }
+        if (gutils->isConstantValue(orig->getArgOperand(3)))
+          return;
+        SmallVector<Value *, 2> args;
+        for (auto &arg : call.arg_operands()) {
+          if (gutils->isConstantValue(arg))
+            args.push_back(gutils->getNewFromOriginal(arg));
+          else
+            args.push_back(gutils->invertPointerM(arg, BuilderZ));
+        }
+        BuilderZ.CreateCall(called, args);
+        return;
+      }
+
+      // if constant instruction and readonly (thus must be pointer return) and
+      // shadow return recomputable from shadow arguments.
+      if (funcName == "__dynamic_cast" ||
+          funcName == "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base" ||
+          funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base") {
+        bool shouldCache = false;
+        if (gutils->knownRecomputeHeuristic.find(orig) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            shouldCache = true;
+          }
+        }
+        ValueToValueMapTy empty;
+        bool lrc = gutils->legalRecompute(orig, empty, nullptr);
+
+        if (!gutils->isConstantValue(orig)) {
+          assert(gutils->invertedPointers.count(orig));
+          auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+          gutils->invertedPointers.erase(orig);
+
+          Value *shadow = placeholder;
+          if (lrc || Mode == DerivativeMode::ReverseModePrimal ||
+              Mode == DerivativeMode::ReverseModeCombined) {
+            if (gutils->isConstantValue(orig->getArgOperand(0)))
+              shadow = gutils->getNewFromOriginal(orig);
+            else {
+              SmallVector<Value *, 2> args;
+              size_t i = 0;
+              for (auto &arg : call.arg_operands()) {
+                if (gutils->isConstantValue(arg) ||
+                    (funcName == "__dynamic_cast" && i > 0))
+                  args.push_back(gutils->getNewFromOriginal(arg));
+                else
+                  args.push_back(gutils->invertPointerM(arg, BuilderZ));
+                i++;
+              }
+              shadow = BuilderZ.CreateCall(called, args);
+            }
+          }
+
+          bool needsReplacement = true;
+          if (!lrc && (Mode == DerivativeMode::ReverseModePrimal ||
+                       Mode == DerivativeMode::ReverseModeGradient)) {
+            shadow = gutils->cacheForReverse(BuilderZ, shadow,
+                                             getIndex(orig, CacheType::Shadow));
+            if (Mode == DerivativeMode::ReverseModeGradient)
+              needsReplacement = false;
+          }
+          gutils->invertedPointers[orig] = shadow;
+          if (needsReplacement) {
+            assert(shadow != placeholder);
+            gutils->replaceAWithB(placeholder, shadow);
+            gutils->erase(placeholder);
+          }
+        }
+
+        if (!shouldCache && !lrc) {
+          std::map<UsageKey, bool> Seen;
+          for (auto pair : gutils->knownRecomputeHeuristic)
+            Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+          bool primalNeededInReverse =
+              is_value_needed_in_reverse<ValueType::Primal>(
+                  TR, gutils, orig, Mode, Seen, oldUnreachable);
+          shouldCache = primalNeededInReverse;
+        }
+
+        if (shouldCache) {
+          BuilderZ.SetInsertPoint(newCall->getNextNode());
+          gutils->cacheForReverse(BuilderZ, newCall,
+                                  getIndex(orig, CacheType::Self));
+        }
+        eraseIfUnused(*orig);
+        assert(gutils->isConstantInstruction(orig));
+        return;
+      }
+
       if (called) {
         if (funcName == "erf") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
