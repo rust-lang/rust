@@ -5,7 +5,6 @@ use crate::ops::{Deref, DerefMut};
 use crate::pin::Pin;
 use crate::ptr::{NonNull, Unique};
 use crate::stream::Stream;
-use crate::sync::atomic;
 use crate::task::{Context, Poll};
 
 /// A marker trait which represents "panic safe" types in Rust.
@@ -204,49 +203,49 @@ impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl RefUnwindSafe for atomic::AtomicIsize {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicIsize {}
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicI8 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicI8 {}
 #[cfg(target_has_atomic_load_store = "16")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicI16 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicI16 {}
 #[cfg(target_has_atomic_load_store = "32")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicI32 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicI32 {}
 #[cfg(target_has_atomic_load_store = "64")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicI64 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicI64 {}
 #[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicI128 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicI128 {}
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl RefUnwindSafe for atomic::AtomicUsize {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicUsize {}
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicU8 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicU8 {}
 #[cfg(target_has_atomic_load_store = "16")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicU16 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicU16 {}
 #[cfg(target_has_atomic_load_store = "32")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicU32 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicU32 {}
 #[cfg(target_has_atomic_load_store = "64")]
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
-impl RefUnwindSafe for atomic::AtomicU64 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicU64 {}
 #[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
-impl RefUnwindSafe for atomic::AtomicU128 {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicU128 {}
 
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl RefUnwindSafe for atomic::AtomicBool {}
+impl RefUnwindSafe for crate::sync::atomic::AtomicBool {}
 
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
-impl<T> RefUnwindSafe for atomic::AtomicPtr<T> {}
+impl<T> RefUnwindSafe for crate::sync::atomic::AtomicPtr<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> Deref for AssertUnwindSafe<T> {
