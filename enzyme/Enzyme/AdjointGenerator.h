@@ -5091,6 +5091,11 @@ public:
         }
       }
 
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto alias = dyn_cast<GlobalAlias>(orig->getCalledOperand()))
+      called = dyn_cast<Function>(alias->getAliasee());
+#endif
+
     StringRef funcName = "";
     if (called) {
       if (called->hasFnAttribute("enzyme_math"))

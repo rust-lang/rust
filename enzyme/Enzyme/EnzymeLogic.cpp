@@ -519,6 +519,11 @@ struct CacheAnalysis {
   compute_uncacheable_args_for_one_callsite(CallInst *callsite_op) {
     Function *Fn = callsite_op->getCalledFunction();
 
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto alias = dyn_cast<GlobalAlias>(callsite_op->getCalledOperand()))
+      Fn = dyn_cast<Function>(alias->getAliasee());
+#endif
+
     if (!Fn)
       return {};
 
@@ -644,11 +649,11 @@ struct CacheAnalysis {
 
     std::map<Argument *, bool> uncacheable_args;
 
-    auto arg = callsite_op->getCalledFunction()->arg_begin();
+    auto arg = Fn->arg_begin();
     for (unsigned i = 0; i < args.size(); ++i) {
       uncacheable_args[arg] = !args_safe[i];
       ++arg;
-      if (arg == callsite_op->getCalledFunction()->arg_end()) {
+      if (arg == Fn->arg_end()) {
         break;
       }
     }

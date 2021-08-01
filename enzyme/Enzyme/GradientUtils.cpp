@@ -2839,9 +2839,9 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     return BuilderM.CreatePointerCast(GV, fn->getType());
   } else if (auto arg = dyn_cast<CastInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
-    Value *shadow =
-        bb.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb),
-                      arg->getDestTy(), arg->getName() + "'ipc");
+    Value *invertOp = invertPointerM(arg->getOperand(0), bb);
+    Value *shadow = bb.CreateCast(arg->getOpcode(), invertOp, arg->getDestTy(),
+                                  arg->getName() + "'ipc");
     invertedPointers.insert(
         std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
@@ -3127,7 +3127,6 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         which->addIncoming(val, cast<BasicBlock>(getNewFromOriginal(
                                     phi->getIncomingBlock(i))));
       }
-
       return lookupM(which, BuilderM);
     }
   }
