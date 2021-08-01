@@ -2,6 +2,9 @@ use hir::ModuleDef;
 use ide_db::helpers::{import_assets::NameToImport, mod_path_to_ast};
 use ide_db::items_locator;
 use itertools::Itertools;
+use syntax::ast::edit::AstNodeEdit;
+use syntax::ast::Pat;
+use syntax::ted;
 use syntax::{
     ast::{self, make, AstNode, NameOwner},
     SyntaxKind::{IDENT, WHITESPACE},
@@ -127,6 +130,9 @@ fn add_assist(
                     let mut cursor = Cursor::Before(first_assoc_item.syntax());
                     let placeholder;
                     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
+                        // need to know what kind of derive this is: if it's Derive Debug, special case it.
+                        // the name of the struct
+                        // list of fields of the struct
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
                             if m.syntax().text() == "todo!()" {
@@ -163,6 +169,22 @@ fn impl_def_from_trait(
         make::impl_trait(trait_path.clone(), make::ext::ident_path(&annotated_name.text()));
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
+    if let ast::AssocItem::Fn(fn_) = &first_assoc_item {
+        if trait_path.segment().unwrap().name_ref().unwrap().text() == "Debug" {
+            let f_expr = make::expr_path(make::ext::ident_path("f"));
+            let args = make::arg_list(Some(make::expr_path(make::ext::ident_path(
+                annotated_name.text().as_str(),
+            ))));
+            let body =
+                make::block_expr(None, Some(make::expr_method_call(f_expr, "debug_struct", args)))
+                    .indent(ast::edit::IndentLevel(1));
+
+            ted::replace(
+                fn_.body().unwrap().tail_expr().unwrap().syntax(),
+                body.clone_for_update().syntax(),
+            );
+        }
+    }
     Some((impl_def, first_assoc_item))
 }
 
@@ -240,8 +262,8 @@ struct Foo {
 }
 
 impl fmt::Debug for Foo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ${0:todo!()}
+    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Foo").field("bar", &self.bar).finish()
     }
 }
 "#,
