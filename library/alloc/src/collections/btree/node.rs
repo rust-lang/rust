@@ -574,7 +574,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// no cleanup is done on any of the keys, values and other children.
     /// This decreases the height by 1 and is the opposite of `push_internal_level`.
     ///
-    /// Requires exclusive access to the `Root` object but not to the root node;
+    /// Requires exclusive access to the `NodeRef` object but not to the root node;
     /// it will not invalidate other handles or references to the root node.
     ///
     /// Panics if there is no internal level, i.e., if the root node is a leaf.
@@ -1663,7 +1663,7 @@ pub mod marker {
         const PERMITS_TRAVERSAL: bool = true;
     }
     impl BorrowType for Owned {
-        // Traversal isn't needede, it happens using the result of `borrow_mut`.
+        // Traversal isn't needed, it happens using the result of `borrow_mut`.
         // By disabling traversal, and only creating new references to roots,
         // we know that every reference of the `Owned` type is to a root node.
         const PERMITS_TRAVERSAL: bool = false;
