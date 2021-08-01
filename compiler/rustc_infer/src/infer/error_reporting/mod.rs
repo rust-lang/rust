@@ -1488,6 +1488,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     for sp in values {
                         if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
                             err.span_label(*sp, format!("{}", "async functions return futures"));
+                            err.note("while checking the return type of the `async fn`");
+                            returned_async_output_error = true;
                         } else {
                             err.span_label(
                                 *sp,
@@ -1500,12 +1502,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     pluralize!(count),
                                 ),
                             );
-                        }
-                        if sp.is_desugaring(DesugaringKind::Async)
-                            && returned_async_output_error == false
-                        {
-                            err.note("while checking the return type of the `async fn`");
-                            returned_async_output_error = true;
                         }
                     }
                 }
