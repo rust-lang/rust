@@ -139,7 +139,7 @@ impl<T> [T] {
     /// assert_eq!(None, w.first());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn first(&self) -> Option<&T> {
         if let [first, ..] = self { Some(first) } else { None }
@@ -177,7 +177,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn split_first(&self) -> Option<(&T, &[T])> {
         if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
@@ -217,7 +217,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn split_last(&self) -> Option<(&T, &[T])> {
         if let [init @ .., last] = self { Some((last, init)) } else { None }
@@ -256,7 +256,7 @@ impl<T> [T] {
     /// assert_eq!(None, w.last());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn last(&self) -> Option<&T> {
         if let [.., last] = self { Some(last) } else { None }
