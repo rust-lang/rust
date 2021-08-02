@@ -125,28 +125,17 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             let abort_bb = body.basic_blocks_mut().push(bb);
 
             for bb in calls_to_terminate {
-                let cleanup = get_cleanup(body.basic_blocks_mut()[bb].terminator_mut());
+                let cleanup = body.basic_blocks_mut()[bb].terminator_mut().unwind_mut().unwrap();
                 *cleanup = Some(abort_bb);
             }
         }
 
         for id in cleanups_to_remove {
-            let cleanup = get_cleanup(body.basic_blocks_mut()[id].terminator_mut());
+            let cleanup = body.basic_blocks_mut()[id].terminator_mut().unwind_mut().unwrap();
             *cleanup = None;
         }
 
         // We may have invalidated some `cleanup` blocks so clean those up now.
         super::simplify::remove_dead_blocks(tcx, body);
-    }
-}
-
-fn get_cleanup<'a>(t: &'a mut Terminator<'_>) -> &'a mut Option<BasicBlock> {
-    match &mut t.kind {
-        TerminatorKind::Call { cleanup, .. }
-        | TerminatorKind::Drop { unwind: cleanup, .. }
-        | TerminatorKind::DropAndReplace { unwind: cleanup, .. }
-        | TerminatorKind::Assert { cleanup, .. }
-        | TerminatorKind::FalseUnwind { unwind: cleanup, .. } => cleanup,
-        _ => unreachable!(),
     }
 }
