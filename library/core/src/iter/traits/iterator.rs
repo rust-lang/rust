@@ -694,7 +694,7 @@ pub trait Iterator {
     /// more idiomatic to use a `for` loop, but `for_each` may be more legible
     /// when processing items at the end of longer iterator chains. In some
     /// cases `for_each` may also be faster than a loop, because it will use
-    /// internal iteration on adaptors like `Chain`.
+    /// internal iteration on adapters like `Chain`.
     ///
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
@@ -1293,7 +1293,7 @@ pub trait Iterator {
         Take::new(self, n)
     }
 
-    /// An iterator adaptor similar to [`fold`] that holds internal state and
+    /// An iterator adapter similar to [`fold`] that holds internal state and
     /// produces a new iterator.
     ///
     /// [`fold`]: Iterator::fold
@@ -1604,7 +1604,7 @@ pub trait Iterator {
 
     /// Borrows an iterator, rather than consuming it.
     ///
-    /// This is useful to allow applying iterator adaptors while still
+    /// This is useful to allow applying iterator adapters while still
     /// retaining ownership of the original iterator.
     ///
     /// # Examples
