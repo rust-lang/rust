@@ -1,5 +1,4 @@
 [package]
-authors = ["The Rust Project Developers"]
 name = "profiler_builtins"
 version = "0.0.0"
 edition = "2018"
