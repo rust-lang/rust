@@ -1193,7 +1193,7 @@ pub trait PrettyPrinter<'tcx>:
 
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             //
-            // NB: the `has_param_types_or_consts` check ensures that we can use
+            // NB: the `definitely_has_param_types_or_consts` check ensures that we can use
             // the `destructure_const` query with an empty `ty::ParamEnv` without
             // introducing ICEs (e.g. via `layout_of`) from missing bounds.
             // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
@@ -1202,7 +1202,7 @@ pub trait PrettyPrinter<'tcx>:
             // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
             // correct `ty::ParamEnv` to allow printing *all* constant values.
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..))
-                if !ty.has_potential_param_types_or_consts() =>
+                if !ty.potentially_has_param_types_or_consts() =>
             {
                 let contents = self.tcx().destructure_const(
                     ty::ParamEnv::reveal_all()

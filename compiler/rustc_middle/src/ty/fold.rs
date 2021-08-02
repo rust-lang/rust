@@ -92,14 +92,14 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
-    fn has_potential_param_types_or_consts(&self) -> bool {
+    fn potentially_has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(
             TypeFlags::HAS_KNOWN_TY_PARAM
                 | TypeFlags::HAS_KNOWN_CT_PARAM
                 | TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS,
         )
     }
-    fn has_param_types_or_consts(&self, tcx: TyCtxt<'tcx>) -> bool {
+    fn definitely_has_param_types_or_consts(&self, tcx: TyCtxt<'tcx>) -> bool {
         self.definitely_has_type_flags(
             tcx,
             TypeFlags::HAS_KNOWN_TY_PARAM | TypeFlags::HAS_KNOWN_CT_PARAM,
@@ -129,7 +129,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
             TypeFlags::KNOWN_NEEDS_SUBST | TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS,
         )
     }
-    fn needs_subst(&self, tcx: TyCtxt<'tcx>) -> bool {
+    fn definitely_needs_subst(&self, tcx: TyCtxt<'tcx>) -> bool {
         self.definitely_has_type_flags(tcx, TypeFlags::KNOWN_NEEDS_SUBST)
     }
     /// "Free" regions in this context means that it has any region
@@ -227,10 +227,13 @@ pub trait TypeVisitor<'tcx>: Sized {
     /// Supplies the `tcx` for an unevaluated anonymous constant in case its default substs
     /// are not yet supplied.
     ///
-    /// Visitors which do not look into these substs may return `None` here, in which case
-    /// `super_visit_with` completely skips the default substs. Incorrectly returning
-    /// `None` can very quickly lead to ICE or other critical bugs, so be careful and
-    /// try to return an actual `tcx` if at all possible.
+    /// Returning `None` for this method is only recommended if the `TypeVisitor`
+    /// does not care about default anon const substs, as it ignores generic parameters,
+    /// and fetching the default substs would cause a query cycle.
+    ///
+    /// For visitors which return `None` we completely skip the default substs in `ty::Unevaluated::super_visit_with`.
+    /// This means that incorrectly returning `None` can very quickly lead to ICE or other critical bugs, so be careful and
+    /// try to return an actual `tcx` if possible.
     fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>>;
 
     fn visit_binder<T: TypeFoldable<'tcx>>(

@@ -43,7 +43,7 @@ where
                         let is_used = unused_params.contains(index).map_or(true, |unused| !unused);
                         // Only recurse when generic parameters in fns, closures and generators
                         // are used and require substitution.
-                        match (is_used, subst.needs_subst(self.tcx)) {
+                        match (is_used, subst.definitely_needs_subst(self.tcx)) {
                             // Just in case there are closures or generators within this subst,
                             // recurse.
                             (true, true) => return subst.super_visit_with(self),

@@ -680,7 +680,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .param_env
                 .caller_bounds()
                 .iter()
-                .all(|bound| bound.needs_subst(self.tcx()))
+                .all(|bound| bound.definitely_needs_subst(self.tcx()))
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
