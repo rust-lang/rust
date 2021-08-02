@@ -1,6 +1,6 @@
 //! Checks validity of naked functions.
 
-use rustc_ast::InlineAsmOptions;
+use rustc_ast::{Attribute, InlineAsmOptions};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{ErasedMap, FnKind, NestedVisitorMap, Visitor};
@@ -70,7 +70,17 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
             check_no_patterns(self.tcx, body.params);
             check_no_parameters_use(self.tcx, body);
             check_asm(self.tcx, hir_id, body, span);
+            check_inline(self.tcx, hir_id, attrs);
         }
+    }
+}
+
+/// Check that the function isn't inlined.
+fn check_inline(tcx: TyCtxt<'_>, hir_id: HirId, attrs: &[Attribute]) {
+    for attr in attrs.iter().filter(|attr| attr.has_name(sym::inline)) {
+        tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, attr.span, |lint| {
+            lint.build("naked functions cannot be inlined").emit();
+        });
     }
 }
 
