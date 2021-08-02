@@ -32,8 +32,8 @@ impl SkipContext {
     }
 }
 
-static RUSTFMT: &'static str = "rustfmt";
-static SKIP: &'static str = "skip";
+static RUSTFMT: &str = "rustfmt";
+static SKIP: &str = "skip";
 
 /// Say if you're playing with `rustfmt`'s skip attribute
 pub(crate) fn is_skip_attr(segments: &[ast::PathSegment]) -> bool {
@@ -46,7 +46,7 @@ pub(crate) fn is_skip_attr(segments: &[ast::PathSegment]) -> bool {
             segments[1].ident.to_string() == SKIP
                 && ["macros", "attributes"]
                     .iter()
-                    .any(|&n| n == &pprust::path_segment_to_string(&segments[2]))
+                    .any(|&n| n == pprust::path_segment_to_string(&segments[2]))
         }
         _ => false,
     }

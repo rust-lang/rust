@@ -810,9 +810,9 @@ pub trait Read {
         default_read_exact(self, buf)
     }
 
-    /// Creates a "by reference" adaptor for this instance of `Read`.
+    /// Creates a "by reference" adapter for this instance of `Read`.
     ///
-    /// The returned adaptor also implements `Read` and will simply borrow this
+    /// The returned adapter also implements `Read` and will simply borrow this
     /// current reader.
     ///
     /// # Examples
@@ -889,7 +889,7 @@ pub trait Read {
         Bytes { inner: self }
     }
 
-    /// Creates an adaptor which will chain this stream with another.
+    /// Creates an adapter which will chain this stream with another.
     ///
     /// The returned `Read` instance will first read all bytes from this object
     /// until EOF is encountered. Afterwards the output is equivalent to the
@@ -927,7 +927,7 @@ pub trait Read {
         Chain { first: self, second: next, done_first: false }
     }
 
-    /// Creates an adaptor which will read at most `limit` bytes from it.
+    /// Creates an adapter which will read at most `limit` bytes from it.
     ///
     /// This function returns a new instance of `Read` which will read at most
     /// `limit` bytes, after which it will always return EOF ([`Ok(0)`]). Any
@@ -1326,7 +1326,7 @@ impl Initializer {
 /// * The [`write`] method will attempt to write some data into the object,
 ///   returning how many bytes were successfully written.
 ///
-/// * The [`flush`] method is useful for adaptors and explicit buffers
+/// * The [`flush`] method is useful for adapters and explicit buffers
 ///   themselves for ensuring that all buffered data has been pushed out to the
 ///   'true sink'.
 ///
@@ -1646,12 +1646,12 @@ pub trait Write {
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> Result<()> {
         // Create a shim which translates a Write to a fmt::Write and saves
         // off I/O errors. instead of discarding them
-        struct Adaptor<'a, T: ?Sized + 'a> {
+        struct Adapter<'a, T: ?Sized + 'a> {
             inner: &'a mut T,
             error: Result<()>,
         }
 
-        impl<T: Write + ?Sized> fmt::Write for Adaptor<'_, T> {
+        impl<T: Write + ?Sized> fmt::Write for Adapter<'_, T> {
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 match self.inner.write_all(s.as_bytes()) {
                     Ok(()) => Ok(()),
@@ -1663,7 +1663,7 @@ pub trait Write {
             }
         }
 
-        let mut output = Adaptor { inner: self, error: Ok(()) };
+        let mut output = Adapter { inner: self, error: Ok(()) };
         match fmt::write(&mut output, fmt) {
             Ok(()) => Ok(()),
             Err(..) => {
@@ -1677,9 +1677,9 @@ pub trait Write {
         }
     }
 
-    /// Creates a "by reference" adaptor for this instance of `Write`.
+    /// Creates a "by reference" adapter for this instance of `Write`.
     ///
-    /// The returned adaptor also implements `Write` and will simply borrow this
+    /// The returned adapter also implements `Write` and will simply borrow this
     /// current writer.
     ///
     /// # Examples
@@ -2263,7 +2263,7 @@ pub trait BufRead: Read {
     }
 }
 
-/// Adaptor to chain together two readers.
+/// Adapter to chain together two readers.
 ///
 /// This struct is generally created by calling [`chain`] on a reader.
 /// Please see the documentation of [`chain`] for more details.
@@ -2414,7 +2414,7 @@ impl<T, U> SizeHint for Chain<T, U> {
     }
 }
 
-/// Reader adaptor which limits the bytes read from an underlying reader.
+/// Reader adapter which limits the bytes read from an underlying reader.
 ///
 /// This struct is generally created by calling [`take`] on a reader.
 /// Please see the documentation of [`take`] for more details.

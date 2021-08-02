@@ -76,8 +76,8 @@ pub fn env() -> Env {
     panic!("not supported on this platform")
 }
 
-pub fn getenv(_: &OsStr) -> io::Result<Option<OsString>> {
-    Ok(None)
+pub fn getenv(_: &OsStr) -> Option<OsString> {
+    None
 }
 
 pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {

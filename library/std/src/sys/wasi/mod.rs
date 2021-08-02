@@ -32,7 +32,8 @@ pub mod io;
 pub mod mutex;
 pub mod net;
 pub mod os;
-pub use crate::sys_common::os_str_bytes as os_str;
+#[path = "../unix/os_str.rs"]
+pub mod os_str;
 #[path = "../unix/path.rs"]
 pub mod path;
 #[path = "../unsupported/pipe.rs"]

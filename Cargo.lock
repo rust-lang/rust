@@ -646,9 +646,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.47"
+version = "0.1.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd4ed89e0a5c3e50b15c0045fbe1ff8567b703bc07544faf935ddff0aaa7b65f"
+checksum = "20b1438ef42c655665a8ab2c1c6d605a305f031d38d9be689ddfef41a20f3aa2"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1495,9 +1495,9 @@ dependencies = [
 
 [[package]]
 name = "handlebars"
-version = "3.4.0"
+version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5deefd4816fb852b1ff3cb48f6c41da67be2d0e1d20b26a7a3b076da11f064b1"
+checksum = "72a0ffab8c36d0436114310c7e10b59b3307e650ddfabf6d006028e29a70c6e6"
 dependencies = [
  "log",
  "pest",
@@ -2100,9 +2100,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.7"
+version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28f6a882f3880ec68e96f60d6b543c34941e2f307ad10e2992e4db9acfe96529"
+checksum = "4ee73932975c44c485e541416d7c30abb31a053af7e49682f6e856f1e4d6ab2a"
 dependencies = [
  "ammonia",
  "anyhow",

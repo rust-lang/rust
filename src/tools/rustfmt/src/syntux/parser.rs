@@ -79,7 +79,7 @@ impl<'a> ParserBuilder<'a> {
                 rustc_span::FileName::Custom("stdin".to_owned()),
                 text,
             )
-            .map_err(|db| Some(db)),
+            .map_err(Some),
         }
     }
 }
@@ -196,8 +196,7 @@ impl<'a> Parser<'a> {
         mac: &'a ast::MacCall,
     ) -> Result<Vec<ast::Item>, &'static str> {
         let token_stream = mac.args.inner_tokens();
-        let mut parser =
-            rustc_parse::stream_to_parser(sess.inner(), token_stream.clone(), Some(""));
+        let mut parser = rustc_parse::stream_to_parser(sess.inner(), token_stream, Some(""));
 
         let mut items = vec![];
         let mut process_if_cfg = true;
