@@ -13,6 +13,7 @@ use crate::sys_common::{AsInner, IntoInner};
 use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
 
 #[cfg(test)]
+#[path = "../unix/os_str/tests.rs"]
 mod tests;
 
 #[derive(Hash)]
