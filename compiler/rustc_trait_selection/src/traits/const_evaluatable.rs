@@ -29,7 +29,7 @@ use std::ops::ControlFlow;
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    uv: ty::Unevaluated<'tcx>,
+    uv: ty::Unevaluated<'tcx, ()>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
@@ -149,7 +149,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     // and hopefully soon change this to an error.
     //
     // See #74595 for more details about this.
-    let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
+    let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
 
     if concrete.is_ok() && uv.substs(infcx.tcx).has_param_types_or_consts(infcx.tcx) {
         match infcx.tcx.def_kind(uv.def.did) {
@@ -194,7 +194,7 @@ pub struct AbstractConst<'tcx> {
 impl<'tcx> AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        uv: ty::Unevaluated<'tcx>,
+        uv: ty::Unevaluated<'tcx, ()>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         let inner = tcx.mir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
@@ -206,7 +206,7 @@ impl<'tcx> AbstractConst<'tcx> {
         ct: &ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         match ct.val {
-            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv),
+            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
             ty::ConstKind::Error(_) => Err(ErrorReported),
             _ => Ok(None),
         }
@@ -556,7 +556,7 @@ pub(super) fn mir_abstract_const<'tcx>(
 
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (a, b): (ty::Unevaluated<'tcx>, ty::Unevaluated<'tcx>),
+    (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
 ) -> bool {
     (|| {
         if let Some(a) = AbstractConst::new(tcx, a)? {

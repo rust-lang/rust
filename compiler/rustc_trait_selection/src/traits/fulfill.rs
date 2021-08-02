@@ -580,7 +580,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val, c2.val)
                         {
-                            if infcx.try_unify_abstract_consts(a, b) {
+                            if infcx.try_unify_abstract_consts(a.shrink(), b.shrink()) {
                                 return ProcessResult::Changed(vec![]);
                             }
                         }

@@ -623,7 +623,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val, c2.val)
                         {
-                            if self.infcx.try_unify_abstract_consts(a, b) {
+                            if self.infcx.try_unify_abstract_consts(a.shrink(), b.shrink()) {
                                 return Ok(EvaluatedToOk);
                             }
                         }
