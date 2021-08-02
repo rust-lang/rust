@@ -1567,7 +1567,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    thir_unsafeck: bool = (false, parse_bool, [TRACKED],
+    thir_unsafeck: bool = (true, parse_bool, [TRACKED],
         "use the THIR unsafety checker (default: no)"),
     /// We default to 1 here since we want to behave like
     /// a sequential compiler for now. This'll likely be adjusted

@@ -53,7 +53,7 @@
 //! The `#[global_allocator]` can only be used once in a crate
 //! or its recursive dependencies.
 
-#![deny(unsafe_op_in_unsafe_fn)]
+// #![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::intrinsics;
