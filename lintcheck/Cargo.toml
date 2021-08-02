@@ -1,7 +1,6 @@
 [package]
 name = "lintcheck"
 version = "0.0.1"
-authors = ["The Rust Clippy Developers"]
 description = "tool to monitor impact of changes in Clippys lints on a part of the ecosystem"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
