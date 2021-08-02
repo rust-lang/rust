@@ -123,12 +123,16 @@ impl fmt::Display for MiriMemoryKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Tag {
     pub alloc_id: AllocId,
-    // Stacked Borrows tag.
+    /// Stacked Borrows tag.
     pub sb: SbTag,
 }
 
 impl Provenance for Tag {
+    /// We use absolute addresses in the `offset` of a `Pointer<Tag>`.
     const OFFSET_IS_ADDR: bool = true;
+
+    /// We cannot err on partial overwrites, it happens too often in practice (due to unions).
+    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool = false;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (tag, addr) = ptr.into_parts(); // address is absolute
