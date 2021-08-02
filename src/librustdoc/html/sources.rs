@@ -111,13 +111,14 @@ impl DocFolder for SourceCollector<'_, '_> {
         if self.cx.include_sources && is_real_and_local(span, sess) {
             let filename = span.filename(sess);
             let span = span.inner();
-            let start_pos = sess.source_map().lookup_source_file(span.lo()).start_pos;
+            let pos = sess.source_map().lookup_source_file(span.lo());
+            let file_span = span.with_lo(pos.start_pos).with_hi(pos.end_pos);
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx.include_sources = match self.emit_source(&filename, start_pos.0) {
+            self.cx.include_sources = match self.emit_source(&filename, file_span) {
                 Ok(()) => true,
                 Err(e) => {
                     self.cx.shared.tcx.sess.span_err(
@@ -140,7 +141,11 @@ impl DocFolder for SourceCollector<'_, '_> {
 
 impl SourceCollector<'_, 'tcx> {
     /// Renders the given filename into its corresponding HTML source file.
-    fn emit_source(&mut self, filename: &FileName, file_span_lo: u32) -> Result<(), Error> {
+    fn emit_source(
+        &mut self,
+        filename: &FileName,
+        file_span: rustc_span::Span,
+    ) -> Result<(), Error> {
         let p = match *filename {
             FileName::Real(ref file) => {
                 if let Some(local_path) = file.local_path() {
@@ -200,14 +205,7 @@ impl SourceCollector<'_, 'tcx> {
             &page,
             "",
             |buf: &mut _| {
-                print_src(
-                    buf,
-                    contents,
-                    self.cx.shared.edition(),
-                    file_span_lo,
-                    &self.cx,
-                    &root_path,
-                )
+                print_src(buf, contents, self.cx.shared.edition(), file_span, &self.cx, &root_path)
             },
             &self.cx.shared.style_files,
         );
@@ -250,7 +248,7 @@ fn print_src(
     buf: &mut Buffer,
     s: &str,
     edition: Edition,
-    file_span_lo: u32,
+    file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
 ) {
@@ -275,6 +273,6 @@ fn print_src(
         None,
         edition,
         Some(line_numbers),
-        Some(highlight::ContextInfo { context, file_span_lo, root_path }),
+        Some(highlight::ContextInfo { context, file_span, root_path }),
     );
 }

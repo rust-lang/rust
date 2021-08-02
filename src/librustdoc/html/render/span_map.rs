@@ -24,43 +24,6 @@ crate enum LinkFromSrc {
     External(DefId),
 }
 
-/// This struct is used only as index in the `span_map`, not as [`Span`]! `Span`s contain
-/// some extra information (the syntax context) we don't need. **Do not convert this type back to
-/// `Span`!!!**
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-crate struct LightSpan {
-    crate lo: u32,
-    crate hi: u32,
-}
-
-impl LightSpan {
-    /// Before explaining what this method does, some global explanations on rust's `Span`:
-    ///
-    /// Each source code file is stored in the source map in the compiler and has a
-    /// `lo` and a `hi` (lowest and highest bytes in this source map which can be seen as one huge
-    /// string to simplify things). So in this case, this represents the starting byte of the
-    /// current file. It'll be used later on to retrieve the "definition span" from the
-    /// `span_correspondance_map` (which is inside `context`).
-    ///
-    /// This when we transform the "span" we have from reading the input into a "span" which can be
-    /// used as index to the `span_correspondance_map` to get the definition of this item.
-    ///
-    /// So in here, `file_span_lo` is representing the "lo" byte in the global source map, and to
-    /// make our "span" works in there, we simply add `file_span_lo` to our values.
-    crate fn new_in_file(file_span_lo: u32, lo: u32, hi: u32) -> Self {
-        Self { lo: lo + file_span_lo, hi: hi + file_span_lo }
-    }
-
-    crate fn dummy() -> Self {
-        Self { lo: 0, hi: 0 }
-    }
-
-    /// Extra the `lo` and `hi` from the [`Span`] and discard the unused syntax context.
-    fn new_from_span(sp: Span) -> Self {
-        Self { lo: sp.lo().0, hi: sp.hi().0 }
-    }
-}
-
 /// This function will do at most two things:
 ///
 /// 1. Generate a `span` correspondance map which links an item `span` to its definition `span`.
@@ -77,7 +40,7 @@ crate fn collect_spans_and_sources(
     src_root: &Path,
     include_sources: bool,
     generate_link_to_definition: bool,
-) -> (clean::Crate, FxHashMap<PathBuf, String>, FxHashMap<LightSpan, LinkFromSrc>) {
+) -> (clean::Crate, FxHashMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
     let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
     if include_sources {
@@ -93,7 +56,7 @@ crate fn collect_spans_and_sources(
 
 struct SpanMapVisitor<'tcx> {
     crate tcx: TyCtxt<'tcx>,
-    crate matches: FxHashMap<LightSpan, LinkFromSrc>,
+    crate matches: FxHashMap<Span, LinkFromSrc>,
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {
@@ -115,18 +78,12 @@ impl<'tcx> SpanMapVisitor<'tcx> {
         };
         if let Some(span) = self.tcx.hir().res_span(path.res) {
             self.matches.insert(
-                path_span
-                    .map(LightSpan::new_from_span)
-                    .unwrap_or_else(|| LightSpan::new_from_span(path.span)),
+                path_span.unwrap_or_else(|| path.span),
                 LinkFromSrc::Local(clean::Span::new(span)),
             );
         } else if let Some(def_id) = info {
-            self.matches.insert(
-                path_span
-                    .map(LightSpan::new_from_span)
-                    .unwrap_or_else(|| LightSpan::new_from_span(path.span)),
-                LinkFromSrc::External(def_id),
-            );
+            self.matches
+                .insert(path_span.unwrap_or_else(|| path.span), LinkFromSrc::External(def_id));
         }
     }
 }
@@ -163,10 +120,8 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
             if let Some(node) = self.tcx.hir().find(id) {
                 match node {
                     Node::Item(item) => {
-                        self.matches.insert(
-                            LightSpan::new_from_span(item.ident.span),
-                            LinkFromSrc::Local(clean::Span::new(m.inner)),
-                        );
+                        self.matches
+                            .insert(item.ident.span, LinkFromSrc::Local(clean::Span::new(m.inner)));
                     }
                     _ => {}
                 }
@@ -188,7 +143,7 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     });
                     if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                         self.matches.insert(
-                            LightSpan::new_from_span(method_span),
+                            method_span,
                             match hir.span_if_local(def_id) {
                                 Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
                                 None => LinkFromSrc::External(def_id),

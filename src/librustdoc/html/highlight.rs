@@ -14,20 +14,16 @@ use std::iter::Peekable;
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use super::format::{self, Buffer};
-use super::render::{LightSpan, LinkFromSrc};
+use super::render::LinkFromSrc;
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
 crate struct ContextInfo<'a, 'b, 'c> {
     crate context: &'a Context<'b>,
-    /// This represents the "lo" bytes of the current file we're rendering. To get a [`Span`] from
-    /// it, you just need to add add your current byte position in the string and its length (to get
-    /// the "hi" part).
-    ///
-    /// This is used to create a [`LightSpan`] which is then used as an index in the `span_map` in
-    /// order to retrieve the definition's [`Span`] (which is used to generate the URL).
-    crate file_span_lo: u32,
+    /// This span contains the current file we're going through.
+    crate file_span: Span,
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
     crate root_path: &'c str,
@@ -86,7 +82,6 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 /// item definition.
 ///
 /// More explanations about spans and how we use them here are provided in the
-/// [`LightSpan::new_in_file`] function documentation about how it works.
 fn write_code(
     out: &mut Buffer,
     src: &str,
@@ -95,7 +90,7 @@ fn write_code(
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    Classifier::new(&src, edition, context_info.as_ref().map(|c| c.file_span_lo).unwrap_or(0))
+    Classifier::new(&src, edition, context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP))
         .highlight(&mut |highlight| {
             match highlight {
                 Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
@@ -118,14 +113,14 @@ enum Class {
     KeyWord,
     // Keywords that do pointer/reference stuff.
     RefKeyWord,
-    Self_(LightSpan),
+    Self_(Span),
     Op,
     Macro,
     MacroNonTerminal,
     String,
     Number,
     Bool,
-    Ident(LightSpan),
+    Ident(Span),
     Lifetime,
     PreludeTy,
     PreludeVal,
@@ -158,7 +153,7 @@ impl Class {
 
     /// In case this is an item which can be converted into a link to a definition, it'll contain
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
-    fn get_span(self) -> Option<LightSpan> {
+    fn get_span(self) -> Option<Span> {
         match self {
             Self::Ident(sp) | Self::Self_(sp) => Some(sp),
             _ => None,
@@ -213,15 +208,14 @@ struct Classifier<'a> {
     in_macro_nonterminal: bool,
     edition: Edition,
     byte_pos: u32,
-    file_span_lo: u32,
+    file_span: Span,
     src: &'a str,
 }
 
 impl<'a> Classifier<'a> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
-    /// file "lo" byte which we be used later on by the `span_correspondance_map`. More explanations
-    /// are provided in the [`LightSpan::new_in_file`] function documentation about how it works.
-    fn new(src: &str, edition: Edition, file_span_lo: u32) -> Classifier<'_> {
+    /// file span which will be used later on by the `span_correspondance_map`.
+    fn new(src: &str, edition: Edition, file_span: Span) -> Classifier<'_> {
         let tokens = TokenIter { src }.peekable();
         Classifier {
             tokens,
@@ -230,15 +224,16 @@ impl<'a> Classifier<'a> {
             in_macro_nonterminal: false,
             edition,
             byte_pos: 0,
-            file_span_lo,
+            file_span,
             src,
         }
     }
 
-    /// Convenient wrapper around [`LightSpan::new_in_file`] to prevent passing the `file_span_lo`
-    /// argument every time.
-    fn new_light_span(&self, lo: u32, hi: u32) -> LightSpan {
-        LightSpan::new_in_file(self.file_span_lo, lo, hi)
+    /// Convenient wrapper to create a [`Span`] from a position in the file.
+    fn new_span(&self, lo: u32, text: &str) -> Span {
+        let hi = lo + text.len() as u32;
+        let file_lo = self.file_span.lo();
+        self.file_span.with_lo(file_lo + BytePos(lo)).with_hi(file_lo + BytePos(hi))
     }
 
     /// Concatenate colons and idents as one when possible.
@@ -487,15 +482,13 @@ impl<'a> Classifier<'a> {
                         self.in_macro_nonterminal = false;
                         Class::MacroNonTerminal
                     }
-                    "self" | "Self" => {
-                        Class::Self_(self.new_light_span(before, before + text.len() as u32))
-                    }
-                    _ => Class::Ident(self.new_light_span(before, before + text.len() as u32)),
+                    "self" | "Self" => Class::Self_(self.new_span(before, text)),
+                    _ => Class::Ident(self.new_span(before, text)),
                 },
                 Some(c) => c,
             },
             TokenKind::RawIdent | TokenKind::UnknownPrefix => {
-                Class::Ident(self.new_light_span(before, before + text.len() as u32))
+                Class::Ident(self.new_span(before, text))
             }
             TokenKind::Lifetime { .. } => Class::Lifetime,
         };
@@ -560,7 +553,7 @@ fn string<T: Display>(
                 "self" | "Self" => write!(
                     &mut path,
                     "<span class=\"{}\">{}</span>",
-                    Class::Self_(LightSpan::dummy()).as_html(),
+                    Class::Self_(DUMMY_SP).as_html(),
                     t
                 ),
                 "crate" | "super" => {
