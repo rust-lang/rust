@@ -1,0 +1,44 @@
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:12:32
+   |
+LL |     let Some(x) = Some(1) else { Some(2) };
+   |                                ^^^^^^^^^^^ expected `!`, found enum `Option`
+   |
+   = note: expected type `!`
+              found type `Option<{integer}>`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:7:32
+   |
+LL |       let Some(x) = Some(1) else {
+   |  ________________________________^
+LL | |         if 1 == 1 {
+LL | |             panic!();
+LL | |         }
+LL | |     };
+   | |_____^ expected `!`, found `()`
+   |
+   = note: expected type `!`
+              found type `()`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:4:32
+   |
+LL |       let Some(x) = Some(1) else {
+   |  ________________________________^
+LL | |         Some(2)
+LL | |     };
+   | |_____^ expected `!`, found enum `Option`
+   |
+   = note: expected type `!`
+              found type `Option<{integer}>`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
