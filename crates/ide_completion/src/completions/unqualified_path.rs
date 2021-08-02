@@ -84,13 +84,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
 
     ctx.process_all_names(&mut |name, res| {
-        if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) =
-            res
-        {
-            cov_mark::hit!(unqualified_skip_lifetime_completion);
-            return;
-        }
         let add_resolution = match res {
+            ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => {
+                cov_mark::hit!(unqualified_skip_lifetime_completion);
+                return;
+            }
             ScopeDef::ImplSelfType(_) => {
                 !ctx.previous_token_is(syntax::T![impl]) && !ctx.previous_token_is(syntax::T![for])
             }
