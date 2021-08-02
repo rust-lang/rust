@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileRange, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
@@ -225,19 +225,15 @@ fn hover_type_info(
     config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
 ) -> Option<HoverResult> {
-    let (ty, coerced) = match expr_or_pat {
-        Either::Left(expr) => sema.type_of_expr_with_coercion(expr)?,
-        Either::Right(pat) => sema.type_of_pat_with_coercion(pat)?,
+    let TypeInfo { ty, coerced } = match expr_or_pat {
+        Either::Left(expr) => sema.type_of_expr(expr)?,
+        Either::Right(pat) => sema.type_of_pat(pat)?,
     };
 
     let mut res = HoverResult::default();
-    res.markup = if coerced {
-        let uncoerced_ty = match expr_or_pat {
-            Either::Left(expr) => sema.type_of_expr(expr)?,
-            Either::Right(pat) => sema.type_of_pat(pat)?,
-        };
-        let uncoerced = uncoerced_ty.display(sema.db).to_string();
-        let coerced = ty.display(sema.db).to_string();
+    res.markup = if let Some(coerced_ty) = coerced {
+        let uncoerced = ty.display(sema.db).to_string();
+        let coerced = coerced_ty.display(sema.db).to_string();
         format!(
             "```text\nType: {:>upad$}\nCoerced to: {:>cpad$}\n```\n",
             uncoerced = uncoerced,

@@ -1,5 +1,5 @@
 use ast::make;
-use hir::{HasSource, PathResolution};
+use hir::{HasSource, PathResolution, TypeInfo};
 use ide_db::{defs::Definition, search::FileReference};
 use itertools::izip;
 use syntax::{
@@ -189,10 +189,9 @@ pub(crate) fn inline_(
                     _ => {
                         let ty = ctx
                             .sema
-                            .type_of_expr_with_coercion(&expr)
-                            .map_or(false, |(_, coerced)| coerced)
-                            .then(|| param_ty)
-                            .flatten();
+                            .type_of_expr(&expr)
+                            .and_then(TypeInfo::coerced)
+                            .and_then(|_| param_ty);
                         body.push_front(
                             make::let_stmt(pat, ty, Some(expr)).clone_for_update().into(),
                         )

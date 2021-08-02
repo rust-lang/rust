@@ -1,4 +1,4 @@
-use hir::HirDisplay;
+use hir::{HirDisplay, TypeInfo};
 use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
@@ -153,7 +153,7 @@ impl FunctionBuilder {
         // type, but that the current state of their code doesn't allow that return type
         // to be accurately inferred.
         let (ret_ty, should_render_snippet) = {
-            match ctx.sema.type_of_expr(&ast::Expr::CallExpr(call.clone())) {
+            match ctx.sema.type_of_expr(&ast::Expr::CallExpr(call.clone())).map(TypeInfo::ty) {
                 Some(ty) if ty.is_unknown() || ty.is_unit() => (make::ty_unit(), true),
                 Some(ty) => {
                     let rendered = ty.display_source_code(ctx.db(), target_module.into());
@@ -331,7 +331,7 @@ fn fn_arg_type(
     target_module: hir::Module,
     fn_arg: &ast::Expr,
 ) -> Option<String> {
-    let ty = ctx.sema.type_of_expr(fn_arg)?;
+    let ty = ctx.sema.type_of_expr(fn_arg)?.ty;
     if ty.is_unknown() {
         return None;
     }

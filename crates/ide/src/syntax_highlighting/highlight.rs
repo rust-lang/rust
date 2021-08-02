@@ -123,7 +123,7 @@ pub(super) fn element(
                 let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
 
                 let expr = prefix_expr.expr()?;
-                let ty = sema.type_of_expr(&expr)?;
+                let ty = sema.type_of_expr(&expr)?.ty;
                 if ty.is_raw_ptr() {
                     HlTag::Operator(HlOperator::Other) | HlMod::Unsafe
                 } else if let Some(ast::PrefixOp::Deref) = prefix_expr.op_kind() {
@@ -555,7 +555,7 @@ fn highlight_method_call(
                 if let Some(receiver_ty) =
                     method_call.receiver().and_then(|it| sema.type_of_expr(&it))
                 {
-                    if !receiver_ty.is_copy(sema.db) {
+                    if !receiver_ty.ty.is_copy(sema.db) {
                         h |= HlMod::Consuming
                     }
                 }

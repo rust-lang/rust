@@ -38,7 +38,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     let receiver_text = get_receiver_text(dot_receiver, receiver_is_ambiguous_float_literal);
 
     let receiver_ty = match ctx.sema.type_of_expr(dot_receiver) {
-        Some(it) => it,
+        Some(it) => it.ty,
         None => return,
     };
 

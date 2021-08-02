@@ -14,7 +14,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     };
 
     let receiver_ty = match ctx.sema.type_of_expr(dot_receiver) {
-        Some(ty) => ty,
+        Some(ty) => ty.ty,
         _ => return,
     };
 
