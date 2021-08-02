@@ -425,10 +425,11 @@ impl<T, A: Allocator> RawVec<T, A> {
         assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
-        let new_size = cap * mem::size_of::<T>();
 
         let ptr = unsafe {
-            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            // `Layout::array` cannot overflow here because it would have
+            // owerflown earlier when capacity was larger.
+            let new_layout = Layout::array::<T>(cap).unwrap_unchecked();
             self.alloc
                 .shrink(ptr, layout, new_layout)
                 .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
