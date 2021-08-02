@@ -4292,6 +4292,44 @@ public:
         }
         return;
       }
+      if (funcName == "__kmpc_critical") {
+        if (Mode != DerivativeMode::ReverseModePrimal) {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          auto crit2 = called->getParent()->getFunction("__kmpc_end_critical");
+          assert(crit2);
+          Value *args[] = {
+              lookup(gutils->getNewFromOriginal(call.getArgOperand(0)),
+                     Builder2),
+              lookup(gutils->getNewFromOriginal(call.getArgOperand(1)),
+                     Builder2),
+              lookup(gutils->getNewFromOriginal(call.getArgOperand(2)),
+                     Builder2)};
+          auto fcall =
+              Builder2.CreateCall(crit2->getFunctionType(), crit2, args);
+          fcall->setCallingConv(crit2->getCallingConv());
+        }
+        return;
+      }
+      if (funcName == "__kmpc_end_critical") {
+        if (Mode != DerivativeMode::ReverseModePrimal) {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          auto crit2 = called->getParent()->getFunction("__kmpc_critical");
+          assert(crit2);
+          Value *args[] = {
+              lookup(gutils->getNewFromOriginal(call.getArgOperand(0)),
+                     Builder2),
+              lookup(gutils->getNewFromOriginal(call.getArgOperand(1)),
+                     Builder2),
+              lookup(gutils->getNewFromOriginal(call.getArgOperand(2)),
+                     Builder2)};
+          auto fcall =
+              Builder2.CreateCall(crit2->getFunctionType(), crit2, args);
+          fcall->setCallingConv(crit2->getCallingConv());
+        }
+        return;
+      }
 
       if (funcName.startswith("__kmpc")) {
         llvm::errs() << *gutils->oldFunc << "\n";
