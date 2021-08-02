@@ -376,12 +376,12 @@ impl ExprValidator {
         };
 
         let (params, required) = match mismatch.expected.kind(&Interner) {
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref parameters)
+            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
                 if *enum_id == core_result_enum =>
             {
                 (parameters, "Ok".to_string())
             }
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref parameters)
+            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
                 if *enum_id == core_option_enum =>
             {
                 (parameters, "Some".to_string())

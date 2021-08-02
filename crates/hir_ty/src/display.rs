@@ -381,12 +381,13 @@ impl HirDisplay for Ty {
                     TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
                         dyn_ty.bounds.skip_binders().interned().iter().cloned().collect()
                     }
-                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy {
+                    TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
-                        substitution: ref parameters,
+                        substitution: parameters,
                     }))
-                    | &TyKind::OpaqueType(opaque_ty_id, ref parameters) => {
-                        let impl_trait_id = f.db.lookup_intern_impl_trait_id(opaque_ty_id.into());
+                    | TyKind::OpaqueType(opaque_ty_id, parameters) => {
+                        let impl_trait_id =
+                            f.db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
                             datas =
                                 f.db.return_type_impl_traits(func)

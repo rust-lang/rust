@@ -615,7 +615,7 @@ impl DocsRangeMap {
 
         let relative_range = range - line_docs_range.start();
 
-        let &InFile { file_id, value: ref source } = &self.source_map.source_of_id(idx);
+        let InFile { file_id, value: source } = self.source_map.source_of_id(idx);
         match source {
             Either::Left(_) => None, // FIXME, figure out a nice way to handle doc attributes here
             // as well as for whats done in syntax highlight doc injection

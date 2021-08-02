@@ -132,7 +132,7 @@ impl<'a> InferenceContext<'a> {
         let expected = expected;
 
         let ty = match &body[pat] {
-            &Pat::Tuple { ref args, ellipsis } => {
+            Pat::Tuple { args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
                     Some(parameters) => &*parameters.as_slice(&Interner),
                     _ => &[],
@@ -140,7 +140,7 @@ impl<'a> InferenceContext<'a> {
 
                 let ((pre, post), n_uncovered_patterns) = match ellipsis {
                     Some(idx) => {
-                        (args.split_at(idx), expectations.len().saturating_sub(args.len()))
+                        (args.split_at(*idx), expectations.len().saturating_sub(args.len()))
                     }
                     None => ((&args[..], &[][..]), 0),
                 };
@@ -157,7 +157,7 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Tuple(inner_tys.len(), Substitution::from_iter(&Interner, inner_tys))
                     .intern(&Interner)
             }
-            Pat::Or(ref pats) => {
+            Pat::Or(pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
                     let ty = self.infer_pat(*first_pat, &expected, default_bm);
                     for pat in rest {

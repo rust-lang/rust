@@ -479,7 +479,8 @@ impl Scope {
                     });
                 }
             }
-            &Scope::GenericParams { ref params, def: parent } => {
+            Scope::GenericParams { params, def: parent } => {
+                let parent = *parent;
                 for (local_id, param) in params.types.iter() {
                     if let Some(ref name) = param.name {
                         let id = TypeParamId { parent, local_id };

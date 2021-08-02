@@ -133,12 +133,12 @@ pub(crate) fn annotations(
 }
 
 pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) -> Annotation {
-    match annotation.kind {
-        AnnotationKind::HasImpls { position, ref mut data } => {
-            *data = goto_implementation(db, position).map(|range| range.info);
+    match &mut annotation.kind {
+        AnnotationKind::HasImpls { position, data } => {
+            *data = goto_implementation(db, *position).map(|range| range.info);
         }
-        AnnotationKind::HasReferences { position, ref mut data } => {
-            *data = find_all_refs(&Semantics::new(db), position, None).map(|result| {
+        AnnotationKind::HasReferences { position, data } => {
+            *data = find_all_refs(&Semantics::new(db), *position, None).map(|result| {
                 result
                     .references
                     .into_iter()

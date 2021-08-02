@@ -915,6 +915,15 @@ if let Some(expected_type) = ctx.expected_type.as_ref() {
 **Rationale:** `match` is almost always more compact.
 The `else` branch can get a more precise pattern: `None` or `Err(_)` instead of `_`.
 
+## Match Ergonomics
+
+Don't use the `ref` keyword.
+
+**Rationale:** consistency & simplicity.
+`ref` was required before [match ergonomics](https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md).
+Today, it is redundant.
+Between `ref` and mach ergonomics, the latter is more ergonomic in most cases, and is simpler (does not require a keyword).
+
 ## Helper Functions
 
 Avoid creating singe-use helper functions:
