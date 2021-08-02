@@ -68,6 +68,9 @@ changelog-seen = 2
 # Indicates whether the LLVM assertions are enabled or not
 #assertions = false
 
+# Indicates whether the LLVM plugin is enabled or not
+#plugins = false
+
 # Indicates whether ccache is used when building LLVM
 #ccache = false
 # or alternatively ...
@@ -144,6 +147,9 @@ changelog-seen = 2
 
 # Whether to include the Polly optimizer.
 #polly = false
+
+# Whether to build the clang compiler.
+#clang = false
 
 # =============================================================================
 # General build configuration options

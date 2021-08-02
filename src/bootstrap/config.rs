@@ -90,6 +90,7 @@ pub struct Config {
     // llvm codegen options
     pub llvm_skip_rebuild: bool,
     pub llvm_assertions: bool,
+    pub llvm_plugins: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
     pub llvm_release_debuginfo: bool,
@@ -104,6 +105,7 @@ pub struct Config {
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
+    pub llvm_clang: bool,
     pub llvm_from_ci: bool,
 
     pub use_lld: bool,
@@ -415,6 +417,7 @@ struct Llvm {
     thin_lto: Option<bool>,
     release_debuginfo: Option<bool>,
     assertions: Option<bool>,
+    plugins: Option<bool>,
     ccache: Option<StringOrBool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
@@ -432,6 +435,7 @@ struct Llvm {
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
     polly: Option<bool>,
+    clang: Option<bool>,
     download_ci_llvm: Option<StringOrBool>,
 }
 
@@ -702,6 +706,7 @@ impl Config {
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
         let mut llvm_assertions = None;
+        let mut llvm_plugins = None;
         let mut debug = None;
         let mut debug_assertions = None;
         let mut debug_assertions_std = None;
@@ -724,6 +729,7 @@ impl Config {
             }
             set(&mut config.ninja_in_file, llvm.ninja);
             llvm_assertions = llvm.assertions;
+            llvm_plugins = llvm.plugins;
             llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
@@ -744,6 +750,7 @@ impl Config {
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = llvm.polly.unwrap_or(false);
+            config.llvm_clang = llvm.clang.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
@@ -790,6 +797,8 @@ impl Config {
                 check_ci_llvm!(llvm.use_linker);
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
+                check_ci_llvm!(llvm.clang);
+                check_ci_llvm!(llvm.plugins);
 
                 // CI-built LLVM can be either dynamic or static.
                 let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
@@ -952,6 +961,7 @@ impl Config {
 
         config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
         config.llvm_assertions = llvm_assertions.unwrap_or(false);
+        config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(true);
 
         let default = debug == Some(true);
