@@ -13,41 +13,6 @@ use rustc_trait_selection::traits::{
     StatementAsExpression,
 };
 
-macro_rules! create_maybe_get_coercion_reason {
-    ($fn_name:ident, $node:expr) => {
-        pub(crate) fn $fn_name(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
-            let node = $node(self.tcx.hir(), hir_id);
-            if let hir::Node::Block(block) = node {
-                // check that the body's parent is an fn
-                let parent = self.tcx.hir().get(
-                    self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(block.hir_id)),
-                );
-                if let (
-                    Some(expr),
-                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }),
-                ) = (&block.expr, parent)
-                {
-                    // check that the `if` expr without `else` is the fn body's expr
-                    if expr.span == sp {
-                        return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
-                            let span = fn_decl.output.span();
-                            let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
-                            Some((
-                                span,
-                                format!("expected `{}` because of this return type", snippet),
-                            ))
-                        });
-                    }
-                }
-            }
-            if let hir::Node::Local(hir::Local { ty: Some(_), pat, .. }) = node {
-                return Some((pat.span, "expected because of this assignment".to_string()));
-            }
-            None
-        }
-    };
-}
-
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_match(
         &self,
@@ -154,7 +119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expr.span,
                     &arms[0].body,
                     &mut coercion,
-                    |hir_id, span| self.maybe_get_coercion_reason(hir_id, span),
+                    |hir_id, span| self.coercion_reason_match(hir_id, span),
                 ) {
                 tcx.ty_error()
             } else {
@@ -373,23 +338,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error
     }
 
-    create_maybe_get_coercion_reason!(
-        maybe_get_coercion_reason,
-        |hir: rustc_middle::hir::map::Map<'a>, id| {
-            let arm_id = hir.get_parent_node(id);
-            let match_id = hir.get_parent_node(arm_id);
-            let containing_id = hir.get_parent_node(match_id);
-            hir.get(containing_id)
-        }
-    );
+    pub(crate) fn coercion_reason_if(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+    ) -> Option<(Span, String)> {
+        self.coercion_reason_inner(hir_id, span, 1)
+    }
 
-    create_maybe_get_coercion_reason!(
-        maybe_get_coercion_reason_if,
-        |hir: rustc_middle::hir::map::Map<'a>, id| {
-            let rslt = hir.get_parent_node(hir.get_parent_node(id));
-            hir.get(rslt)
+    pub(crate) fn coercion_reason_match(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+    ) -> Option<(Span, String)> {
+        self.coercion_reason_inner(hir_id, span, 2)
+    }
+
+    fn coercion_reason_inner(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        parent_index: usize,
+    ) -> Option<(Span, String)> {
+        let hir = self.tcx.hir();
+        let mut parent_iter = hir.parent_iter(hir_id);
+        let (_, node) = parent_iter.nth(parent_index)?;
+        match node {
+            hir::Node::Block(block) => {
+                let expr = block.expr?;
+                // check that the body's parent is an fn
+                let (_, parent) = parent_iter.nth(1)?;
+                if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }) = parent {
+                    // check that the `if` expr without `else` is the fn body's expr
+                    if expr.span == span {
+                        let (fn_decl, _) = self.get_fn_decl(hir_id)?;
+                        let span = fn_decl.output.span();
+                        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
+                        return Some((
+                            span,
+                            format!("expected `{}` because of this return type", snippet),
+                        ));
+                    }
+                }
+                None
+            }
+            hir::Node::Local(hir::Local { ty: Some(_), pat, .. }) => {
+                Some((pat.span, "expected because of this assignment".to_string()))
+            }
+            _ => None,
         }
-    );
+    }
 
     pub(crate) fn if_cause(
         &self,

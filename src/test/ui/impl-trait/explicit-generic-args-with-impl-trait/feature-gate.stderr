@@ -1,0 +1,9 @@
+error[E0632]: cannot provide explicit generic arguments when `impl Trait` is used in argument position
+  --> $DIR/feature-gate.rs:6:11
+   |
+LL |     foo::<str>("".to_string());
+   |           ^^^ explicit generic argument not allowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0632`.

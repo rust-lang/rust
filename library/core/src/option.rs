@@ -285,6 +285,19 @@
 //! assert_eq!(res, ["error!", "error!", "foo", "error!", "bar"]);
 //! ```
 //!
+//! ## Comparison operators
+//!
+//! If `T` implements [`PartialOrd`] then [`Option<T>`] will derive its
+//! [`PartialOrd`] implementation.  With this order, [`None`] compares as
+//! less than any [`Some`], and two [`Some`] compare the same way as their
+//! contained values would in `T`.  If `T` also implements
+//! [`Ord`], then so does [`Option<T>`].
+//!
+//! ```
+//! assert!(None < Some(0));
+//! assert!(Some(0) < Some(1));
+//! ```
+//!
 //! ## Iterating over `Option`
 //!
 //! An [`Option`] can be iterated over. This can be helpful if you need an

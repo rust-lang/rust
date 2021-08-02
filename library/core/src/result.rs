@@ -379,6 +379,24 @@
 //! [`and_then`]: Result::and_then
 //! [`or_else`]: Result::or_else
 //!
+//! ## Comparison operators
+//!
+//! If `T` and `E` both implement [`PartialOrd`] then [`Result<T, E>`] will
+//! derive its [`PartialOrd`] implementation.  With this order, an [`Ok`]
+//! compares as less than any [`Err`], while two [`Ok`] or two [`Err`]
+//! compare as their contained values would in `T` or `E` respectively.  If `T`
+//! and `E` both also implement [`Ord`], then so does [`Result<T, E>`].
+//!
+//! ```
+//! assert!(Ok(1) < Err(0));
+//! let x: Result<i32, ()> = Ok(0);
+//! let y = Ok(1);
+//! assert!(x < y);
+//! let x: Result<(), i32> = Err(0);
+//! let y = Err(1);
+//! assert!(x < y);
+//! ```
+//!
 //! ## Iterating over `Result`
 //!
 //! A [`Result`] can be iterated over. This can be helpful if you need an

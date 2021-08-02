@@ -596,6 +596,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_add`]: #method.wrapping_add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///

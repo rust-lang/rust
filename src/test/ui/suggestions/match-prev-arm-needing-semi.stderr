@@ -1,9 +1,6 @@
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:26:18
+  --> $DIR/match-prev-arm-needing-semi.rs:32:18
    |
-LL |   async fn async_dummy() {}
-   |                          - checked the `Output` of this `async fn`, found opaque type
-...
 LL |       let _ = match true {
    |  _____________-
 LL | |         true => {
@@ -18,7 +15,11 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: while checking the return type of the `async fn`
+note: while checking the return type of the `async fn`
+  --> $DIR/match-prev-arm-needing-semi.rs:16:24
+   |
+LL | async fn async_dummy() {}
+   |                        ^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `()`
            found opaque type `impl Future`
 help: consider `await`ing on the `Future`
@@ -31,11 +32,8 @@ LL |             async_dummy()
    |                         --
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:40:18
+  --> $DIR/match-prev-arm-needing-semi.rs:45:18
    |
-LL |   async fn async_dummy2() {}
-   |                           - checked the `Output` of this `async fn`, found opaque type
-...
 LL |       let _ = match true {
    |  _____________-
 LL | |         true => {
@@ -50,7 +48,11 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: while checking the return type of the `async fn`
+note: while checking the return type of the `async fn`
+  --> $DIR/match-prev-arm-needing-semi.rs:19:25
+   |
+LL | async fn async_dummy2() {}
+   |                         ^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `()`
            found opaque type `impl Future`
 help: consider `await`ing on the `Future`
@@ -66,11 +68,8 @@ LL |         false => Box::new(async_dummy2()),
    |
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:52:18
+  --> $DIR/match-prev-arm-needing-semi.rs:56:18
    |
-LL |   async fn async_dummy2() {}
-   |                           - checked the `Output` of this `async fn`, found opaque type
-...
 LL |       let _ = match true {
    |  _____________-
 LL | |         true => async_dummy(),
@@ -83,9 +82,13 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: while checking the return type of the `async fn`
+note: while checking the return type of the `async fn`
+  --> $DIR/match-prev-arm-needing-semi.rs:19:25
+   |
+LL | async fn async_dummy2() {}
+   |                         ^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:16:24>)
-           found opaque type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:17:25>)
+           found opaque type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:19:25>)
    = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |
