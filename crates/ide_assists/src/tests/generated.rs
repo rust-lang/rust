@@ -1528,7 +1528,7 @@ fn doctest_sort_items() {
     check_doc_test(
         "sort_items",
         r#####"
-struct $0Foo { second: u32, first: String }
+struct $0Foo$0 { second: u32, first: String }
 "#####,
         r#####"
 struct Foo { first: String, second: u32 }
@@ -1541,7 +1541,7 @@ fn doctest_sort_items_1() {
     check_doc_test(
         "sort_items",
         r#####"
-trait $0Bar {
+trait $0Bar$0 {
     fn second(&self) -> u32;
     fn first(&self) -> String;
 }
@@ -1561,7 +1561,7 @@ fn doctest_sort_items_2() {
         "sort_items",
         r#####"
 struct Baz;
-impl $0Baz {
+impl $0Baz$0 {
     fn second(&self) -> u32;
     fn first(&self) -> String;
 }
@@ -1581,7 +1581,7 @@ fn doctest_sort_items_3() {
     check_doc_test(
         "sort_items",
         r#####"
-en$0um Animal {
+enum $0Animal$0 {
   Dog(String, f64),
   Cat { weight: f64, name: String },
 }
@@ -1602,7 +1602,7 @@ fn doctest_sort_items_4() {
         r#####"
 enum Animal {
   Dog(String, f64),
-  Cat {$0 weight: f64, name: String },
+  Cat $0{ weight: f64, name: String }$0,
 }
 "#####,
         r#####"

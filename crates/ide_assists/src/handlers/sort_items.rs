@@ -14,7 +14,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // Sorts item members alphabetically: fields, enum variants and methods.
 //
 // ```
-// struct $0Foo { second: u32, first: String }
+// struct $0Foo$0 { second: u32, first: String }
 // ```
 // ->
 // ```
@@ -22,7 +22,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ---
 // ```
-// trait $0Bar {
+// trait $0Bar$0 {
 //     fn second(&self) -> u32;
 //     fn first(&self) -> String;
 // }
@@ -37,7 +37,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // ---
 // ```
 // struct Baz;
-// impl $0Baz {
+// impl $0Baz$0 {
 //     fn second(&self) -> u32;
 //     fn first(&self) -> String;
 // }
@@ -54,7 +54,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // There is a difference between sorting enum variants:
 //
 // ```
-// en$0um Animal {
+// enum $0Animal$0 {
 //   Dog(String, f64),
 //   Cat { weight: f64, name: String },
 // }
@@ -71,7 +71,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // enum Animal {
 //   Dog(String, f64),
-//   Cat {$0 weight: f64, name: String },
+//   Cat $0{ weight: f64, name: String }$0,
 // }
 // ```
 // ->
