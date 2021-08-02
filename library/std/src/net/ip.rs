@@ -486,8 +486,7 @@ impl Ipv4Addr {
     /// - addresses used for documentation (see [`Ipv4Addr::is_documentation()`])
     /// - the unspecified address (see [`Ipv4Addr::is_unspecified()`]), and the whole
     ///   `0.0.0.0/8` block
-    /// - addresses reserved for future protocols (see
-    /// [`Ipv4Addr::is_ietf_protocol_assignment()`], except
+    /// - addresses reserved for future protocols, except
     /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
     /// - addresses reserved for future use (see [`Ipv4Addr::is_reserved()`]
     /// - addresses reserved for networking devices benchmarking (see
@@ -560,7 +559,8 @@ impl Ipv4Addr {
             && !self.is_broadcast()
             && !self.is_documentation()
             && !self.is_shared()
-            && !self.is_ietf_protocol_assignment()
+            // addresses reserved for future protocols (`192.0.0.0/24`)
+            && !(self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0)
             && !self.is_reserved()
             && !self.is_benchmarking()
             // Make sure the address is not in 0.0.0.0/8
@@ -587,40 +587,6 @@ impl Ipv4Addr {
     #[inline]
     pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
-    }
-
-    /// Returns [`true`] if this address is part of `192.0.0.0/24`, which is reserved to
-    /// IANA for IETF protocol assignments, as documented in [IETF RFC 6890].
-    ///
-    /// Note that parts of this block are in use:
-    ///
-    /// - `192.0.0.8/32` is the "IPv4 dummy address" (see [IETF RFC 7600])
-    /// - `192.0.0.9/32` is the "Port Control Protocol Anycast" (see [IETF RFC 7723])
-    /// - `192.0.0.10/32` is used for NAT traversal (see [IETF RFC 8155])
-    ///
-    /// [IETF RFC 6890]: https://tools.ietf.org/html/rfc6890
-    /// [IETF RFC 7600]: https://tools.ietf.org/html/rfc7600
-    /// [IETF RFC 7723]: https://tools.ietf.org/html/rfc7723
-    /// [IETF RFC 8155]: https://tools.ietf.org/html/rfc8155
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 8).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 9).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
-    /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[inline]
-    pub const fn is_ietf_protocol_assignment(&self) -> bool {
-        self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
 
     /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
