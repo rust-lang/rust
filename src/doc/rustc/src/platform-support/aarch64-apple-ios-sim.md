@@ -1,6 +1,6 @@
 # aarch64-apple-ios-sim
 
-**Tier: 3**
+**Tier: 2**
 
 Apple iOS Simulator on ARM64.
 
@@ -39,17 +39,16 @@ Currently there is no support to run the rustc test suite for this target.
 
 *Note: Building for this target requires the corresponding iOS SDK, as provided by Xcode 12+.*
 
-If `rustc` has support for that target and the library artifacts are available,
-then Rust programs can be built for that target:
+From Rust Nightly 1.56.0 (2021-08-03) on the artifacts are shipped pre-compiled:
+
+```text
+rustup target add aarch64-apple-ios-sim --toolchain nightly
+```
+
+Rust programs can be built for that target:
 
 ```text
 rustc --target aarch64-apple-ios-sim your-code.rs
-```
-
-On Rust Nightly it is possible to build without the target artifacts available:
-
-```text
-cargo build -Z build-std --target aarch64-apple-ios-sim
 ```
 
 There is no easy way to run simple programs in the iOS simulator.
