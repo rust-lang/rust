@@ -12,12 +12,8 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo::{self, find_node_at_range},
-    ast,
-    display::fn_as_proc_macro_label,
-    match_ast, AstNode, AstToken, Direction,
-    SyntaxKind::*,
-    SyntaxToken, T,
+    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, AstToken, Direction,
+    SyntaxKind::*, SyntaxToken, T,
 };
 
 use crate::{
@@ -88,7 +84,15 @@ pub(crate) fn hover(
     let offset = if range.is_empty() {
         range.start()
     } else {
-        let expr = find_node_at_range::<ast::Expr>(&file, range).map(Either::Left)?;
+        let expr = file.covering_element(range).ancestors().find_map(|it| {
+            match_ast! {
+                match it {
+                    ast::Expr(expr) => Some(Either::Left(expr)),
+                    ast::Pat(pat) => Some(Either::Right(pat)),
+                    _ => None,
+                }
+            }
+        })?;
         return hover_type_info(&sema, config, expr).map(|it| RangeInfo::new(range, it));
     };
 
@@ -4097,7 +4101,34 @@ fn f() { let expr$0 = $0[1, 2, 3, 4] }
     }
 
     #[test]
-    fn hover_range_shows_coercions_if_applicable() {
+    fn hover_range_for_pat() {
+        check_hover_range(
+            r#"
+fn foo() {
+    let $0x$0 = 0;
+}
+"#,
+            expect![[r#"
+                ```rust
+                i32
+                ```"#]],
+        );
+
+        check_hover_range(
+            r#"
+fn foo() {
+    let $0x$0 = "";
+}
+"#,
+            expect![[r#"
+                ```rust
+                &str
+                ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_coercions_if_applicable_expr() {
         check_hover_range(
             r#"
 fn foo() {
@@ -4105,7 +4136,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                ```
+                ```text
                 Type:       &&&&&u32
                 Coerced to:     &u32
                 ```
@@ -4118,7 +4149,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                ```
+                ```text
                 Type:             &u32
                 Coerced to: *const u32
                 ```
