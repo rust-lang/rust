@@ -93,7 +93,15 @@ pub(crate) fn hover(
                 }
             }
         })?;
-        return hover_type_info(&sema, config, expr).map(|it| RangeInfo::new(range, it));
+        return hover_type_info(&sema, config, &expr).map(|it| {
+            RangeInfo::new(
+                match expr {
+                    Either::Left(it) => it.syntax().text_range(),
+                    Either::Right(it) => it.syntax().text_range(),
+                },
+                it,
+            )
+        });
     };
 
     let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
@@ -204,7 +212,7 @@ pub(crate) fn hover(
         }
     };
 
-    let res = hover_type_info(&sema, config, expr_or_pat)?;
+    let res = hover_type_info(&sema, config, &expr_or_pat)?;
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -212,16 +220,16 @@ pub(crate) fn hover(
 fn hover_type_info(
     sema: &Semantics<RootDatabase>,
     config: &HoverConfig,
-    expr_or_pat: Either<ast::Expr, ast::Pat>,
+    expr_or_pat: &Either<ast::Expr, ast::Pat>,
 ) -> Option<HoverResult> {
-    let (ty, coerced) = match &expr_or_pat {
+    let (ty, coerced) = match expr_or_pat {
         Either::Left(expr) => sema.type_of_expr_with_coercion(expr)?,
         Either::Right(pat) => sema.type_of_pat_with_coercion(pat)?,
     };
 
     let mut res = HoverResult::default();
     res.markup = if coerced {
-        let uncoerced_ty = match &expr_or_pat {
+        let uncoerced_ty = match expr_or_pat {
             Either::Left(expr) => sema.type_of_expr(expr)?,
             Either::Right(pat) => sema.type_of_pat(pat)?,
         };
