@@ -1143,6 +1143,36 @@ public:
           llvm_unreachable("__enzyme_register_gradient");
         }
         globalsToErase.push_back(&g);
+      } else if (g.getName().contains("__enzyme_inactivefn")) {
+        if (g.hasInitializer()) {
+          Value *V = g.getInitializer();
+          while (auto CE = dyn_cast<ConstantExpr>(V)) {
+            V = CE->getOperand(0);
+          }
+          if (auto CA = dyn_cast<ConstantAggregate>(V))
+            V = CA->getOperand(0);
+          while (auto CE = dyn_cast<ConstantExpr>(V)) {
+            V = CE->getOperand(0);
+          }
+          if (auto F = dyn_cast<Function>(V)) {
+            F->addAttribute(AttributeList::FunctionIndex,
+                            Attribute::get(g.getContext(), "enzyme_inactive"));
+          } else {
+            llvm::errs() << M << "\n";
+            llvm::errs() << "Param of __enzyme_inactivefn must be a "
+                            "function"
+                         << g << "\n"
+                         << *V << "\n";
+            llvm_unreachable("__enzyme_inactivefn");
+          }
+        } else {
+          llvm::errs() << M << "\n";
+          llvm::errs() << "Use of __enzyme_inactivefn must be a "
+                          "constant function "
+                       << g << "\n";
+          llvm_unreachable("__enzyme_register_gradient");
+        }
+        globalsToErase.push_back(&g);
       }
     }
     for (auto g : globalsToErase) {
