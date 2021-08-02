@@ -348,13 +348,13 @@ impl Span {
     /// Gets the starting line/column in the source file for this span.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn start(&self) -> LineColumn {
-        self.0.start()
+        self.0.start().add_1_to_column()
     }
 
     /// Gets the ending line/column in the source file for this span.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn end(&self) -> LineColumn {
-        self.0.end()
+        self.0.end().add_1_to_column()
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -432,10 +432,16 @@ pub struct LineColumn {
     /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub line: usize,
-    /// The 0-indexed column (in UTF-8 characters) in the source file on which
+    /// The 1-indexed column (in UTF-8 characters) in the source file on which
     /// the span starts or ends (inclusive).
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub column: usize,
+}
+
+impl LineColumn {
+    fn add_1_to_column(self) -> Self {
+        LineColumn { line: self.line, column: self.column + 1 }
+    }
 }
 
 #[unstable(feature = "proc_macro_span", issue = "54725")]
