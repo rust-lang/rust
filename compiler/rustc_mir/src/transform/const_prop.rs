@@ -469,7 +469,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Returns the value, if any, of evaluating `c`.
     fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
-        if c.needs_subst(self.tcx) {
+        if c.definitely_needs_subst(self.tcx) {
             return None;
         }
 
@@ -489,9 +489,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             }) => true,
                             // Out of backwards compatibility we cannot report hard errors in unused
                             // generic functions using associated constants of the generic parameters.
-                            _ => c.literal.needs_subst(*tcx),
+                            _ => c.literal.definitely_needs_subst(*tcx),
                         },
-                        ConstantKind::Val(_, ty) => ty.needs_subst(*tcx),
+                        ConstantKind::Val(_, ty) => ty.definitely_needs_subst(*tcx),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
@@ -721,7 +721,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // FIXME we need to revisit this for #67176
-        if rvalue.needs_subst(self.tcx) {
+        if rvalue.definitely_needs_subst(self.tcx) {
             return None;
         }
 

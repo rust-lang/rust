@@ -285,7 +285,7 @@ impl<'tcx> Body<'tcx> {
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
         };
-        body.is_polymorphic = body.has_param_types_or_consts(tcx);
+        body.is_polymorphic = body.definitely_has_param_types_or_consts(tcx);
         body
     }
 
