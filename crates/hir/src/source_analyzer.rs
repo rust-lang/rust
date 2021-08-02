@@ -147,15 +147,15 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<Type> {
+    ) -> Option<(Type, bool)> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let ty = infer
+        let (ty, coerced) = infer
             .pat_adjustments
             .get(&pat_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| &adjust.target))
-            .unwrap_or_else(|| &infer[pat_id]);
-        Type::new_with_resolver(db, &self.resolver, ty.clone())
+            .and_then(|adjusts| adjusts.last().map(|adjust| (&adjust.target, true)))
+            .unwrap_or_else(|| (&infer[pat_id], false));
+        Type::new_with_resolver(db, &self.resolver, ty.clone()).zip(Some(coerced))
     }
 
     pub(crate) fn type_of_self(
