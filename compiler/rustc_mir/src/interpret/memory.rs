@@ -907,7 +907,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
 }
 
 /// Reading and writing.
-impl<'tcx, 'a, Tag: Copy, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
+impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     pub fn write_scalar(
         &mut self,
         range: AllocRange,
@@ -928,7 +928,7 @@ impl<'tcx, 'a, Tag: Copy, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     }
 }
 
-impl<'tcx, 'a, Tag: Copy, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
+impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
     pub fn read_scalar(&self, range: AllocRange) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         Ok(self
             .alloc
@@ -998,7 +998,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // Side-step AllocRef and directly access the underlying bytes more efficiently.
         // (We are staying inside the bounds here so all is good.)
-        let bytes = alloc_ref.alloc.get_bytes_mut(&alloc_ref.tcx, alloc_ref.range);
+        let alloc_id = alloc_ref.alloc_id;
+        let bytes = alloc_ref
+            .alloc
+            .get_bytes_mut(&alloc_ref.tcx, alloc_ref.range)
+            .map_err(move |e| e.to_interp_error(alloc_id))?;
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
         for dest in bytes {
@@ -1072,7 +1076,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let (dest_alloc, extra) = self.get_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
         M::memory_written(extra, &mut dest_alloc.extra, dest.provenance, dest_range)?;
-        let dest_bytes = dest_alloc.get_bytes_mut_ptr(&tcx, dest_range).as_mut_ptr();
+        let dest_bytes = dest_alloc
+            .get_bytes_mut_ptr(&tcx, dest_range)
+            .map_err(|e| e.to_interp_error(dest_alloc_id))?
+            .as_mut_ptr();
 
         if compressed.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range

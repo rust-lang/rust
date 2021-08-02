@@ -108,6 +108,10 @@ pub trait Provenance: Copy + fmt::Debug {
     /// If `false`, ptr-to-int casts are not supported. The offset *must* be relative in that case.
     const OFFSET_IS_ADDR: bool;
 
+    /// We also use this trait to control whether to abort execution when a pointer is being partially overwritten
+    /// (this avoids a separate trait in `allocation.rs` just for this purpose).
+    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool;
+
     /// Determines how a pointer should be printed.
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result
     where
@@ -122,6 +126,9 @@ impl Provenance for AllocId {
     // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
     const OFFSET_IS_ADDR: bool = false;
+
+    // For now, do not allow this, so that we keep our options open.
+    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool = true;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `alternate` flag to `alloc_id` printing.

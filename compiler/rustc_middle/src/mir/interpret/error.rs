@@ -404,6 +404,9 @@ pub enum UnsupportedOpInfo {
     Unsupported(String),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
+    /// Overwriting parts of a pointer; the resulting state cannot be represented in our
+    /// `Allocation` data structure.
+    PartialPointerOverwrite(Pointer<AllocId>),
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
@@ -418,9 +421,12 @@ impl fmt::Display for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
-            ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
-            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
+            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
+            PartialPointerOverwrite(ptr) => {
+                write!(f, "unable to overwrite parts of a pointer in memory at {:?}", ptr)
+            }
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({:?})", did),
+            ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
         }
     }
 }
