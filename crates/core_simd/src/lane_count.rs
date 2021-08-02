@@ -6,9 +6,14 @@ use sealed::Sealed;
 /// A type representing a vector lane count.
 pub struct LaneCount<const LANES: usize>;
 
+impl<const LANES: usize> LaneCount<LANES> {
+    /// The number of bytes in a bitmask with this many lanes.
+    pub const BITMASK_LEN: usize = (LANES + 7) / 8;
+}
+
 /// Helper trait for vector lane counts.
 pub trait SupportedLaneCount: Sealed {
-    /// The bitmask representation of a mask.
+    #[doc(hidden)]
     type BitMask: Copy + Default + AsRef<[u8]> + AsMut<[u8]>;
 
     #[doc(hidden)]

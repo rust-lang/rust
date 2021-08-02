@@ -160,12 +160,12 @@ macro_rules! define_opaque_mask {
             }
 
             /// Convert this mask to a bitmask, with one bit set per lane.
-            pub fn to_bitmask(self) -> <crate::LaneCount<LANES> as crate::SupportedLaneCount>::BitMask {
+            pub fn to_bitmask(self) -> [u8; crate::LaneCount::<LANES>::BITMASK_LEN] {
                 self.0.to_bitmask()
             }
 
             /// Convert a bitmask to a mask.
-            pub fn from_bitmask(bitmask: <crate::LaneCount<LANES> as crate::SupportedLaneCount>::BitMask) -> Self {
+            pub fn from_bitmask(bitmask: [u8; crate::LaneCount::<LANES>::BITMASK_LEN]) -> Self {
                 Self(<$inner_ty>::from_bitmask(bitmask))
             }
         }

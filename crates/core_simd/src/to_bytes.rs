@@ -1,72 +1,39 @@
-mod sealed {
-    pub trait Sealed {}
-}
-use sealed::Sealed;
-
-/// Supporting trait for byte conversion functions.
-pub trait ToBytes: Sealed {
-    /// The bytes representation of this type.
-    type Bytes;
-
-    #[doc(hidden)]
-    fn to_bytes_impl(self) -> Self::Bytes;
-
-    #[doc(hidden)]
-    fn from_bytes_impl(bytes: Self::Bytes) -> Self;
-}
-
 macro_rules! impl_to_bytes {
-    { $name:ident, $($int_width:literal -> $byte_width:literal),* } => {
-        $(
-        impl Sealed for crate::$name<$int_width>
-        where
-            crate::LaneCount<$int_width>: crate::SupportedLaneCount,
-        {}
-
-        impl ToBytes for crate::$name<$int_width>
-        where
-            crate::LaneCount<$int_width>: crate::SupportedLaneCount,
-        {
-            type Bytes = crate::SimdU8<$byte_width>;
-            fn to_bytes_impl(self) -> Self::Bytes {
-                unsafe { core::mem::transmute(self) }
-            }
-            fn from_bytes_impl(bytes: Self::Bytes) -> Self {
-                unsafe { core::mem::transmute(bytes) }
-            }
-        }
-        )*
-
+    { $name:ident, $size:literal } => {
         impl<const LANES: usize> crate::$name<LANES>
         where
             crate::LaneCount<LANES>: crate::SupportedLaneCount,
-            Self: ToBytes,
+            crate::LaneCount<{{ $size * LANES }}>: crate::SupportedLaneCount,
         {
             /// Return the memory representation of this integer as a byte array in native byte
             /// order.
-            pub fn to_ne_bytes(self) -> <Self as ToBytes>::Bytes { self.to_bytes_impl() }
+            pub fn to_ne_bytes(self) -> crate::SimdU8<{{ $size * LANES }}> {
+                unsafe { core::mem::transmute_copy(&self) }
+            }
 
             /// Create a native endian integer value from its memory representation as a byte array
             /// in native endianness.
-            pub fn from_ne_bytes(bytes: <Self as ToBytes>::Bytes) -> Self { Self::from_bytes_impl(bytes) }
+            pub fn from_ne_bytes(bytes: crate::SimdU8<{{ $size * LANES }}>) -> Self {
+                unsafe { core::mem::transmute_copy(&bytes) }
+            }
         }
     }
 }
 
-impl_to_bytes! { SimdU8, 1 -> 1, 2 -> 2, 4 -> 4, 8 -> 8, 16 -> 16, 32 -> 32 }
-impl_to_bytes! { SimdU16, 1 -> 2, 2 -> 4, 4 -> 8, 8 -> 16, 16 -> 32 }
-impl_to_bytes! { SimdU32, 1 -> 4, 2 -> 8, 4 -> 16, 8 -> 32 }
-impl_to_bytes! { SimdU64, 1 -> 8, 2 -> 16, 4 -> 32 }
+impl_to_bytes! { SimdU8, 1 }
+impl_to_bytes! { SimdU16, 2 }
+impl_to_bytes! { SimdU32, 4 }
+impl_to_bytes! { SimdU64, 8 }
 #[cfg(target_pointer_width = "32")]
-impl_to_bytes! { SimdUsize, 1 -> 4, 2 -> 8, 4 -> 16, 8 -> 32 }
+impl_to_bytes! { SimdUsize, 4 }
 #[cfg(target_pointer_width = "64")]
-impl_to_bytes! { SimdUsize, 1 -> 8, 2 -> 16, 4 -> 32 }
+impl_to_bytes! { SimdUsize, 8 }
 
-impl_to_bytes! { SimdI8, 1 -> 1, 2 -> 2, 4 -> 4, 8 -> 8, 16 -> 16, 32 -> 32 }
-impl_to_bytes! { SimdI16, 1 -> 2, 2 -> 4, 4 -> 8, 8 -> 16, 16 -> 32 }
-impl_to_bytes! { SimdI32, 1 -> 4, 2 -> 8, 4 -> 16, 8 -> 32 }
-impl_to_bytes! { SimdI64, 1 -> 8, 2 -> 16, 4 -> 32 }
+impl_to_bytes! { SimdI8, 1 }
+impl_to_bytes! { SimdI16, 2 }
+impl_to_bytes! { SimdI32, 4 }
+impl_to_bytes! { SimdI64, 8 }
 #[cfg(target_pointer_width = "32")]
-impl_to_bytes! { SimdIsize, 1 -> 4, 2 -> 8, 4 -> 16, 8 -> 32 }
+impl_to_bytes! { SimdIsize, 4 }
 #[cfg(target_pointer_width = "64")]
-impl_to_bytes! { SimdIsize, 1 -> 8, 2 -> 16, 4 -> 32 }
+impl_to_bytes! { SimdIsize, 8 }

@@ -443,14 +443,6 @@ macro_rules! impl_float_tests {
                     )
                 }
 
-                fn sqrt<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
-                        &Vector::<LANES>::sqrt,
-                        &Scalar::sqrt,
-                        &|_| true,
-                    )
-                }
-
                 fn recip<const LANES: usize>() {
                     test_helpers::test_unary_elementwise(
                         &Vector::<LANES>::recip,
@@ -603,6 +595,17 @@ macro_rules! impl_float_tests {
                         }
                         Ok(())
                     });
+                }
+            }
+
+            #[cfg(feature = "std")]
+            test_helpers::test_lanes! {
+                fn sqrt<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::sqrt,
+                        &Scalar::sqrt,
+                        &|_| true,
+                    )
                 }
             }
         }

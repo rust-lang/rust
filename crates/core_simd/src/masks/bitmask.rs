@@ -128,13 +128,15 @@ where
     }
 
     #[inline]
-    pub fn to_bitmask(self) -> <LaneCount<LANES> as SupportedLaneCount>::BitMask {
-        self.0
+    pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
+        // Safety: these are the same type and we are laundering the generic
+        unsafe { core::mem::transmute_copy(&self.0) }
     }
 
     #[inline]
-    pub fn from_bitmask(bitmask: <LaneCount<LANES> as SupportedLaneCount>::BitMask) -> Self {
-        Self(bitmask)
+    pub fn from_bitmask(bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
+        // Safety: these are the same type and we are laundering the generic
+        Self(unsafe { core::mem::transmute_copy(&bitmask) })
     }
 
     #[inline]

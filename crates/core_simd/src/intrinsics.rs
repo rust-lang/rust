@@ -47,6 +47,7 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_fabs<T>(x: T) -> T;
 
     /// fsqrt
+    #[cfg(feature = "std")]
     pub(crate) fn simd_fsqrt<T>(x: T) -> T;
 
     /// fma

@@ -103,15 +103,15 @@ macro_rules! define_mask {
             }
 
             #[inline]
-            pub fn to_bitmask(self) -> <crate::LaneCount::<LANES> as crate::SupportedLaneCount>::BitMask {
+            pub fn to_bitmask(self) -> [u8; crate::LaneCount::<LANES>::BITMASK_LEN] {
                 unsafe {
                     // TODO remove the transmute when rustc can use arrays of u8 as bitmasks
                     assert_eq!(
-                        core::mem::size_of::<<crate::LaneCount::<LANES> as crate::SupportedLaneCount>::BitMask>(),
                         core::mem::size_of::<<crate::LaneCount::<LANES> as crate::SupportedLaneCount>::IntBitMask>(),
+                        crate::LaneCount::<LANES>::BITMASK_LEN,
                     );
                     let bitmask: <crate::LaneCount::<LANES> as crate::SupportedLaneCount>::IntBitMask = crate::intrinsics::simd_bitmask(self.0);
-                    let mut bitmask: <crate::LaneCount::<LANES> as crate::SupportedLaneCount>::BitMask = core::mem::transmute_copy(&bitmask);
+                    let mut bitmask: [u8; crate::LaneCount::<LANES>::BITMASK_LEN] = core::mem::transmute_copy(&bitmask);
 
                     // There is a bug where LLVM appears to implement this operation with the wrong
                     // bit order.
@@ -127,7 +127,7 @@ macro_rules! define_mask {
             }
 
             #[inline]
-            pub fn from_bitmask(mut bitmask: <crate::LaneCount::<LANES> as crate::SupportedLaneCount>::BitMask) -> Self {
+            pub fn from_bitmask(mut bitmask: [u8; crate::LaneCount::<LANES>::BITMASK_LEN]) -> Self {
                 unsafe {
                     // There is a bug where LLVM appears to implement this operation with the wrong
                     // bit order.
@@ -140,8 +140,8 @@ macro_rules! define_mask {
 
                     // TODO remove the transmute when rustc can use arrays of u8 as bitmasks
                     assert_eq!(
-                        core::mem::size_of::<<crate::LaneCount::<LANES> as crate::SupportedLaneCount>::BitMask>(),
                         core::mem::size_of::<<crate::LaneCount::<LANES> as crate::SupportedLaneCount>::IntBitMask>(),
+                        crate::LaneCount::<LANES>::BITMASK_LEN,
                     );
                     let bitmask: <crate::LaneCount::<LANES> as crate::SupportedLaneCount>::IntBitMask = core::mem::transmute_copy(&bitmask);
 
