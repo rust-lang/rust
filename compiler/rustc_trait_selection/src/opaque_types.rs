@@ -104,10 +104,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         value: T,
         value_span: Span,
     ) -> InferOk<'tcx, T> {
-        let value = self.instantiate_opaque_types_no_obligations(value, value_span);
+        let mut value = self.instantiate_opaque_types_without_resolving_projections(
+            body_id, param_env, value, value_span,
+        );
+
+        // We can't use normalization in `InferCtxt` as that needs to preserve lifetimes
+        // and we don't have access to this (trait_selection) crate's normalization/trait
+        // machinery.
+        // TODO: should probably do this in `register_predicates` so everything is less
+        // fragile.
+        let normalized = self.partially_normalize_associated_types_in(
+            ObligationCause::misc(value_span, body_id),
+            param_env,
+            value.obligations,
+        );
+        value.obligations = normalized.value;
+        value.obligations.extend(normalized.obligations);
         let obligations =
             self.register_obligations_for_opaque_types(body_id, param_env).obligations;
-        InferOk { value, obligations }
+        value.obligations.extend(obligations);
+        value
     }
 
     fn register_obligations_for_opaque_types(

@@ -28,7 +28,15 @@ LL | fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = L
 LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
    |                    -------------------------------------- returning this opaque type `FlatMap<impl Iterator, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
 
-error: aborting due to 3 previous errors
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-72911.rs:17:20
+   |
+LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
 
-Some errors have detailed explanations: E0433, E0720.
-For more information about an error, try `rustc --explain E0433`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0433, E0720.
+For more information about an error, try `rustc --explain E0277`.

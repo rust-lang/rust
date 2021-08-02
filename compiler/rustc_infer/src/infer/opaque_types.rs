@@ -1,3 +1,6 @@
+use crate::infer::InferOk;
+use crate::rustc_middle::ty::subst::Subst;
+use crate::traits::{self, PredicateObligation};
 use hir::def_id::LocalDefId;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
@@ -78,19 +81,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///   obligations
     /// - `value` -- the value within which we are instantiating opaque types
     /// - `value_span` -- the span where the value came from, used in error reporting
-    pub fn instantiate_opaque_types_no_obligations<T: TypeFoldable<'tcx>>(
+    pub fn instantiate_opaque_types_without_resolving_projections<T: TypeFoldable<'tcx>>(
         &self,
+        body_id: hir::HirId,
+        param_env: ty::ParamEnv<'tcx>,
         value: T,
         value_span: Span,
-    ) -> T {
-        let mut instantiator = Instantiator { infcx: self, value_span };
-        instantiator.instantiate_opaque_types_in_map(value)
+    ) -> InferOk<'tcx, T> {
+        let mut instantiator =
+            Instantiator { infcx: self, value_span, body_id, param_env, obligations: vec![] };
+        let value = instantiator.instantiate_opaque_types_in_map(value);
+        InferOk { value, obligations: instantiator.obligations }
     }
 }
 
 struct Instantiator<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     value_span: Span,
+    body_id: hir::HirId,
+    obligations: Vec<PredicateObligation<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
@@ -192,6 +202,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         origin: hir::OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
+        let tcx = infcx.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Use the same type variable if the exact same opaque type appears more
@@ -200,6 +211,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!("re-using cached concrete type {:?}", opaque_defn.concrete_ty.kind());
             return opaque_defn.concrete_ty;
         }
+
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
@@ -227,6 +239,24 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         }
 
         debug!("generated new type inference var {:?}", ty_var.kind());
+
+        let item_bounds = tcx.explicit_item_bounds(def_id);
+        let bounds: Vec<_> =
+            item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
+
+        self.obligations.reserve(bounds.len());
+        for predicate in bounds {
+            // Change the predicate to refer to the type variable,
+            // which will be the concrete type instead of the opaque type.
+            // This also instantiates nested instances of `impl Trait`.
+            let predicate = self.instantiate_opaque_types_in_map(predicate);
+
+            let cause = traits::ObligationCause::new(span, self.body_id, traits::OpaqueType);
+
+            // Require that the predicate holds for the concrete type.
+            debug!("instantiate_opaque_types: predicate={:?}", predicate);
+            self.obligations.push(traits::Obligation::new(cause, self.param_env, predicate));
+        }
 
         ty_var
     }
