@@ -79,42 +79,26 @@ pub struct HoverResult {
 // image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif[]
 pub(crate) fn hover(
     db: &RootDatabase,
-    range: FileRange,
+    FileRange { file_id, range }: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = hir::Semantics::new(db);
-    let file = sema.parse(range.file_id).syntax().clone();
+    let file = sema.parse(file_id).syntax().clone();
 
-    // This means we're hovering over a range.
-    if !range.range.is_empty() {
-        let expr = find_node_at_range::<ast::Expr>(&file, range.range)?;
-        let ty = sema.type_of_expr(&expr)?;
+    let offset = if range.is_empty() {
+        range.start()
+    } else {
+        let expr = find_node_at_range::<ast::Expr>(&file, range).map(Either::Left)?;
+        return hover_type_info(&sema, config, expr).map(|it| RangeInfo::new(range, it));
+    };
 
-        if ty.is_unknown() {
-            return None;
-        }
-
-        let mut res = HoverResult::default();
-
-        res.markup = if config.markdown() {
-            Markup::fenced_block(&ty.display(db))
-        } else {
-            ty.display(db).to_string().into()
-        };
-
-        return Some(RangeInfo::new(range.range, res));
-    }
-
-    let position = FilePosition { file_id: range.file_id, offset: range.range.start() };
-    let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+    let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;
     let token = sema.descend_into_macros(token);
-
-    let mut res = HoverResult::default();
 
     let node = token.parent()?;
     let mut range = None;
@@ -146,8 +130,8 @@ pub(crate) fn hover(
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
                         extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
-                            let hir::InFile { file_id, value: mapped_range } = doc_mapping.map(range)?;
-                            (file_id == position.file_id.into() && mapped_range.contains(position.offset)).then(||(mapped_range, link, ns))
+                            let mapped = doc_mapping.map(range)?;
+                            (mapped.file_id == file_id.into() && mapped.value.contains(offset)).then(||(mapped.value, link, ns))
                         })?;
                     range = Some(idl_range);
                     resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
@@ -173,6 +157,7 @@ pub(crate) fn hover(
             _ => None,
         };
         if let Some(markup) = hover_for_definition(db, definition, famous_defs.as_ref(), config) {
+            let mut res = HoverResult::default();
             res.markup = process_markup(sema.db, definition, &markup, config);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
@@ -182,7 +167,7 @@ pub(crate) fn hover(
                 res.actions.push(action);
             }
 
-            if let Some(action) = runnable_action(&sema, definition, position.file_id) {
+            if let Some(action) = runnable_action(&sema, definition, file_id) {
                 res.actions.push(action);
             }
 
@@ -204,10 +189,10 @@ pub(crate) fn hover(
         .take_while(|it| !ast::Item::can_cast(it.kind()))
         .find(|n| ast::Expr::can_cast(n.kind()) || ast::Pat::can_cast(n.kind()))?;
 
-    let ty = match_ast! {
+    let expr_or_pat = match_ast! {
         match node {
-            ast::Expr(it) => sema.type_of_expr(&it)?,
-            ast::Pat(it) => sema.type_of_pat(&it)?,
+            ast::Expr(it) => Either::Left(it),
+            ast::Pat(it) => Either::Right(it),
             // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
             // (e.g expanding a builtin macro). So we give up here.
             ast::MacroCall(_it) => return None,
@@ -215,14 +200,46 @@ pub(crate) fn hover(
         }
     };
 
-    res.markup = if config.markdown() {
-        Markup::fenced_block(&ty.display(db))
-    } else {
-        ty.display(db).to_string().into()
-    };
-
+    let res = hover_type_info(&sema, config, expr_or_pat)?;
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
+}
+
+fn hover_type_info(
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
+    expr_or_pat: Either<ast::Expr, ast::Pat>,
+) -> Option<HoverResult> {
+    let (ty, coerced) = match &expr_or_pat {
+        Either::Left(expr) => sema.type_of_expr_with_coercion(expr)?,
+        Either::Right(pat) => sema.type_of_pat_with_coercion(pat)?,
+    };
+
+    let mut res = HoverResult::default();
+    res.markup = if coerced {
+        let uncoerced_ty = match &expr_or_pat {
+            Either::Left(expr) => sema.type_of_expr(expr)?,
+            Either::Right(pat) => sema.type_of_pat(pat)?,
+        };
+        let uncoerced = uncoerced_ty.display(sema.db).to_string();
+        let coerced = ty.display(sema.db).to_string();
+        format!(
+            "```text\nType: {:>upad$}\nCoerced to: {:>cpad$}\n```\n",
+            uncoerced = uncoerced,
+            coerced = coerced,
+            // 6 base padding for static text prefix of each line
+            upad = 6 + coerced.len().max(uncoerced.len()),
+            cpad = uncoerced.len(),
+        )
+        .into()
+    } else {
+        if config.markdown() {
+            Markup::fenced_block(&ty.display(sema.db))
+        } else {
+            ty.display(sema.db).to_string().into()
+        }
+    };
+    Some(res)
 }
 
 fn try_hover_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<RangeInfo<HoverResult>> {
@@ -1189,7 +1206,7 @@ impl Thing {
 }
 
 fn main() { let foo_$0test = Thing::new(); }
-            "#,
+"#,
             expect![[r#"
                 *foo_test*
 
@@ -1559,7 +1576,7 @@ fn foo() {
             fn foo() {
                 format!("hel$0lo {}", 0);
             }
-            "#,
+"#,
         );
     }
 
@@ -1667,7 +1684,7 @@ extern crate st$0d;
 //!
 //! Printed?
 //! abc123
-            "#,
+"#,
             expect![[r#"
                 *std*
 
@@ -1692,7 +1709,7 @@ extern crate std as ab$0c;
 //!
 //! Printed?
 //! abc123
-            "#,
+"#,
             expect![[r#"
                 *abc*
 
@@ -2211,7 +2228,7 @@ mod tests$0 {
 struct S{ f1: u32 }
 
 fn main() { let s$0t = S{ f1:0 }; }
-            "#,
+"#,
             expect![[r#"
                 [
                     GoToType(
@@ -2290,7 +2307,7 @@ struct Arg(u32);
 struct S<T>{ f1: T }
 
 fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
-            "#,
+"#,
             expect![[r#"
                 [
                     GoToType(
@@ -2479,7 +2496,7 @@ trait Bar {}
 fn foo() -> impl Foo + Bar {}
 
 fn main() { let s$0t = foo(); }
-            "#,
+"#,
             expect![[r#"
                 [
                     GoToType(
@@ -2912,7 +2929,7 @@ struct B<T> {}
 struct S {}
 
 fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
-            "#,
+"#,
             expect![[r#"
                 [
                     GoToType(
@@ -3708,7 +3725,7 @@ mod string {
     /// This is `alloc::String`.
     pub struct String;
 }
-            "#,
+"#,
             expect![[r#"
                 *String*
 
@@ -3827,7 +3844,7 @@ pub fn foo() {}
 //- /lib.rs crate:main.rs deps:foo
 #[fo$0o::bar()]
 struct Foo;
-            "#,
+"#,
             expect![[r#"
                 *foo*
 
@@ -3843,7 +3860,7 @@ struct Foo;
         check(
             r#"
 use self as foo$0;
-            "#,
+"#,
             expect![[r#"
                 *foo*
 
@@ -3856,7 +3873,7 @@ use self as foo$0;
             r#"
 mod bar {}
 use bar::{self as foo$0};
-            "#,
+"#,
             expect![[r#"
                 *foo*
 
@@ -3874,7 +3891,7 @@ use bar::{self as foo$0};
 mod bar {
     use super as foo$0;
 }
-            "#,
+"#,
             expect![[r#"
                 *foo*
 
@@ -3886,7 +3903,7 @@ mod bar {
         check(
             r#"
 use crate as foo$0;
-            "#,
+"#,
             expect![[r#"
                 *foo*
 
@@ -3905,7 +3922,7 @@ use crate as foo$0;
 pub macro Copy {}
 #[derive(Copy$0)]
 struct Foo;
-            "#,
+"#,
             expect![[r#"
                 *Copy*
 
@@ -3926,7 +3943,7 @@ mod foo {
 }
 #[derive(foo::Copy$0)]
 struct Foo;
-            "#,
+"#,
             expect![[r#"
                 *Copy*
 
@@ -3946,7 +3963,7 @@ struct Foo;
         check_hover_range(
             r#"
 fn f() { let expr = $01 + 2 * 3$0 }
-            "#,
+"#,
             expect![[r#"
             ```rust
             i32
@@ -3956,7 +3973,7 @@ fn f() { let expr = $01 + 2 * 3$0 }
         check_hover_range(
             r#"
 fn f() { let expr = 1 $0+ 2 * $03 }
-            "#,
+"#,
             expect![[r#"
             ```rust
             i32
@@ -3966,7 +3983,7 @@ fn f() { let expr = 1 $0+ 2 * $03 }
         check_hover_range(
             r#"
 fn f() { let expr = 1 + $02 * 3$0 }
-            "#,
+"#,
             expect![[r#"
             ```rust
             i32
@@ -3979,7 +3996,7 @@ fn f() { let expr = 1 + $02 * 3$0 }
         check_hover_range(
             r#"
 fn f() { let expr = $0[1, 2, 3, 4]$0 }
-            "#,
+"#,
             expect![[r#"
             ```rust
             [i32; 4]
@@ -3989,7 +4006,7 @@ fn f() { let expr = $0[1, 2, 3, 4]$0 }
         check_hover_range(
             r#"
 fn f() { let expr = [1, 2, $03, 4]$0 }
-            "#,
+"#,
             expect![[r#"
             ```rust
             [i32; 4]
@@ -3999,7 +4016,7 @@ fn f() { let expr = [1, 2, $03, 4]$0 }
         check_hover_range(
             r#"
 fn f() { let expr = [1, 2, $03$0, 4] }
-            "#,
+"#,
             expect![[r#"
             ```rust
             i32
@@ -4013,7 +4030,7 @@ fn f() { let expr = [1, 2, $03$0, 4] }
             r#"
 fn f<T>(a: &[T]) { }
 fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
-            "#,
+"#,
             expect![[r#"
             ```rust
             fn f<i32>(&[i32])
@@ -4024,7 +4041,7 @@ fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
             r#"
 fn f<T>(a: &[T]) { }
 fn b() { f($0&[1, 2, 3, 4, 5]$0); }
-            "#,
+"#,
             expect![[r#"
             ```rust
             &[i32; 5]
@@ -4038,20 +4055,20 @@ fn b() { f($0&[1, 2, 3, 4, 5]$0); }
             r#"
 fn f<T>(a: &[T]) { }
 fn b()$0 { f(&[1, 2, 3, 4, 5]); }$0
-            "#,
+"#,
         );
 
         check_hover_range_no_results(
             r#"
 fn f<T>$0(a: &[T]) { }
 fn b() { f(&[1, 2, 3,$0 4, 5]); }
-            "#,
+"#,
         );
 
         check_hover_range_no_results(
             r#"
 fn $0f() { let expr = [1, 2, 3, 4]$0 }
-            "#,
+"#,
         );
     }
 
@@ -4061,7 +4078,7 @@ fn $0f() { let expr = [1, 2, 3, 4]$0 }
             r#"
 fn f<T>(a: &[T]) { }
 fn b() { $0f(&[1, 2, 3, 4, 5]); }$0
-            "#,
+"#,
             expect![[r#"
             ```rust
             ()
@@ -4071,11 +4088,41 @@ fn b() { $0f(&[1, 2, 3, 4, 5]); }$0
         check_hover_range(
             r#"
 fn f() { let expr$0 = $0[1, 2, 3, 4] }
-            "#,
+"#,
             expect![[r#"
             ```rust
             ()
             ```"#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_coercions_if_applicable() {
+        check_hover_range(
+            r#"
+fn foo() {
+    let x: &u32 = $0&&&&&0$0;
+}
+"#,
+            expect![[r#"
+                ```
+                Type:       &&&&&u32
+                Coerced to:     &u32
+                ```
+            "#]],
+        );
+        check_hover_range(
+            r#"
+fn foo() {
+    let x: *const u32 = $0&0$0;
+}
+"#,
+            expect![[r#"
+                ```
+                Type:             &u32
+                Coerced to: *const u32
+                ```
+            "#]],
         );
     }
 }
