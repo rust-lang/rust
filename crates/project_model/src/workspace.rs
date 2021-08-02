@@ -446,9 +446,19 @@ fn project_json_to_crate_graph(
 
     for (from, krate) in project.crates() {
         if let Some(&from) = crates.get(&from) {
-            if let Some((public_deps, _proc_macro)) = &sysroot_deps {
+            if let Some((public_deps, libproc_macro)) = &sysroot_deps {
                 for (name, to) in public_deps.iter() {
                     add_dep(&mut crate_graph, from, name.clone(), *to)
+                }
+                if krate.is_proc_macro {
+                    if let Some(proc_macro) = libproc_macro {
+                        add_dep(
+                            &mut crate_graph,
+                            from,
+                            CrateName::new("proc_macro").unwrap(),
+                            *proc_macro,
+                        );
+                    }
                 }
             }
 

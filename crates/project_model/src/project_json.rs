@@ -37,6 +37,7 @@ pub struct Crate {
     pub(crate) is_workspace_member: bool,
     pub(crate) include: Vec<AbsPathBuf>,
     pub(crate) exclude: Vec<AbsPathBuf>,
+    pub(crate) is_proc_macro: bool,
 }
 
 impl ProjectJson {
@@ -96,6 +97,7 @@ impl ProjectJson {
                         is_workspace_member,
                         include,
                         exclude,
+                        is_proc_macro: crate_data.is_proc_macro,
                     }
                 })
                 .collect::<Vec<_>>(),
@@ -135,6 +137,8 @@ struct CrateData {
     proc_macro_dylib_path: Option<PathBuf>,
     is_workspace_member: Option<bool>,
     source: Option<CrateSource>,
+    #[serde(default)]
+    is_proc_macro: bool,
 }
 
 #[derive(Deserialize, Debug, Clone)]

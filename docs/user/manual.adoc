@@ -578,6 +578,8 @@ interface Crate {
     /// the `env!` macro
     env: : { [key: string]: string; },
 
+    /// Whether the crate is a proc-macro crate.
+    is_proc_macro: bool;
     /// For proc-macro crates, path to compiled
     /// proc-macro (.so file).
     proc_macro_dylib_path?: string;
@@ -597,7 +599,7 @@ Specifically, the `roots` setup will be different eventually.
 
 There are three ways to feed `rust-project.json` to rust-analyzer:
 
-* Place `rust-project.json` file at the root of the project, and rust-anlayzer will discover it.
+* Place `rust-project.json` file at the root of the project, and rust-analyzer will discover it.
 * Specify `"rust-analyzer.linkedProjects": [ "path/to/rust-project.json" ]` in the settings (and make sure that your LSP client sends settings as a part of initialize request).
 * Specify `"rust-analyzer.linkedProjects": [ { "roots": [...], "crates": [...] }]` inline.
 
