@@ -306,7 +306,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const(&mut self, ct: ty::Unevaluated<'tcx>) {
+    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'tcx, P>) {
         if let Some(substs) = ct.substs_ {
             self.add_substs(substs);
         } else {

@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use std::fmt;
 
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::mir::Promoted;
@@ -20,20 +21,38 @@ use super::ScalarInt;
 /// so refer to that check for more info.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
-pub struct Unevaluated<'tcx> {
+pub struct Unevaluated<'tcx, P = Option<Promoted>> {
     pub def: ty::WithOptConstParam<DefId>,
     pub substs_: Option<SubstsRef<'tcx>>,
-    pub promoted: Option<Promoted>,
+    pub promoted: P,
 }
 
 impl<'tcx> Unevaluated<'tcx> {
-    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx> {
-        Unevaluated { def, substs_: Some(substs), promoted: None }
+    pub fn shrink(self) -> Unevaluated<'tcx, ()> {
+        debug_assert_eq!(self.promoted, None);
+        Unevaluated { def: self.def, substs_: self.substs_, promoted: () }
     }
+}
 
+impl<'tcx> Unevaluated<'tcx, ()> {
+    pub fn expand(self) -> Unevaluated<'tcx> {
+        Unevaluated { def: self.def, substs_: self.substs_, promoted: None }
+    }
+}
+
+impl<'tcx, P: Default> Unevaluated<'tcx, P> {
+    pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx, P> {
+        Unevaluated { def, substs_: Some(substs), promoted: Default::default() }
+    }
+}
+
+impl<'tcx, P: Default + PartialEq + fmt::Debug> Unevaluated<'tcx, P> {
     pub fn substs(self, tcx: TyCtxt<'tcx>) -> SubstsRef<'tcx> {
         self.substs_.unwrap_or_else(|| {
-            debug_assert_eq!(self.promoted, None);
+            // We must not use the parents default substs for promoted constants
+            // as that can result in incorrect substs and calls the `default_anon_const_substs`
+            // for something that might not actually be a constant.
+            debug_assert_eq!(self.promoted, Default::default());
             tcx.default_anon_const_substs(self.def.did)
         })
     }
