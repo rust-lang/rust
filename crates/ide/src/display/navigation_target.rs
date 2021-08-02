@@ -75,6 +75,15 @@ pub(crate) trait TryToNav {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget>;
 }
 
+impl<T: TryToNav, U: TryToNav> TryToNav for Either<T, U> {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        match self {
+            Either::Left(it) => it.try_to_nav(db),
+            Either::Right(it) => it.try_to_nav(db),
+        }
+    }
+}
+
 impl NavigationTarget {
     pub fn focus_or_full_range(&self) -> TextRange {
         self.focus_range.unwrap_or(self.full_range)

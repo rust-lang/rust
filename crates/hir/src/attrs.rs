@@ -1,12 +1,15 @@
 //! Attributes & documentation for hir types.
+
+use either::Either;
 use hir_def::{
     attr::{AttrsWithOwner, Documentation},
+    item_scope::ItemInNs,
     path::ModPath,
     per_ns::PerNs,
     resolver::HasResolver,
     AttrDefId, GenericParamId, ModuleDefId,
 };
-use hir_expand::hygiene::Hygiene;
+use hir_expand::{hygiene::Hygiene, MacroDefId};
 use hir_ty::db::HirDatabase;
 use syntax::ast;
 
@@ -23,7 +26,7 @@ pub trait HasAttrs {
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<Namespace>,
-    ) -> Option<ModuleDef>;
+    ) -> Option<Either<ModuleDef, MacroDef>>;
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
@@ -44,9 +47,9 @@ macro_rules! impl_has_attrs {
                 let def = AttrDefId::$def_id(self.into());
                 db.attrs(def).docs()
             }
-            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
+            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<Either<ModuleDef, MacroDef>> {
                 let def = AttrDefId::$def_id(self.into());
-                resolve_doc_path(db, def, link, ns).map(ModuleDef::from)
+                resolve_doc_path(db, def, link, ns).map(|it| it.map_left(ModuleDef::from).map_right(MacroDef::from))
             }
         }
     )*};
@@ -76,7 +79,7 @@ macro_rules! impl_has_attrs_enum {
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 $enum::$variant(self).docs(db)
             }
-            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
+            fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<Either<ModuleDef, MacroDef>> {
                 $enum::$variant(self).resolve_doc_path(db, link, ns)
             }
         }
@@ -108,7 +111,7 @@ impl HasAttrs for AssocItem {
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<Namespace>,
-    ) -> Option<ModuleDef> {
+    ) -> Option<Either<ModuleDef, MacroDef>> {
         match self {
             AssocItem::Function(it) => it.resolve_doc_path(db, link, ns),
             AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
@@ -122,7 +125,7 @@ fn resolve_doc_path(
     def: AttrDefId,
     link: &str,
     ns: Option<Namespace>,
-) -> Option<ModuleDefId> {
+) -> Option<Either<ModuleDefId, MacroDefId>> {
     let resolver = match def {
         AttrDefId::ModuleId(it) => it.resolver(db.upcast()),
         AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
@@ -140,6 +143,7 @@ fn resolve_doc_path(
             GenericParamId::ConstParamId(it) => it.parent,
         }
         .resolver(db.upcast()),
+        // FIXME
         AttrDefId::MacroDefId(_) => return None,
     };
     let path = ast::Path::parse(link).ok()?;
@@ -151,9 +155,13 @@ fn resolve_doc_path(
         resolved
     };
     match ns {
-        Some(Namespace::Types) => resolved.take_types(),
-        Some(Namespace::Values) => resolved.take_values(),
-        Some(Namespace::Macros) => None,
-        None => resolved.iter_items().find_map(|it| it.as_module_def_id()),
+        Some(Namespace::Types) => resolved.take_types().map(Either::Left),
+        Some(Namespace::Values) => resolved.take_values().map(Either::Left),
+        Some(Namespace::Macros) => resolved.take_macros().map(Either::Right),
+        None => resolved.iter_items().next().map(|it| match it {
+            ItemInNs::Types(it) => Either::Left(it),
+            ItemInNs::Values(it) => Either::Left(it),
+            ItemInNs::Macros(it) => Either::Right(it),
+        }),
     }
 }

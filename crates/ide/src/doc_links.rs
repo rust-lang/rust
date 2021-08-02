@@ -4,13 +4,15 @@ mod intra_doc_links;
 
 use std::convert::{TryFrom, TryInto};
 
+use either::Either;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use stdx::format_to;
 use url::Url;
 
 use hir::{
-    db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasAttrs, ModuleDef,
+    db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasAttrs, MacroDef,
+    ModuleDef,
 };
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
@@ -47,7 +49,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
                 return rewritten;
             }
             if let Definition::ModuleDef(def) = definition {
-                if let Some(target) = rewrite_url_link(db, def, target) {
+                if let Some(target) = rewrite_url_link(db, Either::Left(def), target) {
                     return (target, title.to_string());
                 }
             }
@@ -169,7 +171,7 @@ pub(crate) fn resolve_doc_path_for_def(
     def: Definition,
     link: &str,
     ns: Option<hir::Namespace>,
-) -> Option<hir::ModuleDef> {
+) -> Option<Either<ModuleDef, MacroDef>> {
     match def {
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(it) => it.resolve_doc_path(db, link, ns),
@@ -243,9 +245,9 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
                     AssocItemContainer::Impl(i) => i.self_ty(db).as_adt()?.into(),
                 };
                 let frag = get_assoc_item_fragment(db, assoc_item)?;
-                (def, Some(frag))
+                (Either::Left(def), Some(frag))
             } else {
-                (def, None)
+                (Either::Left(def), None)
             }
         }
         Definition::Field(field) => {
@@ -254,10 +256,9 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
                 hir::VariantDef::Union(it) => it.into(),
                 hir::VariantDef::Variant(it) => it.into(),
             };
-            (def, Some(format!("structfield.{}", field.name(db))))
+            (Either::Left(def), Some(format!("structfield.{}", field.name(db))))
         }
-        // FIXME macros
-        Definition::Macro(_) => return None,
+        Definition::Macro(makro) => (Either::Right(makro), None),
         // FIXME impls
         Definition::SelfType(_) => return None,
         Definition::Local(_) | Definition::GenericParam(_) | Definition::Label(_) => return None,
@@ -270,7 +271,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         url = url.join(&path).ok()?;
     }
 
-    url = url.join(&get_symbol_filename(db, &target)?).ok()?;
+    url = url.join(&get_symbol_filename(db, target)?).ok()?;
     url.set_fragment(frag.as_deref());
 
     Some(url.into())
@@ -292,24 +293,29 @@ fn rewrite_intra_doc_link(
         url = url.join(&path).ok()?;
     }
 
-    let (resolved, frag) = if let Some(assoc_item) = resolved.as_assoc_item(db) {
-        let resolved = match assoc_item.container(db) {
-            AssocItemContainer::Trait(t) => t.into(),
-            AssocItemContainer::Impl(i) => i.self_ty(db).as_adt()?.into(),
+    let (resolved, frag) =
+        if let Some(assoc_item) = resolved.left().and_then(|it| it.as_assoc_item(db)) {
+            let resolved = match assoc_item.container(db) {
+                AssocItemContainer::Trait(t) => t.into(),
+                AssocItemContainer::Impl(i) => i.self_ty(db).as_adt()?.into(),
+            };
+            let frag = get_assoc_item_fragment(db, assoc_item)?;
+            (Either::Left(resolved), Some(frag))
+        } else {
+            (resolved, None)
         };
-        let frag = get_assoc_item_fragment(db, assoc_item)?;
-        (resolved, Some(frag))
-    } else {
-        (resolved, None)
-    };
-    url = url.join(&get_symbol_filename(db, &resolved)?).ok()?;
+    url = url.join(&get_symbol_filename(db, resolved)?).ok()?;
     url.set_fragment(frag.as_deref());
 
     Some((url.into(), strip_prefixes_suffixes(title).to_string()))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
-fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<String> {
+fn rewrite_url_link(
+    db: &RootDatabase,
+    def: Either<ModuleDef, MacroDef>,
+    target: &str,
+) -> Option<String> {
     if !(target.contains('#') || target.contains(".html")) {
         return None;
     }
@@ -321,25 +327,35 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
         url = url.join(&path).ok()?;
     }
 
-    url = url.join(&get_symbol_filename(db, &def)?).ok()?;
+    url = url.join(&get_symbol_filename(db, def)?).ok()?;
     url.join(target).ok().map(Into::into)
 }
 
-fn crate_of_def(db: &RootDatabase, def: ModuleDef) -> Option<Crate> {
+fn crate_of_def(db: &RootDatabase, def: Either<ModuleDef, MacroDef>) -> Option<Crate> {
     let krate = match def {
         // Definition::module gives back the parent module, we don't want that as it fails for root modules
-        ModuleDef::Module(module) => module.krate(),
-        _ => def.module(db)?.krate(),
+        Either::Left(ModuleDef::Module(module)) => module.krate(),
+        Either::Left(def) => def.module(db)?.krate(),
+        Either::Right(def) => def.module(db)?.krate(),
     };
     Some(krate)
 }
 
-fn mod_path_of_def(db: &RootDatabase, def: ModuleDef) -> Option<String> {
-    def.canonical_module_path(db).map(|it| {
-        let mut path = String::new();
-        it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name));
-        path
-    })
+fn mod_path_of_def(db: &RootDatabase, def: Either<ModuleDef, MacroDef>) -> Option<String> {
+    match def {
+        Either::Left(def) => def.canonical_module_path(db).map(|it| {
+            let mut path = String::new();
+            it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name));
+            path
+        }),
+        Either::Right(def) => {
+            def.module(db).map(|it| it.path_to_root(db).into_iter().rev()).map(|it| {
+                let mut path = String::new();
+                it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name));
+                path
+            })
+        }
+    }
 }
 
 /// Rewrites a markdown document, applying 'callback' to each link.
@@ -405,27 +421,34 @@ fn get_doc_base_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 ///                                    ^^^^^^^^^^^^^^^^^^^
 /// ```
-fn get_symbol_filename(db: &dyn HirDatabase, definition: &ModuleDef) -> Option<String> {
-    Some(match definition {
-        ModuleDef::Adt(adt) => match adt {
-            Adt::Struct(s) => format!("struct.{}.html", s.name(db)),
-            Adt::Enum(e) => format!("enum.{}.html", e.name(db)),
-            Adt::Union(u) => format!("union.{}.html", u.name(db)),
+fn get_symbol_filename(
+    db: &dyn HirDatabase,
+    definition: Either<ModuleDef, MacroDef>,
+) -> Option<String> {
+    let res = match definition {
+        Either::Left(definition) => match definition {
+            ModuleDef::Adt(adt) => match adt {
+                Adt::Struct(s) => format!("struct.{}.html", s.name(db)),
+                Adt::Enum(e) => format!("enum.{}.html", e.name(db)),
+                Adt::Union(u) => format!("union.{}.html", u.name(db)),
+            },
+            ModuleDef::Module(m) => match m.name(db) {
+                Some(name) => format!("{}/index.html", name),
+                None => String::from("index.html"),
+            },
+            ModuleDef::Trait(t) => format!("trait.{}.html", t.name(db)),
+            ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
+            ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.name()),
+            ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
+            ModuleDef::Variant(ev) => {
+                format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
+            }
+            ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
+            ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
         },
-        ModuleDef::Module(m) => match m.name(db) {
-            Some(name) => format!("{}/index.html", name),
-            None => String::from("index.html"),
-        },
-        ModuleDef::Trait(t) => format!("trait.{}.html", t.name(db)),
-        ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
-        ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.name()),
-        ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
-        ModuleDef::Variant(ev) => {
-            format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
-        }
-        ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
-        ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
-    })
+        Either::Right(mac) => format!("macro.{}.html", mac.name(db)?),
+    };
+    Some(res)
 }
 
 /// Get the fragment required to link to a specific field, method, associated type, or associated constant.
