@@ -82,6 +82,11 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    if ctx.frange.range.is_empty() {
+        cov_mark::hit!(not_applicable_if_no_selection);
+        return None;
+    }
+
     if let Some(trait_ast) = ctx.find_node_at_offset::<ast::Trait>() {
         add_sort_methods_assist(acc, trait_ast.assoc_item_list()?)
     } else if let Some(impl_ast) = ctx.find_node_at_offset::<ast::Impl>() {
@@ -206,13 +211,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn not_applicable_if_no_selection() {
+        cov_mark::check!(not_applicable_if_no_selection);
+
+        check_assist_not_applicable(
+            sort_items,
+            r#"
+t$0rait Bar {
+    fn b();
+    fn a();
+}
+        "#,
+        )
+    }
+
+    #[test]
     fn not_applicable_if_trait_empty() {
         cov_mark::check!(not_applicable_if_sorted_or_empty_or_single);
 
         check_assist_not_applicable(
             sort_items,
             r#"
-t$0rait Bar {
+t$0rait Bar$0 {
 }
         "#,
         )
@@ -226,7 +246,7 @@ t$0rait Bar {
             sort_items,
             r#"
 struct Bar;
-$0impl Bar {
+$0impl Bar$0 {
 }
         "#,
         )
@@ -239,7 +259,7 @@ $0impl Bar {
         check_assist_not_applicable(
             sort_items,
             r#"
-$0struct Bar;
+$0struct Bar$0 ;
         "#,
         )
     }
@@ -251,7 +271,7 @@ $0struct Bar;
         check_assist_not_applicable(
             sort_items,
             r#"
-$0struct Bar { };
+$0struct Bar$0 { };
         "#,
         )
     }
@@ -263,7 +283,7 @@ $0struct Bar { };
         check_assist_not_applicable(
             sort_items,
             r#"
-$0enum ZeroVariants {};
+$0enum ZeroVariants$0 {};
         "#,
         )
     }
@@ -275,7 +295,7 @@ $0enum ZeroVariants {};
         check_assist_not_applicable(
             sort_items,
             r#"
-t$0rait Bar {
+t$0rait Bar$0 {
     fn a() {}
     fn b() {}
     fn c() {}
@@ -292,7 +312,7 @@ t$0rait Bar {
             sort_items,
             r#"
 struct Bar;
-$0impl Bar {
+$0impl Bar$0 {
     fn a() {}
     fn b() {}
     fn c() {}
@@ -308,7 +328,7 @@ $0impl Bar {
         check_assist_not_applicable(
             sort_items,
             r#"
-$0struct Bar {
+$0struct Bar$0 {
     a: u32,
     b: u8,
     c: u64,
@@ -324,7 +344,7 @@ $0struct Bar {
         check_assist_not_applicable(
             sort_items,
             r#"
-$0union Bar {
+$0union Bar$0 {
     a: u32,
     b: u8,
     c: u64,
@@ -340,7 +360,7 @@ $0union Bar {
         check_assist_not_applicable(
             sort_items,
             r#"
-$0enum Bar {
+$0enum Bar$0 {
     a,
     b,
     c,
@@ -354,7 +374,7 @@ $0enum Bar {
         check_assist(
             sort_items,
             r#"
-$0trait Bar {
+$0trait Bar$0 {
     fn a() {
 
     }
@@ -386,7 +406,7 @@ trait Bar {
             sort_items,
             r#"
 struct Bar;
-$0impl Bar {
+$0impl Bar$0 {
     fn c() {}
     fn a() {}
     /// long
@@ -416,7 +436,7 @@ impl Bar {
         check_assist(
             sort_items,
             r#"
-$0struct Bar {
+$0struct Bar$0 {
     b: u8,
     a: u32,
     c: u64,
@@ -437,7 +457,7 @@ struct Bar {
         check_assist(
             sort_items,
             r#"
-$0struct Bar<'a, T> {
+$0struct Bar<'a,$0 T> {
     d: &'a str,
     b: u8,
     a: T,
@@ -460,7 +480,7 @@ struct Bar<'a, T> {
         check_assist(
             sort_items,
             r#"
-$0struct Bar {
+$0struct Bar $0{
     aaa: u8,
     a: usize,
     b: u8,
@@ -481,7 +501,7 @@ struct Bar {
         check_assist(
             sort_items,
             r#"
-$0union Bar {
+$0union Bar$0 {
     b: u8,
     a: u32,
     c: u64,
@@ -502,7 +522,7 @@ union Bar {
         check_assist(
             sort_items,
             r#"
-$0enum Bar {
+$0enum Bar $0{
     d{ first: u32, second: usize},
     b = 14,
     a,
@@ -526,7 +546,7 @@ enum Bar {
             sort_items,
             r#"
 enum Bar {
-    d$0{ second: usize, first: u32 },
+    d$0{ second: usize, first: u32 }$0,
     b = 14,
     a,
     c(u32, usize),
