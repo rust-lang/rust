@@ -687,6 +687,9 @@ declare_features! (
     /// Trait upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
     (incomplete, trait_upcasting, "1.56.0", Some(65991), None),
 
+    /// Allows explicit generic arguments specification with `impl Trait` present.
+    (active, explicit_generic_args_with_impl_trait, "1.56.0", Some(83701), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

@@ -769,7 +769,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 // (#83606): Do not emit a suggestion if the parent has an `impl Trait`
                 // as an argument otherwise it will cause the E0282 error.
-                if !has_impl_trait {
+                if !has_impl_trait || self.tcx.features().explicit_generic_args_with_impl_trait {
                     err.span_suggestion_verbose(
                         span,
                         "consider specifying the const argument",
