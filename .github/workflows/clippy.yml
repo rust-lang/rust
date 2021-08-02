@@ -49,13 +49,13 @@ jobs:
         echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Build
-      run: cargo build --features deny-warnings,internal-lints
+      run: cargo build --features deny-warnings,internal-lints,metadata-collector-lint
 
     - name: Test
-      run: cargo test --features deny-warnings,internal-lints
+      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
 
     - name: Test clippy_lints
-      run: cargo test --features deny-warnings,internal-lints
+      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
       working-directory: clippy_lints
 
     - name: Test rustc_tools_util
