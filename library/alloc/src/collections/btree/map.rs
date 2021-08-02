@@ -161,9 +161,7 @@ pub struct BTreeMap<K, V> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
-        if let Some(root) = self.root.take() {
-            Dropper { front: root.into_dying().first_leaf_edge(), remaining_length: self.length };
-        }
+        drop(unsafe { ptr::read(self) }.into_iter())
     }
 }
 
@@ -350,14 +348,6 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
-}
-
-/// A simplified version of `IntoIter` that is not double-ended and has only one
-/// purpose: to drop the remainder of an `IntoIter`. Therefore it also serves to
-/// drop an entire tree without the need to first look up a `back` leaf edge.
-struct Dropper<K, V> {
-    front: Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
-    remaining_length: usize,
 }
 
 /// An iterator over the keys of a `BTreeMap`.
@@ -1458,47 +1448,57 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     }
 }
 
-impl<K, V> Drop for Dropper<K, V> {
+#[stable(feature = "btree_drop", since = "1.7.0")]
+impl<K, V> Drop for IntoIter<K, V> {
     fn drop(&mut self) {
-        // Similar to advancing a non-fusing iterator.
-        fn next_or_end<K, V>(
-            this: &mut Dropper<K, V>,
-        ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>>
-        {
-            if this.remaining_length == 0 {
-                unsafe { ptr::read(&this.front).deallocating_end() }
-                None
-            } else {
-                this.remaining_length -= 1;
-                Some(unsafe { this.front.deallocating_next_unchecked() })
-            }
-        }
-
-        struct DropGuard<'a, K, V>(&'a mut Dropper<K, V>);
+        struct DropGuard<'a, K, V>(&'a mut IntoIter<K, V>);
 
         impl<'a, K, V> Drop for DropGuard<'a, K, V> {
             fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(kv) = next_or_end(&mut self.0) {
-                    kv.drop_key_val();
+                while let Some(kv) = self.0.dying_next() {
+                    // SAFETY: we consume the dying handle immediately.
+                    unsafe { kv.drop_key_val() };
                 }
             }
         }
 
-        while let Some(kv) = next_or_end(self) {
+        while let Some(kv) = self.dying_next() {
             let guard = DropGuard(self);
-            kv.drop_key_val();
+            // SAFETY: we don't touch the tree before consuming the dying handle.
+            unsafe { kv.drop_key_val() };
             mem::forget(guard);
         }
     }
 }
 
-#[stable(feature = "btree_drop", since = "1.7.0")]
-impl<K, V> Drop for IntoIter<K, V> {
-    fn drop(&mut self) {
-        if let Some(front) = self.range.take_front() {
-            Dropper { front, remaining_length: self.length };
+impl<K, V> IntoIter<K, V> {
+    /// Core of a `next` method returning a dying KV handle,
+    /// invalidated by further calls to this function and some others.
+    fn dying_next(
+        &mut self,
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+        if self.length == 0 {
+            self.range.deallocating_end();
+            None
+        } else {
+            self.length -= 1;
+            Some(unsafe { self.range.deallocating_next_unchecked() })
+        }
+    }
+
+    /// Core of a `next_back` method returning a dying KV handle,
+    /// invalidated by further calls to this function and some others.
+    fn dying_next_back(
+        &mut self,
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+        if self.length == 0 {
+            self.range.deallocating_end();
+            None
+        } else {
+            self.length -= 1;
+            Some(unsafe { self.range.deallocating_next_back_unchecked() })
         }
     }
 }
@@ -1508,13 +1508,8 @@ impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<(K, V)> {
-        if self.length == 0 {
-            None
-        } else {
-            self.length -= 1;
-            let kv = unsafe { self.range.deallocating_next_unchecked() };
-            Some(kv.into_key_val())
-        }
+        // SAFETY: we consume the dying handle immediately.
+        self.dying_next().map(unsafe { |kv| kv.into_key_val() })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1525,13 +1520,8 @@ impl<K, V> Iterator for IntoIter<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
     fn next_back(&mut self) -> Option<(K, V)> {
-        if self.length == 0 {
-            None
-        } else {
-            self.length -= 1;
-            let kv = unsafe { self.range.deallocating_next_back_unchecked() };
-            Some(kv.into_key_val())
-        }
+        // SAFETY: we consume the dying handle immediately.
+        self.dying_next_back().map(unsafe { |kv| kv.into_key_val() })
     }
 }
 
