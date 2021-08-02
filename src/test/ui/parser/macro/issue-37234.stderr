@@ -1,8 +1,8 @@
-error: expected one of `.`, `;`, `?`, or an operator, found `""`
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `""`
   --> $DIR/issue-37234.rs:3:19
    |
 LL |         let x = 5 "";
-   |                   ^^ expected one of `.`, `;`, `?`, or an operator
+   |                   ^^ expected one of `.`, `;`, `?`, `else`, or an operator
 ...
 LL |     failed!();
    |     ---------- in this macro invocation

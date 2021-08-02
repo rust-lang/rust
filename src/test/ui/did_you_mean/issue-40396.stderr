@@ -31,11 +31,11 @@ help: use `::<...>` instead of `<...>` to specify type or const arguments
 LL |     (0..13).collect::<Vec<i32>();
    |                    ++
 
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, or an operator, found `,`
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `,`
   --> $DIR/issue-40396.rs:11:43
    |
 LL |     let x = std::collections::HashMap<i128, i128>::new();
-   |                                           ^ expected one of 7 possible tokens
+   |                                           ^ expected one of 8 possible tokens
    |
 help: use `::<...>` instead of `<...>` to specify type or const arguments
    |
