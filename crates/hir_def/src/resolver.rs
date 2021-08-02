@@ -28,7 +28,10 @@ use crate::{
 
 #[derive(Debug, Clone, Default)]
 pub struct Resolver {
-    // FIXME: all usages generally call `.rev`, so maybe reverse once in construction?
+    /// The stack of scopes, where the inner-most scope is the last item.
+    ///
+    /// When using, you generally want to process the scopes in reverse order,
+    /// there's `scopes` *method* for that.
     scopes: Vec<Scope>,
 }
 
@@ -123,6 +126,10 @@ impl Resolver {
         }
     }
 
+    fn scopes(&self) -> impl Iterator<Item = &Scope> {
+        self.scopes.iter().rev()
+    }
+
     fn resolve_module_path(
         &self,
         db: &dyn DefDatabase,
@@ -177,7 +184,7 @@ impl Resolver {
     ) -> Option<(TypeNs, Option<usize>)> {
         let first_name = path.segments().first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
-        for scope in self.scopes.iter().rev() {
+        for scope in self.scopes() {
             match scope {
                 Scope::ExprScope(_) => continue,
                 Scope::GenericParams { .. } | Scope::ImplDefScope(_) if skip_to_mod => continue,
@@ -251,7 +258,7 @@ impl Resolver {
         let tmp = name![self];
         let first_name = if path.is_self() { &tmp } else { path.segments().first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
-        for scope in self.scopes.iter().rev() {
+        for scope in self.scopes() {
             match scope {
                 Scope::AdtScope(_)
                 | Scope::ExprScope(_)
@@ -342,14 +349,14 @@ impl Resolver {
     }
 
     pub fn process_all_names(&self, db: &dyn DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
-        for scope in self.scopes.iter().rev() {
+        for scope in self.scopes() {
             scope.process_names(db, f);
         }
     }
 
     pub fn traits_in_scope(&self, db: &dyn DefDatabase) -> FxHashSet<TraitId> {
         let mut traits = FxHashSet::default();
-        for scope in &self.scopes {
+        for scope in self.scopes() {
             match scope {
                 Scope::ModuleScope(m) => {
                     if let Some(prelude) = m.def_map.prelude() {
@@ -384,7 +391,7 @@ impl Resolver {
     }
 
     fn module_scope(&self) -> Option<(&DefMap, LocalModuleId)> {
-        self.scopes.iter().rev().find_map(|scope| match scope {
+        self.scopes().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.def_map, m.module_id)),
 
             _ => None,
@@ -404,9 +411,7 @@ impl Resolver {
     pub fn where_predicates_in_scope(
         &self,
     ) -> impl Iterator<Item = &crate::generics::WherePredicate> {
-        self.scopes
-            .iter()
-            .rev()
+        self.scopes()
             .filter_map(|scope| match scope {
                 Scope::GenericParams { params, .. } => Some(params),
                 _ => None,
@@ -415,14 +420,14 @@ impl Resolver {
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
-        self.scopes.iter().rev().find_map(|scope| match scope {
+        self.scopes().find_map(|scope| match scope {
             Scope::GenericParams { def, .. } => Some(*def),
             _ => None,
         })
     }
 
     pub fn body_owner(&self) -> Option<DefWithBodyId> {
-        self.scopes.iter().rev().find_map(|scope| match scope {
+        self.scopes().find_map(|scope| match scope {
             Scope::ExprScope(it) => Some(it.owner),
             _ => None,
         })

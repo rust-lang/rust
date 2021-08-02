@@ -84,13 +84,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
 
     ctx.process_all_names(&mut |name, res| {
-        if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) =
-            res
-        {
-            cov_mark::hit!(unqualified_skip_lifetime_completion);
-            return;
-        }
         let add_resolution = match res {
+            ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => {
+                cov_mark::hit!(unqualified_skip_lifetime_completion);
+                return;
+            }
             ScopeDef::ImplSelfType(_) => {
                 !ctx.previous_token_is(syntax::T![impl]) && !ctx.previous_token_is(syntax::T![for])
             }
@@ -303,6 +301,27 @@ pub mod prelude {
             "#,
             expect![[r#"
                 md std
+            "#]],
+        );
+    }
+
+    #[test]
+    fn local_variable_shadowing() {
+        // FIXME: this isn't actually correct, should emit `x` only once.
+        check(
+            r#"
+fn main() {
+    let x = 92;
+    {
+        let x = 92;
+        x$0;
+    }
+}
+"#,
+            expect![[r#"
+                lc x      i32
+                lc x      i32
+                fn main() fn()
             "#]],
         );
     }
