@@ -150,7 +150,10 @@ pub(crate) fn hover(
                             (file_id == position.file_id.into() && mapped_range.contains(position.offset)).then(||(mapped_range, link, ns))
                         })?;
                     range = Some(idl_range);
-                    resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
+                    Some(match resolve_doc_path_for_def(db,def, &link,ns)? {
+                        Either::Left(it) => Definition::ModuleDef(it),
+                        Either::Right(it) => Definition::Macro(it),
+                    })
                 } else if let Some(attr) = token.ancestors().find_map(ast::Attr::cast) {
                     if let res@Some(_) = try_hover_for_lint(&attr, &token) {
                         return res;
