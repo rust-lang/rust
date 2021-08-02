@@ -1,10 +1,12 @@
 use either::Either;
 use hir::PathResolution;
-use ide_db::{base_db::FileId, defs::Definition, search::FileReference};
-use rustc_hash::FxHashMap;
+use ide_db::{
+    defs::Definition,
+    search::{FileReference, UsageSearchResult},
+};
 use syntax::{
     ast::{self, AstNode, AstToken, NameOwner},
-    TextRange,
+    SyntaxElement, TextRange,
 };
 
 use crate::{
@@ -14,7 +16,7 @@ use crate::{
 
 // Assist: inline_local_variable
 //
-// Inlines local variable.
+// Inlines a local variable.
 //
 // ```
 // fn main() {
@@ -29,76 +31,77 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let InlineData { let_stmt, delete_let, replace_usages, target } =
+    let InlineData { let_stmt, delete_let, references, target } =
         inline_let(ctx).or_else(|| inline_usage(ctx))?;
     let initializer_expr = let_stmt.initializer()?;
 
-    let delete_range = if delete_let {
+    let delete_range = delete_let.then(|| {
         if let Some(whitespace) = let_stmt
             .syntax()
             .next_sibling_or_token()
-            .and_then(|it| ast::Whitespace::cast(it.as_token()?.clone()))
+            .and_then(SyntaxElement::into_token)
+            .and_then(ast::Whitespace::cast)
         {
-            Some(TextRange::new(
+            TextRange::new(
                 let_stmt.syntax().text_range().start(),
                 whitespace.syntax().text_range().end(),
-            ))
+            )
         } else {
-            Some(let_stmt.syntax().text_range())
+            let_stmt.syntax().text_range()
         }
-    } else {
-        None
-    };
+    });
 
-    let wrap_in_parens = replace_usages
-        .iter()
-        .map(|(&file_id, refs)| {
-            refs.iter()
-                .map(|&FileReference { range, .. }| {
-                    let usage_node = ctx
-                        .covering_node_for_range(range)
-                        .ancestors()
-                        .find_map(ast::PathExpr::cast)?;
-                    let usage_parent_option =
-                        usage_node.syntax().parent().and_then(ast::Expr::cast);
-                    let usage_parent = match usage_parent_option {
-                        Some(u) => u,
-                        None => return Some(false),
-                    };
-                    let initializer = matches!(
-                        initializer_expr,
-                        ast::Expr::CallExpr(_)
-                            | ast::Expr::IndexExpr(_)
-                            | ast::Expr::MethodCallExpr(_)
-                            | ast::Expr::FieldExpr(_)
-                            | ast::Expr::TryExpr(_)
-                            | ast::Expr::RefExpr(_)
-                            | ast::Expr::Literal(_)
-                            | ast::Expr::TupleExpr(_)
-                            | ast::Expr::ArrayExpr(_)
-                            | ast::Expr::ParenExpr(_)
-                            | ast::Expr::PathExpr(_)
-                            | ast::Expr::BlockExpr(_)
-                            | ast::Expr::EffectExpr(_),
-                    );
-                    let parent = matches!(
-                        usage_parent,
-                        ast::Expr::CallExpr(_)
-                            | ast::Expr::TupleExpr(_)
-                            | ast::Expr::ArrayExpr(_)
-                            | ast::Expr::ParenExpr(_)
-                            | ast::Expr::ForExpr(_)
-                            | ast::Expr::WhileExpr(_)
-                            | ast::Expr::BreakExpr(_)
-                            | ast::Expr::ReturnExpr(_)
-                            | ast::Expr::MatchExpr(_)
-                    );
-                    Some(!(initializer || parent))
-                })
-                .collect::<Option<_>>()
-                .map(|b| (file_id, b))
+    let wrap_in_parens = references
+        .into_iter()
+        .filter_map(|FileReference { range, name, .. }| match name {
+            ast::NameLike::NameRef(name) => Some((range, name)),
+            _ => None,
         })
-        .collect::<Option<FxHashMap<_, Vec<_>>>>()?;
+        .map(|(range, name_ref)| {
+            if range != name_ref.syntax().text_range() {
+                // Do not rename inside macros
+                // FIXME: This feels like a bad heuristic for macros
+                return None;
+            }
+            let usage_node =
+                name_ref.syntax().ancestors().find(|it| ast::PathExpr::can_cast(it.kind()));
+            let usage_parent_option =
+                usage_node.and_then(|it| it.parent()).and_then(ast::Expr::cast);
+            let usage_parent = match usage_parent_option {
+                Some(u) => u,
+                None => return Some((range, name_ref, false)),
+            };
+            let initializer = matches!(
+                initializer_expr,
+                ast::Expr::CallExpr(_)
+                    | ast::Expr::IndexExpr(_)
+                    | ast::Expr::MethodCallExpr(_)
+                    | ast::Expr::FieldExpr(_)
+                    | ast::Expr::TryExpr(_)
+                    | ast::Expr::RefExpr(_)
+                    | ast::Expr::Literal(_)
+                    | ast::Expr::TupleExpr(_)
+                    | ast::Expr::ArrayExpr(_)
+                    | ast::Expr::ParenExpr(_)
+                    | ast::Expr::PathExpr(_)
+                    | ast::Expr::BlockExpr(_)
+                    | ast::Expr::EffectExpr(_),
+            );
+            let parent = matches!(
+                usage_parent,
+                ast::Expr::CallExpr(_)
+                    | ast::Expr::TupleExpr(_)
+                    | ast::Expr::ArrayExpr(_)
+                    | ast::Expr::ParenExpr(_)
+                    | ast::Expr::ForExpr(_)
+                    | ast::Expr::WhileExpr(_)
+                    | ast::Expr::BreakExpr(_)
+                    | ast::Expr::ReturnExpr(_)
+                    | ast::Expr::MatchExpr(_)
+            );
+            Some((range, name_ref, !(initializer || parent)))
+        })
+        .collect::<Option<Vec<_>>>()?;
 
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
@@ -116,19 +119,13 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
             if let Some(range) = delete_range {
                 builder.delete(range);
             }
-            for (file_id, references) in replace_usages {
-                for (&should_wrap, reference) in wrap_in_parens[&file_id].iter().zip(references) {
-                    let replacement =
-                        if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-                    match reference.name.as_name_ref() {
-                        Some(name_ref)
-                            if ast::RecordExprField::for_field_name(name_ref).is_some() =>
-                        {
-                            cov_mark::hit!(inline_field_shorthand);
-                            builder.insert(reference.range.end(), format!(": {}", replacement));
-                        }
-                        _ => builder.replace(reference.range, replacement),
-                    }
+            for (range, name, should_wrap) in wrap_in_parens {
+                let replacement = if should_wrap { &init_in_paren } else { &init_str };
+                if ast::RecordExprField::for_field_name(&name).is_some() {
+                    cov_mark::hit!(inline_field_shorthand);
+                    builder.insert(range.end(), format!(": {}", replacement));
+                } else {
+                    builder.replace(range, replacement.clone())
                 }
             }
         },
@@ -139,7 +136,7 @@ struct InlineData {
     let_stmt: ast::LetStmt,
     delete_let: bool,
     target: ast::NameOrNameRef,
-    replace_usages: FxHashMap<FileId, Vec<FileReference>>,
+    references: Vec<FileReference>,
 }
 
 fn inline_let(ctx: &AssistContext) -> Option<InlineData> {
@@ -157,35 +154,32 @@ fn inline_let(ctx: &AssistContext) -> Option<InlineData> {
         return None;
     }
 
-    let def = ctx.sema.to_def(&bind_pat)?;
-    let def = Definition::Local(def);
-    let usages = def.usages(&ctx.sema).all();
-    if usages.is_empty() {
-        cov_mark::hit!(test_not_applicable_if_variable_unused);
-        return None;
-    };
-
-    Some(InlineData {
-        let_stmt,
-        delete_let: true,
-        target: ast::NameOrNameRef::Name(bind_pat.name()?),
-        replace_usages: usages.references,
-    })
+    let local = ctx.sema.to_def(&bind_pat)?;
+    let UsageSearchResult { mut references } = Definition::Local(local).usages(&ctx.sema).all();
+    match references.remove(&ctx.frange.file_id) {
+        Some(references) => Some(InlineData {
+            let_stmt,
+            delete_let: true,
+            target: ast::NameOrNameRef::Name(bind_pat.name()?),
+            references,
+        }),
+        None => {
+            cov_mark::hit!(test_not_applicable_if_variable_unused);
+            None
+        }
+    }
 }
 
 fn inline_usage(ctx: &AssistContext) -> Option<InlineData> {
     let path_expr = ctx.find_node_at_offset::<ast::PathExpr>()?;
     let path = path_expr.path()?;
-    let name = match path.as_single_segment()?.kind()? {
-        ast::PathSegmentKind::Name(name) => name,
-        _ => return None,
-    };
+    let name = path.as_single_name_ref()?;
 
     let local = match ctx.sema.resolve_path(&path)? {
         PathResolution::Local(local) => local,
         _ => return None,
     };
-    if local.is_mut(ctx.sema.db) {
+    if local.is_mut(ctx.db()) {
         cov_mark::hit!(test_not_inline_mut_variable_use);
         return None;
     }
@@ -197,21 +191,12 @@ fn inline_usage(ctx: &AssistContext) -> Option<InlineData> {
 
     let let_stmt = ast::LetStmt::cast(bind_pat.syntax().parent()?)?;
 
-    let def = Definition::Local(local);
-    let mut usages = def.usages(&ctx.sema).all();
+    let UsageSearchResult { mut references } = Definition::Local(local).usages(&ctx.sema).all();
+    let mut references = references.remove(&ctx.frange.file_id)?;
+    let delete_let = references.len() == 1;
+    references.retain(|fref| fref.name.as_name_ref() == Some(&name));
 
-    let delete_let = usages.references.values().map(|v| v.len()).sum::<usize>() == 1;
-
-    for references in usages.references.values_mut() {
-        references.retain(|reference| reference.name.as_name_ref() == Some(&name));
-    }
-
-    Some(InlineData {
-        let_stmt,
-        delete_let,
-        target: ast::NameOrNameRef::NameRef(name),
-        replace_usages: usages.references,
-    })
+    Some(InlineData { let_stmt, delete_let, target: ast::NameOrNameRef::NameRef(name), references })
 }
 
 #[cfg(test)]

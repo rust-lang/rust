@@ -100,10 +100,6 @@ impl<'a> AssistContext<'a> {
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         self.source_file.syntax().covering_element(self.frange.range)
     }
-    // FIXME: remove
-    pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {
-        self.source_file.syntax().covering_element(range)
-    }
 }
 
 pub(crate) struct Assists {
