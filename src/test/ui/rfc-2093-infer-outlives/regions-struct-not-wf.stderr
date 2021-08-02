@@ -12,7 +12,13 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | impl<'a, T> Trait<'a, T> for u32 {
    |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     type Out = RefOk<'a, T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/regions-struct-not-wf.rs:16:20
+   |
+LL | struct RefOk<'a, T:'a> {
+   |                    ^^
 
 error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
   --> $DIR/regions-struct-not-wf.rs:25:5

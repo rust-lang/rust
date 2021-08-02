@@ -43,7 +43,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         multi_span
             .push_span_label(binding_span, "introduces a `'static` lifetime requirement".into());
         err.span_note(multi_span, "because this has an unmet lifetime requirement");
-        note_and_explain_region(self.tcx(), &mut err, "", sup, "...");
+        note_and_explain_region(self.tcx(), &mut err, "", sup, "...", Some(binding_span));
         if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
             // If an impl is local, then maybe this isn't what they want. Try to
             // be as helpful as possible with implicit lifetimes.

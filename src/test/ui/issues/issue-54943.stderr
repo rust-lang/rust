@@ -4,7 +4,11 @@ error[E0477]: the type `&'a u32` does not fulfill the required lifetime
 LL |     let x = foo::<&'a u32>();
    |             ^^^^^^^^^^^^^^
    |
-   = note: type must satisfy the static lifetime
+note: type must satisfy the static lifetime as required by this binding
+  --> $DIR/issue-54943.rs:1:11
+   |
+LL | fn foo<T: 'static>() { }
+   |           ^^^^^^^
 
 error: aborting due to previous error
 

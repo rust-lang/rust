@@ -89,16 +89,17 @@ pub(super) fn note_and_explain_region(
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
+    alt_span: Option<Span>,
 ) {
     let (description, span) = match *region {
         ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
-            msg_span_from_free_region(tcx, region)
+            msg_span_from_free_region(tcx, region, alt_span)
         }
 
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), None),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), alt_span),
 
         // uh oh, hope no user ever sees THIS
-        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), None),
+        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), alt_span),
 
         ty::RePlaceholder(_) => return,
 
@@ -108,7 +109,7 @@ pub(super) fn note_and_explain_region(
         // We shouldn't really be having unification failures with ReVar
         // and ReLateBound though.
         ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-            (format!("lifetime {:?}", region), None)
+            (format!("lifetime {:?}", region), alt_span)
         }
     };
 
@@ -122,7 +123,7 @@ pub(super) fn note_and_explain_free_region(
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
-    let (description, span) = msg_span_from_free_region(tcx, region);
+    let (description, span) = msg_span_from_free_region(tcx, region, None);
 
     emit_msg_span(err, prefix, description, span, suffix);
 }
@@ -130,14 +131,15 @@ pub(super) fn note_and_explain_free_region(
 fn msg_span_from_free_region(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
+    alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
     match *region {
         ty::ReEarlyBound(_) | ty::ReFree(_) => {
             msg_span_from_early_bound_and_free_regions(tcx, region)
         }
-        ty::ReStatic => ("the static lifetime".to_owned(), None),
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), None),
-        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), None),
+        ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), alt_span),
+        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), alt_span),
         _ => bug!("{:?}", region),
     }
 }
@@ -319,6 +321,7 @@ pub fn unexpected_hidden_region_diagnostic(
                 &format!("hidden type `{}` captures ", hidden_ty),
                 hidden_region,
                 "",
+                None,
             );
         }
     }
@@ -2303,8 +2306,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &format!("{} must be valid for ", labeled_user_string),
                     sub,
                     "...",
+                    None,
                 );
-                if let Some(infer::RelateParamBound(_, t)) = origin {
+                if let Some(infer::RelateParamBound(_, t, _)) = origin {
                     let return_impl_trait = self
                         .in_progress_typeck_results
                         .map(|typeck_results| typeck_results.borrow().hir_owner)
@@ -2350,6 +2354,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "first, the lifetime cannot outlive ",
             sup_region,
             "...",
+            None,
         );
 
         debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
@@ -2376,6 +2381,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         "...but the lifetime must also be valid for ",
                         sub_region,
                         "...",
+                        None,
                     );
                     err.span_note(
                         sup_trace.cause.span,
@@ -2397,6 +2403,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "but, the lifetime must be valid for ",
             sub_region,
             "...",
+            None,
         );
 
         self.note_region_origin(&mut err, &sub_origin);
