@@ -28,9 +28,9 @@ declare void @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal void @diffempi_gather_test(double* %b, double* %"b'", i8* %recv_buf, i8* %"recv_buf'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca i32, align 4
-; CHECK-NEXT:   %1 = alloca i32, align 4
-; CHECK-NEXT:   %2 = alloca i32, align 4
+; CHECK-NEXT:   %0 = alloca i32
+; CHECK-NEXT:   %1 = alloca i32
+; CHECK-NEXT:   %2 = alloca i32
 ; CHECK-NEXT:   %"i8buf'ipc" = bitcast double* %"b'" to i8*
 ; CHECK-NEXT:   %i8buf = bitcast double* %b to i8*
 ; CHECK-NEXT:   %3 = call i32 @MPI_Gather(i8* nonnull %i8buf, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i8* %recv_buf, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i32 0, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))

@@ -5,8 +5,8 @@
 %struct.ompi_datatype_t = type opaque
 %struct.ompi_communicator_t = type opaque
 
-@random_datatype = external dso_local global %struct.ompi_predefined_datatype_t, align 1
-@ompi_mpi_comm_world = external dso_local global %struct.ompi_predefined_communicator_t, align 1
+@random_datatype = external dso_local global %struct.ompi_predefined_datatype_t, align 4
+@ompi_mpi_comm_world = external dso_local global %struct.ompi_predefined_communicator_t, align 4
 
 define void @mpi_allgather_test(double* %b, i8* %recv_buf) {
 entry:
@@ -28,8 +28,8 @@ declare void @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal void @diffempi_allgather_test(double* %b, double* %"b'", i8* %recv_buf, i8* %"recv_buf'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca i32, align 4
-; CHECK-NEXT:   %1 = alloca i32, align 4
+; CHECK-NEXT:   %0 = alloca i32
+; CHECK-NEXT:   %1 = alloca i32
 ; CHECK-NEXT:   %"i8buf'ipc" = bitcast double* %"b'" to i8*
 ; CHECK-NEXT:   %i8buf = bitcast double* %b to i8*
 ; CHECK-NEXT:   %2 = call i32 @MPI_Allgather(i8* nonnull %i8buf, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), i8* %recv_buf, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
