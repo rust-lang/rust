@@ -6,7 +6,9 @@ use hir_expand::{
     name::{name, Name},
     MacroDefId,
 };
+use indexmap::IndexMap;
 use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 
 use crate::{
     body::scope::{ExprScopes, ScopeId},
@@ -348,10 +350,50 @@ impl Resolver {
         item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
-    pub fn process_all_names(&self, db: &dyn DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
+    /// Returns a set of names available in the current scope.
+    ///
+    /// Note that this is a somewhat fuzzy concept -- internally, the compiler
+    /// doesn't necessary follow a strict scoping discipline. Rathe, it just
+    /// tells for each ident what it resolves to.
+    ///
+    /// A good example is something like `str::from_utf8`. From scopes point of
+    /// view, this code is erroneous -- both `str` module and `str` type occupy
+    /// the same type namespace.
+    ///
+    /// We don't try to model that super-correctly -- this functionality is
+    /// primarily exposed for completions.
+    ///
+    /// Note that in Rust one name can be bound to several items:
+    ///
+    /// ```
+    /// macro_rules! t { () => (()) }
+    /// type t = t!();
+    /// const t: t = t!()
+    /// ```
+    ///
+    /// That's why we return a multimap.
+    ///
+    /// The shadowing is accounted for: in
+    ///
+    /// ```
+    /// let x = 92;
+    /// {
+    ///     let x = 92;
+    ///     $0
+    /// }
+    /// ```
+    ///
+    /// there will be only one entry for `x` in the result.
+    ///
+    /// The result is ordered *roughly* from the innermost scope to the
+    /// outermost: when the name is introduced in two namespaces in two scopes,
+    /// we use the position of the first scope.
+    pub fn names_in_scope(&self, db: &dyn DefDatabase) -> IndexMap<Name, SmallVec<[ScopeDef; 1]>> {
+        let mut res = ScopeNames::default();
         for scope in self.scopes() {
-            scope.process_names(db, f);
+            scope.process_names(db, &mut res);
         }
+        res.map
     }
 
     pub fn traits_in_scope(&self, db: &dyn DefDatabase) -> FxHashSet<TraitId> {
@@ -434,8 +476,11 @@ impl Resolver {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum ScopeDef {
-    PerNs(PerNs),
+    ModuleDef(ModuleDefId),
+    MacroDef(MacroDefId),
+    Unknown,
     ImplSelfType(ImplId),
     AdtSelfType(AdtId),
     GenericParam(GenericParamId),
@@ -444,8 +489,7 @@ pub enum ScopeDef {
 }
 
 impl Scope {
-    fn process_names(&self, db: &dyn DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let mut seen = FxHashSet::default();
+    fn process_names(&self, db: &dyn DefDatabase, acc: &mut ScopeNames) {
         match self {
             Scope::ModuleScope(m) => {
                 // FIXME: should we provide `self` here?
@@ -456,58 +500,53 @@ impl Scope {
                 //     }),
                 // );
                 m.def_map[m.module_id].scope.entries().for_each(|(name, def)| {
-                    f(name.clone(), ScopeDef::PerNs(def));
+                    acc.add_per_ns(name, def);
                 });
-                m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
-                    let scope = PerNs::macros(macro_, Visibility::Public);
-                    seen.insert((name.clone(), scope));
-                    f(name.clone(), ScopeDef::PerNs(scope));
+                m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, mac)| {
+                    acc.add(name, ScopeDef::MacroDef(mac));
                 });
                 m.def_map.extern_prelude().for_each(|(name, &def)| {
-                    f(name.clone(), ScopeDef::PerNs(PerNs::types(def, Visibility::Public)));
+                    acc.add(name, ScopeDef::ModuleDef(def));
                 });
                 BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
-                    f(name.clone(), ScopeDef::PerNs(def));
+                    acc.add_per_ns(name, def);
                 });
                 if let Some(prelude) = m.def_map.prelude() {
                     let prelude_def_map = prelude.def_map(db);
-                    prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, def)| {
-                        let seen_tuple = (name.clone(), def);
-                        if !seen.contains(&seen_tuple) {
-                            f(seen_tuple.0, ScopeDef::PerNs(def));
-                        }
-                    });
+                    for (name, def) in prelude_def_map[prelude.local_id].scope.entries() {
+                        acc.add_per_ns(name, def)
+                    }
                 }
             }
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
                 for (local_id, param) in params.types.iter() {
-                    if let Some(ref name) = param.name {
+                    if let Some(name) = &param.name {
                         let id = TypeParamId { parent, local_id };
-                        f(name.clone(), ScopeDef::GenericParam(id.into()))
+                        acc.add(name, ScopeDef::GenericParam(id.into()))
                     }
                 }
                 for (local_id, param) in params.consts.iter() {
                     let id = ConstParamId { parent, local_id };
-                    f(param.name.clone(), ScopeDef::GenericParam(id.into()))
+                    acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }
                 for (local_id, param) in params.lifetimes.iter() {
                     let id = LifetimeParamId { parent, local_id };
-                    f(param.name.clone(), ScopeDef::GenericParam(id.into()))
+                    acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }
             }
             Scope::ImplDefScope(i) => {
-                f(name![Self], ScopeDef::ImplSelfType(*i));
+                acc.add(&name![Self], ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
-                f(name![Self], ScopeDef::AdtSelfType(*i));
+                acc.add(&name![Self], ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(scope) => {
                 if let Some((label, name)) = scope.expr_scopes.label(scope.scope_id) {
-                    f(name, ScopeDef::Label(label))
+                    acc.add(&name, ScopeDef::Label(label))
                 }
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
-                    f(e.name().clone(), ScopeDef::Local(e.pat()));
+                    acc.add_local(e.name(), e.pat());
                 });
             }
         }
@@ -649,6 +688,47 @@ fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
         | ModuleDefId::ModuleId(_) => return None,
     };
     Some(res)
+}
+
+#[derive(Default)]
+struct ScopeNames {
+    map: IndexMap<Name, SmallVec<[ScopeDef; 1]>>,
+}
+
+impl ScopeNames {
+    fn add(&mut self, name: &Name, def: ScopeDef) {
+        let set = self.map.entry(name.clone()).or_default();
+        if !set.contains(&def) {
+            set.push(def)
+        }
+    }
+    fn add_per_ns(&mut self, name: &Name, def: PerNs) {
+        if let Some(ty) = &def.types {
+            self.add(name, ScopeDef::ModuleDef(ty.0))
+        }
+        if let Some(val) = &def.values {
+            self.add(name, ScopeDef::ModuleDef(val.0))
+        }
+        if let Some(mac) = &def.macros {
+            self.add(name, ScopeDef::MacroDef(mac.0))
+        }
+        if def.is_none() {
+            self.add(name, ScopeDef::Unknown)
+        }
+    }
+    fn add_local(&mut self, name: &Name, pat: PatId) {
+        let set = self.map.entry(name.clone()).or_default();
+        // XXX: hack, account for local (and only local) shadowing.
+        //
+        // This should be somewhat more principled and take namespaces into
+        // accounts, but, alas, scoping rules are a hoax. `str` type and `str`
+        // module can be both available in the same scope.
+        if set.iter().any(|it| matches!(it, &ScopeDef::Local(_))) {
+            cov_mark::hit!(shadowing_shows_single_completion);
+            return;
+        }
+        set.push(ScopeDef::Local(pat))
+    }
 }
 
 pub trait HasResolver: Copy {

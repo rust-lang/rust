@@ -839,6 +839,7 @@ crate  -> krate
 enum   -> enum_
 fn     -> func
 impl   -> imp
+macro  -> mac
 mod    -> module
 struct -> strukt
 trait  -> trait_

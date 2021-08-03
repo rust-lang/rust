@@ -28,7 +28,6 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );
@@ -46,7 +45,6 @@ struct Foo<'lt, T, const C: usize> where T: $0 {}
             kw crate
             tt Trait
             md module
-            ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
@@ -67,7 +65,6 @@ struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
             tt Trait
             md module
             ma makro!(…) #[macro_export] macro_rules! makro
-            ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
 }
@@ -84,7 +81,6 @@ struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
             kw crate
             tt Trait
             md module
-            ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
@@ -109,7 +105,6 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );
@@ -136,7 +131,6 @@ impl Record {
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );

@@ -67,7 +67,6 @@ fn in_source_file_item_list() {
             kw crate
             md module
             ma makro!(…)           #[macro_export] macro_rules! makro
-            ma makro!(…)           #[macro_export] macro_rules! makro
         "##]],
     )
 }
@@ -172,7 +171,6 @@ fn in_impl_assoc_item_list() {
             kw crate
             md module
             ma makro!(…)  #[macro_export] macro_rules! makro
-            ma makro!(…)  #[macro_export] macro_rules! makro
         "##]],
     )
 }
@@ -205,7 +203,6 @@ fn in_trait_assoc_item_list() {
             kw super
             kw crate
             md module
-            ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
@@ -242,7 +239,6 @@ impl Test for () {
             kw super
             kw crate
             md module
-            ma makro!(…)  #[macro_export] macro_rules! makro
             ma makro!(…)  #[macro_export] macro_rules! makro
         "##]],
     );

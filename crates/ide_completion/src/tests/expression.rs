@@ -118,7 +118,6 @@ impl Unit {
             un Union
             ev TupleV(…)    (u32)
             ct CONST
-            ma makro!(…)    #[macro_export] macro_rules! makro
             me self.foo()   fn(self)
         "##]],
     );
@@ -155,6 +154,8 @@ impl Unit {
 
 #[test]
 fn shadowing_shows_single_completion() {
+    cov_mark::check!(shadowing_shows_single_completion);
+
     check_empty(
         r#"
 fn foo() {
@@ -165,7 +166,6 @@ fn foo() {
     }
 }
 "#,
-        // FIXME: should be only one bar here
         expect![[r#"
             kw unsafe
             kw match
@@ -181,7 +181,6 @@ fn foo() {
             kw self
             kw super
             kw crate
-            lc bar       i32
             lc bar       i32
             fn foo()     fn()
             bt u32

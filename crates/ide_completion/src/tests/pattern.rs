@@ -122,7 +122,6 @@ fn foo() {
             bn TupleV    TupleV($1)$0
             ev TupleV
             ct CONST
-            ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
 }
@@ -143,7 +142,6 @@ fn foo() {
             st Tuple
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
-            ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
 }
@@ -162,7 +160,6 @@ fn foo(a$0) {
             bn Tuple     Tuple($1): Tuple$0
             st Tuple
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
             ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
