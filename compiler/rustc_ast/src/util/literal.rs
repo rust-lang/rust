@@ -63,11 +63,7 @@ impl LitKind {
                         unescape_literal(&s, Mode::Str, &mut |_, unescaped_char| {
                             match unescaped_char {
                                 Ok(c) => buf.push(c),
-                                Err(err) => {
-                                    if err.is_fatal() {
-                                        error = Err(LitError::LexerError);
-                                    }
-                                }
+                                Err(_) => error = Err(LitError::LexerError),
                             }
                         });
                         error?;
@@ -87,11 +83,7 @@ impl LitKind {
                         unescape_literal(&s, Mode::RawStr, &mut |_, unescaped_char| {
                             match unescaped_char {
                                 Ok(c) => buf.push(c),
-                                Err(err) => {
-                                    if err.is_fatal() {
-                                        error = Err(LitError::LexerError);
-                                    }
-                                }
+                                Err(_) => error = Err(LitError::LexerError),
                             }
                         });
                         error?;
@@ -108,11 +100,7 @@ impl LitKind {
                 unescape_byte_literal(&s, Mode::ByteStr, &mut |_, unescaped_byte| {
                     match unescaped_byte {
                         Ok(c) => buf.push(c),
-                        Err(err) => {
-                            if err.is_fatal() {
-                                error = Err(LitError::LexerError);
-                            }
-                        }
+                        Err(_) => error = Err(LitError::LexerError),
                     }
                 });
                 error?;
@@ -126,11 +114,7 @@ impl LitKind {
                     unescape_byte_literal(&s, Mode::RawByteStr, &mut |_, unescaped_byte| {
                         match unescaped_byte {
                             Ok(c) => buf.push(c),
-                            Err(err) => {
-                                if err.is_fatal() {
-                                    error = Err(LitError::LexerError);
-                                }
-                            }
+                            Err(_) => error = Err(LitError::LexerError),
                         }
                     });
                     error?;
