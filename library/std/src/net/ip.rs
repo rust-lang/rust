@@ -379,6 +379,29 @@ impl IpAddr {
     pub const fn is_ipv6(&self) -> bool {
         matches!(self, IpAddr::V6(_))
     }
+
+    /// Converts this address to an `IpAddr::V4` if it is a IPv4-mapped IPv6 addresses, otherwise it
+    /// return `self` as-is.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).to_canonical().is_loopback(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).is_loopback(), false);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).to_canonical().is_loopback(), true);
+    /// ```
+    #[inline]
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    pub const fn to_canonical(&self) -> IpAddr {
+        match self {
+            &v4 @ IpAddr::V4(_) => v4,
+            IpAddr::V6(v6) => v6.to_canonical(),
+        }
+    }
 }
 
 impl Ipv4Addr {
@@ -1596,6 +1619,28 @@ impl Ipv6Addr {
         } else {
             None
         }
+    }
+
+    /// Converts this address to an `IpAddr::V4` if it is a IPv4-mapped addresses, otherwise it
+    /// returns self wrapped in a `IpAddr::V6`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).to_canonical().is_loopback(), true);
+    /// ```
+    #[inline]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    pub const fn to_canonical(&self) -> IpAddr {
+        if let Some(mapped) = self.to_ipv4_mapped() {
+            return IpAddr::V4(mapped);
+        }
+        IpAddr::V6(*self)
     }
 
     /// Returns the sixteen eight-bit integers the IPv6 address consists of.
