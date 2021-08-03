@@ -924,9 +924,9 @@ fn main() {
     let foo = foo5();
      // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
     let foo = foo6();
-     // ^^^ impl Fn(f64, f64) -> u32 + Sized
+     // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
-     // ^^^ *const (impl Fn(f64, f64) -> u32 + Sized)
+     // ^^^ *const impl Fn(f64, f64) -> u32
 }
 "#,
         )
