@@ -3534,9 +3534,7 @@ fn test() {
 fn associated_type_sized_bounds() {
     check_infer(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
-
+//- minicore: sized
 struct Yes;
 trait IsSized { const IS_SIZED: Yes; }
 impl<T: Sized> IsSized for T { const IS_SIZED: Yes = Yes; }
@@ -3553,11 +3551,11 @@ fn f<F: Foo>() {
 }
 "#,
         expect![[r#"
-            142..145 'Yes': Yes
-            250..333 '{     ...ZED; }': ()
-            256..277 'F::Exp..._SIZED': Yes
-            283..304 'F::Imp..._SIZED': Yes
-            310..330 'F::Rel..._SIZED': {unknown}
+            104..107 'Yes': Yes
+            212..295 '{     ...ZED; }': ()
+            218..239 'F::Exp..._SIZED': Yes
+            245..266 'F::Imp..._SIZED': Yes
+            272..292 'F::Rel..._SIZED': {unknown}
         "#]],
     );
 }

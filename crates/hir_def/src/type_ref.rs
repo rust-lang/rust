@@ -307,7 +307,9 @@ impl TypeBound {
                     Some(_) => TraitBoundModifier::Maybe,
                     None => TraitBoundModifier::None,
                 };
-                lower_path_type(path_type).map(|p| TypeBound::Path(p, m)).unwrap_or(TypeBound::Error)
+                lower_path_type(path_type)
+                    .map(|p| TypeBound::Path(p, m))
+                    .unwrap_or(TypeBound::Error)
             }
             ast::TypeBoundKind::ForType(for_type) => {
                 let lt_refs = match for_type.generic_param_list() {

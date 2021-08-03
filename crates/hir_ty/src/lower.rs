@@ -828,7 +828,9 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: TraitRef,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let last_segment = match bound {
-            TypeBound::Path(path, TraitBoundModifier::None) | TypeBound::ForLifetime(_, path) => path.segments().last(),
+            TypeBound::Path(path, TraitBoundModifier::None) | TypeBound::ForLifetime(_, path) => {
+                path.segments().last()
+            }
             TypeBound::Path(_, TraitBoundModifier::Maybe)
             | TypeBound::Error
             | TypeBound::Lifetime(_) => None,

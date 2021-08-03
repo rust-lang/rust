@@ -42,16 +42,15 @@ fn main() {
 
 #[test]
 fn render_raw_ptr_impl_ty() {
-    // FIXME: remove parens, they apper because there is an implicit Sized bound
     check_types_source_code(
         r#"
 //- minicore: sized
 trait Unpin {}
-fn foo() -> *const impl Unpin { loop {} }
+fn foo() -> *const (impl Unpin + Sized) { loop {} }
 fn main() {
     let foo = foo();
     foo;
-} //^^^ *const (impl Unpin)
+} //^^^ *const impl Unpin
 "#,
     );
 }
@@ -94,9 +93,9 @@ fn test(
     d;
   //^ S<impl Foo>
     ref_any;
-  //^ &impl ?Sized
+  //^^^^^^^ &impl ?Sized
     empty;
-} //^ impl Sized
+} //^^^^^ impl Sized
 "#,
     );
 }
@@ -107,11 +106,50 @@ fn sized_bounds_rpit() {
         r#"
 //- minicore: sized
 trait Foo {}
-fn foo() -> impl Foo { loop {} }
-fn test<T: Foo>() {
-    let foo = foo();
+fn foo1() -> impl Foo { loop {} }
+fn foo2() -> impl Foo + Sized { loop {} }
+fn foo3() -> impl Foo + ?Sized { loop {} }
+fn test() {
+    let foo = foo1();
     foo;
-}   //^ impl Foo
+  //^^^ impl Foo
+    let foo = foo2();
+    foo;
+  //^^^ impl Foo
+    let foo = foo3();
+    foo;
+} //^^^ impl Foo + ?Sized
+"#,
+    );
+}
+
+#[test]
+fn parenthesize_ptr_rpit_sized_bounds() {
+    check_types_source_code(
+        r#"
+//- minicore: sized
+trait Foo {}
+fn foo1() -> *const impl Foo { loop {} }
+fn foo2() -> *const (impl Foo + Sized) { loop {} }
+fn foo3() -> *const (impl Sized + Foo) { loop {} }
+fn foo4() -> *const (impl Foo + ?Sized) { loop {} }
+fn foo5() -> *const (impl ?Sized + Foo) { loop {} }
+fn test() {
+    let foo = foo1();
+    foo;
+  //^^^ *const impl Foo
+    let foo = foo2();
+    foo;
+  //^^^ *const impl Foo
+    let foo = foo3();
+    foo;
+  //^^^ *const impl Foo
+    let foo = foo4();
+    foo;
+  //^^^ *const (impl Foo + ?Sized)
+    let foo = foo5();
+    foo;
+} //^^^ *const (impl Foo + ?Sized)
 "#,
     );
 }

@@ -377,10 +377,20 @@ impl HirDisplay for Ty {
                 }
 
                 // FIXME: all this just to decide whether to use parentheses...
-                let datas;
-                let predicates: Vec<_> = match t.kind(&Interner) {
+                let conains_impl_fn = |bounds: &[QuantifiedWhereClause]| {
+                    bounds.iter().any(|bound| {
+                        if let WhereClause::Implemented(trait_ref) = bound.skip_binders() {
+                            let trait_ = trait_ref.hir_trait_id();
+                            fn_traits(f.db.upcast(), trait_).any(|it| it == trait_)
+                        } else {
+                            false
+                        }
+                    })
+                };
+                let (preds_to_print, has_impl_fn_pred) = match t.kind(&Interner) {
                     TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
-                        dyn_ty.bounds.skip_binders().interned().iter().cloned().collect()
+                        let bounds = dyn_ty.bounds.skip_binders().interned();
+                        (bounds.len(), conains_impl_fn(bounds))
                     }
                     TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
@@ -390,33 +400,54 @@ impl HirDisplay for Ty {
                         let impl_trait_id =
                             f.db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
-                            datas =
+                            let datas =
                                 f.db.return_type_impl_traits(func)
                                     .expect("impl trait id without data");
                             let data = (*datas)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                             let bounds = data.substitute(&Interner, parameters);
-                            bounds.into_value_and_skipped_binders().0
+                            let mut len = bounds.skip_binders().len();
+
+                            // Don't count Sized but count when it absent
+                            // (i.e. when explicit ?Sized bound is set).
+                            let default_sized = SizedByDefault::Sized {
+                                anchor: func.lookup(f.db.upcast()).module(f.db.upcast()).krate(),
+                            };
+                            let sized_bounds = bounds
+                                .skip_binders()
+                                .iter()
+                                .filter(|b| {
+                                    matches!(
+                                        b.skip_binders(),
+                                        WhereClause::Implemented(trait_ref)
+                                            if default_sized.is_sized_trait(
+                                                trait_ref.hir_trait_id(),
+                                                f.db.upcast(),
+                                            ),
+                                    )
+                                })
+                                .count();
+                            match sized_bounds {
+                                0 => len += 1,
+                                _ => {
+                                    len = len.saturating_sub(sized_bounds);
+                                }
+                            }
+
+                            (len, conains_impl_fn(bounds.skip_binders()))
                         } else {
-                            Vec::new()
+                            (0, false)
                         }
                     }
-                    _ => Vec::new(),
+                    _ => (0, false),
                 };
 
-                if let Some(WhereClause::Implemented(trait_ref)) =
-                    predicates.get(0).map(|b| b.skip_binders())
-                {
-                    let trait_ = trait_ref.hir_trait_id();
-                    if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_)
-                        && predicates.len() <= 2
-                    {
-                        return t.hir_fmt(f);
-                    }
+                if has_impl_fn_pred && preds_to_print <= 2 {
+                    return t.hir_fmt(f);
                 }
 
-                if predicates.len() > 1 {
+                if preds_to_print > 1 {
                     write!(f, "(")?;
                     t.hir_fmt(f)?;
                     write!(f, ")")?;
@@ -1085,7 +1116,6 @@ impl HirDisplay for TypeBound {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
             TypeBound::Path(path, modifier) => {
-                // todo don't print implicit Sized; implicit ?Sized on Self of a trait
                 match modifier {
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(f, "?")?,
