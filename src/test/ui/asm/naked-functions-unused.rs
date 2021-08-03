@@ -50,8 +50,6 @@ pub mod normal {
 pub mod naked {
     #[naked]
     pub extern "sysv64" fn function(a: usize, b: usize) -> usize {
-        //~^ ERROR unused variable: `a`
-        //~| ERROR unused variable: `b`
         unsafe { asm!("", options(noreturn)); }
     }
 
@@ -60,15 +58,11 @@ pub mod naked {
     impl Naked {
         #[naked]
         pub extern "sysv64" fn associated(a: usize, b: usize) -> usize {
-            //~^ ERROR unused variable: `a`
-            //~| ERROR unused variable: `b`
             unsafe { asm!("", options(noreturn)); }
         }
 
         #[naked]
         pub extern "sysv64" fn method(&self, a: usize, b: usize) -> usize {
-            //~^ ERROR unused variable: `a`
-            //~| ERROR unused variable: `b`
             unsafe { asm!("", options(noreturn)); }
         }
     }
@@ -76,15 +70,11 @@ pub mod naked {
     impl super::Trait for Naked {
         #[naked]
         extern "sysv64" fn trait_associated(a: usize, b: usize) -> usize {
-            //~^ ERROR unused variable: `a`
-            //~| ERROR unused variable: `b`
             unsafe { asm!("", options(noreturn)); }
         }
 
         #[naked]
         extern "sysv64" fn trait_method(&self, a: usize, b: usize) -> usize {
-            //~^ ERROR unused variable: `a`
-            //~| ERROR unused variable: `b`
             unsafe { asm!("", options(noreturn)); }
         }
     }
