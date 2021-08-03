@@ -751,9 +751,12 @@ pub trait LintContext: Sized {
                     }
                 }
                 BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
-                    if let Ok(code) = sess.source_map().span_to_snippet(span) {
-                        db.span_suggestion(span, "wrap this expression in parentheses", format!("({})", &code), Applicability::MachineApplicable);
-                    }
+                    db.multipart_suggestion(
+                        "wrap this expression in parentheses",
+                        vec![(span.shrink_to_lo(), "(".to_string()),
+                             (span.shrink_to_hi(), ")".to_string())],
+                        Applicability::MachineApplicable
+                    );
                 }
             }
             // Rewrap `db`, and pass control to the user.

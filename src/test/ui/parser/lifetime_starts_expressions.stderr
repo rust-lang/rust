@@ -35,11 +35,13 @@ warning: this labeled break expression is easy to confuse with an unlabeled brea
 LL | /         break 'label
 LL | |
 LL | |             loop { break 42; };
-   | |_____________-----------------^
-   |               |
-   |               help: wrap this expression in parentheses: `(loop { break 42; })`
+   | |______________________________^
    |
    = note: `#[warn(break_with_label_and_loop)]` on by default
+help: wrap this expression in parentheses
+   |
+LL |             (loop { break 42; });
+   |             ^                  ^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
