@@ -23,7 +23,7 @@ error[E0277]: the size for values of type `[{integer}]` cannot be known at compi
    |
 LL |     let range = *arr..;
    |                 ^^^^^^ doesn't have a size known at compile-time
-   | 
+   |
   ::: $SRC_DIR/core/src/ops/range.rs:LL:COL
    |
 LL | pub struct RangeFrom<Idx> {

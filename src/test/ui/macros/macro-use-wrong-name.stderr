@@ -3,7 +3,7 @@ error: cannot find macro `macro_two` in this scope
    |
 LL |     macro_two!();
    |     ^^^^^^^^^ help: a macro with a similar name exists: `macro_one`
-   | 
+   |
   ::: $DIR/auxiliary/two_macros.rs:2:1
    |
 LL | macro_rules! macro_one { () => ("one") }

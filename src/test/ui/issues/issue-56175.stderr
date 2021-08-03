@@ -3,7 +3,7 @@ error[E0599]: no method named `trait_method` found for struct `FooStruct` in the
    |
 LL |     reexported_trait::FooStruct.trait_method();
    |                                 ^^^^^^^^^^^^ method not found in `FooStruct`
-   | 
+   |
   ::: $DIR/auxiliary/reexported-trait.rs:3:12
    |
 LL |         fn trait_method(&self) {
@@ -20,7 +20,7 @@ error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in t
    |
 LL |     reexported_trait::FooStruct.trait_method_b();
    |                                 ^^^^^^^^^^^^^^ method not found in `FooStruct`
-   | 
+   |
   ::: $DIR/auxiliary/reexported-trait.rs:7:12
    |
 LL |         fn trait_method_b(&self) {

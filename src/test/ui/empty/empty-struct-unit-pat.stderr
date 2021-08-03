@@ -6,7 +6,7 @@ LL | struct Empty2;
 ...
 LL |         Empty2() => ()
    |         ^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:3:1
    |
 LL | pub struct XEmpty6();
@@ -26,7 +26,7 @@ error[E0532]: expected tuple struct or tuple variant, found unit struct `XEmpty2
    |
 LL |         XEmpty2() => ()
    |         ^^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:2:1
    |
 LL | pub struct XEmpty2;
@@ -51,7 +51,7 @@ LL | struct Empty2;
 ...
 LL |         Empty2(..) => ()
    |         ^^^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:3:1
    |
 LL | pub struct XEmpty6();
@@ -71,7 +71,7 @@ error[E0532]: expected tuple struct or tuple variant, found unit struct `XEmpty2
    |
 LL |         XEmpty2(..) => ()
    |         ^^^^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:2:1
    |
 LL | pub struct XEmpty2;
@@ -102,7 +102,7 @@ error[E0532]: expected tuple struct or tuple variant, found unit variant `XE::XE
    |
 LL |         XE::XEmpty4() => (),
    |         ^^^^^^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:7:5
    |
 LL |     XEmpty4,
@@ -133,7 +133,7 @@ error[E0532]: expected tuple struct or tuple variant, found unit variant `XE::XE
    |
 LL |         XE::XEmpty4(..) => (),
    |         ^^^^^^^^^^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/empty-struct.rs:7:5
    |
 LL |     XEmpty4,

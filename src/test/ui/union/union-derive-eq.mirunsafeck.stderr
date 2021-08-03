@@ -6,7 +6,7 @@ LL | #[derive(Eq)]
 LL | union U2 {
 LL |     a: PartialEqNotEq,
    |     ^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `PartialEqNotEq`
-   | 
+   |
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {

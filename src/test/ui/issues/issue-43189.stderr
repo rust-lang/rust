@@ -3,7 +3,7 @@ error[E0599]: no method named `a` found for unit type `()` in the current scope
    |
 LL |     ().a();
    |        ^ method not found in `()`
-   | 
+   |
   ::: $DIR/auxiliary/xcrate-issue-43189-a.rs:5:8
    |
 LL |     fn a(&self) {}
