@@ -1391,8 +1391,13 @@ impl Const {
         db.const_data(self.id).name.clone()
     }
 
-    pub fn type_ref(self, db: &dyn HirDatabase) -> TypeRef {
-        db.const_data(self.id).type_ref.as_ref().clone()
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        let data = db.const_data(self.id);
+        let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.krate(db);
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let ty = ctx.lower_ty(&data.type_ref);
+        Type::new_with_resolver_inner(db, krate.id, &resolver, ty)
     }
 }
 
@@ -1420,6 +1425,15 @@ impl Static {
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
         db.static_data(self.id).mutable
+    }
+
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        let data = db.static_data(self.id);
+        let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.krate();
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let ty = ctx.lower_ty(&data.type_ref);
+        Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 }
 
