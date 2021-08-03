@@ -167,3 +167,46 @@ pub unsafe extern "C" fn valid_c() {
 pub unsafe extern "C" fn valid_att_syntax() {
     asm!("", options(noreturn, att_syntax));
 }
+
+#[naked]
+pub unsafe extern "C" fn inline_none() {
+    asm!("", options(noreturn));
+}
+
+#[naked]
+#[inline]
+//~^ WARN naked functions cannot be inlined
+//~| WARN this was previously accepted
+pub unsafe extern "C" fn inline_hint() {
+    asm!("", options(noreturn));
+}
+
+#[naked]
+#[inline(always)]
+//~^ WARN naked functions cannot be inlined
+//~| WARN this was previously accepted
+pub unsafe extern "C" fn inline_always() {
+    asm!("", options(noreturn));
+}
+
+#[naked]
+#[inline(never)]
+//~^ WARN naked functions cannot be inlined
+//~| WARN this was previously accepted
+pub unsafe extern "C" fn inline_never() {
+    asm!("", options(noreturn));
+}
+
+#[naked]
+#[inline]
+//~^ WARN naked functions cannot be inlined
+//~| WARN this was previously accepted
+#[inline(always)]
+//~^ WARN naked functions cannot be inlined
+//~| WARN this was previously accepted
+#[inline(never)]
+//~^ WARN naked functions cannot be inlined
+//~| WARN this was previously accepted
+pub unsafe extern "C" fn inline_all() {
+    asm!("", options(noreturn));
+}

@@ -296,5 +296,59 @@ LL | pub unsafe extern "Rust" fn rust_abi() {
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-error: aborting due to 8 previous errors; 19 warnings emitted
+warning: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:177:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+
+warning: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:185:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+
+warning: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:193:1
+   |
+LL | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+
+warning: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:201:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+
+warning: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:204:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+
+warning: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:207:1
+   |
+LL | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+
+error: aborting due to 8 previous errors; 25 warnings emitted
 
