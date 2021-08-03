@@ -647,17 +647,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return false;
         }
 
-        let impl_trait = generics.params.iter().any(|param| {
-            matches!(
-                param.kind,
-                ty::GenericParamDefKind::Type {
-                    synthetic: Some(
-                        hir::SyntheticTyParamKind::ImplTrait | hir::SyntheticTyParamKind::FromAttr,
-                    ),
-                    ..
-                }
-            )
-        });
+        let impl_trait = generics.has_impl_trait();
 
         if impl_trait {
             let spans = seg
