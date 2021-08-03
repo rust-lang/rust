@@ -73,6 +73,8 @@ Tier Policy.
 
 All tier 2 targets with host tools support the full standard library.
 
+**NOTE:** Tier 2 targets currently do not build the `rust-docs` component.
+
 target | notes
 -------|-------
 `aarch64-apple-darwin` | ARM64 macOS (11.0+, Big Sur+)
@@ -111,6 +113,8 @@ The `std` column in the table below has the following meanings:
 * \* indicates the target only supports [`no_std`] development.
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
+
+**NOTE:** Tier 2 targets currently do not build the `rust-docs` component.
 
 target | std | notes
 -------|:---:|-------
