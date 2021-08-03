@@ -582,6 +582,9 @@ impl server::Literal for Rustc<'_> {
 
         Ok(Literal { lit, span: self.call_site })
     }
+    fn to_string(&mut self, literal: &Self::Literal) -> String {
+        literal.lit.to_string()
+    }
     fn debug_kind(&mut self, literal: &Self::Literal) -> String {
         format!("{:?}", literal.lit.kind)
     }
