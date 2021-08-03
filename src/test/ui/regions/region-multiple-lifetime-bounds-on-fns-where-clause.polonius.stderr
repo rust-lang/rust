@@ -1,0 +1,82 @@
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:9:5
+   |
+LL | fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     // Illegal now because there is no `'b:'a` declaration.
+LL |     *x = *y;
+   |     ^^^^^^^ assignment requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:10:5
+   |
+LL | fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |          --  -- lifetime `'c` defined here
+   |          |
+   |          lifetime `'b` defined here
+...
+LL |     *z = *y;
+   |     ^^^^^^^ assignment requires that `'b` must outlive `'c`
+   |
+   = help: consider adding the following bound: `'b: 'c`
+
+help: add bound `'b: 'a + 'c`
+
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:16:5
+   |
+LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |      -- -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |     a(x, y, z);
+   |     ^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to &isize
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:16:5
+   |
+LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |         --  -- lifetime `'c` defined here
+   |         |
+   |         lifetime `'b` defined here
+...
+LL |     a(x, y, z);
+   |     ^^^^^^^^^^ argument requires that `'b` must outlive `'c`
+   |
+   = help: consider adding the following bound: `'b: 'c`
+   = note: requirement occurs because of a mutable reference to &isize
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+help: add bound `'b: 'a + 'c`
+
+error: higher-ranked subtype error
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+   |
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+   |
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+   |
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
