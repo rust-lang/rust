@@ -613,7 +613,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 param_counts.consts + named_type_param_count
                     - default_counts.types
                     - default_counts.consts
-                    - synth_type_param_count
             };
             debug!("expected_min: {:?}", expected_min);
             debug!("arg_counts.lifetimes: {:?}", gen_args.num_lifetime_params());
