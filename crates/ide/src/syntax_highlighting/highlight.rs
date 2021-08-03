@@ -489,7 +489,8 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             let ty = local.ty(db);
             if local.is_mut(db) || ty.is_mutable_reference() {
                 h |= HlMod::Mutable;
-            } else if local.is_ref(db) || ty.is_reference() {
+            } 
+            if local.is_ref(db) || ty.is_reference() {
                 h |= HlMod::Reference;
             }
             if ty.as_callable(db).is_some() || ty.impls_fnonce(db) {
