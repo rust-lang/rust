@@ -21,7 +21,7 @@ error: lifetime may not live long enough
   --> $DIR/closure-substs.rs:15:16
    |
 LL |     |x: &i32| -> &'static i32 {
-   |         -        ------------ return type of closure is &'2 i32
+   |         -        - let's call the lifetime of this reference `'2`
    |         |
    |         let's call the lifetime of this reference `'1`
 LL |         return x;
@@ -58,3 +58,4 @@ LL |         b(x);
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0521`.
