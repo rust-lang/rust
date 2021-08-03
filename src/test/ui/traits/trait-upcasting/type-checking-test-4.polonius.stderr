@@ -1,0 +1,33 @@
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:17:13
+   |
+LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:22:13
+   |
+LL | fn test_wrong2<'a>(x: &dyn Foo<'static>, y: &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:29:5
+   |
+LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+   |                -- lifetime `'a` defined here
+...
+LL |     y.get_b() // ERROR
+   |     ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error: aborting due to 3 previous errors
+
