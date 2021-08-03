@@ -228,7 +228,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 if i.blanket_impl.is_none() {
                     self.cache
                         .implementors
-                        .entry(did.into())
+                        .entry(did)
                         .or_default()
                         .push(Impl { impl_item: item.clone() });
                 }

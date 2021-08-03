@@ -688,7 +688,7 @@ crate fn anchor<'a, 'cx: 'a>(
     text: &'a str,
     cx: &'cx Context<'_>,
 ) -> impl fmt::Display + 'a {
-    let parts = href(did.into(), cx);
+    let parts = href(did, cx);
     display_fn(move |f| {
         if let Ok((url, short_ty, fqp)) = parts {
             write!(
@@ -921,7 +921,7 @@ fn fmt_type<'cx>(
                 //        everything comes in as a fully resolved QPath (hard to
                 //        look at).
                 box clean::ResolvedPath { did, .. } => {
-                    match href(did.into(), cx) {
+                    match href(did, cx) {
                         Ok((ref url, _, ref path)) if !f.alternate() => {
                             write!(
                                 f,
