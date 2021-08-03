@@ -32,8 +32,8 @@ declare void @__enzyme_autodiff(i8*, ...)
 ; CHECK: define internal void @diffempi_allreduce_test(double* %b, double* %"b'", i8* %global_sum_addr, i8* %"global_sum_addr'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = alloca i32
-; CHECK-NEXT:   %"i8buf'ipc" = bitcast double* %"b'" to i8*
 ; CHECK-NEXT:   %i8buf = bitcast double* %b to i8*
+; CHECK-NEXT:   %"i8buf'ipc" = bitcast double* %"b'" to i8*
 ; CHECK-NEXT:   %1 = call i32 @MPI_Allreduce(i8* nonnull %i8buf, i8* %global_sum_addr, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @random_datatype to %struct.ompi_datatype_t*), %struct.ompi_op_t* bitcast (%struct.ompi_predefined_op_t* @ompi_mpi_op_sum to %struct.ompi_op_t*), %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   br label %invertentry
 
