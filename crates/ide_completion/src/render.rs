@@ -1348,10 +1348,10 @@ fn foo() {
                 lc foo [type+local]
                 ev Foo::A(…) [type_could_unify]
                 ev Foo::B [type_could_unify]
+                fn foo() []
                 en Foo []
                 fn baz() []
                 fn bar() []
-                fn foo() []
             "#]],
         );
     }

@@ -460,6 +460,7 @@ dependencies = [
  "hir_def",
  "hir_expand",
  "hir_ty",
+ "indexmap",
  "itertools",
  "log",
  "once_cell",

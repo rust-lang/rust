@@ -923,31 +923,28 @@ impl<'a> SemanticsScope<'a> {
     }
 
     pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let resolver = &self.resolver;
-
-        resolver.process_all_names(self.db.upcast(), &mut |name, def| {
-            let def = match def {
-                resolver::ScopeDef::PerNs(it) => {
-                    let items = ScopeDef::all_items(it);
-                    for item in items {
-                        f(name.clone(), item);
+        let scope = self.resolver.names_in_scope(self.db.upcast());
+        for (name, entries) in scope {
+            for entry in entries {
+                let def = match entry {
+                    resolver::ScopeDef::ModuleDef(it) => ScopeDef::ModuleDef(it.into()),
+                    resolver::ScopeDef::MacroDef(it) => ScopeDef::MacroDef(it.into()),
+                    resolver::ScopeDef::Unknown => ScopeDef::Unknown,
+                    resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
+                    resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
+                    resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
+                    resolver::ScopeDef::Local(pat_id) => {
+                        let parent = self.resolver.body_owner().unwrap();
+                        ScopeDef::Local(Local { parent, pat_id })
                     }
-                    return;
-                }
-                resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
-                resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
-                resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
-                resolver::ScopeDef::Local(pat_id) => {
-                    let parent = resolver.body_owner().unwrap();
-                    ScopeDef::Local(Local { parent, pat_id })
-                }
-                resolver::ScopeDef::Label(label_id) => {
-                    let parent = resolver.body_owner().unwrap();
-                    ScopeDef::Label(Label { parent, label_id })
-                }
-            };
-            f(name, def)
-        })
+                    resolver::ScopeDef::Label(label_id) => {
+                        let parent = self.resolver.body_owner().unwrap();
+                        ScopeDef::Label(Label { parent, label_id })
+                    }
+                };
+                f(name.clone(), def)
+            }
+        }
     }
 
     /// Resolve a path as-if it was written at the given scope. This is

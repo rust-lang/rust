@@ -31,7 +31,6 @@ struct Foo<'lt, T, const C: usize> {
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     )
@@ -60,7 +59,6 @@ struct Foo<'lt, T, const C: usize>(f$0);
             st Unit
             ma makro!(…)  #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…)  #[macro_export] macro_rules! makro
             bt u32
         "##]],
     )
@@ -85,7 +83,6 @@ fn x<'lt, T, const C: usize>() -> $0
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );
@@ -113,7 +110,6 @@ fn foo<'lt, T, const C: usize>() {
             st Unit
             ma makro!(…) #[macro_export] macro_rules! makro
             un Union
-            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );
@@ -164,7 +160,6 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             tt Trait2
             un Union
             ct CONST
-            ma makro!(…)          #[macro_export] macro_rules! makro
             bt u32
         "##]],
     );

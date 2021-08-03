@@ -304,25 +304,4 @@ pub mod prelude {
             "#]],
         );
     }
-
-    #[test]
-    fn local_variable_shadowing() {
-        // FIXME: this isn't actually correct, should emit `x` only once.
-        check(
-            r#"
-fn main() {
-    let x = 92;
-    {
-        let x = 92;
-        x$0;
-    }
-}
-"#,
-            expect![[r#"
-                lc x      i32
-                lc x      i32
-                fn main() fn()
-            "#]],
-        );
-    }
 }
