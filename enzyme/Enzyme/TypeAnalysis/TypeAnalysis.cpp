@@ -3289,6 +3289,64 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
 
+    if (funcName == "__kmpc_fork_call") {
+      Function *fn = dyn_cast<Function>(call.getArgOperand(2));
+
+      if (auto castinst = dyn_cast<ConstantExpr>(call.getArgOperand(2)))
+        if (castinst->isCast())
+          fn = dyn_cast<Function>(castinst->getOperand(0));
+
+      if (fn) {
+        if (call.getNumArgOperands() - 3 !=
+            fn->getFunctionType()->getNumParams() - 2)
+          return;
+
+        if (direction & UP) {
+          FnTypeInfo typeInfo(fn);
+
+          TypeTree IntPtr;
+          IntPtr.insert({-1, -1}, BaseType::Integer);
+          IntPtr.insert({-1}, BaseType::Pointer);
+
+          int argnum = 0;
+          for (auto &arg : fn->args()) {
+            if (argnum <= 1) {
+              typeInfo.Arguments.insert(
+                  std::pair<Argument *, TypeTree>(&arg, IntPtr));
+              typeInfo.KnownValues.insert(
+                  std::pair<Argument *, std::set<int64_t>>(&arg, {0}));
+            } else {
+              typeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(
+                  &arg, getAnalysis(call.getArgOperand(argnum - 2 + 3))));
+              std::set<int64_t> bounded;
+              for (auto v : fntypeinfo.knownIntegralValues(
+                       call.getArgOperand(argnum - 2 + 3), *DT, intseen)) {
+                if (abs(v) > MaxIntOffset)
+                  continue;
+                bounded.insert(v);
+              }
+              typeInfo.KnownValues.insert(
+                  std::pair<Argument *, std::set<int64_t>>(&arg, bounded));
+            }
+
+            ++argnum;
+          }
+
+          if (EnzymePrintType)
+            llvm::errs() << " starting omp IPO of " << call << "\n";
+
+          auto a = fn->arg_begin();
+          ++a;
+          ++a;
+          for (size_t i = 3; i < call.getNumArgOperands(); ++i) {
+            auto dt = interprocedural.query(a, typeInfo);
+            updateAnalysis(call.getArgOperand(i), dt, &call);
+            ++a;
+          }
+        }
+      }
+      return;
+    }
     if (funcName == "__kmpc_for_static_init_4" ||
         funcName == "__kmpc_for_static_init_4u" ||
         funcName == "__kmpc_for_static_init_8" ||
@@ -3978,12 +4036,26 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
       bool failed = false;
       for (auto u : AI->users()) {
         if (auto SIu = dyn_cast<StoreInst>(u)) {
-          if (SI) {
+          if (SI && SIu->getValueOperand() == AI) {
             failed = true;
             break;
           }
           SI = SIu;
         } else if (!isa<LoadInst>(u)) {
+          if (!cast<Instruction>(u)->mayReadOrWriteMemory() &&
+              cast<Instruction>(u)->use_empty())
+            continue;
+          if (auto CI = dyn_cast<CallInst>(u)) {
+            if (auto F = CI->getCalledFunction()) {
+              auto funcName = F->getName();
+              if (funcName == "__kmpc_for_static_init_4" ||
+                  funcName == "__kmpc_for_static_init_4u" ||
+                  funcName == "__kmpc_for_static_init_8" ||
+                  funcName == "__kmpc_for_static_init_8u") {
+                continue;
+              }
+            }
+          }
           failed = true;
           break;
         }

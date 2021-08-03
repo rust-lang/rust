@@ -774,7 +774,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     BasicBlock *ivctx = scope;
     if (!ivctx)
       ivctx = BuilderM.GetInsertBlock();
-    if (!isOriginalBlock(*ivctx)) {
+    if (newFunc == ivctx->getParent() && !isOriginalBlock(*ivctx)) {
       ivctx = originalForReverseBlock(*ivctx);
     }
     if ((ivctx == phi->getParent() || DT.dominates(phi, ivctx)) &&
@@ -836,18 +836,23 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     // circumstances
     auto &LLI = Logic.PPC.FAM.getResult<LoopAnalysis>(*parent->getParent());
     if (LLI.isLoopHeader(parent)) {
+      assert(mode != UnwrapMode::LegalFullUnwrap);
       goto endCheck;
     }
     for (auto &val : phi->incoming_values()) {
-      if (isPotentialLastLoopValue(val, parent, LLI))
+      if (isPotentialLastLoopValue(val, parent, LLI)) {
+        assert(mode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
+      }
     }
 
     if (phi->getNumIncomingValues() == 1) {
       assert(phi->getIncomingValue(0) != phi);
       auto toreturn = getOpUnchecked(phi->getIncomingValue(0));
-      if (toreturn == nullptr || toreturn == phi)
+      if (toreturn == nullptr || toreturn == phi) {
+        assert(mode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
+      }
       assert(val->getType() == toreturn->getType());
       return toreturn;
     }
@@ -969,20 +974,28 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             auto bi1 = cast<BranchInst>(block->getTerminator());
 
             auto cond1 = getOp(bi1->getCondition());
-            if (cond1 == nullptr)
+            if (cond1 == nullptr) {
+              assert(mode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
+            }
             auto bi2 = cast<BranchInst>(subblock->getTerminator());
             auto cond2 = getOp(bi2->getCondition());
-            if (cond2 == nullptr)
+            if (cond2 == nullptr) {
+              assert(mode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
+            }
 
             BasicBlock *oldB = BuilderM.GetInsertBlock();
-            if (BuilderM.GetInsertPoint() != oldB->end())
+            if (BuilderM.GetInsertPoint() != oldB->end()) {
+              assert(mode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
+            }
 
             auto found = reverseBlockToPrimal.find(oldB);
-            if (found == reverseBlockToPrimal.end())
+            if (found == reverseBlockToPrimal.end()) {
+              assert(mode != UnwrapMode::LegalFullUnwrap);
               goto endCheck;
+            }
             BasicBlock *fwd = found->second;
 
             SmallVector<BasicBlock *, 2> predBlocks;
@@ -1064,6 +1077,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 for (size_t j = 0; j < i; j++) {
                   blocks[j]->eraseFromParent();
                 };
+                assert(mode != UnwrapMode::LegalFullUnwrap);
                 goto endCheck;
               }
               assert(val->getType() == vals[i]->getType());
@@ -1141,13 +1155,16 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (isa<BranchInst>(equivalentTerminator) ||
         isa<SwitchInst>(equivalentTerminator)) {
       BasicBlock *oldB = BuilderM.GetInsertBlock();
-      if (BuilderM.GetInsertPoint() != oldB->end())
-        goto endCheck;
 
-      auto found = reverseBlockToPrimal.find(oldB);
-      if (found == reverseBlockToPrimal.end())
-        goto endCheck;
-      BasicBlock *fwd = found->second;
+      BasicBlock *fwd = oldB;
+      if (!isOriginalBlock(*fwd)) {
+        auto found = reverseBlockToPrimal.find(oldB);
+        if (found == reverseBlockToPrimal.end()) {
+          assert(mode != UnwrapMode::LegalFullUnwrap);
+          goto endCheck;
+        }
+        fwd = found->second;
+      }
 
       SmallVector<BasicBlock *, 2> predBlocks;
       Value *cond = nullptr;
@@ -1164,8 +1181,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         }
       }
 
-      if (cond == nullptr)
+      if (cond == nullptr) {
+        assert(mode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
+      }
 
       SmallVector<Value *, 2> vals;
 
@@ -1237,6 +1256,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           for (size_t j = 0; j < i; j++) {
             blocks[j]->eraseFromParent();
           };
+          assert(mode != UnwrapMode::LegalFullUnwrap);
           goto endCheck;
         }
         assert(val->getType() == vals[i]->getType());
@@ -1277,6 +1297,29 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         return toret;
       }
 
+      if (BuilderM.GetInsertPoint() != oldB->end()) {
+        for (size_t j = 0; j < blocks.size(); j++) {
+          reverseBlocks[fwd].erase(std::find(
+              reverseBlocks[fwd].begin(), reverseBlocks[fwd].end(), blocks[j]));
+          reverseBlockToPrimal.erase(blocks[j]);
+          unwrap_cache.erase(blocks[j]);
+          lookup_cache.erase(blocks[j]);
+          SmallVector<Instruction *, 4> toErase;
+          for (auto &I : *blocks[j]) {
+            toErase.push_back(&I);
+          }
+          for (auto I : toErase) {
+            erase(I);
+          }
+        }
+        bret->eraseFromParent();
+        for (size_t j = 0; j < blocks.size(); j++) {
+          blocks[j]->eraseFromParent();
+        };
+        assert(mode != UnwrapMode::LegalFullUnwrap);
+        goto endCheck;
+      }
+
       bret->moveAfter(last);
       if (isa<BranchInst>(equivalentTerminator)) {
         BuilderM.CreateCondBr(cond, blocks[0], blocks[1]);
@@ -1304,6 +1347,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       unwrappedLoads[toret] = val;
       return toret;
     }
+    assert(mode != UnwrapMode::LegalFullUnwrap);
     goto endCheck;
   }
 
@@ -2626,7 +2670,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM,
       }
 
       // Create global variable locally if not externally visible
-      if (arg->hasInternalLinkage() || arg->hasPrivateLinkage()) {
+      if (arg->hasInternalLinkage() || arg->hasPrivateLinkage() ||
+          (arg->hasExternalLinkage() && arg->hasInitializer())) {
         Type *type = cast<PointerType>(arg->getType())->getElementType();
         IRBuilder<> B(inversionAllocs);
         auto shadow = new GlobalVariable(
