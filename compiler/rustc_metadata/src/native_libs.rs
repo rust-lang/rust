@@ -43,7 +43,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
         }
 
         // Process all of the #[link(..)]-style arguments
-        let sess = &self.tcx.sess;
+        let sess = &self.tcx.gcx().sess;
         for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| sess.check_name(a, sym::link))
         {
             let items = match m.meta_item_list() {

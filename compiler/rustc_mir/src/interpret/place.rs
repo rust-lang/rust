@@ -431,7 +431,7 @@ where
             _ => span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout"),
         };
         let layout = base.layout.field(self, 0)?;
-        let dl = &self.tcx.data_layout;
+        let dl = &self.tcx.gcx().data_layout;
         // `Size` multiplication
         Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))
     }

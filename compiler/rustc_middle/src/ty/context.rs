@@ -62,11 +62,13 @@ use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::hash_map::{self, Entry};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
@@ -981,14 +983,52 @@ pub struct FreeRegionInfo {
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 pub struct TyCtxt<'tcx> {
-    gcx: &'tcx GlobalCtxt<'tcx>,
+    _gcx: PhantomData<&'tcx GlobalCtxt<'tcx>>,
+}
+
+mod wow {
+    use super::*;
+    #[cfg(not(parallel_compiler))]
+    thread_local! {
+        /// A thread local variable that stores a pointer to the current `GlobalCtxt`.
+        static GCX: Cell<usize> = const { Cell::new(0) };
+    }
+    /// Sets TLV to `value` during the call to `f`.
+    /// It is restored to its previous value after.
+    /// This is used to set the pointer to the new `ImplicitCtxt`.
+    #[cfg(not(parallel_compiler))]
+    pub fn set_gcx(value: usize) {
+        let old = get_gcx();
+        if old != 0 && old != value {
+            panic!("reinit tyctx");
+        }
+        GCX.with(|tlv| tlv.set(value));
+    }
+
+    /// Gets the pointer to the current `ImplicitCtxt`.
+    #[cfg(not(parallel_compiler))]
+    pub fn get_gcx() -> usize {
+        GCX.with(|tlv| tlv.get())
+    }
+}
+
+impl TyCtxt<'tcx> {
+    pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> TyCtxt<'tcx> {
+        wow::set_gcx(gcx as *const _ as usize);
+        TyCtxt { _gcx: PhantomData }
+    }
+    #[inline(always)]
+    pub fn gcx(self) -> &'tcx GlobalCtxt<'tcx> {
+        // SAFETY: gcx lives for 'tcx as it can only be modified via `TyCtxt::new`.
+        unsafe { &*(wow::get_gcx() as *const GlobalCtxt<'tcx>) }
+    }
 }
 
 impl<'tcx> Deref for TyCtxt<'tcx> {
-    type Target = &'tcx GlobalCtxt<'tcx>;
+    type Target = GlobalCtxt<'tcx>;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
-        &self.gcx
+        self.gcx()
     }
 }
 
@@ -1345,27 +1385,27 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     pub fn cstore_untracked(self) -> &'tcx ty::CrateStoreDyn {
-        &*self.untracked_resolutions.cstore
+        &*self.gcx().untracked_resolutions.cstore
     }
 
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     pub fn definitions_untracked(self) -> &'tcx hir::definitions::Definitions {
-        &self.untracked_resolutions.definitions
+        &self.gcx().untracked_resolutions.definitions
     }
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.untracked_crate;
-        let resolutions = &self.gcx.untracked_resolutions;
+        let krate = self.untracked_crate;
+        let resolutions = &self.gcx().untracked_resolutions;
 
         StableHashingContext::new(self.sess, krate, &resolutions.definitions, &*resolutions.cstore)
     }
 
     #[inline(always)]
     pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let krate = self.gcx.untracked_crate;
-        let resolutions = &self.gcx.untracked_resolutions;
+        let krate = self.untracked_crate;
+        let resolutions = &self.gcx().untracked_resolutions;
 
         StableHashingContext::ignore_spans(
             self.sess,
@@ -1728,7 +1768,7 @@ pub mod tls {
 
     impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
         pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
-            let tcx = TyCtxt { gcx };
+            let tcx = TyCtxt::new(gcx);
             ImplicitCtxt { tcx, query: None, diagnostics: None, layout_depth: 0, task_deps: None }
         }
     }
@@ -1823,7 +1863,7 @@ pub mod tls {
         F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
     {
         with_context(|context| unsafe {
-            assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
+            assert!(ptr_eq(context.tcx.gcx(), tcx.gcx()));
             let context: &ImplicitCtxt<'_, '_> = mem::transmute(context);
             f(context)
         })
@@ -2840,7 +2880,7 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.in_scope_traits_map = |tcx, id| tcx.hir_crate(()).trait_map.get(&id);
-    providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
+    providers.resolutions = |tcx, ()| &tcx.gcx().untracked_resolutions;
     providers.module_exports = |tcx, id| tcx.resolutions(()).export_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
