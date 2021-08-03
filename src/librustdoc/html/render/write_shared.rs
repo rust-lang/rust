@@ -175,9 +175,45 @@ pub(super) fn write_shared(
         cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
     };
 
+    fn add_background_image_to_css(
+        cx: &Context<'_>,
+        css: &mut String,
+        rule: &str,
+        file: &'static str,
+    ) {
+        css.push_str(&format!(
+            "{} {{ background-image: url({}); }}",
+            rule,
+            SharedResource::ToolchainSpecific { basename: file }
+                .path(cx)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+        ))
+    }
+
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
-    write_minify("rustdoc.css", static_files::RUSTDOC_CSS)?;
+    let mut rustdoc_css = static_files::RUSTDOC_CSS.to_owned();
+    add_background_image_to_css(
+        cx,
+        &mut rustdoc_css,
+        "details.undocumented[open] > summary::before, \
+         details.rustdoc-toggle[open] > summary::before, \
+         details.rustdoc-toggle[open] > summary.hideme::before",
+        "toggle-minus.svg",
+    );
+    add_background_image_to_css(
+        cx,
+        &mut rustdoc_css,
+        "details.undocumented > summary::before, details.rustdoc-toggle > summary::before",
+        "toggle-plus.svg",
+    );
+    write_minify("rustdoc.css", &rustdoc_css)?;
+
+    // Add all the static files. These may already exist, but we just
+    // overwrite them anyway to make sure that they're fresh and up-to-date.
     write_minify("settings.css", static_files::SETTINGS_CSS)?;
     write_minify("noscript.css", static_files::NOSCRIPT_CSS)?;
 
@@ -217,6 +253,8 @@ pub(super) fn write_shared(
     write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
     write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
     write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
+    write_toolchain("toggle-minus.svg", static_files::TOGGLE_MINUS_PNG)?;
+    write_toolchain("toggle-plus.svg", static_files::TOGGLE_PLUS_PNG)?;
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();

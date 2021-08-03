@@ -229,6 +229,11 @@ details.undocumented > summary::before {
 	color: #999;
 }
 
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before {
+	filter: invert(100%);
+}
+
 #crate-search {
 	color: #c5c5c5;
 	background-color: #141920;
