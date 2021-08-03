@@ -16,6 +16,7 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
 use rustc_span::{BytePos, DUMMY_SP};
+use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
 
@@ -1769,7 +1770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 if !expected.references_error() {
-                    self.error_expected_array_or_slice(span, expected);
+                    self.error_expected_array_or_slice(span, expected, ti);
                 }
                 let err = self.tcx.ty_error();
                 (err, Some(err), err)
@@ -1882,7 +1883,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .emit();
     }
 
-    fn error_expected_array_or_slice(&self, span: Span, expected_ty: Ty<'tcx>) {
+    fn error_expected_array_or_slice(&self, span: Span, expected_ty: Ty<'tcx>, ti: TopInfo<'tcx>) {
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
@@ -1893,6 +1894,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::Ref(_, ty, _) = expected_ty.kind() {
             if let ty::Array(..) | ty::Slice(..) = ty.kind() {
                 err.help("the semantics of slice patterns changed recently; see issue #62254");
+            }
+        } else if Autoderef::new(&self.infcx, self.param_env, self.body_id, span, expected_ty, span)
+            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..)))
+        {
+            if let (Some(span), true) = (ti.span, ti.origin_expr) {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    err.span_suggestion(
+                        span,
+                        "consider slicing here",
+                        format!("{}[..]", snippet),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
         err.span_label(span, format!("pattern cannot match with input type `{}`", expected_ty));
