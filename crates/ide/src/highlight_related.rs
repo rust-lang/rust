@@ -123,7 +123,7 @@ fn highlight_exit_points(
                 }
             }
             ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
-                if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
+                if sema.type_of_expr(&expr).map_or(false, |ty| ty.original.is_never()) {
                     highlights
                         .push(HighlightedRange { access: None, range: expr.syntax().text_range() });
                 }

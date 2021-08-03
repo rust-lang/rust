@@ -86,7 +86,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             let name_ref = call_node.name_ref()?;
             let func_target = match call_node {
                 FnCallNode::CallExpr(expr) => {
-                    let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(db)?;
+                    let callable = sema.type_of_expr(&expr.expr()?)?.original.as_callable(db)?;
                     match callable.kind() {
                         hir::CallableKind::Function(it) => it.try_to_nav(db),
                         _ => None,

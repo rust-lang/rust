@@ -2,7 +2,7 @@ use std::{hash::BuildHasherDefault, iter};
 
 use ast::make;
 use either::Either;
-use hir::{HirDisplay, Local, Semantics};
+use hir::{HirDisplay, Local, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
     search::{FileReference, ReferenceAccess, SearchScope},
@@ -344,7 +344,9 @@ impl FlowKind {
         match self {
             FlowKind::Return(Some(expr))
             | FlowKind::Break(Some(expr))
-            | FlowKind::TryReturn { expr, .. } => ctx.sema.type_of_expr(expr),
+            | FlowKind::TryReturn { expr, .. } => {
+                ctx.sema.type_of_expr(expr).map(TypeInfo::adjusted)
+            }
             FlowKind::Try { .. } => {
                 stdx::never!("try does not have defined expr_ty");
                 None
@@ -850,10 +852,7 @@ fn either_syntax(value: &Either<ast::IdentPat, ast::SelfParam>) -> &SyntaxNode {
 
 fn body_return_ty(ctx: &AssistContext, body: &FunctionBody) -> Option<RetType> {
     match body.tail_expr() {
-        Some(expr) => {
-            let ty = ctx.sema.type_of_expr(&expr)?;
-            Some(RetType::Expr(ty))
-        }
+        Some(expr) => ctx.sema.type_of_expr(&expr).map(TypeInfo::original).map(RetType::Expr),
         None => Some(RetType::Stmt),
     }
 }
@@ -950,7 +949,7 @@ fn expr_err_kind(expr: &ast::Expr, ctx: &AssistContext) -> Option<TryKind> {
     let text = func_name.syntax().text();
 
     if text == "Err" {
-        Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr)? })
+        Some(TryKind::Result { ty: ctx.sema.type_of_expr(expr).map(TypeInfo::original)? })
     } else if text == "None" {
         Some(TryKind::Option)
     } else {

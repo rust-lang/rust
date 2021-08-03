@@ -197,7 +197,7 @@ fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<St
         match args_parent {
             ast::CallExpr(call) => {
                 let func = call.expr()?;
-                let func_ty = sema.type_of_expr(&func)?;
+                let func_ty = sema.type_of_expr(&func)?.adjusted();
                 func_ty.as_callable(sema.db)?
             },
             ast::MethodCallExpr(method) => sema.resolve_method_call_as_callable(&method)?,
@@ -225,7 +225,7 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
 }
 
 fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
-    let ty = sema.type_of_expr(expr)?;
+    let ty = sema.type_of_expr(expr)?.adjusted();
     let ty = ty.remove_ref().unwrap_or(ty);
 
     name_of_type(&ty, sema.db)

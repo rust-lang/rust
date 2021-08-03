@@ -87,6 +87,29 @@ impl PathResolution {
     }
 }
 
+#[derive(Debug)]
+pub struct TypeInfo {
+    /// The original type of the expression or pattern.
+    pub original: Type,
+    /// The adjusted type, if an adjustment happened.
+    pub adjusted: Option<Type>,
+}
+
+impl TypeInfo {
+    pub fn original(self) -> Type {
+        self.original
+    }
+
+    pub fn has_adjustment(&self) -> bool {
+        self.adjusted.is_some()
+    }
+
+    /// The adjusted type, or the original in case no adjustments occurred.
+    pub fn adjusted(self) -> Type {
+        self.adjusted.unwrap_or(self.original)
+    }
+}
+
 /// Primary API to get semantic information, like types, from syntax trees.
 pub struct Semantics<'db, DB> {
     pub db: &'db DB,
@@ -212,21 +235,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_type(ty)
     }
 
-    pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
+    pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {
         self.imp.type_of_expr(expr)
     }
 
-    /// Returns true in case a coercion happened.
-    pub fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<(Type, bool)> {
-        self.imp.type_of_expr_with_coercion(expr)
-    }
-
-    pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
+    pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<TypeInfo> {
         self.imp.type_of_pat(pat)
-    }
-
-    pub fn type_of_pat_with_coercion(&self, expr: &ast::Pat) -> Option<(Type, bool)> {
-        self.imp.type_of_pat_with_coercion(expr)
     }
 
     pub fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
@@ -565,20 +579,16 @@ impl<'db> SemanticsImpl<'db> {
         Type::new_with_resolver(self.db, &scope.resolver, ty)
     }
 
-    fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
-        self.analyze(expr.syntax()).type_of_expr(self.db, expr)
+    fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {
+        self.analyze(expr.syntax())
+            .type_of_expr(self.db, expr)
+            .map(|(ty, coerced)| TypeInfo { original: ty, adjusted: coerced })
     }
 
-    fn type_of_expr_with_coercion(&self, expr: &ast::Expr) -> Option<(Type, bool)> {
-        self.analyze(expr.syntax()).type_of_expr_with_coercion(self.db, expr)
-    }
-
-    fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
-        self.analyze(pat.syntax()).type_of_pat(self.db, pat)
-    }
-
-    fn type_of_pat_with_coercion(&self, pat: &ast::Pat) -> Option<(Type, bool)> {
-        self.analyze(pat.syntax()).type_of_pat_with_coercion(self.db, pat)
+    fn type_of_pat(&self, pat: &ast::Pat) -> Option<TypeInfo> {
+        self.analyze(pat.syntax())
+            .type_of_pat(self.db, pat)
+            .map(|(ty, coerced)| TypeInfo { original: ty, adjusted: coerced })
     }
 
     fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
@@ -757,7 +767,7 @@ impl<'db> SemanticsImpl<'db> {
                     ast::Expr::FieldExpr(field_expr) => field_expr,
                     _ => return None,
                 };
-                let ty = self.type_of_expr(&field_expr.expr()?)?;
+                let ty = self.type_of_expr(&field_expr.expr()?)?.original;
                 if !ty.is_packed(self.db) {
                     return None;
                 }
@@ -784,7 +794,7 @@ impl<'db> SemanticsImpl<'db> {
                 self.type_of_expr(&expr)
             })
             // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.is_packed(self.db))
+            .map(|ty| ty.original.is_packed(self.db))
             .unwrap_or(false)
 
         // FIXME This needs layout computation to be correct. It will highlight
@@ -830,7 +840,7 @@ impl<'db> SemanticsImpl<'db> {
                 }
             })
             // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.is_packed(self.db))
+            .map(|ty| ty.original.is_packed(self.db))
             .unwrap_or(false)
     }
 }

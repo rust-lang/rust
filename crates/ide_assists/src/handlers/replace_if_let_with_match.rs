@@ -127,7 +127,7 @@ fn make_else_arm(
         let pattern = if let [(Either::Left(pat), _)] = conditionals {
             ctx.sema
                 .type_of_pat(&pat)
-                .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
+                .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
                 .zip(Some(pat))
         } else {
             None
@@ -268,7 +268,7 @@ fn binds_name(pat: &ast::Pat) -> bool {
 
 fn is_sad_pat(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
     sema.type_of_pat(pat)
-        .and_then(|ty| TryEnum::from_ty(sema, &ty))
+        .and_then(|ty| TryEnum::from_ty(sema, &ty.adjusted()))
         .map_or(false, |it| does_pat_match_variant(pat, &it.sad_pattern()))
 }
 

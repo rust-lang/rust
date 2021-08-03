@@ -80,13 +80,13 @@ fn is_ref_and_impls_iter_method(
     };
     let wanted_method = if ref_expr.mut_token().is_some() { known::iter_mut } else { known::iter };
     let expr_behind_ref = ref_expr.expr()?;
-    let typ = sema.type_of_expr(&expr_behind_ref)?;
+    let ty = sema.type_of_expr(&expr_behind_ref)?.adjusted();
     let scope = sema.scope(iterable.syntax());
     let krate = scope.module()?.krate();
     let traits_in_scope = scope.traits_in_scope();
     let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
 
-    let has_wanted_method = typ
+    let has_wanted_method = ty
         .iterate_method_candidates(
             sema.db,
             krate,
@@ -110,7 +110,7 @@ fn is_ref_and_impls_iter_method(
 /// Whether iterable implements core::Iterator
 fn impls_core_iter(sema: &hir::Semantics<ide_db::RootDatabase>, iterable: &ast::Expr) -> bool {
     let it_typ = match sema.type_of_expr(iterable) {
-        Some(it) => it,
+        Some(it) => it.adjusted(),
         None => return false,
     };
 

@@ -86,7 +86,7 @@ fn validate_method_call_expr(
     let receiver = expr.receiver()?;
     let expr = ast::Expr::MethodCallExpr(expr);
 
-    let it_type = sema.type_of_expr(&receiver)?;
+    let it_type = sema.type_of_expr(&receiver)?.adjusted();
     let module = sema.scope(receiver.syntax()).module()?;
     let krate = module.krate();
 

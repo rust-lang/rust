@@ -118,7 +118,9 @@ fn call_info_impl(
     let calling_node = FnCallNode::with_node(&token.parent()?)?;
 
     let callable = match &calling_node {
-        FnCallNode::CallExpr(call) => sema.type_of_expr(&call.expr()?)?.as_callable(sema.db)?,
+        FnCallNode::CallExpr(call) => {
+            sema.type_of_expr(&call.expr()?)?.adjusted().as_callable(sema.db)?
+        }
         FnCallNode::MethodCallExpr(call) => sema.resolve_method_call_as_callable(call)?,
     };
     let active_param = if let Some(arg_list) = calling_node.arg_list() {

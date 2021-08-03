@@ -609,9 +609,13 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         expr: &ast::Expr,
     ) -> Result<usize, MatchFailed> {
         use hir::HirDisplay;
-        let code_type = self.sema.type_of_expr(expr).ok_or_else(|| {
-            match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
-        })?;
+        let code_type = self
+            .sema
+            .type_of_expr(expr)
+            .ok_or_else(|| {
+                match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
+            })?
+            .original;
         // Temporary needed to make the borrow checker happy.
         let res = code_type
             .autoderef(self.sema.db)

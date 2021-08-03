@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileRange, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
@@ -225,33 +225,29 @@ fn hover_type_info(
     config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
 ) -> Option<HoverResult> {
-    let (ty, coerced) = match expr_or_pat {
-        Either::Left(expr) => sema.type_of_expr_with_coercion(expr)?,
-        Either::Right(pat) => sema.type_of_pat_with_coercion(pat)?,
+    let TypeInfo { original, adjusted } = match expr_or_pat {
+        Either::Left(expr) => sema.type_of_expr(expr)?,
+        Either::Right(pat) => sema.type_of_pat(pat)?,
     };
 
     let mut res = HoverResult::default();
-    res.markup = if coerced {
-        let uncoerced_ty = match expr_or_pat {
-            Either::Left(expr) => sema.type_of_expr(expr)?,
-            Either::Right(pat) => sema.type_of_pat(pat)?,
-        };
-        let uncoerced = uncoerced_ty.display(sema.db).to_string();
-        let coerced = ty.display(sema.db).to_string();
+    res.markup = if let Some(adjusted_ty) = adjusted {
+        let original = original.display(sema.db).to_string();
+        let adjusted = adjusted_ty.display(sema.db).to_string();
         format!(
-            "```text\nType: {:>upad$}\nCoerced to: {:>cpad$}\n```\n",
-            uncoerced = uncoerced,
-            coerced = coerced,
+            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
+            uncoerced = original,
+            coerced = adjusted,
             // 6 base padding for static text prefix of each line
-            upad = 6 + coerced.len().max(uncoerced.len()),
-            cpad = uncoerced.len(),
+            apad = 6 + adjusted.len().max(original.len()),
+            opad = original.len(),
         )
         .into()
     } else {
         if config.markdown() {
-            Markup::fenced_block(&ty.display(sema.db))
+            Markup::fenced_block(&original.display(sema.db))
         } else {
-            ty.display(sema.db).to_string().into()
+            original.display(sema.db).to_string().into()
         }
     };
     Some(res)

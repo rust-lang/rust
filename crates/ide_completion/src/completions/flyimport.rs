@@ -180,7 +180,7 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
     if let Some(dot_receiver) = ctx.dot_receiver() {
         ImportAssets::for_fuzzy_method_call(
             current_module,
-            ctx.sema.type_of_expr(dot_receiver)?,
+            ctx.sema.type_of_expr(dot_receiver)?.original,
             fuzzy_name,
             dot_receiver.syntax().clone(),
         )

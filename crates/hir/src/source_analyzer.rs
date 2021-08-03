@@ -116,46 +116,36 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    pub(crate) fn type_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
-        let expr_id = self.expr_id(db, expr)?;
-        let ty = self.infer.as_ref()?[expr_id].clone();
-        Type::new_with_resolver(db, &self.resolver, ty)
-    }
-
-    pub(crate) fn type_of_expr_with_coercion(
+    pub(crate) fn type_of_expr(
         &self,
         db: &dyn HirDatabase,
         expr: &ast::Expr,
-    ) -> Option<(Type, bool)> {
+    ) -> Option<(Type, Option<Type>)> {
         let expr_id = self.expr_id(db, expr)?;
         let infer = self.infer.as_ref()?;
-        let (ty, coerced) = infer
+        let coerced = infer
             .expr_adjustments
             .get(&expr_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| (&adjust.target, true)))
-            .unwrap_or_else(|| (&infer[expr_id], false));
-        Type::new_with_resolver(db, &self.resolver, ty.clone()).zip(Some(coerced))
+            .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
+        let ty = infer[expr_id].clone();
+        let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
+        mk_ty(ty.clone()).zip(Some(coerced.and_then(mk_ty)))
     }
 
-    pub(crate) fn type_of_pat(&self, db: &dyn HirDatabase, pat: &ast::Pat) -> Option<Type> {
-        let pat_id = self.pat_id(pat)?;
-        let ty = self.infer.as_ref()?[pat_id].clone();
-        Type::new_with_resolver(db, &self.resolver, ty)
-    }
-
-    pub(crate) fn type_of_pat_with_coercion(
+    pub(crate) fn type_of_pat(
         &self,
         db: &dyn HirDatabase,
         pat: &ast::Pat,
-    ) -> Option<(Type, bool)> {
+    ) -> Option<(Type, Option<Type>)> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let (ty, coerced) = infer
+        let coerced = infer
             .pat_adjustments
             .get(&pat_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| (&adjust.target, true)))
-            .unwrap_or_else(|| (&infer[pat_id], false));
-        Type::new_with_resolver(db, &self.resolver, ty.clone()).zip(Some(coerced))
+            .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
+        let ty = infer[pat_id].clone();
+        let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
+        mk_ty(ty.clone()).zip(Some(coerced.and_then(mk_ty)))
     }
 
     pub(crate) fn type_of_self(

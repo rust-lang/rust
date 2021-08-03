@@ -12,9 +12,9 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
         Some(ImmediateLocation::RecordExpr(record_expr)) => {
             let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
             let default_trait = FamousDefs(&ctx.sema, ctx.krate).core_default_Default();
-            let impl_default_trait = default_trait
-                .zip(ty)
-                .map_or(false, |(default_trait, ty)| ty.impls_trait(ctx.db, default_trait, &[]));
+            let impl_default_trait = default_trait.zip(ty).map_or(false, |(default_trait, ty)| {
+                ty.original.impls_trait(ctx.db, default_trait, &[])
+            });
 
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
             if impl_default_trait && !missing_fields.is_empty() {

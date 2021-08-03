@@ -18,7 +18,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn infer_function_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
     let module = ctx.sema.scope(tail_expr.syntax()).module()?;
-    let ty = ctx.sema.type_of_expr(&tail_expr)?;
+    let ty = ctx.sema.type_of_expr(&tail_expr)?.adjusted();
     if ty.is_unit() {
         return None;
     }

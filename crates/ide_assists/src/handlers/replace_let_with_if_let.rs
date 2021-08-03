@@ -49,8 +49,9 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
         target,
         |edit| {
             let ty = ctx.sema.type_of_expr(&init);
-            let happy_variant =
-                ty.and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty)).map(|it| it.happy_case());
+            let happy_variant = ty
+                .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
+                .map(|it| it.happy_case());
             let pat = match happy_variant {
                 None => original_pat,
                 Some(var_name) => {

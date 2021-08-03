@@ -54,9 +54,10 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     }
 
     let ty = match (pat, expr) {
-        (ast::Pat::IdentPat(_), Some(expr)) => ctx.sema.type_of_expr_with_coercion(&expr)?.0,
+        (ast::Pat::IdentPat(_), Some(expr)) => ctx.sema.type_of_expr(&expr)?,
         (pat, _) => ctx.sema.type_of_pat(&pat)?,
-    };
+    }
+    .adjusted();
 
     // Unresolved or unnameable types can't be annotated
     if ty.contains_unknown() || ty.is_closure() {

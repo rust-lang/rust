@@ -32,8 +32,8 @@ pub(crate) fn goto_type_definition(
     let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
         let ty = match_ast! {
             match node {
-                ast::Expr(it) => sema.type_of_expr(&it)?,
-                ast::Pat(it) => sema.type_of_pat(&it)?,
+                ast::Expr(it) => sema.type_of_expr(&it)?.original,
+                ast::Pat(it) => sema.type_of_pat(&it)?.original,
                 ast::SelfParam(it) => sema.type_of_self(&it)?,
                 ast::Type(it) => sema.resolve_type(&it)?,
                 ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,

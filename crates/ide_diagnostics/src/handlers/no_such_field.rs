@@ -62,7 +62,7 @@ fn missing_record_expr_field_fixes(
     };
     let def_file_id = def_file_id.original_file(sema.db);
 
-    let new_field_type = sema.type_of_expr(&record_expr_field.expr()?)?;
+    let new_field_type = sema.type_of_expr(&record_expr_field.expr()?)?.adjusted();
     if new_field_type.is_unknown() {
         return None;
     }

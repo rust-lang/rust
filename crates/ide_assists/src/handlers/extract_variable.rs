@@ -39,8 +39,8 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         .ancestors()
         .take_while(|it| it.text_range().contains_range(ctx.frange.range))
         .find_map(valid_target_expr)?;
-    if let Some(ty) = ctx.sema.type_of_expr(&to_extract) {
-        if ty.is_unit() {
+    if let Some(ty_info) = ctx.sema.type_of_expr(&to_extract) {
+        if ty_info.adjusted().is_unit() {
             return None;
         }
     }
