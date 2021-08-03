@@ -23,7 +23,6 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
-use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
@@ -32,6 +31,7 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
+use std::convert::TryFrom;
 use std::ops::{Deref, DerefMut};
 use std::time::{Duration, Instant};
 
@@ -128,55 +128,92 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ///
 /// The `old_info` argument is a bit odd. It is intended for use in an upcast,
 /// where the new vtable for an object will be derived from the old one.
-pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
-    cx: &Cx,
+pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
-    old_info: Option<Cx::Value>,
-) -> Cx::Value {
+    old_info: Option<Bx::Value>,
+) -> Bx::Value {
+    let cx = bx.cx();
     let (source, target) =
-        cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, cx.param_env());
+        cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, bx.param_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
-        (&ty::Dynamic(..), &ty::Dynamic(..)) => {
-            // For now, upcasts are limited to changes in marker
-            // traits, and hence never actually require an actual
-            // change to the vtable.
-            old_info.expect("unsized_info: missing old info for trait upcast")
+        (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            let old_info =
+                old_info.expect("unsized_info: missing old info for trait upcasting coercion");
+            if data_a.principal_def_id() == data_b.principal_def_id() {
+                return old_info;
+            }
+
+            // trait upcasting coercion
+
+            // if both of the two `principal`s are `None`, this function would have returned early above.
+            // and if one of the two `principal`s is `None`, typechecking would have rejected this case.
+            let principal_a = data_a
+                .principal()
+                .expect("unsized_info: missing principal trait for trait upcasting coercion");
+            let principal_b = data_b
+                .principal()
+                .expect("unsized_info: missing principal trait for trait upcasting coercion");
+
+            let vptr_entry_idx = cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((
+                principal_a.with_self_ty(cx.tcx(), source),
+                principal_b.with_self_ty(cx.tcx(), source),
+            ));
+
+            if let Some(entry_idx) = vptr_entry_idx {
+                let ptr_ty = cx.type_i8p();
+                let ptr_align = cx.tcx().data_layout.pointer_align.abi;
+                let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
+                let gep =
+                    bx.inbounds_gep(llvtable, &[bx.const_usize(u64::try_from(entry_idx).unwrap())]);
+                let new_vptr = bx.load(ptr_ty, gep, ptr_align);
+                bx.nonnull_metadata(new_vptr);
+                // Vtable loads are invariant.
+                bx.set_invariant_load(new_vptr);
+                new_vptr
+            } else {
+                old_info
+            }
         }
         (_, &ty::Dynamic(ref data, ..)) => {
-            let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target)).field(cx, FAT_PTR_EXTRA);
-            cx.const_ptrcast(
-                meth::get_vtable(cx, source, data.principal()),
-                cx.backend_type(vtable_ptr),
-            )
+            let vtable_ptr_ty = cx.scalar_pair_element_backend_type(
+                cx.layout_of(cx.tcx().mk_mut_ptr(target)),
+                1,
+                true,
+            );
+            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
 
-/// Coerces `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+/// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
+pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>,
+    old_info: Option<Bx::Value>,
 ) -> (Bx::Value, Bx::Value) {
-    debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
+    debug!("unsize_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bx.cx().type_is_sized(a));
+            assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
             let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
+            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
-
             let src_layout = bx.cx().layout_of(src_ty);
             let dst_layout = bx.cx().layout_of(dst_ty);
+            if src_ty == dst_ty {
+                return (src, old_info.unwrap());
+            }
             let mut result = None;
             for i in 0..src_layout.fields.count() {
                 let src_f = src_layout.field(bx.cx(), i);
@@ -190,18 +227,15 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 let dst_f = dst_layout.field(bx.cx(), i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
-                result = Some(unsize_thin_ptr(bx, src, src_f.ty, dst_f.ty));
+                result = Some(unsize_ptr(bx, src, src_f.ty, dst_f.ty, old_info));
             }
             let (lldata, llextra) = result.unwrap();
+            let lldata_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true);
+            let llextra_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true);
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            // FIXME(eddyb) move these out of this `match` arm, so they're always
-            // applied, uniformly, no matter the source/destination types.
-            (
-                bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true)),
-                bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true)),
-            )
+            (bx.bitcast(lldata, lldata_ty), bx.bitcast(llextra, llextra_ty))
         }
-        _ => bug!("unsize_thin_ptr: called on bad types"),
+        _ => bug!("unsize_ptr: called on bad types"),
     }
 }
 
@@ -217,17 +251,8 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     match (src_ty.kind(), dst_ty.kind()) {
         (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
             let (base, info) = match bx.load_operand(src).val {
-                OperandValue::Pair(base, info) => {
-                    // fat-ptr to fat-ptr unsize preserves the vtable
-                    // i.e., &'a fmt::Debug+Send => &'a fmt::Debug
-                    // So we need to pointercast the base to ensure
-                    // the types match up.
-                    // FIXME(eddyb) use `scalar_pair_element_backend_type` here,
-                    // like `unsize_thin_ptr` does.
-                    let thin_ptr = dst.layout.field(bx.cx(), FAT_PTR_ADDR);
-                    (bx.pointercast(base, bx.cx().backend_type(thin_ptr)), info)
-                }
-                OperandValue::Immediate(base) => unsize_thin_ptr(bx, base, src_ty, dst_ty),
+                OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
+                OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
                 OperandValue::Ref(..) => bug!(),
             };
             OperandValue::Pair(base, info).store(bx, dst);

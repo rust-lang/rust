@@ -977,6 +977,11 @@ rustc_queries! {
         desc { |tcx| "finding all vtable entries for trait {}", tcx.def_path_str(key.def_id()) }
     }
 
+    query vtable_trait_upcasting_coercion_new_vptr_slot(key: (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>)) -> Option<usize> {
+        desc { |tcx| "finding the slot within vtable for trait {} vtable ptr during trait upcasting coercion from {} vtable",
+            tcx.def_path_str(key.1.def_id()), tcx.def_path_str(key.0.def_id()) }
+    }
+
     query codegen_fulfill_obligation(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
     ) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
