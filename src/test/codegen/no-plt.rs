@@ -4,7 +4,7 @@
 
 // We need a function which is normally called through the PLT.
 extern "C" {
-    // CHECK: Function Attrs: nounwind nonlazybind
+    // CHECK: Function Attrs:{{.*}}nonlazybind
     fn getenv(name: *const u8) -> *mut u8;
 }
 
