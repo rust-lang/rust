@@ -1600,6 +1600,10 @@ impl Symbol {
         self.0.as_u32()
     }
 
+    pub fn len(self) -> usize {
+        with_interner(|interner| interner.get(self).len())
+    }
+
     pub fn is_empty(self) -> bool {
         self == kw::Empty
     }
