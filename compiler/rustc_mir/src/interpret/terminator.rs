@@ -73,7 +73,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.memory.get_fn(fn_ptr.into())?;
+                        let fn_val = self.memory.get_fn(fn_ptr)?;
                         (
                             fn_val,
                             caller_abi,

@@ -599,7 +599,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.global_base_pointer(Pointer::new(id, offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr.into(), layout.align.abi))
             }
-            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x.into())?.into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
