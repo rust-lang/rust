@@ -402,7 +402,7 @@ assert_eq!(a, 5);
 
 This will decrement the `{0}` register value from 10 to 3, then add 2 and store it in `a`.
 
-This example show a few thing:
+This example shows a few things:
 
 First that the same number can be used as a label multiple times in the same inline block.
 
