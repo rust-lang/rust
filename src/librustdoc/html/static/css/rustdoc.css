@@ -1508,11 +1508,35 @@ details.rustdoc-toggle > summary.hideme > span {
 }
 
 details.rustdoc-toggle > summary::before {
-	content: "[+]";
-	font-weight: 300;
-	font-size: 0.8em;
-	letter-spacing: 1px;
+	content: "";
 	cursor: pointer;
+	width: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat;
+	background-position: top left;
+	display: inline-block;
+	vertical-align: middle;
+	opacity: .5;
+}
+
+/* Screen readers see the text version at the end the line.
+	Visual readers see the icon at the start of the line, but small and transparent. */
+details.rustdoc-toggle > summary::after {
+	content: "Expand";
+	overflow: hidden;
+	width: 0;
+	height: 0;
+	position: absolute;
+}
+
+details.rustdoc-toggle > summary.hideme::after {
+	/* "hideme" toggles already have a description when they're contracted */
+	content: "";
+}
+
+details.rustdoc-toggle > summary:focus::before,
+details.rustdoc-toggle > summary:hover::before {
+	opacity: 1;
 }
 
 details.rustdoc-toggle.top-doc > summary,
@@ -1560,20 +1584,44 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.rustdoc-toggle[open] > summary::before {
-	content: "[−]";
-	display: inline;
+details.rustdoc-toggle[open] > summary::before,
+details.rustdoc-toggle[open] > summary.hideme::before {
+	width: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat;
+	background-position: top left;
+	display: inline-block;
+	content: "";
+}
+
+details.rustdoc-toggle[open] > summary::after,
+details.rustdoc-toggle[open] > summary.hideme::after {
+	content: "Collapse";
 }
 
 details.undocumented > summary::before {
-	content: "[+] Show hidden undocumented items";
+	padding-left: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat;
+	background-position: top left;
+	content: "Show hidden undocumented items";
 	cursor: pointer;
 	font-size: 16px;
 	font-weight: 300;
+	opacity: .5;
+}
+
+details.undocumented > summary:focus::before,
+details.undocumented > summary:hover::before {
+	opacity: 1;
 }
 
 details.undocumented[open] > summary::before {
-	content: "[−] Hide undocumented items";
+	padding-left: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat
+	background-position: top left;
+	content: "Hide undocumented items";
 }
 
 /* Media Queries */
