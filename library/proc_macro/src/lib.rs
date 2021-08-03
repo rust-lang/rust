@@ -432,8 +432,8 @@ pub struct LineColumn {
     /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub line: usize,
-    /// The 1-indexed column (in UTF-8 characters) in the source file on which
-    /// the span starts or ends (inclusive).
+    /// The 1-indexed column (number of bytes in UTF-8 encoding) in the source
+    /// file on which the span starts or ends (inclusive).
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub column: usize,
 }
