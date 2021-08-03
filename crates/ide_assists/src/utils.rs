@@ -270,8 +270,8 @@ fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Opti
 
 fn bin_impls_ord(sema: &Semantics<RootDatabase>, bin: &ast::BinExpr) -> bool {
     match (
-        bin.lhs().and_then(|lhs| sema.type_of_expr(&lhs)).map(hir::TypeInfo::coerced),
-        bin.rhs().and_then(|rhs| sema.type_of_expr(&rhs)).map(hir::TypeInfo::coerced),
+        bin.lhs().and_then(|lhs| sema.type_of_expr(&lhs)).map(hir::TypeInfo::adjusted),
+        bin.rhs().and_then(|rhs| sema.type_of_expr(&rhs)).map(hir::TypeInfo::adjusted),
     ) {
         (Some(lhs_ty), Some(rhs_ty)) if lhs_ty == rhs_ty => {
             let krate = sema.scope(bin.syntax()).module().map(|it| it.krate());

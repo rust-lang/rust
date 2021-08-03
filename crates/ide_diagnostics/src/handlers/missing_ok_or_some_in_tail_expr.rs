@@ -35,7 +35,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingOkOrSomeInTailExpr) -> Op
     let tail_expr_range = tail_expr.syntax().text_range();
     let mut builder = TextEdit::builder();
     for_each_tail_expr(&tail_expr, &mut |expr| {
-        if ctx.sema.type_of_expr(expr).map(TypeInfo::ty).as_ref() != Some(&d.expected) {
+        if ctx.sema.type_of_expr(expr).map(TypeInfo::original).as_ref() != Some(&d.expected) {
             builder.insert(expr.syntax().text_range().start(), format!("{}(", d.required));
             builder.insert(expr.syntax().text_range().end(), ")".to_string());
         }

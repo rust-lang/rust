@@ -90,22 +90,23 @@ impl PathResolution {
 #[derive(Debug)]
 pub struct TypeInfo {
     /// The original type of the expression or pattern.
-    pub ty: Type,
-    /// The coerced type, if a coercion happened.
-    pub coerced: Option<Type>,
+    pub original: Type,
+    /// The adjusted type, if an adjustment happened.
+    pub adjusted: Option<Type>,
 }
 
 impl TypeInfo {
-    pub fn ty(self) -> Type {
-        self.ty
+    pub fn original(self) -> Type {
+        self.original
     }
 
-    pub fn has_coercion(&self) -> bool {
-        self.coerced.is_some()
+    pub fn has_adjustment(&self) -> bool {
+        self.adjusted.is_some()
     }
 
-    pub fn coerced(self) -> Type {
-        self.coerced.unwrap_or(self.ty)
+    /// The adjusted type, or the original in case no adjustments occurred.
+    pub fn adjusted(self) -> Type {
+        self.adjusted.unwrap_or(self.original)
     }
 }
 
@@ -581,13 +582,13 @@ impl<'db> SemanticsImpl<'db> {
     fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {
         self.analyze(expr.syntax())
             .type_of_expr(self.db, expr)
-            .map(|(ty, coerced)| TypeInfo { ty, coerced })
+            .map(|(ty, coerced)| TypeInfo { original: ty, adjusted: coerced })
     }
 
     fn type_of_pat(&self, pat: &ast::Pat) -> Option<TypeInfo> {
         self.analyze(pat.syntax())
             .type_of_pat(self.db, pat)
-            .map(|(ty, coerced)| TypeInfo { ty, coerced })
+            .map(|(ty, coerced)| TypeInfo { original: ty, adjusted: coerced })
     }
 
     fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
@@ -766,7 +767,7 @@ impl<'db> SemanticsImpl<'db> {
                     ast::Expr::FieldExpr(field_expr) => field_expr,
                     _ => return None,
                 };
-                let ty = self.type_of_expr(&field_expr.expr()?)?.ty;
+                let ty = self.type_of_expr(&field_expr.expr()?)?.original;
                 if !ty.is_packed(self.db) {
                     return None;
                 }
@@ -793,7 +794,7 @@ impl<'db> SemanticsImpl<'db> {
                 self.type_of_expr(&expr)
             })
             // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.ty.is_packed(self.db))
+            .map(|ty| ty.original.is_packed(self.db))
             .unwrap_or(false)
 
         // FIXME This needs layout computation to be correct. It will highlight
@@ -839,7 +840,7 @@ impl<'db> SemanticsImpl<'db> {
                 }
             })
             // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.ty.is_packed(self.db))
+            .map(|ty| ty.original.is_packed(self.db))
             .unwrap_or(false)
     }
 }

@@ -190,7 +190,7 @@ pub(crate) fn inline_(
                         let ty = ctx
                             .sema
                             .type_of_expr(&expr)
-                            .filter(TypeInfo::has_coercion)
+                            .filter(TypeInfo::has_adjustment)
                             .and_then(|_| param_ty);
                         body.push_front(
                             make::let_stmt(pat, ty, Some(expr)).clone_for_update().into(),

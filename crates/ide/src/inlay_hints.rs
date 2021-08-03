@@ -117,7 +117,7 @@ fn get_chaining_hints(
             next_next = tokens.next()?.kind();
         }
         if next_next == T![.] {
-            let ty = sema.type_of_expr(&expr)?.ty;
+            let ty = sema.type_of_expr(&expr)?.original;
             if ty.is_unknown() {
                 return None;
             }
@@ -189,7 +189,7 @@ fn get_bind_pat_hints(
     let krate = sema.scope(pat.syntax()).module().map(|it| it.krate());
     let famous_defs = FamousDefs(sema, krate);
 
-    let ty = sema.type_of_pat(&pat.clone().into())?.ty;
+    let ty = sema.type_of_pat(&pat.clone().into())?.original;
 
     if should_not_display_type_hint(sema, &pat, &ty) {
         return None;
@@ -308,7 +308,7 @@ fn should_not_display_type_hint(
                     return it.in_token().is_none() ||
                         it.iterable()
                             .and_then(|iterable_expr| sema.type_of_expr(&iterable_expr))
-                            .map(TypeInfo::ty)
+                            .map(TypeInfo::original)
                             .map_or(true, |iterable_ty| iterable_ty.is_unknown() || iterable_ty.is_unit())
                 },
                 _ => (),
@@ -394,7 +394,7 @@ fn is_enum_name_similar_to_param_name(
     argument: &ast::Expr,
     param_name: &str,
 ) -> bool {
-    match sema.type_of_expr(argument).and_then(|t| t.ty.as_adt()) {
+    match sema.type_of_expr(argument).and_then(|t| t.original.as_adt()) {
         Some(hir::Adt::Enum(e)) => to_lower_snake_case(&e.name(sema.db).to_string()) == param_name,
         _ => false,
     }
@@ -431,7 +431,7 @@ fn get_callable(
 ) -> Option<(hir::Callable, ast::ArgList)> {
     match expr {
         ast::Expr::CallExpr(expr) => {
-            sema.type_of_expr(&expr.expr()?)?.ty.as_callable(sema.db).zip(expr.arg_list())
+            sema.type_of_expr(&expr.expr()?)?.original.as_callable(sema.db).zip(expr.arg_list())
         }
         ast::Expr::MethodCallExpr(expr) => {
             sema.resolve_method_call_as_callable(expr).zip(expr.arg_list())

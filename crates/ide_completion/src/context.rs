@@ -454,7 +454,7 @@ impl<'a> CompletionContext<'a> {
                         let ty = it.pat()
                             .and_then(|pat| self.sema.type_of_pat(&pat))
                             .or_else(|| it.initializer().and_then(|it| self.sema.type_of_expr(&it)))
-                            .map(TypeInfo::ty);
+                            .map(TypeInfo::original);
                         let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
                             ident.name().map(NameOrNameRef::Name)
                         } else {
@@ -497,13 +497,13 @@ impl<'a> CompletionContext<'a> {
                     ast::RecordExprField(it) => {
                         cov_mark::hit!(expected_type_struct_field_with_leading_char);
                         (
-                            it.expr().as_ref().and_then(|e| self.sema.type_of_expr(e)).map(TypeInfo::ty),
+                            it.expr().as_ref().and_then(|e| self.sema.type_of_expr(e)).map(TypeInfo::original),
                             it.field_name().map(NameOrNameRef::NameRef),
                         )
                     },
                     ast::MatchExpr(it) => {
                         cov_mark::hit!(expected_type_match_arm_without_leading_char);
-                        let ty = it.expr().and_then(|e| self.sema.type_of_expr(&e)).map(TypeInfo::ty);
+                        let ty = it.expr().and_then(|e| self.sema.type_of_expr(&e)).map(TypeInfo::original);
                         (ty, None)
                     },
                     ast::IfExpr(it) => {
@@ -511,13 +511,13 @@ impl<'a> CompletionContext<'a> {
                         let ty = it.condition()
                             .and_then(|cond| cond.expr())
                             .and_then(|e| self.sema.type_of_expr(&e))
-                            .map(TypeInfo::ty);
+                            .map(TypeInfo::original);
                         (ty, None)
                     },
                     ast::IdentPat(it) => {
                         cov_mark::hit!(expected_type_if_let_with_leading_char);
                         cov_mark::hit!(expected_type_match_arm_with_leading_char);
-                        let ty = self.sema.type_of_pat(&ast::Pat::from(it)).map(TypeInfo::ty);
+                        let ty = self.sema.type_of_pat(&ast::Pat::from(it)).map(TypeInfo::original);
                         (ty, None)
                     },
                     ast::Fn(it) => {
@@ -528,7 +528,7 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::ClosureExpr(it) => {
                         let ty = self.sema.type_of_expr(&it.into());
-                        ty.and_then(|ty| ty.ty.as_callable(self.db))
+                        ty.and_then(|ty| ty.original.as_callable(self.db))
                             .map(|c| (Some(c.return_type()), None))
                             .unwrap_or((None, None))
                     },

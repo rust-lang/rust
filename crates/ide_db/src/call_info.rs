@@ -119,7 +119,7 @@ fn call_info_impl(
 
     let callable = match &calling_node {
         FnCallNode::CallExpr(call) => {
-            sema.type_of_expr(&call.expr()?)?.coerced().as_callable(sema.db)?
+            sema.type_of_expr(&call.expr()?)?.adjusted().as_callable(sema.db)?
         }
         FnCallNode::MethodCallExpr(call) => sema.resolve_method_call_as_callable(call)?,
     };

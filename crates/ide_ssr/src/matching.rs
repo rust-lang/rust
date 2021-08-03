@@ -615,7 +615,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             .ok_or_else(|| {
                 match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
             })?
-            .ty;
+            .original;
         // Temporary needed to make the borrow checker happy.
         let res = code_type
             .autoderef(self.sema.db)
