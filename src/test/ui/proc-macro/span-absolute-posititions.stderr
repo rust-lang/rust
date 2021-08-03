@@ -1,0 +1,14 @@
+error: line/column mismatch: (0, 35) != (13, 35)
+  --> $DIR/span-absolute-posititions.rs:13:35
+   |
+LL | assert_span_pos::assert_span_pos!(0, 35);
+   |                                   ^
+
+error: line/column mismatch: (14, 0) != (14, 35)
+  --> $DIR/span-absolute-posititions.rs:14:35
+   |
+LL | assert_span_pos::assert_span_pos!(14, 0);
+   |                                   ^^
+
+error: aborting due to 2 previous errors
+
