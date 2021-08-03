@@ -1170,8 +1170,8 @@ public:
         F.addFnAttr(Attribute::WillReturn);
         F.addParamAttr(0, Attribute::WriteOnly);
         if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
-            F.addParamAttr(2, Attribute::NoCapture);
-            F.addParamAttr(2, Attribute::ReadOnly);
+          F.addParamAttr(2, Attribute::NoCapture);
+          F.addParamAttr(2, Attribute::ReadOnly);
         }
         F.addParamAttr(6, Attribute::WriteOnly);
       }
@@ -1184,8 +1184,8 @@ public:
         F.addFnAttr(Attribute::WillReturn);
         F.addParamAttr(0, Attribute::WriteOnly);
         if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
-            F.addParamAttr(2, Attribute::NoCapture);
-            F.addParamAttr(2, Attribute::ReadOnly);
+          F.addParamAttr(2, Attribute::NoCapture);
+          F.addParamAttr(2, Attribute::ReadOnly);
         }
         F.addParamAttr(6, Attribute::WriteOnly);
       }
@@ -1197,8 +1197,8 @@ public:
         F.addFnAttr(Attribute::NoRecurse);
         F.addFnAttr(Attribute::WillReturn);
         if (F.getFunctionType()->getParamType(0)->isPointerTy()) {
-            F.addParamAttr(0, Attribute::NoCapture);
-            F.addParamAttr(0, Attribute::ReadOnly);
+          F.addParamAttr(0, Attribute::NoCapture);
+          F.addParamAttr(0, Attribute::ReadOnly);
         }
         F.addParamAttr(1, Attribute::WriteOnly);
         F.addParamAttr(1, Attribute::NoCapture);

@@ -141,20 +141,20 @@ public:
 
   llvm::Value *MPI_TYPE_SIZE(llvm::Value *DT, IRBuilder<> &B, Type *intType) {
     if (DT->getType()->isIntegerTy())
-        DT = B.CreateIntToPtr(DT, Type::getInt8PtrTy(DT->getContext()));
-      
+      DT = B.CreateIntToPtr(DT, Type::getInt8PtrTy(DT->getContext()));
+
     if (Constant *C = dyn_cast<Constant>(DT)) {
-        while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
-          C = CE->getOperand(0);
-        }
-        if (auto GV = dyn_cast<GlobalVariable>(C)) {
-          if (GV->getName() == "ompi_mpi_double") {
-            return ConstantInt::get(intType, 8, false);
-          } else if (GV->getName() == "ompi_mpi_float") {
-            return ConstantInt::get(intType, 4, false);
-          }
+      while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
+        C = CE->getOperand(0);
+      }
+      if (auto GV = dyn_cast<GlobalVariable>(C)) {
+        if (GV->getName() == "ompi_mpi_double") {
+          return ConstantInt::get(intType, 8, false);
+        } else if (GV->getName() == "ompi_mpi_float") {
+          return ConstantInt::get(intType, 4, false);
         }
       }
+    }
     Type *pargs[] = {Type::getInt8PtrTy(DT->getContext()),
                      PointerType::getUnqual(intType)};
     auto FT = FunctionType::get(intType, pargs, false);
@@ -3517,8 +3517,9 @@ public:
         BuilderZ.CreateStore(impialloc, d_req);
 
         if (funcName == "MPI_Isend") {
-          Value *tysize = MPI_TYPE_SIZE(
-              gutils->getNewFromOriginal(call.getOperand(2)), BuilderZ, call.getType());
+          Value *tysize =
+              MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
+                            BuilderZ, call.getType());
 
           auto len_arg = BuilderZ.CreateZExtOrTrunc(
               gutils->getNewFromOriginal(call.getOperand(1)),
@@ -3609,8 +3610,9 @@ public:
         auto len_arg = Builder2.CreateZExtOrTrunc(
             lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
             Type::getInt64Ty(Builder2.getContext()));
-        auto tysize = MPI_TYPE_SIZE(
-            gutils->getNewFromOriginal(call.getOperand(2)), Builder2, call.getType());
+        auto tysize =
+            MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
+                          Builder2, call.getType());
         len_arg = Builder2.CreateMul(
             len_arg,
             Builder2.CreateZExtOrTrunc(tysize,
@@ -3641,7 +3643,8 @@ public:
           if (Mode == DerivativeMode::ReverseModeCombined)
             firstallocation = lookup(firstallocation, Builder2);
           else {
-            firstallocation = Builder2.CreatePHI(Type::getInt8PtrTy(call.getContext()), 0);
+            firstallocation =
+                Builder2.CreatePHI(Type::getInt8PtrTy(call.getContext()), 0);
             firstallocation = gutils->cacheForReverse(
                 Builder2, firstallocation, getIndex(&call, CacheType::Tape));
           }
@@ -3659,7 +3662,7 @@ public:
           assert(0 && "illegal mpi");
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -3688,16 +3691,19 @@ public:
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
 
         Value *isNull = ConstantInt::getFalse(call.getContext());
-        if (auto GV = gutils->newFunc->getParent()->getNamedValue("ompi_request_null")) {
-            isNull = Builder2.CreateICmpEQ(d_reqp, Builder2.CreateBitCast(GV, d_reqp->getType()));
+        if (auto GV = gutils->newFunc->getParent()->getNamedValue(
+                "ompi_request_null")) {
+          isNull = Builder2.CreateICmpEQ(
+              d_reqp, Builder2.CreateBitCast(GV, d_reqp->getType()));
         }
         BasicBlock *currentBlock = Builder2.GetInsertBlock();
-          BasicBlock *nonnullBlock = gutils->addReverseBlock(
-              currentBlock, currentBlock->getName() + "_nonnull", gutils->newFunc);
-          BasicBlock *endBlock = gutils->addReverseBlock(
-              nonnullBlock, currentBlock->getName() + "_end", gutils->newFunc);
+        BasicBlock *nonnullBlock = gutils->addReverseBlock(
+            currentBlock, currentBlock->getName() + "_nonnull",
+            gutils->newFunc);
+        BasicBlock *endBlock = gutils->addReverseBlock(
+            nonnullBlock, currentBlock->getName() + "_end", gutils->newFunc);
 
-          Builder2.CreateCondBr(isNull, endBlock, nonnullBlock);
+        Builder2.CreateCondBr(isNull, endBlock, nonnullBlock);
         Builder2.SetInsertPoint(nonnullBlock);
 
         Value *cache = Builder2.CreateLoad(d_reqp);
@@ -3723,14 +3729,14 @@ public:
         cal->setCallingConv(dwait->getCallingConv());
         cal->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
         Builder2.CreateBr(endBlock);
-        
+
         Builder2.SetInsertPoint(endBlock);
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
-    
+
     if (funcName == "MPI_Waitall") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
@@ -3738,30 +3744,36 @@ public:
         getReverseBuilder(Builder2);
 
         assert(!gutils->isConstantValue(call.getOperand(1)));
-        Value *count = lookup(gutils->getNewFromOriginal(call.getOperand(0)), Builder2);
-        Value *d_req_orig = gutils->invertPointerM(call.getOperand(1), Builder2);
-          
+        Value *count =
+            lookup(gutils->getNewFromOriginal(call.getOperand(0)), Builder2);
+        Value *d_req_orig =
+            gutils->invertPointerM(call.getOperand(1), Builder2);
+
         BasicBlock *currentBlock = Builder2.GetInsertBlock();
-          BasicBlock *loopBlock = gutils->addReverseBlock(
-              currentBlock, currentBlock->getName() + "_loop", gutils->newFunc);
-          BasicBlock *nonnullBlock = gutils->addReverseBlock(
-              loopBlock, currentBlock->getName() + "_nonnull", gutils->newFunc);
-          BasicBlock *eloopBlock = gutils->addReverseBlock(
-              nonnullBlock, currentBlock->getName() + "_eloop", gutils->newFunc);
-          BasicBlock *endBlock = gutils->addReverseBlock(
-              eloopBlock, currentBlock->getName() + "_end", gutils->newFunc);
+        BasicBlock *loopBlock = gutils->addReverseBlock(
+            currentBlock, currentBlock->getName() + "_loop", gutils->newFunc);
+        BasicBlock *nonnullBlock = gutils->addReverseBlock(
+            loopBlock, currentBlock->getName() + "_nonnull", gutils->newFunc);
+        BasicBlock *eloopBlock = gutils->addReverseBlock(
+            nonnullBlock, currentBlock->getName() + "_eloop", gutils->newFunc);
+        BasicBlock *endBlock = gutils->addReverseBlock(
+            eloopBlock, currentBlock->getName() + "_end", gutils->newFunc);
 
-          Builder2.CreateCondBr(Builder2.CreateICmpNE(count, ConstantInt::get(count->getType(), 0, false)), loopBlock,
-                                endBlock);
+        Builder2.CreateCondBr(
+            Builder2.CreateICmpNE(count,
+                                  ConstantInt::get(count->getType(), 0, false)),
+            loopBlock, endBlock);
 
-          Builder2.SetInsertPoint(loopBlock);
-          auto idx = Builder2.CreatePHI(count->getType(), 2);
-          idx->addIncoming(ConstantInt::get(count->getType(), 0, false), currentBlock);
-          Value* inc = Builder2.CreateAdd(idx, ConstantInt::get(count->getType(), 1, false), "", true, true);
-          idx->addIncoming(inc, eloopBlock);
+        Builder2.SetInsertPoint(loopBlock);
+        auto idx = Builder2.CreatePHI(count->getType(), 2);
+        idx->addIncoming(ConstantInt::get(count->getType(), 0, false),
+                         currentBlock);
+        Value *inc = Builder2.CreateAdd(
+            idx, ConstantInt::get(count->getType(), 1, false), "", true, true);
+        idx->addIncoming(inc, eloopBlock);
 
-          Value* idxs[] = {idx};
-          Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
+        Value *idxs[] = {idx};
+        Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
 
         auto i64 = Type::getInt64Ty(call.getContext());
         Type *types[] = {
@@ -3777,13 +3789,15 @@ public:
 
         Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
-        
+
         Value *isNull = ConstantInt::getFalse(call.getContext());
-        if (auto GV = gutils->newFunc->getParent()->getNamedValue("ompi_request_null")) {
-            isNull = Builder2.CreateICmpEQ(d_reqp, Builder2.CreateBitCast(GV, d_reqp->getType()));
+        if (auto GV = gutils->newFunc->getParent()->getNamedValue(
+                "ompi_request_null")) {
+          isNull = Builder2.CreateICmpEQ(
+              d_reqp, Builder2.CreateBitCast(GV, d_reqp->getType()));
         }
 
-          Builder2.CreateCondBr(isNull, eloopBlock, nonnullBlock);
+        Builder2.CreateCondBr(isNull, eloopBlock, nonnullBlock);
         Builder2.SetInsertPoint(nonnullBlock);
 
         Value *cache = Builder2.CreateLoad(d_reqp);
@@ -3809,13 +3823,14 @@ public:
         cal->setCallingConv(dwait->getCallingConv());
         cal->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
         Builder2.CreateBr(eloopBlock);
-        
+
         Builder2.SetInsertPoint(eloopBlock);
-        Builder2.CreateCondBr(Builder2.CreateICmpEQ(inc, count), endBlock, loopBlock);
+        Builder2.CreateCondBr(Builder2.CreateICmpEQ(inc, count), endBlock,
+                              loopBlock);
         Builder2.SetInsertPoint(endBlock);
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -3825,9 +3840,10 @@ public:
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
         Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
-        
+
         if (shadow->getType()->isIntegerTy())
-            shadow = Builder2.CreateIntToPtr(shadow, Type::getInt8PtrTy(call.getContext()));
+          shadow = Builder2.CreateIntToPtr(
+              shadow, Type::getInt8PtrTy(call.getContext()));
 
         Type *statusType = nullptr;
 
@@ -3835,7 +3851,7 @@ public:
           auto statusArg = recvfn->arg_end();
           statusArg--;
           if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
-              statusType = PT->getElementType();
+            statusType = PT->getElementType();
         }
         if (statusType == nullptr) {
           statusType = ArrayType::get(Type::getInt8Ty(call.getContext()), 24);
@@ -3843,13 +3859,14 @@ public:
                           "status type, assuming [24 x i8]\n";
         }
 
-        Value* datatype = lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
+        Value *datatype =
+            lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
 
         Value *args[] = {
             /*buf*/ NULL,
             /*count*/
             lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
-            /*datatype*/datatype,
+            /*datatype*/ datatype,
             /*src*/
             lookup(gutils->getNewFromOriginal(call.getOperand(3)), Builder2),
             /*tag*/
@@ -3900,7 +3917,7 @@ public:
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -3909,11 +3926,13 @@ public:
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
-        
+
         Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
         if (shadow->getType()->isIntegerTy())
-            shadow = Builder2.CreateIntToPtr(shadow, Type::getInt8PtrTy(call.getContext()));
-        Value *datatype = lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
+          shadow = Builder2.CreateIntToPtr(
+              shadow, Type::getInt8PtrTy(call.getContext()));
+        Value *datatype =
+            lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
 
         Value *args[] = {
             shadow,
@@ -3962,7 +3981,7 @@ public:
         memset->addParamAttr(0, Attribute::NonNull);
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -3980,7 +3999,8 @@ public:
 
         Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
         if (shadow->getType()->isIntegerTy())
-            shadow = Builder2.CreateIntToPtr(shadow, Type::getInt8PtrTy(call.getContext()));
+          shadow = Builder2.CreateIntToPtr(
+              shadow, Type::getInt8PtrTy(call.getContext()));
 
         ConcreteType CT = TR.firstPointer(1, call.getOperand(0));
         Type *MPI_OP_Ptr_type =
@@ -4119,7 +4139,7 @@ public:
         Builder2.SetInsertPoint(mergeBlock);
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4179,10 +4199,12 @@ public:
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
-            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_recvbuf = Builder2.CreateIntToPtr(
+              shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
-            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_sendbuf = Builder2.CreateIntToPtr(
+              shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *count = lookup(gutils->getNewFromOriginal(orig_count), Builder2);
         Value *datatype =
@@ -4307,7 +4329,7 @@ public:
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4364,10 +4386,12 @@ public:
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
-            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_recvbuf = Builder2.CreateIntToPtr(
+              shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
-            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_sendbuf = Builder2.CreateIntToPtr(
+              shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *count = lookup(gutils->getNewFromOriginal(orig_count), Builder2);
         Value *datatype =
@@ -4443,7 +4467,7 @@ public:
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4475,10 +4499,12 @@ public:
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
-            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_recvbuf = Builder2.CreateIntToPtr(
+              shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
-            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_sendbuf = Builder2.CreateIntToPtr(
+              shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *recvcount =
             lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
@@ -4596,7 +4622,7 @@ public:
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4628,10 +4654,12 @@ public:
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
-            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_recvbuf = Builder2.CreateIntToPtr(
+              shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
-            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_sendbuf = Builder2.CreateIntToPtr(
+              shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *recvcount =
             lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
@@ -4782,7 +4810,7 @@ public:
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4814,10 +4842,12 @@ public:
 
         Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
-            shadow_recvbuf = Builder2.CreateIntToPtr(shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_recvbuf = Builder2.CreateIntToPtr(
+              shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
         Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
-            shadow_sendbuf = Builder2.CreateIntToPtr(shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
+          shadow_sendbuf = Builder2.CreateIntToPtr(
+              shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
         Value *recvcount =
             lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
@@ -4924,7 +4954,7 @@ public:
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4945,7 +4975,7 @@ public:
         Builder2.CreateCall(call.getFunctionType(), callval, args);
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -4975,7 +5005,7 @@ public:
             args);
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
-        eraseIfUnused(call, /*erase*/true, /*check*/false);
+        eraseIfUnused(call, /*erase*/ true, /*check*/ false);
       return;
     }
 

@@ -250,8 +250,8 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   }
 
   // only the buffer is active for mpi send/recv
-  if (Name == "MPI_Recv" || Name == "PMPI_Recv" ||
-      Name == "MPI_Send" || Name == "PMPI_Send") {
+  if (Name == "MPI_Recv" || Name == "PMPI_Recv" || Name == "MPI_Send" ||
+      Name == "PMPI_Send") {
     return val != CI->getOperand(0);
   }
   // only the recv buffer and request is active for mpi isend/irecv
@@ -747,7 +747,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       return true;
     }
 
-    if (GI->getName().contains("enzyme_const") || InactiveGlobals.count(GI->getName().str())) {
+    if (GI->getName().contains("enzyme_const") ||
+        InactiveGlobals.count(GI->getName().str())) {
       InsertConstantValue(TR, Val);
       return true;
     }
