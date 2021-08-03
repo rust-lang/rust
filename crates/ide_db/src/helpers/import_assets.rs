@@ -543,7 +543,7 @@ impl ImportCandidate {
         match sema.resolve_method_call(method_call) {
             Some(_) => None,
             None => Some(Self::TraitMethod(TraitImportCandidate {
-                receiver_ty: sema.type_of_expr(&method_call.receiver()?)?.ty,
+                receiver_ty: sema.type_of_expr(&method_call.receiver()?)?.coerced(),
                 assoc_item_name: NameToImport::Exact(method_call.name_ref()?.to_string()),
             })),
         }

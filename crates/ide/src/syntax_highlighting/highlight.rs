@@ -555,7 +555,7 @@ fn highlight_method_call(
                 if let Some(receiver_ty) =
                     method_call.receiver().and_then(|it| sema.type_of_expr(&it))
                 {
-                    if !receiver_ty.ty.is_copy(sema.db) {
+                    if !receiver_ty.coerced().is_copy(sema.db) {
                         h |= HlMod::Consuming
                     }
                 }

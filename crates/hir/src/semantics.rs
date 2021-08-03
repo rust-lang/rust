@@ -100,11 +100,11 @@ impl TypeInfo {
         self.ty
     }
 
-    pub fn coerced(self) -> Option<Type> {
-        self.coerced
+    pub fn has_coercion(&self) -> bool {
+        self.coerced.is_some()
     }
 
-    pub fn coerced_or_original(self) -> Type {
+    pub fn coerced(self) -> Type {
         self.coerced.unwrap_or(self.ty)
     }
 }

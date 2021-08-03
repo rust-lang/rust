@@ -345,7 +345,7 @@ impl FlowKind {
             FlowKind::Return(Some(expr))
             | FlowKind::Break(Some(expr))
             | FlowKind::TryReturn { expr, .. } => {
-                ctx.sema.type_of_expr(expr).map(TypeInfo::coerced_or_original)
+                ctx.sema.type_of_expr(expr).map(TypeInfo::coerced)
             }
             FlowKind::Try { .. } => {
                 stdx::never!("try does not have defined expr_ty");

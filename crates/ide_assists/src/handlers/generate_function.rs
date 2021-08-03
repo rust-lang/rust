@@ -331,7 +331,7 @@ fn fn_arg_type(
     target_module: hir::Module,
     fn_arg: &ast::Expr,
 ) -> Option<String> {
-    let ty = ctx.sema.type_of_expr(fn_arg)?.ty;
+    let ty = ctx.sema.type_of_expr(fn_arg)?.coerced();
     if ty.is_unknown() {
         return None;
     }
