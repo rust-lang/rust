@@ -102,6 +102,7 @@ impl<T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscM
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;

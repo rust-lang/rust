@@ -464,7 +464,7 @@ fn inline_asm_call(
                 alignstack,
                 llvm::AsmDialect::from_generic(dia),
             );
-            let call = bx.call(v, inputs, None);
+            let call = bx.call(fty, v, inputs, None);
 
             // Store mark in a metadata node so we can map LLVM errors
             // back to source locations.  See #17552.

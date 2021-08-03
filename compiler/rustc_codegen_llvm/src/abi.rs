@@ -344,7 +344,7 @@ impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 pub trait FnAbiLlvmExt<'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>, decl: bool) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
@@ -352,8 +352,12 @@ pub trait FnAbiLlvmExt<'tcx> {
 }
 
 impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
-        let args_capacity: usize = self.args.iter().map(|arg|
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>, decl: bool) -> &'ll Type {
+        // Ignore extra args when calling C variadic functions.
+        let args =
+            if decl && self.c_variadic { &self.args[..self.fixed_count] } else { &self.args };
+
+        let args_capacity: usize = args.iter().map(|arg|
             if arg.pad.is_some() { 1 } else { 0 } +
             if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
         ).sum();
@@ -371,7 +375,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
         };
 
-        for arg in &self.args {
+        for arg in args {
             // add padding
             if let Some(ty) = arg.pad {
                 llargument_tys.push(ty.llvm_type(cx));
@@ -410,7 +414,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         unsafe {
             llvm::LLVMPointerType(
-                self.llvm_type(cx),
+                self.llvm_type(cx, false),
                 cx.data_layout().instruction_address_space.0 as c_uint,
             )
         }

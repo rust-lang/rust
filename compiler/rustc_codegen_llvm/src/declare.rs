@@ -90,7 +90,7 @@ impl CodegenCx<'ll, 'tcx> {
             name,
             fn_abi.llvm_cconv(),
             llvm::UnnamedAddr::Global,
-            fn_abi.llvm_type(self),
+            fn_abi.llvm_type(self, false),
         );
         fn_abi.apply_attrs_llfn(self, llfn);
         llfn

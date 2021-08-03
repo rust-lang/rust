@@ -200,6 +200,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn invoke(
         &mut self,
+        llty: &'ll Type,
         llfn: &'ll Value,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
@@ -208,13 +209,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("invoke", llfn, args);
+        let args = self.check_call("invoke", llty, llfn, args);
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
         unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
+                llty,
                 llfn,
                 args.as_ptr(),
                 args.len() as c_uint,
@@ -369,8 +371,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             },
         };
 
-        let intrinsic = self.get_intrinsic(&name);
-        let res = self.call(intrinsic, &[lhs, rhs], None);
+        let res = self.call_intrinsic(name, &[lhs, rhs]);
         (self.extract_value(res, 0), self.extract_value(res, 1))
     }
 
@@ -695,8 +696,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
             let name = format!("llvm.fptoui.sat.i{}.f{}", int_width, float_width);
-            let intrinsic = self.get_intrinsic(&name);
-            return Some(self.call(intrinsic, &[val], None));
+            return Some(self.call_intrinsic(&name, &[val]));
         }
 
         None
@@ -708,8 +708,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
             let name = format!("llvm.fptosi.sat.i{}.f{}", int_width, float_width);
-            let intrinsic = self.get_intrinsic(&name);
-            return Some(self.call(intrinsic, &[val], None));
+            return Some(self.call_intrinsic(&name, &[val]));
         }
 
         None
@@ -743,8 +742,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     _ => None,
                 };
                 if let Some(name) = name {
-                    let intrinsic = self.get_intrinsic(name);
-                    return self.call(intrinsic, &[val], None);
+                    return self.call_intrinsic(name, &[val]);
                 }
             }
         }
@@ -766,8 +764,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                     _ => None,
                 };
                 if let Some(name) = name {
-                    let intrinsic = self.get_intrinsic(name);
-                    return self.call(intrinsic, &[val], None);
+                    return self.call_intrinsic(name, &[val]);
                 }
             }
         }
@@ -1115,12 +1112,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         );
 
         let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
+        let llty = self.cx.type_func(
+            &[self.cx.type_i8p(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_i32()],
+            self.cx.type_void(),
+        );
         let args = &[fn_name, hash, num_counters, index];
-        let args = self.check_call("call", llfn, args);
+        let args = self.check_call("call", llty, llfn, args);
 
         unsafe {
             let _ = llvm::LLVMRustBuildCall(
                 self.llbuilder,
+                llty,
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
@@ -1131,19 +1133,21 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn call(
         &mut self,
+        llty: &'ll Type,
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
-        let args = self.check_call("call", llfn, args);
+        let args = self.check_call("call", llty, llfn, args);
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
         unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
+                llty,
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
@@ -1313,15 +1317,10 @@ impl Builder<'a, 'll, 'tcx> {
     fn check_call<'b>(
         &mut self,
         typ: &str,
+        fn_ty: &'ll Type,
         llfn: &'ll Value,
         args: &'b [&'ll Value],
     ) -> Cow<'b, [&'ll Value]> {
-        let mut fn_ty = self.cx.val_ty(llfn);
-        // Strip off pointers
-        while self.cx.type_kind(fn_ty) == TypeKind::Pointer {
-            fn_ty = self.cx.element_type(fn_ty);
-        }
-
         assert!(
             self.cx.type_kind(fn_ty) == TypeKind::Function,
             "builder::{} not passed a function, but {:?}",
@@ -1362,6 +1361,11 @@ impl Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }
 
+    crate fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
+        let (ty, f) = self.cx.get_intrinsic(intrinsic);
+        self.call(ty, f, args, None)
+    }
+
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
         let size = size.bytes();
         if size == 0 {
@@ -1372,10 +1376,8 @@ impl Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
-
         let ptr = self.pointercast(ptr, self.cx.type_i8p());
-        self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
+        self.call_intrinsic(intrinsic, &[self.cx.const_u64(size), ptr]);
     }
 
     pub(crate) fn phi(

@@ -1155,6 +1155,7 @@ extern "C" {
     ) -> &'a Value;
     pub fn LLVMRustBuildInvoke(
         B: &Builder<'a>,
+        Ty: &'a Type,
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
@@ -1526,6 +1527,7 @@ extern "C" {
     pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &'a Value;
     pub fn LLVMRustBuildCall(
         B: &Builder<'a>,
+        Ty: &'a Type,
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
