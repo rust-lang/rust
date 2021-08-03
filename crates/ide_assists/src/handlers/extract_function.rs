@@ -8,6 +8,7 @@ use ide_db::{
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
+use itertools::Itertools;
 use rustc_hash::FxHasher;
 use stdx::format_to;
 use syntax::{
@@ -389,8 +390,23 @@ impl FunctionBody {
         }
     }
 
-    fn from_range(parent: ast::BlockExpr, text_range: TextRange) -> FunctionBody {
-        Self::Span { parent, text_range }
+    fn from_range(parent: ast::BlockExpr, selected: TextRange) -> FunctionBody {
+        let mut text_range = parent
+            .statements()
+            .map(|stmt| stmt.syntax().text_range())
+            .filter(|&stmt| selected.intersect(stmt).filter(|it| !it.is_empty()).is_some())
+            .fold1(|acc, stmt| acc.cover(stmt));
+        if let Some(tail_range) = parent
+            .tail_expr()
+            .map(|it| it.syntax().text_range())
+            .filter(|&it| selected.intersect(it).is_some())
+        {
+            text_range = Some(match text_range {
+                Some(text_range) => text_range.cover(tail_range),
+                None => tail_range,
+            });
+        }
+        Self::Span { parent, text_range: text_range.unwrap_or(selected) }
     }
 
     fn indent_level(&self) -> IndentLevel {
@@ -546,17 +562,7 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
     // Covering element returned the parent block of one or multiple statements that have been selected
     if let ast::Expr::BlockExpr(block) = expr {
         // Extract the full statements.
-        let mut statements_range = block
-            .statements()
-            .filter(|stmt| selection_range.intersect(stmt.syntax().text_range()).is_some())
-            .fold(selection_range, |acc, stmt| acc.cover(stmt.syntax().text_range()));
-        if let Some(e) = block
-            .tail_expr()
-            .filter(|it| selection_range.intersect(it.syntax().text_range()).is_some())
-        {
-            statements_range = statements_range.cover(e.syntax().text_range());
-        }
-        return Some(FunctionBody::from_range(block, statements_range));
+        return Some(FunctionBody::from_range(block, selection_range));
     }
 
     node.ancestors().find_map(ast::Expr::cast).and_then(FunctionBody::from_expr)
@@ -586,7 +592,6 @@ fn analyze_body(
                 | NameRefClass::FieldShorthand { local_ref, field_ref: _ },
             ) = NameRefClass::classify(sema, &name_ref)
             {
-                res.insert(local_ref);
                 if local_ref.is_self(sema.db) {
                     match local_ref.source(sema.db).value {
                         Either::Right(it) => {
@@ -599,6 +604,8 @@ fn analyze_body(
                             stdx::never!("Local::is_self returned true, but source is IdentPat");
                         }
                     }
+                } else {
+                    res.insert(local_ref);
                 }
             }
         }
@@ -615,7 +622,6 @@ fn extracted_function_params(
     locals: impl Iterator<Item = Local>,
 ) -> Vec<Param> {
     locals
-        .filter(|local| !local.is_self(ctx.db()))
         .map(|local| (local, local.source(ctx.db())))
         .filter(|(_, src)| is_defined_outside_of_body(ctx, body, src))
         .filter_map(|(local, src)| {
@@ -3230,8 +3236,7 @@ fn $0fun_name(n: i32) -> bool {
             r#"
 fn foo() {
     loop {
-        let n = 1;
-        $0
+        let n = 1;$0
         let k = 1;
         loop {
             return;
@@ -3435,8 +3440,7 @@ fn $0fun_name() -> Option<i32> {
             r#"
 fn foo() -> i64 {
     loop {
-        let n = 1;
-        $0
+        let n = 1;$0
         let k = 1;
         if k == 42 {
             break 3;
@@ -3829,6 +3833,33 @@ fn main() {
 
 fn $0fun_name() -> i32 {
     100
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_does_not_tear_comments_apart() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    /*$0*/
+    foo();
+    foo();
+    /*$0*/
+}
+"#,
+            r#"
+fn foo() {
+    /**/
+    fun_name();
+    /**/
+}
+
+fn $0fun_name() {
+    foo();
+    foo();
 }
 "#,
         );
