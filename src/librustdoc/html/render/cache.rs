@@ -42,7 +42,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
                 desc,
-                parent: Some(did.into()),
+                parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item, tcx),
                 aliases: item.attrs.get_doc_aliases(),
