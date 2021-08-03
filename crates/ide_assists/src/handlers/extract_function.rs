@@ -71,35 +71,9 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
     let body = extraction_target(&node, range)?;
-    let container_expr = body.parent()?.ancestors().find_map(|it| {
-        // double Option as we want to short circuit
-        let res = match_ast! {
-            match it {
-                ast::ClosureExpr(closure) => closure.body(),
-                ast::EffectExpr(effect) => effect.block_expr().map(ast::Expr::BlockExpr),
-                ast::Fn(fn_) => fn_.body().map(ast::Expr::BlockExpr),
-                ast::Static(statik) => statik.body(),
-                ast::ConstArg(ca) => ca.expr(),
-                ast::Const(konst) => konst.body(),
-                ast::ConstParam(cp) => cp.default_val(),
-                ast::ConstBlockPat(cbp) => cbp.block_expr().map(ast::Expr::BlockExpr),
-                ast::Variant(__) => None,
-                ast::Meta(__) => None,
-                _ => return None,
-            }
-        };
-        Some(res)
-    })??;
-    let container_tail = match container_expr {
-        ast::Expr::BlockExpr(block) => block.tail_expr(),
-        expr => Some(expr),
-    };
-    let in_tail =
-        container_tail.zip(body.tail_expr()).map_or(false, |(container_tail, body_tail)| {
-            container_tail.syntax().text_range().contains_range(body_tail.syntax().text_range())
-        });
+    let mods = body.analyze_container()?;
 
-    let (locals_used, has_await, self_param) = body.analyze(&ctx.sema);
+    let (locals_used, self_param) = body.analyze(&ctx.sema);
 
     let anchor = if self_param.is_some() { Anchor::Method } else { Anchor::Freestanding };
     let insert_after = node_to_insert_after(&body, anchor)?;
@@ -125,10 +99,6 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let params = body.extracted_function_params(ctx, locals_used.iter().copied());
 
-            let insert_comma = body
-                .parent()
-                .and_then(ast::MatchArm::cast)
-                .map_or(false, |it| it.comma_token().is_none());
             let fun = Function {
                 name: "fun_name".to_string(),
                 self_param,
@@ -137,18 +107,15 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
                 ret_ty,
                 body,
                 outliving_locals,
+                mods,
             };
 
             let new_indent = IndentLevel::from_node(&insert_after);
             let old_indent = fun.body.indent_level();
 
-            builder.replace(target_range, make_call(ctx, &fun, old_indent, has_await));
-            if insert_comma {
-                builder.insert(target_range.end(), ",");
-            }
+            builder.replace(target_range, make_call(ctx, &fun, old_indent));
 
-            let fn_def =
-                format_function(ctx, module, &fun, old_indent, new_indent, has_await, in_tail);
+            let fn_def = format_function(ctx, module, &fun, old_indent, new_indent);
             let insert_offset = insert_after.text_range().end();
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, insert_offset, fn_def),
@@ -210,6 +177,7 @@ struct Function {
     ret_ty: RetType,
     body: FunctionBody,
     outliving_locals: Vec<OutlivedLocal>,
+    mods: Modifiers,
 }
 
 #[derive(Debug)]
@@ -248,6 +216,13 @@ enum Anchor {
 #[derive(Debug)]
 struct ControlFlow {
     kind: Option<FlowKind>,
+    is_async: bool,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct Modifiers {
+    is_const: bool,
+    is_in_tail: bool,
 }
 
 /// Control flow that is exported from extracted function
@@ -605,13 +580,11 @@ impl FunctionBody {
     fn analyze(
         &self,
         sema: &Semantics<RootDatabase>,
-    ) -> (FxIndexSet<Local>, bool, Option<ast::SelfParam>) {
+    ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
         // FIXME: currently usages inside macros are not found
-        let mut has_await = false;
         let mut self_param = None;
         let mut res = FxIndexSet::default();
         self.walk_expr(&mut |expr| {
-            has_await |= matches!(expr, ast::Expr::AwaitExpr(_));
             let name_ref = match expr {
                 ast::Expr::PathExpr(path_expr) => {
                     path_expr.path().and_then(|it| it.as_single_name_ref())
@@ -644,7 +617,60 @@ impl FunctionBody {
                 }
             }
         });
-        (res, has_await, self_param)
+        (res, self_param)
+    }
+
+    fn analyze_container(&self) -> Option<Modifiers> {
+        let mut is_const = false;
+        let container_expr = self.parent()?.ancestors().find_map(|it| {
+            // double Option as we want to short circuit
+            let res = match_ast! {
+                match it {
+                    ast::ClosureExpr(closure) => closure.body(),
+                    ast::EffectExpr(effect) => {
+                        is_const = effect.const_token().is_some();
+                        effect.block_expr().map(ast::Expr::BlockExpr)
+                    },
+                    ast::Fn(fn_) => {
+                        is_const = fn_.const_token().is_some();
+                        fn_.body().map(ast::Expr::BlockExpr)
+                    },
+                    ast::Static(statik) => {
+                        is_const = true;
+                        statik.body()
+                    },
+                    ast::ConstArg(ca) => {
+                        is_const = true;
+                        ca.expr()
+                    },
+                    ast::Const(konst) => {
+                        is_const = true;
+                        konst.body()
+                    },
+                    ast::ConstParam(cp) => {
+                        is_const = true;
+                        cp.default_val()
+                    },
+                    ast::ConstBlockPat(cbp) => {
+                        is_const = true;
+                        cbp.block_expr().map(ast::Expr::BlockExpr)
+                    },
+                    ast::Variant(__) => None,
+                    ast::Meta(__) => None,
+                    _ => return None,
+                }
+            };
+            Some(res)
+        })??;
+        let container_tail = match container_expr {
+            ast::Expr::BlockExpr(block) => block.tail_expr(),
+            expr => Some(expr),
+        };
+        let is_in_tail =
+            container_tail.zip(self.tail_expr()).map_or(false, |(container_tail, body_tail)| {
+                container_tail.syntax().text_range().contains_range(body_tail.syntax().text_range())
+            });
+        Some(Modifiers { is_in_tail, is_const })
     }
 
     fn return_ty(&self, ctx: &AssistContext) -> Option<RetType> {
@@ -673,6 +699,7 @@ impl FunctionBody {
         let mut try_expr = None;
         let mut break_expr = None;
         let mut continue_expr = None;
+        let mut is_async = false;
 
         let mut loop_depth = 0;
 
@@ -703,6 +730,7 @@ impl FunctionBody {
                 ast::Expr::ContinueExpr(it) if loop_depth == 0 => {
                     continue_expr = Some(it);
                 }
+                ast::Expr::AwaitExpr(_) => is_async = true,
                 _ => {}
             }
             false
@@ -746,7 +774,7 @@ impl FunctionBody {
             (None, None, None, None) => None,
         };
 
-        Some(ControlFlow { kind })
+        Some(ControlFlow { kind, is_async })
     }
     /// find variables that should be extracted as params
     ///
@@ -1031,12 +1059,7 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     last_ancestor
 }
 
-fn make_call(
-    ctx: &AssistContext,
-    fun: &Function,
-    indent: IndentLevel,
-    body_contains_await: bool,
-) -> String {
+fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String {
     let ret_ty = fun.return_type(ctx);
 
     let args = fun.params.iter().map(|param| param.to_arg(ctx));
@@ -1053,6 +1076,8 @@ fn make_call(
 
     let expr = handler.make_call_expr(call_expr).indent(indent);
 
+    let mut_modifier = |var: &OutlivedLocal| if var.mut_usage_outside_body { "mut " } else { "" };
+
     let mut buf = String::new();
     match fun.outliving_locals.as_slice() {
         [] => {}
@@ -1068,18 +1093,18 @@ fn make_call(
             buf.push_str(") = ");
         }
     }
-    fn mut_modifier(var: &OutlivedLocal) -> &'static str {
-        if var.mut_usage_outside_body {
-            "mut "
-        } else {
-            ""
-        }
-    }
     format_to!(buf, "{}", expr);
-    if body_contains_await {
+    if fun.control_flow.is_async {
         buf.push_str(".await");
     }
-    if fun.ret_ty.is_unit() && (!fun.outliving_locals.is_empty() || !expr.is_block_like()) {
+    let insert_comma = fun
+        .body
+        .parent()
+        .and_then(ast::MatchArm::cast)
+        .map_or(false, |it| it.comma_token().is_none());
+    if insert_comma {
+        buf.push(',');
+    } else if fun.ret_ty.is_unit() && (!fun.outliving_locals.is_empty() || !expr.is_block_like()) {
         buf.push(';');
     }
     buf
@@ -1209,17 +1234,32 @@ fn format_function(
     fun: &Function,
     old_indent: IndentLevel,
     new_indent: IndentLevel,
-    body_contains_await: bool,
-    in_tail: bool,
 ) -> String {
     let mut fn_def = String::new();
     let params = fun.make_param_list(ctx, module);
-    let ret_ty = fun.make_ret_ty(ctx, module, in_tail);
-    let body = make_body(ctx, old_indent, new_indent, fun, in_tail);
-    let async_kw = if body_contains_await { "async " } else { "" };
+    let ret_ty = fun.make_ret_ty(ctx, module);
+    let body = make_body(ctx, old_indent, new_indent, fun);
+    let const_kw = if fun.mods.is_const { "const " } else { "" };
+    let async_kw = if fun.control_flow.is_async { "async " } else { "" };
     match ctx.config.snippet_cap {
-        Some(_) => format_to!(fn_def, "\n\n{}{}fn $0{}{}", new_indent, async_kw, fun.name, params),
-        None => format_to!(fn_def, "\n\n{}{}fn {}{}", new_indent, async_kw, fun.name, params),
+        Some(_) => format_to!(
+            fn_def,
+            "\n\n{}{}{}fn $0{}{}",
+            new_indent,
+            const_kw,
+            async_kw,
+            fun.name,
+            params
+        ),
+        None => format_to!(
+            fn_def,
+            "\n\n{}{}{}fn {}{}",
+            new_indent,
+            const_kw,
+            async_kw,
+            fun.name,
+            params
+        ),
     }
     if let Some(ret_ty) = ret_ty {
         format_to!(fn_def, " {}", ret_ty);
@@ -1236,15 +1276,13 @@ impl Function {
         make::param_list(self_param, params)
     }
 
-    fn make_ret_ty(
-        &self,
-        ctx: &AssistContext,
-        module: hir::Module,
-        in_tail: bool,
-    ) -> Option<ast::RetType> {
+    fn make_ret_ty(&self, ctx: &AssistContext, module: hir::Module) -> Option<ast::RetType> {
         let fun_ty = self.return_type(ctx);
-        let handler =
-            if in_tail { FlowHandler::None } else { FlowHandler::from_ret_ty(self, &fun_ty) };
+        let handler = if self.mods.is_in_tail {
+            FlowHandler::None
+        } else {
+            FlowHandler::from_ret_ty(self, &fun_ty)
+        };
         let ret_ty = match &handler {
             FlowHandler::None => {
                 if matches!(fun_ty, FunType::Unit) {
@@ -1312,10 +1350,13 @@ fn make_body(
     old_indent: IndentLevel,
     new_indent: IndentLevel,
     fun: &Function,
-    in_tail: bool,
 ) -> ast::BlockExpr {
     let ret_ty = fun.return_type(ctx);
-    let handler = if in_tail { FlowHandler::None } else { FlowHandler::from_ret_ty(fun, &ret_ty) };
+    let handler = if fun.mods.is_in_tail {
+        FlowHandler::None
+    } else {
+        FlowHandler::from_ret_ty(fun, &ret_ty)
+    };
     let block = match &fun.body {
         FunctionBody::Expr(expr) => {
             let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax());
@@ -3928,6 +3969,44 @@ fn foo() -> Result<(), i64> {
 fn $0fun_name() -> Result<(), i64> {
     Result::<i32, i64>::Ok(0)?;
     Ok(())
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_knows_const() {
+        check_assist(
+            extract_function,
+            r#"
+const fn foo() {
+    $0()$0
+}
+"#,
+            r#"
+const fn foo() {
+    fun_name();
+}
+
+const fn $0fun_name() {
+    ()
+}
+"#,
+        );
+        check_assist(
+            extract_function,
+            r#"
+const FOO: () = {
+    $0()$0
+};
+"#,
+            r#"
+const FOO: () = {
+    fun_name();
+};
+
+const fn $0fun_name() {
+    ()
 }
 "#,
         );
