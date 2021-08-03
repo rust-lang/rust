@@ -359,7 +359,7 @@ impl Extend<()> for () {
     fn extend_one(&mut self, _item: ()) {}
 }
 
-#[stable(feature = "extend_for_tuple", since = "1.55.0")]
+#[stable(feature = "extend_for_tuple", since = "1.56.0")]
 impl<A, B, ExtendA, ExtendB> Extend<(A, B)> for (ExtendA, ExtendB)
 where
     ExtendA: Extend<A>,
