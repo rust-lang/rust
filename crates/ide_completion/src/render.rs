@@ -7,6 +7,7 @@ pub(crate) mod enum_variant;
 pub(crate) mod const_;
 pub(crate) mod pattern;
 pub(crate) mod type_alias;
+pub(crate) mod struct_literal;
 
 mod builder_ext;
 

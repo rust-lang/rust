@@ -45,9 +45,80 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
     Some(())
 }
 
+pub(crate) fn complete_record_literal(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+) -> Option<()> {
+    if !ctx.expects_expression() {
+        return None;
+    }
+
+    if let hir::Adt::Struct(strukt) = ctx.expected_type.as_ref()?.as_adt()? {
+        acc.add_struct_literal(ctx, strukt, None);
+    }
+
+    Some(())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tests::check_edit;
+
+    #[test]
+    fn literal_struct_completion_edit() {
+        check_edit(
+            "FooDesc {…}",
+            r#"
+struct FooDesc { pub bar: bool }
+
+fn create_foo(foo_desc: &FooDesc) -> () { () }
+
+fn baz() {
+    let foo = create_foo(&$0);
+}
+            "#,
+            r#"
+struct FooDesc { pub bar: bool }
+
+fn create_foo(foo_desc: &FooDesc) -> () { () }
+
+fn baz() {
+    let foo = create_foo(&FooDesc { bar: ${1:()} }$0);
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn literal_struct_complexion_module() {
+        check_edit(
+            "FooDesc {…}",
+            r#"
+mod _69latrick {
+    pub struct FooDesc { pub six: bool, pub neuf: Vec<String>, pub bar: bool }
+    pub fn create_foo(foo_desc: &FooDesc) -> () { () }
+}
+
+fn baz() {
+    use _69latrick::*;
+
+    let foo = create_foo(&$0);
+}
+            "#,
+            r#"
+mod _69latrick {
+    pub struct FooDesc { pub six: bool, pub neuf: Vec<String>, pub bar: bool }
+    pub fn create_foo(foo_desc: &FooDesc) -> () { () }
+}
+
+fn baz() {
+    use _69latrick::*;
+
+    let foo = create_foo(&FooDesc { six: ${1:()}, neuf: ${2:()}, bar: ${3:()} }$0);
+}
+            "#,
+        );
+    }
 
     #[test]
     fn default_completion_edit() {

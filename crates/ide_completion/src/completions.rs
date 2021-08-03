@@ -29,6 +29,7 @@ use crate::{
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_resolution, render_tuple_field,
+        struct_literal::render_struct_literal,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         RenderContext,
     },
@@ -166,6 +167,16 @@ impl Completions {
     ) {
         let item = render_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
+    }
+
+    pub(crate) fn add_struct_literal(
+        &mut self,
+        ctx: &CompletionContext,
+        strukt: hir::Struct,
+        local_name: Option<hir::Name>,
+    ) {
+        let item = render_struct_literal(RenderContext::new(ctx), strukt, local_name);
+        self.add_opt(item);
     }
 
     pub(crate) fn add_tuple_field(
