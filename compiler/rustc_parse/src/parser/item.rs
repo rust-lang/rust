@@ -1714,13 +1714,11 @@ impl<'a> Parser<'a> {
                     // the AST for typechecking.
                     err.span_label(ident.span, "while parsing this `fn`");
                     err.emit();
-                    (Vec::new(), None)
                 } else {
                     return Err(err);
                 }
-            } else {
-                unreachable!()
             }
+            (Vec::new(), None)
         };
         attrs.extend(inner_attrs);
         Ok(body)

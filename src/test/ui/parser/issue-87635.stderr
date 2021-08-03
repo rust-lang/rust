@@ -1,0 +1,19 @@
+error: expected `;`, found `}`
+  --> $DIR/issue-87635.rs:4:17
+   |
+LL |     pub fn bar()
+   |                 ^ help: add `;` here
+...
+LL | }
+   | - unexpected token
+
+error: associated function in `impl` without body
+  --> $DIR/issue-87635.rs:4:5
+   |
+LL |     pub fn bar()
+   |     ^^^^^^^^^^^-
+   |                |
+   |                help: provide a definition for the function: `{ <body> }`
+
+error: aborting due to 2 previous errors
+
