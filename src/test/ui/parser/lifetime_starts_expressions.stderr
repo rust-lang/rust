@@ -1,23 +1,47 @@
-error: expected identifier, found keyword `loop`
-  --> $DIR/lifetime_starts_expressions.rs:6:26
+error: parentheses are required around this expression to avoid confusion with a labeled break expression
+  --> $DIR/lifetime_starts_expressions.rs:8:18
    |
 LL |     loop { break 'label: loop { break 'label 42; }; }
-   |                          ^^^^ expected identifier, found keyword
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you can escape reserved keywords to use them as identifiers
+help: wrap the expression in parentheses
    |
-LL |     loop { break 'label: r#loop { break 'label 42; }; }
-   |                          ^^^^^^
+LL |     loop { break ('label: loop { break 'label 42; }); }
+   |                  ^                                 ^
 
-error: expected type, found keyword `loop`
-  --> $DIR/lifetime_starts_expressions.rs:6:26
+error: parentheses are required around this expression to avoid confusion with a labeled break expression
+  --> $DIR/lifetime_starts_expressions.rs:33:15
    |
-LL |     loop { break 'label: loop { break 'label 42; }; }
-   |                        - ^^^^ expected type
-   |                        |
-   |                        help: maybe write a path separator here: `::`
+LL |           break 'inner_loop: loop {
+   |  _______________^
+LL | |
+LL | |
+LL | |             break 'inner_loop 1;
+LL | |         };
+   | |_________^
    |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+help: wrap the expression in parentheses
+   |
+LL |         break ('inner_loop: loop {
+LL |
+LL |
+LL |             break 'inner_loop 1;
+LL |         });
+   |
 
-error: aborting due to 2 previous errors
+warning: this labeled break expression is easy to confuse with an unlabeled break with a labeled value expression
+  --> $DIR/lifetime_starts_expressions.rs:15:9
+   |
+LL | /         break 'label
+LL | |
+LL | |             loop { break 42; };
+   | |______________________________^
+   |
+   = note: `#[warn(break_with_label_and_loop)]` on by default
+help: wrap this expression in parentheses
+   |
+LL |             (loop { break 42; });
+   |             ^                  ^
+
+error: aborting due to 2 previous errors; 1 warning emitted
 

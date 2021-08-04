@@ -304,6 +304,7 @@ pub enum BuiltinLintDiagnostics {
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span),
     TrailingMacro(bool, Ident),
+    BreakWithLabelAndLoop(Span),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

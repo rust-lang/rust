@@ -2978,6 +2978,7 @@ declare_lint_pass! {
         RUST_2021_PRELUDE_COLLISIONS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         UNSUPPORTED_CALLING_CONVENTIONS,
+        BREAK_WITH_LABEL_AND_LOOP,
     ]
 }
 
@@ -3350,4 +3351,33 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #00000 <https://github.com/rust-lang/rust/issues/00000>",
     };
+}
+
+declare_lint! {
+    /// The `break_with_label_and_loop` lint detects labeled `break` expressions with
+    /// an unlabeled loop as their value expression.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// 'label: loop {
+    ///     break 'label loop { break 42; };
+    /// };
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In Rust, loops can have a label, and `break` expressions can refer to that label to
+    /// break out of specific loops (and not necessarily the innermost one). `break` expressions
+    /// can also carry a value expression, which can be another loop. A labeled `break` with an
+    /// unlabeled loop as its value expression is easy to confuse with an unlabeled break with
+    /// a labeled loop and is thus discouraged (but allowed for compatibility); use parentheses
+    /// around the loop expression to silence this warning. Unlabeled `break` expressions with
+    /// labeled loops yield a hard error, which can also be silenced by wrapping the expression
+    /// in parentheses.
+    pub BREAK_WITH_LABEL_AND_LOOP,
+    Warn,
+    "`break` expression with label and unlabeled loop as value expression"
 }
