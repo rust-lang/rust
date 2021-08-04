@@ -1,5 +1,5 @@
-SOURCE_FILE@0..112
-  FN@0..111
+SOURCE_FILE@0..135
+  FN@0..134
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..7
@@ -8,16 +8,16 @@ SOURCE_FILE@0..112
       L_PAREN@7..8 "("
       R_PAREN@8..9 ")"
     WHITESPACE@9..10 " "
-    BLOCK_EXPR@10..111
+    BLOCK_EXPR@10..134
       L_CURLY@10..11 "{"
       WHITESPACE@11..16 "\n    "
-      MATCH_EXPR@16..109
+      MATCH_EXPR@16..132
         MATCH_KW@16..21 "match"
         WHITESPACE@21..22 " "
         LITERAL@22..24
           INT_NUMBER@22..24 "92"
         WHITESPACE@24..25 " "
-        MATCH_ARM_LIST@25..109
+        MATCH_ARM_LIST@25..132
           L_CURLY@25..26 "{"
           WHITESPACE@26..35 "\n        "
           MATCH_ARM@35..51
@@ -58,7 +58,7 @@ SOURCE_FILE@0..112
               R_PAREN@76..77 ")"
             COMMA@77..78 ","
           WHITESPACE@78..87 "\n        "
-          MATCH_ARM@87..103
+          MATCH_ARM@87..104
             RANGE_PAT@87..97
               LITERAL_PAT@87..90
                 LITERAL@87..90
@@ -69,14 +69,30 @@ SOURCE_FILE@0..112
               LITERAL_PAT@94..97
                 LITERAL@94..97
                   INT_NUMBER@94..97 "301"
-            FAT_ARROW@97..99 "=>"
-            WHITESPACE@99..100 " "
-            TUPLE_EXPR@100..102
-              L_PAREN@100..101 "("
-              R_PAREN@101..102 ")"
-            COMMA@102..103 ","
-          WHITESPACE@103..108 "\n    "
-          R_CURLY@108..109 "}"
-      WHITESPACE@109..110 "\n"
-      R_CURLY@110..111 "}"
-  WHITESPACE@111..112 "\n"
+            WHITESPACE@97..98 " "
+            FAT_ARROW@98..100 "=>"
+            WHITESPACE@100..101 " "
+            TUPLE_EXPR@101..103
+              L_PAREN@101..102 "("
+              R_PAREN@102..103 ")"
+            COMMA@103..104 ","
+          WHITESPACE@104..113 "\n        "
+          MATCH_ARM@113..126
+            RANGE_PAT@113..119
+              LITERAL_PAT@113..116
+                LITERAL@113..116
+                  INT_NUMBER@113..116 "302"
+              WHITESPACE@116..117 " "
+              DOT2@117..119 ".."
+            WHITESPACE@119..120 " "
+            FAT_ARROW@120..122 "=>"
+            WHITESPACE@122..123 " "
+            TUPLE_EXPR@123..125
+              L_PAREN@123..124 "("
+              R_PAREN@124..125 ")"
+            COMMA@125..126 ","
+          WHITESPACE@126..131 "\n    "
+          R_CURLY@131..132 "}"
+      WHITESPACE@132..133 "\n"
+      R_CURLY@133..134 "}"
+  WHITESPACE@134..135 "\n"
