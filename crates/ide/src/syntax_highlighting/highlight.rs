@@ -376,7 +376,10 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Associated;
                     match func.self_param(db) {
                         Some(sp) => match sp.access(db) {
-                            hir::Access::Exclusive => h = h | HlMod::Mutable | HlMod::Reference,
+                            hir::Access::Exclusive => {
+                                h |= HlMod::Mutable;
+                                h |= HlMod::Reference;
+                            }
                             hir::Access::Shared => h |= HlMod::Reference,
                             _ => {}
                         },
