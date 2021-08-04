@@ -1,17 +1,20 @@
 //! The Rust parser.
 //!
 //! The parser doesn't know about concrete representation of tokens and syntax
-//! trees. Abstract `TokenSource` and `TreeSink` traits are used instead. As a
-//! consequence, this crates does not contain a lexer.
+//! trees. Abstract [`TokenSource`] and [`TreeSink`] traits are used instead.
+//! As a consequence, this crate does not contain a lexer.
 //!
-//! The `Parser` struct from the `parser` module is a cursor into the sequence
-//! of tokens. Parsing routines use `Parser` to inspect current state and
-//! advance the parsing.
+//! The [`Parser`] struct from the [`parser`] module is a cursor into the
+//! sequence of tokens.  Parsing routines use [`Parser`] to inspect current
+//! state and advance the parsing.
 //!
-//! The actual parsing happens in the `grammar` module.
+//! The actual parsing happens in the [`grammar`] module.
 //!
-//! Tests for this crate live in `syntax` crate.
+//! Tests for this crate live in the `syntax` crate.
+//!
+//! [`Parser`]: crate::parser::Parser
 
+#![allow(rustdoc::private_intra_doc_links)]
 #[macro_use]
 mod token_set;
 #[macro_use]

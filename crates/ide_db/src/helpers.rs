@@ -120,8 +120,8 @@ pub fn visit_file_defs(
 ///
 /// Note that, by default, rust-analyzer tests **do not** include core or std
 /// libraries. If you are writing tests for functionality using [`FamousDefs`],
-/// you'd want to include [minicore](test_utils::MiniCore) declaration at the
-/// start of your tests:
+/// you'd want to include minicore (see `test_utils::MiniCore`) declaration at
+/// the start of your tests:
 ///
 /// ```
 /// //- minicore: iterator, ord, derive
