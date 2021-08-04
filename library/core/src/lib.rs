@@ -71,8 +71,6 @@
 #![allow(explicit_outlives_requirements)]
 
 // Library features:
-#![feature(bool_to_option)]
-#![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
@@ -105,12 +103,9 @@
 #![feature(const_type_name)]
 #![feature(const_unreachable_unchecked)]
 #![feature(duration_consts_2)]
-#![feature(pin_deref_mut)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(std_internals)]
-#![feature(str_split_as_str)]
-#![feature(str_split_inclusive_as_str)]
 #![feature(variant_count)]
 
 // Language features:
