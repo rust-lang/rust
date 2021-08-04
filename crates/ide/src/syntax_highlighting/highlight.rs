@@ -376,7 +376,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Associated;
                     match func.self_param(db) {
                         Some(sp) => match sp.access(db) {
-                            hir::Access::Exclusive => h |= HlMod::Mutable,
+                            hir::Access::Exclusive => h = h | HlMod::Mutable | HlMod::Reference,
                             hir::Access::Shared => h |= HlMod::Reference,
                             _ => {}
                         },
@@ -555,7 +555,7 @@ fn highlight_method_call(
     if let Some(self_param) = func.self_param(sema.db) {
         match self_param.access(sema.db) {
             hir::Access::Shared => h |= HlMod::Reference,
-            hir::Access::Exclusive => h |= HlMod::Mutable,
+            hir::Access::Exclusive => h | HlMod::Mutable | HlMod::Reference,
             hir::Access::Owned => {
                 if let Some(receiver_ty) =
                     method_call.receiver().and_then(|it| sema.type_of_expr(&it))
