@@ -104,6 +104,8 @@ public:
   PostDominatorTree &OrigPDT;
   LoopInfo &OrigLI;
   ScalarEvolution &OrigSE;
+
+  SmallPtrSet<BasicBlock*, 4> notForAnalysis;
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
 
@@ -845,8 +847,10 @@ public:
         OrigLI(Logic.PPC.FAM.getResult<llvm::LoopAnalysis>(*oldFunc_)),
         OrigSE(
             Logic.PPC.FAM.getResult<llvm::ScalarEvolutionAnalysis>(*oldFunc_)),
+        notForAnalysis(getGuaranteedUnreachable(oldFunc_)),
         ATA(new ActivityAnalyzer(
-            Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_), TLI_,
+            Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_), notForAnalysis,
+            TLI_,
             constantvalues_, activevals_, ActiveReturn)),
         tid(nullptr), numThreads(nullptr),
         OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_),

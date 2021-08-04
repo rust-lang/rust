@@ -291,7 +291,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     return false;
   }
 
-  if (!TR.isBlockAnalyzed(I->getParent())) {
+  if (notForAnalysis.count(I->getParent())) {
     if (EnzymePrintActivity)
       llvm::errs() << " constant instruction as dominates unreachable " << *I
                    << "\n";
@@ -1075,7 +1075,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     for (BasicBlock &BB : *TR.info.Function) {
       if (potentialStore && potentiallyActiveLoad)
         goto activeLoadAndStore;
-      if (!TR.isBlockAnalyzed(&BB))
+      if (notForAnalysis.count(&BB))
         continue;
       for (Instruction &I : BB) {
         if (potentialStore && potentiallyActiveLoad)
@@ -1889,7 +1889,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     // if its return is used in an active way, therefore add this to
     // the list of users to analyze
     if (auto I = dyn_cast<Instruction>(a)) {
-      if (!TR.isBlockAnalyzed(I->getParent())) {
+      if (notForAnalysis.count(I->getParent())) {
         if (EnzymePrintActivity) {
           llvm::errs() << "Value found constant unreachable inst use:" << *val
                        << " user " << *I << "\n";

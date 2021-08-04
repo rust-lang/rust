@@ -3074,11 +3074,10 @@ public:
             subdata->returns.end()) {
           if (Mode == DerivativeMode::ReverseModeGradient) {
             if (tape == nullptr)
-              tape = Builder2.CreatePHI(Type::getInt8Ty(call.getContext()), 0,
+              tape = Builder2.CreatePHI(subdata->tapeType, 0,
                                         "tapeArg");
             tape = gutils->cacheForReverse(Builder2, tape,
-                                           getIndex(&call, CacheType::Tape),
-                                           /*ignoreType*/ true);
+                                           getIndex(&call, CacheType::Tape));
           }
           tape = lookup(tape, Builder2);
           auto alloc = IRBuilder<>(gutils->inversionAllocs)
@@ -3102,6 +3101,10 @@ public:
           LoadInst *tape = nullptr;
           for (auto u : tapeArg->users()) {
             assert(!tape);
+            if (!isa<LoadInst>(u)) {
+                llvm::errs() << " newcalled: " << *newcalled << "\n";
+                llvm::errs() << " u: " << *u << "\n";
+            }
             tape = cast<LoadInst>(u);
           }
           assert(tape);
