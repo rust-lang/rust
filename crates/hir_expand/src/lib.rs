@@ -173,6 +173,10 @@ impl HirFileId {
             _ => false,
         }
     }
+
+    pub fn is_macro(self) -> bool {
+        matches!(self.0, HirFileIdRepr::MacroFile(_))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

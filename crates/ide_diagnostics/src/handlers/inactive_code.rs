@@ -11,7 +11,7 @@ pub(crate) fn inactive_code(
     d: &hir::InactiveCode,
 ) -> Option<Diagnostic> {
     // If there's inactive code somewhere in a macro, don't propagate to the call-site.
-    if d.node.file_id.expansion_info(ctx.sema.db).is_some() {
+    if d.node.file_id.is_macro() {
         return None;
     }
 
