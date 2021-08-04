@@ -70,7 +70,7 @@
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
 
-// Library features:
+// Library features for const fns:
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
@@ -105,7 +105,6 @@
 #![feature(duration_consts_2)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
-#![feature(std_internals)]
 #![feature(variant_count)]
 
 // Language features:
