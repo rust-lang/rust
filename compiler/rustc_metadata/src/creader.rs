@@ -777,19 +777,17 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        let profiler_runtime = &self.sess.opts.debugging_opts.profiler_runtime;
-
-        if !(profiler_runtime.is_some()
-            && (self.sess.instrument_coverage()
+        if self.sess.opts.debugging_opts.no_profiler_runtime
+            || !(self.sess.instrument_coverage()
                 || self.sess.opts.debugging_opts.profile
-                || self.sess.opts.cg.profile_generate.enabled()))
+                || self.sess.opts.cg.profile_generate.enabled())
         {
             return;
         }
 
         info!("loading profiler");
 
-        let name = Symbol::intern(profiler_runtime.as_ref().unwrap());
+        let name = Symbol::intern(&self.sess.opts.debugging_opts.profiler_runtime);
         if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
             self.sess.err(
                 "`profiler_builtins` crate (required by compiler options) \
