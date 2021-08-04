@@ -119,6 +119,12 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     //
     // Luckily the only types contained in default substs are type
     // parameters which don't matter here.
+    //
+    // FIXME(const_generics): Once more complex const parameter types
+    // are allowed, this might be incorrect. I think that we will still be
+    // fine, as all outlives relations of the const param types should also
+    // be part of the adt containing it, but we should still both update the
+    // documentation and add some tests for this.
     for arg in field_ty.walk_ignoring_default_const_substs() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
