@@ -6,6 +6,7 @@ use crate::cmp::{self, Ordering};
 use crate::ops::{ControlFlow, Try};
 
 use super::super::TrustedRandomAccessNoCoerce;
+use super::super::{ArrayChunks, ArrayRChunks};
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
@@ -3467,6 +3468,66 @@ pub trait Iterator {
         Self: TrustedRandomAccessNoCoerce,
     {
         unreachable!("Always specialized");
+    }
+
+    /// Creates an iterator which yields arrays of `N` elements yielded by
+    /// the original iterator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    /// let mut iter = (0..10).array_chunks::<3>();
+    ///
+    /// assert_eq!(iter.next(), Some([0, 1, 2]));
+    /// assert_eq!(iter.next(), Some([3, 4, 5]));
+    /// assert_eq!(iter.next(), Some([6, 7, 8]));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// assert_eq!(iter.remainder(), &[9]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_array_chunks", issue = "none")]
+    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    where
+        Self: Sized,
+    {
+        assert_ne!(N, 0);
+        ArrayChunks::new(self)
+    }
+
+    /// Creates an iterator which yields arrays of `N` elements yielded by
+    /// the original iterator starting from the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    /// let mut iter = (0..10).array_rchunks::<3>();
+    ///
+    /// assert_eq!(iter.next(), Some([7, 8, 9]));
+    /// assert_eq!(iter.next(), Some([4, 5, 6]));
+    /// assert_eq!(iter.next(), Some([1, 2, 3]));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// assert_eq!(iter.remainder(), &[0]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_array_chunks", issue = "none")]
+    fn array_rchunks<const N: usize>(self) -> ArrayRChunks<Self, N>
+    where
+        Self: Sized + DoubleEndedIterator,
+    {
+        assert_ne!(N, 0);
+        ArrayRChunks::new(self)
     }
 }
 

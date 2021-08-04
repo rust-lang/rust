@@ -409,6 +409,8 @@ pub use self::adapters::StepBy;
 pub use self::adapters::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccessNoCoerce;
+#[unstable(feature = "iter_array_chunks", issue = "none")]
+pub use self::adapters::{ArrayChunks, ArrayRChunks};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{
     Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
