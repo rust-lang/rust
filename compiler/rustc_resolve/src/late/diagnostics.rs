@@ -541,6 +541,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                     _ => {}
                 }
+
+                // If the trait has a single item (which wasn't matched by Levenshtein), suggest it
+                let suggestion = self.get_single_associated_item(&path, span, &source, is_expected);
+                self.r.add_typo_suggestion(&mut err, suggestion, ident_span);
             }
             if fallback {
                 // Fallback label.
@@ -583,6 +587,40 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         (err, candidates)
+    }
+
+    fn get_single_associated_item(
+        &mut self,
+        path: &[Segment],
+        span: Span,
+        source: &PathSource<'_>,
+        filter_fn: &impl Fn(Res) -> bool,
+    ) -> Option<TypoSuggestion> {
+        if let crate::PathSource::TraitItem(_) = source {
+            let mod_path = &path[..path.len() - 1];
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+                self.resolve_path(mod_path, None, false, span, CrateLint::No)
+            {
+                let resolutions = self.r.resolutions(module).borrow();
+                let targets: Vec<_> =
+                    resolutions
+                        .iter()
+                        .filter_map(|(key, resolution)| {
+                            resolution.borrow().binding.map(|binding| binding.res()).and_then(
+                                |res| if filter_fn(res) { Some((key, res)) } else { None },
+                            )
+                        })
+                        .collect();
+                if targets.len() == 1 {
+                    let target = targets[0];
+                    return Some(TypoSuggestion::single_item_from_res(
+                        target.0.ident.name,
+                        target.1,
+                    ));
+                }
+            }
+        }
+        None
     }
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
@@ -1208,7 +1246,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) {
-                        names.push(TypoSuggestion::from_res(ident.name, res));
+                        names.push(TypoSuggestion::typo_from_res(ident.name, res));
                     }
                 }
                 // Items in scope
@@ -1231,7 +1269,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                         );
 
                                         if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion::from_res(ident.name, crate_mod))
+                                            Some(TypoSuggestion::typo_from_res(
+                                                ident.name, crate_mod,
+                                            ))
                                         } else {
                                             None
                                         }
@@ -1249,11 +1289,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
-                names.extend(
-                    PrimTy::ALL.iter().map(|prim_ty| {
-                        TypoSuggestion::from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
-                    }),
-                )
+                names.extend(PrimTy::ALL.iter().map(|prim_ty| {
+                    TypoSuggestion::typo_from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
+                }))
             }
         } else {
             // Search in module.

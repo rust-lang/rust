@@ -38,14 +38,25 @@ crate type Suggestion = (Vec<(Span, String)>, String, Applicability);
 /// similarly named label and whether or not it is reachable.
 crate type LabelSuggestion = (Ident, bool);
 
+crate enum SuggestionTarget {
+    /// The target has a similar name as the name used by the programmer (probably a typo)
+    SimilarlyNamed,
+    /// The target is the only valid item that can be used in the corresponding context
+    SingleItem,
+}
+
 crate struct TypoSuggestion {
     pub candidate: Symbol,
     pub res: Res,
+    pub target: SuggestionTarget,
 }
 
 impl TypoSuggestion {
-    crate fn from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
-        TypoSuggestion { candidate, res }
+    crate fn typo_from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
+        Self { candidate, res, target: SuggestionTarget::SimilarlyNamed }
+    }
+    crate fn single_item_from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
+        Self { candidate, res, target: SuggestionTarget::SingleItem }
     }
 }
 
@@ -80,7 +91,7 @@ impl<'a> Resolver<'a> {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
                 if filter_fn(res) {
-                    names.push(TypoSuggestion::from_res(key.ident.name, res));
+                    names.push(TypoSuggestion::typo_from_res(key.ident.name, res));
                 }
             }
         }
@@ -623,7 +634,7 @@ impl<'a> Resolver<'a> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|ident| TypoSuggestion::from_res(ident.name, res)),
+                                .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
                         );
                     }
                 }
@@ -642,7 +653,7 @@ impl<'a> Resolver<'a> {
                                 suggestions.extend(
                                     ext.helper_attrs
                                         .iter()
-                                        .map(|name| TypoSuggestion::from_res(*name, res)),
+                                        .map(|name| TypoSuggestion::typo_from_res(*name, res)),
                                 );
                             }
                         }
@@ -652,8 +663,10 @@ impl<'a> Resolver<'a> {
                     if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope.get() {
                         let res = macro_rules_binding.binding.res();
                         if filter_fn(res) {
-                            suggestions
-                                .push(TypoSuggestion::from_res(macro_rules_binding.ident.name, res))
+                            suggestions.push(TypoSuggestion::typo_from_res(
+                                macro_rules_binding.ident.name,
+                                res,
+                            ))
                         }
                     }
                 }
@@ -671,7 +684,7 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             this.registered_attrs
                                 .iter()
-                                .map(|ident| TypoSuggestion::from_res(ident.name, res)),
+                                .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
                         );
                     }
                 }
@@ -679,7 +692,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
                             let res = binding.res();
-                            filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
+                            filter_fn(res).then_some(TypoSuggestion::typo_from_res(*name, res))
                         },
                     ));
                 }
@@ -689,14 +702,14 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
                                 .iter()
-                                .map(|(name, ..)| TypoSuggestion::from_res(*name, res)),
+                                .map(|(name, ..)| TypoSuggestion::typo_from_res(*name, res)),
                         );
                     }
                 }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
-                        filter_fn(res).then_some(TypoSuggestion::from_res(ident.name, res))
+                        filter_fn(res).then_some(TypoSuggestion::typo_from_res(ident.name, res))
                     }));
                 }
                 Scope::ToolPrelude => {
@@ -704,7 +717,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(
                         this.registered_tools
                             .iter()
-                            .map(|ident| TypoSuggestion::from_res(ident.name, res)),
+                            .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
                     );
                 }
                 Scope::StdLibPrelude => {
@@ -721,7 +734,7 @@ impl<'a> Resolver<'a> {
                 Scope::BuiltinTypes => {
                     suggestions.extend(PrimTy::ALL.iter().filter_map(|prim_ty| {
                         let res = Res::PrimTy(*prim_ty);
-                        filter_fn(res).then_some(TypoSuggestion::from_res(prim_ty.name(), res))
+                        filter_fn(res).then_some(TypoSuggestion::typo_from_res(prim_ty.name(), res))
                     }))
                 }
             }
@@ -993,20 +1006,31 @@ impl<'a> Resolver<'a> {
                 //    |              ^
                 return false;
             }
+            let prefix = match suggestion.target {
+                SuggestionTarget::SimilarlyNamed => "similarly named ",
+                SuggestionTarget::SingleItem => "",
+            };
+
             err.span_label(
                 self.session.source_map().guess_head_span(def_span),
                 &format!(
-                    "similarly named {} `{}` defined here",
+                    "{}{} `{}` defined here",
+                    prefix,
                     suggestion.res.descr(),
                     suggestion.candidate.as_str(),
                 ),
             );
         }
-        let msg = format!(
-            "{} {} with a similar name exists",
-            suggestion.res.article(),
-            suggestion.res.descr()
-        );
+        let msg = match suggestion.target {
+            SuggestionTarget::SimilarlyNamed => format!(
+                "{} {} with a similar name exists",
+                suggestion.res.article(),
+                suggestion.res.descr()
+            ),
+            SuggestionTarget::SingleItem => {
+                format!("maybe you meant this {}", suggestion.res.descr())
+            }
+        };
         err.span_suggestion(
             span,
             &msg,
