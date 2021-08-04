@@ -1141,9 +1141,9 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         );
         if t.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if self.tcx.is_some()
-            && t.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
+        } else if t.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
             && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
+            && self.tcx.is_some()
         {
             t.super_visit_with(self)
         } else {
@@ -1168,9 +1168,9 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if self.tcx.is_some()
-            && flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
+        } else if flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
             && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
+            && self.tcx.is_some()
         {
             c.super_visit_with(self)
         } else {
@@ -1178,14 +1178,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         }
     }
 
+    #[inline]
     fn visit_unevaluated_const(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_unevaluated_const(uv);
         debug!("HasTypeFlagsVisitor: uv={:?} uv.flags={:?} self.flags={:?}", uv, flags, self.flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if self.tcx.is_some()
-            && flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
+        } else if flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
             && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
+            && self.tcx.is_some()
         {
             uv.super_visit_with(self)
         } else {
@@ -1201,9 +1202,9 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         );
         if predicate.inner.flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
-        } else if self.tcx.is_some()
-            && predicate.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
+        } else if predicate.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS)
             && self.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS)
+            && self.tcx.is_some()
         {
             predicate.super_visit_with(self)
         } else {
