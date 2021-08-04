@@ -603,7 +603,12 @@ WildcardPat =
   '_'
 
 RangePat =
-  start:Pat op:('..' | '..=') end:Pat
+  // 1..
+  start:Pat op:('..' | '..=')
+  // 1..2
+  | start:Pat op:('..' | '..=') end:Pat
+  // ..2
+  | op:('..' | '..=') end:Pat
 
 RefPat =
   '&' 'mut'? Pat
