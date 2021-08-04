@@ -20,6 +20,8 @@ jobs:
 
     - name: Setup Node.js
       uses: actions/setup-node@v1.4.4
+      with:
+        node-version: '12.x'
 
     - name: Install remark
       run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended remark-gfm
