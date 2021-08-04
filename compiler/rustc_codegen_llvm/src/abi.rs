@@ -344,7 +344,7 @@ impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 pub trait FnAbiLlvmExt<'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>, decl: bool) -> &'ll Type;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
@@ -352,10 +352,10 @@ pub trait FnAbiLlvmExt<'tcx> {
 }
 
 impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>, decl: bool) -> &'ll Type {
-        // Ignore extra args when calling C variadic functions.
-        let args =
-            if decl && self.c_variadic { &self.args[..self.fixed_count] } else { &self.args };
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+        // Ignore "extra" args from the call site for C variadic functions.
+        // Only the "fixed" args are part of the LLVM function signature.
+        let args = if self.c_variadic { &self.args[..self.fixed_count] } else { &self.args };
 
         let args_capacity: usize = args.iter().map(|arg|
             if arg.pad.is_some() { 1 } else { 0 } +
@@ -414,7 +414,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         unsafe {
             llvm::LLVMPointerType(
-                self.llvm_type(cx, false),
+                self.llvm_type(cx),
                 cx.data_layout().instruction_address_space.0 as c_uint,
             )
         }

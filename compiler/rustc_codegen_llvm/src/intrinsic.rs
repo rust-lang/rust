@@ -712,7 +712,7 @@ fn gen_fn<'ll, 'tcx>(
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
 ) -> (&'ll Type, &'ll Value) {
     let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
-    let llty = fn_abi.llvm_type(cx, false);
+    let llty = fn_abi.llvm_type(cx);
     let llfn = cx.declare_fn(name, &fn_abi);
     cx.set_frame_pointer_type(llfn);
     cx.apply_target_cpu_attr(llfn);
