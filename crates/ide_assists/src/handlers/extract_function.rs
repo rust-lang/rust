@@ -96,7 +96,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
                 return;
             }
 
-            let params = body.extracted_function_params(ctx, locals_used.iter().copied());
+            let params =
+                body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
 
             let fun = Function {
                 name: "fun_name".to_string(),
@@ -183,8 +184,8 @@ struct Function {
 struct Param {
     var: Local,
     ty: hir::Type,
-    has_usages_afterwards: bool,
-    has_mut_inside_body: bool,
+    move_local: bool,
+    requires_mut: bool,
     is_copy: bool,
 }
 
@@ -226,6 +227,7 @@ struct ControlFlow {
 struct ContainerInfo {
     is_const: bool,
     is_in_tail: bool,
+    parent_loop: Option<SyntaxNode>,
     /// The function's return type, const's type etc.
     ret_type: Option<hir::Type>,
 }
@@ -335,11 +337,11 @@ impl ParamKind {
 
 impl Param {
     fn kind(&self) -> ParamKind {
-        match (self.has_usages_afterwards, self.has_mut_inside_body, self.is_copy) {
-            (true, true, _) => ParamKind::MutRef,
-            (true, false, false) => ParamKind::SharedRef,
-            (false, true, _) => ParamKind::MutValue,
-            (true, false, true) | (false, false, _) => ParamKind::Value,
+        match (self.move_local, self.requires_mut, self.is_copy) {
+            (false, true, _) => ParamKind::MutRef,
+            (false, false, false) => ParamKind::SharedRef,
+            (true, true, _) => ParamKind::MutValue,
+            (_, false, _) => ParamKind::Value,
         }
     }
 
@@ -622,6 +624,15 @@ impl FunctionBody {
     fn analyze_container(&self, sema: &Semantics<RootDatabase>) -> Option<ContainerInfo> {
         let mut ancestors = self.parent()?.ancestors();
         let infer_expr_opt = |expr| sema.type_of_expr(&expr?).map(TypeInfo::adjusted);
+        let mut parent_loop = None;
+        let mut set_parent_loop = |loop_: &dyn ast::LoopBodyOwner| {
+            if loop_
+                .loop_body()
+                .map_or(false, |it| it.syntax().text_range().contains_range(self.text_range()))
+            {
+                parent_loop.get_or_insert(loop_.syntax().clone());
+            }
+        };
         let (is_const, expr, ty) = loop {
             let anc = ancestors.next()?;
             break match_ast! {
@@ -658,6 +669,18 @@ impl FunctionBody {
                     },
                     ast::Variant(__) => return None,
                     ast::Meta(__) => return None,
+                    ast::LoopExpr(it) => {
+                        set_parent_loop(&it);
+                        continue;
+                    },
+                    ast::ForExpr(it) => {
+                        set_parent_loop(&it);
+                        continue;
+                    },
+                    ast::WhileExpr(it) => {
+                        set_parent_loop(&it);
+                        continue;
+                    },
                     _ => continue,
                 }
             };
@@ -670,7 +693,7 @@ impl FunctionBody {
             container_tail.zip(self.tail_expr()).map_or(false, |(container_tail, body_tail)| {
                 container_tail.syntax().text_range().contains_range(body_tail.syntax().text_range())
             });
-        Some(ContainerInfo { is_in_tail, is_const, ret_type: ty })
+        Some(ContainerInfo { is_in_tail, is_const, parent_loop, ret_type: ty })
     }
 
     fn return_ty(&self, ctx: &AssistContext) -> Option<RetType> {
@@ -780,34 +803,38 @@ impl FunctionBody {
 
         Some(ControlFlow { kind, is_async, is_unsafe: _is_unsafe })
     }
+
     /// find variables that should be extracted as params
     ///
     /// Computes additional info that affects param type and mutability
     fn extracted_function_params(
         &self,
         ctx: &AssistContext,
+        container_info: &ContainerInfo,
         locals: impl Iterator<Item = Local>,
     ) -> Vec<Param> {
         locals
             .map(|local| (local, local.source(ctx.db())))
             .filter(|(_, src)| is_defined_outside_of_body(ctx, self, src))
             .filter_map(|(local, src)| {
-                if src.value.is_left() {
-                    Some(local)
+                if let Either::Left(src) = src.value {
+                    Some((local, src))
                 } else {
                     stdx::never!(false, "Local::is_self returned false, but source is SelfParam");
                     None
                 }
             })
-            .map(|var| {
+            .map(|(var, src)| {
                 let usages = LocalUsages::find_local_usages(ctx, var);
                 let ty = var.ty(ctx.db());
                 let is_copy = ty.is_copy(ctx.db());
                 Param {
                     var,
                     ty,
-                    has_usages_afterwards: self.has_usages_after_body(&usages),
-                    has_mut_inside_body: has_exclusive_usages(ctx, &usages, self),
+                    move_local: container_info.parent_loop.as_ref().map_or(true, |it| {
+                        it.text_range().contains_range(src.syntax().text_range())
+                    }) && !self.has_usages_after_body(&usages),
+                    requires_mut: has_exclusive_usages(ctx, &usages, self),
                     is_copy,
                 }
             })
@@ -4008,6 +4035,83 @@ const FOO: () = {
 
 const fn $0fun_name() {
     ()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_does_not_move_outer_loop_vars() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    let mut x = 5;
+    for _ in 0..10 {
+        $0x += 1;$0
+    }
+}
+"#,
+            r#"
+fn foo() {
+    let mut x = 5;
+    for _ in 0..10 {
+        fun_name(&mut x);
+    }
+}
+
+fn $0fun_name(x: &mut i32) {
+    *x += 1;
+}
+"#,
+        );
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    for _ in 0..10 {
+        let mut x = 5;
+        $0x += 1;$0
+    }
+}
+"#,
+            r#"
+fn foo() {
+    for _ in 0..10 {
+        let mut x = 5;
+        fun_name(x);
+    }
+}
+
+fn $0fun_name(mut x: i32) {
+    x += 1;
+}
+"#,
+        );
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    loop {
+        let mut x = 5;
+        for _ in 0..10 {
+            $0x += 1;$0
+        }
+    }
+}
+"#,
+            r#"
+fn foo() {
+    loop {
+        let mut x = 5;
+        for _ in 0..10 {
+            fun_name(&mut x);
+        }
+    }
+}
+
+fn $0fun_name(x: &mut i32) {
+    *x += 1;
 }
 "#,
         );
