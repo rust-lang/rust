@@ -460,8 +460,6 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 if s.is_mut(db) {
                     h |= HlMod::Mutable;
                     h |= HlMod::Unsafe;
-                } else {
-                    h |= HlMod::Reference;
                 }
 
                 h
@@ -489,7 +487,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             let ty = local.ty(db);
             if local.is_mut(db) || ty.is_mutable_reference() {
                 h |= HlMod::Mutable;
-            } 
+            }
             if local.is_ref(db) || ty.is_reference() {
                 h |= HlMod::Reference;
             }
@@ -555,7 +553,10 @@ fn highlight_method_call(
     if let Some(self_param) = func.self_param(sema.db) {
         match self_param.access(sema.db) {
             hir::Access::Shared => h |= HlMod::Reference,
-            hir::Access::Exclusive => h | HlMod::Mutable | HlMod::Reference,
+            hir::Access::Exclusive => {
+                h |= HlMod::Mutable;
+                h |= HlMod::Reference;
+            }
             hir::Access::Owned => {
                 if let Some(receiver_ty) =
                     method_call.receiver().and_then(|it| sema.type_of_expr(&it))

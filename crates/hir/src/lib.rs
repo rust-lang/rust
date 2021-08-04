@@ -1842,7 +1842,10 @@ impl Local {
 
     pub fn is_ref(self, db: &dyn HirDatabase) -> bool {
         let body = db.body(self.parent);
-        matches!(&body[self.pat_id], Pat::Bind { mode: BindingAnnotation::Ref | BindingAnnotation::RefMut, .. })
+        matches!(
+            &body[self.pat_id],
+            Pat::Bind { mode: BindingAnnotation::Ref | BindingAnnotation::RefMut, .. }
+        )
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
