@@ -983,10 +983,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
         self.inner.outer_exclusive_binder > binder
     }
-
-    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
-        self.inner.flags.intersects(flags)
-    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {

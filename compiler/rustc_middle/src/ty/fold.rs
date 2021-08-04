@@ -74,75 +74,75 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
-    fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags)
+    fn has_type_flags<const BITS: u32>(&self) -> bool {
+        self.visit_with(&mut HasTypeFlagsVisitor::<BITS>).break_value() == Some(FoundFlags)
     }
     fn has_projections(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+        self.has_type_flags::<{ TypeFlags::HAS_PROJECTION.bits() }>()
     }
     fn has_opaque_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+        self.has_type_flags::<{ TypeFlags::HAS_TY_OPAQUE.bits() }>()
     }
     fn references_error(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_ERROR)
+        self.has_type_flags::<{ TypeFlags::HAS_ERROR.bits() }>()
     }
     fn has_param_types_or_consts(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
+        self.has_type_flags::<{ TypeFlags::HAS_TY_PARAM.bits() | TypeFlags::HAS_CT_PARAM.bits() }>()
     }
     fn has_infer_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_INFER)
+        self.has_type_flags::<{ (TypeFlags::HAS_RE_INFER).bits() }>()
     }
     fn has_infer_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER)
+        self.has_type_flags::<{ (TypeFlags::HAS_TY_INFER).bits() }>()
     }
     fn has_infer_types_or_consts(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_CT_INFER)
+        self.has_type_flags::<{ TypeFlags::HAS_TY_INFER.bits() | TypeFlags::HAS_CT_INFER.bits() }>()
     }
     fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER)
+        self.has_type_flags::<{ TypeFlags::NEEDS_INFER.bits() }>()
     }
     fn has_placeholders(&self) -> bool {
-        self.has_type_flags(
-            TypeFlags::HAS_RE_PLACEHOLDER
-                | TypeFlags::HAS_TY_PLACEHOLDER
-                | TypeFlags::HAS_CT_PLACEHOLDER,
-        )
+        self.has_type_flags::<{
+            TypeFlags::HAS_RE_PLACEHOLDER.bits()
+                | TypeFlags::HAS_TY_PLACEHOLDER.bits()
+                | TypeFlags::HAS_CT_PLACEHOLDER.bits()
+        }>()
     }
     fn needs_subst(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST)
+        self.has_type_flags::<{ TypeFlags::NEEDS_SUBST.bits() }>()
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
     fn has_free_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+        self.has_type_flags::<{ TypeFlags::HAS_FREE_REGIONS.bits() }>()
     }
 
     fn has_erased_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_ERASED)
+        self.has_type_flags::<{ TypeFlags::HAS_RE_ERASED.bits() }>()
     }
 
     /// True if there are any un-erased free regions.
     fn has_erasable_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+        self.has_type_flags::<{ TypeFlags::HAS_FREE_REGIONS.bits() }>()
     }
 
     /// Indicates whether this value references only 'global'
     /// generic parameters that are the same regardless of what fn we are
     /// in. This is used for caching.
     fn is_global(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
+        !self.has_type_flags::<{ TypeFlags::HAS_FREE_LOCAL_NAMES.bits() }>()
     }
 
     /// True if there are any late-bound regions
     fn has_late_bound_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
+        self.has_type_flags::<{ TypeFlags::HAS_RE_LATE_BOUND.bits() }>()
     }
 
     /// Indicates whether this value still has parameters/placeholders/inference variables
     /// which could be replaced later, in a way that would change the results of `impl`
     /// specialization.
     fn still_further_specializable(&self) -> bool {
-        self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
+        self.has_type_flags::<{ TypeFlags::STILL_FURTHER_SPECIALIZABLE.bits() }>()
     }
 }
 
@@ -1053,22 +1053,29 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
 struct FoundFlags;
 
 // FIXME: Optimize for checking for infer flags
-struct HasTypeFlagsVisitor {
-    flags: ty::TypeFlags,
+struct HasTypeFlagsVisitor<const BITS: u32>;
+impl<const BITS: u32> HasTypeFlagsVisitor<BITS> {
+    const FLAGS: ty::TypeFlags = {
+        if (BITS & !ty::TypeFlags::all().bits()) == 0 {
+            ty::TypeFlags::from_bits_truncate(BITS)
+        } else {
+            panic!("invalid type flags")
+        }
+    };
 }
 
-impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
+impl<'tcx, const BITS: u32> TypeVisitor<'tcx> for HasTypeFlagsVisitor<BITS> {
     type BreakTy = FoundFlags;
 
     #[inline]
     fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
         debug!(
-            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
+            "HasTypeFlagsVisitor: t={:?} t.flags={:?} Self::FLAGS={:?}",
             t,
             t.flags(),
-            self.flags
+            Self::FLAGS
         );
-        if t.flags().intersects(self.flags) {
+        if t.flags().intersects(Self::FLAGS) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1078,8 +1085,8 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = r.type_flags();
-        debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} self.flags={:?}", r, flags, self.flags);
-        if flags.intersects(self.flags) {
+        debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} Self::FLAGS={:?}", r, flags, Self::FLAGS);
+        if flags.intersects(Self::FLAGS) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1089,8 +1096,8 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
-        debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
-        if flags.intersects(self.flags) {
+        debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} Self::FLAGS={:?}", c, flags, Self::FLAGS);
+        if flags.intersects(Self::FLAGS) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1100,10 +1107,12 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!(
-            "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
-            predicate, predicate.inner.flags, self.flags
+            "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} Self::FLAGS={:?}",
+            predicate,
+            predicate.inner.flags,
+            Self::FLAGS
         );
-        if predicate.inner.flags.intersects(self.flags) {
+        if predicate.inner.flags.intersects(Self::FLAGS) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE

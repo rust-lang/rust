@@ -268,7 +268,7 @@ struct Canonicalizer<'cx, 'tcx> {
     // heap-allocated.
     indices: FxHashMap<GenericArg<'tcx>, BoundVar>,
     canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
-    needs_canonical_flags: TypeFlags,
+    canonicalize_free_regions: bool,
 
     binder_index: ty::DebruijnIndex,
 }
@@ -400,7 +400,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Opaque(..) => {
-                if t.flags().intersects(self.needs_canonical_flags) {
+                if t.flags().intersects(Self::needs_canonical_flags(self.canonicalize_free_regions))
+                {
                     t.super_fold_with(self)
                 } else {
                     t
@@ -451,11 +452,37 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
         }
 
         let flags = FlagComputation::for_const(ct);
-        if flags.intersects(self.needs_canonical_flags) { ct.super_fold_with(self) } else { ct }
+        if flags.intersects(Self::needs_canonical_flags(self.canonicalize_free_regions)) {
+            ct.super_fold_with(self)
+        } else {
+            ct
+        }
     }
 }
 
 impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
+    const fn needs_canonical_flags(canonicalize_free_regions: bool) -> TypeFlags {
+        TypeFlags::from_bits_truncate(if canonicalize_free_regions {
+            TypeFlags::NEEDS_INFER.bits() |
+            TypeFlags::HAS_FREE_REGIONS.bits() | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
+            TypeFlags::HAS_TY_PLACEHOLDER.bits() |
+            TypeFlags::HAS_CT_PLACEHOLDER.bits()
+        } else {
+            TypeFlags::NEEDS_INFER.bits()
+                | TypeFlags::HAS_RE_PLACEHOLDER.bits()
+                | TypeFlags::HAS_TY_PLACEHOLDER.bits()
+                | TypeFlags::HAS_CT_PLACEHOLDER.bits()
+        })
+    }
+
+    fn has_type_flags<V: TypeFoldable<'tcx>>(canonicalize_free_regions: bool, value: &V) -> bool {
+        if canonicalize_free_regions {
+            value.has_type_flags::<{ Canonicalizer::needs_canonical_flags(true).bits() }>()
+        } else {
+            value.has_type_flags::<{ Canonicalizer::needs_canonical_flags(false).bits() }>()
+        }
+    }
+
     /// The main `canonicalize` method, shared impl of
     /// `canonicalize_query` and `canonicalize_response`.
     fn canonicalize<V>(
@@ -468,20 +495,9 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     where
         V: TypeFoldable<'tcx>,
     {
-        let needs_canonical_flags = if canonicalize_region_mode.any() {
-            TypeFlags::NEEDS_INFER |
-            TypeFlags::HAS_FREE_REGIONS | // `HAS_RE_PLACEHOLDER` implies `HAS_FREE_REGIONS`
-            TypeFlags::HAS_TY_PLACEHOLDER |
-            TypeFlags::HAS_CT_PLACEHOLDER
-        } else {
-            TypeFlags::NEEDS_INFER
-                | TypeFlags::HAS_RE_PLACEHOLDER
-                | TypeFlags::HAS_TY_PLACEHOLDER
-                | TypeFlags::HAS_CT_PLACEHOLDER
-        };
-
+        let canonicalize_free_regions = canonicalize_region_mode.any();
         // Fast path: nothing that needs to be canonicalized.
-        if !value.has_type_flags(needs_canonical_flags) {
+        if !Canonicalizer::has_type_flags(canonicalize_free_regions, &value) {
             let canon_value = Canonical {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
@@ -494,7 +510,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             infcx,
             tcx,
             canonicalize_region_mode,
-            needs_canonical_flags,
+            canonicalize_free_regions,
             variables: SmallVec::new(),
             query_state,
             indices: FxHashMap::default(),
