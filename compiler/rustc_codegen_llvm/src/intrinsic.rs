@@ -686,11 +686,19 @@ fn codegen_emcc_try(
         // create an alloca and pass a pointer to that.
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let i8_align = bx.tcx().data_layout.i8_align.abi;
-        let catch_data =
-            catch.alloca(bx.type_struct(&[bx.type_i8p(), bx.type_bool()], false), ptr_align);
-        let catch_data_0 = catch.inbounds_gep(catch_data, &[bx.const_usize(0), bx.const_usize(0)]);
+        let catch_data_type = bx.type_struct(&[bx.type_i8p(), bx.type_bool()], false);
+        let catch_data = catch.alloca(catch_data_type, ptr_align);
+        let catch_data_0 = catch.inbounds_gep(
+            catch_data_type,
+            catch_data,
+            &[bx.const_usize(0), bx.const_usize(0)],
+        );
         catch.store(ptr, catch_data_0, ptr_align);
-        let catch_data_1 = catch.inbounds_gep(catch_data, &[bx.const_usize(0), bx.const_usize(1)]);
+        let catch_data_1 = catch.inbounds_gep(
+            catch_data_type,
+            catch_data,
+            &[bx.const_usize(0), bx.const_usize(1)],
+        );
         catch.store(is_rust_panic, catch_data_1, i8_align);
         let catch_data = catch.bitcast(catch_data, bx.type_i8p());
 

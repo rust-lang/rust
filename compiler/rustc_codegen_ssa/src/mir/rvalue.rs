@@ -636,7 +636,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitOr => bx.or(lhs, rhs),
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
-            mir::BinOp::Offset => bx.inbounds_gep(lhs, &[rhs]),
+            mir::BinOp::Offset => {
+                let pointee_type = input_ty
+                    .builtin_deref(true)
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty))
+                    .ty;
+                let llty = bx.cx().backend_type(bx.cx().layout_of(pointee_type));
+                bx.inbounds_gep(llty, lhs, &[rhs])
+            }
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne

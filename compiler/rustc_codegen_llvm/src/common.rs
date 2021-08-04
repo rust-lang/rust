@@ -268,7 +268,8 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     }
                 };
                 let llval = unsafe {
-                    llvm::LLVMConstInBoundsGEP(
+                    llvm::LLVMRustConstInBoundsGEP2(
+                        self.type_i8(),
                         self.const_bitcast(base_addr, self.type_i8p_ext(base_addr_space)),
                         &self.const_usize(offset.bytes()),
                         1,
@@ -303,7 +304,8 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let base_addr = self.static_addr_of(init, alloc.align, None);
 
             let llval = unsafe {
-                llvm::LLVMConstInBoundsGEP(
+                llvm::LLVMRustConstInBoundsGEP2(
+                    self.type_i8(),
                     self.const_bitcast(base_addr, self.type_i8p()),
                     &self.const_usize(offset.bytes()),
                     1,
