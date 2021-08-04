@@ -80,7 +80,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
         .map(|i| generate_name(i, &name, &ident_pat, &usages, ctx))
         .collect_vec();
 
-    Some(TupleData { range, field_names, usages })
+    Some(TupleData { ident_pat, range, field_names, usages })
 }
 
 fn generate_name(
@@ -95,7 +95,7 @@ fn generate_name(
 }
 
 struct TupleData {
-    // ident_pat: IdentPat,
+    ident_pat: IdentPat,
     // name: String,
     range: TextRange,
     field_names: Vec<String>,
@@ -103,23 +103,31 @@ struct TupleData {
     usages: Option<UsageSearchResult>,
 }
 fn edit_tuple_assignment(data: &TupleData, builder: &mut AssistBuilder, ctx: &AssistContext) {
-    let new_tuple = {
-        let fields = data
+    let tuple_pat = {
+        let original = &data.ident_pat;
+        let is_ref = original.ref_token().is_some();
+        let is_mut = original.mut_token().is_some();
+        let fields =
+            data
             .field_names
             .iter()
-            .map(|name| ast::Pat::from(ast::make::ident_pat(false, false, ast::make::name(name))));
+            .map(|name| ast::Pat::from(ast::make::ident_pat(is_ref, is_mut, ast::make::name(name))));
         ast::make::tuple_pat(fields)
     };
 
+    let add_cursor = |text: &str| {
+        // place cursor on first tuple item
+        let first_tuple = &data.field_names[0];
+        text.replacen(first_tuple, &format!("$0{}", first_tuple), 1)
+    };
+
+    let text = tuple_pat.to_string();
     match ctx.config.snippet_cap {
         Some(cap) => {
-            // No support for placeholders in Code Actions, except for special rust analyzer handling which supports only first `$0`
-            //  -> place cursor on first variable
-            let mut snip = new_tuple.to_string();
-            snip.insert_str(1, "$0");
+            let snip = add_cursor(&text);
             builder.replace_snippet(cap, data.range, snip);
         }
-        None => builder.replace(data.range, new_tuple.to_string()),
+        None => builder.replace(data.range, text),
     };
 }
 
@@ -463,6 +471,74 @@ fn foo(t: &(usize, usize)) -> usize {
     }
 
     #[test]
+    fn with_ref() {
+        //Note: `v` has different types:
+        // * in 1st: `i32`
+        // * in 2nd: `&i32`
+        check_assist(
+            destructure_tuple_binding,
+            r#"
+fn main() {
+    let ref $0t = (1,2);
+    let v = t.0;
+}
+            "#,
+            r#"
+fn main() {
+    let (ref $0_0, ref _1) = (1,2);
+    let v = _0;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn with_mut() {
+        check_assist(
+            destructure_tuple_binding,
+            r#"
+fn main() {
+    let mut $0t = (1,2);
+    t.0 = 42;
+    let v = t.0;
+}
+            "#,
+            r#"
+fn main() {
+    let (mut $0_0, mut _1) = (1,2);
+    _0 = 42;
+    let v = _0;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn with_ref_mut() {
+        //Note: `v` has different types:
+        // * in 1st: `i32`
+        // * in 2nd: `&mut i32`
+        // Note: 2nd `_0 = 42` isn't valid; requires dereferencing (`*_0`), but isn't handled here!
+        check_assist(
+            destructure_tuple_binding,
+            r#"
+fn main() {
+    let ref mut $0t = (1,2);
+    t.0 = 42;
+    let v = t.0;
+}
+            "#,
+            r#"
+fn main() {
+    let (ref mut $0_0, ref mut _1) = (1,2);
+    _0 = 42;
+    let v = _0;
+}
+            "#,
+        )
+    }
+
+    #[test]
     fn dont_trigger_for_non_tuple_reference() {
         check_assist_not_applicable(
             destructure_tuple_binding,
@@ -726,6 +802,31 @@ fn main() {
             r#"
 fn main() {
     match Some((1,2)) {
+        Some(($0_0, _1)) => _1,
+        _ => 0,
+    };
+}
+            "#,
+        )
+    }
+    #[test]
+    fn in_match_reference_option() {
+        check_assist(
+            destructure_tuple_binding,
+            r#"
+//- minicore: option
+fn main() {
+    let t = (1,2);
+    match Some(&t) {
+        Some($0t) => t.1,
+        _ => 0,
+    };
+}
+            "#,
+            r#"
+fn main() {
+    let t = (1,2);
+    match Some(&t) {
         Some(($0_0, _1)) => _1,
         _ => 0,
     };
