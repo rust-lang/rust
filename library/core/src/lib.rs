@@ -61,7 +61,7 @@
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
 #![no_core]
-
+//
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -69,7 +69,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
-
+//
 // Library features for const fns:
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
@@ -106,7 +106,7 @@
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(variant_count)]
-
+//
 // Language features:
 #![feature(abi_unadjusted)]
 #![feature(allow_internal_unstable)]
@@ -155,7 +155,7 @@
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
-
+//
 // Target features:
 #![feature(aarch64_target_feature)]
 #![feature(adx_target_feature)]
