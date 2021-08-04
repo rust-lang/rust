@@ -727,6 +727,18 @@ fn test_array_windows_infer() {
 }
 
 #[test]
+fn test_array_windows_zero() {
+    let v: &[i32] = &[0, 1, 2];
+    let mut iter = v.array_windows::<0>();
+
+    assert_eq!(iter.next(), Some(&[]));
+    assert_eq!(iter.next(), Some(&[]));
+    assert_eq!(iter.next(), Some(&[]));
+    assert_eq!(iter.next(), Some(&[]));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_array_windows_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.array_windows::<3>();
@@ -739,6 +751,10 @@ fn test_array_windows_count() {
     let v3: &[i32] = &[];
     let c3 = v3.array_windows::<2>();
     assert_eq!(c3.count(), 0);
+
+    let v4: &[i32] = &[0, 1, 2];
+    let c4 = v4.array_windows::<0>();
+    assert_eq!(c4.count(), 4);
 }
 
 #[test]
@@ -1050,6 +1066,10 @@ fn test_windows_count() {
     let v3: &[i32] = &[];
     let c3 = v3.windows(2);
     assert_eq!(c3.count(), 0);
+
+    let v4: &[i32] = &[0, 1, 2, 3, 4];
+    let c4 = v4.windows(0);
+    assert_eq!(c4.count(), 6);
 }
 
 #[test]

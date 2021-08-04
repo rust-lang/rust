@@ -11,7 +11,6 @@
 use crate::cmp::Ordering::{self, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
-use crate::num::NonZeroUsize;
 use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
@@ -725,12 +724,8 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over all contiguous windows of length
-    /// `size`. The windows overlap. If the slice is shorter than
+    /// `size`. The windows may overlap. If the slice is shorter than
     /// `size`, the iterator returns no values.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `size` is 0.
     ///
     /// # Examples
     ///
@@ -753,7 +748,6 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        let size = NonZeroUsize::new(size).expect("size is zero");
         Windows::new(self, size)
     }
 
@@ -1199,11 +1193,6 @@ impl<T> [T] {
     ///
     /// If `N` is greater than the size of the slice, it will return no windows.
     ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
     /// # Examples
     ///
     /// ```
@@ -1220,7 +1209,6 @@ impl<T> [T] {
     #[unstable(feature = "array_windows", issue = "75027")]
     #[inline]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
-        assert_ne!(N, 0);
         ArrayWindows::new(self)
     }
 
