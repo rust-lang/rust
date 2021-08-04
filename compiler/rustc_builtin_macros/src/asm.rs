@@ -10,7 +10,7 @@ use rustc_parse_format as parse;
 use rustc_session::lint::{self, BuiltinLintDiagnostics};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{InnerSpan, Span};
+use rustc_span::{InnerSpan, MultiSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 
@@ -523,26 +523,19 @@ fn expand_preparsed_asm(
             if found_labels.len() > 0 {
                 let spans =
                     found_labels.into_iter().filter_map(find_label_span).collect::<Vec<Span>>();
-                if spans.len() > 0 {
-                    for span in spans.into_iter() {
-                        ecx.parse_sess().buffer_lint_with_diagnostic(
-                            lint::builtin::NAMED_ASM_LABELS,
-                            span,
-                            ecx.current_expansion.lint_node_id,
-                            "avoid using named labels in inline assembly",
-                            BuiltinLintDiagnostics::NamedAsmLabel("only local labels of the form `<number>:` should be used in inline asm".to_string()),
-                        );
-                    }
-                } else {
-                    // If there were labels but we couldn't find a span, combine the warnings and use the template span
-                    ecx.parse_sess().buffer_lint_with_diagnostic(
-                        lint::builtin::NAMED_ASM_LABELS,
-                        template_sp,
-                        ecx.current_expansion.lint_node_id,
-                        "avoid using named labels in inline assembly",
-                        BuiltinLintDiagnostics::NamedAsmLabel("only local labels of the form `<number>:` should be used in inline asm".to_string()),
-                    );
-                }
+                // If there were labels but we couldn't find a span, combine the warnings and use the template span
+                let target_spans: MultiSpan =
+                    if spans.len() > 0 { spans.into() } else { template_sp.into() };
+                ecx.parse_sess().buffer_lint_with_diagnostic(
+                    lint::builtin::NAMED_ASM_LABELS,
+                    target_spans,
+                    ecx.current_expansion.lint_node_id,
+                    "avoid using named labels in inline assembly",
+                    BuiltinLintDiagnostics::NamedAsmLabel(
+                        "only local labels of the form `<number>:` should be used in inline asm"
+                            .to_string(),
+                    ),
+                );
             }
         }
 

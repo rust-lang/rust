@@ -16,13 +16,11 @@ fn main() {
         // Multiple labels on one line
         asm!("foo: bar1: nop");
         //~^ ERROR avoid using named labels
-        //~| ERROR avoid using named labels
 
         // Multiple lines
         asm!("foo1: nop", "nop"); //~ ERROR avoid using named labels
         asm!("foo2: foo3: nop", "nop");
         //~^ ERROR avoid using named labels
-        //~| ERROR avoid using named labels
         asm!("nop", "foo4: nop"); //~ ERROR avoid using named labels
         asm!("foo5: nop", "foo6: nop");
         //~^ ERROR avoid using named labels
@@ -31,19 +29,16 @@ fn main() {
         // Statement separator
         asm!("foo7: nop; foo8: nop");
         //~^ ERROR avoid using named labels
-        //~| ERROR avoid using named labels
         asm!("foo9: nop; nop"); //~ ERROR avoid using named labels
         asm!("nop; foo10: nop"); //~ ERROR avoid using named labels
 
         // Escaped newline
         asm!("bar2: nop\n bar3: nop");
         //~^ ERROR avoid using named labels
-        //~| ERROR avoid using named labels
         asm!("bar4: nop\n nop"); //~ ERROR avoid using named labels
         asm!("nop\n bar5: nop"); //~ ERROR avoid using named labels
         asm!("nop\n bar6: bar7: nop");
         //~^ ERROR avoid using named labels
-        //~| ERROR avoid using named labels
 
         // Raw strings
         asm!(
@@ -53,7 +48,7 @@ fn main() {
             "
         );
         //~^^^^ ERROR avoid using named labels
-        //~^^^^ ERROR avoid using named labels
+
         asm!(
             r###"
             nop
