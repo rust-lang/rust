@@ -2,46 +2,47 @@
 + // MIR for `main` after SimplifyCfg-early-opt
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_cfg.rs:5:11: 5:11
-      let mut _1: ();                      // in scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
-      let mut _2: bool;                    // in scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
-      let mut _3: !;                       // in scope 0 at $DIR/simplify_cfg.rs:7:18: 9:10
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_cfg.rs:7:11: 7:11
+      let mut _1: ();                      // in scope 0 at $DIR/simplify_cfg.rs:7:1: 13:2
+      let mut _2: bool;                    // in scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
+      let mut _3: !;                       // in scope 0 at $DIR/simplify_cfg.rs:9:18: 11:10
   
       bb0: {
--         goto -> bb1;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+-         goto -> bb1;                     // scope 0 at $DIR/simplify_cfg.rs:8:5: 12:6
 -     }
 - 
 -     bb1: {
-          StorageLive(_2);                 // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
--         _2 = bar() -> bb2;               // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
-+         _2 = bar() -> bb1;               // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+          StorageLive(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
+-         _2 = bar() -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
++         _2 = bar() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
                                            // mir::Constant
-                                           // + span: $DIR/simplify_cfg.rs:7:12: 7:15
+                                           // + span: $DIR/simplify_cfg.rs:9:12: 9:15
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
       }
   
 -     bb2: {
--         switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-         switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:9:9: 11:10
 +     bb1: {
-+         switchInt(move _2) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++         switchInt(move _2) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_cfg.rs:9:9: 11:10
       }
   
 -     bb3: {
 +     bb2: {
-          _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:9: 9:10
-          return;                          // scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
+          _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:10:13: 10:18
+          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:11:9: 11:10
+          return;                          // scope 0 at $DIR/simplify_cfg.rs:13:2: 13:2
       }
   
 -     bb4: {
 +     bb3: {
-          _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:9:10: 9:10
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:9: 9:10
-          goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
--     }
-- 
+          _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:11:10: 11:10
+          StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:11:9: 11:10
+          goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:8:5: 12:6
+      }
+  
 -     bb5 (cleanup): {
--         resume;                          // scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
++     bb4 (cleanup): {
+          resume;                          // scope 0 at $DIR/simplify_cfg.rs:7:1: 13:2
       }
   }
   

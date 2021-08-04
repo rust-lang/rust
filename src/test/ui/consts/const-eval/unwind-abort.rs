@@ -1,12 +1,11 @@
-#![feature(unwind_attributes, const_panic)]
+#![feature(c_unwind, const_panic, const_extern_fn)]
 
-#[unwind(aborts)]
-const fn foo() {
+const extern "C" fn foo() {
     panic!() //~ ERROR evaluation of constant value failed
 }
 
 const _: () = foo();
-// Ensure that the CTFE engine handles calls to `#[unwind(aborts)]` gracefully
+// Ensure that the CTFE engine handles calls to `extern "C"` aborting gracefully
 
 fn main() {
     let _ = foo();

@@ -20,11 +20,11 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
-#![feature(unwind_attributes)]
 #![feature(abi_thiscall)]
 #![feature(rustc_attrs)]
 #![panic_runtime]
 #![feature(panic_runtime)]
+#![feature(c_unwind)]
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
 
@@ -98,8 +98,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[rustc_std_internal_symbol]
-#[unwind(allowed)]
-pub unsafe extern "C" fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32 {
+pub unsafe extern "C-unwind" fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32 {
     let payload = Box::from_raw((*payload).take_box());
 
     imp::panic(payload)

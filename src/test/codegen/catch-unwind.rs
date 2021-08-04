@@ -10,6 +10,7 @@
 // ignore-riscv64 FIXME
 
 #![crate_type = "lib"]
+#![feature(c_unwind)]
 
 extern "C" {
     fn bar();
