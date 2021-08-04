@@ -35,6 +35,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
+.reference          { font-style: italic; font-weight: bold; }
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
@@ -94,7 +95,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// </span><span class="comment injected">/* multi-line</span>
     <span class="comment documentation">/// </span><span class="comment injected">       comment */</span>
     <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">multi_line_string</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"Foo</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected reference">multi_line_string</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"Foo</span>
     <span class="comment documentation">/// </span><span class="string_literal injected">  bar</span><span class="escape_sequence injected">\n</span>
     <span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
@@ -107,7 +108,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration public">foo</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration reference public">foo</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>

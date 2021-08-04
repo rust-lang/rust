@@ -1861,6 +1861,14 @@ impl Local {
         matches!(&body[self.pat_id], Pat::Bind { mode: BindingAnnotation::Mutable, .. })
     }
 
+    pub fn is_ref(self, db: &dyn HirDatabase) -> bool {
+        let body = db.body(self.parent);
+        matches!(
+            &body[self.pat_id],
+            Pat::Bind { mode: BindingAnnotation::Ref | BindingAnnotation::RefMut, .. }
+        )
+    }
+
     pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
         self.parent.into()
     }
@@ -2214,6 +2222,10 @@ impl Type {
 
     pub fn is_mutable_reference(&self) -> bool {
         matches!(self.ty.kind(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
+    }
+
+    pub fn is_reference(&self) -> bool {
+        matches!(self.ty.kind(&Interner), TyKind::Ref(..))
     }
 
     pub fn is_usize(&self) -> bool {

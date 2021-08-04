@@ -100,6 +100,7 @@ define_semantic_token_modifiers![
     (TRAIT_MODIFIER, "trait"),
     (CALLABLE, "callable"),
     (INTRA_DOC_LINK, "intraDocLink"),
+    (REFERENCE, "reference"),
 ];
 
 #[derive(Default)]

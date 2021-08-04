@@ -64,6 +64,8 @@ pub enum HlMod {
     IntraDocLink,
     /// Mutable binding.
     Mutable,
+    /// Immutable reference.
+    Reference,
     /// Used for associated functions.
     Static,
     /// Used for items in traits and trait impls.
@@ -194,6 +196,7 @@ impl HlMod {
         HlMod::Injected,
         HlMod::IntraDocLink,
         HlMod::Mutable,
+        HlMod::Reference,
         HlMod::Static,
         HlMod::Trait,
         HlMod::Async,
@@ -214,6 +217,7 @@ impl HlMod {
             HlMod::Injected => "injected",
             HlMod::IntraDocLink => "intra_doc_link",
             HlMod::Mutable => "mutable",
+            HlMod::Reference => "reference",
             HlMod::Static => "static",
             HlMod::Trait => "trait",
             HlMod::Async => "async",
