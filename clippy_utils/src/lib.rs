@@ -67,19 +67,20 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::hir_id::HirIdSet;
+use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
-    PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node, Param, Pat,
+    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty as rustc_ty;
-use rustc_middle::ty::{layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::{layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -670,8 +671,82 @@ pub fn can_move_expr_to_closure_no_visit(
     }
 }
 
-/// Checks if the expression can be moved into a closure as is.
-pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+/// How a local is captured by a closure
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaptureKind {
+    Value,
+    Ref(Mutability),
+}
+impl std::ops::BitOr for CaptureKind {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (CaptureKind::Value, _) | (_, CaptureKind::Value) => CaptureKind::Value,
+            (CaptureKind::Ref(Mutability::Mut), CaptureKind::Ref(_))
+            | (CaptureKind::Ref(_), CaptureKind::Ref(Mutability::Mut)) => CaptureKind::Ref(Mutability::Mut),
+            (CaptureKind::Ref(Mutability::Not), CaptureKind::Ref(Mutability::Not)) => CaptureKind::Ref(Mutability::Not),
+        }
+    }
+}
+impl std::ops::BitOrAssign for CaptureKind {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
+/// Given an expression referencing a local, determines how it would be captured in a closure.
+/// Note as this will walk up to parent expressions until the capture can be determined it should
+/// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
+/// function argument (other than a receiver).
+pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
+    debug_assert!(matches!(
+        e.kind,
+        ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
+    ));
+
+    let map = cx.tcx.hir();
+    let mut child_id = e.hir_id;
+    let mut capture = CaptureKind::Value;
+
+    for (parent_id, parent) in map.parent_iter(e.hir_id) {
+        if let [Adjustment {
+            kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
+            target,
+        }, ref adjust @ ..] = *cx
+            .typeck_results()
+            .adjustments()
+            .get(child_id)
+            .map_or(&[][..], |x| &**x)
+        {
+            if let rustc_ty::RawPtr(TypeAndMut { mutbl: mutability, .. }) | rustc_ty::Ref(_, _, mutability) =
+                *adjust.last().map_or(target, |a| a.target).kind()
+            {
+                return CaptureKind::Ref(mutability);
+            }
+        }
+
+        if let Node::Expr(e) = parent {
+            match e.kind {
+                ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(mutability),
+                ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, _) => capture = CaptureKind::Ref(Mutability::Not),
+                ExprKind::Assign(lhs, ..) | ExprKind::Assign(_, lhs, _) if lhs.hir_id == child_id => {
+                    return CaptureKind::Ref(Mutability::Mut);
+                },
+                _ => break,
+            }
+        } else {
+            break;
+        }
+
+        child_id = parent_id;
+    }
+
+    capture
+}
+
+/// Checks if the expression can be moved into a closure as is. This will return a list of captures
+/// if so, otherwise, `None`.
+pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<HirIdMap<CaptureKind>> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         // Stack of potential break targets contained in the expression.
@@ -680,6 +755,9 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
         locals: HirIdSet,
         /// Whether this expression can be turned into a closure.
         allow_closure: bool,
+        /// Locals which need to be captured, and whether they need to be by value, reference, or
+        /// mutable reference.
+        captures: HirIdMap<CaptureKind>,
     }
     impl Visitor<'tcx> for V<'_, 'tcx> {
         type Map = ErasedMap<'tcx>;
@@ -691,13 +769,23 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
             if !self.allow_closure {
                 return;
             }
-            if let ExprKind::Loop(b, ..) = e.kind {
-                self.loops.push(e.hir_id);
-                self.visit_block(b);
-                self.loops.pop();
-            } else {
-                self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops, &self.locals);
-                walk_expr(self, e);
+
+            match e.kind {
+                ExprKind::Path(QPath::Resolved(None, &Path { res: Res::Local(l), .. })) => {
+                    if !self.locals.contains(&l) {
+                        let cap = capture_local_usage(self.cx, e);
+                        self.captures.entry(l).and_modify(|e| *e |= cap).or_insert(cap);
+                    }
+                },
+                ExprKind::Loop(b, ..) => {
+                    self.loops.push(e.hir_id);
+                    self.visit_block(b);
+                    self.loops.pop();
+                },
+                _ => {
+                    self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops, &self.locals);
+                    walk_expr(self, e);
+                },
             }
         }
 
@@ -713,9 +801,10 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
         allow_closure: true,
         loops: Vec::new(),
         locals: HirIdSet::default(),
+        captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
-    v.allow_closure
+    v.allow_closure.then(|| v.captures)
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up

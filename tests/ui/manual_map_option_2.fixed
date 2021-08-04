@@ -7,4 +7,10 @@ fn main() {
             let y = (String::new(), String::new());
             (x, y.0)
         });
+
+    let s = Some(String::new());
+    let _ = match &s {
+        Some(x) => Some((x.clone(), s)),
+        None => None,
+    };
 }

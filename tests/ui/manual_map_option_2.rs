@@ -10,4 +10,10 @@ fn main() {
         }),
         None => None,
     };
+
+    let s = Some(String::new());
+    let _ = match &s {
+        Some(x) => Some((x.clone(), s)),
+        None => None,
+    };
 }
