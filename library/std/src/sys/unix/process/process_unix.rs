@@ -4,7 +4,6 @@ use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
 use crate::os::raw::NonZero_c_int;
-use crate::os::unix::io::FromRawFd;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -550,6 +549,7 @@ pub struct Process {
 impl Process {
     #[cfg(target_os = "linux")]
     unsafe fn new(pid: pid_t, pidfd: pid_t) -> Self {
+        use crate::os::unix::io::FromRawFd;
         use crate::sys_common::FromInner;
         // Safety: If `pidfd` is nonnegative, we assume it's valid and otherwise unowned.
         let pidfd = (pidfd >= 0)
