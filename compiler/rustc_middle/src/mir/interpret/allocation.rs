@@ -131,8 +131,7 @@ impl<Tag> Allocation<Tag> {
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
     pub fn uninit(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'static, Self> {
-        let mut bytes = Vec::new();
-        bytes.try_reserve(size.bytes_usize()).map_err(|_| {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-determinstic here because all uses of const
@@ -146,7 +145,9 @@ impl<Tag> Allocation<Tag> {
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
-        bytes.resize(size.bytes_usize(), 0);
+        // SAFETY: This turns a Box<[MaybeUninit<u8>]> into a Vec<u8>. This is safe since the box
+        // was zero-allocated which is a valid value for u8.
+        let bytes = unsafe { bytes.assume_init().to_vec() };
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),
