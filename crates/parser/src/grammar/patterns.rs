@@ -69,12 +69,20 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
         //         302 .. => (),
         //     }
         // }
+
+        // FIXME: support half_open_range_patterns (`..=2`),
+        // exclusive_range_pattern (`..5`) with missing lhs
         for &range_op in [T![...], T![..=], T![..]].iter() {
             if p.at(range_op) {
                 let m = lhs.precede(p);
                 p.bump(range_op);
-                if !p.at(T![=>]) {
-                    // not a range pat like `302 .. => ()`
+
+                // `0 .. =>` or `let 0 .. =`
+                //       ^                ^
+                if p.at(T![=]) {
+                    // test half_open_range_pat
+                    // fn f() { let 0 .. = 1u32; }
+                } else {
                     atom_pat(p, recovery_set);
                 }
                 m.complete(p, RANGE_PAT);
