@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                         if_chain! {
                             if sig.decl.inputs.is_empty();
                             if name == sym::new;
-                            if cx.access_levels.is_reachable(id);
+                            if cx.access_levels.is_reachable(impl_item.def_id);
                             let self_def_id = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_def_id);
                             if TyS::same_type(self_ty, return_ty(cx, id));

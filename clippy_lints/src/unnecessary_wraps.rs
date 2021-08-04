@@ -81,7 +81,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         // Abort if public function/method or closure.
         match fn_kind {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(hir_id) {
+                let def_id = cx.tcx.hir().local_def_id(hir_id);
+                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
                     return;
                 }
             },
