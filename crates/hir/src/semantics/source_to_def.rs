@@ -51,7 +51,7 @@
 //! The `GetDeclaredType` takes `Syntax` as input, and returns `Symbol` as
 //! output. First, it retrieves a `Symbol` for parent `Syntax`:
 //!
-//! * https://sourceroslyn.io/#Microsoft.CodeAnalysis.CSharp/Compilation/SyntaxTreeSemanticModel.cs,1423
+//! * <https://sourceroslyn.io/#Microsoft.CodeAnalysis.CSharp/Compilation/SyntaxTreeSemanticModel.cs,1423>
 //!
 //! Then, it iterates parent symbol's children, looking for one which has the
 //! same text span as the original node:

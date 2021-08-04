@@ -6,9 +6,9 @@
 //! each submodule starts with `use super::*` import and exports
 //! "public" productions via `pub(super)`.
 //!
-//! See docs for `Parser` to learn about API, available to the grammar,
-//! and see docs for `Event` to learn how this actually manages to
-//! produce parse trees.
+//! See docs for [`Parser`](super::parser::Parser) to learn about API,
+//! available to the grammar, and see docs for [`Event`](super::event::Event)
+//! to learn how this actually manages to produce parse trees.
 //!
 //! Code in this module also contains inline tests, which start with
 //! `// test name-of-the-test` comment and look like this:

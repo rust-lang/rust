@@ -14,7 +14,7 @@ use crate::{
 /// `Parser` struct provides the low-level API for
 /// navigating through the stream of tokens and
 /// constructing the parse tree. The actual parsing
-/// happens in the `grammar` module.
+/// happens in the [`grammar`](super::grammar) module.
 ///
 /// However, the result of this `Parser` is not a real
 /// tree, but rather a flat stream of events of the form
@@ -262,7 +262,7 @@ impl<'t> Parser<'t> {
     }
 }
 
-/// See `Parser::start`.
+/// See [`Parser::start`].
 pub(crate) struct Marker {
     pos: u32,
     bomb: DropBomb,
@@ -320,7 +320,8 @@ impl CompletedMarker {
     /// node `A`, then complete it, and then after parsing the
     /// whole `A`, decide that it should have started some node
     /// `B` before starting `A`. `precede` allows to do exactly
-    /// that. See also docs about `forward_parent` in `Event::Start`.
+    /// that. See also docs about
+    /// [`Event::Start::forward_parent`](crate::event::Event::Start::forward_parent).
     ///
     /// Given completed events `[START, FINISH]` and its corresponding
     /// `CompletedMarker(pos: 0, _)`.

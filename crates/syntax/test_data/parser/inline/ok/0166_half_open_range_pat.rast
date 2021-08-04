@@ -1,0 +1,31 @@
+SOURCE_FILE@0..28
+  FN@0..27
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..27
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..9 " "
+      LET_STMT@9..25
+        LET_KW@9..12 "let"
+        WHITESPACE@12..13 " "
+        RANGE_PAT@13..17
+          LITERAL_PAT@13..14
+            LITERAL@13..14
+              INT_NUMBER@13..14 "0"
+          WHITESPACE@14..15 " "
+          DOT2@15..17 ".."
+        WHITESPACE@17..18 " "
+        EQ@18..19 "="
+        WHITESPACE@19..20 " "
+        LITERAL@20..24
+          INT_NUMBER@20..24 "1u32"
+        SEMICOLON@24..25 ";"
+      WHITESPACE@25..26 " "
+      R_CURLY@26..27 "}"
+  WHITESPACE@27..28 "\n"

@@ -65,14 +65,26 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
         //     match 92 {
         //         0 ... 100 => (),
         //         101 ..= 200 => (),
-        //         200 .. 301=> (),
+        //         200 .. 301 => (),
+        //         302 .. => (),
         //     }
         // }
+
+        // FIXME: support half_open_range_patterns (`..=2`),
+        // exclusive_range_pattern (`..5`) with missing lhs
         for &range_op in [T![...], T![..=], T![..]].iter() {
             if p.at(range_op) {
                 let m = lhs.precede(p);
                 p.bump(range_op);
-                atom_pat(p, recovery_set);
+
+                // `0 .. =>` or `let 0 .. =`
+                //       ^                ^
+                if p.at(T![=]) {
+                    // test half_open_range_pat
+                    // fn f() { let 0 .. = 1u32; }
+                } else {
+                    atom_pat(p, recovery_set);
+                }
                 m.complete(p, RANGE_PAT);
                 return;
             }
@@ -84,7 +96,7 @@ const PAT_RECOVERY_SET: TokenSet =
     TokenSet::new(&[T![let], T![if], T![while], T![loop], T![match], T![')'], T![,], T![=]]);
 
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
-    let m = match p.nth(0) {
+    let m = match p.current() {
         T![box] => box_pat(p),
         T![ref] | T![mut] => ident_pat(p, true),
         T![const] => const_block_pat(p),
