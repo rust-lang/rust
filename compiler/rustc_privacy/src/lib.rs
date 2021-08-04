@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
@@ -385,8 +385,7 @@ impl VisibilityLike for Option<AccessLevel> {
     fn new_min(find: &FindMin<'_, '_, Self>, def_id: DefId) -> Self {
         cmp::min(
             if let Some(def_id) = def_id.as_local() {
-                let hir_id = find.tcx.hir().local_def_id_to_hir_id(def_id);
-                find.access_levels.map.get(&hir_id).cloned()
+                find.access_levels.map.get(&def_id).copied()
             } else {
                 Self::MAX
             },
@@ -416,7 +415,7 @@ struct EmbargoVisitor<'tcx> {
     /// pub macro m() {
     ///     n::p::f()
     /// }
-    macro_reachable: FxHashSet<(hir::HirId, DefId)>,
+    macro_reachable: FxHashSet<(LocalDefId, LocalDefId)>,
     /// Previous accessibility level; `None` means unreachable.
     prev_level: Option<AccessLevel>,
     /// Has something changed in the level map?
@@ -430,16 +429,16 @@ struct ReachEverythingInTheInterfaceVisitor<'a, 'tcx> {
 }
 
 impl EmbargoVisitor<'tcx> {
-    fn get(&self, id: hir::HirId) -> Option<AccessLevel> {
-        self.access_levels.map.get(&id).cloned()
+    fn get(&self, def_id: LocalDefId) -> Option<AccessLevel> {
+        self.access_levels.map.get(&def_id).copied()
     }
 
     /// Updates node level and returns the updated level.
-    fn update(&mut self, id: hir::HirId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let old_level = self.get(id);
+    fn update(&mut self, def_id: LocalDefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
+        let old_level = self.get(def_id);
         // Accessibility levels can only grow.
         if level > old_level {
-            self.access_levels.map.insert(id, level.unwrap());
+            self.access_levels.map.insert(def_id, level.unwrap());
             self.changed = true;
             level
         } else {
@@ -461,31 +460,33 @@ impl EmbargoVisitor<'tcx> {
 
     /// Updates the item as being reachable through a macro defined in the given
     /// module. Returns `true` if the level has changed.
-    fn update_macro_reachable(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) -> bool {
-        if self.macro_reachable.insert((reachable_mod, defining_mod)) {
-            self.update_macro_reachable_mod(reachable_mod, defining_mod);
+    fn update_macro_reachable(
+        &mut self,
+        module_def_id: LocalDefId,
+        defining_mod: LocalDefId,
+    ) -> bool {
+        if self.macro_reachable.insert((module_def_id, defining_mod)) {
+            self.update_macro_reachable_mod(module_def_id, defining_mod);
             true
         } else {
             false
         }
     }
 
-    fn update_macro_reachable_mod(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) {
-        let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
+    fn update_macro_reachable_mod(&mut self, module_def_id: LocalDefId, defining_mod: LocalDefId) {
         let module = self.tcx.hir().get_module(module_def_id).0;
         for item_id in module.item_ids {
             let def_kind = self.tcx.def_kind(item_id.def_id);
             let vis = self.tcx.visibility(item_id.def_id);
-            self.update_macro_reachable_def(item_id.hir_id(), def_kind, vis, defining_mod);
+            self.update_macro_reachable_def(item_id.def_id, def_kind, vis, defining_mod);
         }
         if let Some(exports) = self.tcx.module_exports(module_def_id) {
             for export in exports {
-                if export.vis.is_accessible_from(defining_mod, self.tcx) {
+                if export.vis.is_accessible_from(defining_mod.to_def_id(), self.tcx) {
                     if let Res::Def(def_kind, def_id) = export.res {
                         if let Some(def_id) = def_id.as_local() {
-                            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                             let vis = self.tcx.visibility(def_id.to_def_id());
-                            self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
+                            self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod);
                         }
                     }
                 }
@@ -495,14 +496,14 @@ impl EmbargoVisitor<'tcx> {
 
     fn update_macro_reachable_def(
         &mut self,
-        hir_id: hir::HirId,
+        def_id: LocalDefId,
         def_kind: DefKind,
         vis: ty::Visibility,
-        module: DefId,
+        module: LocalDefId,
     ) {
         let level = Some(AccessLevel::Reachable);
         if let ty::Visibility::Public = vis {
-            self.update(hir_id, level);
+            self.update(def_id, level);
         }
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
@@ -511,8 +512,8 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::Static
             | DefKind::TraitAlias
             | DefKind::TyAlias => {
-                if vis.is_accessible_from(module, self.tcx) {
-                    self.update(hir_id, level);
+                if vis.is_accessible_from(module.to_def_id(), self.tcx) {
+                    self.update(def_id, level);
                 }
             }
 
@@ -521,23 +522,23 @@ impl EmbargoVisitor<'tcx> {
             // hygiene these don't need to be marked reachable. The contents of
             // the module, however may be reachable.
             DefKind::Mod => {
-                if vis.is_accessible_from(module, self.tcx) {
-                    self.update_macro_reachable(hir_id, module);
+                if vis.is_accessible_from(module.to_def_id(), self.tcx) {
+                    self.update_macro_reachable(def_id, module);
                 }
             }
 
             DefKind::Struct | DefKind::Union => {
-                // While structs and unions have type privacy, their fields do
-                // not.
+                // While structs and unions have type privacy, their fields do not.
                 if let ty::Visibility::Public = vis {
-                    let item = self.tcx.hir().expect_item(hir_id);
+                    let item =
+                        self.tcx.hir().expect_item(self.tcx.hir().local_def_id_to_hir_id(def_id));
                     if let hir::ItemKind::Struct(ref struct_def, _)
                     | hir::ItemKind::Union(ref struct_def, _) = item.kind
                     {
                         for field in struct_def.fields() {
                             let field_vis =
                                 self.tcx.visibility(self.tcx.hir().local_def_id(field.hir_id));
-                            if field_vis.is_accessible_from(module, self.tcx) {
+                            if field_vis.is_accessible_from(module.to_def_id(), self.tcx) {
                                 self.reach(field.hir_id, level).ty();
                             }
                         }
@@ -616,7 +617,7 @@ impl EmbargoVisitor<'tcx> {
                             continue;
                         }
                         if let hir::ItemKind::Use(..) = item.kind {
-                            self.update(item.hir_id(), Some(AccessLevel::Exported));
+                            self.update(item.def_id, Some(AccessLevel::Exported));
                         }
                     }
                 }
@@ -665,47 +666,48 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         };
 
         // Update level of the item itself.
-        let item_level = self.update(item.hir_id(), inherited_item_level);
+        let item_level = self.update(item.def_id, inherited_item_level);
 
         // Update levels of nested things.
         match item.kind {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in def.variants {
-                    let variant_level = self.update(variant.id, item_level);
+                    let variant_level =
+                        self.update(self.tcx.hir().local_def_id(variant.id), item_level);
                     if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-                        self.update(ctor_hir_id, item_level);
+                        self.update(self.tcx.hir().local_def_id(ctor_hir_id), item_level);
                     }
                     for field in variant.data.fields() {
-                        self.update(field.hir_id, variant_level);
+                        self.update(self.tcx.hir().local_def_id(field.hir_id), variant_level);
                     }
                 }
             }
             hir::ItemKind::Impl(ref impl_) => {
                 for impl_item_ref in impl_.items {
                     if impl_.of_trait.is_some() || impl_item_ref.vis.node.is_pub() {
-                        self.update(impl_item_ref.id.hir_id(), item_level);
+                        self.update(impl_item_ref.id.def_id, item_level);
                     }
                 }
             }
             hir::ItemKind::Trait(.., trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
-                    self.update(trait_item_ref.id.hir_id(), item_level);
+                    self.update(trait_item_ref.id.def_id, item_level);
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
                 if let Some(ctor_hir_id) = def.ctor_hir_id() {
-                    self.update(ctor_hir_id, item_level);
+                    self.update(self.tcx.hir().local_def_id(ctor_hir_id), item_level);
                 }
                 for field in def.fields() {
                     if field.vis.node.is_pub() {
-                        self.update(field.hir_id, item_level);
+                        self.update(self.tcx.hir().local_def_id(field.hir_id), item_level);
                     }
                 }
             }
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
                     if foreign_item.vis.node.is_pub() {
-                        self.update(foreign_item.id.hir_id(), item_level);
+                        self.update(foreign_item.id.def_id, item_level);
                     }
                 }
             }
@@ -789,7 +791,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id(), item_level).generics().predicates().ty().trait_ref();
 
                     for impl_item_ref in impl_.items {
-                        let impl_item_level = self.get(impl_item_ref.id.hir_id());
+                        let impl_item_level = self.get(impl_item_ref.id.def_id);
                         if impl_item_level.is_some() {
                             self.reach(impl_item_ref.id.hir_id(), impl_item_level)
                                 .generics()
@@ -806,21 +808,21 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id(), item_level).generics().predicates();
                 }
                 for variant in def.variants {
-                    let variant_level = self.get(variant.id);
+                    let variant_level = self.get(self.tcx.hir().local_def_id(variant.id));
                     if variant_level.is_some() {
                         for field in variant.data.fields() {
                             self.reach(field.hir_id, variant_level).ty();
                         }
                         // Corner case: if the variant is reachable, but its
                         // enum is not, make the enum reachable as well.
-                        self.update(item.hir_id(), variant_level);
+                        self.update(item.def_id, variant_level);
                     }
                 }
             }
             // Visit everything, but foreign items have their own levels.
             hir::ItemKind::ForeignMod { items, .. } => {
                 for foreign_item in items {
-                    let foreign_item_level = self.get(foreign_item.id.hir_id());
+                    let foreign_item_level = self.get(foreign_item.id.def_id);
                     if foreign_item_level.is_some() {
                         self.reach(foreign_item.id.hir_id(), foreign_item_level)
                             .generics()
@@ -834,7 +836,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 if item_level.is_some() {
                     self.reach(item.hir_id(), item_level).generics().predicates();
                     for field in struct_def.fields() {
-                        let field_level = self.get(field.hir_id);
+                        let field_level = self.get(self.tcx.hir().local_def_id(field.hir_id));
                         if field_level.is_some() {
                             self.reach(field.hir_id, field_level).ty();
                         }
@@ -867,8 +869,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     if export.vis == ty::Visibility::Public {
                         if let Some(def_id) = export.res.opt_def_id() {
                             if let Some(def_id) = def_id.as_local() {
-                                let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                                self.update(hir_id, Some(AccessLevel::Exported));
+                                self.update(def_id, Some(AccessLevel::Exported));
                             }
                         }
                     }
@@ -888,32 +889,35 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // `#[macro_export]`-ed `macro_rules!` are `Public` since they
             // ignore their containing path to always appear at the crate root.
             if md.ast.macro_rules {
-                self.update(md.hir_id(), Some(AccessLevel::Public));
+                self.update(md.def_id, Some(AccessLevel::Public));
             }
             return;
         }
 
-        let macro_module_def_id = ty::DefIdTree::parent(self.tcx, md.def_id.to_def_id()).unwrap();
-        let hir_id = macro_module_def_id
-            .as_local()
-            .map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id));
-        let mut module_id = match hir_id {
-            Some(module_id) if self.tcx.hir().is_hir_id_module(module_id) => module_id,
-            // `module_id` doesn't correspond to a `mod`, return early (#63164, #65252).
-            _ => return,
-        };
-        let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
-        let new_level = self.update(md.hir_id(), level);
+        let macro_module_def_id =
+            ty::DefIdTree::parent(self.tcx, md.def_id.to_def_id()).unwrap().expect_local();
+        if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
+            // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
+            return;
+        }
+
+        let level = if md.vis.node.is_pub() { self.get(macro_module_def_id) } else { None };
+        let new_level = self.update(md.def_id, level);
         if new_level.is_none() {
             return;
         }
 
+        // Since we are starting from an externally visible module,
+        // all the parents in the loop below are also guaranteed to be modules.
+        let mut module_def_id = macro_module_def_id;
         loop {
-            let changed_reachability = self.update_macro_reachable(module_id, macro_module_def_id);
-            if changed_reachability || module_id == hir::CRATE_HIR_ID {
+            let changed_reachability =
+                self.update_macro_reachable(module_def_id, macro_module_def_id);
+            if changed_reachability || module_def_id == CRATE_DEF_ID {
                 break;
             }
-            module_id = self.tcx.hir().get_parent_node(module_id);
+            module_def_id =
+                ty::DefIdTree::parent(self.tcx, module_def_id.to_def_id()).unwrap().expect_local();
         }
     }
 }
@@ -971,8 +975,7 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
             if let (ty::Visibility::Public, _) | (_, Some(AccessLevel::ReachableFromImplTrait)) =
                 (self.tcx().visibility(def_id.to_def_id()), self.access_level)
             {
-                let hir_id = self.ev.tcx.hir().local_def_id_to_hir_id(def_id);
-                self.ev.update(hir_id, self.access_level);
+                self.ev.update(def_id, self.access_level);
             }
         }
         ControlFlow::CONTINUE
@@ -1449,7 +1452,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn trait_is_public(&self, trait_id: hir::HirId) -> bool {
+    fn trait_is_public(&self, trait_id: LocalDefId) -> bool {
         // FIXME: this would preferably be using `exported_items`, but all
         // traits are exported currently (see `EmbargoVisitor.exported_trait`).
         self.access_levels.is_public(trait_id)
@@ -1463,8 +1466,8 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn item_is_public(&self, id: &hir::HirId, vis: &hir::Visibility<'_>) -> bool {
-        self.access_levels.is_reachable(*id) || vis.node.is_pub()
+    fn item_is_public(&self, def_id: LocalDefId, vis: &hir::Visibility<'_>) -> bool {
+        self.access_levels.is_reachable(def_id) || vis.node.is_pub()
     }
 }
 
@@ -1524,7 +1527,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             hir::ItemKind::ForeignMod { .. } => {}
 
             hir::ItemKind::Trait(.., ref bounds, _) => {
-                if !self.trait_is_public(item.hir_id()) {
+                if !self.trait_is_public(item.def_id) {
                     return;
                 }
 
@@ -1564,10 +1567,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 let not_private_trait = impl_.of_trait.as_ref().map_or(
                     true, // no trait counts as public trait
                     |tr| {
-                        let did = tr.path.res.def_id();
-
-                        if let Some(did) = did.as_local() {
-                            self.trait_is_public(self.tcx.hir().local_def_id_to_hir_id(did))
+                        if let Some(def_id) = tr.path.res.def_id().as_local() {
+                            self.trait_is_public(def_id)
                         } else {
                             true // external traits must be public
                         }
@@ -1587,7 +1588,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         match impl_item.kind {
                             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..) => {
-                                self.access_levels.is_reachable(impl_item_ref.id.hir_id())
+                                self.access_levels.is_reachable(impl_item_ref.id.def_id)
                             }
                             hir::ImplItemKind::TyAlias(_) => false,
                         }
@@ -1607,10 +1608,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                                 match impl_item.kind {
                                     hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..)
-                                        if self.item_is_public(
-                                            &impl_item.hir_id(),
-                                            &impl_item.vis,
-                                        ) =>
+                                        if self
+                                            .item_is_public(impl_item.def_id, &impl_item.vis) =>
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
@@ -1651,7 +1650,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item_ref in impl_.items {
-                        if self.item_is_public(&impl_item_ref.id.hir_id(), &impl_item_ref.vis) {
+                        if self.item_is_public(impl_item_ref.id.def_id, &impl_item_ref.vis) {
                             let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                             match impl_item_ref.kind {
                                 AssocItemKind::Const => {
@@ -1678,7 +1677,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             hir::ItemKind::TyAlias(..) => return,
 
             // Not at all public, so we don't care.
-            _ if !self.item_is_public(&item.hir_id(), &item.vis) => {
+            _ if !self.item_is_public(item.def_id, &item.vis) => {
                 return;
             }
 
@@ -1714,7 +1713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
-        if self.access_levels.is_reachable(item.hir_id()) {
+        if self.access_levels.is_reachable(item.def_id) {
             intravisit::walk_foreign_item(self, item)
         }
     }
@@ -1734,7 +1733,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
-        if self.access_levels.is_reachable(v.id) {
+        if self.access_levels.is_reachable(self.tcx.hir().local_def_id(v.id)) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
@@ -2150,7 +2149,7 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, (): ()) -> &AccessLevels {
             break;
         }
     }
-    visitor.update(hir::CRATE_HIR_ID, Some(AccessLevel::Public));
+    visitor.update(CRATE_DEF_ID, Some(AccessLevel::Public));
 
     tcx.arena.alloc(visitor.access_levels)
 }

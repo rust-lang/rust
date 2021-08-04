@@ -374,15 +374,8 @@ crate fn run_global_ctxt(
     });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
-    let access_levels = tcx.privacy_access_levels(());
-    // Convert from a HirId set to a DefId set since we don't always have easy access
-    // to the map from defid -> hirid
     let access_levels = AccessLevels {
-        map: access_levels
-            .map
-            .iter()
-            .map(|(&k, &v)| (tcx.hir().local_def_id(k).to_def_id(), v))
-            .collect(),
+        map: tcx.privacy_access_levels(()).map.iter().map(|(k, v)| (k.to_def_id(), *v)).collect(),
     };
 
     let mut ctxt = DocContext {

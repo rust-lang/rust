@@ -351,7 +351,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
             item.kind
         {
-            if !self.access_levels.is_reachable(item.hir_id()) {
+            if !self.access_levels.is_reachable(item.def_id) {
                 // FIXME(#53488) remove `let`
                 let tcx = self.tcx;
                 self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
@@ -404,9 +404,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    reachable_context
-        .worklist
-        .extend(access_levels.map.iter().map(|(id, _)| tcx.hir().local_def_id(*id)));
+    reachable_context.worklist.extend(access_levels.map.keys());
     for item in tcx.lang_items().items().iter() {
         if let Some(def_id) = *item {
             if let Some(def_id) = def_id.as_local() {
