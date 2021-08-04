@@ -11,9 +11,6 @@ test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
 
 
 running 3 tests
-test src/lib.rs - make_true (line 2) ... ok
-test src/lib.rs - make_true (line 5) - compile ... ok
-test src/lib.rs - make_true (line 8) - compile fail ... ok
-
+...
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
