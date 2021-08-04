@@ -45,6 +45,8 @@ pub enum HlTag {
 pub enum HlMod {
     /// Used for items in traits and impls.
     Associated = 0,
+    /// Used with keywords like `async` and `await`.
+    Async,
     /// Used to differentiate individual elements within attributes.
     Attribute,
     /// Callable item or value.
@@ -62,20 +64,18 @@ pub enum HlMod {
     Injected,
     /// Used for intra doc links in doc injection.
     IntraDocLink,
+    /// Used for items from other crates.
+    Library,
     /// Mutable binding.
     Mutable,
+    /// Used for public items.
+    Public,
     /// Immutable reference.
     Reference,
     /// Used for associated functions.
     Static,
     /// Used for items in traits and trait impls.
     Trait,
-    /// Used with keywords like `async` and `await`.
-    Async,
-    /// Used for items from other crates.
-    Library,
-    /// Used for public items.
-    Public,
     // Keep this last!
     /// Used for unsafe functions, unsafe traits, mutable statics, union accesses and unsafe operations.
     Unsafe,
