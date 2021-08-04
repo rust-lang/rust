@@ -59,7 +59,6 @@
     - [Incremental compilation](./queries/incremental-compilation.md)
     - [Incremental compilation In Detail](./queries/incremental-compilation-in-detail.md)
     - [Debugging and Testing](./incrcomp-debugging.md)
-    - [Profiling Queries](./queries/profiling.md)
     - [Salsa](./salsa.md)
 - [Memory Management in Rustc](./memory.md)
 - [Serialization in Rustc](./serialization.md)
