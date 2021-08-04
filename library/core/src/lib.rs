@@ -111,7 +111,6 @@
 // Language features:
 #![feature(abi_unadjusted)]
 #![feature(allow_internal_unstable)]
-#![feature(arbitrary_self_types)]
 #![feature(asm)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
@@ -127,7 +126,6 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_refs_to_cell)]
-#![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
@@ -142,7 +140,6 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(nll)]
 #![feature(no_core)]
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![feature(no_niche)] // rust-lang/rust#68303
