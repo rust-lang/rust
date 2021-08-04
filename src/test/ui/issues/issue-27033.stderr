@@ -3,7 +3,7 @@ error[E0530]: match bindings cannot shadow unit variants
    |
 LL |         None @ _ => {}
    |         ^^^^ cannot be named the same as a unit variant
-   | 
+   |
   ::: $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
 LL |     pub use super::v1::*;

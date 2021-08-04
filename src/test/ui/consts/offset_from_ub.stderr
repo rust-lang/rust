@@ -12,7 +12,7 @@ LL |         unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                  |
    |                  0x2a is not a valid pointer
    |                  inside `ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   | 
+   |
   ::: $DIR/offset_from_ub.rs:24:14
    |
 LL |     unsafe { (42 as *const u8).offset_from(&5u8) as usize }

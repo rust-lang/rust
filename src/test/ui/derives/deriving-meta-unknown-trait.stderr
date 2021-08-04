@@ -3,7 +3,7 @@ error: cannot find derive macro `Eqr` in this scope
    |
 LL | #[derive(Eqr)]
    |          ^^^ help: a derive macro with a similar name exists: `Eq`
-   | 
+   |
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub macro Eq($item:item) {
@@ -14,7 +14,7 @@ error: cannot find derive macro `Eqr` in this scope
    |
 LL | #[derive(Eqr)]
    |          ^^^ help: a derive macro with a similar name exists: `Eq`
-   | 
+   |
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub macro Eq($item:item) {

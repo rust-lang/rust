@@ -3,7 +3,7 @@ error[E0599]: the method `clone` exists for struct `Struct<A>`, but its trait bo
    |
 LL |     let _ = Struct::<A>::new().clone();
    |                                ^^^^^ method cannot be called on `Struct<A>` due to unsatisfied trait bounds
-   | 
+   |
   ::: $DIR/auxiliary/issue-69725.rs:2:1
    |
 LL | pub struct Struct<A>(A);

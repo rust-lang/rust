@@ -84,7 +84,7 @@ error[E0624]: associated function `pub_crate` is private
    |
 LL |     r.pub_crate();
    |       ^^^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/pub-and-stability.rs:114:9
    |
 LL |         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
@@ -95,7 +95,7 @@ error[E0624]: associated function `pub_mod` is private
    |
 LL |     r.pub_mod();
    |       ^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/pub-and-stability.rs:116:9
    |
 LL |         pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
@@ -106,7 +106,7 @@ error[E0624]: associated function `private` is private
    |
 LL |     r.private();
    |       ^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/pub-and-stability.rs:118:9
    |
 LL |         fn private(&self) -> i32 { self.d_priv }
@@ -135,7 +135,7 @@ error[E0624]: associated function `pub_crate` is private
    |
 LL |     t.pub_crate();
    |       ^^^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/pub-and-stability.rs:129:9
    |
 LL |         pub(crate) fn pub_crate(&self) -> i32 { self.0 }
@@ -146,7 +146,7 @@ error[E0624]: associated function `pub_mod` is private
    |
 LL |     t.pub_mod();
    |       ^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/pub-and-stability.rs:130:9
    |
 LL |         pub(in m) fn pub_mod(&self) -> i32 { self.0 }
@@ -157,7 +157,7 @@ error[E0624]: associated function `private` is private
    |
 LL |     t.private();
    |       ^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/pub-and-stability.rs:131:9
    |
 LL |         fn private(&self) -> i32 { self.0 }

@@ -3,7 +3,7 @@ error[E0277]: `std::sync::mpsc::Receiver<()>` cannot be shared between threads s
    |
 LL |     let t = thread::spawn(|| {
    |             ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
-   | 
+   |
   ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |     F: Send + 'static,
@@ -18,7 +18,7 @@ error[E0277]: `Sender<()>` cannot be shared between threads safely
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
    |     ^^^^^^^^^^^^^ `Sender<()>` cannot be shared between threads safely
-   | 
+   |
   ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |     F: Send + 'static,

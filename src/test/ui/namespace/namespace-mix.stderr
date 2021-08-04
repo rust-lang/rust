@@ -24,7 +24,7 @@ error[E0423]: expected value, found type alias `xm1::S`
    |
 LL |     check(xm1::S);
    |           ^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/namespace-mix.rs:3:5
    |
 LL |     pub struct TS();
@@ -73,7 +73,7 @@ error[E0423]: expected value, found struct variant `xm7::V`
    |
 LL |     check(xm7::V);
    |           ^^^^^^
-   | 
+   |
   ::: $DIR/auxiliary/namespace-mix.rs:6:9
    |
 LL |         V {},

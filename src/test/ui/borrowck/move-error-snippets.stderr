@@ -6,7 +6,7 @@ LL |         let a = $c;
    |                 |
    |                 move occurs because `D` has type `A`, which does not implement the `Copy` trait
    |                 help: consider borrowing here: `&$c`
-   | 
+   |
   ::: $DIR/move-error-snippets.rs:21:1
    |
 LL | sss!();
