@@ -32,7 +32,7 @@ pub use self::{
 };
 
 #[unstable(feature = "iter_array_chunks", issue = "none")]
-pub use self::array_chunks::{ArrayChunks, ArrayRChunks};
+pub use self::array_chunks::ArrayChunks;
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::cloned::Cloned;

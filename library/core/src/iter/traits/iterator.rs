@@ -5,8 +5,8 @@
 use crate::cmp::{self, Ordering};
 use crate::ops::{ControlFlow, Try};
 
+use super::super::ArrayChunks;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{ArrayChunks, ArrayRChunks};
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
@@ -3498,36 +3498,6 @@ pub trait Iterator {
     {
         assert_ne!(N, 0);
         ArrayChunks::new(self)
-    }
-
-    /// Creates an iterator which yields arrays of `N` elements yielded by
-    /// the original iterator starting from the end.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is zero.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(iter_array_chunks)]
-    /// let mut iter = (0..10).array_rchunks::<3>();
-    ///
-    /// assert_eq!(iter.next(), Some([7, 8, 9]));
-    /// assert_eq!(iter.next(), Some([4, 5, 6]));
-    /// assert_eq!(iter.next(), Some([1, 2, 3]));
-    /// assert_eq!(iter.next(), None);
-    ///
-    /// assert_eq!(iter.remainder(), &[0]);
-    /// ```
-    #[inline]
-    #[unstable(feature = "iter_array_chunks", issue = "none")]
-    fn array_rchunks<const N: usize>(self) -> ArrayRChunks<Self, N>
-    where
-        Self: Sized + DoubleEndedIterator,
-    {
-        assert_ne!(N, 0);
-        ArrayRChunks::new(self)
     }
 }
 
