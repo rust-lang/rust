@@ -186,31 +186,76 @@ TypeAnalyzer::TypeAnalyzer(
 }
 
 /// Given a constant value, deduce any type information applicable
-TypeTree
+void
 getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
-                    SmallPtrSetImpl<GlobalVariable *> *seen = nullptr) {
+                    std::map<llvm::Value *, TypeTree> &analysis) {
+  auto found = analysis.find(Val);
+  if (found != analysis.end()) return;
+  
   auto &DL = TA.fntypeinfo.Function->getParent()->getDataLayout();
+
   // Undefined value is an anything everywhere
   if (isa<UndefValue>(Val) || isa<ConstantAggregateZero>(Val)) {
-    return TypeTree(BaseType::Anything).Only(-1);
+    analysis[Val].insert({-1}, BaseType::Anything);
+    return;
   }
 
   // Null pointer is a pointer to anything, everywhere
   if (isa<ConstantPointerNull>(Val)) {
-    TypeTree Result(BaseType::Pointer);
-    Result |= TypeTree(BaseType::Anything).Only(-1);
-    return Result.Only(-1);
+    TypeTree &Result = analysis[Val];
+    Result.insert({-1}, BaseType::Pointer);
+    Result.insert({-1, -1}, BaseType::Anything);
+    return;
   }
 
   // Known pointers are pointers at offset 0
   if (isa<Function>(Val) || isa<BlockAddress>(Val)) {
-    return TypeTree(BaseType::Pointer).Only(-1);
+    analysis[Val].insert({-1}, BaseType::Pointer);
+    return;
   }
+    
+  // Any constants == 0 are considered Anything
+    // other floats are assumed to be that type
+    if (auto FP = dyn_cast<ConstantFP>(Val)) {
+      if (FP->isExactlyValue(0.0)) {
+        analysis[Val].insert({-1}, BaseType::Anything);
+        return;
+      }
+      analysis[Val].insert({-1}, ConcreteType(FP->getType()->getScalarType()));
+      return;
+    }
+
+    if (auto ci = dyn_cast<ConstantInt>(Val)) {
+      // Constants in range [1, 4096] are assumed to be integral since
+      // any float or pointers they may represent are ill-formed
+      if (!ci->isNegative() && ci->getLimitedValue() >= 1 &&
+          ci->getLimitedValue() <= 4096) {
+        analysis[Val].insert({-1}, BaseType::Integer);
+        return;
+      }
+
+      // Constants explicitly marked as negative that aren't -1 are considered
+      // integral
+      if (ci->isNegative() && ci->getSExtValue() < -1) {
+        analysis[Val].insert({-1}, BaseType::Integer);
+        return;
+      }
+
+      // Values of size < 16 (half size) are considered integral
+      // since they cannot possibly represent a float or pointer
+      if (ci->getType()->getBitWidth() < 16) {
+        analysis[Val].insert({-1}, BaseType::Integer);
+        return;
+      }
+      // All other constant-ints could be any type
+      analysis[Val].insert({-1}, BaseType::Anything);
+      return;
+    }
 
   // Type of an aggregate is the aggregation of
   // the subtypes
   if (auto CA = dyn_cast<ConstantAggregate>(Val)) {
-    TypeTree Result;
+    TypeTree &Result = analysis[Val];
     for (unsigned i = 0, size = CA->getNumOperands(); i < size; ++i) {
       assert(TA.fntypeinfo.Function);
       auto Op = CA->getOperand(i);
@@ -239,24 +284,26 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       delete g2;
 
       int Off = (int)ai.getLimitedValue();
-
-      Result |= getConstantAnalysis(Op, TA, seen)
-                    .ShiftIndices(DL, /*init offset*/ 0,
+      
+      getConstantAnalysis(Op, TA, analysis);
+      auto mid = analysis[Op].ShiftIndices(DL, /*init offset*/ 0,
                                   /*maxSize*/ ObjSize,
                                   /*addOffset*/ Off);
-      Off += ObjSize;
+
+      if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
+              CA->getType()) >= 16) {
+        mid.ReplaceIntWithAnything();
+      }
+
+      Result |= mid;
     }
-    if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
-            CA->getType()) >= 16) {
-      Result.ReplaceIntWithAnything();
-    }
-    return Result;
+    return;
   }
 
   // Type of an sequence is the aggregation of
   // the subtypes
   if (auto CD = dyn_cast<ConstantDataSequential>(Val)) {
-    TypeTree Result;
+    TypeTree &Result = analysis[Val];
 
     for (unsigned i = 0, size = CD->getNumElements(); i < size; ++i) {
       assert(TA.fntypeinfo.Function);
@@ -286,63 +333,36 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       delete g2;
 
       int Off = (int)ai.getLimitedValue();
-
-      Result |= getConstantAnalysis(Op, TA, seen)
-                    .ShiftIndices(DL, /*init offset*/ 0,
+      
+      getConstantAnalysis(Op, TA, analysis);
+      auto mid = analysis[Op].ShiftIndices(DL, /*init offset*/ 0,
                                   /*maxSize*/ ObjSize,
                                   /*addOffset*/ Off);
-    }
-    if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
-            CD->getType()) >= 16) {
-      Result.ReplaceIntWithAnything();
-    }
-    return Result;
-  }
 
-  if (isa<ConstantData>(Val)) {
-    // Any constants == 0 are considered Anything
-    // other floats are assumed to be that type
-    if (auto FP = dyn_cast<ConstantFP>(Val)) {
-      if (FP->isExactlyValue(0.0))
-        return TypeTree(BaseType::Anything).Only(-1);
-      return TypeTree(FP->getType()->getScalarType()).Only(-1);
-    }
-
-    if (auto ci = dyn_cast<ConstantInt>(Val)) {
-      // Constants in range [1, 4096] are assumed to be integral since
-      // any float or pointers they may represent are ill-formed
-      if (!ci->isNegative() && ci->getLimitedValue() >= 1 &&
-          ci->getLimitedValue() <= 4096) {
-        return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
+      if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
+              CD->getType()) >= 16) {
+        mid.ReplaceIntWithAnything();
       }
 
-      // Constants explicitly marked as negative that aren't -1 are considered
-      // integral
-      if (ci->isNegative() && ci->getSExtValue() < -1) {
-        return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
-      }
+      Result |= mid;
 
-      // Values of size < 16 (half size) are considered integral
-      // since they cannot possibly represent a float or pointer
-      if (ci->getType()->getBitWidth() < 16) {
-        return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
-      }
-      // All other constant-ints could be any type
-      return TypeTree(BaseType::Anything).Only(-1);
     }
+    return;
   }
 
   // ConstantExprs are handled by considering the
   // equivalent instruction
   if (auto CE = dyn_cast<ConstantExpr>(Val)) {
     if (CE->isCast()) {
-      if (CE->getType()->isPointerTy() && isa<ConstantInt>(CE->getOperand(0)))
-        return TypeTree(BaseType::Anything).Only(-1);
-      return getConstantAnalysis(CE->getOperand(0), TA, seen);
+      if (CE->getType()->isPointerTy() && isa<ConstantInt>(CE->getOperand(0))) {
+        analysis[Val] = TypeTree(BaseType::Anything).Only(-1);
+        return;
+      }
+      getConstantAnalysis(CE->getOperand(0), TA, analysis);
+      analysis[Val] = analysis[CE->getOperand(0)];
+      return;
     }
     if (CE->isGEPWithNoNotionalOverIndexing()) {
-      auto gepData0 = getConstantAnalysis(CE->getOperand(0), TA, seen).Data0();
-
       auto g2 = cast<GetElementPtrInst>(CE->getAsInstruction());
 #if LLVM_VERSION_MAJOR > 6
       APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
@@ -357,16 +377,21 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       int off = (int)ai.getLimitedValue();
 
       // TODO also allow negative offsets
-      if (off < 0)
-        return TypeTree(BaseType::Pointer).Only(-1);
+      if (off < 0) {
+        analysis[Val] = TypeTree(BaseType::Pointer).Only(-1);
+        return;
+      }
+      
+      getConstantAnalysis(CE->getOperand(0), TA, analysis);
+      auto gepData0 = analysis[CE->getOperand(0)].Data0();
 
       TypeTree result =
           gepData0.ShiftIndices(DL, /*init offset*/ off, /*max size*/ -1,
-                                /*new offset*/ 0);
-      result.insert({}, BaseType::Pointer);
-      return result.Only(-1);
+                                /*new offset*/ 0).Only(-1);
+      result.insert({-1}, BaseType::Pointer);
+      analysis[Val] = result;
+      return;
     }
-    TypeTree Result;
 
     auto I = CE->getAsInstruction();
     I->insertBefore(TA.fntypeinfo.Function->getEntryBlock().getTerminator());
@@ -376,28 +401,28 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       TypeAnalyzer tmpAnalysis(TA.fntypeinfo, TA.interprocedural,
                                TA.notForAnalysis, TA.DT, TA.LI);
       tmpAnalysis.visit(*I);
-      Result = tmpAnalysis.getAnalysis(I);
+      analysis[Val] = tmpAnalysis.getAnalysis(I);
     }
 
     I->eraseFromParent();
-    return Result;
+    return;
   }
 
   if (auto GV = dyn_cast<GlobalVariable>(Val)) {
-    if (seen && seen->count(GV))
-      return TypeTree();
+    
+    if (GV->getName() == "__cxa_thread_atexit_impl") {
+      analysis[Val] = TypeTree(BaseType::Pointer).Only(-1);
+      return;
+    }
+
+    TypeTree &Result = analysis[Val];
+    Result.insert({-1}, ConcreteType(BaseType::Pointer));
+
     // A fixed constant global is a pointer to its initializer
     if (GV->isConstant() && GV->hasInitializer()) {
-      SmallPtrSet<GlobalVariable *, 2> seen2;
-      if (seen)
-        seen2.insert(seen->begin(), seen->end());
-      seen2.insert(GV);
-      TypeTree Result = ConcreteType(BaseType::Pointer);
-      Result |= getConstantAnalysis(GV->getInitializer(), TA, &seen2);
-      return Result.Only(-1);
-    }
-    if (GV->getName() == "__cxa_thread_atexit_impl") {
-      return TypeTree(BaseType::Pointer).Only(-1);
+      getConstantAnalysis(GV->getInitializer(), TA, analysis);
+      Result |= analysis[GV->getInitializer()].Only(-1);
+      return;
     }
     if (!isa<StructType>(GV->getValueType()) ||
         !cast<StructType>(GV->getValueType())->isOpaque()) {
@@ -405,18 +430,19 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       // Since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any
       // Single byte object must be integral
       if (globalSize == 1) {
-        TypeTree Result = ConcreteType(BaseType::Pointer);
-        Result |= TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
-        return Result.Only(-1);
+        Result.insert({-1, -1}, ConcreteType(BaseType::Integer));
+        return;
       }
     }
+
     // Otherwise, we simply know that this is a pointer, and
     // not what it is a pointer to
-    return TypeTree(BaseType::Pointer).Only(-1);
+    return;
   }
 
   // No other information can be ascertained
-  return TypeTree();
+  analysis[Val] = TypeTree();
+  return;
 }
 
 TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
@@ -426,14 +452,8 @@ TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
       cast<IntegerType>(Val->getType())->getBitWidth() < 16)
     return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
   if (auto C = dyn_cast<Constant>(Val)) {
-    TypeTree result = getConstantAnalysis(C, *this);
-    if (auto found = findInMap(analysis, Val)) {
-      result |= *found;
-      *found = result;
-    } else {
-      analysis[Val] = result;
-    }
-    return result;
+    getConstantAnalysis(C, *this, analysis);
+    return analysis[Val];
   }
 
   // Check that this value is from the function being analyzed
@@ -531,7 +551,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
   // Attempt to update the underlying analysis
   bool LegalOr = true;
   if (analysis.find(Val) == analysis.end() && isa<Constant>(Val))
-    analysis[Val] = getConstantAnalysis(cast<Constant>(Val), *this);
+    getConstantAnalysis(cast<Constant>(Val), *this, analysis);
 
   TypeTree prev = analysis[Val];
   bool Changed =
