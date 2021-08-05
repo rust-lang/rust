@@ -5,6 +5,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(min_specialization)]
+#![feature(box_syntax)]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]

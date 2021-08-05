@@ -1178,7 +1178,7 @@ fn default_emitter(
                 sopts.debugging_opts.terminal_width,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),)
+            .ui_testing(sopts.debugging_opts.ui_testing))
         }
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => {
             box (JsonEmitter::new(
@@ -1190,7 +1190,7 @@ fn default_emitter(
                 sopts.debugging_opts.terminal_width,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),)
+            .ui_testing(sopts.debugging_opts.ui_testing))
         }
     }
 }

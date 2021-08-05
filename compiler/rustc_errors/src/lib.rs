@@ -7,6 +7,7 @@
 #![feature(backtrace)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
+#![feature(box_syntax)]
 #![feature(nll)]
 
 #[macro_use]

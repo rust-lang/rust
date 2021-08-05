@@ -1,5 +1,6 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(internal_output_capture)]
 #![feature(nll)]
 #![feature(once_cell)]

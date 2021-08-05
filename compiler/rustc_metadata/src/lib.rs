@@ -7,6 +7,7 @@
 #![feature(proc_macro_internals)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
+#![feature(box_syntax)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 

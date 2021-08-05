@@ -10,6 +10,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
+#![feature(box_syntax)]
 #![feature(auto_traits)]
 #![feature(bool_to_option)]
 #![feature(const_panic)]

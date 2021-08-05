@@ -1,5 +1,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(once_cell)]
+#![feature(box_syntax)]
 #![recursion_limit = "256"]
 
 #[macro_use]

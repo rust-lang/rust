@@ -7,6 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
 #![feature(once_cell)]
+#![feature(box_syntax)]
 #![recursion_limit = "256"]
 
 #[macro_use]

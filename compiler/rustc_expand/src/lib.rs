@@ -3,6 +3,7 @@
 #![feature(destructuring_assignment)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
+#![feature(box_syntax)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
