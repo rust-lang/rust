@@ -26,7 +26,7 @@ impl Foo {
 
 fn babar() {}
 
-// @has - '//a[@href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html"]' 'String'
+// @has - '//a/@href' '/struct.String.html'
 // @count - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#21"]' 5
 // @has - '//a[@href="../../source_code/struct.SourceCode.html"]' 'source_code::SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
