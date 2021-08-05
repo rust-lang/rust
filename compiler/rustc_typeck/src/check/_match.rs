@@ -108,7 +108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
                 _ => (
                     expr.span,
-                    ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                    ObligationCauseCode::MatchExpressionArm(Box::new(MatchExpressionArmCause {
                         arm_span,
                         scrut_span: scrut.span,
                         semi_span,
@@ -117,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         last_ty: prior_arm_ty.unwrap(),
                         scrut_hir_id: scrut.hir_id,
                         opt_suggest_box_span,
-                    }),
+                    })),
                 ),
             };
             let cause = self.cause(span, code);
@@ -397,13 +397,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Finally construct the cause:
         self.cause(
             error_sp,
-            ObligationCauseCode::IfExpression(box IfExpressionCause {
+            ObligationCauseCode::IfExpression(Box::new(IfExpressionCause {
                 then: then_sp,
                 else_sp: error_sp,
                 outer: outer_sp,
                 semicolon: remove_semicolon,
                 opt_suggest_box_span,
-            }),
+            })),
         )
     }
 

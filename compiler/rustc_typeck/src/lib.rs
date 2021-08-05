@@ -58,7 +58,6 @@ This API is completely unstable and subject to change.
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(bool_to_option)]
-#![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]
