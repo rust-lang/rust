@@ -1,4 +1,6 @@
 // compile-flags: -Zmiri-disable-abi-check
+// This feature is required to trigger the error using the "C" ABI.
+#![feature(c_unwind)]
 
 extern "C" {
     fn miri_start_panic(payload: *mut u8) -> !;

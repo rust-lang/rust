@@ -1,8 +1,7 @@
 // error-pattern: the program aborted
-#![feature(unwind_attributes)]
+#![feature(c_unwind)]
 
-#[unwind(aborts)]
-fn panic_abort() { panic!() }
+extern "C" fn panic_abort() { panic!() }
 
 fn main() {
     panic_abort();
