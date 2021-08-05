@@ -3040,6 +3040,7 @@ public:
         augmentcall->setCallingConv(call.getCallingConv());
         augmentcall->setDebugLoc(
             gutils->getNewFromOriginal(call.getDebugLoc()));
+        BuilderZ.SetInsertPoint(gutils->getNewFromOriginal(&call)->getNextNode());
         gutils->getNewFromOriginal(&call)->eraseFromParent();
       } else {
         assert(0 && "unhandled unknown outline");
@@ -3065,8 +3066,10 @@ public:
       IRBuilder<> Builder2(call.getParent());
       getReverseBuilder(Builder2);
 
-      if (Mode == DerivativeMode::ReverseModeGradient)
+      if (Mode == DerivativeMode::ReverseModeGradient) {
+        BuilderZ.SetInsertPoint(gutils->getNewFromOriginal(&call)->getNextNode());
         eraseIfUnused(call, /*erase*/ true, /*check*/ false);
+      }
 
       Function *newcalled = nullptr;
       if (called) {
@@ -3074,9 +3077,9 @@ public:
             subdata->returns.end()) {
           if (Mode == DerivativeMode::ReverseModeGradient) {
             if (tape == nullptr)
-              tape = Builder2.CreatePHI(subdata->tapeType, 0,
+              tape = BuilderZ.CreatePHI(subdata->tapeType, 0,
                                         "tapeArg");
-            tape = gutils->cacheForReverse(Builder2, tape,
+            tape = gutils->cacheForReverse(BuilderZ, tape,
                                            getIndex(&call, CacheType::Tape));
           }
           tape = lookup(tape, Builder2);
@@ -4103,12 +4106,11 @@ public:
       if ((Mode == DerivativeMode::ReverseModeCombined ||
            Mode == DerivativeMode::ReverseModePrimal) &&
           (xcache || ycache)) {
-        BuilderZ.SetInsertPoint(gutils->getNewFromOriginal(&call));
         Value *arg1, *arg2;
         auto size = ConstantExpr::getSizeOf(innerType);
         if (xcache) {
           auto dmemcpy = getOrInsertMemcpyStrided(
-              *BuilderZ.GetInsertBlock()->getParent()->getParent(),
+              *gutils->oldFunc->getParent(),
               PointerType::getUnqual(innerType), 0, 0);
           auto malins = CallInst::CreateMalloc(
               gutils->getNewFromOriginal(&call), size->getType(), innerType,
@@ -4124,7 +4126,7 @@ public:
         }
         if (ycache) {
           auto dmemcpy = getOrInsertMemcpyStrided(
-              *BuilderZ.GetInsertBlock()->getParent()->getParent(),
+              *gutils->oldFunc->getParent(),
               PointerType::getUnqual(innerType), 0, 0);
           auto malins = CallInst::CreateMalloc(
               gutils->getNewFromOriginal(&call), size->getType(), innerType,
@@ -4162,10 +4164,10 @@ public:
           if (Mode == DerivativeMode::ReverseModeGradient &&
               (!gutils->isConstantValue(call.getArgOperand(1)) ||
                !gutils->isConstantValue(call.getArgOperand(3)))) {
-            cacheval = Builder2.CreatePHI(cachetype, 0);
+            cacheval = BuilderZ.CreatePHI(cachetype, 0);
           }
-          cacheval = gutils->cacheForReverse(Builder2, cacheval,
-                                             getIndex(&call, CacheType::Tape));
+          cacheval = lookup(gutils->cacheForReverse(BuilderZ, cacheval,
+                                             getIndex(&call, CacheType::Tape)), Builder2);
           if (xcache && ycache) {
             structarg1 = BuilderZ.CreateExtractValue(cacheval, 0);
             structarg2 = BuilderZ.CreateExtractValue(cacheval, 1);
@@ -4223,6 +4225,7 @@ public:
         if (ycache)
           CallInst::CreateFree(structarg2, seconddcall->getNextNode());
       }
+      eraseIfUnused(*orig);
       return;
     }
 
