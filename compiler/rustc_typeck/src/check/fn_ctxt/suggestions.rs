@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.multipart_suggestion(
                 "store this in the heap by calling `Box::new`",
                 vec![
-                    (expr.span.shrink_to_lo(), "box (".to_string()),
+                    (expr.span.shrink_to_lo(), "Box::new(".to_string()),
                     (expr.span.shrink_to_hi(), ")".to_string()),
                 ],
                 Applicability::MachineApplicable,
