@@ -28,7 +28,7 @@ use crate::ty;
 pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Vec<u8>,
+    bytes: Box<[u8]>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -112,7 +112,7 @@ impl<Tag> Allocation<Tag> {
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let bytes = slice.into().into_owned();
+        let bytes = Box::<[u8]>::from(slice.into());
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -145,9 +145,8 @@ impl<Tag> Allocation<Tag> {
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
-        // SAFETY: This turns a Box<[MaybeUninit<u8>]> into a Vec<u8>. This is safe since the box
-        // was zero-allocated which is a valid value for u8.
-        let bytes = unsafe { bytes.assume_init().into_vec() };
+        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
+        let bytes = unsafe { bytes.assume_init() };
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),
