@@ -36,6 +36,7 @@
 #![recursion_limit = "256"]
 
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
@@ -120,8 +121,11 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// outside of an `async fn`.
     current_item: Option<Span>,
 
+    top_level_items: Vec<Item>,
+
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
+    is_at_top_level: bool,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
@@ -331,6 +335,7 @@ pub fn lower_crate<'a, 'hir>(
         attrs: BTreeMap::default(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
+        is_at_top_level: true,
         is_in_loop_condition: false,
         is_in_trait_impl: false,
         is_in_dyn_type: false,
@@ -343,6 +348,7 @@ pub fn lower_crate<'a, 'hir>(
         generator_kind: None,
         task_context: None,
         current_item: None,
+        top_level_items: Vec::new(),
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
@@ -467,13 +473,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .count();
                         self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
                     }
+                    ItemKind::MacroDef(..) => {
+                        if self.lctx.check_force_top_level(item) {
+                            self.lctx.top_level_items.push(item.clone());
+                        }
+                    }
                     ItemKind::Use(ref use_tree) => {
                         self.allocate_use_tree_hir_id_counters(use_tree);
                     }
                     _ => {}
                 }
 
+                let was_at_top_level = mem::replace(&mut self.lctx.is_at_top_level, false);
+
                 visit::walk_item(self, item);
+
+                self.lctx.is_at_top_level = was_at_top_level;
             }
 
             fn visit_assoc_item(&mut self, item: &'tcx AssocItem, ctxt: AssocCtxt) {
@@ -510,7 +525,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
-        let module = self.arena.alloc(self.lower_mod(&c.items, c.span));
+        let mut items: Vec<_> = self.top_level_items.drain(..).map(|item| P(item)).collect();
+        items.extend(c.items.clone());
+
+        let module = self.arena.alloc(self.lower_mod(items.as_slice(), c.span));
         self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
         self.owners.ensure_contains_elem(CRATE_DEF_ID, || None);
         self.owners[CRATE_DEF_ID] = Some(hir::OwnerNode::Crate(module));
@@ -561,12 +579,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(krate)
     }
 
-    fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
+    fn insert_item(&mut self, item: hir::Item<'hir>, force_top_level: bool) -> hir::ItemId {
         let id = item.item_id();
         let item = self.arena.alloc(item);
+        let module = if force_top_level { CRATE_DEF_ID } else { self.current_module };
         self.owners.ensure_contains_elem(id.def_id, || None);
         self.owners[id.def_id] = Some(hir::OwnerNode::Item(item));
-        self.modules.entry(self.current_module).or_default().items.insert(id);
+        self.modules.entry(module).or_default().items.insert(id);
         id
     }
 
@@ -595,6 +614,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.owners[id.def_id] = Some(hir::OwnerNode::TraitItem(item));
         self.modules.entry(self.current_module).or_default().trait_items.insert(id);
         id
+    }
+
+    /// This checks if an item is a `#[macro_use]` macro, and thus always
+    /// defined at the top level. As a special case, if the macro is already
+    /// at the top level, it remains at its current level.
+    fn check_force_top_level(&self, item: &Item) -> bool {
+        if self.is_at_top_level {
+            false
+        } else if let ItemKind::MacroDef(MacroDef { macro_rules, .. }) = item.kind {
+            macro_rules && self.sess.contains_name(&item.attrs, sym::macro_export)
+        } else {
+            false
+        }
     }
 
     fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {
@@ -1593,7 +1625,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Insert the item into the global item list. This usually happens
         // automatically for all AST items. But this opaque type item
         // does not actually exist in the AST.
-        self.insert_item(opaque_ty_item);
+        self.insert_item(opaque_ty_item, false);
     }
 
     fn lifetimes_from_impl_trait_bounds(
@@ -2382,7 +2414,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             [stmts @ .., Stmt { kind: StmtKind::Expr(e), .. }] => (stmts, Some(&*e)),
             stmts => (stmts, None),
         };
-        let stmts = self.arena.alloc_from_iter(stmts.iter().flat_map(|stmt| self.lower_stmt(stmt)));
+        let stmts: Vec<_> = stmts
+            .iter()
+            .filter_map(|stmt| {
+                if let StmtKind::Item(ref item) = stmt.kind {
+                    if self.check_force_top_level(item) {
+                        None
+                    } else {
+                        Some(self.lower_stmt(stmt))
+                    }
+                } else {
+                    Some(self.lower_stmt(stmt))
+                }
+            })
+            .flatten()
+            .collect();
+        let stmts = self.arena.alloc_from_iter(stmts.into_iter());
         let expr = expr.map(|e| self.lower_expr(e));
         let rules = self.lower_block_check_mode(&b.rules);
         let hir_id = self.lower_node_id(b.id);
