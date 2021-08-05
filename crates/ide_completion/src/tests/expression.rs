@@ -14,6 +14,60 @@ fn check_empty(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
+fn complete_literal_struct_with_a_private_field() {
+    // `FooDesc.bar` is private, the completion should not be triggered.
+    check(
+        r#"
+mod _69latrick {
+    pub struct FooDesc { pub six: bool, pub neuf: Vec<String>, bar: bool }
+    pub fn create_foo(foo_desc: &FooDesc) -> () { () }
+}
+
+fn baz() {
+    use _69latrick::*;
+
+    let foo = create_foo(&$0);
+}
+            "#,
+        // This should not contain `FooDesc {…}`.
+        expect![[r##"
+            kw unsafe
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw mut
+            kw return
+            kw self
+            kw super
+            kw crate
+            st FooDesc
+            fn create_foo(…) fn(&FooDesc)
+            bt u32
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            fn baz()         fn()
+            st Unit
+            md _69latrick
+            ma makro!(…)     #[macro_export] macro_rules! makro
+            fn function()    fn()
+            sc STATIC
+            un Union
+            ev TupleV(…)     (u32)
+            ct CONST
+        "##]],
+    )
+}
+
+#[test]
 fn completes_various_bindings() {
     check_empty(
         r#"
