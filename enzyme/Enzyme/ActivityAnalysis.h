@@ -58,7 +58,7 @@ class ActivityAnalyzer {
   llvm::AAResults &AA;
 
   // Blocks not to be analyzed
-  const llvm::SmallPtrSetImpl<llvm::BasicBlock*> &notForAnalysis;
+  const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis;
 
   /// Library Information
   llvm::TargetLibraryInfo &TLI;
@@ -95,14 +95,15 @@ public:
   /// values and whether returns are active. The all arguments of the functions
   /// being analyzed must be in the set of constant and active values, lest an
   /// error occur during analysis
-  ActivityAnalyzer(PreProcessCache &PPC, llvm::AAResults &AA_,
-                   const llvm::SmallPtrSetImpl<llvm::BasicBlock*> &notForAnalysis_,
-                   llvm::TargetLibraryInfo &TLI_,
-                   const llvm::SmallPtrSetImpl<llvm::Value *> &ConstantValues,
-                   const llvm::SmallPtrSetImpl<llvm::Value *> &ActiveValues,
-                   bool ActiveReturns)
-      : PPC(PPC), AA(AA_), notForAnalysis(notForAnalysis_), TLI(TLI_), ActiveReturns(ActiveReturns),
-        directions(UP | DOWN),
+  ActivityAnalyzer(
+      PreProcessCache &PPC, llvm::AAResults &AA_,
+      const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis_,
+      llvm::TargetLibraryInfo &TLI_,
+      const llvm::SmallPtrSetImpl<llvm::Value *> &ConstantValues,
+      const llvm::SmallPtrSetImpl<llvm::Value *> &ActiveValues,
+      bool ActiveReturns)
+      : PPC(PPC), AA(AA_), notForAnalysis(notForAnalysis_), TLI(TLI_),
+        ActiveReturns(ActiveReturns), directions(UP | DOWN),
         ConstantValues(ConstantValues.begin(), ConstantValues.end()),
         ActiveValues(ActiveValues.begin(), ActiveValues.end()) {}
 
@@ -130,10 +131,9 @@ private:
   /// Create a new analyzer starting from an existing Analyzer
   /// This is used to perform inductive assumptions
   ActivityAnalyzer(ActivityAnalyzer &Other, uint8_t directions)
-      : PPC(Other.PPC),
-        AA(Other.AA), notForAnalysis(Other.notForAnalysis),
-        TLI(Other.TLI),
-        ActiveReturns(Other.ActiveReturns), directions(directions),
+      : PPC(Other.PPC), AA(Other.AA), notForAnalysis(Other.notForAnalysis),
+        TLI(Other.TLI), ActiveReturns(Other.ActiveReturns),
+        directions(directions),
         ConstantInstructions(Other.ConstantInstructions),
         ActiveInstructions(Other.ActiveInstructions),
         ConstantValues(Other.ConstantValues), ActiveValues(Other.ActiveValues) {

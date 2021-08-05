@@ -35,12 +35,6 @@ target triple = "x86_64-unknown-linux-gnu"
 @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 514, i32 0, i32 0, i8* getelementptr inbounds ([23 x i8], [23 x i8]* @0, i32 0, i32 0) }, align 8
 @2 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 0, i8* getelementptr inbounds ([23 x i8], [23 x i8]* @0, i32 0, i32 0) }, align 8
 
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.lifetime.start.p0i8(i64 immarg, i8* nocapture)
-
-; Function Attrs: argmemonly nofree nosync nounwind willreturn
-declare void @llvm.lifetime.end.p0i8(i64 immarg, i8* nocapture)
-
 define void @caller(i8* %in, i8* %din) local_unnamed_addr {
 entry:
   call void (i8*, ...) @_Z17__enzyme_autodiffPvS_S_(i8* bitcast (void (i8*)* @_ZL16LagrangeLeapFrogRN4RAJA13TypedIndexSetIJNS_17TypedRangeSegmentIllEENS_16TypedListSegmentIlEENS_23TypedRangeStrideSegmentIllEEEEE to i8*), metadata !"enzyme_dup", i8* %in, i8* nonnull %din) #5
@@ -86,12 +80,10 @@ entry:
   %CONTAINER.sroa.0.0..sroa_cast14 = bitcast i8* %i2 to i64*
   %sub.i.i.i = load i64, i64* %CONTAINER.sroa.0.0..sroa_cast14, align 8, !tbaa.struct !17
   %i3 = bitcast i64* %distance_it to i8*
-  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %i3) #5
   store i64 %sub.i.i.i, i64* %distance_it, align 8, !tbaa !18
   br label %for.body
 
 for.cond.cleanup:                                 ; preds = %for.body
-  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %i3) #5
   ret void
 
 for.body:                                         ; preds = %for.body, %entry

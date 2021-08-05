@@ -1074,7 +1074,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                   }
                 }
                 bret->eraseFromParent();
-                for (size_t j = 0; j < i; j++) {
+                for (size_t j = 0; j <= i; j++) {
                   blocks[j]->eraseFromParent();
                 };
                 assert(mode != UnwrapMode::LegalFullUnwrap);
@@ -1210,8 +1210,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         blocks[i]->moveAfter(last);
         last = blocks[i];
         if (reverseBlocks.size() > 0) {
-            reverseBlocks[fwd].push_back(blocks[i]);
-            reverseBlockToPrimal[blocks[i]] = fwd;
+          reverseBlocks[fwd].push_back(blocks[i]);
+          reverseBlockToPrimal[blocks[i]] = fwd;
         }
         IRBuilder<> B(blocks[i]);
 
@@ -1241,10 +1241,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (!vals[i]) {
           for (size_t j = 0; j <= i; j++) {
             if (reverseBlocks.size() > 0) {
-                reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                   reverseBlocks[fwd].end(),
-                                                   blocks[j]));
-                reverseBlockToPrimal.erase(blocks[j]);
+              reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                                 reverseBlocks[fwd].end(),
+                                                 blocks[j]));
+              reverseBlockToPrimal.erase(blocks[j]);
             }
             unwrap_cache.erase(blocks[j]);
             lookup_cache.erase(blocks[j]);
@@ -1257,7 +1257,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             }
           }
           bret->eraseFromParent();
-          for (size_t j = 0; j < i; j++) {
+          for (size_t j = 0; j <= i; j++) {
             blocks[j]->eraseFromParent();
           };
           assert(mode != UnwrapMode::LegalFullUnwrap);
@@ -1274,9 +1274,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           blocks[1]->size() == 1) {
         for (size_t j = 0; j < blocks.size(); j++) {
           if (reverseBlocks.size() > 0) {
-              reverseBlocks[fwd].erase(std::find(
-                  reverseBlocks[fwd].begin(), reverseBlocks[fwd].end(), blocks[j]));
-              reverseBlockToPrimal.erase(blocks[j]);
+            reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                               reverseBlocks[fwd].end(),
+                                               blocks[j]));
+            reverseBlockToPrimal.erase(blocks[j]);
           }
           unwrap_cache.erase(blocks[j]);
           lookup_cache.erase(blocks[j]);
@@ -1306,9 +1307,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (BuilderM.GetInsertPoint() != oldB->end()) {
         for (size_t j = 0; j < blocks.size(); j++) {
           if (reverseBlocks.size() > 0) {
-              reverseBlocks[fwd].erase(std::find(
-                  reverseBlocks[fwd].begin(), reverseBlocks[fwd].end(), blocks[j]));
-              reverseBlockToPrimal.erase(blocks[j]);
+            reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                               reverseBlocks[fwd].end(),
+                                               blocks[j]));
+            reverseBlockToPrimal.erase(blocks[j]);
           }
           unwrap_cache.erase(blocks[j]);
           lookup_cache.erase(blocks[j]);

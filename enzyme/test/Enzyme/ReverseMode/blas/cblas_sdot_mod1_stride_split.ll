@@ -156,7 +156,6 @@ declare dso_local float @__enzyme_autodiff(i8*, float*, float*, float*, float*)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %1 = extractvalue { float*, float* } %0, 0
 ;CHECK-NEXT:  %2 = extractvalue { float*, float* } %0, 1
-;CHECK-NEXT:  %call = call float @cblas_sdot(i32 3, float* nocapture readonly %a, i32 2, float* nocapture readonly %b, i32 3)
 ;CHECK-NEXT:  %3 = load float, float* %"out'", align 4
 ;CHECK-NEXT:  store float 0.000000e+00, float* %"out'", align 4
 ;CHECK-NEXT:  call void @cblas_saxpy(i32 3, float %3, float* %1, i32 1, float* %"b'", i32 3)

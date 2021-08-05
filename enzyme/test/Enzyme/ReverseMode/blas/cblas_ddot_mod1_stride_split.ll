@@ -168,7 +168,6 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, double*, doub
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %1 = extractvalue { double*, double* } %0, 0
 ;CHECK-NEXT:  %2 = extractvalue { double*, double* } %0, 1
-;CHECK-NEXT:  %call = call double @cblas_ddot(i32 3, double* nocapture readonly %a, i32 2, double* nocapture readonly %b, i32 3)
 ;CHECK-NEXT:  %3 = load double, double* %"out'", align 8
 ;CHECK-NEXT:  store double 0.000000e+00, double* %"out'", align 8
 ;CHECK-NEXT:  call void @cblas_daxpy(i32 3, double %3, double* %1, i32 1, double* %"b'", i32 3)
