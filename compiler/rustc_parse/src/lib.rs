@@ -3,7 +3,6 @@
 #![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
 #![cfg_attr(bootstrap, feature(bindings_after_at))]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
 
