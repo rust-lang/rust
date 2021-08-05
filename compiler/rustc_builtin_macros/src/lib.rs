@@ -3,7 +3,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
