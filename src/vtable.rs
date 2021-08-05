@@ -5,7 +5,7 @@
 use crate::constant::data_id_for_alloc_id;
 use crate::prelude::*;
 
-fn vtable_memflags() -> MemFlags {
+pub(crate) fn vtable_memflags() -> MemFlags {
     let mut flags = MemFlags::trusted(); // A vtable access is always aligned and will never trap.
     flags.set_readonly(); // A vtable is always read-only.
     flags
