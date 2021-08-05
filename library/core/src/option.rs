@@ -1417,7 +1417,7 @@ impl<T, U> Option<(T, U)> {
     /// assert_eq!(y.unzip(), (None, None));
     /// ```
     #[inline]
-    #[unstable(feature = "unzip_option", issue = "none", reason = "recently added")]
+    #[unstable(feature = "unzip_option", issue = "87800", reason = "recently added")]
     pub const fn unzip(self) -> (Option<T>, Option<U>) {
         match self {
             Some((a, b)) => (Some(a), Some(b)),
