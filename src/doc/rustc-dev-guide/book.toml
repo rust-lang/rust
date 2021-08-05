@@ -12,6 +12,7 @@ renderer = ["html"]
 
 [output.html]
 git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
+edit-url-template = "https://github.com/rust-lang/rustc-dev-guide/tree/master/{path}?mode=edit"
 
 [output.html.fold]
 enable = true
