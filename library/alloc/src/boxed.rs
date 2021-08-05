@@ -589,6 +589,39 @@ impl<T> Box<[T]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
     }
 
+    /// Constructs a new boxed slice with uninitialized contents. Returns an error if
+    /// the allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    ///
+    /// let mut values = Box::<[u32]>::try_new_uninit_slice(3)?;
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3]);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
+        unsafe {
+            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
+                Ok(l) => l,
+                Err(_) => return Err(AllocError),
+            };
+            let ptr = Global.allocate(layout)?;
+            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
+        }
+    }
+
     /// Constructs a new boxed slice with uninitialized contents, with the memory
     /// being filled with `0` bytes. Returns an error if the allocation fails
     ///
