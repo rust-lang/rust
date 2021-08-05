@@ -147,7 +147,7 @@ impl<Tag> Allocation<Tag> {
         })?;
         // SAFETY: This turns a Box<[MaybeUninit<u8>]> into a Vec<u8>. This is safe since the box
         // was zero-allocated which is a valid value for u8.
-        let bytes = unsafe { bytes.assume_init().to_vec() };
+        let bytes = unsafe { bytes.assume_init().into_vec() };
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),
