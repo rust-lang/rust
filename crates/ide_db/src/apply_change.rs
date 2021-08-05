@@ -1,43 +1,15 @@
 //! Applies changes to the IDE state transactionally.
 
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 
 use base_db::{
     salsa::{Database, Durability, SweepStrategy},
-    Change, FileId, SourceRootId,
+    Change, SourceRootId,
 };
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
 
 use crate::{symbol_index::SymbolsDatabase, RootDatabase};
-
-#[derive(Debug)]
-struct AddFile {
-    file_id: FileId,
-    path: String,
-    text: Arc<String>,
-}
-
-#[derive(Debug)]
-struct RemoveFile {
-    file_id: FileId,
-    path: String,
-}
-
-#[derive(Default)]
-struct RootChange {
-    added: Vec<AddFile>,
-    removed: Vec<RemoveFile>,
-}
-
-impl fmt::Debug for RootChange {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("RootChange")
-            .field("added", &self.added.len())
-            .field("removed", &self.removed.len())
-            .finish()
-    }
-}
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
