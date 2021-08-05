@@ -203,7 +203,11 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
-        unsafe { llvm::LLVMGetElementType(ty) }
+        match self.type_kind(ty) {
+            TypeKind::Array | TypeKind::Vector => unsafe { llvm::LLVMGetElementType(ty) },
+            TypeKind::Pointer => bug!("element_type is not supported for opaque pointers"),
+            other => bug!("element_type called on unsupported type {:?}", other),
+        }
     }
 
     fn vector_length(&self, ty: &'ll Type) -> usize {
