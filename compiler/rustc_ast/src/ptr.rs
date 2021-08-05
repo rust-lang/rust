@@ -37,7 +37,7 @@ pub struct P<T: ?Sized> {
 /// Construct a `P<T>` from a `T` value.
 #[allow(non_snake_case)]
 pub fn P<T: 'static>(value: T) -> P<T> {
-    P { ptr: box value }
+    P { ptr: Box::new(value) }
 }
 
 impl<T: 'static> P<T> {

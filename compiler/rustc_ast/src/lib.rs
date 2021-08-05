@@ -8,7 +8,6 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))
 )]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
 #![cfg_attr(bootstrap, feature(const_fn_transmute))]
 #![feature(crate_visibility_modifier)]
