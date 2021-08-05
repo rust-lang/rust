@@ -29,6 +29,13 @@ impl<'a> FuncExpr<'a> {
             FuncExpr::Method(m_call) => m_call.arg_list(),
         }
     }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match *self {
+            FuncExpr::Func(fn_call) => fn_call.syntax(),
+            FuncExpr::Method(m_call) => m_call.syntax(),
+        }
+    }
 }
 
 // Assist: generate_function
@@ -173,7 +180,7 @@ impl FunctionBuilder {
                 file = in_file;
                 target
             }
-            None => next_space_for_fn_after_call_site(call)?,
+            None => next_space_for_fn_after_call_site(FuncExpr::Func(call))?,
         };
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
@@ -238,7 +245,7 @@ impl FunctionBuilder {
                 file = in_file;
                 target
             }
-            None => next_space_for_fn_after_method_call_site(call)?,
+            None => next_space_for_fn_after_call_site(FuncExpr::Method(call))?,
         };
         let needs_pub = false;
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
@@ -465,29 +472,7 @@ fn fn_arg_type(
 /// directly after the current block
 /// We want to write the generated function directly after
 /// fns, impls or macro calls, but inside mods
-fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFunctionTarget> {
-    let mut ancestors = expr.syntax().ancestors().peekable();
-    let mut last_ancestor: Option<SyntaxNode> = None;
-    while let Some(next_ancestor) = ancestors.next() {
-        match next_ancestor.kind() {
-            SyntaxKind::SOURCE_FILE => {
-                break;
-            }
-            SyntaxKind::ITEM_LIST => {
-                if ancestors.peek().map(|a| a.kind()) == Some(SyntaxKind::MODULE) {
-                    break;
-                }
-            }
-            _ => {}
-        }
-        last_ancestor = Some(next_ancestor);
-    }
-    last_ancestor.map(GeneratedFunctionTarget::BehindItem)
-}
-
-fn next_space_for_fn_after_method_call_site(
-    expr: &ast::MethodCallExpr,
-) -> Option<GeneratedFunctionTarget> {
+fn next_space_for_fn_after_call_site(expr: FuncExpr) -> Option<GeneratedFunctionTarget> {
     let mut ancestors = expr.syntax().ancestors().peekable();
     let mut last_ancestor: Option<SyntaxNode> = None;
     while let Some(next_ancestor) = ancestors.next() {
