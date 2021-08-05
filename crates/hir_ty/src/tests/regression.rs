@@ -1094,3 +1094,23 @@ fn parse_arule() {
         "#,
     )
 }
+
+#[test]
+fn call_expected_type_closure() {
+    check_types(
+        r#"
+//- minicore: fn, option
+
+fn map<T, U>(o: Option<T>, f: impl FnOnce(T) -> U) -> Option<U> { loop {} }
+struct S {
+    field: u32
+}
+
+fn test() {
+    let o = Some(S { field: 2 });
+    let _: Option<()> = map(o, |s| { s.field; });
+                                  // ^^^^^^^ u32
+}
+        "#,
+    );
+}
