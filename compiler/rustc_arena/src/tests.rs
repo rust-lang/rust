@@ -93,7 +93,7 @@ pub fn bench_copy(b: &mut Bencher) {
 #[bench]
 pub fn bench_copy_nonarena(b: &mut Bencher) {
     b.iter(|| {
-        let _: Box<_> = box (Point { x: 1, y: 2, z: 3 });
+        let _: Box<_> = Box::new(Point { x: 1, y: 2, z: 3 });
     })
 }
 
@@ -227,6 +227,6 @@ pub fn bench_noncopy(b: &mut Bencher) {
 pub fn bench_noncopy_nonarena(b: &mut Bencher) {
     b.iter(|| {
         let _: Box<_> =
-            box (Noncopy { string: "hello world".to_string(), array: vec![1, 2, 3, 4, 5] });
+            Box::new(Noncopy { string: "hello world".to_string(), array: vec![1, 2, 3, 4, 5] });
     })
 }
