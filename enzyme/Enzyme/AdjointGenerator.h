@@ -2112,37 +2112,38 @@ public:
     if (!vd.isKnownPastPointer()) {
       if (looseTypeAnalysis) {
         for (auto val : {orig_dst, orig_src}) {
-        if (auto CI = dyn_cast<CastInst>(val)) {
-          if (auto PT = dyn_cast<PointerType>(CI->getSrcTy())) {
-            if (PT->getElementType()->isFPOrFPVectorTy()) {
-              vd = TypeTree(ConcreteType(PT->getElementType()->getScalarType()))
-                       .Only(0);
-              goto known;
-            }
-            if (PT->getElementType()->isIntOrIntVectorTy()) {
-              vd = TypeTree(BaseType::Integer).Only(0);
-              goto known;
-            }
-            auto ET = PT->getElementType();
-            while (auto ST = dyn_cast<StructType>(ET)) {
-              if (!ST->getNumElements())
-                break;
-              ET = ST->getElementType(0);
-            }
-            if (ET->isIntOrIntVectorTy()) {
-              vd = TypeTree(BaseType::Integer).Only(0);
-              goto known;
-            }
-          }
-        }
-        if (auto gep = dyn_cast<GetElementPtrInst>(val)) {
-          if (auto AT = dyn_cast<ArrayType>(gep->getSourceElementType())) {
-            if (AT->getElementType()->isIntegerTy()) {
-              vd = TypeTree(BaseType::Integer).Only(0);
-              goto known;
+          if (auto CI = dyn_cast<CastInst>(val)) {
+            if (auto PT = dyn_cast<PointerType>(CI->getSrcTy())) {
+              if (PT->getElementType()->isFPOrFPVectorTy()) {
+                vd = TypeTree(
+                         ConcreteType(PT->getElementType()->getScalarType()))
+                         .Only(0);
+                goto known;
+              }
+              if (PT->getElementType()->isIntOrIntVectorTy()) {
+                vd = TypeTree(BaseType::Integer).Only(0);
+                goto known;
+              }
+              auto ET = PT->getElementType();
+              while (auto ST = dyn_cast<StructType>(ET)) {
+                if (!ST->getNumElements())
+                  break;
+                ET = ST->getElementType(0);
+              }
+              if (ET->isIntOrIntVectorTy()) {
+                vd = TypeTree(BaseType::Integer).Only(0);
+                goto known;
+              }
             }
           }
-        }
+          if (auto gep = dyn_cast<GetElementPtrInst>(val)) {
+            if (auto AT = dyn_cast<ArrayType>(gep->getSourceElementType())) {
+              if (AT->getElementType()->isIntegerTy()) {
+                vd = TypeTree(BaseType::Integer).Only(0);
+                goto known;
+              }
+            }
+          }
         }
       }
       EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
@@ -3485,187 +3486,191 @@ public:
     if (funcName == "MPI_Isend" || funcName == "MPI_Irecv") {
       Value *firstallocation = nullptr;
       if (!gutils->isConstantInstruction(&call)) {
-      if (Mode == DerivativeMode::ReverseModePrimal ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        assert(!gutils->isConstantValue(call.getOperand(0)));
-        assert(!gutils->isConstantValue(call.getOperand(6)));
-        Value *d_req = gutils->invertPointerM(call.getOperand(6), BuilderZ);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            Mode == DerivativeMode::ReverseModeCombined) {
+          assert(!gutils->isConstantValue(call.getOperand(0)));
+          assert(!gutils->isConstantValue(call.getOperand(6)));
+          Value *d_req = gutils->invertPointerM(call.getOperand(6), BuilderZ);
 
-        auto i64 = Type::getInt64Ty(call.getContext());
-        auto i32 = Type::getInt32Ty(call.getContext());
-        auto c0_64 = ConstantInt::get(i64, 0);
-        Type *types[] = {
-            /*0 */ Type::getInt8PtrTy(call.getContext()),
-            /*1 */ i64,
-            /*2 */ Type::getInt8PtrTy(call.getContext()),
-            /*3 */ i64,
-            /*4 */ i64,
-            /*5 */ Type::getInt8PtrTy(call.getContext()),
-            /*6 */ Type::getInt8Ty(call.getContext()),
-        };
-        auto impi = StructType::get(call.getContext(), types, false);
+          auto i64 = Type::getInt64Ty(call.getContext());
+          auto i32 = Type::getInt32Ty(call.getContext());
+          auto c0_64 = ConstantInt::get(i64, 0);
+          Type *types[] = {
+              /*0 */ Type::getInt8PtrTy(call.getContext()),
+              /*1 */ i64,
+              /*2 */ Type::getInt8PtrTy(call.getContext()),
+              /*3 */ i64,
+              /*4 */ i64,
+              /*5 */ Type::getInt8PtrTy(call.getContext()),
+              /*6 */ Type::getInt8Ty(call.getContext()),
+          };
+          auto impi = StructType::get(call.getContext(), types, false);
 
-        Value *impialloc = CallInst::CreateMalloc(
-            gutils->getNewFromOriginal(&call), i64, impi,
-            ConstantInt::get(
-                i64,
-                called->getParent()->getDataLayout().getTypeAllocSizeInBits(
-                    impi) /
-                    8),
-            nullptr, nullptr, "");
-        BuilderZ.SetInsertPoint(gutils->getNewFromOriginal(&call));
-
-        d_req = BuilderZ.CreateBitCast(
-            d_req, PointerType::getUnqual(impialloc->getType()));
-        BuilderZ.CreateStore(impialloc, d_req);
-
-        if (funcName == "MPI_Isend") {
-          Value *tysize =
-              MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
-                            BuilderZ, call.getType());
-
-          auto len_arg = BuilderZ.CreateZExtOrTrunc(
-              gutils->getNewFromOriginal(call.getOperand(1)),
-              Type::getInt64Ty(call.getContext()));
-          len_arg = BuilderZ.CreateMul(
-              len_arg,
-              BuilderZ.CreateZExtOrTrunc(tysize,
-                                         Type::getInt64Ty(call.getContext())),
-              "", true, true);
-
-          firstallocation = CallInst::CreateMalloc(
-              &*BuilderZ.GetInsertPoint(), len_arg->getType(),
-              Type::getInt8Ty(call.getContext()),
-              ConstantInt::get(Type::getInt64Ty(len_arg->getContext()), 1),
-              len_arg, nullptr, "mpirecv_malloccache");
-          BuilderZ.CreateStore(
-              firstallocation,
-              BuilderZ.CreateInBoundsGEP(impialloc,
-                                         {c0_64, ConstantInt::get(i32, 0)}));
+          Value *impialloc = CallInst::CreateMalloc(
+              gutils->getNewFromOriginal(&call), i64, impi,
+              ConstantInt::get(
+                  i64,
+                  called->getParent()->getDataLayout().getTypeAllocSizeInBits(
+                      impi) /
+                      8),
+              nullptr, nullptr, "");
           BuilderZ.SetInsertPoint(gutils->getNewFromOriginal(&call));
 
-          firstallocation = gutils->cacheForReverse(
-              BuilderZ, firstallocation, getIndex(&call, CacheType::Tape));
+          d_req = BuilderZ.CreateBitCast(
+              d_req, PointerType::getUnqual(impialloc->getType()));
+          BuilderZ.CreateStore(impialloc, d_req);
 
-        } else {
+          if (funcName == "MPI_Isend") {
+            Value *tysize =
+                MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
+                              BuilderZ, call.getType());
+
+            auto len_arg = BuilderZ.CreateZExtOrTrunc(
+                gutils->getNewFromOriginal(call.getOperand(1)),
+                Type::getInt64Ty(call.getContext()));
+            len_arg = BuilderZ.CreateMul(
+                len_arg,
+                BuilderZ.CreateZExtOrTrunc(tysize,
+                                           Type::getInt64Ty(call.getContext())),
+                "", true, true);
+
+            firstallocation = CallInst::CreateMalloc(
+                &*BuilderZ.GetInsertPoint(), len_arg->getType(),
+                Type::getInt8Ty(call.getContext()),
+                ConstantInt::get(Type::getInt64Ty(len_arg->getContext()), 1),
+                len_arg, nullptr, "mpirecv_malloccache");
+            BuilderZ.CreateStore(
+                firstallocation,
+                BuilderZ.CreateInBoundsGEP(impialloc,
+                                           {c0_64, ConstantInt::get(i32, 0)}));
+            BuilderZ.SetInsertPoint(gutils->getNewFromOriginal(&call));
+
+            firstallocation = gutils->cacheForReverse(
+                BuilderZ, firstallocation, getIndex(&call, CacheType::Tape));
+
+          } else {
+            BuilderZ.CreateStore(
+                gutils->invertPointerM(call.getOperand(0), BuilderZ),
+                BuilderZ.CreateInBoundsGEP(impialloc,
+                                           {c0_64, ConstantInt::get(i32, 0)}));
+          }
+
           BuilderZ.CreateStore(
-              gutils->invertPointerM(call.getOperand(0), BuilderZ),
+              BuilderZ.CreateZExtOrTrunc(
+                  gutils->getNewFromOriginal(call.getOperand(1)), types[1]),
               BuilderZ.CreateInBoundsGEP(impialloc,
-                                         {c0_64, ConstantInt::get(i32, 0)}));
+                                         {c0_64, ConstantInt::get(i32, 1)}));
+
+          BuilderZ.CreateStore(
+              BuilderZ.CreatePointerCast(
+                  gutils->getNewFromOriginal(call.getOperand(2)), types[2]),
+              BuilderZ.CreateInBoundsGEP(impialloc,
+                                         {c0_64, ConstantInt::get(i32, 2)}));
+
+          BuilderZ.CreateStore(
+              BuilderZ.CreateZExtOrTrunc(
+                  gutils->getNewFromOriginal(call.getOperand(3)), types[3]),
+              BuilderZ.CreateInBoundsGEP(impialloc,
+                                         {c0_64, ConstantInt::get(i32, 3)}));
+
+          BuilderZ.CreateStore(
+              BuilderZ.CreateZExtOrTrunc(
+                  gutils->getNewFromOriginal(call.getOperand(4)), types[4]),
+              BuilderZ.CreateInBoundsGEP(impialloc,
+                                         {c0_64, ConstantInt::get(i32, 4)}));
+
+          BuilderZ.CreateStore(
+              BuilderZ.CreatePointerCast(
+                  gutils->getNewFromOriginal(call.getOperand(5)), types[5]),
+              BuilderZ.CreateInBoundsGEP(impialloc,
+                                         {c0_64, ConstantInt::get(i32, 5)}));
+
+          BuilderZ.CreateStore(
+              ConstantInt::get(Type::getInt8Ty(impialloc->getContext()),
+                               (funcName == "MPI_Isend")
+                                   ? (int)MPI_CallType::ISEND
+                                   : (int)MPI_CallType::IRECV),
+              BuilderZ.CreateInBoundsGEP(impialloc,
+                                         {c0_64, ConstantInt::get(i32, 6)}));
         }
+        if (Mode == DerivativeMode::ReverseModeGradient ||
+            Mode == DerivativeMode::ReverseModeCombined) {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          auto waitFunc = called->getParent()->getFunction("MPI_Wait");
+          assert(waitFunc);
+          auto statusArg = waitFunc->arg_end();
+          statusArg--;
+          Value *d_req = gutils->invertPointerM(call.getOperand(6), Builder2);
+          Value *args[] = {
+              /*req*/ d_req,
+              /*status*/ IRBuilder<>(gutils->inversionAllocs)
+                  .CreateAlloca(cast<PointerType>(statusArg->getType())
+                                    ->getElementType())};
+          auto fcall = Builder2.CreateCall(waitFunc, args);
+          fcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
+          fcall->setCallingConv(waitFunc->getCallingConv());
 
-        BuilderZ.CreateStore(
-            BuilderZ.CreateZExtOrTrunc(
-                gutils->getNewFromOriginal(call.getOperand(1)), types[1]),
-            BuilderZ.CreateInBoundsGEP(impialloc,
-                                       {c0_64, ConstantInt::get(i32, 1)}));
-
-        BuilderZ.CreateStore(
-            BuilderZ.CreatePointerCast(
-                gutils->getNewFromOriginal(call.getOperand(2)), types[2]),
-            BuilderZ.CreateInBoundsGEP(impialloc,
-                                       {c0_64, ConstantInt::get(i32, 2)}));
-
-        BuilderZ.CreateStore(
-            BuilderZ.CreateZExtOrTrunc(
-                gutils->getNewFromOriginal(call.getOperand(3)), types[3]),
-            BuilderZ.CreateInBoundsGEP(impialloc,
-                                       {c0_64, ConstantInt::get(i32, 3)}));
-
-        BuilderZ.CreateStore(
-            BuilderZ.CreateZExtOrTrunc(
-                gutils->getNewFromOriginal(call.getOperand(4)), types[4]),
-            BuilderZ.CreateInBoundsGEP(impialloc,
-                                       {c0_64, ConstantInt::get(i32, 4)}));
-
-        BuilderZ.CreateStore(
-            BuilderZ.CreatePointerCast(
-                gutils->getNewFromOriginal(call.getOperand(5)), types[5]),
-            BuilderZ.CreateInBoundsGEP(impialloc,
-                                       {c0_64, ConstantInt::get(i32, 5)}));
-
-        BuilderZ.CreateStore(
-            ConstantInt::get(Type::getInt8Ty(impialloc->getContext()),
-                             (funcName == "MPI_Isend")
-                                 ? (int)MPI_CallType::ISEND
-                                 : (int)MPI_CallType::IRECV),
-            BuilderZ.CreateInBoundsGEP(impialloc,
-                                       {c0_64, ConstantInt::get(i32, 6)}));
-      }
-      if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-        auto waitFunc = called->getParent()->getFunction("MPI_Wait");
-        assert(waitFunc);
-        auto statusArg = waitFunc->arg_end();
-        statusArg--;
-        Value *d_req = gutils->invertPointerM(call.getOperand(6), Builder2);
-        Value *args[] = {
-            /*req*/ d_req,
-            /*status*/ IRBuilder<>(gutils->inversionAllocs)
-                .CreateAlloca(
-                    cast<PointerType>(statusArg->getType())->getElementType())};
-        auto fcall = Builder2.CreateCall(waitFunc, args);
-        fcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
-        fcall->setCallingConv(waitFunc->getCallingConv());
-
-        auto len_arg = Builder2.CreateZExtOrTrunc(
-            lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
-            Type::getInt64Ty(Builder2.getContext()));
-        auto tysize =
-            MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
-                          Builder2, call.getType());
-        len_arg = Builder2.CreateMul(
-            len_arg,
-            Builder2.CreateZExtOrTrunc(tysize,
-                                       Type::getInt64Ty(Builder2.getContext())),
-            "", true, true);
-        if (funcName == "MPI_Irecv") {
-          auto val_arg =
-              ConstantInt::get(Type::getInt8Ty(Builder2.getContext()), 0);
-          auto volatile_arg = ConstantInt::getFalse(Builder2.getContext());
-          assert(!gutils->isConstantValue(call.getOperand(0)));
-          auto dbuf = gutils->invertPointerM(call.getOperand(0), Builder2);
+          auto len_arg = Builder2.CreateZExtOrTrunc(
+              lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
+              Type::getInt64Ty(Builder2.getContext()));
+          auto tysize =
+              MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
+                            Builder2, call.getType());
+          len_arg = Builder2.CreateMul(
+              len_arg,
+              Builder2.CreateZExtOrTrunc(
+                  tysize, Type::getInt64Ty(Builder2.getContext())),
+              "", true, true);
+          if (funcName == "MPI_Irecv") {
+            auto val_arg =
+                ConstantInt::get(Type::getInt8Ty(Builder2.getContext()), 0);
+            auto volatile_arg = ConstantInt::getFalse(Builder2.getContext());
+            assert(!gutils->isConstantValue(call.getOperand(0)));
+            auto dbuf = gutils->invertPointerM(call.getOperand(0), Builder2);
 #if LLVM_VERSION_MAJOR == 6
-          auto align_arg =
-              ConstantInt::get(Type::getInt32Ty(B.getContext()), 1);
-          Value *nargs[] = {dbuf, val_arg, len_arg, align_arg, volatile_arg};
+            auto align_arg =
+                ConstantInt::get(Type::getInt32Ty(B.getContext()), 1);
+            Value *nargs[] = {dbuf, val_arg, len_arg, align_arg, volatile_arg};
 #else
-          Value *nargs[] = {dbuf, val_arg, len_arg, volatile_arg};
+            Value *nargs[] = {dbuf, val_arg, len_arg, volatile_arg};
 #endif
 
-          Type *tys[] = {dbuf->getType(), len_arg->getType()};
+            Type *tys[] = {dbuf->getType(), len_arg->getType()};
 
-          auto memset = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(called->getParent(), Intrinsic::memset,
-                                        tys),
-              nargs));
-          memset->addParamAttr(0, Attribute::NonNull);
-        } else if (funcName == "MPI_Isend") {
-          assert(!gutils->isConstantValue(call.getOperand(0)));
-          Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
-          if (Mode == DerivativeMode::ReverseModeCombined)
-            firstallocation = lookup(firstallocation, Builder2);
-          else {
-            firstallocation =
-                Builder2.CreatePHI(Type::getInt8PtrTy(call.getContext()), 0);
-            firstallocation = gutils->cacheForReverse(
-                Builder2, firstallocation, getIndex(&call, CacheType::Tape));
-          }
+            auto memset = cast<CallInst>(Builder2.CreateCall(
+                Intrinsic::getDeclaration(called->getParent(),
+                                          Intrinsic::memset, tys),
+                nargs));
+            memset->addParamAttr(0, Attribute::NonNull);
+          } else if (funcName == "MPI_Isend") {
+            assert(!gutils->isConstantValue(call.getOperand(0)));
+            Value *shadow =
+                gutils->invertPointerM(call.getOperand(0), Builder2);
+            if (Mode == DerivativeMode::ReverseModeCombined)
+              firstallocation = lookup(firstallocation, Builder2);
+            else {
+              firstallocation =
+                  BuilderZ.CreatePHI(Type::getInt8PtrTy(call.getContext()), 0);
+              firstallocation = gutils->lookupM(
+                  gutils->cacheForReverse(BuilderZ, firstallocation,
+                                          getIndex(&call, CacheType::Tape)),
+                  Builder2);
+            }
 
-          DifferentiableMemCopyFloats(call, call.getOperand(0), firstallocation,
-                                      shadow, len_arg, Builder2);
+            DifferentiableMemCopyFloats(call, call.getOperand(0),
+                                        firstallocation, shadow, len_arg,
+                                        Builder2);
 
-          auto ci = cast<CallInst>(
-              CallInst::CreateFree(firstallocation, Builder2.GetInsertBlock()));
-          ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-          if (ci->getParent() == nullptr) {
-            Builder2.Insert(ci);
-          }
-        } else
-          assert(0 && "illegal mpi");
-      }
+            auto ci = cast<CallInst>(CallInst::CreateFree(
+                firstallocation, Builder2.GetInsertBlock()));
+            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+            if (ci->getParent() == nullptr) {
+              Builder2.Insert(ci);
+            }
+          } else
+            assert(0 && "illegal mpi");
+        }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
         eraseIfUnused(call, /*erase*/ true, /*check*/ false);
@@ -5129,8 +5134,8 @@ public:
         if (Mode == DerivativeMode::ReverseModeGradient &&
             augmentedReturn->tapeIndices.find(std::make_pair(
                 orig, CacheType::Tape)) != augmentedReturn->tapeIndices.end()) {
-          tape = Builder2.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
-          tape = gutils->cacheForReverse(Builder2, tape,
+          tape = BuilderZ.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
+          tape = gutils->cacheForReverse(BuilderZ, tape,
                                          getIndex(orig, CacheType::Tape),
                                          /*ignoreType*/ true);
         }
