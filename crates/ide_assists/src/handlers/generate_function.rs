@@ -6,7 +6,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, ArgListOwner, AstNode, ModuleItemOwner,
+        make, ArgList, ArgListOwner, AstNode, ModuleItemOwner,
     },
     SyntaxKind, SyntaxNode, TextSize,
 };
@@ -16,6 +16,20 @@ use crate::{
     utils::{render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
+
+enum FuncExpr<'a> {
+    Func(&'a ast::CallExpr),
+    Method(&'a ast::MethodCallExpr),
+}
+
+impl<'a> FuncExpr<'a> {
+    fn arg_list(&self) -> Option<ArgList> {
+        match *self {
+            FuncExpr::Func(fn_call) => fn_call.arg_list(),
+            FuncExpr::Method(m_call) => m_call.arg_list(),
+        }
+    }
+}
 
 // Assist: generate_function
 //
@@ -164,7 +178,7 @@ impl FunctionBuilder {
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = fn_name(path)?;
-        let (type_params, params) = fn_args(ctx, target_module, call)?;
+        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
@@ -229,7 +243,7 @@ impl FunctionBuilder {
         let needs_pub = false;
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = make::name(&name.text());
-        let (type_params, params) = method_args(ctx, target_module, call)?;
+        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
@@ -342,7 +356,7 @@ fn fn_name(call: &ast::Path) -> Option<ast::Name> {
 fn fn_args(
     ctx: &AssistContext,
     target_module: hir::Module,
-    call: &ast::CallExpr,
+    call: FuncExpr,
 ) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
@@ -370,41 +384,17 @@ fn fn_args(
     let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| {
         make::param(make::ext::simple_ident_pat(make::name(&name)).into(), make::ty(&ty))
     });
-    Some((None, make::param_list(None, params)))
-}
 
-fn method_args(
-    ctx: &AssistContext,
-    target_module: hir::Module,
-    call: &ast::MethodCallExpr,
-) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
-    let mut arg_names = Vec::new();
-    let mut arg_types = Vec::new();
-    for arg in call.arg_list()?.args() {
-        arg_names.push(match fn_arg_name(&arg) {
-            Some(name) => name,
-            None => String::from("arg"),
-        });
-        arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
-            Some(ty) => {
-                if ty.len() > 0 && ty.starts_with('&') {
-                    if let Some((new_ty, _)) = useless_type_special_case("", &ty[1..].to_owned()) {
-                        new_ty
-                    } else {
-                        ty
-                    }
-                } else {
-                    ty
-                }
-            }
-            None => String::from("()"),
-        });
-    }
-    deduplicate_arg_names(&mut arg_names);
-    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| {
-        make::param(make::ext::simple_ident_pat(make::name(&name)).into(), make::ty(&ty))
-    });
-    Some((None, make::param_list(Some(make::self_param()), params)))
+    Some((
+        None,
+        make::param_list(
+            match call {
+                FuncExpr::Func(_) => None,
+                FuncExpr::Method(_) => Some(make::self_param()),
+            },
+            params,
+        ),
+    ))
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
