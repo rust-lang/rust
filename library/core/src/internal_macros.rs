@@ -77,7 +77,6 @@ macro_rules! forward_ref_op_assign {
 }
 
 /// Create a zero-size type similar to a closure type, but named.
-#[unstable(feature = "std_internals", issue = "none")]
 macro_rules! impl_fn_for_zst {
     ($(
         $( #[$attr: meta] )*
