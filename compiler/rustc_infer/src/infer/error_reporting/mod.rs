@@ -717,9 +717,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             err.multipart_suggestion(
                                 "consider removing this semicolon and boxing the expressions",
                                 vec![
-                                    (prior_arm.shrink_to_lo(), "box (".to_string()),
+                                    (prior_arm.shrink_to_lo(), "Box::new(".to_string()),
                                     (prior_arm.shrink_to_hi(), ")".to_string()),
-                                    (arm_span.shrink_to_lo(), "box (".to_string()),
+                                    (arm_span.shrink_to_lo(), "Box::new(".to_string()),
                                     (arm_span.shrink_to_hi(), ")".to_string()),
                                     (sp, String::new()),
                                 ],
@@ -767,9 +767,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         err.multipart_suggestion(
                             "consider removing this semicolon and boxing the expression",
                             vec![
-                                (then.shrink_to_lo(), "box (".to_string()),
+                                (then.shrink_to_lo(), "Box::new(".to_string()),
                                 (then.shrink_to_hi(), ")".to_string()),
-                                (else_sp.shrink_to_lo(), "box (".to_string()),
+                                (else_sp.shrink_to_lo(), "Box::new(".to_string()),
                                 (else_sp.shrink_to_hi(), ")".to_string()),
                                 (sp, String::new()),
                             ],
@@ -812,8 +812,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
         let sugg = arm_spans
             .flat_map(|sp| {
-                vec![(sp.shrink_to_lo(), "box (".to_string()), (sp.shrink_to_hi(), ")".to_string())]
-                    .into_iter()
+                vec![
+                    (sp.shrink_to_lo(), "Box::new(".to_string()),
+                    (sp.shrink_to_hi(), ")".to_string()),
+                ]
+                .into_iter()
             })
             .collect::<Vec<_>>();
         err.multipart_suggestion(
