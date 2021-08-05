@@ -1171,7 +1171,7 @@ public:
         F.addParamAttr(0, Attribute::WriteOnly);
         if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
           F.addParamAttr(2, Attribute::NoCapture);
-          F.addParamAttr(2, Attribute::ReadOnly);
+          F.addParamAttr(2, Attribute::WriteOnly);
         }
         F.addParamAttr(6, Attribute::WriteOnly);
       }
