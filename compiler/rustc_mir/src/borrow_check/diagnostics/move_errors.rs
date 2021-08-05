@@ -1,4 +1,5 @@
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::source_map::DesugaringKind;
@@ -409,13 +410,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             );
         } else if matches!(span.desugaring_kind(), Some(DesugaringKind::ForLoop(_))) {
             let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
-                Some(def_id) => type_known_to_meet_bound_modulo_regions(
-                    &self.infcx,
-                    self.param_env,
-                    self.infcx.tcx.mk_imm_ref(self.infcx.tcx.lifetimes.re_erased, ty),
-                    def_id,
-                    DUMMY_SP,
-                ),
+                Some(def_id) => self.infcx.tcx.infer_ctxt().enter(|infcx| {
+                    type_known_to_meet_bound_modulo_regions(
+                        &infcx,
+                        self.param_env,
+                        infcx
+                            .tcx
+                            .mk_imm_ref(infcx.tcx.lifetimes.re_erased, infcx.tcx.erase_regions(ty)),
+                        def_id,
+                        DUMMY_SP,
+                    )
+                }),
                 _ => false,
             };
             if suggest {
