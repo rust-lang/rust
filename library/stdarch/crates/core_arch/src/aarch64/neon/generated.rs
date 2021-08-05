@@ -2427,7 +2427,12 @@ pub unsafe fn vcvtd_u64_f64(a: f64) -> u64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub unsafe fn vcvt_s64_f64(a: float64x1_t) -> int64x1_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v1i64.v1f64")]
+        fn vcvt_s64_f64_(a: float64x1_t) -> int64x1_t;
+    }
+    vcvt_s64_f64_(a)
 }
 
 /// Floating-point convert to signed fixed-point, rounding toward zero
@@ -2435,7 +2440,12 @@ pub unsafe fn vcvt_s64_f64(a: float64x1_t) -> int64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub unsafe fn vcvtq_s64_f64(a: float64x2_t) -> int64x2_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v2i64.v2f64")]
+        fn vcvtq_s64_f64_(a: float64x2_t) -> int64x2_t;
+    }
+    vcvtq_s64_f64_(a)
 }
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
@@ -2443,7 +2453,12 @@ pub unsafe fn vcvtq_s64_f64(a: float64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub unsafe fn vcvt_u64_f64(a: float64x1_t) -> uint64x1_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v1i64.v1f64")]
+        fn vcvt_u64_f64_(a: float64x1_t) -> uint64x1_t;
+    }
+    vcvt_u64_f64_(a)
 }
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
@@ -2451,7 +2466,12 @@ pub unsafe fn vcvt_u64_f64(a: float64x1_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtzu))]
 pub unsafe fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v2i64.v2f64")]
+        fn vcvtq_u64_f64_(a: float64x2_t) -> uint64x2_t;
+    }
+    vcvtq_u64_f64_(a)
 }
 
 /// Floating-point convert to signed integer, rounding to nearest with ties to away

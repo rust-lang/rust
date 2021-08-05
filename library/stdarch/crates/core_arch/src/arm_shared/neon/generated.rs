@@ -2407,7 +2407,13 @@ vcvtq_n_u32_f32_(a, N)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
 pub unsafe fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.fptosi.sat.v2i32.v2f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v2i32.v2f32")]
+        fn vcvt_s32_f32_(a: float32x2_t) -> int32x2_t;
+    }
+vcvt_s32_f32_(a)
 }
 
 /// Floating-point convert to signed fixed-point, rounding toward zero
@@ -2417,7 +2423,13 @@ pub unsafe fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
 pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.fptosi.sat.v4i32.v4f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptosi.sat.v4i32.v4f32")]
+        fn vcvtq_s32_f32_(a: float32x4_t) -> int32x4_t;
+    }
+vcvtq_s32_f32_(a)
 }
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
@@ -2427,7 +2439,13 @@ pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
 pub unsafe fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.fptoui.sat.v2i32.v2f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v2i32.v2f32")]
+        fn vcvt_u32_f32_(a: float32x2_t) -> uint32x2_t;
+    }
+vcvt_u32_f32_(a)
 }
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
@@ -2437,7 +2455,13 @@ pub unsafe fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
 pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
-    simd_cast(a)
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.fptoui.sat.v4i32.v4f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fptoui.sat.v4i32.v4f32")]
+        fn vcvtq_u32_f32_(a: float32x4_t) -> uint32x4_t;
+    }
+vcvtq_u32_f32_(a)
 }
 
 /// Set all vector lanes to the same value

@@ -1040,26 +1040,28 @@ generate f32:u32, f64:u64
 /// Floating-point convert to signed fixed-point, rounding toward zero
 name = vcvt
 double-suffixes
-fn = simd_cast
+link-aarch64 = llvm.fptosi.sat._EXT2_._EXT_
 a = -1.1, 2.1, -2.9, 3.9
 validate -1, 2, -2, 3
 
 aarch64 = fcvtzs
 generate float64x1_t:int64x1_t, float64x2_t:int64x2_t
 
+link-arm = llvm.fptosi.sat._EXT2_._EXT_
 arm = vcvt
 generate float32x2_t:int32x2_t, float32x4_t:int32x4_t
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
 name = vcvt
 double-suffixes
-fn = simd_cast
+link-aarch64 = llvm.fptoui.sat._EXT2_._EXT_
 a = 1.1, 2.1, 2.9, 3.9
 validate 1, 2, 2, 3
 
 aarch64 = fcvtzu
 generate float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
 
+link-arm = llvm.fptoui.sat._EXT2_._EXT_
 arm = vcvt
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t
 
