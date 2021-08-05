@@ -79,6 +79,35 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
     )
 }
 
+pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let fn_name: ast::NameRef = ctx.find_node_at_offset()?;
+    let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
+    let module = ctx.sema.scope(call.syntax()).module();
+    let ty = ctx.sema.type_of_expr(&call.receiver()?)?.as_adt()?;
+
+    let function_builder = FunctionBuilder::from_method_call(ctx, &call, &fn_name, module)?;
+    let target = call.syntax().text_range();
+
+    acc.add(
+        AssistId("generate_method", AssistKind::Generate),
+        format!("Generate `{}` method", function_builder.fn_name),
+        target,
+        |builder| {
+            let function_template = function_builder.render();
+            builder.edit_file(function_template.file);
+            let new_fn = format!(
+                "impl {} {{{}}}",
+                ty.name(ctx.sema.db),
+                function_template.to_string(ctx.config.snippet_cap)
+            );
+            match ctx.config.snippet_cap {
+                Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
+                None => builder.insert(function_template.insert_offset, new_fn),
+            }
+        },
+    )
+}
+
 struct FunctionTemplate {
     insert_offset: TextSize,
     leading_ws: String,
@@ -155,6 +184,70 @@ impl FunctionBuilder {
         let (ret_ty, should_render_snippet) = {
             match ctx.sema.type_of_expr(&ast::Expr::CallExpr(call.clone())).map(TypeInfo::original)
             {
+                Some(ty) if ty.is_unknown() || ty.is_unit() => (make::ty_unit(), true),
+                Some(ty) => {
+                    let rendered = ty.display_source_code(ctx.db(), target_module.into());
+                    match rendered {
+                        Ok(rendered) => (make::ty(&rendered), false),
+                        Err(_) => (make::ty_unit(), true),
+                    }
+                }
+                None => (make::ty_unit(), true),
+            }
+        };
+        let ret_type = make::ret_type(ret_ty);
+
+        Some(Self {
+            target,
+            fn_name,
+            type_params,
+            params,
+            ret_type,
+            should_render_snippet,
+            file,
+            needs_pub,
+            is_async,
+        })
+    }
+
+    fn from_method_call(
+        ctx: &AssistContext,
+        call: &ast::MethodCallExpr,
+        name: &ast::NameRef,
+        target_module: Option<hir::Module>,
+    ) -> Option<Self> {
+        let mut file = ctx.frange.file_id;
+        let target = match &target_module {
+            Some(target_module) => {
+                let module_source = target_module.definition_source(ctx.db());
+                let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
+                file = in_file;
+                target
+            }
+            None => next_space_for_fn_after_method_call_site(call)?,
+        };
+        let needs_pub = false;
+        let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
+        let fn_name = make::name(&name.text());
+        let (type_params, params) = method_args(ctx, target_module, call)?;
+
+        let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
+        let is_async = await_expr.is_some();
+
+        // should_render_snippet intends to express a rough level of confidence about
+        // the correctness of the return type.
+        //
+        // If we are able to infer some return type, and that return type is not unit, we
+        // don't want to render the snippet. The assumption here is in this situation the
+        // return type is just as likely to be correct as any other part of the generated
+        // function.
+        //
+        // In the case where the return type is inferred as unit it is likely that the
+        // user does in fact intend for this generated function to return some non unit
+        // type, but that the current state of their code doesn't allow that return type
+        // to be accurately inferred.
+        let (ret_ty, should_render_snippet) = {
+            match ctx.sema.type_of_expr(&ast::Expr::MethodCallExpr(call.clone())) {
                 Some(ty) if ty.is_unknown() || ty.is_unit() => (make::ty_unit(), true),
                 Some(ty) => {
                     let rendered = ty.display_source_code(ctx.db(), target_module.into());
@@ -280,6 +373,40 @@ fn fn_args(
     Some((None, make::param_list(None, params)))
 }
 
+fn method_args(
+    ctx: &AssistContext,
+    target_module: hir::Module,
+    call: &ast::MethodCallExpr,
+) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
+    let mut arg_names = Vec::new();
+    let mut arg_types = Vec::new();
+    for arg in call.arg_list()?.args() {
+        arg_names.push(match fn_arg_name(&arg) {
+            Some(name) => name,
+            None => String::from("arg"),
+        });
+        arg_types.push(match fn_arg_type(ctx, target_module, &arg) {
+            Some(ty) => {
+                if ty.len() > 0 && ty.starts_with('&') {
+                    if let Some((new_ty, _)) = useless_type_special_case("", &ty[1..].to_owned()) {
+                        new_ty
+                    } else {
+                        ty
+                    }
+                } else {
+                    ty
+                }
+            }
+            None => String::from("()"),
+        });
+    }
+    deduplicate_arg_names(&mut arg_names);
+    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| {
+        make::param(make::ext::simple_ident_pat(make::name(&name)).into(), make::ty(&ty))
+    });
+    Some((None, make::param_list(Some(make::self_param()), params)))
+}
+
 /// Makes duplicate argument names unique by appending incrementing numbers.
 ///
 /// ```
@@ -349,6 +476,28 @@ fn fn_arg_type(
 /// We want to write the generated function directly after
 /// fns, impls or macro calls, but inside mods
 fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFunctionTarget> {
+    let mut ancestors = expr.syntax().ancestors().peekable();
+    let mut last_ancestor: Option<SyntaxNode> = None;
+    while let Some(next_ancestor) = ancestors.next() {
+        match next_ancestor.kind() {
+            SyntaxKind::SOURCE_FILE => {
+                break;
+            }
+            SyntaxKind::ITEM_LIST => {
+                if ancestors.peek().map(|a| a.kind()) == Some(SyntaxKind::MODULE) {
+                    break;
+                }
+            }
+            _ => {}
+        }
+        last_ancestor = Some(next_ancestor);
+    }
+    last_ancestor.map(GeneratedFunctionTarget::BehindItem)
+}
+
+fn next_space_for_fn_after_method_call_site(
+    expr: &ast::MethodCallExpr,
+) -> Option<GeneratedFunctionTarget> {
     let mut ancestors = expr.syntax().ancestors().peekable();
     let mut last_ancestor: Option<SyntaxNode> = None;
     while let Some(next_ancestor) = ancestors.next() {

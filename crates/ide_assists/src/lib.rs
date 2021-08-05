@@ -151,6 +151,7 @@ mod handlers {
             generate_enum_projection_method::generate_enum_try_into_method,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
+            generate_function::generate_method,
             generate_getter::generate_getter,
             generate_getter::generate_getter_mut,
             generate_impl::generate_impl,
