@@ -401,18 +401,9 @@ impl<'a> TyLoweringContext<'a> {
     ) -> (Ty, Option<TypeNs>) {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
-                // if this is a bare dyn Trait, we'll directly put the required ^0 for the self type in there
-                let self_ty = if remaining_segments.len() == 0 {
-                    Some(
-                        TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                            .intern(&Interner),
-                    )
-                } else {
-                    None
-                };
-                let trait_ref =
-                    self.lower_trait_ref_from_resolved_path(trait_, resolved_segment, self_ty);
                 let ty = if remaining_segments.len() == 1 {
+                    let trait_ref =
+                        self.lower_trait_ref_from_resolved_path(trait_, resolved_segment, None);
                     let segment = remaining_segments.first().unwrap();
                     let found = self
                         .db
@@ -436,6 +427,13 @@ impl<'a> TyLoweringContext<'a> {
                     // FIXME report error (ambiguous associated type)
                     TyKind::Error.intern(&Interner)
                 } else {
+                    let self_ty = Some(
+                        TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
+                            .intern(&Interner),
+                    );
+                    let trait_ref = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+                        ctx.lower_trait_ref_from_resolved_path(trait_, resolved_segment, self_ty)
+                    });
                     let dyn_ty = DynTy {
                         bounds: crate::make_only_type_binders(
                             1,
