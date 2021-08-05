@@ -410,11 +410,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         );
         let cause = self.cause(
             self.span,
-            ObligationCauseCode::UnifyReceiver(box (UnifyReceiverContext {
-                assoc_item: pick.item,
-                param_env: self.param_env,
-                substs,
-            })),
+            ObligationCauseCode::UnifyReceiver(
+                box (UnifyReceiverContext {
+                    assoc_item: pick.item,
+                    param_env: self.param_env,
+                    substs,
+                }),
+            ),
         );
         match self.at(&cause, self.param_env).sup(method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {

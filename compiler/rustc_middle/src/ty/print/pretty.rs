@@ -1304,19 +1304,21 @@ impl<F> DerefMut for FmtPrinter<'_, '_, F> {
 
 impl<F> FmtPrinter<'a, 'tcx, F> {
     pub fn new(tcx: TyCtxt<'tcx>, fmt: F, ns: Namespace) -> Self {
-        FmtPrinter(box (FmtPrinterData {
-            tcx,
-            fmt,
-            empty_path: false,
-            in_value: ns == Namespace::ValueNS,
-            print_alloc_ids: false,
-            used_region_names: Default::default(),
-            region_index: 0,
-            binder_depth: 0,
-            printed_type_count: 0,
-            region_highlight_mode: RegionHighlightMode::default(),
-            name_resolver: None,
-        }))
+        FmtPrinter(
+            box (FmtPrinterData {
+                tcx,
+                fmt,
+                empty_path: false,
+                in_value: ns == Namespace::ValueNS,
+                print_alloc_ids: false,
+                used_region_names: Default::default(),
+                region_index: 0,
+                binder_depth: 0,
+                printed_type_count: 0,
+                region_highlight_mode: RegionHighlightMode::default(),
+                name_resolver: None,
+            }),
+        )
     }
 }
 

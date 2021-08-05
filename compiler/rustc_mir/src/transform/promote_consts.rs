@@ -851,26 +851,28 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
 
-                Operand::Constant(box (Constant {
-                    span,
-                    user_ty: None,
-                    literal: tcx
-                        .mk_const(ty::Const {
-                            ty,
-                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                                def,
-                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                        tcx.lifetimes.re_erased.into()
-                                    } else {
-                                        tcx.mk_param_from_def(param)
-                                    }
+                Operand::Constant(
+                    box (Constant {
+                        span,
+                        user_ty: None,
+                        literal: tcx
+                            .mk_const(ty::Const {
+                                ty,
+                                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                                    def,
+                                    substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
+                                        if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                            tcx.lifetimes.re_erased.into()
+                                        } else {
+                                            tcx.mk_param_from_def(param)
+                                        }
+                                    }),
+                                    promoted: Some(promoted_id),
                                 }),
-                                promoted: Some(promoted_id),
-                            }),
-                        })
-                        .into(),
-                }))
+                            })
+                            .into(),
+                    }),
+                )
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
@@ -906,10 +908,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
                             let promoted_ref_statement = Statement {
                                 source_info: statement.source_info,
-                                kind: StatementKind::Assign(box ((
-                                    Place::from(promoted_ref),
-                                    Rvalue::Use(promoted_operand(ref_ty, span)),
-                                ))),
+                                kind: StatementKind::Assign(
+                                    box ((
+                                        Place::from(promoted_ref),
+                                        Rvalue::Use(promoted_operand(ref_ty, span)),
+                                    )),
+                                ),
                             };
                             self.extra_statements.push((loc, promoted_ref_statement));
 

@@ -2072,19 +2072,23 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         Some("&") => Some(box (|name| format!("&{} ", name))),
                         Some("'_") => Some(box (|n| n.to_string())),
                         Some("") => Some(box (move |n| format!("{}, ", n).repeat(count))),
-                        Some("<") => Some(box (move |n| {
-                            std::iter::repeat(n).take(count).collect::<Vec<_>>().join(", ")
-                        })),
-                        Some(snippet) if !snippet.ends_with('>') => Some(box (move |name| {
-                            format!(
-                                "{}<{}>",
-                                snippet,
-                                std::iter::repeat(name.to_string())
-                                    .take(count)
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            )
-                        })),
+                        Some("<") => Some(
+                            box (move |n| {
+                                std::iter::repeat(n).take(count).collect::<Vec<_>>().join(", ")
+                            }),
+                        ),
+                        Some(snippet) if !snippet.ends_with('>') => Some(
+                            box (move |name| {
+                                format!(
+                                    "{}<{}>",
+                                    snippet,
+                                    std::iter::repeat(name.to_string())
+                                        .take(count)
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                )
+                            }),
+                        ),
                         _ => None,
                     });
                 }

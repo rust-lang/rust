@@ -812,11 +812,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
         let sugg = arm_spans
             .flat_map(|sp| {
-                vec![
-                    (sp.shrink_to_lo(), "box (".to_string()),
-                    (sp.shrink_to_hi(), ")".to_string()),
-                ]
-                .into_iter()
+                vec![(sp.shrink_to_lo(), "box (".to_string()), (sp.shrink_to_hi(), ")".to_string())]
+                    .into_iter()
             })
             .collect::<Vec<_>>();
         err.multipart_suggestion(

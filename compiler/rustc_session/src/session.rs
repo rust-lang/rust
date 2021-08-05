@@ -1169,8 +1169,8 @@ fn default_emitter(
                 box (emitter.ui_testing(sopts.debugging_opts.ui_testing))
             }
         }
-        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => box (
-            JsonEmitter::stderr(
+        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => {
+            box (JsonEmitter::stderr(
                 Some(registry),
                 source_map,
                 pretty,
@@ -1178,10 +1178,10 @@ fn default_emitter(
                 sopts.debugging_opts.terminal_width,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => box (
-            JsonEmitter::new(
+            .ui_testing(sopts.debugging_opts.ui_testing),)
+        }
+        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => {
+            box (JsonEmitter::new(
                 dst,
                 Some(registry),
                 source_map,
@@ -1190,8 +1190,8 @@ fn default_emitter(
                 sopts.debugging_opts.terminal_width,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),
-        ),
+            .ui_testing(sopts.debugging_opts.ui_testing),)
+        }
     }
 }
 

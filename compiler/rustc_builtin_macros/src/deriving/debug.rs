@@ -20,8 +20,7 @@ pub fn expand_deriving_debug(
     push: &mut dyn FnMut(Annotatable),
 ) {
     // &mut ::std::fmt::Formatter
-    let fmtr =
-        Ptr(box (Literal(path_std!(fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
+    let fmtr = Ptr(box (Literal(path_std!(fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
 
     let trait_def = TraitDef {
         span,
@@ -40,9 +39,7 @@ pub fn expand_deriving_debug(
             attributes: Vec::new(),
             is_unsafe: false,
             unify_fieldless_variants: false,
-            combine_substructure: combine_substructure(box (|a, b, c| {
-                show_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(box (|a, b, c| show_substructure(a, b, c))),
         }],
         associated_types: Vec::new(),
     };

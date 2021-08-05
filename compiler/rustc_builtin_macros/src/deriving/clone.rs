@@ -45,9 +45,9 @@ pub fn expand_deriving_clone(
                 {
                     bounds = vec![];
                     is_shallow = true;
-                    substructure = combine_substructure(box (|c, s, sub| {
-                        cs_clone_shallow("Clone", c, s, sub, false)
-                    }));
+                    substructure = combine_substructure(
+                        box (|c, s, sub| cs_clone_shallow("Clone", c, s, sub, false)),
+                    );
                 } else {
                     bounds = vec![];
                     is_shallow = false;
@@ -58,15 +58,14 @@ pub fn expand_deriving_clone(
             ItemKind::Union(..) => {
                 bounds = vec![Literal(path_std!(marker::Copy))];
                 is_shallow = true;
-                substructure = combine_substructure(box (|c, s, sub| {
-                    cs_clone_shallow("Clone", c, s, sub, true)
-                }));
+                substructure = combine_substructure(
+                    box (|c, s, sub| cs_clone_shallow("Clone", c, s, sub, true)),
+                );
             }
             _ => {
                 bounds = vec![];
                 is_shallow = false;
-                substructure =
-                    combine_substructure(box (|c, s, sub| cs_clone("Clone", c, s, sub)));
+                substructure = combine_substructure(box (|c, s, sub| cs_clone("Clone", c, s, sub)));
             }
         },
 

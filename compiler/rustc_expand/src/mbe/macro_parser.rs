@@ -544,18 +544,20 @@ fn inner_parse_loop<'root, 'tt>(
                     }
 
                     let matches = create_matches(item.matches.len());
-                    cur_items.push(MatcherPosHandle::Box(box (MatcherPos {
-                        stack: smallvec![],
-                        sep: seq.separator.clone(),
-                        seq_op: Some(seq.kleene.op),
-                        idx: 0,
-                        matches,
-                        match_lo: item.match_cur,
-                        match_cur: item.match_cur,
-                        match_hi: item.match_cur + seq.num_captures,
-                        up: Some(item),
-                        top_elts: Tt(TokenTree::Sequence(sp, seq)),
-                    })));
+                    cur_items.push(MatcherPosHandle::Box(
+                        box (MatcherPos {
+                            stack: smallvec![],
+                            sep: seq.separator.clone(),
+                            seq_op: Some(seq.kleene.op),
+                            idx: 0,
+                            matches,
+                            match_lo: item.match_cur,
+                            match_cur: item.match_cur,
+                            match_hi: item.match_cur + seq.num_captures,
+                            up: Some(item),
+                            top_elts: Tt(TokenTree::Sequence(sp, seq)),
+                        }),
+                    ));
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error

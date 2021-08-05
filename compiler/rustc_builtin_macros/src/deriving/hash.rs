@@ -37,9 +37,7 @@ pub fn expand_deriving_hash(
             attributes: vec![],
             is_unsafe: false,
             unify_fieldless_variants: true,
-            combine_substructure: combine_substructure(box (|a, b, c| {
-                hash_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(box (|a, b, c| hash_substructure(a, b, c))),
         }],
         associated_types: Vec::new(),
     };

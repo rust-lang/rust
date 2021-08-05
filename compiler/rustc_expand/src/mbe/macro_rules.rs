@@ -546,17 +546,19 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
-    mk_syn_ext(box (MacroRulesMacroExpander {
-        name: def.ident,
-        span: def.span,
-        transparency,
-        lhses,
-        rhses,
-        valid,
-        // Macros defined in the current crate have a real node id,
-        // whereas macros from an external crate have a dummy id.
-        is_local: def.id != DUMMY_NODE_ID,
-    }))
+    mk_syn_ext(
+        box (MacroRulesMacroExpander {
+            name: def.ident,
+            span: def.span,
+            transparency,
+            lhses,
+            rhses,
+            valid,
+            // Macros defined in the current crate have a real node id,
+            // whereas macros from an external crate have a dummy id.
+            is_local: def.id != DUMMY_NODE_ID,
+        }),
+    )
 }
 
 fn check_lhs_nt_follows(

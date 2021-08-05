@@ -1934,10 +1934,12 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
         })
     };
     // Schedule the module to be loaded
-    drop(tx_to_llvm_workers.send(box (Message::AddImportOnlyModule::<B> {
-        module_data: SerializedModule::FromUncompressedFile(mmap),
-        work_product: module.source,
-    })));
+    drop(tx_to_llvm_workers.send(
+        box (Message::AddImportOnlyModule::<B> {
+            module_data: SerializedModule::FromUncompressedFile(mmap),
+            work_product: module.source,
+        }),
+    ));
 }
 
 pub fn pre_lto_bitcode_filename(module_name: &str) -> String {

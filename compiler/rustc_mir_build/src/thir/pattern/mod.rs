@@ -97,11 +97,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             unadjusted_pat,
             |pat, ref_ty| {
                 debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
-                Pat {
-                    span: pat.span,
-                    ty: ref_ty,
-                    kind: box (PatKind::Deref { subpattern: pat }),
-                }
+                Pat { span: pat.span, ty: ref_ty, kind: box (PatKind::Deref { subpattern: pat }) }
             },
         )
     }
