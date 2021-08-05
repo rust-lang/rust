@@ -182,10 +182,10 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Len(place) => Len(place.fold_with(folder)),
             Cast(kind, op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
             BinaryOp(op, box (rhs, lhs)) => {
-                BinaryOp(op, box (rhs.fold_with(folder), lhs.fold_with(folder)))
+                BinaryOp(op, Box::new((rhs.fold_with(folder), lhs.fold_with(folder))))
             }
             CheckedBinaryOp(op, box (rhs, lhs)) => {
-                CheckedBinaryOp(op, box (rhs.fold_with(folder), lhs.fold_with(folder)))
+                CheckedBinaryOp(op, Box::new((rhs.fold_with(folder), lhs.fold_with(folder))))
             }
             UnaryOp(op, val) => UnaryOp(op, val.fold_with(folder)),
             Discriminant(place) => Discriminant(place.fold_with(folder)),
