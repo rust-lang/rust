@@ -381,6 +381,13 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
             let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
         },
+        hir::ItemKind::Macro(ref macro_def) => {
+            if macro_def.macro_rules {
+                println!("macro introduced by `macro_rules!`");
+            } else {
+                println!("macro introduced by `macro`");
+            }
+        },
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
         hir::ItemKind::GlobalAsm(asm) => println!("global asm: {:?}", asm),

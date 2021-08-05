@@ -9,7 +9,7 @@ use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span;
-use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -79,49 +79,23 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             &krate.module(),
             self.cx.tcx.crate_name(LOCAL_CRATE),
         );
-        // Attach the crate's exported macros to the top-level module.
-        // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
-        // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
-        // moving them back to their correct locations.
-        'exported_macros: for def in krate.exported_macros() {
-            // The `def` of a macro in `exported_macros` should correspond to either:
-            //  - a `#[macro_export] macro_rules!` macro,
-            //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
-            //  - a `pub macro`.
-            // Only the last two need to be fixed, thus:
-            if def.ast.macro_rules {
-                top_level_module.macros.push((def, None));
-                continue 'exported_macros;
-            }
-            let tcx = self.cx.tcx;
-            // Note: this is not the same as `.parent_module()`. Indeed, the latter looks
-            // for the closest module _ancestor_, which is not necessarily a direct parent
-            // (since a direct parent isn't necessarily a module, c.f. #77828).
-            let macro_parent_def_id = {
-                use rustc_middle::ty::DefIdTree;
-                tcx.parent(def.def_id.to_def_id()).unwrap()
-            };
-            let macro_parent_path = tcx.def_path(macro_parent_def_id);
-            // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
-            // lookup the module by its name, by looking at each path segment one at a time.
-            let mut cur_mod = &mut top_level_module;
-            for path_segment in macro_parent_path.data {
-                // Path segments may refer to a module (in which case they belong to the type
-                // namespace), which is _necessary_ for the macro to be accessible outside it
-                // (no "associated macros" as of yet). Else we bail with an outer `continue`.
-                let path_segment_ty_ns = match path_segment.data {
-                    rustc_hir::definitions::DefPathData::TypeNs(symbol) => symbol,
-                    _ => continue 'exported_macros,
-                };
-                // Descend into the child module that matches this path segment (if any).
-                match cur_mod.mods.iter_mut().find(|child| child.name == path_segment_ty_ns) {
-                    Some(child_mod) => cur_mod = &mut *child_mod,
-                    None => continue 'exported_macros,
+
+        // `#[macro_export] macro_rules!` items are reexported at the top level of the
+        // crate, regardless of where they're defined. We want to document the
+        // top level rexport of the macro, not its original definition, since
+        // the rexport defines the path that a user will actually see. Accordingly,
+        // we add the rexport as an item here, and then skip over the original
+        // definition in `visit_item()` below.
+        for export in self.cx.tcx.module_exports(CRATE_DEF_ID).unwrap_or(&[]) {
+            if let Res::Def(DefKind::Macro(_), def_id) = export.res {
+                if let Some(local_def_id) = def_id.as_local() {
+                    if self.cx.tcx.has_attr(def_id, sym::macro_export) {
+                        let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                        let item = self.cx.tcx.hir().expect_item(hir_id);
+                        top_level_module.items.push((item, None));
+                    }
                 }
             }
-            let cur_mod_def_id = tcx.hir().local_def_id(cur_mod.id).to_def_id();
-            assert_eq!(cur_mod_def_id, macro_parent_def_id);
-            cur_mod.macros.push((def, None));
         }
         self.cx.cache.exact_paths = self.exact_paths;
         top_level_module
@@ -238,10 +212,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 self.inlining = prev;
                 true
             }
-            Node::MacroDef(def) if !glob => {
-                om.macros.push((def, renamed));
-                true
-            }
             _ => false,
         };
         self.view_item_stack.remove(&res_hir_id);
@@ -257,7 +227,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
 
-        if item.vis.node.is_pub() {
+        let def_id = item.def_id.to_def_id();
+        let is_pub = item.vis.node.is_pub() || self.cx.tcx.has_attr(def_id, sym::macro_export);
+
+        if is_pub {
             self.store_path(item.def_id.to_def_id());
         }
 
@@ -269,7 +242,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
             // If we're inlining, skip private items.
-            _ if self.inlining && !item.vis.node.is_pub() => {}
+            _ if self.inlining && !is_pub => {}
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(ref path, kind) => {
@@ -285,7 +258,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
-                if item.vis.node.is_pub() && self.inside_public_path {
+                if is_pub && self.inside_public_path {
                     let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
                         Some(ref list) if item.has_name(sym::doc) => {
                             list.iter().any(|i| i.has_name(sym::inline))
@@ -306,6 +279,26 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
 
                 om.items.push((item, renamed))
+            }
+            hir::ItemKind::Macro(ref macro_def) => {
+                // `#[macro_export] macro_rules!` items are handled seperately in `visit()`,
+                // above, since they need to be documented at the module top level. Accordingly,
+                // we only want to handle macros if one of three conditions holds:
+                //
+                // 1. This macro was defined by `macro`, and thus isn't covered by the case
+                //    above.
+                // 2. This macro isn't marked with `#[macro_export]`, and thus isn't covered
+                //    by the case above.
+                // 3. We're inlining, since a reexport where inlining has been requested
+                //    should be inlined even if it is also documented at the top level.
+
+                let def_id = item.def_id.to_def_id();
+                let is_macro_2_0 = !macro_def.macro_rules;
+                let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
+
+                if is_macro_2_0 || nonexported || self.inlining {
+                    om.items.push((item, renamed));
+                }
             }
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(&item.vis, item.hir_id(), m, name));
