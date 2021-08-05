@@ -507,10 +507,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                box (
+                                Box::new((
                                     place,
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
-                                ),
+                                )),
                                 Variance::Invariant,
                             ),
                         },
@@ -534,10 +534,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                box (
+                                Box::new((
                                     Place::from(temp),
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
-                                ),
+                                )),
                                 Variance::Invariant,
                             ),
                         },
@@ -691,7 +691,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             lt,
             Rvalue::BinaryOp(
                 BinOp::Lt,
-                box (Operand::Copy(Place::from(index)), Operand::Copy(len)),
+                Box::new((Operand::Copy(Place::from(index)), Operand::Copy(len))),
             ),
         );
         let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };

@@ -73,7 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         is_min,
-                        Rvalue::BinaryOp(BinOp::Eq, box (arg.to_copy(), minval)),
+                        Rvalue::BinaryOp(BinOp::Eq, Box::new((arg.to_copy(), minval))),
                     );
 
                     block = this.assert(
@@ -158,7 +158,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f])))
                     .collect();
 
-                block.and(Rvalue::Aggregate(box AggregateKind::Array(el_ty), fields))
+                block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
             }
             ExprKind::Tuple { ref fields } => {
                 // see (*) above
@@ -169,7 +169,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f])))
                     .collect();
 
-                block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
+                block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
             ExprKind::Closure { closure_id, substs, ref upvars, movability, ref fake_reads } => {
                 // Convert the closure fake reads, if any, from `ExprRef` to mir `Place`
@@ -254,19 +254,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        box AggregateKind::Generator(closure_id, substs, movability)
+                        Box::new(AggregateKind::Generator(closure_id, substs, movability))
                     }
-                    UpvarSubsts::Closure(substs) => box AggregateKind::Closure(closure_id, substs),
+                    UpvarSubsts::Closure(substs) => {
+                        Box::new(AggregateKind::Closure(closure_id, substs))
+                    }
                 };
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr, None));
-                block.and(Rvalue::Use(Operand::Constant(box Constant {
+                block.and(Rvalue::Use(Operand::Constant(Box::new(Constant {
                     span: expr_span,
                     user_ty: None,
                     literal: ty::Const::zero_sized(this.tcx, this.tcx.types.unit).into(),
-                })))
+                }))))
             }
             ExprKind::Yield { .. }
             | ExprKind::Literal { .. }
@@ -327,7 +329,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 source_info,
                 result_value,
-                Rvalue::CheckedBinaryOp(op, box (lhs.to_copy(), rhs.to_copy())),
+                Rvalue::CheckedBinaryOp(op, Box::new((lhs.to_copy(), rhs.to_copy()))),
             );
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
@@ -360,7 +362,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     is_zero,
-                    Rvalue::BinaryOp(BinOp::Eq, box (rhs.to_copy(), zero)),
+                    Rvalue::BinaryOp(BinOp::Eq, Box::new((rhs.to_copy(), zero))),
                 );
 
                 block = self.assert(block, Operand::Move(is_zero), false, zero_err, span);
@@ -381,13 +383,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         is_neg_1,
-                        Rvalue::BinaryOp(BinOp::Eq, box (rhs.to_copy(), neg_1)),
+                        Rvalue::BinaryOp(BinOp::Eq, Box::new((rhs.to_copy(), neg_1))),
                     );
                     self.cfg.push_assign(
                         block,
                         source_info,
                         is_min,
-                        Rvalue::BinaryOp(BinOp::Eq, box (lhs.to_copy(), min)),
+                        Rvalue::BinaryOp(BinOp::Eq, Box::new((lhs.to_copy(), min))),
                     );
 
                     let is_neg_1 = Operand::Move(is_neg_1);
@@ -396,14 +398,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         of,
-                        Rvalue::BinaryOp(BinOp::BitAnd, box (is_neg_1, is_min)),
+                        Rvalue::BinaryOp(BinOp::BitAnd, Box::new((is_neg_1, is_min))),
                     );
 
                     block = self.assert(block, Operand::Move(of), false, overflow_err, span);
                 }
             }
 
-            block.and(Rvalue::BinaryOp(op, box (lhs, rhs)))
+            block.and(Rvalue::BinaryOp(op, Box::new((lhs, rhs))))
         }
     }
 

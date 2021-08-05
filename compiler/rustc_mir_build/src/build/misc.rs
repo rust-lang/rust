@@ -31,7 +31,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         literal: &'tcx ty::Const<'tcx>,
     ) -> Operand<'tcx> {
         let literal = literal.into();
-        let constant = box Constant { span, user_ty: None, literal };
+        let constant = Box::new(Constant { span, user_ty: None, literal });
         Operand::Constant(constant)
     }
 
