@@ -24,7 +24,7 @@ impl<T> ThinVec<T> {
 
 impl<T> From<Vec<T>> for ThinVec<T> {
     fn from(vec: Vec<T>) -> Self {
-        if vec.is_empty() { ThinVec(None) } else { ThinVec(Some(Box::new(vec))) }
+        if vec.is_empty() { ThinVec(None) } else { ThinVec(Some(box (vec))) }
     }
 }
 
@@ -60,7 +60,7 @@ impl<T> FromIterator<T> for ThinVec<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         // `Vec::from_iter()` should not allocate if the iterator is empty.
         let vec: Vec<_> = iter.into_iter().collect();
-        if vec.is_empty() { ThinVec(None) } else { ThinVec(Some(Box::new(vec))) }
+        if vec.is_empty() { ThinVec(None) } else { ThinVec(Some(box (vec))) }
     }
 }
 

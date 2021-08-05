@@ -511,8 +511,8 @@ macro_rules! define_queries_struct {
                 on_disk_cache: Option<OnDiskCache<$tcx>>,
             ) -> Self {
                 Queries {
-                    local_providers: Box::new(local_providers),
-                    extern_providers: Box::new(extern_providers),
+                    local_providers: box (local_providers),
+                    extern_providers: box (extern_providers),
                     on_disk_cache,
                     $($name: Default::default()),*
                 }

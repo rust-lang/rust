@@ -19,7 +19,7 @@ pub fn expand_deriving_partial_ord(
     let ret_ty = Literal(Path::new_(
         pathvec_std!(option::Option),
         None,
-        vec![Box::new(ordering_ty)],
+        vec![box (ordering_ty)],
         PathKind::Std,
     ));
 
@@ -35,7 +35,7 @@ pub fn expand_deriving_partial_ord(
         attributes: attrs,
         is_unsafe: false,
         unify_fieldless_variants: true,
-        combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
+        combine_substructure: combine_substructure(box (|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         })),
     };
@@ -103,7 +103,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         equals_expr,
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
+        box (|cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {

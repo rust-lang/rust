@@ -49,7 +49,7 @@ macro_rules! err_exhaust {
 #[macro_export]
 macro_rules! err_machine_stop {
     ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*))
+        $crate::mir::interpret::InterpError::MachineStop(box ($($tt)*))
     };
 }
 

@@ -183,7 +183,7 @@ pub struct SourceMap {
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
         Self::with_file_loader_and_hash_kind(
-            Box::new(RealFileLoader),
+            box (RealFileLoader),
             path_mapping,
             SourceFileHashAlgorithm::Md5,
         )

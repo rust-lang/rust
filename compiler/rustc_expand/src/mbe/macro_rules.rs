@@ -308,7 +308,7 @@ fn generic_extension<'cx>(
 
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
-                return Box::new(ParserAnyMacro {
+                return box (ParserAnyMacro {
                     parser: p,
 
                     // Pass along the original expansion site and the name of the macro
@@ -457,17 +457,17 @@ pub fn compile_declarative_macro(
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
             sess.parse_sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
-            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+            return mk_syn_ext(box (macro_rules_dummy_expander));
         }
         Error(sp, msg) => {
             sess.parse_sess
                 .span_diagnostic
                 .struct_span_err(sp.substitute_dummy(def.span), &msg)
                 .emit();
-            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+            return mk_syn_ext(box (macro_rules_dummy_expander));
         }
         ErrorReported => {
-            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+            return mk_syn_ext(box (macro_rules_dummy_expander));
         }
     };
 
@@ -546,7 +546,7 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
-    mk_syn_ext(Box::new(MacroRulesMacroExpander {
+    mk_syn_ext(box (MacroRulesMacroExpander {
         name: def.ident,
         span: def.span,
         transparency,

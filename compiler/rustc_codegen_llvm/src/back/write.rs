@@ -249,7 +249,7 @@ impl<'a> DiagnosticHandlers<'a> {
         handler: &'a Handler,
         llcx: &'a llvm::Context,
     ) -> Self {
-        let data = Box::into_raw(Box::new((cgcx, handler)));
+        let data = Box::into_raw(box ((cgcx, handler)));
         unsafe {
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
             llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, data.cast());

@@ -410,7 +410,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         );
         let cause = self.cause(
             self.span,
-            ObligationCauseCode::UnifyReceiver(Box::new(UnifyReceiverContext {
+            ObligationCauseCode::UnifyReceiver(box (UnifyReceiverContext {
                 assoc_item: pick.item,
                 param_env: self.param_env,
                 substs,

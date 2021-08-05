@@ -1304,7 +1304,7 @@ impl<F> DerefMut for FmtPrinter<'_, '_, F> {
 
 impl<F> FmtPrinter<'a, 'tcx, F> {
     pub fn new(tcx: TyCtxt<'tcx>, fmt: F, ns: Namespace) -> Self {
-        FmtPrinter(Box::new(FmtPrinterData {
+        FmtPrinter(box (FmtPrinterData {
             tcx,
             fmt,
             empty_path: false,

@@ -851,7 +851,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
 
-                Operand::Constant(Box::new(Constant {
+                Operand::Constant(box (Constant {
                     span,
                     user_ty: None,
                     literal: tcx
@@ -906,7 +906,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
                             let promoted_ref_statement = Statement {
                                 source_info: statement.source_info,
-                                kind: StatementKind::Assign(Box::new((
+                                kind: StatementKind::Assign(box ((
                                     Place::from(promoted_ref),
                                     Rvalue::Use(promoted_operand(ref_ty, span)),
                                 ))),

@@ -531,7 +531,7 @@ pub struct Pat<'tcx> {
 
 impl<'tcx> Pat<'tcx> {
     pub fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
-        Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) }
+        Pat { ty, span: DUMMY_SP, kind: box (PatKind::Wild) }
     }
 }
 

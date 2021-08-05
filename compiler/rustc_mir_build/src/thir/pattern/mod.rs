@@ -100,7 +100,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 Pat {
                     span: pat.span,
                     ty: ref_ty,
-                    kind: Box::new(PatKind::Deref { subpattern: pat }),
+                    kind: box (PatKind::Deref { subpattern: pat }),
                 }
             },
         )
@@ -224,7 +224,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // constants somewhere. Have them on the range pattern.
                 for end in &[lo, hi] {
                     if let Some((_, Some(ascription))) = end {
-                        let subpattern = Pat { span: pat.span, ty, kind: Box::new(kind) };
+                        let subpattern = Pat { span: pat.span, ty, kind: box (kind) };
                         kind = PatKind::AscribeUserType { ascription: *ascription, subpattern };
                     }
                 }
@@ -319,7 +319,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
-        Pat { span: pat.span, ty, kind: Box::new(kind) }
+        Pat { span: pat.span, ty, kind: box (kind) }
     }
 
     fn lower_tuple_subpats(
@@ -433,7 +433,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
             kind = PatKind::AscribeUserType {
-                subpattern: Pat { span, ty, kind: Box::new(kind) },
+                subpattern: Pat { span, ty, kind: box (kind) },
                 ascription: Ascription {
                     user_ty: PatTyProj::from_user_type(user_ty),
                     user_ty_span: span,
@@ -452,7 +452,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
-        let pat_from_kind = |kind| Pat { span, ty, kind: Box::new(kind) };
+        let pat_from_kind = |kind| Pat { span, ty, kind: box (kind) };
 
         let (def_id, is_associated_const) = match res {
             Res::Def(DefKind::Const, def_id) => (def_id, false),
@@ -504,7 +504,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     let user_ty = PatTyProj::from_user_type(*u_ty);
                     Pat {
                         span,
-                        kind: Box::new(PatKind::AscribeUserType {
+                        kind: box (PatKind::AscribeUserType {
                             subpattern: pattern,
                             ascription: Ascription {
                                 /// Note that use `Contravariant` here. See the

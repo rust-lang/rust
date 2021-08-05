@@ -1145,7 +1145,7 @@ fn default_emitter(
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
                 let emitter =
                     AnnotateSnippetEmitterWriter::new(Some(source_map), short, macro_backtrace);
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                box (emitter.ui_testing(sopts.debugging_opts.ui_testing))
             } else {
                 let emitter = match dst {
                     None => EmitterWriter::stderr(
@@ -1166,10 +1166,10 @@ fn default_emitter(
                         macro_backtrace,
                     ),
                 };
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                box (emitter.ui_testing(sopts.debugging_opts.ui_testing))
             }
         }
-        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
+        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => box (
             JsonEmitter::stderr(
                 Some(registry),
                 source_map,
@@ -1180,7 +1180,7 @@ fn default_emitter(
             )
             .ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
+        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => box (
             JsonEmitter::new(
                 dst,
                 Some(registry),
@@ -1241,7 +1241,7 @@ pub fn build_session(
         early_warn(sopts.error_format, &warning)
     }
 
-    let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
+    let loader = file_loader.unwrap_or_else(|| box (RealFileLoader));
     let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
         if target_cfg.is_like_msvc {
             SourceFileHashAlgorithm::Sha1
@@ -1474,10 +1474,10 @@ pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
+            box (EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
+            box (JsonEmitter::basic(pretty, json_rendered, None, false))
         }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
@@ -1493,10 +1493,10 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
+            box (EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
+            box (JsonEmitter::basic(pretty, json_rendered, None, false))
         }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);

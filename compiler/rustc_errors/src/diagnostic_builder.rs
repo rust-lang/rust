@@ -409,7 +409,7 @@ impl<'a> DiagnosticBuilder<'a> {
     /// diagnostic.
     crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
         debug!("Created new diagnostic");
-        DiagnosticBuilder(Box::new(DiagnosticBuilderInner {
+        DiagnosticBuilder(box (DiagnosticBuilderInner {
             handler,
             diagnostic,
             allow_suggestions: true,

@@ -176,7 +176,7 @@ impl LintStore {
         &mut self,
         pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
     ) {
-        self.early_passes.push(Box::new(pass));
+        self.early_passes.push(box (pass));
     }
 
     /// Used by clippy.
@@ -184,21 +184,21 @@ impl LintStore {
         &mut self,
         pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
     ) {
-        self.pre_expansion_passes.push(Box::new(pass));
+        self.pre_expansion_passes.push(box (pass));
     }
 
     pub fn register_late_pass(
         &mut self,
         pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
     ) {
-        self.late_passes.push(Box::new(pass));
+        self.late_passes.push(box (pass));
     }
 
     pub fn register_late_mod_pass(
         &mut self,
         pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
     ) {
-        self.late_module_passes.push(Box::new(pass));
+        self.late_module_passes.push(box (pass));
     }
 
     // Helper method for register_early/late_pass

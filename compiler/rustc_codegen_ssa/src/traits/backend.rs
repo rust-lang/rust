@@ -68,7 +68,7 @@ pub trait CodegenBackend {
     /// Alternative codegen backends may want to use different rlib or dylib formats than the
     /// default native static archives and dynamic libraries.
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        Box::new(crate::back::metadata::DefaultMetadataLoader)
+        box (crate::back::metadata::DefaultMetadataLoader)
     }
 
     fn provide(&self, _providers: &mut Providers) {}

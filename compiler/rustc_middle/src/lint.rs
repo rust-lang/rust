@@ -378,7 +378,7 @@ pub fn struct_lint_level<'s, 'd>(
         // Finally, run `decorate`. This function is also responsible for emitting the diagnostic.
         decorate(LintDiagnosticBuilder::new(err));
     }
-    struct_lint_level_impl(sess, lint, level, src, span, Box::new(decorate))
+    struct_lint_level_impl(sess, lint, level, src, span, box (decorate))
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.

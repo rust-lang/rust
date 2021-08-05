@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// type Foo<U> = impl Debug;
     ///
     /// fn foo<T: Debug>(t: T) -> Box<Foo<T>> {
-    ///      Box::new((t, 22_u32))
+    ///      box ((t, 22_u32))
     /// }
     /// ```
     ///

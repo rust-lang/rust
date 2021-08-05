@@ -219,7 +219,7 @@ impl IntRange {
             PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
         };
 
-        Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
+        Pat { ty, span: DUMMY_SP, kind: box (kind) }
     }
 
     /// Lint on likely incorrect range patterns (#63987)
@@ -1270,7 +1270,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             ),
         };
 
-        Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
+        Pat { ty: pcx.ty, span: DUMMY_SP, kind: box (pat) }
     }
 
     /// Returns the number of patterns. This is the same as the arity of the constructor used to

@@ -284,7 +284,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
         self.additions.push(Addition::Archive {
             path: archive.to_path_buf(),
             archive: archive_ro,
-            skip: Box::new(skip),
+            skip: box (skip),
         });
         Ok(())
     }

@@ -450,7 +450,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 None
             };
-            printer.name_resolver = Some(Box::new(&getter));
+            printer.name_resolver = Some(box (&getter));
             let _ = if let ty::FnDef(..) = ty.kind() {
                 // We don't want the regular output for `fn`s because it includes its path in
                 // invalid pseudo-syntax, we want the `fn`-pointer output instead.

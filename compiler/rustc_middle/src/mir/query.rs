@@ -156,7 +156,7 @@ impl Debug for GeneratorLayout<'_> {
         struct MapPrinter<'a, K, V>(Cell<Option<Box<dyn Iterator<Item = (K, V)> + 'a>>>);
         impl<'a, K, V> MapPrinter<'a, K, V> {
             fn new(iter: impl Iterator<Item = (K, V)> + 'a) -> Self {
-                Self(Cell::new(Some(Box::new(iter))))
+                Self(Cell::new(Some(box (iter))))
             }
         }
         impl<'a, K: Debug, V: Debug> Debug for MapPrinter<'a, K, V> {

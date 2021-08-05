@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
 
             // Peel all `Box<_>` layers. We have to special case `Box` here as
             // `Box` is the only thing that values can be moved out of via
-            // method call. `Box::new([1]).into_iter()` should trigger this
+            // method call. `box ([1]).into_iter()` should trigger this
             // lint.
             let mut recv_ty = cx.typeck_results().expr_ty(receiver_arg);
             let mut num_box_derefs = 0;

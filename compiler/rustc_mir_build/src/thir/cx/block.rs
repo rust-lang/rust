@@ -83,7 +83,7 @@ impl<'tcx> Cx<'tcx> {
                                 pattern = Pat {
                                     ty: pattern.ty,
                                     span: pattern.span,
-                                    kind: Box::new(PatKind::AscribeUserType {
+                                    kind: box (PatKind::AscribeUserType {
                                         ascription: Ascription {
                                             user_ty: PatTyProj::from_user_type(user_ty),
                                             user_ty_span: ty.span,

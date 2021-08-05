@@ -288,7 +288,7 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// ```
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> { Box::new(Bar) }
+    ///     fn foo() -> Box<Self> { box (Bar) }
     /// }
     /// ```
     ///

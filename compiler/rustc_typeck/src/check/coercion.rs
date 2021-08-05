@@ -1608,7 +1608,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     .into_iter()
                     .flat_map(|sp| {
                         vec![
-                            (sp.shrink_to_lo(), "Box::new(".to_string()),
+                            (sp.shrink_to_lo(), "box (".to_string()),
                             (sp.shrink_to_hi(), ")".to_string()),
                         ]
                         .into_iter()

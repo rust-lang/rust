@@ -406,7 +406,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let array = tcx.deref_const(self.param_env.and(cv));
                     let val = PatKind::Deref {
                         subpattern: Pat {
-                            kind: Box::new(PatKind::Array {
+                            kind: box (PatKind::Array {
                                 prefix: tcx
                                     .destructure_const(param_env.and(array))
                                     .fields
@@ -432,7 +432,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let array = tcx.deref_const(self.param_env.and(cv));
                     let val = PatKind::Deref {
                         subpattern: Pat {
-                            kind: Box::new(PatKind::Slice {
+                            kind: box (PatKind::Slice {
                                 prefix: tcx
                                     .destructure_const(param_env.and(array))
                                     .fields
@@ -574,6 +574,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             );
         }
 
-        Ok(Pat { span, ty: cv.ty, kind: Box::new(kind) })
+        Ok(Pat { span, ty: cv.ty, kind: box (kind) })
     }
 }

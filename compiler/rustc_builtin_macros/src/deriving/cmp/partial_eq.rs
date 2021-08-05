@@ -49,7 +49,7 @@ pub fn expand_deriving_partial_eq(
                     None => cx.expr_bool(span, base),
                 }
             },
-            Box::new(|cx, span, _, _| cx.expr_bool(span, !base)),
+            box (|cx, span, _, _| cx.expr_bool(span, !base)),
             cx,
             span,
             substr,
@@ -76,7 +76,7 @@ pub fn expand_deriving_partial_eq(
                 attributes: attrs,
                 is_unsafe: false,
                 unify_fieldless_variants: true,
-                combine_substructure: combine_substructure(Box::new(|a, b, c| $f(a, b, c))),
+                combine_substructure: combine_substructure(box (|a, b, c| $f(a, b, c))),
             }
         }};
     }

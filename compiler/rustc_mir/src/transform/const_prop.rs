@@ -798,7 +798,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Creates a new `Operand::Constant` from a `Scalar` value
     fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
+        Operand::Constant(box (Constant {
             span,
             user_ty: None,
             literal: ty::Const::from_scalar(self.tcx, scalar, ty).into(),
@@ -881,7 +881,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             if let Some(Some(alloc)) = alloc {
                                 // Assign entire constant in a single statement.
                                 // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
-                                *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
+                                *rval = Rvalue::Use(Operand::Constant(box (Constant {
                                     span: source_info.span,
                                     user_ty: None,
                                     literal: self

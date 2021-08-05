@@ -113,7 +113,7 @@ pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
 }
 
 pub fn borrowed_self() -> Ty {
-    borrowed(Box::new(Self_))
+    borrowed(box (Self_))
 }
 
 pub fn nil_ty() -> Ty {

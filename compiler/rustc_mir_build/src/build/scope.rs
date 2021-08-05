@@ -744,7 +744,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// As another example, if the second argument diverges:
     ///
-    ///     foo(Box::new(2), panic!())
+    ///     foo(box (2), panic!())
     ///
     /// We would allocate the box but then free it on the unwinding
     /// path; we would also emit a free on the 'success' path from

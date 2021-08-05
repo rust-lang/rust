@@ -32,12 +32,12 @@ pub fn expand_deriving_hash(
             name: sym::hash,
             generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
             explicit_self: borrowed_explicit_self(),
-            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
+            args: vec![(Ptr(box (Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
             ret_ty: nil_ty(),
             attributes: vec![],
             is_unsafe: false,
             unify_fieldless_variants: true,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+            combine_substructure: combine_substructure(box (|a, b, c| {
                 hash_substructure(a, b, c)
             })),
         }],

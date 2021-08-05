@@ -13,7 +13,7 @@ impl !Send for FatalError {}
 
 impl FatalError {
     pub fn raise(self) -> ! {
-        std::panic::resume_unwind(Box::new(FatalErrorMarker))
+        std::panic::resume_unwind(box (FatalErrorMarker))
     }
 }
 

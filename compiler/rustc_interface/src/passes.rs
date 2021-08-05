@@ -113,7 +113,7 @@ mod boxed_resolver {
             session: Lrc<Session>,
             make_resolver: impl for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
         ) -> BoxedResolver {
-            let mut boxed_resolver = Box::new(BoxedResolverInner {
+            let mut boxed_resolver = box (BoxedResolverInner {
                 session,
                 resolver_arenas: Some(Resolver::arenas()),
                 resolver: None,

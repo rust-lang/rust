@@ -147,7 +147,7 @@ fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
     };
 
     match strategy {
-        "default" => Box::new(default::DefaultPartitioning),
+        "default" => box (default::DefaultPartitioning),
         _ => tcx.sess.fatal("unknown partitioning strategy"),
     }
 }

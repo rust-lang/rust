@@ -141,7 +141,7 @@ pub struct LazyTokenStream(Lrc<Box<dyn CreateTokenStream>>);
 
 impl LazyTokenStream {
     pub fn new(inner: impl CreateTokenStream + 'static) -> LazyTokenStream {
-        LazyTokenStream(Lrc::new(Box::new(inner)))
+        LazyTokenStream(Lrc::new(box (inner)))
     }
 
     pub fn create_token_stream(&self) -> AttrAnnotatedTokenStream {

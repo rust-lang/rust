@@ -372,7 +372,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
                 // constant value still knows it is of type `&str`.
                 new_pat.ty = t;
                 Pat {
-                    kind: Box::new(PatKind::Deref { subpattern: new_pat }),
+                    kind: box (PatKind::Deref { subpattern: new_pat }),
                     span: pat.span,
                     ty: pat.ty,
                 }

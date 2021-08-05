@@ -66,5 +66,5 @@ pub fn expand_concat_idents<'cx>(
         }
     }
 
-    Box::new(ConcatIdentsResult { ident })
+    box (ConcatIdentsResult { ident })
 }

@@ -138,7 +138,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // error: cannot infer an appropriate lifetime
                 //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
                 //    |
-                // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+                // LL | fn foo(x: &i32) -> Box<dyn Debug> { box (x) }
                 //    |           ----                      ---------^-
                 //
                 // and instead show:
@@ -146,7 +146,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // error: cannot infer an appropriate lifetime
                 //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
                 //    |
-                // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
+                // LL | fn foo(x: &i32) -> Box<dyn Debug> { box (x) }
                 //    |           ----                               ^
                 err.span_label(
                     sup_origin.span(),

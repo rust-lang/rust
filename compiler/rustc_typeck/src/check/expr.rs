@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // &raw const REF.0;            // OK, same as &raw const (*REF).0;
             //
             // This is maybe too permissive, since it allows
-            // `let u = &raw const Box::new((1,)).0`, which creates an
+            // `let u = &raw const box ((1,)).0`, which creates an
             // immediately dangling raw pointer.
             self.typeck_results
                 .borrow()

@@ -414,7 +414,7 @@ impl Handler {
         sm: Option<Lrc<SourceMap>>,
         flags: HandlerFlags,
     ) -> Self {
-        let emitter = Box::new(EmitterWriter::stderr(
+        let emitter = box (EmitterWriter::stderr(
             color_config,
             sm,
             false,

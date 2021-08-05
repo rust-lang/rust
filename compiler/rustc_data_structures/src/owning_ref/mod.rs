@@ -61,7 +61,7 @@ use owning_ref::BoxRef;
 
 fn main() {
     // Create an array owned by a Box.
-    let arr = Box::new([1, 2, 3, 4]) as Box<[i32]>;
+    let arr = box ([1, 2, 3, 4]) as Box<[i32]>;
 
     // Transfer into a BoxRef.
     let arr: BoxRef<[i32]> = BoxRef::new(arr);
@@ -90,7 +90,7 @@ fn main() {
     }
     let foo = Foo { tag: 1, x: 100, y: 200, z: 300 };
 
-    let or = BoxRef::new(Box::new(foo)).map(|foo| {
+    let or = BoxRef::new(box (foo)).map(|foo| {
         match foo.tag {
             0 => &foo.x,
             1 => &foo.y,
@@ -330,7 +330,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// use owning_ref::OwningRef;
     ///
     /// fn main() {
-    ///     let owning_ref = OwningRef::new(Box::new(42));
+    ///     let owning_ref = OwningRef::new(box (42));
     ///     assert_eq!(*owning_ref, 42);
     /// }
     /// ```
@@ -366,7 +366,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// use owning_ref::OwningRef;
     ///
     /// fn main() {
-    ///     let owning_ref = OwningRef::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref = OwningRef::new(box ([1, 2, 3, 4]));
     ///
     ///     // create a owning reference that points at the
     ///     // third element of the array.
@@ -394,7 +394,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// use owning_ref::OwningRef;
     ///
     /// fn main() {
-    ///     let owning_ref = OwningRef::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref = OwningRef::new(box ([1, 2, 3, 4]));
     ///
     ///     // create a owning reference that points at the
     ///     // third element of the array.
@@ -432,7 +432,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// This can be used to safely erase the owner of any `OwningRef<O, T>`
     /// to a `OwningRef<Box<Erased>, T>`.
     pub fn map_owner_box(self) -> OwningRef<Box<O>, T> {
-        OwningRef { reference: self.reference, owner: Box::new(self.owner) }
+        OwningRef { reference: self.reference, owner: box (self.owner) }
     }
 
     /// Erases the concrete base type of the owner with a trait object.
@@ -449,10 +449,10 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
     ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, [i32; 4]>
-    ///         = OwningRef::new(Box::new([1, 2, 3, 4]));
+    ///         = OwningRef::new(box ([1, 2, 3, 4]));
     ///
     ///     let owning_ref_b: OwningRef<Box<Vec<(i32, bool)>>, Vec<(i32, bool)>>
-    ///         = OwningRef::new(Box::new(vec![(0, false), (1, true)]));
+    ///         = OwningRef::new(box (vec![(0, false), (1, true)]));
     ///
     ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, i32>
     ///         = owning_ref_a.map(|a| &a[0]);
@@ -520,7 +520,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::OwningRefMut;
     ///
     /// fn main() {
-    ///     let owning_ref_mut = OwningRefMut::new(Box::new(42));
+    ///     let owning_ref_mut = OwningRefMut::new(box (42));
     ///     assert_eq!(*owning_ref_mut, 42);
     /// }
     /// ```
@@ -556,7 +556,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::OwningRefMut;
     ///
     /// fn main() {
-    ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref_mut = OwningRefMut::new(box ([1, 2, 3, 4]));
     ///
     ///     // create a owning reference that points at the
     ///     // third element of the array.
@@ -584,7 +584,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::OwningRefMut;
     ///
     /// fn main() {
-    ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref_mut = OwningRefMut::new(box ([1, 2, 3, 4]));
     ///
     ///     // create a owning reference that points at the
     ///     // third element of the array.
@@ -612,7 +612,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::OwningRefMut;
     ///
     /// fn main() {
-    ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref_mut = OwningRefMut::new(box ([1, 2, 3, 4]));
     ///
     ///     // create a owning reference that points at the
     ///     // third element of the array.
@@ -642,7 +642,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::OwningRefMut;
     ///
     /// fn main() {
-    ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
+    ///     let owning_ref_mut = OwningRefMut::new(box ([1, 2, 3, 4]));
     ///
     ///     // create a owning reference that points at the
     ///     // third element of the array.
@@ -680,7 +680,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// This can be used to safely erase the owner of any `OwningRefMut<O, T>`
     /// to a `OwningRefMut<Box<Erased>, T>`.
     pub fn map_owner_box(self) -> OwningRefMut<Box<O>, T> {
-        OwningRefMut { reference: self.reference, owner: Box::new(self.owner) }
+        OwningRefMut { reference: self.reference, owner: box (self.owner) }
     }
 
     /// Erases the concrete base type of the owner with a trait object.
@@ -697,10 +697,10 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
     ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, [i32; 4]>
-    ///         = OwningRefMut::new(Box::new([1, 2, 3, 4]));
+    ///         = OwningRefMut::new(box ([1, 2, 3, 4]));
     ///
     ///     let owning_ref_mut_b: OwningRefMut<Box<Vec<(i32, bool)>>, Vec<(i32, bool)>>
-    ///         = OwningRefMut::new(Box::new(vec![(0, false), (1, true)]));
+    ///         = OwningRefMut::new(box (vec![(0, false), (1, true)]));
     ///
     ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, i32>
     ///         = owning_ref_mut_a.map_mut(|a| &mut a[0]);

@@ -207,7 +207,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     }
 
     fn intern_ty(&self, ty: chalk_ir::TyData<Self>) -> Self::InternedType {
-        Box::new(ty)
+        box (ty)
     }
 
     fn ty_data<'a>(&self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
@@ -215,7 +215,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     }
 
     fn intern_lifetime(&self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
-        Box::new(lifetime)
+        box (lifetime)
     }
 
     fn lifetime_data<'a>(
@@ -226,7 +226,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     }
 
     fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
-        Box::new(constant)
+        box (constant)
     }
 
     fn const_data<'a>(&self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
@@ -243,7 +243,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     }
 
     fn intern_generic_arg(&self, data: chalk_ir::GenericArgData<Self>) -> Self::InternedGenericArg {
-        Box::new(data)
+        box (data)
     }
 
     fn generic_arg_data<'a>(
@@ -254,7 +254,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     }
 
     fn intern_goal(&self, goal: chalk_ir::GoalData<Self>) -> Self::InternedGoal {
-        Box::new(goal)
+        box (goal)
     }
 
     fn goal_data<'a>(&self, goal: &'a Self::InternedGoal) -> &'a chalk_ir::GoalData<Self> {
@@ -290,7 +290,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         &self,
         data: chalk_ir::ProgramClauseData<Self>,
     ) -> Self::InternedProgramClause {
-        Box::new(data)
+        box (data)
     }
 
     fn program_clause_data<'a>(

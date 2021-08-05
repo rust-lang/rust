@@ -342,7 +342,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
     pub fn create_diag_handler(&self) -> Handler {
-        Handler::with_emitter(true, None, Box::new(self.diag_emitter.clone()))
+        Handler::with_emitter(true, None, box (self.diag_emitter.clone()))
     }
 
     pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {
@@ -1007,7 +1007,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver
         .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
+            drop(coordinator_send2.send(box (Message::Token::<B>(token))));
         })
         .expect("failed to spawn helper thread");
 
@@ -1642,7 +1642,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
                         }
                         None => Message::Done::<B> { result: Err(None), worker_id },
                     };
-                    drop(self.coordinator_send.send(Box::new(msg)));
+                    drop(self.coordinator_send.send(box (msg)));
                 }
             }
 
@@ -1864,7 +1864,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn codegen_finished(&self, tcx: TyCtxt<'_>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
-        drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
+        drop(self.coordinator_send.send(box (Message::CodegenComplete::<B>)));
     }
 
     /// Consumes this context indicating that codegen was entirely aborted, and
@@ -1876,7 +1876,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn codegen_aborted(self) {
         // Signal to the coordinator it should spawn no more work and start
         // shutdown.
-        drop(self.coordinator_send.send(Box::new(Message::CodegenAborted::<B>)));
+        drop(self.coordinator_send.send(box (Message::CodegenAborted::<B>)));
         drop(self.future.join());
     }
 
@@ -1905,7 +1905,7 @@ pub fn submit_codegened_module_to_llvm<B: ExtraBackendMethods>(
     cost: u64,
 ) {
     let llvm_work_item = WorkItem::Optimize(module);
-    drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> { llvm_work_item, cost })));
+    drop(tx_to_llvm_workers.send(box (Message::CodegenDone::<B> { llvm_work_item, cost })));
 }
 
 pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
@@ -1914,7 +1914,7 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
     module: CachedModuleCodegen,
 ) {
     let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
-    drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> { llvm_work_item, cost: 0 })));
+    drop(tx_to_llvm_workers.send(box (Message::CodegenDone::<B> { llvm_work_item, cost: 0 })));
 }
 
 pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
@@ -1934,7 +1934,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
         })
     };
     // Schedule the module to be loaded
-    drop(tx_to_llvm_workers.send(Box::new(Message::AddImportOnlyModule::<B> {
+    drop(tx_to_llvm_workers.send(box (Message::AddImportOnlyModule::<B> {
         module_data: SerializedModule::FromUncompressedFile(mmap),
         work_product: module.source,
     })));

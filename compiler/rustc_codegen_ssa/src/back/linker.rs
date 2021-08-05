@@ -130,26 +130,26 @@ pub fn get_linker<'a>(
 
     match flavor {
         LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
+            box (MsvcLinker { cmd, sess }) as Box<dyn Linker>
         }
-        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Em => box (EmLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Gcc => {
-            Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
+            box (GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
                 as Box<dyn Linker>
         }
 
         LinkerFlavor::Lld(LldFlavor::Ld)
         | LinkerFlavor::Lld(LldFlavor::Ld64)
         | LinkerFlavor::Ld => {
-            Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
+            box (GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
                 as Box<dyn Linker>
         }
 
-        LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
+        LinkerFlavor::Lld(LldFlavor::Wasm) => box (WasmLd::new(cmd, sess)) as Box<dyn Linker>,
 
-        LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::PtxLinker => box (PtxLinker { cmd, sess }) as Box<dyn Linker>,
 
-        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::BpfLinker => box (BpfLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
 

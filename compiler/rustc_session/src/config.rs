@@ -953,14 +953,14 @@ impl RustcOptGroup {
     where
         F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
-        RustcOptGroup { name, apply: Box::new(f), stability: OptionStability::Stable }
+        RustcOptGroup { name, apply: box (f), stability: OptionStability::Stable }
     }
 
     pub fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
     where
         F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
-        RustcOptGroup { name, apply: Box::new(f), stability: OptionStability::Unstable }
+        RustcOptGroup { name, apply: box (f), stability: OptionStability::Unstable }
     }
 }
 

@@ -1163,7 +1163,7 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
 static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
     SyncLazy::new(|| {
         let hook = panic::take_hook();
-        panic::set_hook(Box::new(|info| {
+        panic::set_hook(box (|info| {
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
             (*DEFAULT_HOOK)(info);
 
@@ -1183,7 +1183,7 @@ static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
-    let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
+    let emitter = box (rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,
         false,

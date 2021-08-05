@@ -38,15 +38,15 @@ pub fn expand_deriving_rustc_decodable(
             },
             explicit_self: None,
             args: vec![(
-                Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
+                Ptr(box (Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
                 sym::d,
             )],
             ret_ty: Literal(Path::new_(
                 pathvec_std!(result::Result),
                 None,
                 vec![
-                    Box::new(Self_),
-                    Box::new(Literal(Path::new_(
+                    box (Self_),
+                    box (Literal(Path::new_(
                         vec![typaram, sym::Error],
                         None,
                         vec![],
@@ -58,7 +58,7 @@ pub fn expand_deriving_rustc_decodable(
             attributes: Vec::new(),
             is_unsafe: false,
             unify_fieldless_variants: false,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+            combine_substructure: combine_substructure(box (|a, b, c| {
                 decodable_substructure(a, b, c, krate)
             })),
         }],

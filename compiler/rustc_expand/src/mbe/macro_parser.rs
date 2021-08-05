@@ -233,7 +233,7 @@ impl<'root, 'tt> Clone for MatcherPosHandle<'root, 'tt> {
     // This always produces a new Box.
     fn clone(&self) -> Self {
         MatcherPosHandle::Box(match *self {
-            MatcherPosHandle::Ref(ref r) => Box::new((**r).clone()),
+            MatcherPosHandle::Ref(ref r) => box ((**r).clone()),
             MatcherPosHandle::Box(ref b) => b.clone(),
         })
     }
@@ -544,7 +544,7 @@ fn inner_parse_loop<'root, 'tt>(
                     }
 
                     let matches = create_matches(item.matches.len());
-                    cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
+                    cur_items.push(MatcherPosHandle::Box(box (MatcherPos {
                         stack: smallvec![],
                         sep: seq.separator.clone(),
                         seq_op: Some(seq.kleene.op),

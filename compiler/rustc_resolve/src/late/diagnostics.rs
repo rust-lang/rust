@@ -2069,13 +2069,13 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 for (snippet, (_, count)) in snippets.iter().zip(spans_with_counts.iter().copied())
                 {
                     suggs.push(match snippet.as_deref() {
-                        Some("&") => Some(Box::new(|name| format!("&{} ", name))),
-                        Some("'_") => Some(Box::new(|n| n.to_string())),
-                        Some("") => Some(Box::new(move |n| format!("{}, ", n).repeat(count))),
-                        Some("<") => Some(Box::new(move |n| {
+                        Some("&") => Some(box (|name| format!("&{} ", name))),
+                        Some("'_") => Some(box (|n| n.to_string())),
+                        Some("") => Some(box (move |n| format!("{}, ", n).repeat(count))),
+                        Some("<") => Some(box (move |n| {
                             std::iter::repeat(n).take(count).collect::<Vec<_>>().join(", ")
                         })),
-                        Some(snippet) if !snippet.ends_with('>') => Some(Box::new(move |name| {
+                        Some(snippet) if !snippet.ends_with('>') => Some(box (move |name| {
                             format!(
                                 "{}<{}>",
                                 snippet,

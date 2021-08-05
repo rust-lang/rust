@@ -266,7 +266,7 @@ impl<'tcx> Body<'tcx> {
             basic_blocks,
             source_scopes,
             generator: generator_kind.map(|generator_kind| {
-                Box::new(GeneratorInfo {
+                box (GeneratorInfo {
                     yield_ty: None,
                     generator_drop: None,
                     generator_layout: None,

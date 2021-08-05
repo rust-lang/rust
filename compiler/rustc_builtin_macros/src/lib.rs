@@ -51,13 +51,13 @@ pub mod test_harness;
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(box ($f as MacroExpanderFn)));)*
     }
     macro register_attr($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Box::new($f)));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(box ($f)));)*
     }
     macro register_derive($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($f))));)*
+        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(box (BuiltinDerive($f))));)*
     }
 
     register_bang! {
@@ -113,5 +113,5 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-    register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
+    register(sym::quote, SyntaxExtensionKind::Bang(box (BangProcMacro { client })));
 }

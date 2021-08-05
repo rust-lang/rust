@@ -955,7 +955,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             //
             // let x = 0;
             // let y = &x;
-            // Box::new(|| y) as Box<Fn() -> &'static i32>
+            // box (|| y) as Box<Fn() -> &'static i32>
             //
             // then just use the normal error. The closure isn't escaping
             // and `move` will not help here.

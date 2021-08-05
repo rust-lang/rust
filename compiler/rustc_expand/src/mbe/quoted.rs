@@ -151,10 +151,10 @@ fn parse_tree(
             let mut next = outer_trees.next();
             let mut trees: Box<dyn Iterator<Item = tokenstream::TokenTree>>;
             if let Some(tokenstream::TokenTree::Delimited(_, token::NoDelim, tts)) = next {
-                trees = Box::new(tts.into_trees());
+                trees = box (tts.into_trees());
                 next = trees.next();
             } else {
-                trees = Box::new(outer_trees);
+                trees = box (outer_trees);
             }
 
             match next {

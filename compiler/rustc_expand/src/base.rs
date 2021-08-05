@@ -434,7 +434,7 @@ macro_rules! make_MacEager {
         impl MacEager {
             $(
                 pub fn $fld(v: $t) -> Box<dyn MacResult> {
-                    Box::new(MacEager {
+                    box (MacEager {
                         $fld: Some(v),
                         ..Default::default()
                     })
@@ -519,12 +519,12 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(span: Span) -> Box<dyn MacResult + 'static> {
-        Box::new(DummyResult { is_error: true, span })
+        box (DummyResult { is_error: true, span })
     }
 
     /// Same as `any`, but must be a valid fragment, not error.
     pub fn any_valid(span: Span) -> Box<dyn MacResult + 'static> {
-        Box::new(DummyResult { is_error: false, span })
+        box (DummyResult { is_error: false, span })
     }
 
     /// A plain dummy expression.
@@ -796,7 +796,7 @@ impl SyntaxExtension {
         ) -> Box<dyn MacResult + 'cx> {
             DummyResult::any(span)
         }
-        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(box (expander)), edition)
     }
 
     pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
@@ -808,7 +808,7 @@ impl SyntaxExtension {
         ) -> Vec<Annotatable> {
             Vec::new()
         }
-        SyntaxExtension::default(SyntaxExtensionKind::Derive(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::Derive(box (expander)), edition)
     }
 
     pub fn non_macro_attr(mark_used: bool, edition: Edition) -> SyntaxExtension {

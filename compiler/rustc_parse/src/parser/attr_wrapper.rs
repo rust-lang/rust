@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
         // If we have no attributes, then we will never need to
         // use any replace ranges.
         let replace_ranges: Box<[ReplaceRange]> = if ret.attrs().is_empty() && !self.capture_cfg {
-            Box::new([])
+            box ([])
         } else {
             // Grab any replace ranges that occur *inside* the current AST node.
             // We will perform the actual replacement when we convert the `LazyTokenStream`

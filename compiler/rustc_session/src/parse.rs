@@ -176,7 +176,7 @@ impl ParseSess {
 
     pub fn with_silent_emitter() -> Self {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let handler = Handler::with_emitter(false, None, Box::new(SilentEmitter));
+        let handler = Handler::with_emitter(false, None, box (SilentEmitter));
         ParseSess::with_span_handler(handler, sm)
     }
 

@@ -53,7 +53,7 @@ impl JsonEmitter {
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
-            dst: Box::new(io::BufWriter::new(io::stderr())),
+            dst: box (io::BufWriter::new(io::stderr())),
             registry,
             sm: source_map,
             pretty,
@@ -373,7 +373,7 @@ impl Diagnostic {
         let output = buf.clone();
         je.json_rendered
             .new_emitter(
-                Box::new(buf),
+                box (buf),
                 Some(je.sm.clone()),
                 false,
                 je.terminal_width,
@@ -456,7 +456,7 @@ impl DiagnosticSpan {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);
             let def_site_span =
                 Self::from_span_full(bt.def_site, false, None, None, vec![].into_iter(), je);
-            Box::new(DiagnosticSpanMacroExpansion {
+            box (DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.kind.descr(),
                 def_site_span,

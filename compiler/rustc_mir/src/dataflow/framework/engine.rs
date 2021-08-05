@@ -111,7 +111,7 @@ where
             A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
         }
 
-        let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
+        let apply_trans = box (move |bb: BasicBlock, state: &mut A::Domain| {
             trans_for_block[bb].apply(state.borrow_mut());
         });
 

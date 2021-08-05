@@ -115,7 +115,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 
         let backtrace = match capture_backtrace {
             CtfeBacktrace::Disabled => None,
-            CtfeBacktrace::Capture => Some(Box::new(Backtrace::force_capture())),
+            CtfeBacktrace::Capture => Some(box (Backtrace::force_capture())),
             CtfeBacktrace::Immediate => {
                 // Print it now.
                 let backtrace = Backtrace::force_capture();
@@ -124,7 +124,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
             }
         };
 
-        InterpErrorInfo(Box::new(InterpErrorInfoInner { kind, backtrace }))
+        InterpErrorInfo(box (InterpErrorInfoInner { kind, backtrace }))
     }
 }
 

@@ -167,7 +167,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     // involved).
                     vb
                 } else {
-                    VerifyBound::IfEq(ty, Box::new(vb))
+                    VerifyBound::IfEq(ty, box (vb))
                 }
             });
 

@@ -1437,7 +1437,7 @@ impl<'a> Resolver<'a> {
         let main_def = self.main_def;
         ResolverOutputs {
             definitions,
-            cstore: Box::new(self.crate_loader.into_cstore()),
+            cstore: box (self.crate_loader.into_cstore()),
             visibilities,
             extern_crate_map,
             export_map,
@@ -1456,7 +1456,7 @@ impl<'a> Resolver<'a> {
     pub fn clone_outputs(&self) -> ResolverOutputs {
         ResolverOutputs {
             definitions: self.definitions.clone(),
-            cstore: Box::new(self.cstore().clone()),
+            cstore: box (self.cstore().clone()),
             visibilities: self.visibilities.clone(),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),

@@ -41,7 +41,7 @@ pub fn expand_deriving_default(
             attributes: attrs,
             is_unsafe: false,
             unify_fieldless_variants: false,
-            combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
+            combine_substructure: combine_substructure(box (|cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)

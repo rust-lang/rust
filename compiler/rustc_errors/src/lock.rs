@@ -83,11 +83,11 @@ pub fn acquire_global_lock(name: &str) -> Box<dyn Any> {
         }
 
         // Return a guard which will call `ReleaseMutex` when dropped.
-        Box::new(Guard(mutex))
+        box (Guard(mutex))
     }
 }
 
 #[cfg(not(windows))]
 pub fn acquire_global_lock(_name: &str) -> Box<dyn Any> {
-    Box::new(())
+    box (())
 }

@@ -197,7 +197,7 @@ unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
-        Box::new(LlvmCodegenBackend(()))
+        box (LlvmCodegenBackend(()))
     }
 }
 
@@ -253,7 +253,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        Box::new(rustc_codegen_ssa::base::codegen_crate(
+        box (rustc_codegen_ssa::base::codegen_crate(
             LlvmCodegenBackend(()),
             tcx,
             crate::llvm_util::target_cpu(tcx.sess).to_string(),

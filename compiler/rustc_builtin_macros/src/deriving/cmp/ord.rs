@@ -34,7 +34,7 @@ pub fn expand_deriving_ord(
             attributes: attrs,
             is_unsafe: false,
             unify_fieldless_variants: true,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
+            combine_substructure: combine_substructure(box (|a, b, c| cs_cmp(a, b, c))),
         }],
         associated_types: Vec::new(),
     };
@@ -100,7 +100,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         cx.expr_path(equals_path.clone()),
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
+        box (|cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
             } else {
