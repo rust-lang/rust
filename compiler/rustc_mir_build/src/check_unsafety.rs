@@ -456,27 +456,25 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     return; // we have already visited everything by now
                 }
             }
-            ExprKind::Borrow { borrow_kind, arg } => match borrow_kind {
-                BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {
-                    if !self.thir[arg]
-                        .ty
-                        .is_freeze(self.tcx.at(self.thir[arg].span), self.param_env)
-                    {
-                        let mut visitor = LayoutConstrainedPlaceVisitor::new(self.thir, self.tcx);
-                        visit::walk_expr(&mut visitor, expr);
-                        if visitor.found {
-                            self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField);
+            ExprKind::Borrow { borrow_kind, arg } => {
+                let mut visitor = LayoutConstrainedPlaceVisitor::new(self.thir, self.tcx);
+                visit::walk_expr(&mut visitor, expr);
+                if visitor.found {
+                    match borrow_kind {
+                        BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique
+                            if !self.thir[arg]
+                                .ty
+                                .is_freeze(self.tcx.at(self.thir[arg].span), self.param_env) =>
+                        {
+                            self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
+                        BorrowKind::Mut { .. } => {
+                            self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
+                        }
+                        BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {}
                     }
                 }
-                BorrowKind::Mut { .. } => {
-                    let mut visitor = LayoutConstrainedPlaceVisitor::new(self.thir, self.tcx);
-                    visit::walk_expr(&mut visitor, expr);
-                    if visitor.found {
-                        self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField);
-                    }
-                }
-            },
+            }
             _ => {}
         }
         visit::walk_expr(self, expr);
