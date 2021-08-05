@@ -217,9 +217,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // repeated `.iter().any(..)` calls.
 
         // This closure is a more robust way to check `Predicate` equality
-        // than simple `==` checks (which were the previous implementation). It relies on
-        // `ty::relate` for `TraitPredicate`, `ProjectionPredicate`, `ConstEvaluatable`
-        // `TypeOutlives` and `TypeWellFormedFromEnv` (which implement the Relate trait),
+        // than simple `==` checks (which were the previous implementation).
+        // It relies on `ty::relate` for `TraitPredicate`, `ProjectionPredicate`,
+        // `ConstEvaluatable` and `TypeOutlives` (which implement the Relate trait),
         // while delegating on simple equality for the other `Predicate`.
         // This implementation solves (Issue #59497) and (Issue #58311).
         // It is unclear to me at the moment whether the approach based on `relate`
@@ -242,10 +242,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 (ty::PredicateKind::TypeOutlives(a), ty::PredicateKind::TypeOutlives(b)) => {
                     relator.relate(predicate.rebind(a.0), p.rebind(b.0)).is_ok()
                 }
-                (
-                    ty::PredicateKind::TypeWellFormedFromEnv(a),
-                    ty::PredicateKind::TypeWellFormedFromEnv(b),
-                ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
                 _ => predicate == p,
             }
         };
