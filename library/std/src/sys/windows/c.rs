@@ -781,7 +781,7 @@ extern "system" {
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR, dwFileAttributes: DWORD) -> BOOL;
     pub fn SetLastError(dwErrCode: DWORD);
-    pub fn GetCommandLineW() -> *mut LPCWSTR;
+    pub fn GetCommandLineW() -> LPWSTR;
     pub fn GetTempPathW(nBufferLength: DWORD, lpBuffer: LPCWSTR) -> DWORD;
     pub fn GetCurrentProcess() -> HANDLE;
     pub fn GetCurrentThread() -> HANDLE;
