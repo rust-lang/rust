@@ -330,6 +330,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             tooltip,
             edition,
             None,
+            None,
         );
         Some(Event::Html(s.into_inner().into()))
     }
