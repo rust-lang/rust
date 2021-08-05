@@ -5,6 +5,7 @@ use rustc_span::{self, Span, Symbol};
 
 use rustc_hir as hir;
 
+#[derive(Debug)]
 crate struct Module<'hir> {
     crate name: Symbol,
     crate where_inner: Span,
@@ -13,20 +14,11 @@ crate struct Module<'hir> {
     // (item, renamed)
     crate items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
-    crate macros: Vec<(&'hir hir::MacroDef<'hir>, Option<Symbol>)>,
 }
 
 impl Module<'hir> {
     crate fn new(name: Symbol, id: hir::HirId, where_inner: Span) -> Module<'hir> {
-        Module {
-            name,
-            id,
-            where_inner,
-            mods: Vec::new(),
-            items: Vec::new(),
-            foreigns: Vec::new(),
-            macros: Vec::new(),
-        }
+        Module { name, id, where_inner, mods: Vec::new(), items: Vec::new(), foreigns: Vec::new() }
     }
 
     crate fn where_outer(&self, tcx: TyCtxt<'_>) -> Span {
