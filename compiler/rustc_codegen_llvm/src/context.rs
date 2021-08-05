@@ -74,14 +74,14 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
-    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
+    /// Mapping of non-scalar types to llvm types and field remapping if needed.
+    pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
+
+    /// Mapping of scalar types to llvm types.
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
+
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
-
-    /// Cache for the mapping from source index to llvm index for struct fields,
-    /// only present if synthetic fields are inserted for padding.
-    pub field_projection_cache: RefCell<FxHashMap<TyAndLayout<'tcx>, Vec<u32>>>,
 
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
@@ -94,6 +94,15 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+}
+
+pub struct TypeLowering<'ll> {
+    /// Associated LLVM type
+    pub lltype: &'ll Type,
+
+    /// If padding is used the slice maps fields from source order
+    /// to llvm order.
+    pub field_remapping: Option<Box<[u32]>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
@@ -308,11 +317,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             const_globals: Default::default(),
             statics_to_rauw: RefCell::new(Vec::new()),
             used_statics: RefCell::new(Vec::new()),
-            lltypes: Default::default(),
+            type_lowering: Default::default(),
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
             isize_ty,
-            field_projection_cache: Default::default(),
             coverage_cx,
             dbg_cx,
             eh_personality: Cell::new(None),

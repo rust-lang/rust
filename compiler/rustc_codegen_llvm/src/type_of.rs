@@ -1,5 +1,6 @@
 use crate::abi::FnAbi;
 use crate::common::*;
+use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
@@ -17,6 +18,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
+    field_remapping: &mut Option<Box<[u32]>>,
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -75,7 +77,8 @@ fn uncached_llvm_type<'a, 'tcx>(
         FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
         FieldsShape::Arbitrary { .. } => match name {
             None => {
-                let (llfields, packed) = struct_llfields(cx, layout);
+                let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+                *field_remapping = new_field_remapping;
                 cx.type_struct(&llfields, packed)
             }
             Some(ref name) => {
@@ -90,7 +93,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool) {
+) -> (Vec<&'a Type>, bool, Option<Box<[u32]>>) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -147,11 +150,8 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    if padding_used {
-        cx.field_projection_cache.borrow_mut().insert(layout, projection);
-    }
 
-    (result, packed)
+    (result, packed, padding_used.then_some(projection.into_boxed_slice()))
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
@@ -243,8 +243,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Variants::Single { index } => Some(index),
             _ => None,
         };
-        if let Some(&llty) = cx.lltypes.borrow().get(&(self.ty, variant_index)) {
-            return llty;
+        if let Some(ref llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+            return llty.lltype;
         }
 
         debug!("llvm_type({:#?})", self);
@@ -256,6 +256,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         let normal_ty = cx.tcx.erase_regions(self.ty);
 
         let mut defer = None;
+        let mut field_remapping = None;
         let llty = if self.ty != normal_ty {
             let mut layout = cx.layout_of(normal_ty);
             if let Some(v) = variant_index {
@@ -263,17 +264,21 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             }
             layout.llvm_type(cx)
         } else {
-            uncached_llvm_type(cx, *self, &mut defer)
+            uncached_llvm_type(cx, *self, &mut defer, &mut field_remapping)
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.lltypes.borrow_mut().insert((self.ty, variant_index), llty);
+        cx.type_lowering
+            .borrow_mut()
+            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping: None });
 
         if let Some((llty, layout)) = defer {
-            let (llfields, packed) = struct_llfields(cx, layout);
-            cx.set_struct_body(llty, &llfields, packed)
+            let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+            cx.set_struct_body(llty, &llfields, packed);
+            field_remapping = new_field_remapping;
         }
-
+        cx.type_lowering.borrow_mut().get_mut(&(self.ty, variant_index)).unwrap().field_remapping =
+            field_remapping;
         llty
     }
 
@@ -363,12 +368,23 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
-            // Look up llvm field index in projection cache if present. If no projection cache
-            // is present no padding is used and the llvm field index matches the memory index.
-            FieldsShape::Arbitrary { .. } => match cx.field_projection_cache.borrow().get(self) {
-                Some(projection) => projection[index] as u64,
-                None => self.fields.memory_index(index) as u64,
-            },
+            FieldsShape::Arbitrary { .. } => {
+                let variant_index = match self.variants {
+                    Variants::Single { index } => Some(index),
+                    _ => None,
+                };
+
+                // Look up llvm field if indexes do not match memory order due to padding. If
+                // `field_remapping` is `None` no padding was used and the llvm field index
+                // matches the memory index.
+                match cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+                    Some(TypeLowering { field_remapping: Some(ref prj), .. }) => prj[index] as u64,
+                    Some(_) => self.fields.memory_index(index) as u64,
+                    None => {
+                        bug!("TyAndLayout::llvm_field_index({:?}): type info not found", self)
+                    }
+                }
+            }
         }
     }
 
