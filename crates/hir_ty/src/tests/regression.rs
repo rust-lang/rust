@@ -1077,3 +1077,19 @@ fn test() {
         "#,
     )
 }
+
+#[test]
+fn bare_dyn_trait_binders_9639() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn, coerce_unsized
+fn infix_parse<T, S>(_state: S, _level_code: &Fn(S)) -> T {
+    loop {}
+}
+
+fn parse_arule() {
+    infix_parse((), &(|_recurse| ()))
+}
+        "#,
+    )
+}
