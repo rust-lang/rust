@@ -6393,7 +6393,9 @@ public:
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
-      if (Mode != DerivativeMode::ReverseModeCombined) {
+      if (Mode == DerivativeMode::ReverseModeGradient) {
+        eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+      } else if (Mode != DerivativeMode::ReverseModeCombined) {
         // if (is_value_needed_in_reverse<Primal>(
         //        TR, gutils, orig, /*topLevel*/ Mode ==
         //        DerivativeMode::Both))
