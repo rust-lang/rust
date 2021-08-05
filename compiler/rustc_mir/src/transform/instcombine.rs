@@ -124,7 +124,7 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
 
                 let constant =
                     Constant { span: source_info.span, literal: len.into(), user_ty: None };
-                *rvalue = Rvalue::Use(Operand::Constant(box constant));
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }
     }

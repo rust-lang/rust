@@ -25,7 +25,7 @@ pub fn expand_aggregate<'tcx>(
         AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
             if adt_def.is_enum() {
                 set_discriminant = Some(Statement {
-                    kind: StatementKind::SetDiscriminant { place: box (lhs), variant_index },
+                    kind: StatementKind::SetDiscriminant { place: Box::new(lhs), variant_index },
                     source_info,
                 });
                 lhs = tcx.mk_place_downcast(lhs, adt_def, variant_index);
@@ -37,7 +37,7 @@ pub fn expand_aggregate<'tcx>(
             // variant 0 (Unresumed).
             let variant_index = VariantIdx::new(0);
             set_discriminant = Some(Statement {
-                kind: StatementKind::SetDiscriminant { place: box (lhs), variant_index },
+                kind: StatementKind::SetDiscriminant { place: Box::new(lhs), variant_index },
                 source_info,
             });
 
@@ -66,7 +66,10 @@ pub fn expand_aggregate<'tcx>(
                 let field = Field::new(active_field_index.unwrap_or(i));
                 tcx.mk_place_field(lhs, field, ty)
             };
-            Statement { source_info, kind: StatementKind::Assign(box (lhs_field, Rvalue::Use(op))) }
+            Statement {
+                source_info,
+                kind: StatementKind::Assign(Box::new((lhs_field, Rvalue::Use(op)))),
+            }
         })
         .chain(set_discriminant)
 }

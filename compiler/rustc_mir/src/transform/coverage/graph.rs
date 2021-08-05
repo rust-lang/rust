@@ -491,15 +491,19 @@ fn bcb_filtered_successors<'a, 'tcx>(
     term_kind: &'tcx TerminatorKind<'tcx>,
 ) -> Box<dyn Iterator<Item = &'a BasicBlock> + 'a> {
     let mut successors = term_kind.successors();
-    box match &term_kind {
-        // SwitchInt successors are never unwind, and all of them should be traversed.
-        TerminatorKind::SwitchInt { .. } => successors,
-        // For all other kinds, return only the first successor, if any, and ignore unwinds.
-        // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
-        // `next().into_iter()`) into the `mir::Successors` aliased type.
-        _ => successors.next().into_iter().chain(&[]),
-    }
-    .filter(move |&&successor| body[successor].terminator().kind != TerminatorKind::Unreachable)
+    Box::new(
+        match &term_kind {
+            // SwitchInt successors are never unwind, and all of them should be traversed.
+            TerminatorKind::SwitchInt { .. } => successors,
+            // For all other kinds, return only the first successor, if any, and ignore unwinds.
+            // NOTE: `chain(&[])` is required to coerce the `option::iter` (from
+            // `next().into_iter()`) into the `mir::Successors` aliased type.
+            _ => successors.next().into_iter().chain(&[]),
+        }
+        .filter(move |&&successor| {
+            body[successor].terminator().kind != TerminatorKind::Unreachable
+        }),
+    )
 }
 
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the

@@ -29,14 +29,14 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         if let Some((destination, target)) = *destination {
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
+                                kind: StatementKind::Assign(Box::new((
                                     destination,
-                                    Rvalue::Use(Operand::Constant(box Constant {
+                                    Rvalue::Use(Operand::Constant(Box::new(Constant {
                                         span: terminator.source_info.span,
                                         user_ty: None,
                                         literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
-                                    })),
-                                )),
+                                    }))),
+                                ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
                         }
@@ -46,13 +46,13 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         let mut args = args.drain(..);
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
-                            kind: StatementKind::CopyNonOverlapping(
-                                box rustc_middle::mir::CopyNonOverlapping {
+                            kind: StatementKind::CopyNonOverlapping(Box::new(
+                                rustc_middle::mir::CopyNonOverlapping {
                                     src: args.next().unwrap(),
                                     dst: args.next().unwrap(),
                                     count: args.next().unwrap(),
                                 },
-                            ),
+                            )),
                         });
                         assert_eq!(
                             args.next(),
@@ -79,10 +79,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             };
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
+                                kind: StatementKind::Assign(Box::new((
                                     destination,
-                                    Rvalue::BinaryOp(bin_op, box (lhs, rhs)),
-                                )),
+                                    Rvalue::BinaryOp(bin_op, Box::new((lhs, rhs))),
+                                ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
                         }
@@ -97,10 +97,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             let tp_ty = substs.type_at(0);
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
+                                kind: StatementKind::Assign(Box::new((
                                     destination,
                                     Rvalue::NullaryOp(NullOp::SizeOf, tp_ty),
-                                )),
+                                ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
                         }
@@ -112,10 +112,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             let arg = tcx.mk_place_deref(arg);
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
+                                kind: StatementKind::Assign(Box::new((
                                     destination,
                                     Rvalue::Discriminant(arg),
-                                )),
+                                ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
                         }

@@ -520,7 +520,7 @@ impl Inliner<'tcx> {
                         let temp = Place::from(self.new_call_temp(caller_body, &callsite, dest_ty));
                         caller_body[callsite.block].statements.push(Statement {
                             source_info: callsite.source_info,
-                            kind: StatementKind::Assign(box (temp, dest)),
+                            kind: StatementKind::Assign(Box::new((temp, dest))),
                         });
                         self.tcx.mk_place_deref(temp)
                     } else {
@@ -729,7 +729,7 @@ impl Inliner<'tcx> {
         let local = self.new_call_temp(caller_body, callsite, arg_ty);
         caller_body[callsite.block].statements.push(Statement {
             source_info: callsite.source_info,
-            kind: StatementKind::Assign(box (Place::from(local), Rvalue::Use(arg))),
+            kind: StatementKind::Assign(Box::new((Place::from(local), Rvalue::Use(arg)))),
         });
         local
     }

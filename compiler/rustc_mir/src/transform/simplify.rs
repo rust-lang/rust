@@ -382,10 +382,10 @@ fn save_unreachable_coverage(
     for (source_info, code_region) in dropped_coverage {
         start_block.statements.push(Statement {
             source_info,
-            kind: StatementKind::Coverage(box Coverage {
+            kind: StatementKind::Coverage(Box::new(Coverage {
                 kind: CoverageKind::Unreachable,
                 code_region: Some(code_region),
-            }),
+            })),
         })
     }
 }

@@ -140,11 +140,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                             let op = if f_b { BinOp::Eq } else { BinOp::Ne };
                             let rhs = Rvalue::BinaryOp(
                                 op,
-                                box (Operand::Copy(Place::from(discr_local)), const_cmp),
+                                Box::new((Operand::Copy(Place::from(discr_local)), const_cmp)),
                             );
                             Statement {
                                 source_info: f.source_info,
-                                kind: StatementKind::Assign(box (*lhs, rhs)),
+                                kind: StatementKind::Assign(Box::new((*lhs, rhs))),
                             }
                         }
                     }
@@ -157,7 +157,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                 .push(Statement { source_info, kind: StatementKind::StorageLive(discr_local) });
             from.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(box (Place::from(discr_local), Rvalue::Use(discr))),
+                kind: StatementKind::Assign(Box::new((
+                    Place::from(discr_local),
+                    Rvalue::Use(discr),
+                ))),
             });
             from.statements.extend(new_stmts);
             from.statements

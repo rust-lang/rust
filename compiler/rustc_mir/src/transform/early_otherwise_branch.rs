@@ -96,14 +96,14 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 opt_to_apply.infos[0].first_switch_info.discr_used_in_switch;
             let not_equal_rvalue = Rvalue::BinaryOp(
                 not_equal,
-                box (
+                Box::new((
                     Operand::Copy(Place::from(second_discriminant_temp)),
                     Operand::Copy(first_descriminant_place),
-                ),
+                )),
             );
             patch.add_statement(
                 end_of_block_location,
-                StatementKind::Assign(box (Place::from(not_equal_temp), not_equal_rvalue)),
+                StatementKind::Assign(Box::new((Place::from(not_equal_temp), not_equal_rvalue))),
             );
 
             let new_targets = opt_to_apply

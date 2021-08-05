@@ -105,7 +105,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                 0..0,
                 places.map(|place| Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::FnEntry, box (place)),
+                    kind: StatementKind::Retag(RetagKind::FnEntry, Box::new(place)),
                 }),
             );
         }
@@ -137,7 +137,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                 0,
                 Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::Default, box (dest_place)),
+                    kind: StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
                 },
             );
         }
@@ -175,7 +175,10 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(
                     i + 1,
-                    Statement { source_info, kind: StatementKind::Retag(retag_kind, box (place)) },
+                    Statement {
+                        source_info,
+                        kind: StatementKind::Retag(retag_kind, Box::new(place)),
+                    },
                 );
             }
         }
