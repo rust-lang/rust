@@ -465,8 +465,9 @@ mod owning_ref_mut {
 
     #[test]
     fn map_chained_inference() {
-        let or =
-            BoxRefMut::new(Box::new(example().1)).map_mut(|x| &mut x[..5]).map_mut(|x| &mut x[1..3]);
+        let or = BoxRefMut::new(Box::new(example().1))
+            .map_mut(|x| &mut x[..5])
+            .map_mut(|x| &mut x[1..3]);
         assert_eq!(&*or, "el");
     }
 
@@ -508,9 +509,11 @@ mod owning_ref_mut {
 
     #[test]
     fn erased_owner() {
-        let o1: BoxRefMut<Example, str> = BoxRefMut::new(Box::new(example())).map_mut(|x| &mut x.1[..]);
+        let o1: BoxRefMut<Example, str> =
+            BoxRefMut::new(Box::new(example())).map_mut(|x| &mut x.1[..]);
 
-        let o2: BoxRefMut<String, str> = BoxRefMut::new(Box::new(example().1)).map_mut(|x| &mut x[..]);
+        let o2: BoxRefMut<String, str> =
+            BoxRefMut::new(Box::new(example().1)).map_mut(|x| &mut x[..]);
 
         let os: Vec<ErasedBoxRefMut<str>> = vec![o1.erase_owner(), o2.erase_owner()];
         assert!(os.iter().all(|e| &e[..] == "hello world"));
