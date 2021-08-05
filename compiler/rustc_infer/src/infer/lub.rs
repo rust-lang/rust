@@ -67,7 +67,7 @@ impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
-        let origin = Subtype(box self.fields.trace.clone());
+        let origin = Subtype(Box::new(self.fields.trace.clone()));
         Ok(self.fields.infcx.inner.borrow_mut().unwrap_region_constraints().lub_regions(
             self.tcx(),
             origin,
