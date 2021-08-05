@@ -1630,7 +1630,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     typeInfo.Return = oldTypeInfo.Return;
   }
   TypeResults TR = TA.analyzeFunction(typeInfo);
-  assert(TR.info.Function == gutils->oldFunc);
+  assert(TR.getFunction() == gutils->oldFunc);
 
   // TODO actually populate unnecessaryInstructions with what can be
   // derived without activity info
@@ -2877,7 +2877,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   TypeResults TR = TA.analyzeFunction(typeInfo);
-  assert(TR.info.Function == gutils->oldFunc);
+  assert(TR.getFunction() == gutils->oldFunc);
 
   // TODO populate with actual unnecessaryInstructions once the dependency
   // cycle with activity analysis is removed

@@ -330,7 +330,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
   // This analysis may only be called by instructions corresponding to
   // the function analyzed by TypeInfo
   assert(I);
-  assert(TR.info.Function == I->getParent()->getParent());
+  assert(TR.getFunction() == I->getParent()->getParent());
 
   // The return instruction doesn't impact activity (handled specifically
   // during adjoint generation)
@@ -606,14 +606,14 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   // was created outside a function (e.g. global, constant), that is allowed
   assert(Val);
   if (auto I = dyn_cast<Instruction>(Val)) {
-    if (TR.info.Function != I->getParent()->getParent()) {
-      llvm::errs() << *TR.info.Function << "\n";
+    if (TR.getFunction() != I->getParent()->getParent()) {
+      llvm::errs() << *TR.getFunction() << "\n";
       llvm::errs() << *I << "\n";
     }
-    assert(TR.info.Function == I->getParent()->getParent());
+    assert(TR.getFunction() == I->getParent()->getParent());
   }
   if (auto Arg = dyn_cast<Argument>(Val)) {
-    assert(TR.info.Function == Arg->getParent());
+    assert(TR.getFunction() == Arg->getParent());
   }
 
   // Void values are definitionally inactive
@@ -906,7 +906,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 #if LLVM_VERSION_MAJOR >= 12
         getUnderlyingObject(Val, 100);
 #else
-        GetUnderlyingObject(Val, TR.info.Function->getParent()->getDataLayout(),
+        GetUnderlyingObject(Val, TR.getFunction()->getParent()->getDataLayout(),
                             100);
 #endif
 
@@ -1132,7 +1132,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
     // Search through all the instructions in this function
     // for potential loads / stores of this value
-    for (BasicBlock &BB : *TR.info.Function) {
+    for (BasicBlock &BB : *TR.getFunction()) {
       if (potentialStore && potentiallyActiveLoad)
         goto activeLoadAndStore;
       if (notForAnalysis.count(&BB))
@@ -1867,7 +1867,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
             getUnderlyingObject(SI->getPointerOperand(), 100);
 #else
             GetUnderlyingObject(SI->getPointerOperand(),
-                                TR.info.Function->getParent()->getDataLayout(),
+                                TR.getFunction()->getParent()->getDataLayout(),
                                 100);
 #endif
         if (TmpOrig == val) {
@@ -1918,7 +1918,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     while (PPC.CloneOrigin.find(InstF) != PPC.CloneOrigin.end())
       InstF = PPC.CloneOrigin[InstF];
 
-    Function *F = TR.info.Function;
+    Function *F = TR.getFunction();
     while (PPC.CloneOrigin.find(F) != PPC.CloneOrigin.end())
       F = PPC.CloneOrigin[F];
 
@@ -1930,7 +1930,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
                      << " self: " << F->getName() << "@" << F << "\n";
       return false;
     }
-    if (cast<Instruction>(a)->getParent()->getParent() != TR.info.Function)
+    if (cast<Instruction>(a)->getParent()->getParent() != TR.getFunction())
       continue;
 
     // This use is only active if specified
@@ -2070,7 +2070,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
           (isa<CallInst>(inst) && AA.onlyReadsMemory(cast<CallInst>(inst)))) {
         // if not written to memory and returning a known constant, this
         // cannot be actively returned/stored
-        if (inst->getParent()->getParent() == TR.info.Function &&
+        if (inst->getParent()->getParent() == TR.getFunction() &&
             isConstantValue(TR, a)) {
           continue;
         }

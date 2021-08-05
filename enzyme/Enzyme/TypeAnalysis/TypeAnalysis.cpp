@@ -4365,7 +4365,7 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
     }
     assert(analysis.fntypeinfo.Function == fn.Function);
 
-    return TypeResults(*this, fn);
+    return TypeResults(analysis);
   }
 
   auto res = analyzedFunctions.emplace(fn, new TypeAnalyzer(fn, *this));
@@ -4405,7 +4405,7 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
     assert(analysis.fntypeinfo.Function == fn.Function);
   }
 
-  return TypeResults(*this, fn);
+  return TypeResults(analysis);
 }
 
 TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
@@ -4434,9 +4434,58 @@ TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
 
 ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
                                    bool errIfNotFound, bool pointerIntSame) {
+  return analyzeFunction(fn).intType(num, val, errIfNotFound, pointerIntSame);
+}
+
+Type *TypeAnalysis::addingType(size_t num, Value *val, const FnTypeInfo &fn) {
+  return analyzeFunction(fn).addingType(num, val);
+}
+
+ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
+                                        const FnTypeInfo &fn,
+                                        bool errIfNotFound,
+                                        bool pointerIntSame) {
+  return analyzeFunction(fn).firstPointer(num, val, errIfNotFound, pointerIntSame);
+}
+
+TypeResults::TypeResults(TypeAnalyzer &analyzer)
+    : analyzer(analyzer) {
+}
+
+FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
+  FnTypeInfo res(analyzer.fntypeinfo.Function);
+  for (auto &arg : analyzer.fntypeinfo.Function->args()) {
+    res.Arguments.insert(
+        std::pair<Argument *, TypeTree>(&arg, query(&arg)));
+  }
+  res.Return = getReturnAnalysis();
+  res.KnownValues = analyzer.fntypeinfo.KnownValues;
+  return res;
+}
+
+FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) {
+  return analyzer.getCallInfo(CI, fn);
+}
+
+TypeTree TypeResults::query(Value *val) {
+  if (auto inst = dyn_cast<Instruction>(val)) {
+    assert(inst->getParent()->getParent() == analyzer.fntypeinfo.Function);
+  }
+  if (auto arg = dyn_cast<Argument>(val)) {
+    assert(arg->getParent() == analyzer.fntypeinfo.Function);
+  }
+  return analyzer.getAnalysis(val);
+}
+
+void TypeResults::dump() {
+  analyzer.dump();
+}
+
+ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
+                                  bool pointerIntSame) {
   assert(val);
   assert(val->getType());
-  auto q = query(val, fn);
+  auto q = query(val);
   auto dt = q[{0}];
   /*
   size_t ObjSize = 1;
@@ -4453,7 +4502,7 @@ ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
     if (auto inst = dyn_cast<Instruction>(val)) {
       llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
       llvm::errs() << *inst->getParent()->getParent() << "\n";
-      for (auto &pair : analyzedFunctions.find(fn)->second->analysis) {
+      for (auto &pair : analyzer.analysis) {
         llvm::errs() << "val: " << *pair.first << " - " << pair.second.str()
                      << "\n";
       }
@@ -4464,10 +4513,10 @@ ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
   return dt;
 }
 
-Type *TypeAnalysis::addingType(size_t num, Value *val, const FnTypeInfo &fn) {
+Type *TypeResults::addingType(size_t num, Value *val) {
   assert(val);
   assert(val->getType());
-  auto q = query(val, fn).PurgeAnything();
+  auto q = query(val).PurgeAnything();
   auto dt = q[{0}];
   /*
   size_t ObjSize = 1;
@@ -4483,16 +4532,15 @@ Type *TypeAnalysis::addingType(size_t num, Value *val, const FnTypeInfo &fn) {
   return dt.isFloat();
 }
 
-ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
-                                        const FnTypeInfo &fn,
-                                        bool errIfNotFound,
-                                        bool pointerIntSame) {
+ConcreteType TypeResults::firstPointer(size_t num, Value *val,
+                                       bool errIfNotFound,
+                                       bool pointerIntSame) {
   assert(val);
   assert(val->getType());
-  auto q = query(val, fn).Data0();
+  auto q = query(val).Data0();
   if (!(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer)) {
-    llvm::errs() << *fn.Function << "\n";
-    analyzedFunctions.find(fn)->second->dump();
+    llvm::errs() << *analyzer.fntypeinfo.Function << "\n";
+    dump();
     llvm::errs() << "val: " << *val << "\n";
   }
   assert(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer);
@@ -4504,7 +4552,7 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
   }
 
   if (errIfNotFound && (!dt.isKnown() || dt == BaseType::Anything)) {
-    auto &res = *analyzedFunctions.find(fn)->second;
+    auto &res = analyzer;
     if (auto inst = dyn_cast<Instruction>(val)) {
       llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
       llvm::errs() << *inst->getParent()->getParent() << "\n";
@@ -4537,13 +4585,13 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
                      << "\n";
       }
     }
-    llvm::errs() << "fn: " << *fn.Function << "\n";
-    analyzeFunction(fn).dump();
+    llvm::errs() << "fn: " << *analyzer.fntypeinfo.Function << "\n";
+    dump();
     llvm::errs() << "could not deduce type of integer " << *val
                  << " num:" << num << " q:" << q.str() << " \n";
 
-    llvm::DiagnosticLocation loc = fn.Function->getSubprogram();
-    Instruction *codeLoc = &*fn.Function->getEntryBlock().begin();
+    llvm::DiagnosticLocation loc = analyzer.fntypeinfo.Function->getSubprogram();
+    Instruction *codeLoc = &*analyzer.fntypeinfo.Function->getEntryBlock().begin();
     if (auto inst = dyn_cast<Instruction>(val)) {
       loc = inst->getDebugLoc();
       codeLoc = inst;
@@ -4556,69 +4604,16 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
   return dt;
 }
 
-TypeResults::TypeResults(TypeAnalysis &analysis, const FnTypeInfo &fn)
-    : analysis(analysis), info(fn) {
-  assert(fn.KnownValues.size() ==
-         fn.Function->getFunctionType()->getNumParams());
-}
-
-FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
-  FnTypeInfo res(info.Function);
-  for (auto &arg : info.Function->args()) {
-    res.Arguments.insert(
-        std::pair<Argument *, TypeTree>(&arg, analysis.query(&arg, info)));
-  }
-  res.Return = getReturnAnalysis();
-  res.KnownValues = info.KnownValues;
-  return res;
-}
-
-FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) {
-  assert(analysis.analyzedFunctions.find(info) !=
-         analysis.analyzedFunctions.end());
-  return analysis.analyzedFunctions.find(info)->second->getCallInfo(CI, fn);
-}
-
-TypeTree TypeResults::query(Value *val) {
-  if (auto inst = dyn_cast<Instruction>(val)) {
-    assert(inst->getParent()->getParent() == info.Function);
-  }
-  if (auto arg = dyn_cast<Argument>(val)) {
-    assert(arg->getParent() == info.Function);
-  }
-  return analysis.query(val, info);
-}
-
-void TypeResults::dump() {
-  assert(analysis.analyzedFunctions.find(info) !=
-         analysis.analyzedFunctions.end());
-  analysis.analyzedFunctions.find(info)->second->dump();
-}
-
-ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
-                                  bool pointerIntSame) {
-  return analysis.intType(num, val, info, errIfNotFound, pointerIntSame);
-}
-
-Type *TypeResults::addingType(size_t num, Value *val) {
-  return analysis.addingType(num, val, info);
-}
-
-ConcreteType TypeResults::firstPointer(size_t num, Value *val,
-                                       bool errIfNotFound,
-                                       bool pointerIntSame) {
-  return analysis.firstPointer(num, val, info, errIfNotFound, pointerIntSame);
+Function* TypeResults::getFunction() const {
+  return analyzer.fntypeinfo.Function;
 }
 
 TypeTree TypeResults::getReturnAnalysis() {
-  return analysis.getReturnAnalysis(info);
+  return analyzer.getReturnAnalysis();
 }
 
 std::set<int64_t> TypeResults::knownIntegralValues(Value *val) const {
-  auto found = analysis.analyzedFunctions.find(info);
-  assert(found != analysis.analyzedFunctions.end());
-  auto &sub = *found->second;
-  return sub.knownIntegralValues(val);
+  return analyzer.knownIntegralValues(val);
 }
 
 std::set<int64_t> TypeAnalyzer::knownIntegralValues(Value *val) {

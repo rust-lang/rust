@@ -90,9 +90,9 @@ public:
         unnecessaryStores(unnecessaryStores), oldUnreachable(oldUnreachable),
         dretAlloca(dretAlloca) {
 
-    assert(TR.info.Function == gutils->oldFunc);
+    assert(TR.getFunction() == gutils->oldFunc);
     for (auto &pair :
-         TR.analysis.analyzedFunctions.find(TR.info)->second->analysis) {
+         TR.analyzer.analysis) {
       if (auto in = dyn_cast<Instruction>(pair.first)) {
         if (in->getParent()->getParent() != gutils->oldFunc) {
           llvm::errs() << "inf: " << *in->getParent()->getParent() << "\n";
@@ -2964,7 +2964,7 @@ public:
       if (called) {
         subdata = &gutils->Logic.CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
-            TR.analysis, /*return is used*/ false, nextTypeInfo,
+            TR.analyzer.interprocedural, /*return is used*/ false, nextTypeInfo,
             uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/ false,
             /*OpenMP*/ true);
         if (Mode == DerivativeMode::ReverseModePrimal) {
@@ -3142,7 +3142,7 @@ public:
 
         newcalled = gutils->Logic.CreatePrimalAndGradient(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
-            TR.analysis, /*returnValue*/ false,
+            TR.analyzer.interprocedural, /*returnValue*/ false,
             /*subdretptr*/ false, DerivativeMode::ReverseModeGradient,
             tape ? PointerType::getUnqual(tape->getType()) : nullptr,
             nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
@@ -6635,7 +6635,7 @@ public:
             Mode == DerivativeMode::ReverseModeCombined) {
           subdata = &gutils->Logic.CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
-              TR.analysis, /*return is used*/ subretused, nextTypeInfo,
+              TR.analyzer.interprocedural, /*return is used*/ subretused, nextTypeInfo,
               uncacheable_args, false, gutils->AtomicAdd,
               /*PostOpt*/ false);
           if (Mode == DerivativeMode::ReverseModePrimal) {
@@ -6940,7 +6940,7 @@ public:
     if (called) {
       newcalled = gutils->Logic.CreatePrimalAndGradient(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
-          TR.analysis, /*returnValue*/ retUsed,
+          TR.analyzer.interprocedural, /*returnValue*/ retUsed,
           /*subdretptr*/ subdretptr, subMode, tape ? tape->getType() : nullptr,
           nextTypeInfo, uncacheable_args, subdata,
           gutils->AtomicAdd); //, LI, DT);

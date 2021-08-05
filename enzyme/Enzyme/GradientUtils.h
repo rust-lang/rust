@@ -1048,7 +1048,7 @@ public:
   void forceAugmentedReturns(
       TypeResults &TR,
       const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
-    assert(TR.info.Function == oldFunc);
+    assert(TR.getFunction() == oldFunc);
 
     for (BasicBlock &oBB : *oldFunc) {
       // Don't create derivatives for code that results in termination

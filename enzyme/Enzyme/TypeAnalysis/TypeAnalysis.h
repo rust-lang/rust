@@ -143,11 +143,12 @@ class TypeAnalysis;
 /// on a given function
 class TypeResults {
 public:
-  TypeAnalysis &analysis;
-  const FnTypeInfo info;
+  //TypeAnalysis &analysis;
+  //const FnTypeInfo info;
+  TypeAnalyzer &analyzer;
 
 public:
-  TypeResults(TypeAnalysis &analysis, const FnTypeInfo &fn);
+  TypeResults(TypeAnalyzer &analyzer);
   ConcreteType intType(size_t num, llvm::Value *val, bool errIfNotFound = true,
                        bool pointerIntSame = false);
   llvm::Type *addingType(size_t num, llvm::Value *val);
@@ -175,6 +176,8 @@ public:
   std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
 
   FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
+
+  llvm::Function* getFunction() const;
 };
 
 /// Helper class that computes the fixed-point type results of a given function
