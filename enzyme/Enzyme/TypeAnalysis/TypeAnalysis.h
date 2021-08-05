@@ -364,7 +364,7 @@ public:
   TypeResults analyzeFunction(const FnTypeInfo &fn);
 
   /// Get the TypeTree of a given value from a given function context
-  TypeTree query(llvm::Value *val, const FnTypeInfo &fn);
+  // TypeTree query(llvm::Value *val, const FnTypeInfo &fn);
 
   /// Get the underlying data type of value val given a particular context
   /// If the type is not known err if errIfNotFound

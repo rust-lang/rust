@@ -1253,8 +1253,12 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   TypeTree upTree;
   TypeTree downTree;
 
-  auto gepData0 = getAnalysis(&gep).Data0();
-  auto pointerData0 = pointerAnalysis.Data0();
+  TypeTree gepData0;
+  TypeTree pointerData0;
+  if (direction & DOWN)
+    gepData0 = getAnalysis(&gep).Data0();
+  if (direction & UP)
+    pointerData0 = pointerAnalysis.Data0();
 
   for (auto vec : getSet(idnext, idnext.size() - 1)) {
     auto g2 = GetElementPtrInst::Create(gep.getSourceElementType(),
@@ -3358,8 +3362,9 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           auto a = fn->arg_begin();
           ++a;
           ++a;
+          TypeResults STR = interprocedural.analyzeFunction(typeInfo);
           for (size_t i = 3; i < call.getNumArgOperands(); ++i) {
-            auto dt = interprocedural.query(a, typeInfo);
+            auto dt = STR.query(a);
             updateAnalysis(call.getArgOperand(i), dt, &call);
             ++a;
           }
@@ -4330,8 +4335,9 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 
   if (direction & UP) {
     auto a = fn.arg_begin();
+    TypeResults STR = interprocedural.analyzeFunction(typeInfo);
     for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
-      auto dt = interprocedural.query(a, typeInfo);
+      auto dt = STR.query(a);
       updateAnalysis(call.getArgOperand(i), dt, &call);
       ++a;
     }
@@ -4406,30 +4412,6 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
   }
 
   return TypeResults(analysis);
-}
-
-TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
-  assert(val);
-  assert(val->getType());
-
-  Function *func = nullptr;
-  if (auto arg = dyn_cast<Argument>(val))
-    func = arg->getParent();
-  else if (auto inst = dyn_cast<Instruction>(val))
-    func = inst->getParent()->getParent();
-  else if (!isa<Constant>(val)) {
-    llvm::errs() << "unknown value: " << *val << "\n";
-    assert(0 && "could not handle unknown value type");
-  }
-
-  analyzeFunction(fn);
-  auto &found = *analyzedFunctions.find(fn)->second;
-  if (func && found.fntypeinfo.Function != func) {
-    llvm::errs() << " queryFunc: " << *func << "\n";
-    llvm::errs() << " foundFunc: " << *found.fntypeinfo.Function << "\n";
-  }
-  assert(!func || found.fntypeinfo.Function == func);
-  return found.getAnalysis(val);
 }
 
 ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
