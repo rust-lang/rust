@@ -123,6 +123,8 @@ pub struct Config {
     pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
     pub rust_debug_assertions_std: bool,
+    pub rust_overflow_checks: bool,
+    pub rust_overflow_checks_std: bool,
     pub rust_debug_logging: bool,
     pub rust_debuginfo_level_rustc: u32,
     pub rust_debuginfo_level_std: u32,
@@ -473,6 +475,8 @@ struct Rust {
     codegen_units_std: Option<u32>,
     debug_assertions: Option<bool>,
     debug_assertions_std: Option<bool>,
+    overflow_checks: Option<bool>,
+    overflow_checks_std: Option<bool>,
     debug_logging: Option<bool>,
     debuginfo_level: Option<u32>,
     debuginfo_level_rustc: Option<u32>,
@@ -710,6 +714,8 @@ impl Config {
         let mut debug = None;
         let mut debug_assertions = None;
         let mut debug_assertions_std = None;
+        let mut overflow_checks = None;
+        let mut overflow_checks_std = None;
         let mut debug_logging = None;
         let mut debuginfo_level = None;
         let mut debuginfo_level_rustc = None;
@@ -831,6 +837,8 @@ impl Config {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
             debug_assertions_std = rust.debug_assertions_std;
+            overflow_checks = rust.overflow_checks;
+            overflow_checks_std = rust.overflow_checks_std;
             debug_logging = rust.debug_logging;
             debuginfo_level = rust.debuginfo_level;
             debuginfo_level_rustc = rust.debuginfo_level_rustc;
@@ -968,6 +976,8 @@ impl Config {
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
         config.rust_debug_assertions_std =
             debug_assertions_std.unwrap_or(config.rust_debug_assertions);
+        config.rust_overflow_checks = overflow_checks.unwrap_or(default);
+        config.rust_overflow_checks_std = overflow_checks_std.unwrap_or(default);
 
         config.rust_debug_logging = debug_logging.unwrap_or(config.rust_debug_assertions);
 
