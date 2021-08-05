@@ -4357,7 +4357,7 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
   assert(!fn.Function->empty());
   auto found = analyzedFunctions.find(fn);
   if (found != analyzedFunctions.end()) {
-    auto &analysis = found->second;
+    auto &analysis = *found->second;
     if (analysis.fntypeinfo.Function != fn.Function) {
       llvm::errs() << " queryFunc: " << *fn.Function << "\n";
       llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.Function
@@ -4368,8 +4368,8 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
     return TypeResults(*this, fn);
   }
 
-  auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(fn, *this));
-  auto &analysis = res.first->second;
+  auto res = analyzedFunctions.emplace(fn, new TypeAnalyzer(fn, *this));
+  auto &analysis = *res.first->second;
 
   if (EnzymePrintType) {
     llvm::errs() << "analyzing function " << fn.Function->getName() << "\n";
@@ -4396,7 +4396,7 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
   assert(analysis.fntypeinfo.Function == fn.Function);
 
   {
-    auto &analysis = analyzedFunctions.find(fn)->second;
+    auto &analysis = *analyzedFunctions.find(fn)->second;
     if (analysis.fntypeinfo.Function != fn.Function) {
       llvm::errs() << " queryFunc: " << *fn.Function << "\n";
       llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.Function
@@ -4423,7 +4423,7 @@ TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
   }
 
   analyzeFunction(fn);
-  auto &found = analyzedFunctions.find(fn)->second;
+  auto &found = *analyzedFunctions.find(fn)->second;
   if (func && found.fntypeinfo.Function != func) {
     llvm::errs() << " queryFunc: " << *func << "\n";
     llvm::errs() << " foundFunc: " << *found.fntypeinfo.Function << "\n";
@@ -4453,7 +4453,7 @@ ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
     if (auto inst = dyn_cast<Instruction>(val)) {
       llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
       llvm::errs() << *inst->getParent()->getParent() << "\n";
-      for (auto &pair : analyzedFunctions.find(fn)->second.analysis) {
+      for (auto &pair : analyzedFunctions.find(fn)->second->analysis) {
         llvm::errs() << "val: " << *pair.first << " - " << pair.second.str()
                      << "\n";
       }
@@ -4492,7 +4492,7 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
   auto q = query(val, fn).Data0();
   if (!(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer)) {
     llvm::errs() << *fn.Function << "\n";
-    analyzedFunctions.find(fn)->second.dump();
+    analyzedFunctions.find(fn)->second->dump();
     llvm::errs() << "val: " << *val << "\n";
   }
   assert(val->getType()->isPointerTy() || q[{}] == BaseType::Pointer);
@@ -4504,7 +4504,7 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
   }
 
   if (errIfNotFound && (!dt.isKnown() || dt == BaseType::Anything)) {
-    auto &res = analyzedFunctions.find(fn)->second;
+    auto &res = *analyzedFunctions.find(fn)->second;
     if (auto inst = dyn_cast<Instruction>(val)) {
       llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
       llvm::errs() << *inst->getParent()->getParent() << "\n";
@@ -4576,7 +4576,7 @@ FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) {
   assert(analysis.analyzedFunctions.find(info) !=
          analysis.analyzedFunctions.end());
-  return analysis.analyzedFunctions.find(info)->second.getCallInfo(CI, fn);
+  return analysis.analyzedFunctions.find(info)->second->getCallInfo(CI, fn);
 }
 
 TypeTree TypeResults::query(Value *val) {
@@ -4592,7 +4592,7 @@ TypeTree TypeResults::query(Value *val) {
 void TypeResults::dump() {
   assert(analysis.analyzedFunctions.find(info) !=
          analysis.analyzedFunctions.end());
-  analysis.analyzedFunctions.find(info)->second.dump();
+  analysis.analyzedFunctions.find(info)->second->dump();
 }
 
 ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
@@ -4617,7 +4617,7 @@ TypeTree TypeResults::getReturnAnalysis() {
 std::set<int64_t> TypeResults::knownIntegralValues(Value *val) const {
   auto found = analysis.analyzedFunctions.find(info);
   assert(found != analysis.analyzedFunctions.end());
-  auto &sub = found->second;
+  auto &sub = *found->second;
   return sub.knownIntegralValues(val);
 }
 

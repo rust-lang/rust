@@ -126,7 +126,7 @@ public:
       for (auto &analysis : TA.analyzedFunctions) {
         if (analysis.first.Function != &f)
           continue;
-        auto &ta = analysis.second;
+        auto &ta = *analysis.second;
         llvm::outs() << f.getName() << " - " << analysis.first.Return.str()
                      << " |";
 

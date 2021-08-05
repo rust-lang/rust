@@ -355,7 +355,7 @@ public:
       CustomRules;
 
   /// Map of possible query states to TypeAnalyzer intermediate results
-  std::map<FnTypeInfo, TypeAnalyzer> analyzedFunctions;
+  std::map<FnTypeInfo, std::unique_ptr<TypeAnalyzer>> analyzedFunctions;
 
   /// Analyze a particular function, returning the results
   TypeResults analyzeFunction(const FnTypeInfo &fn);
@@ -382,7 +382,7 @@ public:
   /// Get the TyeTree of the returned value of a given function and context
   inline TypeTree getReturnAnalysis(const FnTypeInfo &fn) {
     analyzeFunction(fn);
-    return analyzedFunctions.find(fn)->second.getReturnAnalysis();
+    return analyzedFunctions.find(fn)->second->getReturnAnalysis();
   }
 
   /// Clear existing analyses

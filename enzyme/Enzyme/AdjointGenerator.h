@@ -92,7 +92,7 @@ public:
 
     assert(TR.info.Function == gutils->oldFunc);
     for (auto &pair :
-         TR.analysis.analyzedFunctions.find(TR.info)->second.analysis) {
+         TR.analysis.analyzedFunctions.find(TR.info)->second->analysis) {
       if (auto in = dyn_cast<Instruction>(pair.first)) {
         if (in->getParent()->getParent() != gutils->oldFunc) {
           llvm::errs() << "inf: " << *in->getParent()->getParent() << "\n";
