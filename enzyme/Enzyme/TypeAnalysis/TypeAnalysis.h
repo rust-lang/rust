@@ -104,15 +104,36 @@ static inline bool operator<(const FnTypeInfo &lhs, const FnTypeInfo &rhs) {
   if (rhs.Function < lhs.Function)
     return false;
 
-  if (lhs.Arguments < rhs.Arguments)
-    return true;
-  if (rhs.Arguments < lhs.Arguments)
-    return false;
   if (lhs.Return < rhs.Return)
     return true;
   if (rhs.Return < lhs.Return)
     return false;
-  return lhs.KnownValues < rhs.KnownValues;
+  
+  for (auto& arg : lhs.Function->args()) {
+      {
+    auto foundLHS = lhs.Arguments.find(&arg);
+    assert(foundLHS != lhs.Arguments.end());
+    auto foundRHS = rhs.Arguments.find(&arg);
+    assert(foundRHS != rhs.Arguments.end());
+    if (foundLHS->second < foundRHS->second)
+        return true;
+    if (foundRHS->second < foundLHS->second)
+        return false;
+      }
+      
+      {
+    auto foundLHS = lhs.KnownValues.find(&arg);
+    assert(foundLHS != lhs.KnownValues.end());
+    auto foundRHS = rhs.KnownValues.find(&arg);
+    assert(foundRHS != rhs.KnownValues.end());
+    if (foundLHS->second < foundRHS->second)
+        return true;
+    if (foundRHS->second < foundLHS->second)
+        return false;
+      }
+  }
+  // equal;
+  return false;
 }
 
 class TypeAnalyzer;

@@ -3395,6 +3395,13 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       return;
     }
+    if (funcName == "memcmp") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
 
     /// MPI
     if (funcName.startswith("PMPI_"))
