@@ -1,5 +1,5 @@
-# stdsimd - Rust's standard library portable SIMD API
-[![Build Status](https://travis-ci.com/rust-lang/stdsimd.svg?branch=master)](https://travis-ci.com/rust-lang/stdsimd)
+# The Rust standard library's portable SIMD API
+[![Build Status](https://travis-ci.com/rust-lang/portable-simd.svg?branch=master)](https://travis-ci.com/rust-lang/portable-simd)
 
 Code repository for the [Portable SIMD Project Group](https://github.com/rust-lang/project-portable-simd).
 Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for our contributing guidelines.
@@ -31,7 +31,7 @@ name = "hellosimd"
 version = "0.1.0"
 edition = "2018"
 [dependencies]
-core_simd = { git = "https://github.com/rust-lang/stdsimd" }
+core_simd = { git = "https://github.com/rust-lang/portable-simd" }
 ```
 
 and finally write this in `src/main.rs`:
@@ -66,4 +66,4 @@ The `mask` types are "truthy" values, but they use the number of bits in their n
 [simd-guide]: ./beginners-guide.md
 [zulip-project-portable-simd]: https://rust-lang.zulipchat.com/#narrow/stream/257879-project-portable-simd
 [stdarch]: https://github.com/rust-lang/stdarch
-[docs]: https://rust-lang.github.io/stdsimd/core_simd
+[docs]: https://rust-lang.github.io/portable-simd/core_simd
