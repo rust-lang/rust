@@ -47,7 +47,7 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
-    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    /// Decompose a (possibly wide) pointer into its address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
