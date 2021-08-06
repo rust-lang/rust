@@ -4,7 +4,7 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 
-use self::opaque_types::OpaqueTypeDecl;
+use self::opaque_types::OpaqueTypeMap;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
@@ -14,7 +14,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -28,7 +27,6 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 pub use rustc_middle::ty::IntVarValue;
-use rustc_middle::ty::OpaqueTypeKey;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_session::config::BorrowckMode;
@@ -201,7 +199,7 @@ pub struct InferCtxtInner<'tcx> {
     // associated fresh inference variable. Writeback resolves these
     // variables to get the concrete type, which can be used to
     // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
-    pub opaque_types: VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>,
+    pub opaque_types: OpaqueTypeMap<'tcx>,
 
     /// A map from inference variables created from opaque
     /// type instantiations (`ty::Infer`) to the actual opaque
