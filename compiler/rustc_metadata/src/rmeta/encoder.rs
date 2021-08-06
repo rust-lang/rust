@@ -918,12 +918,12 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::OpaqueTy
         | DefKind::Impl
+        | DefKind::Field
+        | DefKind::TyParam
         | DefKind::Closure
         | DefKind::Generator => true,
         DefKind::Mod
-        | DefKind::Field
         | DefKind::ForeignMod
-        | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Macro(..)
         | DefKind::Use
