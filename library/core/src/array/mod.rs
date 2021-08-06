@@ -437,6 +437,38 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
+pub(crate) struct Guard<T, const N: usize> {
+    ptr: *mut T,
+    pub(crate) init: usize,
+}
+
+impl<T, const N: usize> Drop for Guard<T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.init <= N);
+
+        let init_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.init);
+
+        // SAFETY: this raw slice will contain only initialized objects.
+        unsafe {
+            crate::ptr::drop_in_place(init_part);
+        }
+    }
+}
+
+impl<T, const N: usize> Guard<T, N> {
+    /// Creates a `Guard` object that will drop the initialized portion
+    /// of the provided array when dropped.
+    ///
+    /// # Safety
+    ///
+    /// When the returned guard is dropped, the array must still be valid,
+    /// `init` must not be greater `N`, and the first `init` elements of
+    /// the array must be properly initialized.
+    pub(crate) unsafe fn new(array: &mut [MaybeUninit<T>; N]) -> Self {
+        Self { ptr: MaybeUninit::slice_as_mut_ptr(array), init: 0 }
+    }
+}
+
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, this function exhibits undefined behavior.
 ///
@@ -484,39 +516,23 @@ where
         return unsafe { Some(mem::zeroed()) };
     }
 
-    struct Guard<T, const N: usize> {
-        ptr: *mut T,
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
-
-            // SAFETY: this raw slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(initialized_part);
-            }
-        }
-    }
-
     let mut array = MaybeUninit::uninit_array::<N>();
-    let mut guard: Guard<_, N> =
-        Guard { ptr: MaybeUninit::slice_as_mut_ptr(&mut array), initialized: 0 };
+    // SAFETY: `guard` is always either forgotten or dropped before the array
+    // is moved/dropped and `guard.init` properly tracks the initialized
+    // members of the array.
+    let mut guard = unsafe { Guard::new(&mut array) };
 
     while let Some(item) = iter.next() {
-        // SAFETY: `guard.initialized` starts at 0, is increased by one in the
+        // SAFETY: `guard.init` starts at 0, is increased by one in the
         // loop and the loop is aborted once it reaches N (which is
         // `array.len()`).
         unsafe {
-            array.get_unchecked_mut(guard.initialized).write(item);
+            array.get_unchecked_mut(guard.init).write(item);
         }
-        guard.initialized += 1;
+        guard.init += 1;
 
         // Check if the whole array was initialized.
-        if guard.initialized == N {
+        if guard.init == N {
             mem::forget(guard);
 
             // SAFETY: the condition above asserts that all elements are
@@ -527,7 +543,7 @@ where
     }
 
     // This is only reached if the iterator is exhausted before
-    // `guard.initialized` reaches `N`. Also note that `guard` is dropped here,
+    // `guard.init` reaches `N`. Also note that `guard` is dropped here,
     // dropping all already initialized elements.
     None
 }

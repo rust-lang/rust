@@ -63,6 +63,7 @@ fn test_iterator_array_chunks_remainder() {
     assert_eq!(iter.remainder(), &[]);
     assert_eq!(iter.remainder_mut(), &[]);
     assert_eq!(iter.next(), None);
+    assert_eq!(iter.next(), None);
     assert_eq!(iter.remainder(), &[8, 9, 10]);
     assert_eq!(iter.remainder_mut(), &[8, 9, 10]);
 }
@@ -106,6 +107,7 @@ fn test_iterator_array_chunks_try_fold() {
         if acc == 2 { Err(acc) } else { Ok(acc + 1) }
     });
     assert_eq!(result, Err(2));
+    assert_eq!(iter.remainder(), &[]);
     assert_eq!(iter.next(), None);
     assert_eq!(iter.remainder(), &[9, 10]);
 
@@ -165,7 +167,54 @@ fn test_iterator_array_chunks_rev() {
     assert_eq!(iter.next_back(), Some([7, 8, 9, 10]));
     assert_eq!(iter.next_back(), Some([3, 4, 5, 6]));
     assert_eq!(iter.next_back(), None);
+    assert_eq!(iter.next_back(), None);
     assert_eq!(iter.remainder(), &[0, 1, 2]);
+}
+
+#[test]
+fn test_iterator_array_chunks_try_rfold() {
+    let mut iter = (0..=10).array_chunks::<3>();
+    let result = iter.try_rfold(0, |acc, arr| {
+        assert_eq!(arr, [8 - (acc * 3), 9 - (acc * 3), 10 - (acc * 3)]);
+        if acc == 2 { Err(acc) } else { Ok(acc + 1) }
+    });
+    assert_eq!(result, Err(2));
+    assert_eq!(iter.remainder(), &[]);
+    assert_eq!(iter.next(), None);
+    assert_eq!(iter.remainder(), &[0, 1]);
+
+    let mut iter = (0..10).array_chunks::<2>();
+    let result: Result<_, ()> = iter.try_rfold(0, |acc, arr| {
+        assert_eq!(arr, [8 - (acc * 2), 9 - (acc * 2)]);
+        Ok(acc + 1)
+    });
+    assert_eq!(result, Ok(5));
+    assert_eq!(iter.next(), None);
+    assert_eq!(iter.remainder(), &[]);
+
+    let counter = Cell::new(0);
+    let mut iter = (0..=10).map(|_| DropBomb::new(&counter)).array_chunks::<3>();
+    let result = iter.try_rfold(0, |acc, _arr| {
+        assert_eq!(counter.get(), acc * 3);
+        if acc == 1 { Err(acc) } else { Ok(acc + 1) }
+    });
+    assert_eq!(result, Err(1));
+    assert_eq!(iter.remainder().len(), 0);
+    assert_eq!(counter.get(), 6);
+    drop(iter);
+    assert_eq!(counter.get(), 6);
+
+    counter.set(0);
+    let mut iter = (0..=10).map(|_| DropBomb::new(&counter)).array_chunks::<3>();
+    let result: Result<_, ()> = iter.try_rfold(0, |acc, _arr| {
+        assert_eq!(counter.get(), acc * 3);
+        Ok(acc + 1)
+    });
+    assert_eq!(result, Ok(3));
+    assert_eq!(iter.remainder().len(), 2);
+    assert_eq!(counter.get(), 9);
+    drop(iter);
+    assert_eq!(counter.get(), 11);
 }
 
 #[test]
