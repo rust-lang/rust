@@ -473,10 +473,12 @@ export function viewItemTree(ctx: Ctx): Cmd {
 
 function crateGraph(ctx: Ctx, full: boolean): Cmd {
     return async () => {
+        let node_modules_path = vscode.Uri.file(path.join(ctx.extensionPath, "node_modules"));
+
         const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two, {
             enableScripts: true,
             retainContextWhenHidden: true,
-            localResourceRoots: [vscode.Uri.joinPath(vscode.Uri.parse(ctx.extensionPath), "node_modules")]
+            localResourceRoots: [node_modules_path]
         });
         const params = {
             full: full,
@@ -486,9 +488,9 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
         console.log(dot);
 
         let scripts = [
-            { file: vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3', 'dist', 'd3.min.js')) },
-            { file: vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', '@hpcc-js', 'wasm', 'dist', 'index.min.js')), worker: true },
-            { file: vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3-graphviz', 'build', 'd3-graphviz.min.js')) },
+            { file: vscode.Uri.joinPath(node_modules_path, 'd3', 'dist', 'd3.min.js') },
+            { file: vscode.Uri.joinPath(node_modules_path, '@hpcc-js', 'wasm', 'dist', 'index.min.js'), worker: true },
+            { file: vscode.Uri.joinPath(node_modules_path, 'd3-graphviz', 'build', 'd3-graphviz.min.js') },
         ]
         console.log(scripts);
 
