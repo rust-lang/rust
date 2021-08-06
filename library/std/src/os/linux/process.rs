@@ -5,6 +5,7 @@
 use crate::io::Result;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::process;
+use crate::sealed::Sealed;
 #[cfg(not(doc))]
 use crate::sys::fd::FileDesc;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -84,15 +85,10 @@ impl IntoRawFd for PidFd {
     }
 }
 
-mod private_child_ext {
-    pub trait Sealed {}
-    impl Sealed for crate::process::Child {}
-}
-
 /// Os-specific extensions for [`Child`]
 ///
 /// [`Child`]: process::Child
-pub trait ChildExt: private_child_ext::Sealed {
+pub trait ChildExt: Sealed {
     /// Obtains a reference to the [`PidFd`] created for this [`Child`], if available.
     ///
     /// A pidfd will only be available if its creation was requested with
@@ -120,15 +116,10 @@ pub trait ChildExt: private_child_ext::Sealed {
     fn take_pidfd(&mut self) -> Result<PidFd>;
 }
 
-mod private_command_ext {
-    pub trait Sealed {}
-    impl Sealed for crate::process::Command {}
-}
-
 /// Os-specific extensions for [`Command`]
 ///
 /// [`Command`]: process::Command
-pub trait CommandExt: private_command_ext::Sealed {
+pub trait CommandExt: Sealed {
     /// Sets whether a [`PidFd`](struct@PidFd) should be created for the [`Child`]
     /// spawned by this [`Command`].
     /// By default, no pidfd will be created.
