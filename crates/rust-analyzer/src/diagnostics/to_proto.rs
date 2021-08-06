@@ -138,7 +138,9 @@ fn map_rust_child_diagnostic(
     let mut suggested_replacements = Vec::new();
     for &span in &spans {
         if let Some(suggested_replacement) = &span.suggested_replacement {
-            suggested_replacements.push(suggested_replacement);
+            if !suggested_replacement.is_empty() {
+                suggested_replacements.push(suggested_replacement);
+            }
             let location = location(config, workspace_root, span);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
             edit_map.entry(location.uri).or_default().push(edit);
