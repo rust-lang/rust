@@ -685,6 +685,13 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
 pub const unsafe fn read<T>(src: *const T) -> T {
+    // We are calling the intrinsics directly to avoid function calls in the generated code
+    // as `intrinsics::copy_nonoverlapping` is a wrapper function.
+    extern "rust-intrinsic" {
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+    }
+
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
