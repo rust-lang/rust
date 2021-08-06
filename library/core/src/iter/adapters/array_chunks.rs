@@ -334,4 +334,7 @@ impl<I: DoubleEndedIterator, const N: usize> DoubleEndedIterator for ArrayChunks
 }
 
 #[unstable(feature = "iter_array_chunks", issue = "none")]
+impl<I: ExactSizeIterator, const N: usize> ExactSizeIterator for ArrayChunks<I, N> {}
+
+#[unstable(feature = "iter_array_chunks", issue = "none")]
 impl<I: Iterator, const N: usize> FusedIterator for ArrayChunks<I, N> {}
