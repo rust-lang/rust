@@ -1,7 +1,3 @@
-// ignore-tidy-filelength
-// This file almost exclusively consists of the definition of `Iterator`. We
-// can't split that into multiple files.
-
 use crate::cmp::{self, Ordering};
 use crate::ops::{ControlFlow, Try};
 

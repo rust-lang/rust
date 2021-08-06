@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! Some lints that are built in to the compiler.
 //!
 //! These are the built-in lints that are emitted direct in the main
