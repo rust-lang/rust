@@ -28,7 +28,7 @@ use crate::ty;
 pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Vec<u8>,
+    bytes: Box<[u8]>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -112,7 +112,7 @@ impl<Tag> Allocation<Tag> {
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let bytes = slice.into().into_owned();
+        let bytes = Box::<[u8]>::from(slice.into());
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -131,8 +131,7 @@ impl<Tag> Allocation<Tag> {
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
     pub fn uninit(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'static, Self> {
-        let mut bytes = Vec::new();
-        bytes.try_reserve(size.bytes_usize()).map_err(|_| {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-determinstic here because all uses of const
@@ -146,7 +145,8 @@ impl<Tag> Allocation<Tag> {
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
-        bytes.resize(size.bytes_usize(), 0);
+        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
+        let bytes = unsafe { bytes.assume_init() };
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),
