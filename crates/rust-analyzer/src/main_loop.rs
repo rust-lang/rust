@@ -9,7 +9,7 @@ use std::{
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
 use ide::{FileId, PrimeCachesProgress};
-use ide_db::base_db::VfsPath;
+use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::ChangeKind;
@@ -454,6 +454,17 @@ impl GlobalState {
 
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
             for file_id in diagnostic_changes {
+                let db = self.analysis_host.raw_database();
+                let source_root = db.file_source_root(file_id);
+                if db.source_root(source_root).is_library {
+                    // Only publish diagnostics for files in the workspace, not from crates.io deps
+                    // or the sysroot.
+                    // While theoretically these should never have errors, we have quite a few false
+                    // positives particularly in the stdlib, and those diagnostics would stay around
+                    // forever if we emitted them here.
+                    continue;
+                }
+
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
                 let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
                 let version = from_proto::vfs_path(&url)
