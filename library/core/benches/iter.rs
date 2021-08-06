@@ -369,7 +369,17 @@ fn bench_lt(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_iter_array_chunks(b: &mut Bencher) {
+fn bench_array_map(b: &mut Bencher) {
+    b.iter(|| {
+        let mut acc = 0;
+        let iter = (0i64..10000).map(black_box).map(|_| black_box([0i64; 100]));
+        for_each_fold(iter, |x| acc += x.iter().sum::<i64>());
+        acc
+    });
+}
+
+#[bench]
+fn bench_iter_array_chunks_loop(b: &mut Bencher) {
     b.iter(|| {
         let mut acc = 0;
         let iter = (0i64..1000000).array_chunks::<100>().map(black_box);
@@ -389,11 +399,11 @@ fn bench_iter_array_chunks_fold(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_array_map(b: &mut Bencher) {
+fn bench_iter_array_chunks_ref_fold(b: &mut Bencher) {
     b.iter(|| {
         let mut acc = 0;
-        let iter = (0i64..10000).map(black_box).map(|_| black_box([0i64; 100]));
-        for_each_fold(iter, |x| acc += x.iter().sum::<i64>());
+        let mut iter = (0i64..1000000).array_chunks::<100>().map(black_box);
+        for_each_fold(iter.by_ref(), |x| acc += x.iter().sum::<i64>());
         acc
     });
 }

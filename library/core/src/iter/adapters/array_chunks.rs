@@ -4,48 +4,83 @@ use core::ops::{ControlFlow, Try};
 use core::ptr;
 
 #[derive(Debug)]
-struct Guard<T, const N: usize> {
-    arr: [MaybeUninit<T>; N],
+struct Buffer<T, const N: usize> {
+    array: [MaybeUninit<T>; N],
     init: usize,
 }
 
-impl<T, const N: usize> Guard<T, N> {
+impl<T, const N: usize> Buffer<T, N> {
     fn new() -> Self {
-        Self { arr: MaybeUninit::uninit_array(), init: 0 }
-    }
-
-    // SAFETY: The entire array must have been properly initialized.
-    unsafe fn assume_init_read(&mut self) -> [T; N] {
-        debug_assert_eq!(self.init, N);
-        // Reset the tracked initialization state.
-        self.init = 0;
-        // SAFETY: This is safe: `MaybeUninit<T>` is guaranteed to have the same layout
-        // as `T` and per the function's contract the entire array has been initialized.
-        unsafe { mem::transmute_copy(&self.arr) }
+        Self { array: MaybeUninit::uninit_array(), init: 0 }
     }
 }
 
-impl<T: Clone, const N: usize> Clone for Guard<T, N> {
+impl<T: Clone, const N: usize> Clone for Buffer<T, N> {
     fn clone(&self) -> Self {
         let mut new = Self::new();
         // SAFETY: this raw slice contains only the initialized objects.
-        let src = unsafe { MaybeUninit::slice_assume_init_ref(&self.arr[..self.init]) };
-        MaybeUninit::write_slice_cloned(&mut new.arr[..self.init], src);
+        let src = unsafe { MaybeUninit::slice_assume_init_ref(&self.array[..self.init]) };
+        MaybeUninit::write_slice_cloned(&mut new.array[..self.init], src);
         new.init = self.init;
         new
     }
+}
+
+impl<T, const N: usize> Drop for Buffer<T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.init <= N);
+
+        let initialized_part = &mut self.array[..self.init];
+
+        // SAFETY: this raw slice will contain only the initialized objects
+        // that have not been dropped or moved.
+        unsafe {
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(initialized_part));
+        }
+    }
+}
+
+// FIXME: Combine with `Guard` in `collect_into_array`.
+struct Guard<T, const N: usize> {
+    ptr: *mut T,
+    init: usize,
 }
 
 impl<T, const N: usize> Drop for Guard<T, N> {
     fn drop(&mut self) {
         debug_assert!(self.init <= N);
 
-        let init_part = &mut self.arr[..self.init];
-        // SAFETY: this raw slice will contain only the initialized objects
-        // that have not been dropped or moved.
+        let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.init);
+
+        // SAFETY: this raw slice will contain only initialized objects.
         unsafe {
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(init_part));
+            crate::ptr::drop_in_place(initialized_part);
         }
+    }
+}
+
+impl<T, const N: usize> Guard<T, N> {
+    fn new(array: &mut [MaybeUninit<T>; N]) -> Self {
+        Self { ptr: MaybeUninit::slice_as_mut_ptr(array), init: 0 }
+    }
+
+    fn with<R, F>(buffer: &mut Buffer<T, N>, f: F) -> R
+    where
+        F: FnOnce(&mut [MaybeUninit<T>; N], &mut usize) -> R,
+    {
+        let mut array = MaybeUninit::uninit_array();
+        let mut guard = Self::new(&mut array);
+        if buffer.init > 0 {
+            array = mem::replace(&mut buffer.array, MaybeUninit::uninit_array());
+            guard.init = mem::replace(&mut buffer.init, 0);
+        }
+        let res = f(&mut array, &mut guard.init);
+        if guard.init > 0 {
+            buffer.array = array;
+            buffer.init = guard.init;
+            mem::forget(guard);
+        }
+        res
     }
 }
 
@@ -60,12 +95,12 @@ impl<T, const N: usize> Drop for Guard<T, N> {
 #[derive(Debug, Clone)]
 pub struct ArrayChunks<I: Iterator, const N: usize> {
     iter: I,
-    guard: Guard<I::Item, N>,
+    buffer: Buffer<I::Item, N>,
 }
 
 impl<I: Iterator, const N: usize> ArrayChunks<I, N> {
     pub(in crate::iter) fn new(iter: I) -> Self {
-        Self { iter, guard: Guard::new() }
+        Self { iter, buffer: Buffer::new() }
     }
 
     /// Returns the remainder of the elements yielded by the original
@@ -74,7 +109,7 @@ impl<I: Iterator, const N: usize> ArrayChunks<I, N> {
     #[unstable(feature = "iter_array_chunks", issue = "none")]
     pub fn remainder(&self) -> &[I::Item] {
         // SAFETY: We know that all elements before `init` are properly initialized.
-        unsafe { MaybeUninit::slice_assume_init_ref(&self.guard.arr[..self.guard.init]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.buffer.array[..self.buffer.init]) }
     }
 
     /// Returns the remainder of the elements yielded by the original
@@ -83,7 +118,7 @@ impl<I: Iterator, const N: usize> ArrayChunks<I, N> {
     #[unstable(feature = "iter_array_chunks", issue = "none")]
     pub fn remainder_mut(&mut self) -> &mut [I::Item] {
         // SAFETY: We know that all elements before `init` are properly initialized.
-        unsafe { MaybeUninit::slice_assume_init_mut(&mut self.guard.arr[..self.guard.init]) }
+        unsafe { MaybeUninit::slice_assume_init_mut(&mut self.buffer.array[..self.buffer.init]) }
     }
 }
 
@@ -92,12 +127,21 @@ impl<I: Iterator, const N: usize> Iterator for ArrayChunks<I, N> {
     type Item = [I::Item; N];
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.guard.init < N {
-            self.guard.arr[self.guard.init] = MaybeUninit::new(self.iter.next()?);
-            self.guard.init += 1;
-        }
-        // SAFETY: The entire array has just been initialized.
-        unsafe { Some(self.guard.assume_init_read()) }
+        let iter = &mut self.iter;
+        Guard::with(&mut self.buffer, |array, init| {
+            for slot in &mut array[*init..] {
+                slot.write(iter.next()?);
+                *init += 1;
+            }
+            *init = 0;
+            // SAFETY: The entire array has just been initialized.
+            unsafe {
+                Some(MaybeUninit::array_assume_init(mem::replace(
+                    array,
+                    MaybeUninit::uninit_array(),
+                )))
+            }
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -108,55 +152,78 @@ impl<I: Iterator, const N: usize> Iterator for ArrayChunks<I, N> {
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         let res = match n.checked_mul(N) {
             Some(n) => self.iter.advance_by(n),
-            None => self.iter.advance_by(usize::MAX).and(Err(usize::MAX)),
+            None => {
+                let n = (usize::MAX / N) * N;
+                self.iter.advance_by(n).and(Err(n))
+            }
         };
         res.map_err(|k| k / N)
     }
 
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R
+    fn try_fold<Acc, Fold, R>(&mut self, acc: Acc, mut fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
-        let mut guard = mem::replace(&mut self.guard, Guard::new());
-        let result = self.iter.try_fold(init, |mut acc, x| {
-            guard.arr[guard.init] = MaybeUninit::new(x);
-            guard.init += 1;
+        let iter = &mut self.iter;
+        Guard::with(&mut self.buffer, |array, init| {
+            let result = iter.try_fold(acc, |mut acc, x| {
+                // SAFETY: `init` starts at 0, is increased by one each iteration
+                // until it equals N (which is `array.len()`) and is reset to 0.
+                unsafe {
+                    array.get_unchecked_mut(*init).write(x);
+                }
+                *init += 1;
 
-            if guard.init == N {
-                // SAFETY: The entire array has just been initialized.
-                let arr = unsafe { guard.assume_init_read() };
-                acc = fold(acc, arr).branch()?;
+                if *init == N {
+                    *init = 0;
+                    // SAFETY: The entire array has just been initialized.
+                    let array = unsafe {
+                        MaybeUninit::array_assume_init(mem::replace(
+                            array,
+                            MaybeUninit::uninit_array(),
+                        ))
+                    };
+                    acc = fold(acc, array).branch()?;
+                }
+                ControlFlow::Continue(acc)
+            });
+
+            match result {
+                ControlFlow::Continue(acc) => R::from_output(acc),
+                ControlFlow::Break(res) => R::from_residual(res),
             }
-            ControlFlow::Continue(acc)
-        });
-
-        if guard.init != 0 {
-            self.guard = guard;
-        }
-
-        match result {
-            ControlFlow::Continue(acc) => R::from_output(acc),
-            ControlFlow::Break(res) => R::from_residual(res),
-        }
+        })
     }
 
-    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, acc: Acc, mut fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        let mut guard = Guard::<_, N>::new();
-        self.iter.fold(init, |mut acc, x| {
-            guard.arr[guard.init] = MaybeUninit::new(x);
-            guard.init += 1;
+        let Self { iter, mut buffer } = self;
+        Guard::with(&mut buffer, |array, init| {
+            iter.fold(acc, |mut acc, x| {
+                // SAFETY: `init` starts at 0, is increased by one each iteration
+                // until it equals N (which is `array.len()`) and is reset to 0.
+                unsafe {
+                    array.get_unchecked_mut(*init).write(x);
+                }
+                *init += 1;
 
-            if guard.init == N {
-                // SAFETY: The entire array has just been initialized.
-                let arr = unsafe { guard.assume_init_read() };
-                acc = fold(acc, arr);
-            }
-            acc
+                if *init == N {
+                    *init = 0;
+                    // SAFETY: The entire array has just been initialized.
+                    let array = unsafe {
+                        MaybeUninit::array_assume_init(mem::replace(
+                            array,
+                            MaybeUninit::uninit_array(),
+                        ))
+                    };
+                    acc = fold(acc, array);
+                }
+                acc
+            })
         })
     }
 }
