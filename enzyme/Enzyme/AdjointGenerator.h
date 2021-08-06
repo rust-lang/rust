@@ -2132,11 +2132,19 @@ public:
                 vd = TypeTree(BaseType::Integer).Only(0);
                 goto known;
               }
+              if (PT->getElementType()->isPointerTy()) {
+                vd = TypeTree(BaseType::Pointer).Only(0);
+                goto known;
+              }
               auto ET = PT->getElementType();
               while (auto ST = dyn_cast<StructType>(ET)) {
                 if (!ST->getNumElements())
                   break;
                 ET = ST->getElementType(0);
+              }
+              if (ET->isPointerTy()) {
+                vd = TypeTree(BaseType::Pointer).Only(0);
+                goto known;
               }
               if (ET->isIntOrIntVectorTy()) {
                 vd = TypeTree(BaseType::Integer).Only(0);
