@@ -1204,7 +1204,7 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
             self.parse_closure_expr(attrs)
         } else if self.check(&token::OpenDelim(token::Bracket)) {
-            self.parse_array_or_repeat_expr(attrs)
+            self.parse_array_or_repeat_expr(attrs, token::Bracket)
         } else if self.check_path() {
             self.parse_path_start_expr(attrs)
         } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
@@ -1322,11 +1322,15 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_array_or_repeat_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+    fn parse_array_or_repeat_expr(
+        &mut self,
+        attrs: AttrVec,
+        close_delim: token::DelimToken,
+    ) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
-        self.bump(); // `[`
+        self.bump(); // `[` or other open delim
 
-        let close = &token::CloseDelim(token::Bracket);
+        let close = &token::CloseDelim(close_delim);
         let kind = if self.eat(close) {
             // Empty vector
             ExprKind::Array(Vec::new())
@@ -1752,6 +1756,46 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn is_array_like_block(&mut self) -> bool {
+        self.look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
+            && self.look_ahead(2, |t| t == &token::Comma)
+            && self.look_ahead(3, |t| t.can_begin_expr())
+    }
+
+    /// Emits a suggestion if it looks like the user meant an array but
+    /// accidentally used braces, causing the code to be interpreted as a block
+    /// expression.
+    fn maybe_suggest_brackets_instead_of_braces(
+        &mut self,
+        lo: Span,
+        attrs: AttrVec,
+    ) -> Option<P<Expr>> {
+        let mut snapshot = self.clone();
+        match snapshot.parse_array_or_repeat_expr(attrs, token::Brace) {
+            Ok(arr) => {
+                let hi = snapshot.prev_token.span;
+                self.struct_span_err(
+                    arr.span,
+                    "this code is interpreted as a block expression, not an array",
+                )
+                .multipart_suggestion(
+                    "try using [] instead of {}",
+                    vec![(lo, "[".to_owned()), (hi, "]".to_owned())],
+                    Applicability::MaybeIncorrect,
+                )
+                .note("to define an array, one would use square brackets instead of curly braces")
+                .emit();
+
+                *self = snapshot;
+                Some(self.mk_expr_err(arr.span))
+            }
+            Err(mut e) => {
+                e.cancel();
+                None
+            }
+        }
+    }
+
     /// Parses a block or unsafe block.
     pub(super) fn parse_block_expr(
         &mut self,
@@ -1760,6 +1804,12 @@ impl<'a> Parser<'a> {
         blk_mode: BlockCheckMode,
         mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
+        if self.is_array_like_block() {
+            if let Some(arr) = self.maybe_suggest_brackets_instead_of_braces(lo, attrs.clone()) {
+                return Ok(arr);
+            }
+        }
+
         if let Some(label) = opt_label {
             self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
         }
