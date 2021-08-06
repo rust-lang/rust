@@ -194,12 +194,13 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
-    let method_sig = match trait_item.kind {
-        hir::TraitItemKind::Fn(ref sig, _) => Some(sig),
-        _ => None,
+    let (method_sig, span) = match trait_item.kind {
+        hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
+        hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
+        _ => (None, trait_item.span),
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
-    check_associated_item(tcx, trait_item.hir_id(), trait_item.span, method_sig);
+    check_associated_item(tcx, trait_item.hir_id(), span, method_sig);
 }
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
@@ -268,12 +269,13 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
-    let method_sig = match impl_item.kind {
-        hir::ImplItemKind::Fn(ref sig, _) => Some(sig),
-        _ => None,
+    let (method_sig, span) = match impl_item.kind {
+        hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
+        hir::ImplItemKind::TyAlias(ty) => (None, ty.span),
+        _ => (None, impl_item.span),
     };
 
-    check_associated_item(tcx, impl_item.hir_id(), impl_item.span, method_sig);
+    check_associated_item(tcx, impl_item.hir_id(), span, method_sig);
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
