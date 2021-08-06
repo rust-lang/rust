@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "anyhow"
-version = "1.0.38"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
 
 [[package]]
 name = "ar"
@@ -34,7 +34,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "cranelift-bforest"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "cranelift-entity",
 ]
@@ -42,7 +42,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "cranelift-bforest",
  "cranelift-codegen-meta",
@@ -58,7 +58,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-meta"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "cranelift-codegen-shared",
  "cranelift-entity",
@@ -67,17 +67,17 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-shared"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 
 [[package]]
 name = "cranelift-entity"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 
 [[package]]
 name = "cranelift-frontend"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "cranelift-codegen",
  "log",
@@ -88,7 +88,7 @@ dependencies = [
 [[package]]
 name = "cranelift-jit"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -105,7 +105,7 @@ dependencies = [
 [[package]]
 name = "cranelift-module"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -116,7 +116,7 @@ dependencies = [
 [[package]]
 name = "cranelift-native"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "cranelift-codegen",
  "libc",
@@ -126,7 +126,7 @@ dependencies = [
 [[package]]
 name = "cranelift-object"
 version = "0.75.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=main#c71ad9490e7f3e19bbcae7e28bbe50f8a0b4a5d8"
+source = "git+https://github.com/bytecodealliance/wasmtime.git#5deda279775dca5e37449c829cda1f6276d6542b"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -147,24 +147,24 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e4075386626662786ddb0ec9081e7c7eeb1ba31951f447ca780ef9f5d568189"
+checksum = "f0a01e0497841a3b2db4f8afa483cce65f7e96a3498bd6c541734792aeac8fe7"
 dependencies = [
  "indexmap",
 ]
 
 [[package]]
 name = "hashbrown"
-version = "0.9.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
 name = "indexmap"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb1fa934250de4de8aef298d81c729a7d33d8c239daa3a7575e6b92bfc7313b"
+checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg",
  "hashbrown",
@@ -172,9 +172,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.97"
+version = "0.2.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
+checksum = "320cfe77175da3a483efed4bc0adc1968ca050b098ce4f2f1c13a56626128790"
 
 [[package]]
 name = "libloading"
@@ -212,9 +212,9 @@ checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
 name = "object"
-version = "0.25.3"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a38f2be3697a57b4060074ff41b44c16870d916ad7877c17696e063257482bc7"
+checksum = "c55827317fb4c08822499848a14237d2874d6f139828893017237e7ab93eb386"
 dependencies = [
  "crc32fast",
  "indexmap",
@@ -277,9 +277,9 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "target-lexicon"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ae3b39281e4b14b8123bdbaddd472b7dfe215e444181f2f9d2443c2444f834"
+checksum = "b0652da4c4121005e9ed22b79f6c5f2d9e2752906b53a33e9490489ba421a6fb"
 
 [[package]]
 name = "winapi"

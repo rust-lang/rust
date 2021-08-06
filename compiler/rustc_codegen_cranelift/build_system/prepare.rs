@@ -28,6 +28,13 @@ pub(crate) fn prepare() {
     );
 
     clone_repo(
+        "stdsimd",
+        "https://github.com/rust-lang/stdsimd",
+        "be96995d8ddec03fac9a0caf4d4c51c7fbc33507",
+    );
+    apply_patches("stdsimd", Path::new("stdsimd"));
+
+    clone_repo(
         "simple-raytracer",
         "https://github.com/ebobby/simple-raytracer",
         "804a7a21b9e673a482797aa289a18ed480e4d813",
@@ -60,11 +67,7 @@ fn prepare_sysroot() {
     copy_dir_recursively(&sysroot_src_orig.join("library"), &sysroot_src.join("library"));
 
     let rustc_version = get_rustc_version();
-    fs::write(
-        Path::new("build_sysroot").join("rustc_version"),
-        &rustc_version,
-    )
-    .unwrap();
+    fs::write(Path::new("build_sysroot").join("rustc_version"), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");
     let mut git_init_cmd = Command::new("git");

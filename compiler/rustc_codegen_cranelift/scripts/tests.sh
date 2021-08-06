@@ -16,10 +16,10 @@ function no_sysroot_tests() {
 
     if [[ "$JIT_SUPPORTED" = "1" ]]; then
         echo "[JIT] mini_core_hello_world"
-        CG_CLIF_JIT_ARGS="abc bcd" $MY_RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target "$HOST_TRIPLE"
+        CG_CLIF_JIT_ARGS="abc bcd" $MY_RUSTC -Zunstable-options -Cllvm-args=mode=jit -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target "$HOST_TRIPLE"
 
         echo "[JIT-lazy] mini_core_hello_world"
-        CG_CLIF_JIT_ARGS="abc bcd" $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target "$HOST_TRIPLE"
+        CG_CLIF_JIT_ARGS="abc bcd" $MY_RUSTC -Zunstable-options -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target "$HOST_TRIPLE"
     else
         echo "[JIT] mini_core_hello_world (skipped)"
     fi
@@ -44,10 +44,10 @@ function base_sysroot_tests() {
 
     if [[ "$JIT_SUPPORTED" = "1" ]]; then
         echo "[JIT] std_example"
-        $MY_RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
+        $MY_RUSTC -Zunstable-options -Cllvm-args=mode=jit -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
 
         echo "[JIT-lazy] std_example"
-        $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
+        $MY_RUSTC -Zunstable-options -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
     else
         echo "[JIT] std_example (skipped)"
     fi
@@ -134,6 +134,15 @@ function extended_sysroot_tests() {
     else
         echo "[AOT] rust-lang/regex tests"
         ../build/cargo build --tests --target $TARGET_TRIPLE
+    fi
+    popd
+
+    pushd stdsimd
+    echo "[TEST] rust-lang/stdsimd"
+    ../build/cargo clean
+    ../build/cargo build --all-targets --target $TARGET_TRIPLE
+    if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+        ../build/cargo test -q
     fi
     popd
 }

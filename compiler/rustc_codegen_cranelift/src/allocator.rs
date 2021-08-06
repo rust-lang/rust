@@ -5,7 +5,6 @@ use crate::prelude::*;
 
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
-use rustc_span::symbol::sym;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -20,7 +19,7 @@ pub(crate) fn codegen(
     if any_dynamic_crate {
         false
     } else if let Some(kind) = tcx.allocator_kind(()) {
-        codegen_inner(module, unwind_context, kind);
+        codegen_inner(module, unwind_context, kind, tcx.lang_items().oom().is_some());
         true
     } else {
         false
@@ -31,6 +30,7 @@ fn codegen_inner(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
     kind: AllocatorKind,
+    has_alloc_error_handler: bool,
 ) {
     let usize_ty = module.target_config().pointer_type();
 
@@ -65,7 +65,6 @@ fn codegen_inner(
 
         let caller_name = format!("__rust_{}", method.name);
         let callee_name = kind.fn_name(method.name);
-        //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
 
         let func_id = module.declare_function(&caller_name, Linkage::Export, &sig).unwrap();
 
@@ -104,13 +103,12 @@ fn codegen_inner(
         returns: vec![],
     };
 
-    let callee_name = kind.fn_name(sym::oom);
-    //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
+    let callee_name = if has_alloc_error_handler { "__rg_oom" } else { "__rdl_oom" };
 
     let func_id =
         module.declare_function("__rust_alloc_error_handler", Linkage::Export, &sig).unwrap();
 
-    let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
+    let callee_func_id = module.declare_function(callee_name, Linkage::Import, &sig).unwrap();
 
     let mut ctx = Context::new();
     ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig);

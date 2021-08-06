@@ -9,13 +9,12 @@ use rustc_middle::ty::layout::FnAbiExt;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
-use cranelift_codegen::ir::AbiParam;
-use smallvec::smallvec;
+use cranelift_codegen::ir::{AbiParam, SigRef};
 
 use self::pass_mode::*;
 use crate::prelude::*;
 
-pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
+pub(crate) use self::returning::codegen_return;
 
 fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -236,27 +235,20 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         // not mutated by the current function, this is necessary to support unsized arguments.
         if let ArgKind::Normal(Some(val)) = arg_kind {
             if let Some((addr, meta)) = val.try_to_ptr() {
-                let local_decl = &fx.mir.local_decls[local];
-                //                       v this ! is important
-                let internally_mutable = !val
-                    .layout()
-                    .ty
-                    .is_freeze(fx.tcx.at(local_decl.source_info.span), ParamEnv::reveal_all());
-                if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
-                    // We wont mutate this argument, so it is fine to borrow the backing storage
-                    // of this argument, to prevent a copy.
+                // Ownership of the value at the backing storage for an argument is passed to the
+                // callee per the ABI, so it is fine to borrow the backing storage of this argument
+                // to prevent a copy.
 
-                    let place = if let Some(meta) = meta {
-                        CPlace::for_ptr_with_extra(addr, meta, val.layout())
-                    } else {
-                        CPlace::for_ptr(addr, val.layout())
-                    };
+                let place = if let Some(meta) = meta {
+                    CPlace::for_ptr_with_extra(addr, meta, val.layout())
+                } else {
+                    CPlace::for_ptr(addr, val.layout())
+                };
 
-                    self::comments::add_local_place_comments(fx, place, local);
+                self::comments::add_local_place_comments(fx, place, local);
 
-                    assert_eq!(fx.local_map.push(place), local);
-                    continue;
-                }
+                assert_eq!(fx.local_map.push(place), local);
+                continue;
             }
         }
 
@@ -290,6 +282,22 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     }
 
     fx.bcx.ins().jump(*fx.block_map.get(START_BLOCK).unwrap(), &[]);
+}
+
+struct CallArgument<'tcx> {
+    value: CValue<'tcx>,
+    is_owned: bool,
+}
+
+// FIXME avoid intermediate `CValue` before calling `adjust_arg_for_abi`
+fn codegen_call_argument_operand<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    operand: &Operand<'tcx>,
+) -> CallArgument<'tcx> {
+    CallArgument {
+        value: codegen_operand(fx, operand),
+        is_owned: matches!(operand, Operand::Move(_)),
+    }
 }
 
 pub(crate) fn codegen_terminator_call<'tcx>(
@@ -360,12 +368,12 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     }
 
     // Unpack arguments tuple for closures
-    let args = if fn_sig.abi == Abi::RustCall {
+    let mut args = if fn_sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = codegen_operand(fx, &args[0]);
-        let pack_arg = codegen_operand(fx, &args[1]);
+        let self_arg = codegen_call_argument_operand(fx, &args[0]);
+        let pack_arg = codegen_call_argument_operand(fx, &args[1]);
 
-        let tupled_arguments = match pack_arg.layout().ty.kind() {
+        let tupled_arguments = match pack_arg.value.layout().ty.kind() {
             ty::Tuple(ref tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
@@ -373,37 +381,53 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let mut args = Vec::with_capacity(1 + tupled_arguments.len());
         args.push(self_arg);
         for i in 0..tupled_arguments.len() {
-            args.push(pack_arg.value_field(fx, mir::Field::new(i)));
+            args.push(CallArgument {
+                value: pack_arg.value.value_field(fx, mir::Field::new(i)),
+                is_owned: pack_arg.is_owned,
+            });
         }
         args
     } else {
-        args.iter().map(|arg| codegen_operand(fx, arg)).collect::<Vec<_>>()
+        args.iter().map(|arg| codegen_call_argument_operand(fx, arg)).collect::<Vec<_>>()
     };
 
-    //   | indirect call target
-    //   |         | the first argument to be passed
-    //   v         v
-    let (func_ref, first_arg) = match instance {
+    // Pass the caller location for `#[track_caller]`.
+    if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
+        let caller_location = fx.get_caller_location(span);
+        args.push(CallArgument { value: caller_location, is_owned: false });
+    }
+
+    let args = args;
+    assert_eq!(fn_abi.args.len(), args.len());
+
+    enum CallTarget {
+        Direct(FuncRef),
+        Indirect(SigRef, Value),
+    }
+
+    let (func_ref, first_arg_override) = match instance {
         // Trait object call
         Some(Instance { def: InstanceDef::Virtual(_, idx), .. }) => {
             if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
-                    format!("virtual call; self arg pass mode: {:?}", &fn_abi.args[0],),
+                    format!("virtual call; self arg pass mode: {:?}", &fn_abi.args[0]),
                 );
             }
-            let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
-            (Some(method), smallvec![ptr])
+
+            let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0].value, idx);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+            let sig = fx.bcx.import_signature(sig);
+
+            (CallTarget::Indirect(sig, method), Some(ptr))
         }
 
         // Normal call
-        Some(_) => (
-            None,
-            args.get(0)
-                .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                .unwrap_or(smallvec![]),
-        ),
+        Some(instance) => {
+            let func_ref = fx.get_function_ref(instance);
+            (CallTarget::Direct(func_ref), None)
+        }
 
         // Indirect call
         None => {
@@ -411,80 +435,64 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(nop_inst, "indirect call");
             }
+
             let func = codegen_operand(fx, func).load_scalar(fx);
-            (
-                Some(func),
-                args.get(0)
-                    .map(|arg| adjust_arg_for_abi(fx, *arg, &fn_abi.args[0]))
-                    .unwrap_or(smallvec![]),
-            )
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+            let sig = fx.bcx.import_signature(sig);
+
+            (CallTarget::Indirect(sig, func), None)
         }
     };
 
     let ret_place = destination.map(|(place, _)| place);
-    let (call_inst, call_args) = self::returning::codegen_with_call_return_arg(
-        fx,
-        &fn_abi.ret,
-        ret_place,
-        |fx, return_ptr| {
-            let regular_args_count = args.len();
-            let mut call_args: Vec<Value> = return_ptr
-                .into_iter()
-                .chain(first_arg.into_iter())
-                .chain(
-                    args.into_iter()
-                        .enumerate()
-                        .skip(1)
-                        .map(|(i, arg)| adjust_arg_for_abi(fx, arg, &fn_abi.args[i]).into_iter())
-                        .flatten(),
-                )
-                .collect::<Vec<_>>();
-
-            if instance.map(|inst| inst.def.requires_caller_location(fx.tcx)).unwrap_or(false) {
-                // Pass the caller location for `#[track_caller]`.
-                let caller_location = fx.get_caller_location(span);
-                call_args.extend(
-                    adjust_arg_for_abi(fx, caller_location, &fn_abi.args[regular_args_count])
-                        .into_iter(),
-                );
-                assert_eq!(fn_abi.args.len(), regular_args_count + 1);
-            } else {
-                assert_eq!(fn_abi.args.len(), regular_args_count);
-            }
-
-            let call_inst = if let Some(func_ref) = func_ref {
-                let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
-                let sig = fx.bcx.import_signature(sig);
-                fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
-            } else {
-                let func_ref =
-                    fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
-                fx.bcx.ins().call(func_ref, &call_args)
-            };
-
-            (call_inst, call_args)
-        },
-    );
-
-    // FIXME find a cleaner way to support varargs
-    if fn_sig.c_variadic {
-        if !matches!(fn_sig.abi, Abi::C { .. }) {
-            fx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
-        }
-        let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
-        let abi_params = call_args
+    self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
+        let call_args = return_ptr
             .into_iter()
-            .map(|arg| {
-                let ty = fx.bcx.func.dfg.value_type(arg);
-                if !ty.is_int() {
-                    // FIXME set %al to upperbound on float args once floats are supported
-                    fx.tcx.sess.span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
-                }
-                AbiParam::new(ty)
-            })
-            .collect::<Vec<AbiParam>>();
-        fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
-    }
+            .chain(first_arg_override.into_iter())
+            .chain(
+                args.into_iter()
+                    .enumerate()
+                    .skip(if first_arg_override.is_some() { 1 } else { 0 })
+                    .map(|(i, arg)| {
+                        adjust_arg_for_abi(fx, arg.value, &fn_abi.args[i], arg.is_owned).into_iter()
+                    })
+                    .flatten(),
+            )
+            .collect::<Vec<Value>>();
+
+        let call_inst = match func_ref {
+            CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
+            CallTarget::Indirect(sig, func_ptr) => {
+                fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
+            }
+        };
+
+        // FIXME find a cleaner way to support varargs
+        if fn_sig.c_variadic {
+            if !matches!(fn_sig.abi, Abi::C { .. }) {
+                fx.tcx
+                    .sess
+                    .span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
+            }
+            let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
+            let abi_params = call_args
+                .into_iter()
+                .map(|arg| {
+                    let ty = fx.bcx.func.dfg.value_type(arg);
+                    if !ty.is_int() {
+                        // FIXME set %al to upperbound on float args once floats are supported
+                        fx.tcx
+                            .sess
+                            .span_fatal(span, &format!("Non int ty {:?} for variadic call", ty));
+                    }
+                    AbiParam::new(ty)
+                })
+                .collect::<Vec<AbiParam>>();
+            fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
+        }
+
+        call_inst
+    });
 
     if let Some((_, dest)) = destination {
         let ret_block = fx.get_block(dest);
@@ -535,7 +543,7 @@ pub(crate) fn codegen_drop<'tcx>(
                         TypeAndMut { ty, mutbl: crate::rustc_hir::Mutability::Mut },
                     )),
                 );
-                let arg_value = adjust_arg_for_abi(fx, arg_value, &fn_abi.args[0]);
+                let arg_value = adjust_arg_for_abi(fx, arg_value, &fn_abi.args[0], true);
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
 
@@ -543,7 +551,7 @@ pub(crate) fn codegen_drop<'tcx>(
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(span);
                     call_args.extend(
-                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1]).into_iter(),
+                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1], false).into_iter(),
                     );
                 }
 

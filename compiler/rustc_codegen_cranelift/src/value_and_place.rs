@@ -34,10 +34,10 @@ fn codegen_field<'tcx>(
                 let (_, unsized_align) =
                     crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
 
-                let one = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 1);
+                let one = fx.bcx.ins().iconst(fx.pointer_type, 1);
                 let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
                 let and_lhs = fx.bcx.ins().iadd_imm(align_sub_1, unaligned_offset as i64);
-                let zero = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 0);
+                let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
                 let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
                 let offset = fx.bcx.ins().band(and_lhs, and_rhs);
 
@@ -206,6 +206,38 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    /// Like [`CValue::value_field`] except handling ADTs containing a single array field in a way
+    /// such that you can access individual lanes.
+    pub(crate) fn value_lane(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_idx: u64,
+    ) -> CValue<'tcx> {
+        let layout = self.1;
+        assert!(layout.ty.is_simd());
+        let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert!(lane_idx < lane_count);
+        match self.0 {
+            CValueInner::ByVal(val) => match layout.abi {
+                Abi::Vector { element: _, count: _ } => {
+                    assert!(lane_count <= u8::MAX.into(), "SIMD type with more than 255 lanes???");
+                    let lane_idx = u8::try_from(lane_idx).unwrap();
+                    let lane = fx.bcx.ins().extractlane(val, lane_idx);
+                    CValue::by_val(lane, lane_layout)
+                }
+                _ => unreachable!("value_lane for ByVal with abi {:?}", layout.abi),
+            },
+            CValueInner::ByValPair(_, _) => unreachable!(),
+            CValueInner::ByRef(ptr, None) => {
+                let field_offset = lane_layout.size * lane_idx;
+                let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
+                CValue::by_ref(field_ptr, lane_layout)
+            }
+            CValueInner::ByRef(_, Some(_)) => unreachable!(),
+        }
+    }
+
     pub(crate) fn unsize_value(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
@@ -286,17 +318,16 @@ impl<'tcx> CPlace<'tcx> {
         &self.inner
     }
 
-    pub(crate) fn no_place(layout: TyAndLayout<'tcx>) -> CPlace<'tcx> {
-        CPlace { inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None), layout }
-    }
-
     pub(crate) fn new_stack_slot(
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
         assert!(!layout.is_unsized());
         if layout.size.bytes() == 0 {
-            return CPlace::no_place(layout);
+            return CPlace {
+                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
+                layout,
+            };
         }
 
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
@@ -607,6 +638,38 @@ impl<'tcx> CPlace<'tcx> {
             CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
         } else {
             CPlace::for_ptr(field_ptr, field_layout)
+        }
+    }
+
+    /// Like [`CPlace::place_field`] except handling ADTs containing a single array field in a way
+    /// such that you can access individual lanes.
+    pub(crate) fn place_lane(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_idx: u64,
+    ) -> CPlace<'tcx> {
+        let layout = self.layout();
+        assert!(layout.ty.is_simd());
+        let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert!(lane_idx < lane_count);
+
+        match self.inner {
+            CPlaceInner::Var(local, var) => {
+                assert!(matches!(layout.abi, Abi::Vector { .. }));
+                CPlace {
+                    inner: CPlaceInner::VarLane(local, var, lane_idx.try_into().unwrap()),
+                    layout: lane_layout,
+                }
+            }
+            CPlaceInner::VarPair(_, _, _) => unreachable!(),
+            CPlaceInner::VarLane(_, _, _) => unreachable!(),
+            CPlaceInner::Addr(ptr, None) => {
+                let field_offset = lane_layout.size * lane_idx;
+                let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
+                CPlace::for_ptr(field_ptr, lane_layout)
+            }
+            CPlaceInner::Addr(_, Some(_)) => unreachable!(),
         }
     }
 
