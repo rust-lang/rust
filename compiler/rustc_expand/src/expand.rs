@@ -559,7 +559,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.force_mode = orig_force_mode;
 
         // Finally incorporate all the expanded macros into the input AST fragment.
-        let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
+        let mut placeholder_expander = PlaceholderExpander::default();
         while let Some(expanded_fragments) = expanded_fragments.pop() {
             for (expn_id, expanded_fragment) in expanded_fragments.into_iter().rev() {
                 placeholder_expander
@@ -1341,14 +1341,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
         }
 
-        // The placeholder expander gives ids to statements, so we avoid folding the id here.
         // We don't use `assign_id!` - it will be called when we visit statement's contents
         // (e.g. an expression, item, or local)
-        let ast::Stmt { id, kind, span } = stmt;
-        let res = noop_flat_map_stmt_kind(kind, self)
-            .into_iter()
-            .map(|kind| ast::Stmt { id, kind, span })
-            .collect();
+        let res = noop_flat_map_stmt(stmt, self);
 
         self.cx.current_expansion.is_trailing_mac = false;
         res

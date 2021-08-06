@@ -1,0 +1,165 @@
+From 6bfce5dc2cbf834c74dbccb7538adc08c6eb57e7 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sun, 25 Jul 2021 18:39:31 +0200
+Subject: [PATCH] Disable unsupported tests
+
+---
+ crates/core_simd/src/array.rs        |  2 ++
+ crates/core_simd/src/lib.rs          |  2 +-
+ crates/core_simd/src/math.rs         |  4 ++++
+ crates/core_simd/tests/masks.rs      | 12 ------------
+ crates/core_simd/tests/ops_macros.rs |  6 ++++++
+ crates/core_simd/tests/round.rs      |  2 ++
+ 6 files changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/crates/core_simd/src/array.rs b/crates/core_simd/src/array.rs
+index 25c5309..2b3d819 100644
+--- a/crates/core_simd/src/array.rs
++++ b/crates/core_simd/src/array.rs
+@@ -22,6 +22,7 @@ where
+     #[must_use]
+     fn splat(val: Self::Scalar) -> Self;
+ 
++    /*
+     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
+     /// If an index is out of bounds, that lane instead selects the value from the "or" vector.
+     /// ```
+@@ -150,6 +151,7 @@ where
+             // Cleared ☢️ *mut T Zone
+         }
+     }
++    */
+ }
+ 
+ macro_rules! impl_simdarray_for {
+diff --git a/crates/core_simd/src/lib.rs b/crates/core_simd/src/lib.rs
+index a64904d..299eb11 100644
+--- a/crates/core_simd/src/lib.rs
++++ b/crates/core_simd/src/lib.rs
+@@ -1,7 +1,7 @@
+ #![no_std]
+ #![allow(incomplete_features)]
+ #![feature(
+-    const_generics, 
++    const_generics,
+     platform_intrinsics,
+     repr_simd,
+     simd_ffi,
+diff --git a/crates/core_simd/src/math.rs b/crates/core_simd/src/math.rs
+index 7290a28..e394730 100644
+--- a/crates/core_simd/src/math.rs
++++ b/crates/core_simd/src/math.rs
+@@ -2,6 +2,7 @@ macro_rules! impl_uint_arith {
+     ($(($name:ident, $n:ident)),+) => {
+         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
+ 
++            /*
+             /// Lanewise saturating add.
+             ///
+             /// # Examples
+@@ -38,6 +39,7 @@ macro_rules! impl_uint_arith {
+             pub fn saturating_sub(self, second: Self) -> Self {
+                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
+             }
++            */
+         })+
+     }
+ }
+@@ -46,6 +48,7 @@ macro_rules! impl_int_arith {
+     ($(($name:ident, $n:ident)),+) => {
+         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
+ 
++            /*
+             /// Lanewise saturating add.
+             ///
+             /// # Examples
+@@ -141,6 +144,7 @@ macro_rules! impl_int_arith {
+             pub fn saturating_neg(self) -> Self {
+                 Self::splat(0).saturating_sub(self)
+             }
++            */
+         })+
+     }
+ }
+diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
+index 61d8e44..2bccae2 100644
+--- a/crates/core_simd/tests/masks.rs
++++ b/crates/core_simd/tests/masks.rs
+@@ -67,18 +67,6 @@ macro_rules! test_mask_api {
+                 assert_eq!(int.to_array(), [-1, 0, 0, -1, 0, 0, -1, 0]);
+                 assert_eq!(core_simd::$name::<8>::from_int(int), mask);
+             }
+-
+-            #[test]
+-            fn roundtrip_bitmask_conversion() {
+-                let values = [
+-                    true, false, false, true, false, false, true, false,
+-                    true, true, false, false, false, false, false, true,
+-                ];
+-                let mask = core_simd::$name::<16>::from_array(values);
+-                let bitmask = mask.to_bitmask();
+-                assert_eq!(bitmask, [0b01001001, 0b10000011]);
+-                assert_eq!(core_simd::$name::<16>::from_bitmask(bitmask), mask);
+-            }
+         }
+     }
+ }
+diff --git a/crates/core_simd/tests/ops_macros.rs b/crates/core_simd/tests/ops_macros.rs
+index cb39e73..fc0ebe1 100644
+--- a/crates/core_simd/tests/ops_macros.rs
++++ b/crates/core_simd/tests/ops_macros.rs
+@@ -435,6 +435,7 @@ macro_rules! impl_float_tests {
+                     )
+                 }
+ 
++                /*
+                 fn mul_add<const LANES: usize>() {
+                     test_helpers::test_ternary_elementwise(
+                         &Vector::<LANES>::mul_add,
+@@ -442,6 +443,7 @@ macro_rules! impl_float_tests {
+                         &|_, _, _| true,
+                     )
+                 }
++                */
+ 
+                 fn sqrt<const LANES: usize>() {
+                     test_helpers::test_unary_elementwise(
+@@ -581,6 +585,7 @@ macro_rules! impl_float_tests {
+                     });
+                 }
+ 
++                /*
+                 fn horizontal_max<const LANES: usize>() {
+                     test_helpers::test_1(&|x| {
+                         let vmax = Vector::<LANES>::from_array(x).horizontal_max();
+@@ -604,6 +609,7 @@ macro_rules! impl_float_tests {
+                         Ok(())
+                     });
+                 }
++                */
+             }
+         }
+     }
+diff --git a/crates/core_simd/tests/round.rs b/crates/core_simd/tests/round.rs
+index 37044a7..4cdc6b7 100644
+--- a/crates/core_simd/tests/round.rs
++++ b/crates/core_simd/tests/round.rs
+@@ -25,6 +25,7 @@ macro_rules! float_rounding_test {
+                     )
+                 }
+ 
++                /*
+                 fn round<const LANES: usize>() {
+                     test_helpers::test_unary_elementwise(
+                         &Vector::<LANES>::round,
+@@ -32,6 +33,7 @@ macro_rules! float_rounding_test {
+                         &|_| true,
+                     )
+                 }
++                */
+ 
+                 fn trunc<const LANES: usize>() {
+                     test_helpers::test_unary_elementwise(
+-- 
+2.26.2.7.g19db9cfb68
+

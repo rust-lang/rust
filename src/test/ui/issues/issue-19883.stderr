@@ -1,8 +1,14 @@
 error[E0576]: cannot find associated type `Dst` in trait `From`
   --> $DIR/issue-19883.rs:9:30
    |
+LL |     type Output;
+   |     ------------ associated type `Output` defined here
+...
 LL |         <Dst as From<Self>>::Dst
-   |                              ^^^ not found in `From`
+   |                              ^^^
+   |                              |
+   |                              not found in `From`
+   |                              help: maybe you meant this associated type: `Output`
 
 error: aborting due to previous error
 

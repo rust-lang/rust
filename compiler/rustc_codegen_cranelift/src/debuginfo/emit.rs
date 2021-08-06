@@ -160,7 +160,7 @@ impl Writer for WriterRelocate {
                 let val = match eh_pe.application() {
                     gimli::DW_EH_PE_absptr => val,
                     gimli::DW_EH_PE_pcrel => {
-                        // TODO: better handling of sign
+                        // FIXME better handling of sign
                         let offset = self.len() as u64;
                         offset.wrapping_sub(val)
                     }

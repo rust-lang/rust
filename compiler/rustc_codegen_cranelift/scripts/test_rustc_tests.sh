@@ -79,7 +79,6 @@ rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux 
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
 rm src/test/ui/cfg/cfg-panic.rs
-rm src/test/ui/default-alloc-error-hook.rs
 rm -r src/test/ui/hygiene/
 
 rm -r src/test/ui/polymorphization/ # polymorphization not yet supported

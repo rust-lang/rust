@@ -175,12 +175,11 @@ fn simd_for_each_lane<'tcx>(
     assert_eq!(lane_count, ret_lane_count);
 
     for lane_idx in 0..lane_count {
-        let lane_idx = mir::Field::new(lane_idx.try_into().unwrap());
-        let lane = val.value_field(fx, lane_idx).load_scalar(fx);
+        let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout, ret_lane_layout, lane);
 
-        ret.place_field(fx, lane_idx).write_cvalue(fx, res_lane);
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
     }
 }
 
@@ -206,20 +205,20 @@ fn simd_pair_for_each_lane<'tcx>(
     let ret_lane_layout = fx.layout_of(ret_lane_ty);
     assert_eq!(lane_count, ret_lane_count);
 
-    for lane in 0..lane_count {
-        let lane = mir::Field::new(lane.try_into().unwrap());
-        let x_lane = x.value_field(fx, lane).load_scalar(fx);
-        let y_lane = y.value_field(fx, lane).load_scalar(fx);
+    for lane_idx in 0..lane_count {
+        let x_lane = x.value_lane(fx, lane_idx).load_scalar(fx);
+        let y_lane = y.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout, ret_lane_layout, x_lane, y_lane);
 
-        ret.place_field(fx, lane).write_cvalue(fx, res_lane);
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
     }
 }
 
 fn simd_reduce<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
+    acc: Option<Value>,
     ret: CPlace<'tcx>,
     f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
 ) {
@@ -227,16 +226,17 @@ fn simd_reduce<'tcx>(
     let lane_layout = fx.layout_of(lane_ty);
     assert_eq!(lane_layout, ret.layout());
 
-    let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
-    for lane_idx in 1..lane_count {
-        let lane =
-            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
+    let (mut res_val, start_lane) =
+        if let Some(acc) = acc { (acc, 0) } else { (val.value_lane(fx, 0).load_scalar(fx), 1) };
+    for lane_idx in start_lane..lane_count {
+        let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
         res_val = f(fx, lane_layout, res_val, lane);
     }
     let res = CValue::by_val(res_val, lane_layout);
     ret.write_cvalue(fx, res);
 }
 
+// FIXME move all uses to `simd_reduce`
 fn simd_reduce_bool<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
@@ -246,14 +246,18 @@ fn simd_reduce_bool<'tcx>(
     let (lane_count, _lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     assert!(ret.layout().ty.is_bool());
 
-    let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    let res_val = val.value_lane(fx, 0).load_scalar(fx);
     let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
     for lane_idx in 1..lane_count {
-        let lane =
-            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
+        let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
         let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
     }
+    let res_val = if fx.bcx.func.dfg.value_type(res_val) != types::I8 {
+        fx.bcx.ins().ireduce(types::I8, res_val)
+    } else {
+        res_val
+    };
     let res = CValue::by_val(res_val, ret.layout());
     ret.write_cvalue(fx, res);
 }
@@ -288,7 +292,11 @@ macro simd_cmp {
         if let Some(vector_ty) = vector_ty {
             let x = $x.load_scalar($fx);
             let y = $y.load_scalar($fx);
-            let val = $fx.bcx.ins().icmp(IntCC::$cc, x, y);
+            let val = if vector_ty.lane_type().is_float() {
+                $fx.bcx.ins().fcmp(FloatCC::$cc_f, x, y)
+            } else {
+                $fx.bcx.ins().icmp(IntCC::$cc, x, y)
+            };
 
             // HACK This depends on the fact that icmp for vectors represents bools as 0 and !0, not 0 and 1.
             let val = $fx.bcx.ins().raw_bitcast(vector_ty, val);
@@ -603,9 +611,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let (val, has_overflow) = checked_res.load_scalar_pair(fx);
             let clif_ty = fx.clif_type(T).unwrap();
 
-            // `select.i8` is not implemented by Cranelift.
-            let has_overflow = fx.bcx.ins().uextend(types::I32, has_overflow);
-
             let (min, max) = type_min_max_value(&mut fx.bcx, clif_ty, signed);
 
             let val = match (intrinsic, signed) {
@@ -632,21 +637,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         rotate_left, <T>(v x, v y) {
             let layout = fx.layout_of(T);
-            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
-                fx.bcx.ins().ireduce(types::I64, y)
-            } else {
-                y
-            };
             let res = fx.bcx.ins().rotl(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
         rotate_right, <T>(v x, v y) {
             let layout = fx.layout_of(T);
-            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
-                fx.bcx.ins().ireduce(types::I64, y)
-            } else {
-                y
-            };
             let res = fx.bcx.ins().rotr(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
@@ -684,35 +679,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
             // FIXME trap on `ctlz_nonzero` with zero arg.
-            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
-                // FIXME verify this algorithm is correct
-                let (lsb, msb) = fx.bcx.ins().isplit(arg);
-                let lsb_lz = fx.bcx.ins().clz(lsb);
-                let msb_lz = fx.bcx.ins().clz(msb);
-                let msb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, msb, 0);
-                let lsb_lz_plus_64 = fx.bcx.ins().iadd_imm(lsb_lz, 64);
-                let res = fx.bcx.ins().select(msb_is_zero, lsb_lz_plus_64, msb_lz);
-                fx.bcx.ins().uextend(types::I128, res)
-            } else {
-                fx.bcx.ins().clz(arg)
-            };
+            let res = fx.bcx.ins().clz(arg);
             let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         cttz | cttz_nonzero, <T> (v arg) {
             // FIXME trap on `cttz_nonzero` with zero arg.
-            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
-                // FIXME verify this algorithm is correct
-                let (lsb, msb) = fx.bcx.ins().isplit(arg);
-                let lsb_tz = fx.bcx.ins().ctz(lsb);
-                let msb_tz = fx.bcx.ins().ctz(msb);
-                let lsb_is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, lsb, 0);
-                let msb_tz_plus_64 = fx.bcx.ins().iadd_imm(msb_tz, 64);
-                let res = fx.bcx.ins().select(lsb_is_zero, msb_tz_plus_64, lsb_tz);
-                fx.bcx.ins().uextend(types::I128, res)
-            } else {
-                fx.bcx.ins().ctz(arg)
-            };
+            let res = fx.bcx.ins().ctz(arg);
             let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
@@ -995,8 +968,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-
-        // FIXME https://github.com/bytecodealliance/wasmtime/issues/2647
         _ if intrinsic.as_str().starts_with("atomic_nand"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
@@ -1058,23 +1029,39 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, old);
         };
 
+        // In Rust floating point min and max don't propagate NaN. In Cranelift they do however.
+        // For this reason it is necessary to use `a.is_nan() ? b : (a >= b ? b : a)` for `minnumf*`
+        // and `a.is_nan() ? b : (a <= b ? b : a)` for `maxnumf*`. NaN checks are done by comparing
+        // a float against itself. Only in case of NaN is it not equal to itself.
         minnumf32, (v a, v b) {
-            let val = fx.bcx.ins().fmin(a, b);
+            let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
+            let a_ge_b = fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b);
+            let temp = fx.bcx.ins().select(a_ge_b, b, a);
+            let val = fx.bcx.ins().select(a_is_nan, b, temp);
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
             ret.write_cvalue(fx, val);
         };
         minnumf64, (v a, v b) {
-            let val = fx.bcx.ins().fmin(a, b);
+            let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
+            let a_ge_b = fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b);
+            let temp = fx.bcx.ins().select(a_ge_b, b, a);
+            let val = fx.bcx.ins().select(a_is_nan, b, temp);
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
             ret.write_cvalue(fx, val);
         };
         maxnumf32, (v a, v b) {
-            let val = fx.bcx.ins().fmax(a, b);
+            let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
+            let a_le_b = fx.bcx.ins().fcmp(FloatCC::LessThanOrEqual, a, b);
+            let temp = fx.bcx.ins().select(a_le_b, b, a);
+            let val = fx.bcx.ins().select(a_is_nan, b, temp);
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
             ret.write_cvalue(fx, val);
         };
         maxnumf64, (v a, v b) {
-            let val = fx.bcx.ins().fmax(a, b);
+            let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
+            let a_le_b = fx.bcx.ins().fcmp(FloatCC::LessThanOrEqual, a, b);
+            let temp = fx.bcx.ins().select(a_le_b, b, a);
+            let val = fx.bcx.ins().select(a_is_nan, b, temp);
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
             ret.write_cvalue(fx, val);
         };
@@ -1122,6 +1109,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             }
 
             let size = fx.layout_of(T).layout.size;
+            // FIXME add and use emit_small_memcmp
             let is_eq_value =
                 if size == Size::ZERO {
                     // No bytes means they're trivially equal
@@ -1137,10 +1125,9 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 } else {
                     // Just call `memcmp` (like slices do in core) when the
                     // size is too large or it's not a power-of-two.
-                    let ptr_ty = pointer_ty(fx.tcx);
                     let signed_bytes = i64::try_from(size.bytes()).unwrap();
-                    let bytes_val = fx.bcx.ins().iconst(ptr_ty, signed_bytes);
-                    let params = vec![AbiParam::new(ptr_ty); 3];
+                    let bytes_val = fx.bcx.ins().iconst(fx.pointer_type, signed_bytes);
+                    let params = vec![AbiParam::new(fx.pointer_type); 3];
                     let returns = vec![AbiParam::new(types::I32)];
                     let args = &[lhs_ref, rhs_ref, bytes_val];
                     let cmp = fx.lib_call("memcmp", params, returns, args)[0];
