@@ -40,9 +40,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "cc"
-version = "1.0.68"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
+checksum = "e70cc2f62c6ce1868963827bd677764c62d07c3d9a3e1fb1177ee1a9ab199eb2"
 
 [[package]]
 name = "cfg-if"
@@ -132,9 +132,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.97"
+version = "0.2.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
+checksum = "320cfe77175da3a483efed4bc0adc1968ca050b098ce4f2f1c13a56626128790"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -271,14 +271,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "term"
-version = "0.0.0"
-dependencies = [
- "core",
- "std",
-]
-
-[[package]]
 name = "test"
 version = "0.0.0"
 dependencies = [
@@ -290,7 +282,6 @@ dependencies = [
  "panic_unwind",
  "proc_macro",
  "std",
- "term",
 ]
 
 [[package]]

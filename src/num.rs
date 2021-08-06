@@ -67,19 +67,6 @@ pub(crate) fn codegen_binop<'tcx>(
                     let lhs = in_lhs.load_scalar(fx);
                     let rhs = in_rhs.load_scalar(fx);
 
-                    let (lhs, rhs) = if (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
-                        && (in_lhs.layout().ty.kind() == fx.tcx.types.i8.kind()
-                            || in_lhs.layout().ty.kind() == fx.tcx.types.i16.kind())
-                    {
-                        // FIXME(CraneStation/cranelift#896) icmp_imm.i8/i16 with eq/ne for signed ints is implemented wrong.
-                        (
-                            fx.bcx.ins().sextend(types::I32, lhs),
-                            fx.bcx.ins().sextend(types::I32, rhs),
-                        )
-                    } else {
-                        (lhs, rhs)
-                    };
-
                     return codegen_compare_bin_op(fx, bin_op, signed, lhs, rhs);
                 }
                 _ => {}
@@ -293,9 +280,8 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
         }
         BinOp::Shl => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
-            let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
-            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
-            let val = fx.bcx.ins().ishl(lhs, actual_shift);
+            let masked_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
+            let val = fx.bcx.ins().ishl(lhs, masked_shift);
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
             let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
@@ -303,12 +289,11 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
         }
         BinOp::Shr => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
-            let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
-            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
+            let masked_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
             let val = if !signed {
-                fx.bcx.ins().ushr(lhs, actual_shift)
+                fx.bcx.ins().ushr(lhs, masked_shift)
             } else {
-                fx.bcx.ins().sshr(lhs, actual_shift)
+                fx.bcx.ins().sshr(lhs, masked_shift)
             };
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
