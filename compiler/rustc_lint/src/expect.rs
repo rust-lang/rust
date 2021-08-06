@@ -16,11 +16,9 @@ pub fn check_expectations(tcx: TyCtxt<'_>) {
         &tcx.lint_levels(()).lint_expectations;
 
     for (id, expectation) in lint_expectations {
-        if fulfilled_expectations.contains(id) {
-            continue;
+        if !fulfilled_expectations.contains(id) {
+            emit_unfulfilled_expectation_lint(tcx, expectation);
         }
-
-        emit_unfulfilled_expectation_lint(tcx, expectation);
     }
 }
 
