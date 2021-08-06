@@ -114,7 +114,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 
 /// Checks whether a type implements a trait.
 /// The function returns false in case the type contains an inference variable.
-/// See also [`get_trait_def_id`].
+/// See also [`get_trait_def_id`](super::get_trait_def_id).
 pub fn implements_trait<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,

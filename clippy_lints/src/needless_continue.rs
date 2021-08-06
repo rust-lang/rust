@@ -422,7 +422,7 @@ fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 ///
 /// is transformed to
 ///
-/// ```ignore
+/// ```text
 ///     {
 ///         let x = 5;
 /// ```
