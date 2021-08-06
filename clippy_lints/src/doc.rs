@@ -578,8 +578,8 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
-                let handler = Handler::with_emitter(false, None, box emitter);
+                let emitter = EmitterWriter::new(Box::new(io::sink()), None, false, false, false, None, false);
+                let handler = Handler::with_emitter(false, None, Box::new(emitter));
                 let sess = ParseSess::with_span_handler(handler, sm);
 
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
