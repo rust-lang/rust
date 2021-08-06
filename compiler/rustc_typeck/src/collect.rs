@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -14,8 +13,6 @@
 //!
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
-
-// ignore-tidy-filelength
 
 use crate::astconv::{AstConv, SizedByDefault};
 use crate::bounds::Bounds;
