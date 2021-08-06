@@ -1,6 +1,6 @@
 use core::iter::FusedIterator;
 use core::mem::{self, MaybeUninit};
-use core::ops::{ControlFlow, Try};
+use core::ops::Try;
 use core::ptr;
 
 #[derive(Debug)]
@@ -149,17 +149,6 @@ impl<I: Iterator, const N: usize> Iterator for ArrayChunks<I, N> {
         (lower / N, upper.map(|x| x / N))
     }
 
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let res = match n.checked_mul(N) {
-            Some(n) => self.iter.advance_by(n),
-            None => {
-                let n = (usize::MAX / N) * N;
-                self.iter.advance_by(n).and(Err(n))
-            }
-        };
-        res.map_err(|k| k / N)
-    }
-
     fn try_fold<Acc, Fold, R>(&mut self, acc: Acc, mut fold: Fold) -> R
     where
         Self: Sized,
@@ -168,7 +157,7 @@ impl<I: Iterator, const N: usize> Iterator for ArrayChunks<I, N> {
     {
         let iter = &mut self.iter;
         Guard::with(&mut self.buffer, |array, init| {
-            let result = iter.try_fold(acc, |mut acc, x| {
+            iter.try_fold(acc, |mut acc, x| {
                 // SAFETY: `init` starts at 0, is increased by one each iteration
                 // until it equals N (which is `array.len()`) and is reset to 0.
                 unsafe {
@@ -185,15 +174,10 @@ impl<I: Iterator, const N: usize> Iterator for ArrayChunks<I, N> {
                             MaybeUninit::uninit_array(),
                         ))
                     };
-                    acc = fold(acc, array).branch()?;
+                    acc = fold(acc, array)?;
                 }
-                ControlFlow::Continue(acc)
-            });
-
-            match result {
-                ControlFlow::Continue(acc) => R::from_output(acc),
-                ControlFlow::Break(res) => R::from_residual(res),
-            }
+                R::from_output(acc)
+            })
         })
     }
 
@@ -213,6 +197,104 @@ impl<I: Iterator, const N: usize> Iterator for ArrayChunks<I, N> {
 
                 if *init == N {
                     *init = 0;
+                    // SAFETY: The entire array has just been initialized.
+                    let array = unsafe {
+                        MaybeUninit::array_assume_init(mem::replace(
+                            array,
+                            MaybeUninit::uninit_array(),
+                        ))
+                    };
+                    acc = fold(acc, array);
+                }
+                acc
+            })
+        })
+    }
+}
+
+#[unstable(feature = "iter_array_chunks", issue = "none")]
+impl<I: DoubleEndedIterator, const N: usize> DoubleEndedIterator for ArrayChunks<I, N> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let iter = &mut self.iter;
+        let result = Guard::with(&mut self.buffer, |array, init| {
+            for slot in &mut array[*init..] {
+                slot.write(iter.next_back()?);
+                *init += 1;
+            }
+            *init = 0;
+            array.reverse();
+            // SAFETY: The entire array has just been initialized.
+            unsafe {
+                Some(MaybeUninit::array_assume_init(mem::replace(
+                    array,
+                    MaybeUninit::uninit_array(),
+                )))
+            }
+        });
+
+        if self.buffer.init > 0 {
+            (&mut self.buffer.array[..self.buffer.init]).reverse();
+        }
+
+        result
+    }
+
+    fn try_rfold<Acc, Fold, R>(&mut self, acc: Acc, mut fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        let iter = &mut self.iter;
+        Guard::with(&mut self.buffer, |array, init| {
+            let result = iter.try_rfold(acc, |mut acc, x| {
+                // SAFETY: `init` starts at 0, is increased by one each iteration
+                // until it equals N (which is `array.len()`) and is reset to 0.
+                unsafe {
+                    array.get_unchecked_mut(*init).write(x);
+                }
+                *init += 1;
+
+                if *init == N {
+                    *init = 0;
+                    array.reverse();
+                    // SAFETY: The entire array has just been initialized.
+                    let array = unsafe {
+                        MaybeUninit::array_assume_init(mem::replace(
+                            array,
+                            MaybeUninit::uninit_array(),
+                        ))
+                    };
+                    acc = fold(acc, array)?;
+                }
+                R::from_output(acc)
+            });
+
+            if *init > 0 {
+                (&mut array[..*init]).reverse();
+            }
+
+            result
+        })
+    }
+
+    fn rfold<Acc, Fold>(self, acc: Acc, mut fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let Self { iter, mut buffer } = self;
+        Guard::with(&mut buffer, |array, init| {
+            iter.rfold(acc, |mut acc, x| {
+                // SAFETY: `init` starts at 0, is increased by one each iteration
+                // until it equals N (which is `array.len()`) and is reset to 0.
+                unsafe {
+                    array.get_unchecked_mut(*init).write(x);
+                }
+                *init += 1;
+
+                if *init == N {
+                    *init = 0;
+                    array.reverse();
                     // SAFETY: The entire array has just been initialized.
                     let array = unsafe {
                         MaybeUninit::array_assume_init(mem::replace(

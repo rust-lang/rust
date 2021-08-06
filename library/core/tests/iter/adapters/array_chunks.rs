@@ -158,3 +158,28 @@ fn test_iterator_array_chunks_fold() {
     });
     assert_eq!(counter.get(), 10);
 }
+
+#[test]
+fn test_iterator_array_chunks_rev() {
+    let mut iter = (0..=10).array_chunks::<4>();
+    assert_eq!(iter.next_back(), Some([7, 8, 9, 10]));
+    assert_eq!(iter.next_back(), Some([3, 4, 5, 6]));
+    assert_eq!(iter.next_back(), None);
+    assert_eq!(iter.remainder(), &[0, 1, 2]);
+}
+
+#[test]
+fn test_iterator_array_chunks_rfold() {
+    let result = (0..10).array_chunks::<3>().rfold(0, |acc, arr| {
+        assert_eq!(arr, [7 - (acc * 3), 8 - (acc * 3), 9 - (acc * 3)]);
+        acc + 1
+    });
+    assert_eq!(result, 3);
+
+    let counter = Cell::new(0);
+    (0..10).map(|_| DropBomb::new(&counter)).array_chunks::<3>().rfold(0, |acc, _arr| {
+        assert_eq!(counter.get(), acc * 3);
+        acc + 1
+    });
+    assert_eq!(counter.get(), 10);
+}
