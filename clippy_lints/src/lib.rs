@@ -213,6 +213,7 @@ mod exhaustive_items;
 mod exit;
 mod explicit_write;
 mod fallible_impl_from;
+mod feature_name;
 mod float_equality_without_abs;
 mod float_literal;
 mod floating_point_arithmetic;
@@ -628,6 +629,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         exit::EXIT,
         explicit_write::EXPLICIT_WRITE,
         fallible_impl_from::FALLIBLE_IMPL_FROM,
+        feature_name::NEGATIVE_FEATURE_NAMES,
+        feature_name::REDUNDANT_FEATURE_NAMES,
         float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS,
         float_literal::EXCESSIVE_PRECISION,
         float_literal::LOSSY_FLOAT_LITERAL,
@@ -1781,6 +1784,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     store.register_group(true, "clippy::cargo", Some("clippy_cargo"), vec![
         LintId::of(cargo_common_metadata::CARGO_COMMON_METADATA),
+        LintId::of(feature_name::NEGATIVE_FEATURE_NAMES),
+        LintId::of(feature_name::REDUNDANT_FEATURE_NAMES),
         LintId::of(multiple_crate_versions::MULTIPLE_CRATE_VERSIONS),
         LintId::of(wildcard_dependencies::WILDCARD_DEPENDENCIES),
     ]);
@@ -2105,6 +2110,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
     store.register_late_pass(|| box strlen_on_c_strings::StrlenOnCStrings);
     store.register_late_pass(move || box self_named_constructors::SelfNamedConstructors);
+    store.register_late_pass(move || box feature_name::FeatureName);
 }
 
 #[rustfmt::skip]
