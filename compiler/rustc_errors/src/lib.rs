@@ -20,6 +20,7 @@ extern crate tracing;
 
 pub use emitter::ColorConfig;
 
+use rustc_lint_defs::LintExpectationId;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
@@ -677,6 +678,11 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
+    /// Construct a builder at the `Expect` level with the `msg`.
+    pub fn struct_expect(&self, msg: &str, id: LintExpectationId) -> DiagnosticBuilder<'_, ()> {
+        DiagnosticBuilder::new(self, Level::Expect(id), msg)
+    }
+
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
     pub fn struct_span_err(
         &self,
@@ -953,7 +959,9 @@ impl HandlerInner {
 
         (*TRACK_DIAGNOSTICS)(diagnostic);
 
-        if diagnostic.level == Allow {
+        if let Level::Expect(_) = diagnostic.level {
+            return;
+        } else if diagnostic.level == Allow {
             return;
         }
 
@@ -1250,6 +1258,7 @@ pub enum Level {
     Help,
     FailureNote,
     Allow,
+    Expect(LintExpectationId),
 }
 
 impl fmt::Display for Level {
@@ -1275,7 +1284,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow => unreachable!(),
+            Allow | Expect(_) => unreachable!(),
         }
         spec
     }
@@ -1289,6 +1298,7 @@ impl Level {
             Help => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
+            Expect(_) => panic!("Shouldn't call on expected error"),
         }
     }
 

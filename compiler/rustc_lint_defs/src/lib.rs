@@ -1,3 +1,5 @@
+#![feature(min_specialization)]
+
 #[macro_use]
 extern crate rustc_macros;
 
@@ -46,13 +48,60 @@ pub enum Applicability {
     Unspecified,
 }
 
+rustc_index::newtype_index! {
+    /// FIXME: The lint expectation ID is currently a simple copy of the `AttrId`
+    /// that the expectation originated from. In the future it should be generated
+    /// by other means. This is for one to keep the IDs independent of each other
+    /// and also to ensure that it is actually stable between compilation sessions.
+    /// (The `AttrId` for instance, is not stable).
+    ///
+    /// Additionally, it would be nice if this generation could be moved into
+    /// [`Level::from_symbol`] to have it all contained in one module and to
+    /// make it simpler to use.
+    pub struct LintExpectationId {
+        DEBUG_FORMAT = "LintExpectationId({})"
+    }
+}
+
+rustc_data_structures::impl_stable_hash_via_hash!(LintExpectationId);
+
+impl<HCX> ToStableHashKey<HCX> for LintExpectationId {
+    type KeyType = u32;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+        self.as_u32()
+    }
+}
+
 /// Setting for how to handle a lint.
+///
+/// See: https://doc.rust-lang.org/rustc/lints/levels.html
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {
+    /// The `allow` level will not issue any message.
     Allow,
+    /// The `expect` level will suppress the lint message but intern produce a message
+    /// if the lint wasn't issued in the expected scope. `Expect` should not be used as
+    /// an initial level for a lint.
+    ///
+    /// Note that this still means that the lint is enabled in this position and should
+    /// be emitted, this will intern fulfill the expectation and suppress the lint.
+    ///
+    /// See RFC 2383.
+    ///
+    /// The `LintExpectationId` is used to later link a lint emission to the actual
+    /// expectation. It can be ignored in most cases.
+    Expect(LintExpectationId),
+    /// The `warn` level will produce a warning if the lint was violated, however the
+    /// compiler will continue with its execution.
     Warn,
     ForceWarn,
+    /// The `deny` level will produce an error and stop further execution after the lint
+    /// pass is complete.
     Deny,
+    /// `Forbid` is equivalent to the `deny` level but can't be overwritten like the previous
+    /// levels.
     Forbid,
 }
 
@@ -63,6 +112,7 @@ impl Level {
     pub fn as_str(self) -> &'static str {
         match self {
             Level::Allow => "allow",
+            Level::Expect(_) => "expect",
             Level::Warn => "warn",
             Level::ForceWarn => "force-warn",
             Level::Deny => "deny",
@@ -70,14 +120,15 @@ impl Level {
         }
     }
 
-    /// Converts a lower-case string to a level.
+    /// Converts a lower-case string to a level. This will never construct the expect
+    /// level as that would require a [`LintExpectationId`]
     pub fn from_str(x: &str) -> Option<Level> {
         match x {
             "allow" => Some(Level::Allow),
             "warn" => Some(Level::Warn),
             "deny" => Some(Level::Deny),
             "forbid" => Some(Level::Forbid),
-            _ => None,
+            "expect" | _ => None,
         }
     }
 
@@ -85,6 +136,7 @@ impl Level {
     pub fn from_symbol(x: Symbol) -> Option<Level> {
         match x {
             sym::allow => Some(Level::Allow),
+            sym::expect => Some(Level::Expect(LintExpectationId::from(0u32))),
             sym::warn => Some(Level::Warn),
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),

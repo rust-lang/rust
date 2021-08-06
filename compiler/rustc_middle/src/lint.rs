@@ -225,6 +225,7 @@ pub fn explain_lint_level_source(
                 Level::Forbid => "-F",
                 Level::Allow => "-A",
                 Level::ForceWarn => "--force-warn",
+                Level::Expect(_) => unreachable!("the expect level does not have a commandline flag"),
             };
             let hyphen_case_lint_name = name.replace('_', "-");
             if lint_flag_val.as_str() == name {
@@ -314,6 +315,16 @@ pub fn struct_lint_level<'s, 'd>(
                     return;
                 }
             }
+            (Level::Expect(expect_id), _) => {
+                // This case is special as we actually allow the lint itself in this context, but
+                // we can't return early like in the case for `Level::Allow` because we still
+                // need the lint diagnostic to be emitted to `rustc_error::HanderInner`.
+                //
+                // We can also not mark the lint expectation as fulfilled here right away, as it
+                // can still be cancelled in the decorate function. All of this means that we simply
+                // create a `DiagnosticBuilder` and continue as we would for warnings.
+                sess.struct_expect("", expect_id)
+            }
             (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
@@ -344,6 +355,17 @@ pub fn struct_lint_level<'s, 'd>(
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
                 return;
             }
+        }
+
+        // Lint diagnostics that are covered by the expect level will not be emitted outside
+        // the compiler. It is therefore not necessary to add any information for the user.
+        // This will therefore directly call the decorate function which will intern emit
+        // the `Diagnostic`.
+        if let Level::Expect(_) = level {
+            let name = lint.name_lower();
+            err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
+            decorate(LintDiagnosticBuilder::new(err));
+            return;
         }
 
         explain_lint_level_source(sess, lint, level, src, &mut err);
