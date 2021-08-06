@@ -1,6 +1,8 @@
 // wasm32 does not support benches (no time).
 #![cfg(not(target_arch = "wasm32"))]
+#![feature(array_chunks)]
 #![feature(flt2dec)]
+#![feature(iter_array_chunks)]
 #![feature(test)]
 
 extern crate test;
