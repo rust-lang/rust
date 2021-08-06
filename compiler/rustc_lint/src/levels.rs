@@ -7,17 +7,15 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::LevelAndSource;
-use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{
-    struct_lint_level, LintLevelMap, LintLevelSets, LintLevelSource, LintSet, LintStackIndex,
-    COMMAND_LINE,
+    struct_lint_level, LevelAndSource, LintDiagnosticBuilder, LintExpectation, LintLevelMap,
+    LintLevelSets, LintLevelSource, LintSet, LintStackIndex, COMMAND_LINE,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    Level, Lint, LintId,
+    Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -44,6 +42,7 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
 
 pub struct LintLevelsBuilder<'s> {
     sess: &'s Session,
+    lint_expectations: FxHashMap<LintExpectationId, LintExpectation>,
     sets: LintLevelSets,
     id_to_set: FxHashMap<HirId, LintStackIndex>,
     cur: LintStackIndex,
@@ -66,6 +65,7 @@ impl<'s> LintLevelsBuilder<'s> {
     ) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
+            lint_expectations: Default::default(),
             sets: LintLevelSets::new(),
             cur: COMMAND_LINE,
             id_to_set: Default::default(),
@@ -231,7 +231,7 @@ impl<'s> LintLevelsBuilder<'s> {
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for attr in attrs {
-            let Some(level) = Level::from_symbol(attr.name_or_empty()) else {
+            let Some(level) = Level::from_symbol(attr.name_or_empty(), attr.id.as_u32()) else {
                 continue
             };
 
@@ -476,6 +476,26 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
                 }
             }
+
+            if !specs.is_empty() {
+                // Only lints that are currently registered in the lint store
+                // have been found and added to `specs`. Creating the expectation
+                // here ensures that it can be fulfilled during this compilation
+                // session.
+                if let Level::Expect(expect_id) = level {
+                    let has_lints = specs
+                        .values()
+                        .any(|(lvl, _src)| matches!(lvl, Level::Expect(check_id) if check_id.eq(&expect_id)));
+
+                    if has_lints {
+                        let lint = builtin::UNFULFILLED_LINT_EXPECTATIONS;
+                        let (lvl, src) =
+                            self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
+                        let expectation = LintExpectation::new(reason, attr.span, lvl, src);
+                        self.lint_expectations.insert(expect_id, expectation);
+                    }
+                }
+            }
         }
 
         if !is_crate_node {
@@ -563,7 +583,11 @@ impl<'s> LintLevelsBuilder<'s> {
     }
 
     pub fn build_map(self) -> LintLevelMap {
-        LintLevelMap { sets: self.sets, id_to_set: self.id_to_set }
+        LintLevelMap {
+            sets: self.sets,
+            id_to_set: self.id_to_set,
+            lint_expectations: self.lint_expectations,
+        }
     }
 }
 

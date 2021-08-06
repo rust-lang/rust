@@ -133,10 +133,10 @@ impl Level {
     }
 
     /// Converts a symbol to a level.
-    pub fn from_symbol(x: Symbol) -> Option<Level> {
+    pub fn from_symbol(x: Symbol, possible_lint_expect_id: u32) -> Option<Level> {
         match x {
             sym::allow => Some(Level::Allow),
-            sym::expect => Some(Level::Expect(LintExpectationId::from(0u32))),
+            sym::expect => Some(Level::Expect(LintExpectationId::from(possible_lint_expect_id))),
             sym::warn => Some(Level::Warn),
             sym::deny => Some(Level::Deny),
             sym::forbid => Some(Level::Forbid),

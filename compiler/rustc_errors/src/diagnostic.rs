@@ -133,11 +133,7 @@ impl Diagnostic {
             | Level::Error { .. }
             | Level::FailureNote => true,
 
-            Level::Warning
-            | Level::Note
-            | Level::Help
-            | Level::Allow
-            | Level::Expect(_) => false,
+            Level::Warning | Level::Note | Level::Help | Level::Allow | Level::Expect(_) => false,
         }
     }
 

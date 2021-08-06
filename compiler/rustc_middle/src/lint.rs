@@ -6,6 +6,7 @@ use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::LintExpectationId;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     FutureIncompatibilityReason, Level, Lint, LintId,
@@ -153,6 +154,13 @@ impl LintLevelSets {
 
 #[derive(Debug)]
 pub struct LintLevelMap {
+    /// This is a collection of lint expectations as described in RFC 2383, that
+    /// can be fulfilled during this compilation session. This means that at least
+    /// one expected lint is currently registered in the lint store.
+    ///
+    /// The [`LintExpectationId`] is stored as a part of the [`Expect`](Level::Expect)
+    /// lint level.
+    pub lint_expectations: FxHashMap<LintExpectationId, LintExpectation>,
     pub sets: LintLevelSets,
     pub id_to_set: FxHashMap<HirId, LintStackIndex>,
 }
@@ -178,11 +186,39 @@ impl LintLevelMap {
 impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let LintLevelMap { ref sets, ref id_to_set } = *self;
+        let LintLevelMap { ref sets, ref id_to_set, ref lint_expectations } = *self;
 
         id_to_set.hash_stable(hcx, hasher);
+        lint_expectations.hash_stable(hcx, hasher);
 
         hcx.while_hashing_spans(true, |hcx| sets.hash_stable(hcx, hasher))
+    }
+}
+
+/// This struct represents a lint expectation and holds all required information
+/// to emit the `unfulfilled_lint_expectations` lint if it is unfulfilled after
+/// the `LateLintPass` has completed.
+#[derive(Clone, Debug, HashStable)]
+pub struct LintExpectation {
+    /// The reason for this expectation that can optionally be added as part of
+    /// the attribute. It will be displayed as part of the lint message.
+    pub reason: Option<Symbol>,
+    /// The [`Span`] of the attribute that this expectation originated from.
+    pub emission_span: Span,
+    /// The [`Level`] that this lint diagnostic should be emitted if unfulfilled.
+    pub emission_level: Level,
+    /// The [`LintLevelSource`] information needed for [`struct_lint_level`].
+    pub emission_level_source: LintLevelSource,
+}
+
+impl LintExpectation {
+    pub fn new(
+        reason: Option<Symbol>,
+        attr_span: Span,
+        emission_level: Level,
+        emission_level_source: LintLevelSource,
+    ) -> Self {
+        Self { reason, emission_span: attr_span, emission_level, emission_level_source }
     }
 }
 
@@ -225,7 +261,9 @@ pub fn explain_lint_level_source(
                 Level::Forbid => "-F",
                 Level::Allow => "-A",
                 Level::ForceWarn => "--force-warn",
-                Level::Expect(_) => unreachable!("the expect level does not have a commandline flag"),
+                Level::Expect(_) => {
+                    unreachable!("the expect level does not have a commandline flag")
+                }
             };
             let hyphen_case_lint_name = name.replace('_', "-");
             if lint_flag_val.as_str() == name {

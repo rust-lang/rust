@@ -451,6 +451,15 @@ struct HandlerInner {
     deduplicated_warn_count: usize,
 
     future_breakage_diagnostics: Vec<Diagnostic>,
+
+    /// Lint [`Diagnostic`]s can be expected as described in [RFC-2383]. An
+    /// expected diagnostic will have the level `Expect` which additionally
+    /// carries the [`LintExpectationId`] of the expectation that can be
+    /// marked as fulfilled. This is a collection of all [`LintExpectationId`]s
+    /// that have been marked as fulfilled this way.
+    ///
+    /// [RFC-2383]: https://rust-lang.github.io/rfcs/2383-lint-reasons.html
+    fulfilled_expectations: FxHashSet<LintExpectationId>,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -571,6 +580,7 @@ impl Handler {
                 emitted_diagnostics: Default::default(),
                 stashed_diagnostics: Default::default(),
                 future_breakage_diagnostics: Vec::new(),
+                fulfilled_expectations: Default::default(),
             }),
         }
     }
@@ -912,6 +922,12 @@ impl Handler {
     pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
         self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
     }
+
+    /// This methods steals all [`LintExpectationId`]s that are stored inside
+    /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
+    pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
+        std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
+    }
 }
 
 impl HandlerInner {
@@ -959,7 +975,8 @@ impl HandlerInner {
 
         (*TRACK_DIAGNOSTICS)(diagnostic);
 
-        if let Level::Expect(_) = diagnostic.level {
+        if let Level::Expect(expectation_id) = diagnostic.level {
+            self.fulfilled_expectations.insert(expectation_id);
             return;
         } else if diagnostic.level == Allow {
             return;
