@@ -1,7 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use super::fd::WasiFd;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BufferMode, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::raw;
 use crate::os::wasi::io::{AsRawFd, FromRawFd};
@@ -109,4 +109,8 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
+}
+
+pub fn default_stdout_buffer_mode() -> BufferMode {
+    BufferMode::Line
 }

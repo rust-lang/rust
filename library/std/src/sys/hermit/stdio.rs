@@ -1,5 +1,4 @@
-use crate::io;
-use crate::io::{IoSlice, IoSliceMut};
+use crate::io::{self, BufferMode, IoSlice, IoSliceMut};
 use crate::sys::hermit::abi;
 
 pub struct Stdin;
@@ -117,4 +116,8 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
+}
+
+pub fn default_stdout_buffer_mode() -> BufferMode {
+    BufferMode::Line
 }

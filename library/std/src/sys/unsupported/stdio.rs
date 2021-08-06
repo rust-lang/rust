@@ -1,4 +1,4 @@
-use crate::io;
+use crate::io::{self, BufferMode};
 
 pub struct Stdin;
 pub struct Stdout;
@@ -56,4 +56,8 @@ pub fn is_ebadf(_err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<Vec<u8>> {
     None
+}
+
+pub fn default_stdout_buffer_mode() -> BufferMode {
+    BufferMode::Line
 }

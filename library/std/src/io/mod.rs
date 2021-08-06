@@ -260,6 +260,8 @@ use crate::str;
 use crate::sys;
 use crate::sys_common::memchr;
 
+#[unstable(feature = "stdout_switchable_buffering", issue = "78515")]
+pub use self::buffered::BufferMode;
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
 #[unstable(feature = "internal_output_capture", issue = "none")]

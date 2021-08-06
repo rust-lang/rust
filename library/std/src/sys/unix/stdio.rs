@@ -1,4 +1,4 @@
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BufferMode, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::unix::io::{AsFd, BorrowedFd, FromRawFd};
 use crate::sys::fd::FileDesc;
@@ -138,4 +138,10 @@ impl<'a> AsFd for io::StderrLock<'a> {
     fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) }
     }
+}
+
+/// Get the default stdout buffermode. In the future, this should be determined
+/// via `isatty` or some similar check on stdout
+pub fn default_stdout_buffer_mode() -> BufferMode {
+    BufferMode::Line
 }

@@ -1,6 +1,6 @@
 use fortanix_sgx_abi as abi;
 
-use crate::io;
+use crate::io::{self, BufferMode};
 #[cfg(not(test))]
 use crate::slice;
 #[cfg(not(test))]
@@ -71,6 +71,10 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     super::abi::panic::SgxPanicOutput::new()
+}
+
+pub fn default_stdout_buffer_mode() -> BufferMode {
+    BufferMode::Line
 }
 
 // This function is needed by libunwind. The symbol is named in pre-link args

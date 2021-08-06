@@ -2,7 +2,7 @@
 
 use crate::char::decode_utf16;
 use crate::cmp;
-use crate::io;
+use crate::io::{self, BufferMode};
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
 use crate::ptr;
 use crate::str;
@@ -419,4 +419,8 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
+}
+
+pub fn default_stdout_buffer_mode() -> BufferMode {
+    BufferMode::Line
 }
