@@ -15,8 +15,8 @@ exec ${0/.rs/.bin} $@
 //! for example:
 //!
 //! ```shell
-//! $ rustc y.rs -o build/y.bin
-//! $ build/y.bin
+//! $ rustc y.rs -o y.bin
+//! $ ./y.bin
 //! ```
 //!
 //! # Naming

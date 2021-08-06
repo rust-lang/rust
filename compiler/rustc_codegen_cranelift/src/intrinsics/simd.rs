@@ -108,11 +108,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             for (out_idx, in_idx) in indexes.into_iter().enumerate() {
                 let in_lane = if u64::from(in_idx) < lane_count {
-                    x.value_field(fx, mir::Field::new(in_idx.into()))
+                    x.value_lane(fx, in_idx.into())
                 } else {
-                    y.value_field(fx, mir::Field::new(usize::from(in_idx) - usize::try_from(lane_count).unwrap()))
+                    y.value_lane(fx, u64::from(in_idx) - lane_count)
                 };
-                let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
+                let out_lane = ret.place_lane(fx, u64::try_from(out_idx).unwrap());
                 out_lane.write_cvalue(fx, in_lane);
             }
         };
@@ -163,8 +163,36 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
             }
 
-            let ret_lane = v.value_field(fx, mir::Field::new(idx.try_into().unwrap()));
+            let ret_lane = v.value_lane(fx, idx.try_into().unwrap());
             ret.write_cvalue(fx, ret_lane);
+        };
+
+        simd_neg, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
+                let ret_lane = match lane_layout.ty.kind() {
+                    ty::Int(_) => fx.bcx.ins().ineg(lane),
+                    ty::Float(_) => fx.bcx.ins().fneg(lane),
+                    _ => unreachable!(),
+                };
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
+        };
+
+        simd_fabs, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, ret_lane_layout, lane| {
+                let ret_lane = fx.bcx.ins().fabs(lane);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
+        };
+
+        simd_fsqrt, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, ret_lane_layout, lane| {
+                let ret_lane = fx.bcx.ins().sqrt(lane);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
         };
 
         simd_add, (c x, c y) {
@@ -182,6 +210,29 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         simd_div, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_flt_binop!(fx, udiv|sdiv|fdiv(x, y) -> ret);
+        };
+        simd_rem, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
+            simd_pair_for_each_lane(fx, x, y, ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.kind() {
+                    ty::Uint(_) => fx.bcx.ins().urem(x_lane, y_lane),
+                    ty::Int(_) => fx.bcx.ins().srem(x_lane, y_lane),
+                    ty::Float(FloatTy::F32) => fx.lib_call(
+                        "fmodf",
+                        vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
+                        vec![AbiParam::new(types::F32)],
+                        &[x_lane, y_lane],
+                    )[0],
+                    ty::Float(FloatTy::F64) => fx.lib_call(
+                        "fmod",
+                        vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
+                        vec![AbiParam::new(types::F64)],
+                        &[x_lane, y_lane],
+                    )[0],
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            });
         };
         simd_shl, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
@@ -216,15 +267,14 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let ret_lane_layout = fx.layout_of(ret_lane_ty);
 
             for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.try_into().unwrap());
-                let a_lane = a.value_field(fx, lane).load_scalar(fx);
-                let b_lane = b.value_field(fx, lane).load_scalar(fx);
-                let c_lane = c.value_field(fx, lane).load_scalar(fx);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
+                let c_lane = c.value_lane(fx, lane).load_scalar(fx);
 
                 let mul_lane = fx.bcx.ins().fmul(a_lane, b_lane);
                 let res_lane = CValue::by_val(fx.bcx.ins().fadd(mul_lane, c_lane), ret_lane_layout);
 
-                ret.place_field(fx, lane).write_cvalue(fx, res_lane);
+                ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
             }
         };
 
@@ -237,9 +287,52 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
 
-        simd_reduce_add_ordered | simd_reduce_add_unordered, (c v) {
+        simd_round, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
+                let res_lane = match lane_layout.ty.kind() {
+                    ty::Float(FloatTy::F32) => fx.lib_call(
+                        "roundf",
+                        vec![AbiParam::new(types::F32)],
+                        vec![AbiParam::new(types::F32)],
+                        &[lane],
+                    )[0],
+                    ty::Float(FloatTy::F64) => fx.lib_call(
+                        "round",
+                        vec![AbiParam::new(types::F64)],
+                        vec![AbiParam::new(types::F64)],
+                        &[lane],
+                    )[0],
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            });
+        };
+        simd_ceil, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, ret_lane_layout, lane| {
+                let ret_lane = fx.bcx.ins().ceil(lane);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
+        };
+        simd_floor, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, ret_lane_layout, lane| {
+                let ret_lane = fx.bcx.ins().floor(lane);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
+        };
+        simd_trunc, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, ret_lane_layout, lane| {
+                let ret_lane = fx.bcx.ins().trunc(lane);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
+        };
+
+        simd_reduce_add_ordered | simd_reduce_add_unordered, (c v, v acc) {
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
-            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+            simd_reduce(fx, v, Some(acc), ret, |fx, lane_layout, a, b| {
                 if lane_layout.ty.is_floating_point() {
                     fx.bcx.ins().fadd(a, b)
                 } else {
@@ -248,9 +341,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v) {
+        simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v, v acc) {
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
-            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+            simd_reduce(fx, v, Some(acc), ret, |fx, lane_layout, a, b| {
                 if lane_layout.ty.is_floating_point() {
                     fx.bcx.ins().fmul(a, b)
                 } else {
@@ -269,13 +362,70 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_reduce_bool(fx, v, ret, |fx, a, b| fx.bcx.ins().bor(a, b));
         };
 
-        // simd_fabs
-        // simd_saturating_add
+        simd_reduce_and, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, None, ret, |fx, _layout, a, b| fx.bcx.ins().band(a, b));
+        };
+
+        simd_reduce_or, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, None, ret, |fx, _layout, a, b| fx.bcx.ins().bor(a, b));
+        };
+
+        simd_reduce_xor, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, None, ret, |fx, _layout, a, b| fx.bcx.ins().bxor(a, b));
+        };
+
+        simd_reduce_min, (c v) {
+            // FIXME support floats
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, None, ret, |fx, layout, a, b| {
+                let lt = fx.bcx.ins().icmp(if layout.ty.is_signed() {
+                    IntCC::SignedLessThan
+                } else {
+                    IntCC::UnsignedLessThan
+                }, a, b);
+                fx.bcx.ins().select(lt, a, b)
+            });
+        };
+
+        simd_reduce_max, (c v) {
+            // FIXME support floats
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, None, ret, |fx, layout, a, b| {
+                let gt = fx.bcx.ins().icmp(if layout.ty.is_signed() {
+                    IntCC::SignedGreaterThan
+                } else {
+                    IntCC::UnsignedGreaterThan
+                }, a, b);
+                fx.bcx.ins().select(gt, a, b)
+            });
+        };
+
+        simd_select, (c m, c a, c b) {
+            validate_simd_type!(fx, intrinsic, span, m.layout().ty);
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
+            assert_eq!(a.layout(), b.layout());
+
+            let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            let lane_layout = fx.layout_of(lane_ty);
+
+            for lane in 0..lane_count {
+                let m_lane = m.value_lane(fx, lane).load_scalar(fx);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
+
+                let m_lane = fx.bcx.ins().icmp_imm(IntCC::Equal, m_lane, 0);
+                let res_lane = CValue::by_val(fx.bcx.ins().select(m_lane, b_lane, a_lane), lane_layout);
+
+                ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
+            }
+        };
+
+        // simd_saturating_*
         // simd_bitmask
-        // simd_select
-        // simd_rem
-        // simd_neg
-        // simd_trunc
-        // simd_floor
+        // simd_scatter
+        // simd_gather
     }
 }

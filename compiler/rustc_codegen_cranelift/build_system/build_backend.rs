@@ -4,7 +4,7 @@ use std::process::Command;
 
 pub(crate) fn build_backend(channel: &str, host_triple: &str) -> PathBuf {
     let mut cmd = Command::new("cargo");
-    cmd.arg("build").arg("--target").arg(host_triple);
+    cmd.arg("build").arg("--target").arg(host_triple).arg("--features").arg("unstable-features");
 
     match channel {
         "debug" => {}

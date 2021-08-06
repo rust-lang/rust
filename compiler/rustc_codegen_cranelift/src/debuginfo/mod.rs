@@ -46,7 +46,7 @@ impl<'tcx> DebugContext<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
-            // TODO: this should be configurable
+            // FIXME this should be configurable
             // macOS doesn't seem to support DWARF > 3
             // 5 version is required for md5 file hash
             version: if tcx.sess.target.is_like_osx {

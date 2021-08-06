@@ -227,6 +227,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     arg: CValue<'tcx>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+    is_owned: bool,
 ) -> SmallVec<[Value; 2]> {
     assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty);
     match arg_abi.mode {
@@ -237,10 +238,21 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             smallvec![a, b]
         }
         PassMode::Cast(cast) => to_casted_value(fx, arg, cast),
-        PassMode::Indirect { .. } => match arg.force_stack(fx) {
-            (ptr, None) => smallvec![ptr.get_addr(fx)],
-            (ptr, Some(meta)) => smallvec![ptr.get_addr(fx), meta],
-        },
+        PassMode::Indirect { .. } => {
+            if is_owned {
+                match arg.force_stack(fx) {
+                    (ptr, None) => smallvec![ptr.get_addr(fx)],
+                    (ptr, Some(meta)) => smallvec![ptr.get_addr(fx), meta],
+                }
+            } else {
+                // Ownership of the value at the backing storage for an argument is passed to the
+                // callee per the ABI, so we must make a copy of the argument unless the argument
+                // local is moved.
+                let place = CPlace::new_stack_slot(fx, arg.layout());
+                place.write_cvalue(fx, arg);
+                smallvec![place.to_ptr().get_addr(fx)]
+            }
+        }
     }
 }
 

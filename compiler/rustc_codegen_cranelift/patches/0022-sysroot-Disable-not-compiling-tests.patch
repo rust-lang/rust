@@ -51,14 +51,14 @@ index 1a6be3a..42dbd59 100644
  #[test]
  #[allow(warnings)]
  // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
-@@ -289,6 +290,7 @@ fn write_unaligned_drop() {
-     }
-     DROPS.with(|d| assert_eq!(*d.borrow(), [0]));
+@@ -277,6 +277,7 @@ pub fn test_variadic_fnptr() {
+     let mut s = SipHasher::new();
+     assert_eq!(p.hash(&mut s), q.hash(&mut s));
  }
 +*/
  
  #[test]
- fn align_offset_zst() {
+ fn write_unaligned_drop() {
 diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
 index 6609bc3..241b497 100644
 --- a/library/core/tests/slice.rs
