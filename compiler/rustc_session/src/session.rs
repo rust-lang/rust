@@ -450,8 +450,7 @@ impl Session {
     {
         let old_count = self.err_count();
         let result = f();
-        let errors = self.err_count() - old_count;
-        if errors == 0 { Ok(result) } else { Err(ErrorReported) }
+        if self.err_count() == old_count { Ok(result) } else { Err(ErrorReported) }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
