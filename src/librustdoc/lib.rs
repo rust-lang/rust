@@ -5,7 +5,6 @@
 #![feature(rustc_private)]
 #![feature(array_methods)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(test)]

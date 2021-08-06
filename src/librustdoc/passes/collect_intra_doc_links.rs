@@ -61,7 +61,7 @@ enum ErrorKind<'a> {
 
 impl<'a> From<ResolutionFailure<'a>> for ErrorKind<'a> {
     fn from(err: ResolutionFailure<'a>) -> Self {
-        ErrorKind::Resolve(box err)
+        ErrorKind::Resolve(Box::new(err))
     }
 }
 

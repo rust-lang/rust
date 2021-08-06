@@ -99,7 +99,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         stderr: None,
         lint_caps,
         parse_sess_created: None,
-        register_lints: Some(box crate::lint::register_lints),
+        register_lints: Some(Box::new(crate::lint::register_lints)),
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
@@ -549,10 +549,10 @@ crate fn make_test(
                     .supports_color();
 
             let emitter =
-                EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+                EmitterWriter::new(Box::new(io::sink()), None, false, false, false, None, false);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let handler = Handler::with_emitter(false, None, box emitter);
+            let handler = Handler::with_emitter(false, None, Box::new(emitter));
             let sess = ParseSess::with_span_handler(handler, sm);
 
             let mut found_main = false;
@@ -962,7 +962,7 @@ impl Tester for Collector {
                 no_run,
                 test_type: test::TestType::DocTest,
             },
-            testfn: test::DynTestFn(box move || {
+            testfn: test::DynTestFn(Box::new(move || {
                 let report_unused_externs = |uext| {
                     unused_externs.lock().unwrap().push(uext);
                 };
@@ -1042,9 +1042,9 @@ impl Tester for Collector {
                         }
                     }
 
-                    panic::resume_unwind(box ());
+                    panic::resume_unwind(Box::new(()));
                 }
-            }),
+            })),
         });
     }
 
