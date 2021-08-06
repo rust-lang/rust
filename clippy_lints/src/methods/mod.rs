@@ -313,12 +313,12 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usages of `_.unwrap_or_else(Default::default)` on Option and
-    /// Result values.
+    /// Checks for usages of `_.unwrap_or_else(Default::default)` on `Option` and
+    /// `Result` values.
     ///
     /// ### Why is this bad?
-    /// Readability, these can be written as `option.unwrap_or_default` or
-    /// `result.unwrap_or_default`.
+    /// Readability, these can be written as `_.unwrap_or_default`, which is
+    /// simpler and more concise.
     ///
     /// ### Examples
     /// ```rust

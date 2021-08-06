@@ -2,7 +2,6 @@
 
 #![allow(clippy::module_name_repetitions)]
 
-use hir::{HirId, QPath};
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -135,21 +134,6 @@ pub fn implements_trait<'tcx>(
             .type_implements_trait(trait_id, ty, ty_params, cx.param_env)
             .must_apply_modulo_regions()
     })
-}
-
-/// Gets the trait that a path targets. For example `<SomeTy as Trait>::a` would return the
-/// [`DefId`] for `Trait`.
-///
-/// `cx` must be in a body.
-pub fn qpath_target_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, expr_id: HirId) -> Option<DefId> {
-    let method_res = cx.typeck_results().qpath_res(qpath, expr_id);
-    let method_id = match method_res {
-        hir::def::Res::Def(_kind, id) => Some(id),
-        _ => None,
-    };
-    let method_id = method_id?;
-
-    cx.tcx.trait_of_item(method_id)
 }
 
 /// Checks whether this type implements `Drop`.

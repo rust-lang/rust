@@ -2,9 +2,7 @@
 
 use super::UNWRAP_OR_ELSE_DEFAULT;
 use clippy_utils::{
-    diagnostics::span_lint_and_sugg,
-    source::snippet_with_applicability,
-    ty::{is_type_diagnostic_item, qpath_target_trait},
+    diagnostics::span_lint_and_sugg, is_trait_item, source::snippet_with_applicability, ty::is_type_diagnostic_item,
 };
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -26,10 +24,7 @@ pub(super) fn check<'tcx>(
 
     if_chain! {
         if is_option || is_result;
-        if let hir::ExprKind::Path(ref qpath) = u_arg.kind;
-        if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
-        if let Some(target_trait) = qpath_target_trait(cx, qpath, u_arg.hir_id);
-        if target_trait == default_trait_id;
+        if is_trait_item(cx, u_arg, sym::Default);
         then {
             let mut applicability = Applicability::MachineApplicable;
 

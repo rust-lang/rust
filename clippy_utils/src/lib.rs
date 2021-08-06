@@ -326,6 +326,25 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
         .map_or(false, |did| is_diag_trait_item(cx, did, diag_item))
 }
 
+/// Checks if the given expression is a path referring an item on the trait
+/// that is marked with the given diagnostic item.
+///
+/// For checking method call expressions instead of path expressions, use
+/// [`is_trait_method`].
+///
+/// For example, to find if an expression like `u64::default` refers to an item
+/// of the trait `Default`, which is marked `#[rustc_diagnostic_item = "Default"]`,
+/// a `diag_item` of `sym::Default` should be used.
+pub fn is_trait_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
+    if let hir::ExprKind::Path(ref qpath) = expr.kind {
+        cx.qpath_res(qpath, expr.hir_id)
+            .opt_def_id()
+            .map_or(false, |def_id| is_diag_trait_item(cx, def_id, diag_item))
+    } else {
+        false
+    }
+}
+
 pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, path) => path.segments.last().expect("A path must have at least one segment"),
