@@ -1103,8 +1103,8 @@ impl CrateError {
                         if sess.is_nightly_build() {
                             err.help("consider building the standard library from source with `cargo build -Zbuild-std`");
                         }
-                    } else if Some(crate_name)
-                        == sess.opts.debugging_opts.profiler_runtime.as_deref().map(Symbol::intern)
+                    } else if crate_name
+                        == Symbol::intern(&sess.opts.debugging_opts.profiler_runtime)
                     {
                         err.note(&"the compiler may have been built without the profiler runtime");
                     }
