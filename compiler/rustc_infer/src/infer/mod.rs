@@ -581,6 +581,10 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,
     /// you need to call this function. Otherwise the opaque type will be treated opaquely.
+    ///
+    /// It is only meant to be called in two places, for typeck
+    /// (via `with_fresh_in_progress_typeck_results`) and for the inference context used
+    /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: LocalDefId) -> Self {
         self.defining_use_anchor = defining_use_anchor;
         self
