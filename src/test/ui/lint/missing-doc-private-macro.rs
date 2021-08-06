@@ -29,13 +29,13 @@ mod submodule {
 
     #[macro_export]
     macro_rules! exported_to_top_level {
-        //~^ ERROR missing documentation for macro
+        //~^ ERROR missing documentation for a macro
         () => ()
     }
 }
 
 pub macro top_level_pub_macro {
-    //~^ ERROR missing documentation for macro
+    //~^ ERROR missing documentation for a macro
     () => ()
 }
 
