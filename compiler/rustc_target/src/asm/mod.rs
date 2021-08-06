@@ -154,6 +154,7 @@ mod mips;
 mod nvptx;
 mod powerpc;
 mod riscv;
+mod s390x;
 mod spirv;
 mod wasm;
 mod x86;
@@ -166,6 +167,7 @@ pub use mips::{MipsInlineAsmReg, MipsInlineAsmRegClass};
 pub use nvptx::{NvptxInlineAsmReg, NvptxInlineAsmRegClass};
 pub use powerpc::{PowerPCInlineAsmReg, PowerPCInlineAsmRegClass};
 pub use riscv::{RiscVInlineAsmReg, RiscVInlineAsmRegClass};
+pub use s390x::{s390xInlineAsmReg, s390xInlineAsmRegClass};
 pub use spirv::{SpirVInlineAsmReg, SpirVInlineAsmRegClass};
 pub use wasm::{WasmInlineAsmReg, WasmInlineAsmRegClass};
 pub use x86::{X86InlineAsmReg, X86InlineAsmRegClass};
@@ -184,6 +186,7 @@ pub enum InlineAsmArch {
     Mips64,
     PowerPC,
     PowerPC64,
+    s390x,
     SpirV,
     Wasm32,
     Bpf,
@@ -206,6 +209,7 @@ impl FromStr for InlineAsmArch {
             "hexagon" => Ok(Self::Hexagon),
             "mips" => Ok(Self::Mips),
             "mips64" => Ok(Self::Mips64),
+            "s390x" => Ok(Self::s390x),
             "spirv" => Ok(Self::SpirV),
             "wasm32" => Ok(Self::Wasm32),
             "bpf" => Ok(Self::Bpf),
@@ -235,6 +239,7 @@ pub enum InlineAsmReg {
     PowerPC(PowerPCInlineAsmReg),
     Hexagon(HexagonInlineAsmReg),
     Mips(MipsInlineAsmReg),
+    s390x(InlineAsmReg),
     SpirV(SpirVInlineAsmReg),
     Wasm(WasmInlineAsmReg),
     Bpf(BpfInlineAsmReg),
@@ -252,6 +257,7 @@ impl InlineAsmReg {
             Self::PowerPC(r) => r.name(),
             Self::Hexagon(r) => r.name(),
             Self::Mips(r) => r.name(),
+	        Self::s390x(r) => r.name(),
             Self::Bpf(r) => r.name(),
             Self::Err => "<reg>",
         }
@@ -266,6 +272,7 @@ impl InlineAsmReg {
             Self::PowerPC(r) => InlineAsmRegClass::PowerPC(r.reg_class()),
             Self::Hexagon(r) => InlineAsmRegClass::Hexagon(r.reg_class()),
             Self::Mips(r) => InlineAsmRegClass::Mips(r.reg_class()),
+            Self::s390x(r) => InlineAsmRegClass::s390x(r.reg_class()),
             Self::Bpf(r) => InlineAsmRegClass::Bpf(r.reg_class()),
             Self::Err => InlineAsmRegClass::Err,
         }
@@ -305,6 +312,9 @@ impl InlineAsmReg {
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
+    	    InlineAsmArch::s390x => {
+                Self::s390x(s390xInlineAsmReg::parse(arch, has_feature, target, &name)?)
+            }
             InlineAsmArch::SpirV => {
                 Self::SpirV(SpirVInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
@@ -333,6 +343,7 @@ impl InlineAsmReg {
             Self::PowerPC(r) => r.emit(out, arch, modifier),
             Self::Hexagon(r) => r.emit(out, arch, modifier),
             Self::Mips(r) => r.emit(out, arch, modifier),
+            Self::s390x(r) => r.emit(out, arch, modifier),
             Self::Bpf(r) => r.emit(out, arch, modifier),
             Self::Err => unreachable!("Use of InlineAsmReg::Err"),
         }
@@ -347,6 +358,7 @@ impl InlineAsmReg {
             Self::PowerPC(_) => cb(self),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
             Self::Mips(_) => cb(self),
+            Self::s390x(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Err => unreachable!("Use of InlineAsmReg::Err"),
         }
@@ -374,6 +386,7 @@ pub enum InlineAsmRegClass {
     PowerPC(PowerPCInlineAsmRegClass),
     Hexagon(HexagonInlineAsmRegClass),
     Mips(MipsInlineAsmRegClass),
+    s390x(s390xInlineAsmRegClass),
     SpirV(SpirVInlineAsmRegClass),
     Wasm(WasmInlineAsmRegClass),
     Bpf(BpfInlineAsmRegClass),
@@ -392,6 +405,7 @@ impl InlineAsmRegClass {
             Self::PowerPC(r) => r.name(),
             Self::Hexagon(r) => r.name(),
             Self::Mips(r) => r.name(),
+            Self::s390x(r) => r.name(),
             Self::SpirV(r) => r.name(),
             Self::Wasm(r) => r.name(),
             Self::Bpf(r) => r.name(),
@@ -412,6 +426,7 @@ impl InlineAsmRegClass {
             Self::PowerPC(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::PowerPC),
             Self::Hexagon(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Hexagon),
             Self::Mips(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Mips),
+            Self::s390x(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::s390x),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
             Self::Wasm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Wasm),
             Self::Bpf(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Bpf),
@@ -439,6 +454,7 @@ impl InlineAsmRegClass {
             Self::PowerPC(r) => r.suggest_modifier(arch, ty),
             Self::Hexagon(r) => r.suggest_modifier(arch, ty),
             Self::Mips(r) => r.suggest_modifier(arch, ty),
+            Self::s390x(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
             Self::Wasm(r) => r.suggest_modifier(arch, ty),
             Self::Bpf(r) => r.suggest_modifier(arch, ty),
@@ -462,6 +478,7 @@ impl InlineAsmRegClass {
             Self::PowerPC(r) => r.default_modifier(arch),
             Self::Hexagon(r) => r.default_modifier(arch),
             Self::Mips(r) => r.default_modifier(arch),
+            Self::s390x(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
             Self::Wasm(r) => r.default_modifier(arch),
             Self::Bpf(r) => r.default_modifier(arch),
@@ -484,6 +501,7 @@ impl InlineAsmRegClass {
             Self::PowerPC(r) => r.supported_types(arch),
             Self::Hexagon(r) => r.supported_types(arch),
             Self::Mips(r) => r.supported_types(arch),
+            Self::s390x(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
             Self::Wasm(r) => r.supported_types(arch),
             Self::Bpf(r) => r.supported_types(arch),
@@ -509,6 +527,7 @@ impl InlineAsmRegClass {
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?)
             }
+            InlineAsmArch::s390x => Self::s390x(s390xInlineAsmRegClass::parse(arch, name)?),
             InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(arch, name)?),
             InlineAsmArch::Wasm32 => Self::Wasm(WasmInlineAsmRegClass::parse(arch, name)?),
             InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmRegClass::parse(arch, name)?),
@@ -527,6 +546,7 @@ impl InlineAsmRegClass {
             Self::PowerPC(r) => r.valid_modifiers(arch),
             Self::Hexagon(r) => r.valid_modifiers(arch),
             Self::Mips(r) => r.valid_modifiers(arch),
+            Self::s390x(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
             Self::Wasm(r) => r.valid_modifiers(arch),
             Self::Bpf(r) => r.valid_modifiers(arch),
@@ -695,6 +715,11 @@ pub fn allocatable_registers(
             mips::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
+	InlineAsmArch::s390x => {
+	    let mut map = s390x::regclass_map();
+            s390x::fill_reg_map(arch, has_feature, target, &mut map);
+            map
+	}
         InlineAsmArch::SpirV => {
             let mut map = spirv::regclass_map();
             spirv::fill_reg_map(arch, has_feature, target, &mut map);
