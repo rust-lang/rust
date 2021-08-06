@@ -205,6 +205,10 @@ pub struct Child {
     pub stderr: Option<ChildStderr>,
 }
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Child {}
+
 impl AsInner<imp::Process> for Child {
     fn as_inner(&self) -> &imp::Process {
         &self.handle
