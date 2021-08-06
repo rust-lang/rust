@@ -13,7 +13,7 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 
 // Assist: destructure_tuple_binding
 //
-// Destructures a tuple binding into its items.
+// Destructures a tuple binding in place.
 //
 // ```
 // fn main() {
@@ -28,21 +28,55 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 //     let v = _0;
 // }
 // ```
-
+//
+//
+// And (currently disabled):
+// Assist: destructure_tuple_binding_in_sub_pattern
+//
+// Destructures tuple items in sub-pattern (after `@`).
+//
+// ```
+// fn main() {
+//     let $0t = (1,2);
+//     let v = t.0;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let t @ (_0, _1) = (1,2);
+//     let v = _0;
+// }
+// ```
 pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    // find variable pattern under cursor
+    destructure_tuple_binding_impl(acc, ctx, false)
+}
+
+pub(crate) fn destructure_tuple_binding_impl(acc: &mut Assists, ctx: &AssistContext, with_sub_pattern: bool) -> Option<()> {
     let ident_pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
     let data = collect_data(ident_pat, ctx)?;
 
     acc.add(
         AssistId("destructure_tuple", AssistKind::RefactorRewrite),
-        "Destructure tuple",
+        if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
         data.range,
         |builder| {
-            edit_tuple_assignment(&data, builder, ctx);
-            edit_tuple_usages(&data, builder, ctx);
+            edit_tuple_assignment(&data, builder, ctx, false);
+            edit_tuple_usages(&data, builder, ctx, false);
         },
     );
+
+    if with_sub_pattern {
+        acc.add(
+            AssistId("destructure_tuple_in_sub_pattern", AssistKind::RefactorRewrite),
+            "Destructure tuple in sub-pattern",
+            data.range,
+            |builder| {
+                edit_tuple_assignment(&data, builder, ctx, true);
+                edit_tuple_usages(&data, builder, ctx, true);
+            },
+        );
+    }
 
     Some(())
 }
@@ -102,7 +136,7 @@ struct TupleData {
     // field_types: Vec<Type>,
     usages: Option<UsageSearchResult>,
 }
-fn edit_tuple_assignment(data: &TupleData, builder: &mut AssistBuilder, ctx: &AssistContext) {
+fn edit_tuple_assignment(data: &TupleData, builder: &mut AssistBuilder, ctx: &AssistContext, in_sub_pattern: bool) {
     let tuple_pat = {
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
@@ -121,27 +155,40 @@ fn edit_tuple_assignment(data: &TupleData, builder: &mut AssistBuilder, ctx: &As
         text.replacen(first_tuple, &format!("$0{}", first_tuple), 1)
     };
 
-    let text = tuple_pat.to_string();
-    match ctx.config.snippet_cap {
-        Some(cap) => {
-            let snip = add_cursor(&text);
-            builder.replace_snippet(cap, data.range, snip);
-        }
-        None => builder.replace(data.range, text),
-    };
+    // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
+    if in_sub_pattern {
+        let text = format!(" @ {}", tuple_pat.to_string());
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snip = add_cursor(&text);
+                builder.insert_snippet(cap, data.range.end(), snip);
+            }
+            None => builder.insert(data.range.end(), text),
+        };
+    } else {
+        let text = tuple_pat.to_string();
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snip = add_cursor(&text);
+                builder.replace_snippet(cap, data.range, snip);
+            }
+            None => builder.replace(data.range, text),
+        };
+    }
 }
 
 fn edit_tuple_usages(
     data: &TupleData,
     builder: &mut AssistBuilder,
     ctx: &AssistContext,
+    in_sub_pattern: bool,
 ) {
     if let Some(usages) = data.usages.as_ref() {
         for (file_id, refs) in usages.iter() {
             builder.edit_file(*file_id);
     
             for r in refs {
-                edit_tuple_usage(r, data, builder, ctx);
+                edit_tuple_usage(r, data, builder, ctx, in_sub_pattern);
             }
         }
     }
@@ -151,6 +198,7 @@ fn edit_tuple_usage(
     data: &TupleData,
     builder: &mut AssistBuilder,
     _ctx: &AssistContext,
+    in_sub_pattern: bool,
 ) {
     match detect_tuple_index(usage.name.syntax(), data) {
         Some((expr, idx)) => {
@@ -160,6 +208,11 @@ fn edit_tuple_usage(
             builder.replace(range, text);
         }
         None => {
+            if in_sub_pattern {
+                cov_mark::hit!(destructure_tuple_call_with_subpattern);
+                return;
+            }
+
             // no index access -> make invalid -> requires handling by user
             // -> put usage in block comment
             builder.insert(usage.range.start(), "/*");
@@ -202,11 +255,18 @@ mod tests {
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 
+    // Tests for direct tuple destructure: 
+    // `let $0t = (1,2);` -> `let (_0, _1) = (1,2);`
+
+    fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+        destructure_tuple_binding_impl(acc, ctx, false)
+    }
+
     #[test]
     fn dont_trigger_on_unit() {
         cov_mark::check!(destructure_tuple_no_tuple);
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
 let $0v = ();
@@ -218,7 +278,7 @@ let $0v = ();
     fn dont_trigger_on_number() {
         cov_mark::check!(destructure_tuple_no_tuple);
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
 let $0v = 32;
@@ -230,7 +290,7 @@ let $0v = 32;
     #[test]
     fn destructure_3_tuple() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2,3);
@@ -246,7 +306,7 @@ fn main() {
     #[test]
     fn destructure_2_tuple() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2);
@@ -262,7 +322,7 @@ fn main() {
     #[test]
     fn replace_indices() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2,3);
@@ -285,7 +345,7 @@ fn main() {
     #[test]
     fn replace_usage_in_parentheses() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2,3);
@@ -306,7 +366,7 @@ fn main() {
     #[test]
     fn handle_function_call() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2);
@@ -325,7 +385,7 @@ fn main() {
     #[test]
     fn handle_invalid_index() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2);
@@ -344,7 +404,7 @@ fn main() {
     #[test]
     fn dont_replace_variable_with_same_name_as_tuple() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let tup = (1,2);
@@ -371,7 +431,7 @@ fn main() {
     #[test]
     fn keep_function_call_in_tuple_item() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0t = ("3.14", 0);
@@ -390,7 +450,7 @@ fn main() {
     #[test]
     fn keep_type() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0t: (usize, i32) = (1,2);
@@ -410,7 +470,7 @@ fn main() {
         // * in 1st: `i32`
         // * in 2nd: `&i32`
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let t = (1,2);
@@ -431,7 +491,7 @@ fn main() {
     #[test]
     fn destructure_multiple_reference() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let t = (1,2);
@@ -452,7 +512,7 @@ fn main() {
     #[test]
     fn keep_reference() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn foo(t: &(usize, usize)) -> usize {
     match t {
@@ -476,7 +536,7 @@ fn foo(t: &(usize, usize)) -> usize {
         // * in 1st: `i32`
         // * in 2nd: `&i32`
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let ref $0t = (1,2);
@@ -495,7 +555,7 @@ fn main() {
     #[test]
     fn with_mut() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let mut $0t = (1,2);
@@ -520,7 +580,7 @@ fn main() {
         // * in 2nd: `&mut i32`
         // Note: 2nd `_0 = 42` isn't valid; requires dereferencing (`*_0`), but isn't handled here!
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let ref mut $0t = (1,2);
@@ -541,7 +601,7 @@ fn main() {
     #[test]
     fn dont_trigger_for_non_tuple_reference() {
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let v = 42;
@@ -554,7 +614,7 @@ fn main() {
     #[test]
     fn dont_trigger_on_static_tuple() {
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 static $0TUP: (usize, usize) = (1,2);
             "#,
@@ -564,7 +624,7 @@ static $0TUP: (usize, usize) = (1,2);
     #[test]
     fn dont_trigger_on_wildcard() {
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0_ = (1,2);
@@ -576,7 +636,7 @@ fn main() {
     #[test]
     fn dont_trigger_in_struct() {
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 struct S {
     $0tup: (usize, usize),
@@ -588,7 +648,7 @@ struct S {
     #[test]
     fn dont_trigger_in_struct_creation() {
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 struct S {
     tup: (usize, usize),
@@ -605,7 +665,7 @@ fn main() {
     #[test]
     fn dont_trigger_on_tuple_struct() {
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 struct S(usize, usize);
 fn main() {
@@ -620,7 +680,7 @@ fn main() {
         // sub-pattern is only allowed with IdentPat (name), not other patterns (like TuplePat)
         cov_mark::check!(destructure_tuple_subpattern);
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn sum(t: (usize, usize)) -> usize {
     match t {
@@ -635,7 +695,7 @@ fn sum(t: (usize, usize)) -> usize {
     #[test]
     fn in_subpattern() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let t1 @ (_, $0t2) = (1, (2,3));
@@ -654,7 +714,7 @@ fn main() {
     #[test]
     fn in_nested_tuple() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let ($0tup, v) = ((1,2),3);
@@ -671,7 +731,7 @@ fn main() {
     #[test]
     fn in_closure() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0tup = (1,2,3);
@@ -690,7 +750,7 @@ fn main() {
     #[test]
     fn in_closure_args() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let f = |$0t| t.0 + t.1;
@@ -709,7 +769,7 @@ fn main() {
     #[test]
     fn in_function_args() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn f($0t: (usize, usize)) {
     let v = t.0;
@@ -726,7 +786,7 @@ fn f(($0_0, _1): (usize, usize)) {
     #[test]
     fn in_if_let() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn f(t: (usize, usize)) {
     if let $0t = t {
@@ -746,7 +806,7 @@ fn f(t: (usize, usize)) {
     #[test]
     fn in_if_let_option() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 //- minicore: option
 fn f(o: Option<(usize, usize)>) {
@@ -769,7 +829,7 @@ fn f(o: Option<(usize, usize)>) {
     #[test]
     fn in_match() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     match (1,2) {
@@ -789,7 +849,7 @@ fn main() {
     #[test]
     fn in_match_option() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 //- minicore: option
 fn main() {
@@ -812,7 +872,7 @@ fn main() {
     #[test]
     fn in_match_reference_option() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 //- minicore: option
 fn main() {
@@ -838,7 +898,7 @@ fn main() {
     #[test]
     fn in_for() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 //- minicore: iterators
 fn main() {
@@ -859,7 +919,7 @@ fn main() {
     #[test]
     fn in_for_nested() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 //- minicore: iterators
 fn main() {
@@ -882,7 +942,7 @@ fn main() {
     fn not_applicable_on_tuple_usage() {
         //Improvement: might be reasonable to allow & implement
         check_assist_not_applicable(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let t = (1,2);
@@ -895,7 +955,7 @@ fn main() {
     #[test]
     fn replace_all() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0t = (1,2);
@@ -932,7 +992,7 @@ fn main() {
     #[test]
     fn non_trivial_tuple_assignment() {
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main {
     let $0t = 
@@ -977,7 +1037,7 @@ fn main {
         // doesn't work: cannot find usage in `println!`
         // Note: Just `t` works, but not `t.0`
         check_assist(
-            destructure_tuple_binding,
+            assist,
             r#"
 fn main() {
     let $0t = (1,2);
@@ -991,5 +1051,212 @@ fn main() {
 }
             "#,
         )
+    }
+
+    /// Tests for destructure of tuple in sub-pattern: 
+    /// `let $0t = (1,2);` -> `let t @ (_0, _1) = (1,2);`
+    mod sub_pattern {
+        use super::*;
+        use crate::tests::check_assist_by_label;
+
+        fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+            destructure_tuple_binding_impl(acc, ctx, true)
+        }
+
+        fn check_sub_pattern_assist(
+            ra_fixture_before: &str,
+            ra_fixture_after: &str,
+        ) {
+            // with sub-pattern there are two assists: One with and one without sub-pattern
+            check_assist_by_label(
+                assist, 
+                ra_fixture_before, 
+                ra_fixture_after, 
+                "Destructure tuple in sub-pattern")
+        }
+
+        #[test]
+        fn destructure_in_sub_pattern() {
+            check_sub_pattern_assist(
+                r#"
+#![feature(bindings_after_at)]
+
+fn main() {
+    let $0t = (1,2);
+}
+                "#,
+                r#"
+#![feature(bindings_after_at)]
+
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+}
+                "#,
+            )
+        }
+    
+        #[test]
+        fn trigger_both_destructure_tuple_assists() {
+            let text = r#"
+fn main() {
+    let $0t = (1,2);
+}
+            "#;
+            check_assist_by_label(
+                assist, 
+                text, 
+                r#"
+fn main() {
+    let ($0_0, _1) = (1,2);
+}
+            "#, 
+                "Destructure tuple in place",
+            );
+            check_assist_by_label(
+                assist, 
+                text, 
+                r#"
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+}
+            "#, 
+                "Destructure tuple in sub-pattern",
+            );
+        }
+
+        #[test]
+        fn replace_indices() {
+            check_sub_pattern_assist(
+                r#"
+fn main() {
+    let $0t = (1,2);
+    let v1 = t.0;
+    let v2 = t.1;
+}
+                "#,
+                r#"
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    let v1 = _0;
+    let v2 = _1;
+}
+                "#,
+            )
+        }
+    
+        #[test]
+        fn keep_function_call() {
+            cov_mark::check!(destructure_tuple_call_with_subpattern);
+            check_sub_pattern_assist(
+                r#"
+fn main() {
+    let $0t = (1,2);
+    let v = t.into();
+}
+                "#,
+                r#"
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    let v = t.into();
+}
+                "#,
+            )
+        }
+    
+        #[test]
+        fn keep_type() {
+            check_sub_pattern_assist(
+                r#"
+fn main() {
+    let $0t: (usize, i32) = (1,2);
+    let v = t.1;
+    let f = t.into();
+}
+                "#,
+                r#"
+fn main() {
+    let t @ ($0_0, _1): (usize, i32) = (1,2);
+    let v = _1;
+    let f = t.into();
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn in_function_args() {
+            check_sub_pattern_assist(
+                r#"
+fn f($0t: (usize, usize)) {
+    let v = t.0;
+    let f = t.into();
+}
+                "#,
+                r#"
+fn f(t @ ($0_0, _1): (usize, usize)) {
+    let v = _0;
+    let f = t.into();
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn with_ref() {
+            check_sub_pattern_assist(
+                r#"
+fn main() {
+    let ref $0t = (1,2);
+    let v = t.1;
+    let f = t.into();
+}
+                "#,
+                r#"
+fn main() {
+    let ref t @ (ref $0_0, ref _1) = (1,2);
+    let v = _1;
+    let f = t.into();
+}
+                "#,
+            )
+        }
+        #[test]
+        fn with_mut() {
+            check_sub_pattern_assist(
+                r#"
+fn main() {
+    let mut $0t = (1,2);
+    let v = t.1;
+    let f = t.into();
+}
+                "#,
+                r#"
+fn main() {
+    let mut t @ (mut $0_0, mut _1) = (1,2);
+    let v = _1;
+    let f = t.into();
+}
+                "#,
+            )
+        }
+        #[test]
+        fn with_ref_mut() {
+            check_sub_pattern_assist(
+                r#"
+fn main() {
+    let ref mut $0t = (1,2);
+    let v = t.1;
+    let f = t.into();
+}
+                "#,
+                r#"
+fn main() {
+    let ref mut t @ (ref mut $0_0, ref mut _1) = (1,2);
+    let v = _1;
+    let f = t.into();
+}
+                "#,
+            )
+        }
     }
 }
