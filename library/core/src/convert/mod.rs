@@ -678,6 +678,16 @@ impl AsMut<str> for str {
 #[derive(Copy)]
 pub enum Infallible {}
 
+impl Infallible {
+    /// Converts an [`Infallible`] to an instance of any type.
+    ///
+    /// Since this code is statically unreachable, this method can never actually be run. It
+    /// exists to help satisfy the type checker in unreachable code.
+    pub fn into_any<T>(self) -> T {
+        match self {}
+    }
+}
+
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 impl Clone for Infallible {
     fn clone(&self) -> Infallible {
