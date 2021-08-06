@@ -359,6 +359,7 @@ E0621: include_str!("./error_codes/E0621.md"),
 E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
+E0625: include_str!("./error_codes/E0625.md"),
 E0626: include_str!("./error_codes/E0626.md"),
 E0627: include_str!("./error_codes/E0627.md"),
 E0628: include_str!("./error_codes/E0628.md"),
@@ -622,7 +623,6 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
-    E0625, // thread-local statics cannot be accessed at compile-time
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
