@@ -132,9 +132,6 @@ pub(crate) fn handle_view_crate_graph(
 ) -> Result<String> {
     let _p = profile::span("handle_view_crate_graph");
     let dot = snap.analysis.view_crate_graph(params.full)??;
-
-    eprintln!("{}", dot);
-
     Ok(dot)
 }
 

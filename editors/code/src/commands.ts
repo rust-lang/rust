@@ -483,16 +483,14 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
         const params = {
             full: full,
         };
-        const dot = await ctx.client.sendRequest(ra.viewCrateGraph, params);
 
-        console.log(dot);
+        const dot = await ctx.client.sendRequest(ra.viewCrateGraph, params);
 
         let scripts = [
             { file: vscode.Uri.joinPath(node_modules_path, 'd3', 'dist', 'd3.min.js') },
             { file: vscode.Uri.joinPath(node_modules_path, '@hpcc-js', 'wasm', 'dist', 'index.min.js'), worker: true },
             { file: vscode.Uri.joinPath(node_modules_path, 'd3-graphviz', 'build', 'd3-graphviz.min.js') },
         ]
-        console.log(scripts);
 
         const scripts_html = scripts.map(({ file, worker }) => {
             let uri = panel.webview.asWebviewUri(file);
@@ -534,8 +532,6 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
                 </script>
             </body>
             `;
-
-        console.log(html);
 
         panel.webview.html = html;
     };
