@@ -9,7 +9,7 @@ fn foo(d: impl Debug + 'static) {
 //~| NOTE ...so that the type `impl Debug` will meet its required lifetime bounds
 }
 
-fn bar(d: impl Debug + 'static) {
+fn bar(d: impl Debug + 'static) { //~ NOTE ...that is required by this bound
     println!("{:?}", d)
 }
 

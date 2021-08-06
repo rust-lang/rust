@@ -6,8 +6,7 @@
 
 #[doc = include_str!("../../core/src/macros/panic.md")]
 #[macro_export]
-#[cfg_attr(bootstrap, rustc_builtin_macro = "std_panic")]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro(std_panic))]
+#[rustc_builtin_macro(std_panic)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(edition_panic)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_macro")]
@@ -290,7 +289,7 @@ macro_rules! dbg {
     // `$val` expression could be a block (`{ .. }`), in which case the `eprintln!`
     // will be malformed.
     () => {
-        $crate::eprintln!("[{}:{}]", $crate::file!(), $crate::line!());
+        $crate::eprintln!("[{}:{}]", $crate::file!(), $crate::line!())
     };
     ($val:expr $(,)?) => {
         // Use of `match` here is intentional because it affects the lifetimes

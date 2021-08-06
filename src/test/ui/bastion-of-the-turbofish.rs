@@ -20,17 +20,24 @@
 // in permitting generic arguments to be provided without the consent of the
 // Great Turbofish. Should you be so naïve as to try to revolt against its
 // mighty clutches, here shall its wrath be indomitably displayed. This
-// program must pass for all eternity, fundamentally at odds with an impetuous
-// rebellion against the Turbofish.
+// program must pass for all eternity: forever watched by the guardian angel
+// which gave this beast its name, and stands fundamentally at odds with the
+// impetuous rebellion against the Turbofish.
 //
 // My heart aches in sorrow, for I know I am defeated. Let this be a warning
-// to all those who come after. Here stands the bastion of the Turbofish.
+// to all those who come after: for they too must overcome the impassible
+// hurdle of defeating the great beast, championed by a resolute winged
+// guardian.
+//
+// Here stands the Bastion of the Turbofish, a memorial to Anna Harren,
+// Guardian Angel of these Hallowed Grounds. <3
 
 // See https://github.com/rust-lang/rust/pull/53562
 // and https://github.com/rust-lang/rfcs/pull/2527
+// and https://twitter.com/garblefart/status/1393236602856611843
 // for context.
 
 fn main() {
-    let (oh, woe, is, me) = ("the", "Turbofish", "remains", "undefeated");
-    let _: (bool, bool) = (oh<woe, is>(me));
+    let (the, guardian, stands, resolute) = ("the", "Turbofish", "remains", "undefeated");
+    let _: (bool, bool) = (the<guardian, stands>(resolute));
 }

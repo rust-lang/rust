@@ -1,8 +1,7 @@
-#![feature(unwind_attributes)]
+#![feature(c_unwind)]
 #![allow(unused_assignments)]
 
-#[unwind(aborts)]
-fn might_abort(should_abort: bool) {
+extern "C" fn might_abort(should_abort: bool) {
     if should_abort {
         println!("aborting...");
         panic!("panics and aborts");

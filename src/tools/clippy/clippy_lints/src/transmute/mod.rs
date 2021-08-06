@@ -12,22 +12,26 @@ mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
-use clippy_utils::{in_constant, match_def_path, paths};
+use clippy_utils::in_constant;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes that can't ever be correct on any
+    /// ### What it does
+    /// Checks for transmutes that can't ever be correct on any
     /// architecture.
     ///
-    /// **Why is this bad?** It's basically guaranteed to be undefined behaviour.
+    /// ### Why is this bad?
+    /// It's basically guaranteed to be undefined behaviour.
     ///
-    /// **Known problems:** When accessing C, users might want to store pointer
+    /// ### Known problems
+    /// When accessing C, users might want to store pointer
     /// sized objects in `extradata` arguments to save an allocation.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let ptr: *const T = core::intrinsics::transmute('x')
     /// ```
@@ -38,15 +42,15 @@ declare_clippy_lint! {
 
 // FIXME: Move this to `complexity` again, after #5343 is fixed
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes to the original type of the object
+    /// ### What it does
+    /// Checks for transmutes to the original type of the object
     /// and transmutes that could be a cast.
     ///
-    /// **Why is this bad?** Readability. The code tricks people into thinking that
+    /// ### Why is this bad?
+    /// Readability. The code tricks people into thinking that
     /// something complex is going on.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// core::intrinsics::transmute(t); // where the result type is the same as `t`'s
     /// ```
@@ -57,14 +61,14 @@ declare_clippy_lint! {
 
 // FIXME: Merge this lint with USELESS_TRANSMUTE once that is out of the nursery.
 declare_clippy_lint! {
-    /// **What it does:**Checks for transmutes that could be a pointer cast.
+    /// ### What it does
+    ///Checks for transmutes that could be a pointer cast.
     ///
-    /// **Why is this bad?** Readability. The code tricks people into thinking that
+    /// ### Why is this bad?
+    /// Readability. The code tricks people into thinking that
     /// something complex is going on.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust
     /// # let p: *const [i32] = &[];
@@ -81,14 +85,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes between a type `T` and `*T`.
+    /// ### What it does
+    /// Checks for transmutes between a type `T` and `*T`.
     ///
-    /// **Why is this bad?** It's easy to mistakenly transmute between a type and a
+    /// ### Why is this bad?
+    /// It's easy to mistakenly transmute between a type and a
     /// pointer to that type.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// core::intrinsics::transmute(t) // where the result type is the same as
     ///                                // `*t` or `&t`'s
@@ -99,17 +103,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from a pointer to a reference.
+    /// ### What it does
+    /// Checks for transmutes from a pointer to a reference.
     ///
-    /// **Why is this bad?** This can always be rewritten with `&` and `*`.
+    /// ### Why is this bad?
+    /// This can always be rewritten with `&` and `*`.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - `mem::transmute` in statics and constants is stable from Rust 1.46.0,
     /// while dereferencing raw pointer is not stable yet.
     /// If you need to do this in those places,
     /// you would have to use `transmute` instead.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// unsafe {
     ///     let _: &T = std::mem::transmute(p); // where p: *const T
@@ -124,11 +130,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from an integer to a `char`.
+    /// ### What it does
+    /// Checks for transmutes from an integer to a `char`.
     ///
-    /// **Why is this bad?** Not every integer is a Unicode scalar value.
+    /// ### Why is this bad?
+    /// Not every integer is a Unicode scalar value.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - [`from_u32`] which this lint suggests using is slower than `transmute`
     /// as it needs to validate the input.
     /// If you are certain that the input is always a valid Unicode scalar value,
@@ -139,7 +147,7 @@ declare_clippy_lint! {
     /// [`from_u32`]: https://doc.rust-lang.org/std/char/fn.from_u32.html
     /// [`from_u32_unchecked`]: https://doc.rust-lang.org/std/char/fn.from_u32_unchecked.html
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = 1_u32;
     /// unsafe {
@@ -155,11 +163,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from a `&[u8]` to a `&str`.
+    /// ### What it does
+    /// Checks for transmutes from a `&[u8]` to a `&str`.
     ///
-    /// **Why is this bad?** Not every byte slice is a valid UTF-8 string.
+    /// ### Why is this bad?
+    /// Not every byte slice is a valid UTF-8 string.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// - [`from_utf8`] which this lint suggests using is slower than `transmute`
     /// as it needs to validate the input.
     /// If you are certain that the input is always a valid UTF-8,
@@ -170,7 +180,7 @@ declare_clippy_lint! {
     /// [`from_utf8`]: https://doc.rust-lang.org/std/str/fn.from_utf8.html
     /// [`from_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked.html
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let b: &[u8] = &[1_u8, 2_u8];
     /// unsafe {
@@ -186,13 +196,13 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from an integer to a `bool`.
+    /// ### What it does
+    /// Checks for transmutes from an integer to a `bool`.
     ///
-    /// **Why is this bad?** This might result in an invalid in-memory representation of a `bool`.
+    /// ### Why is this bad?
+    /// This might result in an invalid in-memory representation of a `bool`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = 1_u8;
     /// unsafe {
@@ -208,14 +218,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from an integer to a float.
+    /// ### What it does
+    /// Checks for transmutes from an integer to a float.
     ///
-    /// **Why is this bad?** Transmutes are dangerous and error-prone, whereas `from_bits` is intuitive
+    /// ### Why is this bad?
+    /// Transmutes are dangerous and error-prone, whereas `from_bits` is intuitive
     /// and safe.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// unsafe {
     ///     let _: f32 = std::mem::transmute(1_u32); // where x: u32
@@ -230,14 +240,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from a float to an integer.
+    /// ### What it does
+    /// Checks for transmutes from a float to an integer.
     ///
-    /// **Why is this bad?** Transmutes are dangerous and error-prone, whereas `to_bits` is intuitive
+    /// ### Why is this bad?
+    /// Transmutes are dangerous and error-prone, whereas `to_bits` is intuitive
     /// and safe.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// unsafe {
     ///     let _: u32 = std::mem::transmute(1f32);
@@ -252,15 +262,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes from a pointer to a pointer, or
+    /// ### What it does
+    /// Checks for transmutes from a pointer to a pointer, or
     /// from a reference to a reference.
     ///
-    /// **Why is this bad?** Transmutes are dangerous, and these can instead be
+    /// ### Why is this bad?
+    /// Transmutes are dangerous, and these can instead be
     /// written as casts.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let ptr = &1u32 as *const u32;
     /// unsafe {
@@ -279,15 +289,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmutes between collections whose
+    /// ### What it does
+    /// Checks for transmutes between collections whose
     /// types have different ABI, size or alignment.
     ///
-    /// **Why is this bad?** This is undefined behavior.
+    /// ### Why is this bad?
+    /// This is undefined behavior.
     ///
-    /// **Known problems:** Currently, we cannot know whether a type is a
+    /// ### Known problems
+    /// Currently, we cannot know whether a type is a
     /// collection, so we just lint the ones that come with `std`.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// // different size, therefore likely out-of-bounds memory access
     /// // You absolutely do not want this in your code!
@@ -328,7 +341,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             if let ExprKind::Call(path_expr, args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
-            if match_def_path(cx, def_id, &paths::TRANSMUTE);
+            if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
             then {
                 // Avoid suggesting from/to bits and dereferencing raw pointers in const contexts.
                 // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.

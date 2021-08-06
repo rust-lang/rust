@@ -497,9 +497,10 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             OperandValue::Immediate(self.to_immediate(llval, place.layout))
         } else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
             let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+            let pair_ty = place.layout.llvm_type(self);
 
             let mut load = |i, scalar: &abi::Scalar, align| {
-                let llptr = self.struct_gep(place.llval, i as u64);
+                let llptr = self.struct_gep(pair_ty, place.llval, i as u64);
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar);
@@ -543,7 +544,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             .val
             .store(&mut body_bx, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
+        let next = body_bx.inbounds_gep(
+            self.backend_type(cg_elem.layout),
+            current,
+            &[self.const_usize(1)],
+        );
         body_bx.br(header_bx.llbb());
         header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
 
@@ -639,10 +644,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
+    fn gep(&mut self, ty: &'ll Type, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildGEP(
+            llvm::LLVMBuildGEP2(
                 self.llbuilder,
+                ty,
                 ptr,
                 indices.as_ptr(),
                 indices.len() as c_uint,
@@ -651,10 +657,16 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn inbounds_gep(&mut self, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
+    fn inbounds_gep(
+        &mut self,
+        ty: &'ll Type,
+        ptr: &'ll Value,
+        indices: &[&'ll Value],
+    ) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildInBoundsGEP(
+            llvm::LLVMBuildInBoundsGEP2(
                 self.llbuilder,
+                ty,
                 ptr,
                 indices.as_ptr(),
                 indices.len() as c_uint,
@@ -663,9 +675,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn struct_gep(&mut self, ptr: &'ll Value, idx: u64) -> &'ll Value {
+    fn struct_gep(&mut self, ty: &'ll Type, ptr: &'ll Value, idx: u64) -> &'ll Value {
         assert_eq!(idx as c_uint as u64, idx);
-        unsafe { llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, UNNAMED) }
+        unsafe { llvm::LLVMBuildStructGEP2(self.llbuilder, ty, ptr, idx as c_uint, UNNAMED) }
     }
 
     /* Casts */

@@ -7,15 +7,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::iter;
 
 declare_clippy_lint! {
-    /// **What it does:** Detects passing a mutable reference to a function that only
+    /// ### What it does
+    /// Detects passing a mutable reference to a function that only
     /// requires an immutable reference.
     ///
-    /// **Why is this bad?** The mutable reference rules out all other references to
+    /// ### Why is this bad?
+    /// The mutable reference rules out all other references to
     /// the value. Also the code misleads about the intent of the call site.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// // Bad
     /// my_vec.push(&mut value)

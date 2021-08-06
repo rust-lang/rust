@@ -14,11 +14,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     imp::init(argc, argv)
 }
 
-/// One-time global cleanup.
-pub unsafe fn cleanup() {
-    imp::cleanup()
-}
-
 /// Returns the command line arguments
 pub fn args() -> Args {
     imp::args()
@@ -82,16 +77,18 @@ mod imp {
     use crate::ptr;
     use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
 
-    use crate::sys_common::mutex::StaticMutex;
-
+    // The system-provided argc and argv, which we store in static memory
+    // here so that we can defer the work of parsing them until its actually
+    // needed.
+    //
+    // Note that we never mutate argv/argc, the argv array, or the argv
+    // strings, which allows the code in this file to be very simple.
     static ARGC: AtomicIsize = AtomicIsize::new(0);
     static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
-    // acquire this mutex reentrantly!
-    static LOCK: StaticMutex = StaticMutex::new();
 
     unsafe fn really_init(argc: isize, argv: *const *const u8) {
-        let _guard = LOCK.lock();
+        // These don't need to be ordered with each other or other stores,
+        // because they only hold the unmodified system-provide argv/argc.
         ARGC.store(argc, Ordering::Relaxed);
         ARGV.store(argv as *mut _, Ordering::Relaxed);
     }
@@ -127,21 +124,22 @@ mod imp {
         init_wrapper
     };
 
-    pub unsafe fn cleanup() {
-        let _guard = LOCK.lock();
-        ARGC.store(0, Ordering::Relaxed);
-        ARGV.store(ptr::null_mut(), Ordering::Relaxed);
-    }
-
     pub fn args() -> Args {
         Args { iter: clone().into_iter() }
     }
 
     fn clone() -> Vec<OsString> {
         unsafe {
-            let _guard = LOCK.lock();
-            let argc = ARGC.load(Ordering::Relaxed);
+            // Load ARGC and ARGV, which hold the unmodified system-provided
+            // argc/argv, so we can read the pointed-to memory without atomics
+            // or synchronization.
+            //
+            // If either ARGC or ARGV is still zero or null, then either there
+            // really are no arguments, or someone is asking for `args()`
+            // before initialization has completed, and we return an empty
+            // list.
             let argv = ARGV.load(Ordering::Relaxed);
+            let argc = if argv.is_null() { 0 } else { ARGC.load(Ordering::Relaxed) };
             (0..argc)
                 .map(|i| {
                     let cstr = CStr::from_ptr(*argv.offset(i) as *const libc::c_char);
@@ -158,8 +156,6 @@ mod imp {
     use crate::ffi::CStr;
 
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-    pub fn cleanup() {}
 
     #[cfg(target_os = "macos")]
     pub fn args() -> Args {

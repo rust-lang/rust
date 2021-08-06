@@ -3,6 +3,8 @@ error[E0726]: implicit elided lifetime not allowed here
    |
 LL | impl MyTrait for u32 {
    |      ^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
+   |
+   = note: assuming a `'static` lifetime...
 
 error: aborting due to previous error
 

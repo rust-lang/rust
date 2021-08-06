@@ -1,5 +1,7 @@
 // ignore-tidy-linelength
 
+#![feature(doc_cfg)]
+
 pub mod module {
     pub mod sub_module {
         pub mod sub_sub_module {
@@ -14,6 +16,7 @@ pub fn foobar() {}
 
 pub type Alias = u32;
 
+#[doc(cfg(feature = "foo-method"))]
 pub struct Foo {
     pub x: Alias,
 }
@@ -53,4 +56,20 @@ pub mod long_trait {
 
     pub trait ALongNameBecauseItHelpsTestingTheCurrentProblem: DerefMut<Target = u32>
         + From<u128> + Send + Sync + AsRef<str> + 'static {}
+}
+
+pub mod long_table {
+    /// | This::is::a::kinda::very::long::header::number::one | This::is::a::kinda::very::long::header::number::two | This::is::a::kinda::very::long::header::number::one | This::is::a::kinda::very::long::header::number::two |
+    /// | ----------- | ----------- | ----------- | ----------- |
+    /// | This::is::a::kinda::long::content::number::one | This::is::a::kinda::very::long::content::number::two | This::is::a::kinda::long::content::number::one | This::is::a::kinda::very::long::content::number::two |
+    ///
+    /// I wanna sqdkfnqds f dsqf qds f dsqf dsq f dsq f qds f qds f qds f dsqq f dsf sqdf dsq fds f dsq f dq f ds fq sd fqds f dsq f sqd fsq df sd fdsqfqsd fdsq f dsq f dsqfd s dfq
+    pub struct Foo;
+}
+
+pub mod summary_table {
+    /// | header 1 | header 2 |
+    /// | -------- | -------- |
+    /// | content | content |
+    pub struct Foo;
 }

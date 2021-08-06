@@ -159,9 +159,9 @@
 //! section needs to function correctly.
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
-//! completely okay not ever to call [`drop`] on a pinned element (e.g., you can still
+//! completely okay to not ever call [`drop`] on a pinned element (e.g., you can still
 //! call [`mem::forget`] on a <code>[Pin]<[Box]\<T>></code>). In the example of the doubly-linked
-//! list, that element would just stay in the list. However you may not free or reuse the storage
+//! list, that element would just stay in the list. However you must not free or reuse the storage
 //! *without calling [`drop`]*.
 //!
 //! # `Drop` implementation
@@ -799,6 +799,44 @@ impl<T: ?Sized> Pin<&'static T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
         unsafe { Pin::new_unchecked(r) }
+    }
+}
+
+impl<'a, P: DerefMut> Pin<&'a mut Pin<P>> {
+    /// Gets a pinned mutable reference from this nested pinned pointer.
+    ///
+    /// This is a generic method to go from `Pin<&mut Pin<Pointer<T>>>` to `Pin<&mut T>`. It is
+    /// safe because the existence of a `Pin<Pointer<T>>` ensures that the pointee, `T`, cannot
+    /// move in the future, and this method does not enable the pointee to move. "Malicious"
+    /// implementations of `P::DerefMut` are likewise ruled out by the contract of
+    /// `Pin::new_unchecked`.
+    #[unstable(feature = "pin_deref_mut", issue = "86918")]
+    #[inline(always)]
+    pub fn as_deref_mut(self) -> Pin<&'a mut P::Target> {
+        // SAFETY: What we're asserting here is that going from
+        //
+        //     Pin<&mut Pin<P>>
+        //
+        // to
+        //
+        //     Pin<&mut P::Target>
+        //
+        // is safe.
+        //
+        // We need to ensure that two things hold for that to be the case:
+        //
+        // 1) Once we give out a `Pin<&mut P::Target>`, an `&mut P::Target` will not be given out.
+        // 2) By giving out a `Pin<&mut P::Target>`, we do not risk of violating `Pin<&mut Pin<P>>`
+        //
+        // The existence of `Pin<P>` is sufficient to guarantee #1: since we already have a
+        // `Pin<P>`, it must already uphold the pinning guarantees, which must mean that
+        // `Pin<&mut P::Target>` does as well, since `Pin::as_mut` is safe. We do not have to rely
+        // on the fact that P is _also_ pinned.
+        //
+        // For #2, we need to ensure that code given a `Pin<&mut P::Target>` cannot cause the
+        // `Pin<P>` to move? That is not possible, since `Pin<&mut P::Target>` no longer retains
+        // any access to the `P` itself, much less the `Pin<P>`.
+        unsafe { self.get_unchecked_mut() }.as_mut()
     }
 }
 

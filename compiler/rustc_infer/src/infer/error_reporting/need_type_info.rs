@@ -491,11 +491,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span
         };
 
-        let is_named_and_not_impl_trait = |ty: Ty<'_>| {
-            &ty.to_string() != "_" &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
-                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
-        };
+        let is_named_and_not_impl_trait =
+            |ty: Ty<'_>| &ty.to_string() != "_" && !ty.is_impl_trait();
 
         let ty_msg = match (local_visitor.found_node_ty, local_visitor.found_exact_method_call) {
             (_, Some(_)) => String::new(),
@@ -756,23 +753,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             if let (UnderspecifiedArgKind::Const { .. }, Some(parent_data)) =
                 (&arg_data.kind, &arg_data.parent)
             {
-                let has_impl_trait =
-                    self.tcx.generics_of(parent_data.def_id).params.iter().any(|param| {
-                        matches!(
-                            param.kind,
-                            ty::GenericParamDefKind::Type {
-                                synthetic: Some(
-                                    hir::SyntheticTyParamKind::ImplTrait
-                                        | hir::SyntheticTyParamKind::FromAttr,
-                                ),
-                                ..
-                            }
-                        )
-                    });
-
                 // (#83606): Do not emit a suggestion if the parent has an `impl Trait`
                 // as an argument otherwise it will cause the E0282 error.
-                if !has_impl_trait {
+                if !self.tcx.generics_of(parent_data.def_id).has_impl_trait()
+                    || self.tcx.features().explicit_generic_args_with_impl_trait
+                {
                     err.span_suggestion_verbose(
                         span,
                         "consider specifying the const argument",
@@ -817,7 +802,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let borrow = typeck_results.borrow();
             if let Some((DefKind::AssocFn, did)) = borrow.type_dependent_def(e.hir_id) {
                 let generics = self.tcx.generics_of(did);
-                if !generics.params.is_empty() {
+                if !generics.params.is_empty() && !generics.has_impl_trait() {
                     err.span_suggestion_verbose(
                         segment.ident.span.shrink_to_hi(),
                         &format!(

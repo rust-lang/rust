@@ -4,7 +4,7 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL | pub fn function(_x: Box<SomeTrait>) {}
    |                         ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
    |
-   = note: `--force-warns bare-trait-objects` implied by `--force-warns rust-2018-idioms`
+   = note: `--force-warn bare-trait-objects` implied by `--force-warn rust-2018-idioms`
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 

@@ -372,7 +372,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         )
     }
 
-    /// Check if the given pointerpoints to live memory of given `size` and `align`
+    /// Check if the given pointer points to live memory of given `size` and `align`
     /// (ignoring `M::enforce_alignment`). The caller can control the error message for the
     /// out-of-bounds case.
     #[inline(always)]
@@ -451,11 +451,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 None
             }
             Ok((alloc_id, offset, ptr)) => {
-                let (allocation_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, ptr)?;
+                let (alloc_size, alloc_align, ret_val) = alloc_size(alloc_id, offset, ptr)?;
                 // Test bounds. This also ensures non-null.
                 // It is sufficient to check this for the end pointer. Also check for overflow!
-                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > allocation_size) {
-                    throw_ub!(PointerOutOfBounds { alloc_id, offset, size, allocation_size, msg })
+                if offset.checked_add(size, &self.tcx).map_or(true, |end| end > alloc_size) {
+                    throw_ub!(PointerOutOfBounds {
+                        alloc_id,
+                        alloc_size,
+                        ptr_offset: self.machine_usize_to_isize(offset.bytes()),
+                        ptr_size: size,
+                        msg,
+                    })
                 }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
@@ -901,7 +907,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
 }
 
 /// Reading and writing.
-impl<'tcx, 'a, Tag: Copy, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
+impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     pub fn write_scalar(
         &mut self,
         range: AllocRange,
@@ -922,7 +928,7 @@ impl<'tcx, 'a, Tag: Copy, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     }
 }
 
-impl<'tcx, 'a, Tag: Copy, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
+impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
     pub fn read_scalar(&self, range: AllocRange) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         Ok(self
             .alloc
@@ -992,7 +998,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // Side-step AllocRef and directly access the underlying bytes more efficiently.
         // (We are staying inside the bounds here so all is good.)
-        let bytes = alloc_ref.alloc.get_bytes_mut(&alloc_ref.tcx, alloc_ref.range);
+        let alloc_id = alloc_ref.alloc_id;
+        let bytes = alloc_ref
+            .alloc
+            .get_bytes_mut(&alloc_ref.tcx, alloc_ref.range)
+            .map_err(move |e| e.to_interp_error(alloc_id))?;
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
         for dest in bytes {
@@ -1066,7 +1076,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let (dest_alloc, extra) = self.get_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
         M::memory_written(extra, &mut dest_alloc.extra, dest.provenance, dest_range)?;
-        let dest_bytes = dest_alloc.get_bytes_mut_ptr(&tcx, dest_range).as_mut_ptr();
+        let dest_bytes = dest_alloc
+            .get_bytes_mut_ptr(&tcx, dest_range)
+            .map_err(|e| e.to_interp_error(dest_alloc_id))?
+            .as_mut_ptr();
 
         if compressed.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
@@ -1136,7 +1149,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Err(ptr) => ptr.into(),
             Ok(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                M::ptr_from_addr(&self, addr)
+                let ptr = M::ptr_from_addr(&self, addr);
+                if addr == 0 {
+                    assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
+                }
+                ptr
             }
         }
     }

@@ -1061,7 +1061,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         }
                         err.span_suggestion(
                             span,
-                            &format!("use this syntax instead"),
+                            &"use this syntax instead",
                             format!("{path_str}"),
                             Applicability::MaybeIncorrect,
                         );

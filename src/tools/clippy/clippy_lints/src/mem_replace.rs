@@ -14,16 +14,16 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `mem::replace()` on an `Option` with
+    /// ### What it does
+    /// Checks for `mem::replace()` on an `Option` with
     /// `None`.
     ///
-    /// **Why is this bad?** `Option` already has the method `take()` for
+    /// ### Why is this bad?
+    /// `Option` already has the method `take()` for
     /// taking its current value (Some(..) or None) and replacing it with
     /// `None`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::mem;
     ///
@@ -41,17 +41,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `mem::replace(&mut _, mem::uninitialized())`
+    /// ### What it does
+    /// Checks for `mem::replace(&mut _, mem::uninitialized())`
     /// and `mem::replace(&mut _, mem::zeroed())`.
     ///
-    /// **Why is this bad?** This will lead to undefined behavior even if the
+    /// ### Why is this bad?
+    /// This will lead to undefined behavior even if the
     /// value is overwritten later, because the uninitialized value may be
     /// observed in the case of a panic.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```
     /// use std::mem;
     ///# fn may_panic(v: Vec<i32>) -> Vec<i32> { v }
@@ -73,15 +72,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `std::mem::replace` on a value of type
+    /// ### What it does
+    /// Checks for `std::mem::replace` on a value of type
     /// `T` with `T::default()`.
     ///
-    /// **Why is this bad?** `std::mem` module already has the method `take` to
+    /// ### Why is this bad?
+    /// `std::mem` module already has the method `take` to
     /// take the current value and replace it with the default value of that type.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut text = String::from("foo");
     /// let replaced = std::mem::replace(&mut text, String::default());

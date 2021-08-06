@@ -21,6 +21,7 @@ use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
     target_os = "freebsd",
     target_os = "ios",
     target_os = "macos",
+    target_os = "netbsd",
     target_os = "openbsd"
 ))]
 use crate::os::unix::ucred;
@@ -38,6 +39,7 @@ use crate::time::Duration;
     target_os = "freebsd",
     target_os = "ios",
     target_os = "macos",
+    target_os = "netbsd",
     target_os = "openbsd"
 ))]
 pub use ucred::UCred;
@@ -208,6 +210,7 @@ impl UnixStream {
         target_os = "freebsd",
         target_os = "ios",
         target_os = "macos",
+        target_os = "netbsd",
         target_os = "openbsd"
     ))]
     pub fn peer_cred(&self) -> io::Result<UCred> {

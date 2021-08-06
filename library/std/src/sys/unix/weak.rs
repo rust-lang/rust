@@ -26,8 +26,6 @@ use crate::marker;
 use crate::mem;
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
 
-// Temporary null documentation to work around #57569 until the fix is beta
-#[cfg_attr(bootstrap, doc = "")]
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         #[allow(non_upper_case_globals)]
@@ -103,8 +101,6 @@ unsafe fn fetch(name: &str) -> usize {
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }
 
-// Temporary null documentation to work around #57569 until the fix is beta
-#[cfg_attr(bootstrap, doc = "")]
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub(crate) macro syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
@@ -123,7 +119,6 @@ pub(crate) macro syscall {
     )
 }
 
-#[cfg_attr(bootstrap, doc = "")]
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) macro syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (

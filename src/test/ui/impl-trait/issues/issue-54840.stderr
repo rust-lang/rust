@@ -1,0 +1,9 @@
+error[E0562]: `impl Trait` not allowed outside of function and method return types
+  --> $DIR/issue-54840.rs:5:13
+   |
+LL |     let j: &impl Add = &i;
+   |             ^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0562`.

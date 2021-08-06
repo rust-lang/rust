@@ -6,14 +6,16 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `else` blocks that can be removed without changing semantics.
+    /// ### What it does
+    /// Checks for `else` blocks that can be removed without changing semantics.
     ///
-    /// **Why is this bad?** The `else` block adds unnecessary indentation and verbosity.
+    /// ### Why is this bad?
+    /// The `else` block adds unnecessary indentation and verbosity.
     ///
-    /// **Known problems:** Some may prefer to keep the `else` block for clarity.
+    /// ### Known problems
+    /// Some may prefer to keep the `else` block for clarity.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// fn my_func(count: u32) {
     ///     if count == 0 {

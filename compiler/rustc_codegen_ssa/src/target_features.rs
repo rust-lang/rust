@@ -47,8 +47,6 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("sve", Some(sym::aarch64_target_feature)),
     // FEAT_CRC
     ("crc", Some(sym::aarch64_target_feature)),
-    // Cryptographic extension
-    ("crypto", Some(sym::aarch64_target_feature)),
     // FEAT_RAS
     ("ras", Some(sym::aarch64_target_feature)),
     // FEAT_LSE

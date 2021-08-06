@@ -10,7 +10,11 @@ note: required because it appears within the type `Sleep`
    |
 LL | struct Sleep(std::marker::PhantomPinned);
    |        ^^^^^
-   = note: required by `Pin::<P>::new`
+note: required by `Pin::<P>::new`
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+   |
+LL |     pub const fn new(pointer: P) -> Pin<P> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

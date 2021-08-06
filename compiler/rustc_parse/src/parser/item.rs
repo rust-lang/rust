@@ -1107,8 +1107,7 @@ impl<'a> Parser<'a> {
                 e
             })?;
 
-        let enum_definition =
-            EnumDef { variants: variants.into_iter().filter_map(|v| v).collect() };
+        let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
         Ok((id, ItemKind::Enum(enum_definition, generics)))
     }
 
@@ -1715,13 +1714,11 @@ impl<'a> Parser<'a> {
                     // the AST for typechecking.
                     err.span_label(ident.span, "while parsing this `fn`");
                     err.emit();
-                    (Vec::new(), None)
                 } else {
                     return Err(err);
                 }
-            } else {
-                unreachable!()
             }
+            (Vec::new(), None)
         };
         attrs.extend(inner_attrs);
         Ok(body)

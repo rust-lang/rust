@@ -419,7 +419,7 @@ impl File {
         self.inner.fsync()
     }
 
-    /// This function is similar to [`sync_all`], except that it may not
+    /// This function is similar to [`sync_all`], except that it might not
     /// synchronize file metadata to the filesystem.
     ///
     /// This is intended for use cases that must synchronize content, but don't
@@ -1081,7 +1081,7 @@ impl Metadata {
     ///
     /// # Errors
     ///
-    /// This field may not be available on all platforms, and will return an
+    /// This field might not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
     ///
     /// # Examples
@@ -1116,7 +1116,7 @@ impl Metadata {
     ///
     /// # Errors
     ///
-    /// This field may not be available on all platforms, and will return an
+    /// This field might not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
     ///
     /// # Examples
@@ -1148,7 +1148,7 @@ impl Metadata {
     ///
     /// # Errors
     ///
-    /// This field may not be available on all platforms, and will return an
+    /// This field might not be available on all platforms, and will return an
     /// `Err` on platforms or filesystems where it is not available.
     ///
     /// # Examples
@@ -1912,6 +1912,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "mkdir")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     DirBuilder::new().create(path.as_ref())
@@ -1991,6 +1992,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "rmdir")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::rmdir(path.as_ref())

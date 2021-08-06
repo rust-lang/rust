@@ -1,0 +1,21 @@
+error[E0391]: cycle detected when computing the super predicates of `A`
+  --> $DIR/cyclic-trait-resolution.rs:1:1
+   |
+LL | trait A: B + A {}
+   | ^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the super traits of `A`...
+  --> $DIR/cyclic-trait-resolution.rs:1:14
+   |
+LL | trait A: B + A {}
+   |              ^
+   = note: ...which again requires computing the super predicates of `A`, completing the cycle
+note: cycle used when collecting item types in top-level module
+  --> $DIR/cyclic-trait-resolution.rs:1:1
+   |
+LL | trait A: B + A {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

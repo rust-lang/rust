@@ -332,6 +332,11 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
         }
 
+        // Don't run unused pass for #[naked]
+        if self.tcx.has_attr(def_id, sym::naked) {
+            return;
+        }
+
         if let Some(captures) = maps.tcx.typeck(local_def_id).closure_min_captures.get(&def_id) {
             for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);

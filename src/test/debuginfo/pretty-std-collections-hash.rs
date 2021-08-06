@@ -10,7 +10,7 @@
 // cdb-command: g
 
 // cdb-command: dx hash_set,d
-// cdb-check:hash_set,d [...] : { len=15 } [Type: [...]::HashSet<u64, [...]>]
+// cdb-check:hash_set,d [...] : { len=15 } [Type: [...]::HashSet<u64,[...]>]
 // cdb-check:    [len]            : 15 [Type: [...]]
 // cdb-check:    [capacity]       : [...]
 // cdb-check:    [[...]] [...]    : 0 [Type: u64]
@@ -44,7 +44,7 @@
 // cdb-check:    [[...]] [...]    : 14 [Type: u64]
 
 // cdb-command: dx hash_map,d
-// cdb-check:hash_map,d [...] : { len=15 } [Type: [...]::HashMap<u64, u64, [...]>]
+// cdb-check:hash_map,d [...] : { len=15 } [Type: [...]::HashMap<u64,u64,[...]>]
 // cdb-check:    [len]            : 15 [Type: [...]]
 // cdb-check:    [capacity]       : [...]
 // cdb-check:    ["0x0"]          : 0 [Type: unsigned __int64]

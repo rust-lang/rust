@@ -240,13 +240,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
-                // If this obligation was generated as a result of well-formed checking, see if we
-                // can get a better error message by performing HIR-based well formed checking.
-                if let ObligationCauseCode::WellFormed(Some(wf_hir_id)) =
+                // If this obligation was generated as a result of well-formedness checking, see if we
+                // can get a better error message by performing HIR-based well-formedness checking.
+                if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
                     root_obligation.cause.code.peel_derives()
                 {
                     if let Some(cause) =
-                        self.tcx.diagnostic_hir_wf_check((obligation.predicate, *wf_hir_id))
+                        self.tcx.diagnostic_hir_wf_check((obligation.predicate, wf_loc.clone()))
                     {
                         obligation.cause = cause;
                         span = obligation.cause.span;
@@ -1603,6 +1603,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let generics = self.tcx.generics_of(*def_id);
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
                         && !snippet.ends_with('>')
+                        && !generics.has_impl_trait()
+                        && !self.tcx.fn_trait_kind_from_lang_item(*def_id).is_some()
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
                         // where already supplied, we check the snippet to make sure it doesn't

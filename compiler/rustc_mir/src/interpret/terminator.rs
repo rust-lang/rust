@@ -18,12 +18,7 @@ use super::{
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn fn_can_unwind(&self, attrs: CodegenFnAttrFlags, abi: Abi) -> bool {
-        layout::fn_can_unwind(
-            self.tcx.sess.panic_strategy(),
-            attrs,
-            layout::conv_from_spec_abi(*self.tcx, abi),
-            abi,
-        )
+        layout::fn_can_unwind(*self.tcx, attrs, abi)
     }
 
     pub(super) fn eval_terminator(
@@ -73,11 +68,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.memory.get_fn(fn_ptr.into())?;
+                        let fn_val = self.memory.get_fn(fn_ptr)?;
                         (
                             fn_val,
                             caller_abi,
-                            self.fn_can_unwind(layout::fn_ptr_codegen_fn_attr_flags(), caller_abi),
+                            self.fn_can_unwind(CodegenFnAttrFlags::empty(), caller_abi),
                         )
                     }
                     ty::FnDef(def_id, substs) => {

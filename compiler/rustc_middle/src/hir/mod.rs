@@ -33,9 +33,12 @@ pub struct IndexedHir<'hir> {
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
+///
+/// This struct exists to encapsulate all access to the hir_owner query in this module, and to
+/// implement HashStable without hashing bodies.
 #[derive(Copy, Clone, Debug)]
 pub struct Owner<'tcx> {
-    node: Node<'tcx>,
+    node: OwnerNode<'tcx>,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
@@ -140,7 +143,8 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
     providers.hir_owner = |tcx, id| {
         let owner = tcx.index_hir(()).map[id].as_ref()?;
-        let node = owner.nodes[ItemLocalId::new(0)].as_ref()?.node;
+        let node = owner.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
+        let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
         Some(Owner { node })
     };
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(()).map[id].as_deref();

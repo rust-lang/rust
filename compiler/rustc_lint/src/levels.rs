@@ -26,8 +26,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
 use tracing::debug;
 
-use std::cmp;
-
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
     let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
@@ -35,11 +33,11 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();
 
-    builder.levels.id_to_set.reserve(krate.exported_macros.len() + 1);
+    builder.levels.id_to_set.reserve(krate.owners.len() + 1);
 
     let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
-    for macro_def in krate.exported_macros {
+    for macro_def in krate.exported_macros() {
         builder.levels.register_id(macro_def.hir_id());
     }
     intravisit::walk_crate(&mut builder, krate);
@@ -91,12 +89,6 @@ impl<'s> LintLevelsBuilder<'s> {
         for &(ref lint_name, level) in &sess.opts.lint_opts {
             store.check_lint_name_cmdline(sess, &lint_name, level, self.crate_attrs);
             let orig_level = level;
-
-            // If the cap is less than this specified level, e.g., if we've got
-            // `--cap-lints allow` but we've also got `-D foo` then we ignore
-            // this specification as the lint cap will set it to allow anyway.
-            let level = cmp::min(level, self.sets.lint_cap);
-
             let lint_flag_val = Symbol::intern(lint_name);
 
             let ids = match store.find_lints(&lint_name) {
@@ -104,20 +96,14 @@ impl<'s> LintLevelsBuilder<'s> {
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
+                // ForceWarn and Forbid cannot be overriden
+                if let Some((Level::ForceWarn | Level::Forbid, _)) = specs.get(&id) {
+                    continue;
+                }
+
                 self.check_gated_lint(id, DUMMY_SP);
                 let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
                 specs.insert(id, (level, src));
-            }
-        }
-
-        for lint_name in &sess.opts.force_warns {
-            store.check_lint_name_cmdline(sess, lint_name, Level::ForceWarn, self.crate_attrs);
-            let lints = store
-                .find_lints(lint_name)
-                .unwrap_or_else(|_| bug!("A valid lint failed to produce a lint ids"));
-            for id in lints {
-                let src = LintLevelSource::CommandLine(Symbol::intern(lint_name), Level::ForceWarn);
-                specs.insert(id, (Level::ForceWarn, src));
             }
         }
 
@@ -590,7 +576,7 @@ pub fn is_known_lint_tool(m_item: Symbol, sess: &Session, attrs: &[ast::Attribut
     // NOTE: does no error handling; error handling is done by rustc_resolve.
     sess.filter_by_name(attrs, sym::register_tool)
         .filter_map(|attr| attr.meta_item_list())
-        .flat_map(std::convert::identity)
+        .flatten()
         .filter_map(|nested_meta| nested_meta.ident())
         .map(|ident| ident.name)
         .any(|name| name == m_item)

@@ -4,6 +4,6 @@ macro_rules! foo {
 
 pub fn main() {
     'x: for _ in 0..1 {
-        foo!()
+        foo!();
     };
 }

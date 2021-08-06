@@ -180,7 +180,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 // FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
-// this function can be removed once the `normalizie` method does not panic when normalization does
+// this function can be removed once the `normalize` method does not panic when normalization does
 // not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
@@ -257,10 +257,12 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
     }
 }
 
-/// Checks if the type is equal to a lang item
+/// Checks if the type is equal to a lang item.
+///
+/// Returns `false` if the `LangItem` is not defined.
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).unwrap() == adt.did,
+        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).map_or(false, |li| li == adt.did),
         _ => false,
     }
 }

@@ -1,0 +1,4 @@
+// This test checks that the correct font is used on module items (in index.html pages).
+goto: file://|DOC_PATH|/test_docs/index.html
+assert-css: (".item-table .module-item a", {"font-family": '"Fira Sans", Arial, sans-serif'}, ALL)
+assert-css: (".item-table .docblock-short", {"font-family": '"Source Serif 4", "Noto Sans KR", serif'}, ALL)

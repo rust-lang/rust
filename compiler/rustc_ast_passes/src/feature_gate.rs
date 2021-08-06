@@ -287,7 +287,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 if let ast::TyKind::ImplTrait(..) = ty.kind {
                     gate_feature_post!(
                         &self.vis,
-                        min_type_alias_impl_trait,
+                        type_alias_impl_trait,
                         ty.span,
                         "`impl Trait` in type aliases is unstable"
                     );

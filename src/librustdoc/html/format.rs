@@ -484,17 +484,22 @@ crate enum HrefError {
     NotInExternalCache,
 }
 
-crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<String>), HrefError> {
+crate fn href_with_root_path(
+    did: DefId,
+    cx: &Context<'_>,
+    root_path: Option<&str>,
+) -> Result<(String, ItemType, Vec<String>), HrefError> {
     let cache = &cx.cache();
     let relative_to = &cx.current;
     fn to_module_fqp(shortty: ItemType, fqp: &[String]) -> &[String] {
-        if shortty == ItemType::Module { &fqp[..] } else { &fqp[..fqp.len() - 1] }
+        if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
     }
 
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return Err(HrefError::Private);
     }
 
+    let mut is_remote = false;
     let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp);
@@ -508,8 +513,9 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
                     shortty,
                     match cache.extern_locations[&did.krate] {
                         ExternalLocation::Remote(ref s) => {
+                            is_remote = true;
                             let s = s.trim_end_matches('/');
-                            let mut s = vec![&s[..]];
+                            let mut s = vec![s];
                             s.extend(module_fqp[..].iter().map(String::as_str));
                             s
                         }
@@ -522,6 +528,12 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
             }
         }
     };
+    if !is_remote {
+        if let Some(root_path) = root_path {
+            let root = root_path.trim_end_matches('/');
+            url_parts.insert(0, root);
+        }
+    }
     let last = &fqp.last().unwrap()[..];
     let filename;
     match shortty {
@@ -534,6 +546,10 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
         }
     }
     Ok((url_parts.join("/"), shortty, fqp.to_vec()))
+}
+
+crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<String>), HrefError> {
+    href_with_root_path(did, cx, None)
 }
 
 /// Both paths should only be modules.
@@ -688,7 +704,7 @@ crate fn anchor<'a, 'cx: 'a>(
     text: &'a str,
     cx: &'cx Context<'_>,
 ) -> impl fmt::Display + 'a {
-    let parts = href(did.into(), cx);
+    let parts = href(did, cx);
     display_fn(move |f| {
         if let Ok((url, short_ty, fqp)) = parts {
             write!(
@@ -921,7 +937,7 @@ fn fmt_type<'cx>(
                 //        everything comes in as a fully resolved QPath (hard to
                 //        look at).
                 box clean::ResolvedPath { did, .. } => {
-                    match href(did.into(), cx) {
+                    match href(did, cx) {
                         Ok((ref url, _, ref path)) if !f.alternate() => {
                             write!(
                                 f,
@@ -1424,6 +1440,7 @@ impl clean::GenericArg {
             clean::GenericArg::Lifetime(lt) => fmt::Display::fmt(&lt.print(), f),
             clean::GenericArg::Type(ty) => fmt::Display::fmt(&ty.print(cx), f),
             clean::GenericArg::Const(ct) => fmt::Display::fmt(&ct.print(cx.tcx()), f),
+            clean::GenericArg::Infer => fmt::Display::fmt("_", f),
         })
     }
 }

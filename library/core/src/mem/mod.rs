@@ -622,6 +622,7 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
+#[track_caller]
 pub unsafe fn zeroed<T>() -> T {
     // SAFETY: the caller must guarantee that an all-zero value is valid for `T`.
     unsafe {
@@ -657,6 +658,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
+#[track_caller]
 pub unsafe fn uninitialized<T>() -> T {
     // SAFETY: the caller must guarantee that an unitialized value is valid for `T`.
     unsafe {
@@ -939,7 +941,7 @@ pub fn drop<T>(_x: T) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
 pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    // If U has a higher alignment requirement, src may not be suitably aligned.
+    // If U has a higher alignment requirement, src might not be suitably aligned.
     if align_of::<U>() > align_of::<T>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.

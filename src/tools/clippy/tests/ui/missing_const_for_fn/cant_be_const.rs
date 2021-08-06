@@ -84,7 +84,7 @@ mod with_drop {
 
     impl A {
         // This can not be const because the type implements `Drop`.
-        pub fn a(self) -> B {
+        pub fn b(self) -> B {
             B
         }
     }

@@ -13,7 +13,7 @@ mod m {
 struct Y;
 type A = X; //~ ERROR cannot find type `X` in this scope
 
-#[derive(Copy)] //~ ERROR `derive` may only be applied to structs, enums and unions
+#[derive(Copy)] //~ ERROR `derive` may only be applied to `struct`s, `enum`s and `union`s
 mod n {}
 
 #[empty_attr]

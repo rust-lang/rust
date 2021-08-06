@@ -9,6 +9,10 @@ LL |     f2::<X>(x);
 LL | fn f2<X>(x: &X) {
    |       - required by this bound in `f2`
    |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn f1<X>(x: &X) {
+   |       --
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f2<X: ?Sized>(x: &X) {
@@ -25,6 +29,10 @@ LL |     f4::<X>(x);
 LL | fn f4<X: T>(x: &X) {
    |       - required by this bound in `f4`
    |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn f3<X: T>(x: &X) {
+   |         --
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f4<X: T + ?Sized>(x: &X) {
@@ -46,6 +54,10 @@ note: required because it appears within the type `S<X>`
    |
 LL | struct S<X: ?Sized> {
    |        ^
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn f8<X>(x1: &S<X>, x2: &S<X>) {
+   |       --
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f5<Y: ?Sized>(x: &Y) {}
@@ -65,6 +77,10 @@ note: required because it appears within the type `S<X>`
 LL | struct S<X: ?Sized> {
    |        ^
    = note: only the last element of a tuple may have a dynamically sized type
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn f9<X>(x1: Box<S<X>>) {
+   |       --
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:45:9
@@ -81,6 +97,10 @@ LL | struct S<X: ?Sized> {
    |        ^
    = note: required because it appears within the type `({integer}, S<X>)`
    = note: tuples must have a statically known size to be initialized
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn f10<X>(x1: Box<S<X>>) {
+   |        --
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:45:8
@@ -99,6 +119,10 @@ note: required because it appears within the type `S<X>`
 LL | struct S<X: ?Sized> {
    |        ^
    = note: required because it appears within the type `({integer}, S<X>)`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn f10<X>(x1: Box<S<X>>) {
+   |        --
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f5<Y: ?Sized>(x: &Y) {}

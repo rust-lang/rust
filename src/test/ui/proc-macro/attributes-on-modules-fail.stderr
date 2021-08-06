@@ -1,8 +1,10 @@
-error[E0774]: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
   --> $DIR/attributes-on-modules-fail.rs:16:1
    |
 LL | #[derive(Copy)]
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^ not applicable here
+LL | mod n {}
+   | -------- not a `struct`, `enum` or `union`
 
 error[E0658]: non-inline modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:20:1

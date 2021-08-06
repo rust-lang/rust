@@ -677,7 +677,6 @@ impl Default for Options {
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
             lint_opts: Vec::new(),
-            force_warns: Vec::new(),
             lint_cap: None,
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
@@ -1102,7 +1101,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         ),
         opt::multi_s(
             "",
-            "force-warns",
+            "force-warn",
             "Specifiy lints that should warn even if \
              they are allowed somewhere else",
             "LINT",
@@ -1149,15 +1148,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  never  = never colorize output",
             "auto|always|never",
         ),
-        opt::opt(
-            "",
-            "pretty",
-            "Pretty-print the input instead of compiling;
-                  valid types are: `normal` (un-annotated source),
-                  `expanded` (crates expanded), or
-                  `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-            "TYPE",
-        ),
         opt::multi_s(
             "",
             "remap-path-prefix",
@@ -1172,20 +1162,20 @@ pub fn get_cmd_lint_options(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
     debugging_opts: &DebuggingOptions,
-) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>, Vec<String>) {
+) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
-    for level in [lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for (passed_arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
-            let arg_pos = if let lint::Forbid = level {
-                // HACK: forbid is always specified last, so it can't be overridden.
-                // FIXME: remove this once <https://github.com/rust-lang/rust/issues/70819> is
-                // fixed and `forbid` works as expected.
-                usize::MAX
-            } else {
-                passed_arg_pos
-            };
+    if !debugging_opts.unstable_options && matches.opt_present("force-warn") {
+        early_error(
+            error_format,
+            "the `-Z unstable-options` flag must also be passed to enable \
+            the flag `--force-warn=lints`",
+        );
+    }
+
+    for level in [lint::Allow, lint::Warn, lint::ForceWarn, lint::Deny, lint::Forbid] {
+        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {
@@ -1206,18 +1196,7 @@ pub fn get_cmd_lint_options(
             .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
     });
 
-    if !debugging_opts.unstable_options && matches.opt_present("force-warns") {
-        early_error(
-            error_format,
-            "the `-Z unstable-options` flag must also be passed to enable \
-            the flag `--force-warns=lints`",
-        );
-    }
-
-    let force_warns =
-        matches.opt_strs("force-warns").into_iter().map(|name| name.replace('-', "_")).collect();
-
-    (lint_opts, describe_lints, lint_cap, force_warns)
+    (lint_opts, describe_lints, lint_cap)
 }
 
 /// Parses the `--color` flag.
@@ -1888,7 +1867,7 @@ fn parse_extern_dep_specs(
             )
         });
 
-        let locparts: Vec<_> = loc.split(":").collect();
+        let locparts: Vec<_> = loc.split(':').collect();
         let spec = match &locparts[..] {
             ["raw", ..] => {
                 // Don't want `:` split string
@@ -1955,7 +1934,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut debugging_opts = DebuggingOptions::build(matches, error_format);
-    let (lint_opts, describe_lints, lint_cap, force_warns) =
+    let (lint_opts, describe_lints, lint_cap) =
         get_cmd_lint_options(matches, error_format, &debugging_opts);
 
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
@@ -2085,7 +2064,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let remap_path_prefix = parse_remap_path_prefix(matches, error_format);
 
-    let pretty = parse_pretty(matches, &debugging_opts, error_format);
+    let pretty = parse_pretty(&debugging_opts, error_format);
 
     if !debugging_opts.unstable_options
         && !target_triple.triple().contains("apple")
@@ -2129,7 +2108,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         optimize: opt_level,
         debuginfo,
         lint_opts,
-        force_warns,
         lint_cap,
         describe_lints,
         output_types,
@@ -2163,69 +2141,39 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 }
 
-fn parse_pretty(
-    matches: &getopts::Matches,
-    debugging_opts: &DebuggingOptions,
-    efmt: ErrorOutputType,
-) -> Option<PpMode> {
-    fn parse_pretty_inner(efmt: ErrorOutputType, name: &str, extended: bool) -> PpMode {
-        use PpMode::*;
-        let first = match (name, extended) {
-            ("normal", _) => Source(PpSourceMode::Normal),
-            ("identified", _) => Source(PpSourceMode::Identified),
-            ("everybody_loops", true) => Source(PpSourceMode::EveryBodyLoops),
-            ("expanded", _) => Source(PpSourceMode::Expanded),
-            ("expanded,identified", _) => Source(PpSourceMode::ExpandedIdentified),
-            ("expanded,hygiene", _) => Source(PpSourceMode::ExpandedHygiene),
-            ("ast-tree", true) => AstTree(PpAstTreeMode::Normal),
-            ("ast-tree,expanded", true) => AstTree(PpAstTreeMode::Expanded),
-            ("hir", true) => Hir(PpHirMode::Normal),
-            ("hir,identified", true) => Hir(PpHirMode::Identified),
-            ("hir,typed", true) => Hir(PpHirMode::Typed),
-            ("hir-tree", true) => HirTree,
-            ("thir-tree", true) => ThirTree,
-            ("mir", true) => Mir,
-            ("mir-cfg", true) => MirCFG,
-            _ => {
-                if extended {
-                    early_error(
-                        efmt,
-                        &format!(
-                            "argument to `unpretty` must be one of `normal`, \
-                                        `expanded`, `identified`, `expanded,identified`, \
-                                        `expanded,hygiene`, `everybody_loops`, \
-                                        `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
-                                        `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
-                            name
-                        ),
-                    );
-                } else {
-                    early_error(
-                        efmt,
-                        &format!(
-                            "argument to `pretty` must be one of `normal`, \
-                                        `expanded`, `identified`, or `expanded,identified`; got {}",
-                            name
-                        ),
-                    );
-                }
-            }
-        };
-        tracing::debug!("got unpretty option: {:?}", first);
-        first
-    }
+fn parse_pretty(debugging_opts: &DebuggingOptions, efmt: ErrorOutputType) -> Option<PpMode> {
+    use PpMode::*;
 
-    if debugging_opts.unstable_options {
-        if let Some(a) = matches.opt_default("pretty", "normal") {
-            // stable pretty-print variants only
-            return Some(parse_pretty_inner(efmt, &a, false));
-        }
-    }
-
-    debugging_opts.unpretty.as_ref().map(|a| {
-        // extended with unstable pretty-print variants
-        parse_pretty_inner(efmt, &a, true)
-    })
+    let first = match debugging_opts.unpretty.as_deref()? {
+        "normal" => Source(PpSourceMode::Normal),
+        "identified" => Source(PpSourceMode::Identified),
+        "everybody_loops" => Source(PpSourceMode::EveryBodyLoops),
+        "expanded" => Source(PpSourceMode::Expanded),
+        "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
+        "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
+        "ast-tree" => AstTree(PpAstTreeMode::Normal),
+        "ast-tree,expanded" => AstTree(PpAstTreeMode::Expanded),
+        "hir" => Hir(PpHirMode::Normal),
+        "hir,identified" => Hir(PpHirMode::Identified),
+        "hir,typed" => Hir(PpHirMode::Typed),
+        "hir-tree" => HirTree,
+        "thir-tree" => ThirTree,
+        "mir" => Mir,
+        "mir-cfg" => MirCFG,
+        name => early_error(
+            efmt,
+            &format!(
+                "argument to `unpretty` must be one of `normal`, \
+                            `expanded`, `identified`, `expanded,identified`, \
+                            `expanded,hygiene`, `everybody_loops`, \
+                            `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
+                            `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
+                name
+            ),
+        ),
+    };
+    tracing::debug!("got unpretty option: {:?}", first);
+    Some(first)
 }
 
 pub fn make_crate_type_option() -> RustcOptGroup {
@@ -2333,17 +2281,17 @@ impl fmt::Display for CrateType {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
-    /// `--pretty=normal`
+    /// `-Zunpretty=normal`
     Normal,
     /// `-Zunpretty=everybody_loops`
     EveryBodyLoops,
-    /// `--pretty=expanded`
+    /// `-Zunpretty=expanded`
     Expanded,
-    /// `--pretty=identified`
+    /// `-Zunpretty=identified`
     Identified,
-    /// `--pretty=expanded,identified`
+    /// `-Zunpretty=expanded,identified`
     ExpandedIdentified,
-    /// `--pretty=expanded,hygiene`
+    /// `-Zunpretty=expanded,hygiene`
     ExpandedHygiene,
 }
 
@@ -2368,7 +2316,7 @@ pub enum PpHirMode {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
     /// Options that print the source code, i.e.
-    /// `--pretty` and `-Zunpretty=everybody_loops`
+    /// `-Zunpretty=normal` and `-Zunpretty=everybody_loops`
     Source(PpSourceMode),
     AstTree(PpAstTreeMode),
     /// Options that print the HIR, i.e. `-Zunpretty=hir`

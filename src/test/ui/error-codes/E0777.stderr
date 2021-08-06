@@ -2,7 +2,7 @@ error[E0777]: expected path to a trait, found literal
   --> $DIR/E0777.rs:1:10
    |
 LL | #[derive("Clone")]
-   |          ^^^^^^^
+   |          ^^^^^^^ not a trait
    |
    = help: try using `#[derive(Clone)]`
 
@@ -12,7 +12,7 @@ error[E0777]: expected path to a trait, found literal
 LL |   #[derive("Clone
    |  __________^
 LL | | ")]
-   | |_^
+   | |_^ not a trait
    |
    = help: for example, write `#[derive(Debug)]` for `Debug`
 

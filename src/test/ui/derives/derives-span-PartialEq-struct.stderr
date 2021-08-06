@@ -1,6 +1,9 @@
 error[E0369]: binary operation `==` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq-struct.rs:8:5
    |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | struct Struct {
 LL |     x: Error
    |     ^^^^^^^^
    |
@@ -10,6 +13,9 @@ LL |     x: Error
 error[E0369]: binary operation `!=` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq-struct.rs:8:5
    |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | struct Struct {
 LL |     x: Error
    |     ^^^^^^^^
    |

@@ -1,7 +1,6 @@
 [package]
 name = "rustc-workspace-hack"
 version = "1.0.0"
-authors = ["Alex Crichton <alex@alexcrichton.com>"]
 license = 'MIT OR Apache-2.0'
 description = """
 Hack for the compiler's own build system
@@ -17,12 +16,16 @@ path = "lib.rs"
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = [
-  "aclapi",
   "accctrl",
+  "aclapi",
   "basetsd",
+  "cfg",
   "consoleapi",
   "errhandlingapi",
+  "evntrace",
   "fibersapi",
+  "in6addr",
+  "inaddr",
   "ioapiset",
   "jobapi",
   "jobapi2",
@@ -32,6 +35,8 @@ features = [
   "memoryapi",
   "minschannel",
   "minwinbase",
+  "mstcpip",
+  "mswsock",
   "namedpipeapi",
   "ntdef",
   "ntsecapi",
@@ -54,6 +59,8 @@ features = [
   "winbase",
   "wincon",
   "wincrypt",
+  "windef",
+  "winioctl",
   "winsock2",
   "ws2def",
   "ws2ipdef",

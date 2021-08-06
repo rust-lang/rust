@@ -874,7 +874,7 @@ pub trait ToSocketAddrs {
 
     /// Converts this object to an iterator of resolved `SocketAddr`s.
     ///
-    /// The returned iterator may not actually yield any values depending on the
+    /// The returned iterator might not actually yield any values depending on the
     /// outcome of any resolution performed.
     ///
     /// Note that this function may block the current thread while resolution is

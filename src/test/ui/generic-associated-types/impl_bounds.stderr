@@ -47,7 +47,11 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     type C where Self: Copy = String;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+  --> $DIR/impl_bounds.rs:11:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
 note: the requirement `Fooy<T>: Copy` appears on the associated impl type `C` but not on the corresponding associated trait type
   --> $DIR/impl_bounds.rs:7:5
    |
@@ -56,6 +60,7 @@ LL | trait Foo {
 ...
 LL |     type C where Self: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ this trait associated type doesn't have the requirement `Fooy<T>: Copy`
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
@@ -67,7 +72,11 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     fn d() where Self: Copy {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+  --> $DIR/impl_bounds.rs:11:10
+   |
+LL | #[derive(Copy, Clone)]
+   |          ^^^^
 note: the requirement `Fooy<T>: Copy` appears on the impl method `d` but not on the corresponding trait method
   --> $DIR/impl_bounds.rs:8:8
    |
@@ -76,6 +85,7 @@ LL | trait Foo {
 ...
 LL |     fn d() where Self: Clone;
    |        ^ this trait method doesn't have the requirement `Fooy<T>: Copy`
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {

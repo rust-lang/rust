@@ -103,6 +103,7 @@ impl<'a> State<'a> {
             Node::TraitRef(a) => self.print_trait_ref(&a),
             Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
             Node::Arm(a) => self.print_arm(&a),
+            Node::Infer(_) => self.s.word("_"),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(INDENT_UNIT);
@@ -169,7 +170,7 @@ pub fn print_crate<'a>(
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.item, s.attrs(hir::CRATE_HIR_ID));
+    s.print_mod(&krate.module(), s.attrs(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
 }
@@ -437,13 +438,13 @@ impl<'a> State<'a> {
                 self.print_anon_const(e);
                 self.s.word(")");
             }
-            hir::TyKind::Infer => {
-                self.s.word("_");
-            }
             hir::TyKind::Err => {
                 self.popen();
                 self.s.word("/*ERROR*/");
                 self.pclose();
+            }
+            hir::TyKind::Infer => {
+                self.s.word("_");
             }
         }
         self.end()
@@ -1356,8 +1357,8 @@ impl<'a> State<'a> {
             Options(ast::InlineAsmOptions),
         }
 
-        let mut args = vec![];
-        args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&asm.template)));
+        let mut args =
+            vec![AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&asm.template))];
         args.extend(asm.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
         if !asm.options.is_empty() {
             args.push(AsmArg::Options(asm.options));
@@ -1851,6 +1852,7 @@ impl<'a> State<'a> {
                         GenericArg::Lifetime(_) => {}
                         GenericArg::Type(ty) => s.print_type(ty),
                         GenericArg::Const(ct) => s.print_anon_const(&ct.value),
+                        GenericArg::Infer(_inf) => s.word("_"),
                     },
                 );
             }
@@ -2227,6 +2229,9 @@ impl<'a> State<'a> {
                 }
                 GenericBound::Outlives(lt) => {
                     self.print_lifetime(lt);
+                }
+                GenericBound::Unsized(_) => {
+                    self.s.word("?Sized");
                 }
             }
         }

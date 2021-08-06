@@ -1,7 +1,6 @@
 #[doc = include_str!("panic.md")]
 #[macro_export]
-#[cfg_attr(bootstrap, rustc_builtin_macro = "core_panic")]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro(core_panic))]
+#[rustc_builtin_macro(core_panic)]
 #[allow_internal_unstable(edition_panic)]
 #[stable(feature = "core", since = "1.6.0")]
 #[rustc_diagnostic_item = "core_panic_macro"]
@@ -141,7 +140,7 @@ macro_rules! assert_ne {
 #[allow_internal_unstable(core_panic)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
-    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -153,7 +152,7 @@ pub macro assert_matches {
             }
         }
     }),
-    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -321,7 +320,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
 macro_rules! matches {
-    ($expression:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+    ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $expression {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false
@@ -837,6 +836,31 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    /// Same as `format_args`, but can be used in some const contexts.
+    ///
+    /// This macro is used by the panic macros for the `const_panic` feature.
+    ///
+    /// This macro will be removed once `format_args` is allowed in const contexts.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "const_format_args", issue = "none")]
+    #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! const_format_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
+    /// Same as `format_args`, but can be used in some const contexts.
+    #[cfg(bootstrap)]
+    #[unstable(feature = "const_format_args", issue = "none")]
+    #[macro_export]
+    macro_rules! const_format_args {
+        ($($t:tt)*) => {
+            $crate::format_args!($($t)*)
+        }
+    }
+
     /// Same as `format_args`, but adds a newline in the end.
     #[unstable(
         feature = "format_args_nl",
@@ -845,6 +869,7 @@ pub(crate) mod builtin {
                   language use and is subject to change"
     )]
     #[allow_internal_unstable(fmt_internals)]
+    #[doc(hidden)]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args_nl {
@@ -1312,27 +1337,6 @@ pub(crate) mod builtin {
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
     }
 
-    /// Inline assembly.
-    ///
-    /// Read the [unstable book] for the usage.
-    ///
-    /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[unstable(
-        feature = "asm",
-        issue = "72016",
-        reason = "inline assembly is not stable enough for use and is subject to change"
-    )]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! asm {
-        ("assembly template",
-            $(operands,)*
-            $(options($(option),*))?
-        ) => {
-            /* compiler built-in */
-        };
-    }
-
     /// LLVM-style inline assembly.
     ///
     /// Read the [unstable book] for the usage.
@@ -1351,23 +1355,6 @@ pub(crate) mod builtin {
                         : $("input"(operand),)*
                         : $("clobbers",)*
                         : $("options",)*) => {
-            /* compiler built-in */
-        };
-    }
-
-    /// Module-level inline assembly.
-    #[unstable(
-        feature = "global_asm",
-        issue = "35119",
-        reason = "`global_asm!` is not stable enough for use and is subject to change"
-    )]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! global_asm {
-        ("assembly template",
-            $(operands,)*
-            $(options($(option),*))?
-        ) => {
             /* compiler built-in */
         };
     }

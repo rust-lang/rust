@@ -8,14 +8,13 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for implicit saturating subtraction.
+    /// ### What it does
+    /// Checks for implicit saturating subtraction.
     ///
-    /// **Why is this bad?** Simplicity and readability. Instead we can easily use an builtin function.
+    /// ### Why is this bad?
+    /// Simplicity and readability. Instead we can easily use an builtin function.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let end: u32 = 10;
     /// let start: u32 = 5;

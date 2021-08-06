@@ -311,14 +311,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                     Abi::ScalarPair(ref a, ref b) => (a, b),
                     _ => bug!("store_with_flags: invalid ScalarPair layout: {:#?}", dest.layout),
                 };
+                let ty = bx.backend_type(dest.layout);
                 let b_offset = a_scalar.value.size(bx).align_to(b_scalar.value.align(bx).abi);
 
-                let llptr = bx.struct_gep(dest.llval, 0);
+                let llptr = bx.struct_gep(ty, dest.llval, 0);
                 let val = bx.from_immediate(a);
                 let align = dest.align;
                 bx.store_with_flags(val, llptr, align, flags);
 
-                let llptr = bx.struct_gep(dest.llval, 1);
+                let llptr = bx.struct_gep(ty, dest.llval, 1);
                 let val = bx.from_immediate(b);
                 let align = dest.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);

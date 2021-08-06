@@ -281,7 +281,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         // Derives are not included when `invocations` are collected, so we have to add them here.
         let parent_scope = &ParentScope { derives, ..parent_scope };
         let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
-        let node_id = self.lint_node_id(eager_expansion_root);
+        let node_id = invoc.expansion_data.lint_node_id;
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
@@ -346,14 +346,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
         for (_, &(node_id, span)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(UNUSED_MACROS, node_id, span, "unused macro definition");
         }
-    }
-
-    fn lint_node_id(&self, expn_id: LocalExpnId) -> NodeId {
-        // FIXME - make this more precise. This currently returns the NodeId of the
-        // nearest closing item - we should try to return the closest parent of the ExpnId
-        self.invocation_parents
-            .get(&expn_id)
-            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[id.0])
     }
 
     fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool {
@@ -1105,9 +1097,13 @@ impl<'a> Resolver<'a> {
                     let seg = Segment::from_ident(ident);
                     check_consistency(self, &[seg], ident.span, kind, initial_res, res);
                     if res == Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat) {
+                        let node_id = self
+                            .invocation_parents
+                            .get(&parent_scope.expansion)
+                            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[id.0]);
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             LEGACY_DERIVE_HELPERS,
-                            self.lint_node_id(parent_scope.expansion),
+                            node_id,
                             ident.span,
                             "derive helper attribute is used before it is introduced",
                             BuiltinLintDiagnostics::LegacyDeriveHelpers(binding.span),

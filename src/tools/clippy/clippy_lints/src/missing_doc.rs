@@ -16,15 +16,15 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Warns if there is missing doc for any documentable item
+    /// ### What it does
+    /// Warns if there is missing doc for any documentable item
     /// (public or private).
     ///
-    /// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS`
+    /// ### Why is this bad?
+    /// Doc is good. *rustc* has a `MISSING_DOCS`
     /// allowed-by-default lint for
     /// public members, but has no way to enforce documentation of private items.
     /// This lint fixes that.
-    ///
-    /// **Known problems:** None.
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
     restriction,
     "detects missing documentation for public and private members"
@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
         let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
-        self.check_missing_docs_attrs(cx, attrs, krate.item.inner, "the", "crate");
+        self.check_missing_docs_attrs(cx, attrs, krate.module().inner, "the", "crate");
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {

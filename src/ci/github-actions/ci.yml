@@ -416,6 +416,10 @@ jobs:
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
+              # Only run this job on the nightly channel. Running this on beta
+              # could cause failures when `dev: 1` in `stage0.txt`, and running
+              # this on stable is useless.
+              CI_ONLY_WHEN_CHANNEL: nightly
             <<: *job-linux-xl
 
           - name: x86_64-gnu-aux
@@ -447,7 +451,7 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: ./x.py dist
-              RUST_CONFIGURE_ARGS: --host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUST_CONFIGURE_ARGS: --host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1

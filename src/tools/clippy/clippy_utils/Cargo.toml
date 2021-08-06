@@ -1,7 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.55"
-authors = ["The Rust Clippy Developers"]
+version = "0.1.56"
 edition = "2018"
 publish = false
 

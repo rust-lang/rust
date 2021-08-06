@@ -50,12 +50,12 @@ fn emit_direct_ptr_va_arg(
 
     let aligned_size = size.align_to(slot_size).bytes() as i32;
     let full_direct_size = bx.cx().const_i32(aligned_size);
-    let next = bx.inbounds_gep(addr, &[full_direct_size]);
+    let next = bx.inbounds_gep(bx.type_i8(), addr, &[full_direct_size]);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
     if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
-        let adjusted = bx.inbounds_gep(addr, &[adjusted_size]);
+        let adjusted = bx.inbounds_gep(bx.type_i8(), addr, &[adjusted_size]);
         (bx.bitcast(adjusted, bx.cx().type_ptr_to(llty)), addr_align)
     } else {
         (bx.bitcast(addr, bx.cx().type_ptr_to(llty)), addr_align)
@@ -98,6 +98,7 @@ fn emit_aapcs_va_arg(
     // Implementation of the AAPCS64 calling convention for va_args see
     // https://github.com/ARM-software/abi-aa/blob/master/aapcs64/aapcs64.rst
     let va_list_addr = list.immediate();
+    let va_list_ty = list.deref(bx.cx).layout.llvm_type(bx);
     let layout = bx.cx.layout_of(target_ty);
 
     let mut maybe_reg = bx.build_sibling_block("va_arg.maybe_reg");
@@ -109,11 +110,11 @@ fn emit_aapcs_va_arg(
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
     let (reg_off, reg_top_index, slot_size) = if gr_type {
-        let gr_offs = bx.struct_gep(va_list_addr, 7);
+        let gr_offs = bx.struct_gep(va_list_ty, va_list_addr, 7);
         let nreg = (layout.size.bytes() + 7) / 8;
         (gr_offs, 3, nreg * 8)
     } else {
-        let vr_off = bx.struct_gep(va_list_addr, 9);
+        let vr_off = bx.struct_gep(va_list_ty, va_list_addr, 9);
         let nreg = (layout.size.bytes() + 15) / 16;
         (vr_off, 5, nreg * 16)
     };
@@ -141,15 +142,15 @@ fn emit_aapcs_va_arg(
     maybe_reg.cond_br(use_stack, &on_stack.llbb(), &in_reg.llbb());
 
     let top_type = bx.type_i8p();
-    let top = in_reg.struct_gep(va_list_addr, reg_top_index);
+    let top = in_reg.struct_gep(va_list_ty, va_list_addr, reg_top_index);
     let top = in_reg.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
-    let mut reg_addr = in_reg.gep(top, &[reg_off_v]);
+    let mut reg_addr = in_reg.gep(bx.type_i8(), top, &[reg_off_v]);
     if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
         // On big-endian systems the value is right-aligned in its slot.
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
-        reg_addr = in_reg.gep(reg_addr, &[offset]);
+        reg_addr = in_reg.gep(bx.type_i8(), reg_addr, &[offset]);
     }
     let reg_type = layout.llvm_type(bx);
     let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));

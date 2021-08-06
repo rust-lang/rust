@@ -5,9 +5,94 @@
 
 #![feature(asm, llvm_asm)]
 #![feature(trace_macros, concat_idents)]
+#![feature(stmt_expr_attributes, arbitrary_enum_discriminant)]
+#![feature(derive_default_enum)]
 
-#[derive(Default)] //~ ERROR
-enum OrDeriveThis {}
+#[derive(Default)]
+struct DefaultInnerAttrStruct {
+    #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    foo: (),
+}
+
+#[derive(Default)]
+struct DefaultInnerAttrTupleStruct(#[default] ());
+//~^ ERROR the `#[default]` attribute may only be used on unit enum variants
+
+#[derive(Default)]
+#[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+struct DefaultOuterAttrStruct {}
+
+#[derive(Default)]
+#[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+enum DefaultOuterAttrEnum {
+    #[default]
+    Foo,
+}
+
+#[rustfmt::skip] // needs some work to handle this case
+#[repr(u8)]
+#[derive(Default)]
+enum AttrOnInnerExpression {
+    Foo = #[default] 0, //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Bar([u8; #[default] 1]), //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    #[default]
+    Baz,
+}
+
+#[derive(Default)] //~ ERROR no default declared
+enum NoDeclaredDefault {
+    Foo,
+    Bar,
+}
+
+#[derive(Default)] //~ ERROR multiple declared defaults
+enum MultipleDefaults {
+    #[default]
+    Foo,
+    #[default]
+    Bar,
+    #[default]
+    Baz,
+}
+
+#[derive(Default)]
+enum ExtraDeriveTokens {
+    #[default = 1] //~ ERROR `#[default]` attribute does not accept a value
+    Foo,
+}
+
+#[derive(Default)]
+enum TwoDefaultAttrs {
+    #[default]
+    #[default]
+    Foo, //~ERROR multiple `#[default]` attributes
+    Bar,
+}
+
+#[derive(Default)]
+enum ManyDefaultAttrs {
+    #[default]
+    #[default]
+    #[default]
+    #[default]
+    Foo, //~ERROR multiple `#[default]` attributes
+    Bar,
+}
+
+#[derive(Default)]
+enum DefaultHasFields {
+    #[default]
+    Foo {}, //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Bar,
+}
+
+#[derive(Default)]
+enum NonExhaustiveDefault {
+    #[default]
+    #[non_exhaustive]
+    Foo, //~ ERROR default variant must be exhaustive
+    Bar,
+}
 
 fn main() {
     asm!(invalid); //~ ERROR

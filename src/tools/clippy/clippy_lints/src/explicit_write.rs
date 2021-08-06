@@ -9,14 +9,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
+    /// ### What it does
+    /// Checks for usage of `write!()` / `writeln()!` which can be
     /// replaced with `(e)print!()` / `(e)println!()`
     ///
-    /// **Why is this bad?** Using `(e)println! is clearer and more concise
+    /// ### Why is this bad?
+    /// Using `(e)println! is clearer and more concise
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::io::Write;
     /// # let bar = "furchtbar";

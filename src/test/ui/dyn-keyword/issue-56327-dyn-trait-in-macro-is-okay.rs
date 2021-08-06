@@ -10,6 +10,7 @@
 // anything.
 
 #![deny(rust_2018_compatibility)]
+#![allow(dyn_drop)]
 
 macro_rules! foo {
     () => {

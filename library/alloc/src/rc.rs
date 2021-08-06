@@ -262,6 +262,7 @@ use core::marker::{self, PhantomData, Unpin, Unsize};
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw, forget};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -313,6 +314,9 @@ pub struct Rc<T: ?Sized> {
 impl<T: ?Sized> !marker::Send for Rc<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !marker::Sync for Rc<T> {}
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
@@ -2526,7 +2530,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that may not be relied upon outside of std.
+    // detail of the language that must not be relied upon outside of std.
     unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 

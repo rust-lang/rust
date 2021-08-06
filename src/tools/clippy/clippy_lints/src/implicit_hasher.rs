@@ -1,11 +1,9 @@
-#![cfg_attr(bootstrap, allow(rustc::default_hash_types))]
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -19,24 +17,26 @@ use rustc_typeck::hir_ty_to_ty;
 use if_chain::if_chain;
 
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
-use clippy_utils::paths;
+use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, match_def_path};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for public `impl` or `fn` missing generalization
+    /// ### What it does
+    /// Checks for public `impl` or `fn` missing generalization
     /// over different hashers and implicitly defaulting to the default hashing
     /// algorithm (`SipHash`).
     ///
-    /// **Why is this bad?** `HashMap` or `HashSet` with custom hashers cannot be
+    /// ### Why is this bad?
+    /// `HashMap` or `HashSet` with custom hashers cannot be
     /// used with them.
     ///
-    /// **Known problems:** Suggestions for replacing constructors can contain
+    /// ### Known problems
+    /// Suggestions for replacing constructors can contain
     /// false-positives. Also applying suggestions can require modification of other
     /// pieces of code, possibly including external crates.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::collections::HashMap;
     /// # use std::hash::{Hash, BuildHasher};
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.hir_id()) {
+        if !cx.access_levels.is_exported(item.def_id) {
             return;
         }
 
@@ -295,6 +295,14 @@ impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
         walk_ty(self, t);
     }
 
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        if let Some(target) = ImplicitHasherType::new(self.cx, &inf.to_ty()) {
+            self.found.push(target);
+        }
+
+        walk_inf(self, inf);
+    }
+
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
@@ -339,7 +347,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                     return;
                 }
 
-                if match_def_path(self.cx, ty_did, &paths::HASHMAP) {
+                if self.cx.tcx.is_diagnostic_item(sym::hashmap_type, ty_did) {
                     if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
@@ -352,7 +360,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                             ),
                         );
                     }
-                } else if match_def_path(self.cx, ty_did, &paths::HASHSET) {
+                } else if self.cx.tcx.is_diagnostic_item(sym::hashset_type, ty_did) {
                     if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());

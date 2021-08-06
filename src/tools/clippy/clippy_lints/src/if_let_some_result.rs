@@ -10,14 +10,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:*** Checks for unnecessary `ok()` in if let.
+    /// ### What it does
+    ///* Checks for unnecessary `ok()` in if let.
     ///
-    /// **Why is this bad?** Calling `ok()` in if let is unnecessary, instead match
+    /// ### Why is this bad?
+    /// Calling `ok()` in if let is unnecessary, instead match
     /// on `Ok(pat)`
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// for i in iter {
     ///     if let Some(value) = i.parse().ok() {

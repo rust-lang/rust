@@ -14,18 +14,20 @@ use clippy_utils::source::snippet;
 use clippy_utils::{comparisons, sext};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons where the relation is always either
+    /// ### What it does
+    /// Checks for comparisons where the relation is always either
     /// true or false, but where one side has been upcast so that the comparison is
     /// necessary. Only integer types are checked.
     ///
-    /// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300`
+    /// ### Why is this bad?
+    /// An expression like `let x : u8 = ...; (x as u32) > 300`
     /// will mistakenly imply that it is possible for `x` to be outside the range of
     /// `u8`.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// https://github.com/rust-lang/rust-clippy/issues/886
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x: u8 = 1;
     /// (x as u32) > 300;

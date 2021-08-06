@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(bindings_after_at)]
 
 struct A { a: u8, b: u8 }
 

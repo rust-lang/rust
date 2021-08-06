@@ -3,10 +3,7 @@
 // FIXME: This should compile, but it currently doesn't
 
 #![feature(trait_alias)]
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 
 trait Foo {
     type Bar: Baz<Self, Self>;
@@ -19,10 +16,6 @@ struct X;
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
     //~^ ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
 
     fn bar(&self) -> Self::Bar {
         |x| x

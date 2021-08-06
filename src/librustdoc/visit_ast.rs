@@ -72,18 +72,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
-        let span = krate.item.inner;
+        let span = krate.module().inner;
         let mut top_level_module = self.visit_mod_contents(
             &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
-            &krate.item,
+            &krate.module(),
             self.cx.tcx.crate_name(LOCAL_CRATE),
         );
         // Attach the crate's exported macros to the top-level module.
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
         // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
         // moving them back to their correct locations.
-        'exported_macros: for def in krate.exported_macros {
+        'exported_macros: for def in krate.exported_macros() {
             // The `def` of a macro in `exported_macros` should correspond to either:
             //  - a `#[macro_export] macro_rules!` macro,
             //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
@@ -192,7 +192,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.map.insert(did.into(), AccessLevel::Public);
+                        self.cx.cache.access_levels.map.insert(did, AccessLevel::Public);
                     }
                 }
             }
@@ -204,7 +204,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.cache.access_levels.is_public(res_did.into());
+        let is_private = !self.cx.cache.access_levels.is_public(res_did);
         let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.

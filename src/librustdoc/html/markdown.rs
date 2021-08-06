@@ -34,14 +34,13 @@ use std::str;
 use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::html::escape::Escape;
+use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
     html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag,
 };
-
-use super::format::Buffer;
 
 #[cfg(test)]
 mod tests;
@@ -57,7 +56,7 @@ pub(crate) fn opts() -> Options {
 
 /// A subset of [`opts()`] used for rendering summaries.
 pub(crate) fn summary_opts() -> Options {
-    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_SMART_PUNCTUATION
+    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_TABLES
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
@@ -235,9 +234,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                     return Some(Event::Html(
                         format!(
                             "<div class=\"example-wrap\">\
-                                 <pre{}>{}</pre>\
+                                 <pre class=\"language-{}\">{}</pre>\
                              </div>",
-                            format!(" class=\"language-{}\"", lang),
+                            lang,
                             Escape(&text),
                         )
                         .into(),
@@ -330,6 +329,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             tooltip,
             edition,
+            None,
             None,
         );
         Some(Event::Html(s.into_inner().into()))
@@ -522,6 +522,10 @@ fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
     )
 }
 
+fn is_forbidden_tag(t: &Tag<'_>) -> bool {
+    matches!(t, Tag::CodeBlock(_) | Tag::Table(_) | Tag::TableHead | Tag::TableRow | Tag::TableCell)
+}
+
 impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     type Item = Event<'a>;
 
@@ -535,14 +539,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
         if let Some(event) = self.inner.next() {
             let mut is_start = true;
             let is_allowed_tag = match event {
-                Event::Start(Tag::CodeBlock(_)) | Event::End(Tag::CodeBlock(_)) => {
-                    return None;
-                }
                 Event::Start(ref c) => {
+                    if is_forbidden_tag(c) {
+                        return None;
+                    }
                     self.depth += 1;
                     check_if_allowed_tag(c)
                 }
                 Event::End(ref c) => {
+                    if is_forbidden_tag(c) {
+                        return None;
+                    }
                     self.depth -= 1;
                     is_start = false;
                     check_if_allowed_tag(c)
@@ -1079,7 +1086,7 @@ fn markdown_summary_with_limit(
     let mut stopped_early = false;
 
     fn push(s: &mut String, text_length: &mut usize, text: &str) {
-        s.push_str(text);
+        write!(s, "{}", Escape(text)).unwrap();
         *text_length += text.len();
     }
 

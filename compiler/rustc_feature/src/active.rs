@@ -311,11 +311,6 @@ declare_features! (
     /// Allows `extern "platform-intrinsic" { ... }`.
     (active, platform_intrinsics, "1.4.0", Some(27731), None),
 
-    /// Allows `#[unwind(..)]`.
-    ///
-    /// Permits specifying whether a function should permit unwinding or abort on unwind.
-    (active, unwind_attributes, "1.4.0", Some(58760), None),
-
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 
@@ -413,9 +408,6 @@ declare_features! (
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
-    /// Allows accessing fields of unions inside `const` functions.
-    (active, const_fn_union, "1.27.0", Some(51909), None),
-
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
@@ -455,9 +447,6 @@ declare_features! (
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
-    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (incomplete, impl_trait_in_bindings, "1.30.0", Some(63065), None),
-
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
 
@@ -492,7 +481,7 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
 
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
-    (incomplete, type_alias_impl_trait, "1.38.0", Some(63063), None),
+    (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
@@ -528,10 +517,6 @@ declare_features! (
 
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
-
-    /// Allows bindings in the subpattern of a binding pattern.
-    /// For example, you can write `x @ Some(y)`.
-    (active, bindings_after_at, "1.41.0", Some(65490), None),
 
     /// Allows `impl const Trait for T` syntax.
     (active, const_trait_impl, "1.42.0", Some(67792), None),
@@ -571,9 +556,6 @@ declare_features! (
 
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (incomplete, lazy_normalization_consts, "1.46.0", Some(72219), None),
-
-    /// Allows calling `transmute` in const fn
-    (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
     /// Allows `if let` guard in match arms.
     (incomplete, if_let_guard, "1.47.0", Some(51114), None),
@@ -632,9 +614,6 @@ declare_features! (
     /// Allows macro attributes to observe output of `#[derive]`.
     (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
 
-    /// Allows the use of type alias impl trait in function return positions
-    (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
-
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
 
@@ -686,6 +665,25 @@ declare_features! (
 
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
+
+    /// Infer generic args for both consts and types.
+    (active, generic_arg_infer, "1.55.0", Some(85077), None),
+
+    /// Allows `#[derive(Default)]` and `#[default]` on enums.
+    (active, derive_default_enum, "1.56.0", Some(86985), None),
+
+    /// Allows `for _ in _` loops in const contexts.
+    (active, const_for, "1.56.0", Some(87575), None),
+
+    /// Allows the `?` operator in const contexts.
+    (active, const_try, "1.56.0", Some(74935), None),
+
+    /// Allows upcasting trait objects via supertraits.
+    /// Trait upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (incomplete, trait_upcasting, "1.56.0", Some(65991), None),
+
+    /// Allows explicit generic arguments specification with `impl Trait` present.
+    (active, explicit_generic_args_with_impl_trait, "1.56.0", Some(83701), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

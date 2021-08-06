@@ -14,17 +14,17 @@ pub fn anonymize_predicate<'tcx>(
     tcx.reuse_or_mk_predicate(pred, new)
 }
 
-struct PredicateSet<'tcx> {
+pub struct PredicateSet<'tcx> {
     tcx: TyCtxt<'tcx>,
     set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
 impl PredicateSet<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, set: Default::default() }
     }
 
-    fn insert(&mut self, pred: ty::Predicate<'tcx>) -> bool {
+    pub fn insert(&mut self, pred: ty::Predicate<'tcx>) -> bool {
         // We have to be careful here because we want
         //
         //    for<'a> Foo<&'a i32>

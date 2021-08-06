@@ -10,15 +10,15 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
-    /// **What it does:** Detects enumeration variants that are prefixed or suffixed
+    /// ### What it does
+    /// Detects enumeration variants that are prefixed or suffixed
     /// by the same characters.
     ///
-    /// **Why is this bad?** Enumeration variant names should specify their variant,
+    /// ### Why is this bad?
+    /// Enumeration variant names should specify their variant,
     /// not repeat the enumeration name.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// enum Cake {
     ///     BlackForestCake,
@@ -40,14 +40,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Detects type names that are prefixed or suffixed by the
+    /// ### What it does
+    /// Detects type names that are prefixed or suffixed by the
     /// containing module's name.
     ///
-    /// **Why is this bad?** It requires the user to type the module name twice.
+    /// ### Why is this bad?
+    /// It requires the user to type the module name twice.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// mod cake {
     ///     struct BlackForestCake;
@@ -65,10 +65,12 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for modules that have the same name as their
+    /// ### What it does
+    /// Checks for modules that have the same name as their
     /// parent module
     ///
-    /// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and
+    /// ### Why is this bad?
+    /// A typical beginner mistake is to have `mod foo;` and
     /// again `mod foo { ..
     /// }` in `foo.rs`.
     /// The expectation is that items inside the inner `mod foo { .. }` are then
@@ -78,9 +80,7 @@ declare_clippy_lint! {
     /// If this is done on purpose, it would be better to choose a more
     /// representative module name.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// // lib.rs
     /// mod foo;
@@ -297,7 +297,7 @@ impl LateLintPass<'_> for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.hir_id())) {
+            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id)) {
                 check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
             }
         }

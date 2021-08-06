@@ -8,9 +8,11 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for fully capitalized names and optionally names containing a capitalized acronym.
+    /// ### What it does
+    /// Checks for fully capitalized names and optionally names containing a capitalized acronym.
     ///
-    /// **Why is this bad?** In CamelCase, acronyms count as one word.
+    /// ### Why is this bad?
+    /// In CamelCase, acronyms count as one word.
     /// See [naming conventions](https://rust-lang.github.io/api-guidelines/naming.html#casing-conforms-to-rfc-430-c-case)
     /// for more.
     ///
@@ -18,12 +20,12 @@ declare_clippy_lint! {
     /// You can use the `upper-case-acronyms-aggressive: true` config option to enable linting
     /// on all camel case names
     ///
-    /// **Known problems:** When two acronyms are contiguous, the lint can't tell where
+    /// ### Known problems
+    /// When two acronyms are contiguous, the lint can't tell where
     /// the first acronym ends and the second starts, so it suggests to lowercase all of
     /// the letters in the second acronym.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct HTTPResponse;
     /// ```
@@ -102,7 +104,7 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &Item<'_>) {
         // do not lint public items or in macros
         if in_external_macro(cx.sess(), it.span)
-            || (self.avoid_breaking_exported_api && cx.access_levels.is_exported(it.hir_id()))
+            || (self.avoid_breaking_exported_api && cx.access_levels.is_exported(it.def_id))
         {
             return;
         }

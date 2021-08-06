@@ -1,11 +1,7 @@
-// ignore-tidy-filelength
-// This file almost exclusively consists of the definition of `Iterator`. We
-// can't split that into multiple files.
-
 use crate::cmp::{self, Ordering};
 use crate::ops::{ControlFlow, Try};
 
-use super::super::TrustedRandomAccess;
+use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
@@ -333,21 +329,22 @@ pub trait Iterator {
     /// regardless of the step given.
     ///
     /// Note 2: The time at which ignored elements are pulled is not fixed.
-    /// `StepBy` behaves like the sequence `next(), nth(step-1), nth(step-1), …`,
-    /// but is also free to behave like the sequence
-    /// `advance_n_and_return_first(step), advance_n_and_return_first(step), …`
+    /// `StepBy` behaves like the sequence `self.next()`, `self.nth(step-1)`,
+    /// `self.nth(step-1)`, …, but is also free to behave like the sequence
+    /// `advance_n_and_return_first(&mut self, step)`,
+    /// `advance_n_and_return_first(&mut self, step)`, …
     /// Which way is used may change for some iterators for performance reasons.
     /// The second way will advance the iterator earlier and may consume more items.
     ///
     /// `advance_n_and_return_first` is the equivalent of:
     /// ```
-    /// fn advance_n_and_return_first<I>(iter: &mut I, total_step: usize) -> Option<I::Item>
+    /// fn advance_n_and_return_first<I>(iter: &mut I, n: usize) -> Option<I::Item>
     /// where
     ///     I: Iterator,
     /// {
     ///     let next = iter.next();
-    ///     if total_step > 1 {
-    ///         iter.nth(total_step-2);
+    ///     if n > 1 {
+    ///         iter.nth(n - 2);
     ///     }
     ///     next
     /// }
@@ -693,7 +690,7 @@ pub trait Iterator {
     /// more idiomatic to use a `for` loop, but `for_each` may be more legible
     /// when processing items at the end of longer iterator chains. In some
     /// cases `for_each` may also be faster than a loop, because it will use
-    /// internal iteration on adaptors like `Chain`.
+    /// internal iteration on adapters like `Chain`.
     ///
     /// [`for`]: ../../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
     ///
@@ -1292,7 +1289,7 @@ pub trait Iterator {
         Take::new(self, n)
     }
 
-    /// An iterator adaptor similar to [`fold`] that holds internal state and
+    /// An iterator adapter similar to [`fold`] that holds internal state and
     /// produces a new iterator.
     ///
     /// [`fold`]: Iterator::fold
@@ -1603,7 +1600,7 @@ pub trait Iterator {
 
     /// Borrows an iterator, rather than consuming it.
     ///
-    /// This is useful to allow applying iterator adaptors while still
+    /// This is useful to allow applying iterator adapters while still
     /// retaining ownership of the original iterator.
     ///
     /// # Examples
@@ -2077,7 +2074,7 @@ pub trait Iterator {
     /// to produce a single value from it.
     ///
     /// Note: `fold()`, and similar methods that traverse the entire iterator,
-    /// may not terminate for infinite iterators, even on traits for which a
+    /// might not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
     ///
     /// Note: [`reduce()`] can be used to use the first element as the initial
@@ -3463,7 +3460,7 @@ pub trait Iterator {
     #[unstable(feature = "trusted_random_access", issue = "none")]
     unsafe fn __iterator_get_unchecked(&mut self, _idx: usize) -> Self::Item
     where
-        Self: TrustedRandomAccess,
+        Self: TrustedRandomAccessNoCoerce,
     {
         unreachable!("Always specialized");
     }

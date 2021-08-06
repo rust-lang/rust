@@ -95,7 +95,8 @@ impl Clean<Item> for doctree::Module<'_> {
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
-        let span = Span::from_rustc_span({
+
+        let span = Span::new({
             let where_outer = self.where_outer(cx.tcx);
             let sm = cx.sess().source_map();
             let outer = sm.lookup_char_pos(where_outer.lo());
@@ -128,6 +129,7 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
         match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::Unsized(_) => GenericBound::maybe_sized(cx),
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
@@ -562,13 +564,19 @@ impl Clean<Generics> for hir::Generics<'_> {
                 WherePredicate::BoundPredicate {
                     ty: Generic(ref name), ref mut bounds, ..
                 } => {
-                    if bounds.is_empty() {
+                    if let [] | [GenericBound::TraitBound(_, hir::TraitBoundModifier::Maybe)] =
+                        &bounds[..]
+                    {
                         for param in &mut generics.params {
                             match param.kind {
                                 GenericParamDefKind::Lifetime => {}
                                 GenericParamDefKind::Type { bounds: ref mut ty_bounds, .. } => {
                                     if &param.name == name {
                                         mem::swap(bounds, ty_bounds);
+                                        // We now keep track of `?Sized` obligations in the HIR.
+                                        // If we don't clear `ty_bounds` we end up with
+                                        // `fn foo<X: ?Sized>(_: X) where X: ?Sized`.
+                                        ty_bounds.clear();
                                         break;
                                     }
                                 }
@@ -668,11 +676,10 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                         if let Some(((_, trait_did, name), rhs)) =
                             proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
                         {
-                            impl_trait_proj.entry(param_idx).or_default().push((
-                                trait_did.into(),
-                                name,
-                                rhs,
-                            ));
+                            impl_trait_proj
+                                .entry(param_idx)
+                                .or_default()
+                                .push((trait_did, name, rhs));
                         }
 
                         return None;
@@ -1730,9 +1737,13 @@ impl Clean<Variant> for hir::VariantData<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Variant {
         match self {
             hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
-            hir::VariantData::Tuple(..) => {
-                Variant::Tuple(self.fields().iter().map(|x| x.ty.clean(cx)).collect())
-            }
+            // Important note here: `Variant::Tuple` is used on tuple structs which are not in an
+            // enum (so where converting from `ty::VariantDef`). In case we are in an enum, the kind
+            // is provided by the `Variant` wrapper directly, and since we need the fields' name
+            // (even for a tuple struct variant!), it's simpler to just store it as a
+            // `Variant::Struct` instead of a `Variant::Tuple` (otherwise it would force us to make
+            // a lot of changes when rendering them to generate the name as well).
+            hir::VariantData::Tuple(..) => Variant::Struct(self.clean(cx)),
             hir::VariantData::Unit(..) => Variant::CLike,
         }
     }
@@ -1768,6 +1779,7 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
                         hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                         hir::GenericArg::Type(ty) => GenericArg::Type(ty.clean(cx)),
                         hir::GenericArg::Const(ct) => GenericArg::Const(ct.clean(cx)),
+                        hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                     })
                     .collect(),
                 bindings: self.bindings.clean(cx),

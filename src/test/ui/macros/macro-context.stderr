@@ -64,7 +64,21 @@ LL |     let i = m!();
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 6 previous errors
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/macro-context.rs:3:15
+   |
+LL |     () => ( i ; typeof );
+   |               ^
+...
+LL |     let i = m!();
+   |             ---- in this macro invocation
+   |
+   = note: `#[warn(semicolon_in_expressions_from_macros)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: this warning originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0412, E0425.
 For more information about an error, try `rustc --explain E0412`.

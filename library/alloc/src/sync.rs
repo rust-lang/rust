@@ -19,6 +19,7 @@ use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
@@ -239,6 +240,9 @@ pub struct Arc<T: ?Sized> {
 unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
@@ -1056,8 +1060,8 @@ impl<T: ?Sized> Arc<T> {
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        // Destroy the data at this time, even though we may not free the box
-        // allocation itself (there may still be weak pointers lying around).
+        // Destroy the data at this time, even though we must not free the box
+        // allocation itself (there might still be weak pointers lying around).
         unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
 
         // Drop the weak ref collectively held by all strong references
@@ -2587,7 +2591,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that may not be relied upon outside of std.
+    // detail of the language that must not be relied upon outside of std.
     unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 

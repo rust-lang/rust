@@ -6,9 +6,12 @@ LL |     let o = Other::new(f);
    |                        |
    |                        expected an implementor of trait `SomeTrait`
    |                        help: consider borrowing here: `&f`
-...
+   |
+note: required by `Other::<'a, G>::new`
+  --> $DIR/issue-84973.rs:27:5
+   |
 LL |     pub fn new(g: G) -> Self {
-   |     ------------------------ required by `Other::<'a, G>::new`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

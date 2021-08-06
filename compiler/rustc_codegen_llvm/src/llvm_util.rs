@@ -365,7 +365,7 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
 
                 features_string
             };
-            features.extend(features_string.split(",").map(String::from));
+            features.extend(features_string.split(',').map(String::from));
         }
         Some(_) | None => {}
     };
@@ -374,7 +374,7 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
         if s.is_empty() {
             return None;
         }
-        let feature = if s.starts_with("+") || s.starts_with("-") {
+        let feature = if s.starts_with('+') || s.starts_with('-') {
             &s[1..]
         } else {
             return Some(s.to_string());

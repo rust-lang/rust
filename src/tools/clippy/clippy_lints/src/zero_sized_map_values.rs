@@ -1,28 +1,28 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::paths;
-use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item, match_type};
+use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Adt, Ty};
+use rustc_middle::ty::{Adt, Ty, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 use rustc_target::abi::LayoutOf as _;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for maps with zero-sized value types anywhere in the code.
+    /// ### What it does
+    /// Checks for maps with zero-sized value types anywhere in the code.
     ///
-    /// **Why is this bad?** Since there is only a single value for a zero-sized type, a map
+    /// ### Why is this bad?
+    /// Since there is only a single value for a zero-sized type, a map
     /// containing zero sized values is effectively a set. Using a set in that case improves
     /// readability and communicates intent more clearly.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// * A zero-sized type cannot be recovered later if it contains private fields.
     /// * This lints the signature of public items
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # use std::collections::HashMap;
     /// fn unique_words(text: &str) -> HashMap<&str, ()> {
@@ -49,9 +49,12 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             if !hir_ty.span.from_expansion();
             if !in_trait_impl(cx, hir_ty.hir_id);
             let ty = ty_from_hir_ty(cx, hir_ty);
-            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || match_type(cx, ty, &paths::BTREEMAP);
+            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || is_type_diagnostic_item(cx, ty, sym::BTreeMap);
             if let Adt(_, substs) = ty.kind();
             let ty = substs.type_at(1);
+            // Fixes https://github.com/rust-lang/rust-clippy/issues/7447 because of
+            // https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/ty/sty.rs#L968
+            if !ty.has_escaping_bound_vars();
             // Do this to prevent `layout_of` crashing, being unable to fully normalize `ty`.
             if is_normalizable(cx, cx.param_env, ty);
             if let Ok(layout) = cx.layout_of(ty);

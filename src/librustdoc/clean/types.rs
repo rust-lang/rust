@@ -227,7 +227,7 @@ impl ExternalCrate {
         if root.is_local() {
             tcx.hir()
                 .krate()
-                .item
+                .module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -293,7 +293,7 @@ impl ExternalCrate {
         if root.is_local() {
             tcx.hir()
                 .krate()
-                .item
+                .module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -343,7 +343,7 @@ crate struct Item {
 rustc_data_structures::static_assert_size!(Item, 56);
 
 crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
-    Span::from_rustc_span(def_id.as_local().map_or_else(
+    Span::new(def_id.as_local().map_or_else(
         || tcx.def_span(def_id),
         |local| {
             let hir = tcx.hir();
@@ -1614,7 +1614,7 @@ impl Type {
 impl Type {
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
-            ResolvedPath { did, .. } => return Some(did.into()),
+            ResolvedPath { did, .. } => return Some(did),
             DynTrait(ref bounds, _) => return bounds[0].trait_.inner_def_id(cache),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
@@ -1943,10 +1943,11 @@ crate enum Variant {
 crate struct Span(rustc_span::Span);
 
 impl Span {
-    crate fn from_rustc_span(sp: rustc_span::Span) -> Self {
-        // Get the macro invocation instead of the definition,
-        // in case the span is result of a macro expansion.
-        // (See rust-lang/rust#39726)
+    /// Wraps a [`rustc_span::Span`]. In case this span is the result of a macro expansion, the
+    /// span will be updated to point to the macro invocation instead of the macro definition.
+    ///
+    /// (See rust-lang/rust#39726)
+    crate fn new(sp: rustc_span::Span) -> Self {
         Self(sp.source_callsite())
     }
 
@@ -2007,6 +2008,7 @@ crate enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
     Const(Constant),
+    Infer,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

@@ -81,9 +81,10 @@ pub type _Unwind_Exception_Cleanup_Fn =
     all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
     link(name = "unwind", kind = "static")
 )]
-extern "C" {
-    #[unwind(allowed)]
+extern "C-unwind" {
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
+}
+extern "C" {
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
     pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
     pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
@@ -230,9 +231,10 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     #[cfg_attr(all(feature = "llvm-libunwind",
                    any(target_os = "fuchsia", target_os = "linux")),
                link(name = "unwind", kind = "static"))]
-    extern "C" {
-        #[unwind(allowed)]
+    extern "C-unwind" {
         pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
+    }
+    extern "C" {
         pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                                  trace_argument: *mut c_void)
                                  -> _Unwind_Reason_Code;
@@ -242,8 +244,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     #[cfg_attr(all(feature = "llvm-libunwind",
                    any(target_os = "fuchsia", target_os = "linux")),
                link(name = "unwind", kind = "static"))]
-    extern "C" {
-        #[unwind(allowed)]
+    extern "C-unwind" {
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
 

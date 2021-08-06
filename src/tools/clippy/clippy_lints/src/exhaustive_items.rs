@@ -8,16 +8,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Warns on any exported `enum`s that are not tagged `#[non_exhaustive]`
+    /// ### What it does
+    /// Warns on any exported `enum`s that are not tagged `#[non_exhaustive]`
     ///
-    /// **Why is this bad?** Exhaustive enums are typically fine, but a project which does
+    /// ### Why is this bad?
+    /// Exhaustive enums are typically fine, but a project which does
     /// not wish to make a stability commitment around exported enums may wish to
     /// disable them by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// enum Foo {
     ///     Bar,
@@ -38,16 +37,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns on any exported `structs`s that are not tagged `#[non_exhaustive]`
+    /// ### What it does
+    /// Warns on any exported `structs`s that are not tagged `#[non_exhaustive]`
     ///
-    /// **Why is this bad?** Exhaustive structs are typically fine, but a project which does
+    /// ### Why is this bad?
+    /// Exhaustive structs are typically fine, but a project which does
     /// not wish to make a stability commitment around exported structs may wish to
     /// disable them by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct Foo {
     ///     bar: u8,
@@ -73,7 +71,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if_chain! {
             if let ItemKind::Enum(..) | ItemKind::Struct(..) = item.kind;
-            if cx.access_levels.is_exported(item.hir_id());
+            if cx.access_levels.is_exported(item.def_id);
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
             then {

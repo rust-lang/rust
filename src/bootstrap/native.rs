@@ -21,7 +21,7 @@ use build_helper::{output, t};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
 use crate::util::{self, exe};
-use crate::{Build, GitRepo};
+use crate::GitRepo;
 use build_helper::up_to_date;
 
 pub struct Meta {
@@ -91,86 +91,6 @@ pub fn prebuilt_llvm_config(
     Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
 }
 
-// modified from `check_submodule` and `update_submodule` in bootstrap.py
-pub(crate) fn update_llvm_submodule(build: &Build) {
-    let llvm_project = &Path::new("src").join("llvm-project");
-
-    fn dir_is_empty(dir: &Path) -> bool {
-        t!(std::fs::read_dir(dir)).next().is_none()
-    }
-
-    if !build.config.submodules {
-        return;
-    }
-
-    // NOTE: The check for the empty directory is here because when running x.py
-    // the first time, the llvm submodule won't be checked out. Check it out
-    // now so we can build it.
-    if !build.in_tree_llvm_info.is_git() && !dir_is_empty(&build.config.src.join(llvm_project)) {
-        return;
-    }
-
-    // check_submodule
-    if build.config.fast_submodules {
-        let checked_out_hash = output(
-            Command::new("git")
-                .args(&["rev-parse", "HEAD"])
-                .current_dir(build.config.src.join(llvm_project)),
-        );
-        // update_submodules
-        let recorded = output(
-            Command::new("git")
-                .args(&["ls-tree", "HEAD"])
-                .arg(llvm_project)
-                .current_dir(&build.config.src),
-        );
-        let actual_hash = recorded
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
-
-        // update_submodule
-        if actual_hash == checked_out_hash.trim_end() {
-            // already checked out
-            return;
-        }
-    }
-
-    println!("Updating submodule {}", llvm_project.display());
-    build.run(
-        Command::new("git")
-            .args(&["submodule", "-q", "sync"])
-            .arg(llvm_project)
-            .current_dir(&build.config.src),
-    );
-
-    // Try passing `--progress` to start, then run git again without if that fails.
-    let update = |progress: bool| {
-        let mut git = Command::new("git");
-        git.args(&["submodule", "update", "--init", "--recursive"]);
-        if progress {
-            git.arg("--progress");
-        }
-        git.arg(llvm_project).current_dir(&build.config.src);
-        git
-    };
-    // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
-    if !update(true).status().map_or(false, |status| status.success()) {
-        build.run(&mut update(false));
-    }
-
-    build.run(
-        Command::new("git")
-            .args(&["reset", "-q", "--hard"])
-            .current_dir(build.config.src.join(llvm_project)),
-    );
-    build.run(
-        Command::new("git")
-            .args(&["clean", "-qdfx"])
-            .current_dir(build.config.src.join(llvm_project)),
-    );
-}
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
@@ -198,6 +118,10 @@ impl Step for Llvm {
             let idx = target.triple.find('-').unwrap();
 
             format!("riscv{}{}", &target.triple[5..7], &target.triple[idx..])
+        } else if self.target.starts_with("powerpc") && self.target.ends_with("freebsd") {
+            // FreeBSD 13 had incompatible ABI changes on all PowerPC platforms.
+            // Set the version suffix to 13.0 so the correct target details are used.
+            format!("{}{}", self.target, "13.0")
         } else {
             target.to_string()
         };
@@ -208,9 +132,7 @@ impl Step for Llvm {
                 Err(m) => m,
             };
 
-        if !builder.config.dry_run {
-            update_llvm_submodule(builder);
-        }
+        builder.update_submodule(&Path::new("src").join("llvm-project"));
         if builder.config.llvm_link_shared
             && (target.contains("windows") || target.contains("apple-darwin"))
         {
@@ -247,10 +169,12 @@ impl Step for Llvm {
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
+        let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
 
         cfg.out_dir(&out_dir)
             .profile(profile)
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
+            .define("LLVM_ENABLE_PLUGINS", plugins)
             .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
             .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
             .define("LLVM_INCLUDE_EXAMPLES", "OFF")
@@ -343,6 +267,10 @@ impl Step for Llvm {
             enabled_llvm_projects.push("polly");
         }
 
+        if builder.config.llvm_clang {
+            enabled_llvm_projects.push("clang");
+        }
+
         // We want libxml to be disabled.
         // See https://github.com/rust-lang/rust/pull/50104
         cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
@@ -357,6 +285,11 @@ impl Step for Llvm {
             if num_linkers > 0 {
                 cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
             }
+        }
+
+        // Workaround for ppc32 lld limitation
+        if target == "powerpc-unknown-freebsd" {
+            cfg.define("CMAKE_EXE_LINKER_FLAGS", "-fuse-ld=bfd");
         }
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
@@ -894,6 +827,9 @@ fn supported_sanitizers(
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
+        "x86_64-unknown-netbsd" => {
+            common_libs("netbsd", "x86_64", &["asan", "lsan", "msan", "tsan"])
+        }
         "x86_64-unknown-linux-gnu" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }

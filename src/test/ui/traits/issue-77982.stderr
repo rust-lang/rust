@@ -17,7 +17,11 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
    |                                            cannot infer type for type parameter `T` declared on the trait `From`
    |
    = note: cannot satisfy `u32: From<_>`
-   = note: required by `from`
+note: required by `from`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn from(_: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:35:16

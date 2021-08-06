@@ -3,7 +3,7 @@ error[E0277]: `T` cannot be sent between threads safely
    |
 LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be sent between threads safely
-   | 
+   |
   ::: $DIR/auxiliary/trait_superkinds_in_metadata.rs:7:58
    |
 LL | pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }

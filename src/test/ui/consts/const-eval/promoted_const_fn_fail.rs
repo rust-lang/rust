@@ -1,5 +1,3 @@
-#![feature(const_fn_union)]
-
 #![allow(const_err)]
 
 #[repr(C)]

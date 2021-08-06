@@ -4,6 +4,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
@@ -185,17 +186,20 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin {
-            if let ObligationCauseCode::ItemObligation(item_def_id) = cause.code {
+            let code = match &cause.code {
+                ObligationCauseCode::MatchImpl(parent, ..) => &**parent,
+                _ => &cause.code,
+            };
+            if let ObligationCauseCode::ItemObligation(item_def_id) = *code {
                 // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
                 // lifetime as above, but called using a fully-qualified path to the method:
                 // `Foo::qux(bar)`.
-                let mut v = TraitObjectVisitor(vec![]);
+                let mut v = TraitObjectVisitor(FxHashSet::default());
                 v.visit_ty(param.param_ty);
                 if let Some((ident, self_ty)) =
-                    self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0[..])
+                    self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0)
                 {
-                    if self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0[..], ident, self_ty)
-                    {
+                    if self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty) {
                         override_error_code = Some(ident);
                     }
                 }
@@ -336,7 +340,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn get_impl_ident_and_self_ty_from_trait(
         &self,
         def_id: DefId,
-        trait_objects: &[DefId],
+        trait_objects: &FxHashSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
         let tcx = self.tcx();
         match tcx.hir().get_if_local(def_id) {
@@ -373,9 +377,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                         // multiple `impl`s for the same trait like
                                         // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
                                         // In that case, only the first one will get suggestions.
-                                        let mut hir_v = HirTraitObjectVisitor(vec![], *did);
+                                        let mut traits = vec![];
+                                        let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
                                         hir_v.visit_ty(self_ty);
-                                        !hir_v.0.is_empty()
+                                        !traits.is_empty()
                                     }) =>
                                     {
                                         Some(self_ty)
@@ -417,33 +422,34 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _ => return false,
         };
 
-        let mut v = TraitObjectVisitor(vec![]);
+        let mut v = TraitObjectVisitor(FxHashSet::default());
         v.visit_ty(ty);
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
         let (ident, self_ty) =
-            match self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &v.0[..]) {
+            match self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &v.0) {
                 Some((ident, self_ty)) => (ident, self_ty),
                 None => return false,
             };
 
         // Find the trait object types in the argument, so we point at *only* the trait object.
-        self.suggest_constrain_dyn_trait_in_impl(err, &v.0[..], ident, self_ty)
+        self.suggest_constrain_dyn_trait_in_impl(err, &v.0, ident, self_ty)
     }
 
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        found_dids: &[DefId],
+        found_dids: &FxHashSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {
         let mut suggested = false;
         for found_did in found_dids {
-            let mut hir_v = HirTraitObjectVisitor(vec![], *found_did);
+            let mut traits = vec![];
+            let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
             hir_v.visit_ty(&self_ty);
-            for span in &hir_v.0 {
+            for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
                 multi_span.push_span_label(
                     *span,
@@ -468,14 +474,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 }
 
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
-struct TraitObjectVisitor(Vec<DefId>);
+pub(super) struct TraitObjectVisitor(pub(super) FxHashSet<DefId>);
 
 impl TypeVisitor<'_> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Dynamic(preds, RegionKind::ReStatic) => {
                 if let Some(def_id) = preds.principal_def_id() {
-                    self.0.push(def_id);
+                    self.0.insert(def_id);
                 }
                 ControlFlow::CONTINUE
             }
@@ -485,9 +491,9 @@ impl TypeVisitor<'_> for TraitObjectVisitor {
 }
 
 /// Collect all `hir::Ty<'_>` `Span`s for trait objects with an implicit lifetime.
-struct HirTraitObjectVisitor(Vec<Span>, DefId);
+pub(super) struct HirTraitObjectVisitor<'a>(pub(super) &'a mut Vec<Span>, pub(super) DefId);
 
-impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor {
+impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
     type Map = ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

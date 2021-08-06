@@ -1,5 +1,4 @@
 [package]
-authors = ["The Rust Project Developers"]
 name = "rustc_codegen_ssa"
 version = "0.0.0"
 edition = "2018"
@@ -16,6 +15,8 @@ libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
 pathdiff = "0.2.0"
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+regex = "1.4"
 
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }

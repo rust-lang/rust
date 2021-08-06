@@ -31,7 +31,7 @@ pub(super) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, 
     if bytes.contains(&0) {
         return Err(io::Error::new_const(
             io::ErrorKind::InvalidInput,
-            &"paths may not contain interior null bytes",
+            &"paths must not contain interior null bytes",
         ));
     }
 

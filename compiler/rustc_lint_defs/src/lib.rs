@@ -64,7 +64,7 @@ impl Level {
         match self {
             Level::Allow => "allow",
             Level::Warn => "warn",
-            Level::ForceWarn => "force-warns",
+            Level::ForceWarn => "force-warn",
             Level::Deny => "deny",
             Level::Forbid => "forbid",
         }
@@ -274,7 +274,7 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
 }
 
 // Duplicated from rustc_session::config::ExternDepSpec to avoid cyclic dependency
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum ExternDepSpec {
     Json(Json),
     Raw(String),
@@ -282,7 +282,7 @@ pub enum ExternDepSpec {
 
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),
@@ -296,12 +296,15 @@ pub enum BuiltinLintDiagnostics {
     DeprecatedMacro(Option<Symbol>, Span),
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),
+    UnusedBuiltinAttribute { attr_name: Symbol, macro_name: String, invoc_span: Span },
     PatternsInFnsWithoutBody(Span, Ident),
     LegacyDeriveHelpers(Span),
     ExternDepSpec(String, ExternDepSpec),
     ProcMacroBackCompat(String),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span),
+    TrailingMacro(bool, Ident),
+    BreakWithLabelAndLoop(Span),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

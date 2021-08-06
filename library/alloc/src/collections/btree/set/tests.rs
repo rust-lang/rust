@@ -738,3 +738,10 @@ fn test_split_off_large_random_sorted() {
     assert!(set.into_iter().eq(data.clone().into_iter().filter(|x| *x < key)));
     assert!(right.into_iter().eq(data.into_iter().filter(|x| *x >= key)));
 }
+
+#[test]
+fn from_array() {
+    let set = BTreeSet::from([1, 2, 3, 4]);
+    let unordered_duplicates = BTreeSet::from([4, 1, 4, 3, 2]);
+    assert_eq!(set, unordered_duplicates);
+}

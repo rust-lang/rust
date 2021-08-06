@@ -35,6 +35,9 @@ LL | use method::B;
 error[E0624]: associated function `a` is private
   --> $DIR/item-privacy.rs:72:7
    |
+LL |         fn a(&self) { }
+   |         ----------- private associated function defined here
+...
 LL |     c.a();
    |       ^ private associated function
 
@@ -72,6 +75,9 @@ LL | use method::B;
 error[E0624]: associated function `a` is private
   --> $DIR/item-privacy.rs:84:14
    |
+LL |         fn a(&self) { }
+   |         ----------- private associated function defined here
+...
 LL |     <dyn C>::a(&S);
    |              ^ private associated function
 
@@ -109,6 +115,9 @@ LL | use assoc_const::B;
 error[E0624]: associated constant `A` is private
   --> $DIR/item-privacy.rs:101:14
    |
+LL |         const A: u8 = 0;
+   |         ---------------- private associated constant defined here
+...
 LL |     <dyn C>::A;
    |              ^ private associated constant
 

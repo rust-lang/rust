@@ -216,7 +216,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
-            freshener: infcx.freshener(),
+            freshener: infcx.freshener_keep_static(),
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
@@ -227,7 +227,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
-            freshener: infcx.freshener(),
+            freshener: infcx.freshener_keep_static(),
             intercrate: true,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
@@ -242,7 +242,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?allow_negative_impls, "with_negative");
         SelectionContext {
             infcx,
-            freshener: infcx.freshener(),
+            freshener: infcx.freshener_keep_static(),
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
@@ -257,7 +257,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?query_mode, "with_query_mode");
         SelectionContext {
             infcx,
-            freshener: infcx.freshener(),
+            freshener: infcx.freshener_keep_static(),
             intercrate: false,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
@@ -1903,9 +1903,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?impl_trait_ref, ?placeholder_obligation_trait_ref);
 
+        let cause = ObligationCause::new(
+            obligation.cause.span,
+            obligation.cause.body_id,
+            ObligationCauseCode::MatchImpl(Lrc::new(obligation.cause.code.clone()), impl_def_id),
+        );
+
         let InferOk { obligations, .. } = self
             .infcx
-            .at(&obligation.cause, obligation.param_env)
+            .at(&cause, obligation.param_env)
             .eq(placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
         nested_obligations.extend(obligations);

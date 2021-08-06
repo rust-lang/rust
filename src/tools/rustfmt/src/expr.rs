@@ -263,15 +263,12 @@ pub(crate) fn format_expr(
             }
 
             fn needs_space_after_range(rhs: &ast::Expr) -> bool {
-                match rhs.kind {
-                    // Don't format `.. ..` into `....`, which is invalid.
-                    //
-                    // This check is unnecessary for `lhs`, because a range
-                    // starting from another range needs parentheses as `(x ..) ..`
-                    // (`x .. ..` is a range from `x` to `..`).
-                    ast::ExprKind::Range(None, _, _) => true,
-                    _ => false,
-                }
+                // Don't format `.. ..` into `....`, which is invalid.
+                //
+                // This check is unnecessary for `lhs`, because a range
+                // starting from another range needs parentheses as `(x ..) ..`
+                // (`x .. ..` is a range from `x` to `..`).
+                matches!(rhs.kind, ast::ExprKind::Range(None, _, _))
             }
 
             let default_sp_delim = |lhs: Option<&ast::Expr>, rhs: Option<&ast::Expr>| {
@@ -531,7 +528,7 @@ pub(crate) fn rewrite_block_with_visitor(
 
     let inner_attrs = attrs.map(inner_attributes);
     let label_str = rewrite_label(label);
-    visitor.visit_block(block, inner_attrs.as_ref().map(|a| &**a), has_braces);
+    visitor.visit_block(block, inner_attrs.as_deref(), has_braces);
     let visitor_context = visitor.get_context();
     context
         .skipped_range
@@ -595,7 +592,7 @@ pub(crate) fn rewrite_cond(
                 String::from("\n") + &shape.indent.block_only().to_string(context.config);
             control_flow
                 .rewrite_cond(context, shape, &alt_block_sep)
-                .and_then(|rw| Some(rw.0))
+                .map(|rw| rw.0)
         }),
     }
 }
@@ -1157,18 +1154,11 @@ pub(crate) fn is_empty_block(
 }
 
 pub(crate) fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
-    match stmt.kind {
-        ast::StmtKind::Expr(..) => true,
-        _ => false,
-    }
+    matches!(stmt.kind, ast::StmtKind::Expr(..))
 }
 
 pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
-    if let ast::BlockCheckMode::Unsafe(..) = block.rules {
-        true
-    } else {
-        false
-    }
+    matches!(block.rules, ast::BlockCheckMode::Unsafe(..))
 }
 
 pub(crate) fn rewrite_literal(

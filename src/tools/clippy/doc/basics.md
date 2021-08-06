@@ -14,6 +14,7 @@ the codebase take a look at [Adding Lints] or [Common Tools].
   - [lintcheck](#lintcheck)
   - [PR](#pr)
   - [Common Abbreviations](#common-abbreviations)
+  - [Install from source](#install-from-source)
 
 ## Get the Code
 
@@ -127,5 +128,46 @@ See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
 This is a concise list of abbreviations that can come up during Clippy development. An extensive
 general list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
 an abbreviation or meaning is unclear to you.
+
+## Install from source
+
+If you are hacking on Clippy and want to install it from source, do the following:
+
+First, take note of the toolchain [override](https://rust-lang.github.io/rustup/overrides.html) in `/rust-toolchain`.
+We will use this override to install Clippy into the right toolchain.
+
+> Tip: You can view the active toolchain for the current directory with `rustup show active-toolchain`.
+
+From the Clippy project root, run the following command to build the Clippy binaries and copy them into the
+toolchain directory. This will override the currently installed Clippy component.
+
+```terminal
+cargo build --release --bin cargo-clippy --bin clippy-driver -Zunstable-options --out-dir "$(rustc --print=sysroot)/bin"
+```
+
+Now you may run `cargo clippy` in any project, using the toolchain where you just installed Clippy.
+
+```terminal
+cd my-project
+cargo +nightly-2021-07-01 clippy
+```
+
+...or `clippy-driver`
+
+```terminal
+clippy-driver +nightly-2021-07-01 <filename>
+```
+
+If you need to restore the default Clippy installation, run the following (from the Clippy project root).
+
+```terminal
+rustup component remove clippy
+rustup component add clippy
+```
+
+> **DO NOT** install using `cargo install --path . --force` since this will overwrite rustup
+[proxies](https://rust-lang.github.io/rustup/concepts/proxies.html). That is, `~/.cargo/bin/cargo-clippy` and
+`~/.cargo/bin/clippy-driver` should be hard or soft links to `~/.cargo/bin/rustup`. You can repair these by running
+`rustup update`.
 
 [glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html

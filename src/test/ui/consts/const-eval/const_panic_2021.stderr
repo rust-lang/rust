@@ -1,0 +1,67 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:5:15
+   |
+LL | const A: () = std::panic!("blåhaj");
+   |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'blåhaj', $DIR/const_panic_2021.rs:5:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:8:15
+   |
+LL | const B: () = std::panic!();
+   |               ^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic_2021.rs:8:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:11:15
+   |
+LL | const C: () = std::unreachable!();
+   |               ^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_2021.rs:11:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:14:15
+   |
+LL | const D: () = std::unimplemented!();
+   |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic_2021.rs:14:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:17:15
+   |
+LL | const E: () = core::panic!("shark");
+   |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'shark', $DIR/const_panic_2021.rs:17:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:20:15
+   |
+LL | const F: () = core::panic!();
+   |               ^^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic_2021.rs:20:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:23:15
+   |
+LL | const G: () = core::unreachable!();
+   |               ^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_2021.rs:23:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_2021.rs:26:15
+   |
+LL | const H: () = core::unimplemented!();
+   |               ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic_2021.rs:26:15
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

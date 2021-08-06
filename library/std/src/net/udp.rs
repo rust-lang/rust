@@ -408,7 +408,7 @@ impl UdpSocket {
     /// Sets the value of the `IP_MULTICAST_LOOP` option for this socket.
     ///
     /// If enabled, multicast packets will be looped back to the local socket.
-    /// Note that this may not have any effect on IPv6 sockets.
+    /// Note that this might not have any effect on IPv6 sockets.
     ///
     /// # Examples
     ///
@@ -447,7 +447,7 @@ impl UdpSocket {
     /// this socket. The default value is 1 which means that multicast packets
     /// don't leave the local network unless explicitly requested.
     ///
-    /// Note that this may not have any effect on IPv6 sockets.
+    /// Note that this might not have any effect on IPv6 sockets.
     ///
     /// # Examples
     ///
@@ -483,7 +483,7 @@ impl UdpSocket {
     /// Sets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
     ///
     /// Controls whether this socket sees the multicast packets it sends itself.
-    /// Note that this may not have any affect on IPv4 sockets.
+    /// Note that this might not have any affect on IPv4 sockets.
     ///
     /// # Examples
     ///

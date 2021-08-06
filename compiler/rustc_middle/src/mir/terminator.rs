@@ -237,7 +237,7 @@ pub enum TerminatorKind<'tcx> {
         /// consider it in borrowck. We don't want to accept programs which
         /// pass borrowck only when `panic=abort` or some assertions are disabled
         /// due to release vs. debug mode builds. This needs to be an `Option` because
-        /// of the `remove_noop_landing_pads` and `no_landing_pads` passes.
+        /// of the `remove_noop_landing_pads` and `abort_unwinding_calls` passes.
         unwind: Option<BasicBlock>,
     },
 

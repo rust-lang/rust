@@ -1,4 +1,4 @@
-// compile-flags: --cap-lints warn  --force-warns rust-2021-compatibility -Zunstable-options
+// compile-flags: --cap-lints warn  --force-warn rust-2021-compatibility -Zunstable-options
 // check-pass
 #![allow(ellipsis_inclusive_range_patterns)]
 

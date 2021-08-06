@@ -1,13 +1,15 @@
 error[E0277]: `dummy::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:23:11
    |
-LL | struct Outer<T: Send>(T);
-   | ------------------------- required by `Outer`
-...
 LL |     Outer(TestType);
    |           ^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `dummy::TestType`
+note: required by `Outer`
+  --> $DIR/negated-auto-traits-error.rs:10:1
+   |
+LL | struct Outer<T: Send>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `dummy::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:23:5

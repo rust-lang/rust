@@ -11,6 +11,8 @@ pub mod io;
 pub mod mutex;
 pub mod net;
 pub mod os;
+#[path = "../unix/os_str.rs"]
+pub mod os_str;
 #[path = "../unix/path.rs"]
 pub mod path;
 pub mod pipe;

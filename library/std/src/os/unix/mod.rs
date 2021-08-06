@@ -82,6 +82,7 @@ pub mod thread;
     target_os = "freebsd",
     target_os = "ios",
     target_os = "macos",
+    target_os = "netbsd",
     target_os = "openbsd"
 ))]
 pub mod ucred;

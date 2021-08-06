@@ -94,7 +94,7 @@ $ rustdoc src/lib.rs --document-private-items
 By default, `rustdoc` only documents items that are publicly reachable.
 
 ```rust
-pub fn public() {} // this item is public and will documented
+pub fn public() {} // this item is public and will be documented
 mod private { // this item is private and will not be documented
     pub fn unreachable() {} // this item is public, but unreachable, so it will not be documented
 }
@@ -417,3 +417,10 @@ This flag is **deprecated** and **has no effect**.
 Rustdoc only supports Rust source code and Markdown input formats. If the
 file ends in `.md` or `.markdown`, `rustdoc` treats it as a Markdown file.
 Otherwise, it assumes that the input file is Rust.
+
+## `--nocapture`
+
+When this flag is used with `--test`, the output (stdout and stderr) of your tests won't be
+captured by rustdoc. Instead, the output will be directed to your terminal,
+as if you had run the test executable manually. This is especially useful
+for debugging your tests!

@@ -32,6 +32,7 @@ use cc::windows_registry;
 use object::elf;
 use object::write::Object;
 use object::{Architecture, BinaryFormat, Endianness, FileFlags, SectionFlags, SectionKind};
+use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use std::ffi::OsString;
@@ -672,6 +673,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     // Invoke the system linker
     info!("{:?}", &cmd);
     let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
+    let unknown_arg_regex =
+        Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap();
     let mut prog;
     let mut i = 0;
     loop {
@@ -688,16 +691,15 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
 
-        // Check to see if the link failed with "unrecognized command line option:
-        // '-no-pie'" for gcc or "unknown argument: '-no-pie'" for clang. If so,
-        // reperform the link step without the -no-pie option. This is safe because
-        // if the linker doesn't support -no-pie then it should not default to
-        // linking executables as pie. Different versions of gcc seem to use
-        // different quotes in the error message so don't check for them.
+        // Check to see if the link failed with an error message that indicates it
+        // doesn't recognize the -no-pie option. If so, reperform the link step
+        // without it. This is safe because if the linker doesn't support -no-pie
+        // then it should not default to linking executables as pie. Different
+        // versions of gcc seem to use different quotes in the error message so
+        // don't check for them.
         if sess.target.linker_is_gnu
             && flavor != LinkerFlavor::Ld
-            && (out.contains("unrecognized command line option")
-                || out.contains("unknown argument"))
+            && unknown_arg_regex.is_match(&out)
             && out.contains("-no-pie")
             && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie")
         {
@@ -716,8 +718,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         // Fallback from '-static-pie' to '-static' in that case.
         if sess.target.linker_is_gnu
             && flavor != LinkerFlavor::Ld
-            && (out.contains("unrecognized command line option")
-                || out.contains("unknown argument"))
+            && unknown_arg_regex.is_match(&out)
             && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
             && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
         {

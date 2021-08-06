@@ -174,12 +174,13 @@ mod spec_extend;
 /// assert_eq!(vec, [7, 1, 2, 3]);
 /// ```
 ///
-/// The [`vec!`] macro is provided to make initialization more convenient:
+/// The [`vec!`] macro is provided for convenient initialization:
 ///
 /// ```
-/// let mut vec = vec![1, 2, 3];
-/// vec.push(4);
-/// assert_eq!(vec, [1, 2, 3, 4]);
+/// let mut vec1 = vec![1, 2, 3];
+/// vec1.push(4);
+/// let vec2 = Vec::from([1, 2, 3, 4]);
+/// assert_eq!(vec1, vec2);
 /// ```
 ///
 /// It can also initialize each element of a `Vec<T>` with a given value.
@@ -810,7 +811,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
-    /// minimal. Prefer `reserve` if future insertions are expected.
+    /// minimal. Prefer [`reserve`] if future insertions are expected.
+    ///
+    /// [`reserve`]: Vec::reserve
     ///
     /// # Panics
     ///
@@ -874,7 +877,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
-    /// minimal. Prefer `reserve` if future insertions are expected.
+    /// minimal. Prefer [`reserve`] if future insertions are expected.
+    ///
+    /// [`reserve`]: Vec::reserve
     ///
     /// # Errors
     ///
@@ -1359,6 +1364,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Removes and returns the element at position `index` within the vector,
     /// shifting all elements after it to the left.
     ///
+    /// Note: Because this shifts over the remaining elements, it has a
+    /// worst-case performance of O(n). If you don't need the order of elements
+    /// to be preserved, use [`swap_remove`] instead.
+    ///
+    /// [`swap_remove`]: Vec::swap_remove
+    ///
     /// # Panics
     ///
     /// Panics if `index` is out of bounds.
@@ -1371,9 +1382,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
         #[inline(never)]
+        #[track_caller]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {}) should be < len (is {})", index, len);
         }
@@ -2228,7 +2241,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe {
             let mut ptr = self.as_mut_ptr().add(self.len());
             // Use SetLenOnDrop to work around bug where compiler
-            // may not realize the store through `ptr` through self.set_len()
+            // might not realize the store through `ptr` through self.set_len()
             // don't alias.
             let mut local_len = SetLenOnDrop::new(&mut self.len);
 

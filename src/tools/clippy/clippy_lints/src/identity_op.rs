@@ -11,14 +11,14 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{clip, unsext};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for identity operations, e.g., `x + 0`.
+    /// ### What it does
+    /// Checks for identity operations, e.g., `x + 0`.
     ///
-    /// **Why is this bad?** This code can be removed without changing the
+    /// ### Why is this bad?
+    /// This code can be removed without changing the
     /// meaning. So it just obscures what's going on. Delete it mercilessly.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// x / 1 + 0 * 1 - 0 | 0;

@@ -103,12 +103,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     if offset == a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi) =>
                 {
                     // Offset matches second field.
-                    bx.struct_gep(self.llval, 1)
+                    let ty = bx.backend_type(self.layout);
+                    bx.struct_gep(ty, self.llval, 1)
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
                     // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
                     let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-                    bx.gep(byte_ptr, &[bx.const_usize(offset.bytes())])
+                    bx.gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) => {
                     // All fields of Scalar and ScalarPair layouts must have been handled by this point.
@@ -119,7 +120,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                         self.layout
                     );
                 }
-                _ => bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix)),
+                _ => {
+                    let ty = bx.backend_type(self.layout);
+                    bx.struct_gep(ty, self.llval, bx.cx().backend_field_index(self.layout, ix))
+                }
             };
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
@@ -185,7 +189,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
         // Cast and adjust pointer.
         let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-        let byte_ptr = bx.gep(byte_ptr, &[offset]);
+        let byte_ptr = bx.gep(bx.cx().type_i8(), byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected.
         let ll_fty = bx.cx().backend_type(field);
@@ -380,7 +384,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         };
 
         PlaceRef {
-            llval: bx.inbounds_gep(self.llval, &[bx.cx().const_usize(0), llindex]),
+            llval: bx.inbounds_gep(
+                bx.cx().backend_type(self.layout),
+                self.llval,
+                &[bx.cx().const_usize(0), llindex],
+            ),
             llextra: None,
             layout,
             align: self.align.restrict_for_offset(offset),

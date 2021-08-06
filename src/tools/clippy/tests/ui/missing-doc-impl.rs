@@ -59,7 +59,9 @@ pub trait E: Sized {
 }
 
 impl Foo {
-    pub fn foo() {}
+    pub fn new() -> Self {
+        Foo { a: 0, b: 0 }
+    }
     fn bar() {}
 }
 

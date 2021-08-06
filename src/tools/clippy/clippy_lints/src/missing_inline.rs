@@ -7,10 +7,12 @@ use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** it lints if an exported function, method, trait method with default impl,
+    /// ### What it does
+    /// it lints if an exported function, method, trait method with default impl,
     /// or trait method impl is not `#[inline]`.
     ///
-    /// **Why is this bad?** In general, it is not. Functions can be inlined across
+    /// ### Why is this bad?
+    /// In general, it is not. Functions can be inlined across
     /// crates when that's profitable as long as any form of LTO is used. When LTO is disabled,
     /// functions that are not `#[inline]` cannot be inlined across crates. Certain types of crates
     /// might intend for most of the methods in their public API to be able to be inlined across
@@ -18,9 +20,7 @@ declare_clippy_lint! {
     /// sense. It allows the crate to require all exported methods to be `#[inline]` by default, and
     /// then opt out for specific methods where this might not make sense.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// pub fn foo() {} // missing #[inline]
     /// fn ok() {} // ok
@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(it.hir_id()) {
+        if !cx.access_levels.is_exported(it.def_id) {
             return;
         }
         match it.kind {
@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         }
 
         // If the item being implemented is not exported, then we don't need #[inline]
-        if !cx.access_levels.is_exported(impl_item.hir_id()) {
+        if !cx.access_levels.is_exported(impl_item.def_id) {
             return;
         }
 
@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         };
 
         if let Some(trait_def_id) = trait_def_id {
-            if trait_def_id.is_local() && !cx.access_levels.is_exported(impl_item.hir_id()) {
+            if trait_def_id.is_local() && !cx.access_levels.is_exported(impl_item.def_id) {
                 // If a trait is being implemented for an item, and the
                 // trait is not exported, we don't need #[inline]
                 return;

@@ -146,6 +146,13 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
+h3.code-header, h4.code-header {
+	font-size: 1em;
+	font-weight: 600;
+	border: none;
+	padding: 0;
+	margin: 0;
+}
 .impl,
 .impl-items .method,
 .methods .method,
@@ -233,7 +240,7 @@ details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, a.test-arrow {
+code, pre, a.test-arrow, .code-header {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -329,6 +336,7 @@ nav.sub {
 .logo-container > img {
 	max-width: 100px;
 	max-height: 100px;
+	height: 100%;
 	position: absolute;
 	left: 50%;
 	top: 50%;
@@ -342,6 +350,8 @@ nav.sub {
 	margin: 30px 10px 20px 10px;
 	text-align: center;
 	word-wrap: break-word;
+	font-weight: inherit;
+	padding: 0;
 }
 
 .sidebar .version {
@@ -394,6 +404,8 @@ nav.sub {
 	text-align: center;
 	font-size: 17px;
 	margin-bottom: 5px;
+	font-weight: inherit;
+	padding: 0;
 }
 
 .sidebar-links {
@@ -436,6 +448,10 @@ nav.sub {
 	text-align: right;
 	border-top-left-radius: 5px;
 	border-bottom-left-radius: 5px;
+}
+
+.example-wrap > pre.rust a:hover {
+	text-decoration: underline;
 }
 
 .rustdoc:not(.source) .example-wrap > pre:not(.line-number) {
@@ -516,7 +532,7 @@ nav.sub {
 	font-weight: normal;
 }
 
-.method > code, .trait-impl > code, .invisible > code {
+.method > .code-header, .trait-impl > .code-header, .invisible > .code-header {
 	max-width: calc(100% - 41px);
 	display: block;
 }
@@ -532,7 +548,7 @@ nav.sub {
 	padding: 0px;
 }
 
-.in-band > code {
+.in-band > code, .in-band > .code-header {
 	display: inline-block;
 }
 
@@ -556,7 +572,8 @@ nav.sub {
 .docblock table {
 	margin: .5em 0;
 	width: calc(100% - 2px);
-	border: 1px dashed;
+	overflow-x: auto;
+	display: block;
 }
 
 .docblock table td {
@@ -737,7 +754,7 @@ a {
 }
 
 .invisible > .srclink,
-.method > code + .srclink {
+.method > .code-header + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -921,6 +938,9 @@ body.blur > :not(#help) {
 	padding: 0 20px 20px 17px;;
 }
 
+.item-info .stab {
+	display: table;
+}
 .stab {
 	border-width: 1px;
 	border-style: solid;
@@ -1064,7 +1084,7 @@ a.test-arrow:hover{
 	padding-top: 1px;
 }
 
-#main > details > .sub-variant > h3 {
+#main .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;
@@ -1095,7 +1115,7 @@ a.test-arrow:hover{
 	left: -10px;
 }
 
-:target > code {
+:target > code, :target > .code-header {
 	opacity: 1;
 }
 
@@ -1492,11 +1512,35 @@ details.rustdoc-toggle > summary.hideme > span {
 }
 
 details.rustdoc-toggle > summary::before {
-	content: "[+]";
-	font-weight: 300;
-	font-size: 0.8em;
-	letter-spacing: 1px;
+	content: "";
 	cursor: pointer;
+	width: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat;
+	background-position: top left;
+	display: inline-block;
+	vertical-align: middle;
+	opacity: .5;
+}
+
+/* Screen readers see the text version at the end the line.
+	Visual readers see the icon at the start of the line, but small and transparent. */
+details.rustdoc-toggle > summary::after {
+	content: "Expand";
+	overflow: hidden;
+	width: 0;
+	height: 0;
+	position: absolute;
+}
+
+details.rustdoc-toggle > summary.hideme::after {
+	/* "hideme" toggles already have a description when they're contracted */
+	content: "";
+}
+
+details.rustdoc-toggle > summary:focus::before,
+details.rustdoc-toggle > summary:hover::before {
+	opacity: 1;
 }
 
 details.rustdoc-toggle.top-doc > summary,
@@ -1544,20 +1588,44 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.rustdoc-toggle[open] > summary::before {
-	content: "[−]";
-	display: inline;
+details.rustdoc-toggle[open] > summary::before,
+details.rustdoc-toggle[open] > summary.hideme::before {
+	width: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat;
+	background-position: top left;
+	display: inline-block;
+	content: "";
+}
+
+details.rustdoc-toggle[open] > summary::after,
+details.rustdoc-toggle[open] > summary.hideme::after {
+	content: "Collapse";
 }
 
 details.undocumented > summary::before {
-	content: "[+] Show hidden undocumented items";
+	padding-left: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat;
+	background-position: top left;
+	content: "Show hidden undocumented items";
 	cursor: pointer;
 	font-size: 16px;
 	font-weight: 300;
+	opacity: .5;
+}
+
+details.undocumented > summary:focus::before,
+details.undocumented > summary:hover::before {
+	opacity: 1;
 }
 
 details.undocumented[open] > summary::before {
-	content: "[−] Hide undocumented items";
+	padding-left: 17px;
+	height: max(17px, 1.1em);
+	background-repeat: no-repeat
+	background-position: top left;
+	content: "Hide undocumented items";
 }
 
 /* Media Queries */

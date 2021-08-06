@@ -30,6 +30,7 @@ pub mod net;
 #[cfg(target_os = "l4re")]
 pub use self::l4re::net;
 pub mod os;
+pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
@@ -41,8 +42,6 @@ pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
-
-pub use crate::sys_common::os_str_bytes as os_str;
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
@@ -123,7 +122,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
-    args::cleanup();
     stack_overflow::cleanup();
 }
 

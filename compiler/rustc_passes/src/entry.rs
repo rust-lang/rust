@@ -183,7 +183,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
-    let sp = tcx.hir().krate().item.inner;
+    let sp = tcx.hir().krate().module().inner;
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
@@ -229,7 +229,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     if let Some(main_def) = tcx.resolutions(()).main_def {
         if main_def.opt_fn_def_id().is_none() {
             // There is something at `crate::main`, but it is not a function definition.
-            err.span_label(main_def.span, &format!("non-function item at `crate::main` is found"));
+            err.span_label(main_def.span, "non-function item at `crate::main` is found");
         }
     }
 

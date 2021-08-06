@@ -6,14 +6,13 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** This lint warns about boolean comparisons in assert-like macros.
+    /// ### What it does
+    /// This lint warns about boolean comparisons in assert-like macros.
     ///
-    /// **Why is this bad?** It is shorter to use the equivalent.
+    /// ### Why is this bad?
+    /// It is shorter to use the equivalent.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// assert_eq!("a".is_empty(), false);

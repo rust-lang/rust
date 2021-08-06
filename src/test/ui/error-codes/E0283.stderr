@@ -1,13 +1,15 @@
 error[E0283]: type annotations needed
   --> $DIR/E0283.rs:30:21
    |
-LL |     fn create() -> u32;
-   |     ------------------- required by `Generator::create`
-...
 LL |     let cont: u32 = Generator::create();
    |                     ^^^^^^^^^^^^^^^^^ cannot infer type
    |
    = note: cannot satisfy `_: Generator`
+note: required by `Generator::create`
+  --> $DIR/E0283.rs:2:5
+   |
+LL |     fn create() -> u32;
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/E0283.rs:35:24

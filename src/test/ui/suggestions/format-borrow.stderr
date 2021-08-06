@@ -2,41 +2,53 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:2:21
    |
 LL |     let a: String = &String::from("a");
-   |            ------   ^^^^^^^^^^^^^^^^^^
-   |            |        |
-   |            |        expected struct `String`, found `&String`
-   |            |        help: consider removing the borrow: `String::from("a")`
+   |            ------   ^^^^^^^^^^^^^^^^^^ expected struct `String`, found `&String`
+   |            |
    |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL |     let a: String = String::from("a");
+   |                    --
 
 error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:4:21
    |
 LL |     let b: String = &format!("b");
-   |            ------   ^^^^^^^^^^^^^
-   |            |        |
-   |            |        expected struct `String`, found `&String`
-   |            |        help: consider removing the borrow: `format!("b")`
+   |            ------   ^^^^^^^^^^^^^ expected struct `String`, found `&String`
+   |            |
    |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL |     let b: String = format!("b");
+   |                    --
 
 error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:6:21
    |
 LL |     let c: String = &mut format!("c");
-   |            ------   ^^^^^^^^^^^^^^^^^
-   |            |        |
-   |            |        expected struct `String`, found `&mut String`
-   |            |        help: consider removing the borrow: `format!("c")`
+   |            ------   ^^^^^^^^^^^^^^^^^ expected struct `String`, found `&mut String`
+   |            |
    |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL |     let c: String = format!("c");
+   |                    --
 
 error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:8:21
    |
 LL |     let d: String = &mut (format!("d"));
-   |            ------   ^^^^^^^^^^^^^^^^^^^
-   |            |        |
-   |            |        expected struct `String`, found `&mut String`
-   |            |        help: consider removing the borrow: `format!("d")`
+   |            ------   ^^^^^^^^^^^^^^^^^^^ expected struct `String`, found `&mut String`
+   |            |
    |            expected due to this
+   |
+help: consider removing the borrow
+   |
+LL |     let d: String = format!("d"));
+   |                    --
 
 error: aborting due to 4 previous errors
 

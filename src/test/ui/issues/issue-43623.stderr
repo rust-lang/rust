@@ -10,7 +10,7 @@ LL | {
 LL |     break_me::<Type, fn(_)>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |     |
-   |     expected signature of `fn(<Type as Trait<'b>>::Assoc) -> _`
+   |     expected signature of `for<'b> fn(<Type as Trait<'b>>::Assoc) -> _`
    |     found signature of `fn(()) -> _`
 
 error: aborting due to previous error

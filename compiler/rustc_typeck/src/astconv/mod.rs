@@ -21,7 +21,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
-use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -461,6 +461,43 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         )
                         .into()
                     }
+                    (&GenericParamDefKind::Const { has_default }, hir::GenericArg::Infer(inf)) => {
+                        if has_default {
+                            tcx.const_param_default(param.def_id).into()
+                        } else if self.astconv.allow_ty_infer() {
+                            // FIXME(const_generics): Actually infer parameter here?
+                            todo!()
+                        } else {
+                            self.inferred_params.push(inf.span);
+                            tcx.ty_error().into()
+                        }
+                    }
+                    (
+                        &GenericParamDefKind::Type { has_default, .. },
+                        hir::GenericArg::Infer(inf),
+                    ) => {
+                        if has_default {
+                            tcx.check_optional_stability(
+                                param.def_id,
+                                Some(arg.id()),
+                                arg.span(),
+                                None,
+                                |_, _| {
+                                    // Default generic parameters may not be marked
+                                    // with stability attributes, i.e. when the
+                                    // default parameter was defined at the same time
+                                    // as the rest of the type. As such, we ignore missing
+                                    // stability attributes.
+                                },
+                            );
+                        }
+                        if self.astconv.allow_ty_infer() {
+                            self.astconv.ast_ty_to_ty(&inf.to_ty()).into()
+                        } else {
+                            self.inferred_params.push(inf.span);
+                            tcx.ty_error().into()
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -488,12 +525,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
+                                let substs = substs.unwrap();
+                                if substs.iter().any(|arg| match arg.unpack() {
+                                    GenericArgKind::Type(ty) => ty.references_error(),
+                                    _ => false,
+                                }) {
+                                    // Avoid ICE #86756 when type error recovery goes awry.
+                                    return tcx.ty_error().into();
+                                }
                                 self.astconv
                                     .normalize_ty(
                                         self.span,
                                         tcx.at(self.span).type_of(param.def_id).subst_spanned(
                                             tcx,
-                                            substs.unwrap(),
+                                            substs,
                                             Some(self.span),
                                         ),
                                     )
@@ -838,6 +883,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                              this does nothing because the given bound is not \
                              a default; only `?Sized` is supported",
                         );
+                        return false;
                     }
                 }
             }
@@ -897,7 +943,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false,
                     );
                 }
-                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+                hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe)
+                | hir::GenericBound::Unsized(_) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
@@ -1920,6 +1967,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err_for_ct = true;
                         has_err = true;
                         (ct.span, "const")
+                    }
+                    hir::GenericArg::Infer(inf) => {
+                        if err_for_ty {
+                            continue;
+                        }
+                        has_err = true;
+                        err_for_ty = true;
+                        (inf.span, "generic")
                     }
                 };
                 let mut err = struct_span_err!(

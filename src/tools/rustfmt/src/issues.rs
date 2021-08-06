@@ -126,11 +126,7 @@ impl BadIssueSeeker {
                     return Seeking::Number {
                         issue: Issue {
                             issue_type: IssueType::Todo,
-                            missing_number: if let ReportTactic::Unnumbered = self.report_todo {
-                                true
-                            } else {
-                                false
-                            },
+                            missing_number: matches!(self.report_todo, ReportTactic::Unnumbered),
                         },
                         part: NumberPart::OpenParen,
                     };
@@ -144,11 +140,7 @@ impl BadIssueSeeker {
                     return Seeking::Number {
                         issue: Issue {
                             issue_type: IssueType::Fixme,
-                            missing_number: if let ReportTactic::Unnumbered = self.report_fixme {
-                                true
-                            } else {
-                                false
-                            },
+                            missing_number: matches!(self.report_fixme, ReportTactic::Unnumbered),
                         },
                         part: NumberPart::OpenParen,
                     };
@@ -196,7 +188,7 @@ impl BadIssueSeeker {
                 }
             }
             NumberPart::Number => {
-                if c >= '0' && c <= '9' {
+                if ('0'..='9').contains(&c) {
                     part = NumberPart::CloseParen;
                 } else {
                     return IssueClassification::Bad(issue);

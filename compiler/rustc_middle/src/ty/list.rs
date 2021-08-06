@@ -63,17 +63,17 @@ impl<T: Copy> List<T> {
 
         let (layout, _offset) =
             Layout::new::<usize>().extend(Layout::for_value::<[T]>(slice)).unwrap();
-        let mem = arena.dropless.alloc_raw(layout);
+        let mem = arena.dropless.alloc_raw(layout) as *mut List<T>;
         unsafe {
-            let result = &mut *(mem as *mut List<T>);
             // Write the length
-            result.len = slice.len();
+            ptr::addr_of_mut!((*mem).len).write(slice.len());
 
             // Write the elements
-            let arena_slice = slice::from_raw_parts_mut(result.data.as_mut_ptr(), result.len);
-            arena_slice.copy_from_slice(slice);
+            ptr::addr_of_mut!((*mem).data)
+                .cast::<T>()
+                .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
 
-            result
+            &mut *mem
         }
     }
 

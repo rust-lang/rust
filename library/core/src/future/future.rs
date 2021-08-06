@@ -7,7 +7,7 @@ use crate::task::{Context, Poll};
 
 /// A future represents an asynchronous computation.
 ///
-/// A future is a value that may not have finished computing yet. This kind of
+/// A future is a value that might not have finished computing yet. This kind of
 /// "asynchronous value" makes it possible for a thread to continue doing useful
 /// work while it waits for the value to become available.
 ///
@@ -111,11 +111,11 @@ impl<F: ?Sized + Future + Unpin> Future for &mut F {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<P> Future for Pin<P>
 where
-    P: Unpin + ops::DerefMut<Target: Future>,
+    P: ops::DerefMut<Target: Future>,
 {
     type Output = <<P as ops::Deref>::Target as Future>::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::get_mut(self).as_mut().poll(cx)
+        <P::Target as Future>::poll(self.as_deref_mut(), cx)
     }
 }

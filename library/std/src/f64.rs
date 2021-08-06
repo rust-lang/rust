@@ -409,7 +409,7 @@ impl f64 {
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
     ///
-    /// The result may not be correctly rounded owing to implementation details;
+    /// The result might not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
     /// `self.log10()` can produce more accurate results for base 10.
     ///

@@ -165,6 +165,7 @@ target | std | notes
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
+[`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ |  | Apple iOS Simulator on ARM64
 `x86_64-fortanix-unknown-sgx` | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | 64-bit Fuchsia
 `x86_64-linux-android` | ✓ | 64-bit x86 Android
@@ -196,7 +197,6 @@ host tools.
 target | std | host | notes
 -------|:---:|:----:|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
-[`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ |  | Apple iOS Simulator on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
@@ -249,6 +249,7 @@ target | std | host | notes
 `powerpc-wrs-vxworks` | ? |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
 `powerpc64le-unknown-freebsd` |   |   | PPC64LE FreeBSD
+`powerpc-unknown-freebsd` |   |   | PowerPC FreeBSD
 `powerpc64-unknown-linux-musl` | ? |  |
 `powerpc64-wrs-vxworks` | ? |  |
 `powerpc64le-unknown-linux-musl` | ? |  |

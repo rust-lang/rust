@@ -583,7 +583,7 @@ impl<T> Cell<[T]> {
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
     // Stores the location of the earliest currently active borrow.
-    // This gets updated whenver we go from having zero borrows
+    // This gets updated whenever we go from having zero borrows
     // to having a single borrow. When a borrow occurs, this gets included
     // in the generated `BorrowError/`BorrowMutError`
     #[cfg(feature = "debug_refcell")]

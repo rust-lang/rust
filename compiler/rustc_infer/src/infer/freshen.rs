@@ -47,16 +47,18 @@ pub struct TypeFreshener<'a, 'tcx> {
     const_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
     const_freshen_map: FxHashMap<ty::InferConst<'tcx>, &'tcx ty::Const<'tcx>>,
+    keep_static: bool,
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeFreshener<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, keep_static: bool) -> TypeFreshener<'a, 'tcx> {
         TypeFreshener {
             infcx,
             ty_freshen_count: 0,
             const_freshen_count: 0,
             ty_freshen_map: Default::default(),
             const_freshen_map: Default::default(),
+            keep_static,
         }
     }
 
@@ -124,8 +126,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 r
             }
 
-            ty::ReStatic
-            | ty::ReEarlyBound(..)
+            ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReVar(_)
             | ty::RePlaceholder(..)
@@ -133,6 +134,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ReErased => {
                 // replace all free regions with 'erased
                 self.tcx().lifetimes.re_erased
+            }
+            ty::ReStatic => {
+                if self.keep_static {
+                    r
+                } else {
+                    self.tcx().lifetimes.re_erased
+                }
             }
         }
     }

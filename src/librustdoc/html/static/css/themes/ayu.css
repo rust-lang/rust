@@ -140,7 +140,7 @@ pre, .rustdoc.source .example-wrap {
 	border-bottom-color: #5c6773;
 }
 
-.docblock table, .docblock table td, .docblock table th {
+.docblock table td, .docblock table th {
 	border-color: #5c6773;
 }
 
@@ -227,6 +227,11 @@ details.rustdoc-toggle > summary.hideme > span,
 details.rustdoc-toggle > summary::before,
 details.undocumented > summary::before {
 	color: #999;
+}
+
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before {
+	filter: invert(100%);
 }
 
 #crate-search {
@@ -334,7 +339,7 @@ a.test-arrow:hover {
 	color: #999;
 }
 
-:target, :target * {
+:target, :target > * {
 	background: rgba(255, 236, 164, 0.06);
 }
 

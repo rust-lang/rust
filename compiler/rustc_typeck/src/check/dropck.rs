@@ -218,9 +218,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
         // This closure is a more robust way to check `Predicate` equality
         // than simple `==` checks (which were the previous implementation).
-        // It relies on `ty::relate` for `TraitPredicate` and `ProjectionPredicate`
-        // (which implement the Relate trait), while delegating on simple equality
-        // for the other `Predicate`.
+        // It relies on `ty::relate` for `TraitPredicate`, `ProjectionPredicate`,
+        // `ConstEvaluatable` and `TypeOutlives` (which implement the Relate trait),
+        // while delegating on simple equality for the other `Predicate`.
         // This implementation solves (Issue #59497) and (Issue #58311).
         // It is unclear to me at the moment whether the approach based on `relate`
         // could be extended easily also to the other `Predicate`.
@@ -234,6 +234,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 }
                 (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
                     relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
+                }
+                (
+                    ty::PredicateKind::ConstEvaluatable(def_a, substs_a),
+                    ty::PredicateKind::ConstEvaluatable(def_b, substs_b),
+                ) => tcx.try_unify_abstract_consts(((def_a, substs_a), (def_b, substs_b))),
+                (ty::PredicateKind::TypeOutlives(a), ty::PredicateKind::TypeOutlives(b)) => {
+                    relator.relate(predicate.rebind(a.0), p.rebind(b.0)).is_ok()
                 }
                 _ => predicate == p,
             }

@@ -9,7 +9,7 @@ use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
     report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
 };
-use crate::query::{QueryContext, QueryMap, QueryStackFrame};
+use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
@@ -479,8 +479,10 @@ where
 
         dep_graph.read_index(dep_node_index);
 
-        if unlikely!(!diagnostics.is_empty()) {
-            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+        let side_effects = QuerySideEffects { diagnostics };
+
+        if unlikely!(!side_effects.is_empty()) {
+            tcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         }
 
         return job.complete(result, dep_node_index);
@@ -618,8 +620,8 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
         };
         tcx.sess().struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
             .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
-            .note(&format!("Please follow the instructions below to create a bug report with the provided information"))
-            .note(&format!("See <https://github.com/rust-lang/rust/issues/84970> for more information"))
+            .note(&"Please follow the instructions below to create a bug report with the provided information")
+            .note(&"See <https://github.com/rust-lang/rust/issues/84970> for more information")
             .emit();
         panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
     }
@@ -677,8 +679,10 @@ where
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    if unlikely!(!diagnostics.is_empty()) && dep_node.kind != DepKind::NULL {
-        tcx.store_diagnostics(dep_node_index, diagnostics);
+    let side_effects = QuerySideEffects { diagnostics };
+
+    if unlikely!(!side_effects.is_empty()) && dep_node.kind != DepKind::NULL {
+        tcx.store_side_effects(dep_node_index, side_effects);
     }
 
     let result = job.complete(result, dep_node_index);

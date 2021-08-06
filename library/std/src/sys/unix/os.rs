@@ -350,17 +350,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub fn current_exe() -> io::Result<PathBuf> {
-    extern "C" {
-        fn _NSGetExecutablePath(buf: *mut libc::c_char, bufsize: *mut u32) -> libc::c_int;
-    }
     unsafe {
         let mut sz: u32 = 0;
-        _NSGetExecutablePath(ptr::null_mut(), &mut sz);
+        libc::_NSGetExecutablePath(ptr::null_mut(), &mut sz);
         if sz == 0 {
             return Err(io::Error::last_os_error());
         }
         let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
-        let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
+        let err = libc::_NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 {
             return Err(io::Error::last_os_error());
         }
@@ -535,19 +532,18 @@ pub fn env() -> Env {
     }
 }
 
-pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
+pub fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
-    let k = CString::new(k.as_bytes())?;
+    let k = CString::new(k.as_bytes()).ok()?;
     unsafe {
         let _guard = env_read_lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
-        let ret = if s.is_null() {
+        if s.is_null() {
             None
         } else {
             Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        };
-        Ok(ret)
+        }
     }
 }
 

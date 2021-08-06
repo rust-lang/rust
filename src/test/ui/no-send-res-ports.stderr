@@ -10,7 +10,7 @@ LL | |         let y = x;
 LL | |         println!("{:?}", y);
 LL | |     });
    | |_____- within this `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6]`
-   | 
+   |
   ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |       F: Send + 'static,

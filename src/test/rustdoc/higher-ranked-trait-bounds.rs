@@ -38,7 +38,7 @@ pub struct Foo<'a> {
 // @has - '//span[@id="structfield.some_trait"]' "some_trait: &'a dyn for<'b> Trait<'b>"
 
 impl<'a> Foo<'a> {
-    // @has - '//code' "pub fn bar<T>() where T: Trait<'a>,"
+    // @has - '//h4[@class="code-header"]' "pub fn bar<T>() where T: Trait<'a>,"
     pub fn bar<T>()
     where
         T: Trait<'a>,
@@ -49,7 +49,7 @@ impl<'a> Foo<'a> {
 // @has foo/trait.B.html
 pub trait B<'x> {}
 
-// @has - '//code[@class="in-band"]' "impl<'a> B<'a> for dyn for<'b> Trait<'b>"
+// @has - '//h3[@class="code-header in-band"]' "impl<'a> B<'a> for dyn for<'b> Trait<'b>"
 impl<'a> B<'a> for dyn for<'b> Trait<'b> {}
 
 // @has foo/struct.Bar.html

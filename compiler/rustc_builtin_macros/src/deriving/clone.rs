@@ -149,11 +149,7 @@ fn cs_clone_shallow(
             }
             _ => cx.span_bug(
                 trait_span,
-                &format!(
-                    "unexpected substructure in \
-                                                    shallow `derive({})`",
-                    name
-                ),
+                &format!("unexpected substructure in shallow `derive({})`", name),
             ),
         }
     }

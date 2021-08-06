@@ -97,7 +97,7 @@ pre, .rustdoc.source .example-wrap {
 	border-bottom-color: #DDD;
 }
 
-.docblock table, .docblock table td, .docblock table th {
+.docblock table td, .docblock table th {
 	border-color: #ddd;
 }
 
@@ -194,6 +194,11 @@ details.undocumented > summary::before {
 	color: #999;
 }
 
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before {
+	filter: invert(100%);
+}
+
 #crate-search {
 	color: #111;
 	background-color: #f0f0f0;
@@ -282,7 +287,7 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target, :target * {
+:target, :target > * {
 	background-color: #494a3d;
 }
 

@@ -7,7 +7,7 @@
 fn f1(_: &str) {}
 macro_rules! m2 {
     ($e:expr) => {
-        f1(*$e);
+        f1(*$e)
     };
 }
 macro_rules! m3 {

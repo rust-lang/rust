@@ -10,13 +10,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 
 declare_clippy_lint! {
-    /// **What it does:** Finds occurrences of `Vec::resize(0, an_int)`
+    /// ### What it does
+    /// Finds occurrences of `Vec::resize(0, an_int)`
     ///
-    /// **Why is this bad?** This is probably an argument inversion mistake.
+    /// ### Why is this bad?
+    /// This is probably an argument inversion mistake.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// vec!(1, 2, 3, 4, 5).resize(0, 5)
     /// ```

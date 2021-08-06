@@ -12,15 +12,15 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calculation of subsecond microseconds or milliseconds
+    /// ### What it does
+    /// Checks for calculation of subsecond microseconds or milliseconds
     /// from other `Duration` methods.
     ///
-    /// **Why is this bad?** It's more concise to call `Duration::subsec_micros()` or
+    /// ### Why is this bad?
+    /// It's more concise to call `Duration::subsec_micros()` or
     /// `Duration::subsec_millis()` than to calculate them.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::time::Duration;
     /// let dur = Duration::new(5, 0);

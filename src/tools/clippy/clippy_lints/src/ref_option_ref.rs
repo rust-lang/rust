@@ -9,16 +9,18 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `&Option<&T>`.
+    /// ### What it does
+    /// Checks for usage of `&Option<&T>`.
     ///
-    /// **Why is this bad?** Since `&` is Copy, it's useless to have a
+    /// ### Why is this bad?
+    /// Since `&` is Copy, it's useless to have a
     /// reference on `Option<&T>`.
     ///
-    /// **Known problems:** It may be irrelevant to use this lint on
+    /// ### Known problems
+    /// It may be irrelevant to use this lint on
     /// public API code as it will make a breaking change to apply it.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// let x: &Option<&u32> = &Some(&0u32);
     /// ```

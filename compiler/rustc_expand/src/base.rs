@@ -1,6 +1,7 @@
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
+use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
@@ -29,6 +30,9 @@ use std::rc::Rc;
 
 crate use rustc_span::hygiene::MacroKind;
 
+// When adding new variants, make sure to
+// adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
+// to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
@@ -869,9 +873,6 @@ pub trait ResolverExpand {
 
     fn check_unused_macros(&mut self);
 
-    /// Some parent node that is close enough to the given macro call.
-    fn lint_node_id(&self, expn_id: LocalExpnId) -> NodeId;
-
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool;
@@ -926,6 +927,9 @@ pub struct ExpansionData {
     pub module: Rc<ModuleData>,
     pub dir_ownership: DirOwnership,
     pub prior_type_ascription: Option<(Span, bool)>,
+    /// Some parent node that is close to this macro call
+    pub lint_node_id: NodeId,
+    pub is_trailing_mac: bool,
 }
 
 type OnExternModLoaded<'a> =
@@ -949,6 +953,10 @@ pub struct ExtCtxt<'a> {
     ///
     /// `Ident` is the module name.
     pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
+    /// When we 'expand' an inert attribute, we leave it
+    /// in the AST, but insert it here so that we know
+    /// not to expand it again.
+    pub(super) expanded_inert_attrs: MarkedAttrs,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -971,9 +979,12 @@ impl<'a> ExtCtxt<'a> {
                 module: Default::default(),
                 dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
+                lint_node_id: ast::CRATE_NODE_ID,
+                is_trailing_mac: false,
             },
             force_mode: false,
             expansions: FxHashMap::default(),
+            expanded_inert_attrs: MarkedAttrs::new(),
         }
     }
 

@@ -45,6 +45,8 @@ error[E0726]: implicit elided lifetime not allowed here
    |
 LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Serializable<'_, str>`
+   |
+   = note: assuming a `'static` lifetime...
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/issue-10412.rs:6:13

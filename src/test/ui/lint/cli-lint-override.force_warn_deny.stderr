@@ -1,0 +1,11 @@
+warning: extern declarations without an explicit ABI are deprecated
+  --> $DIR/cli-lint-override.rs:12:1
+   |
+LL | extern fn foo() {}
+   | ^^^^^^^^^^^^^^^ ABI should be specified here
+   |
+   = note: requested on the command line with `--force-warn missing-abi`
+   = help: the default ABI is C
+
+warning: 1 warning emitted
+

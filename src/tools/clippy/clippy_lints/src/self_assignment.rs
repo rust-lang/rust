@@ -6,16 +6,18 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for explicit self-assignments.
+    /// ### What it does
+    /// Checks for explicit self-assignments.
     ///
-    /// **Why is this bad?** Self-assignments are redundant and unlikely to be
+    /// ### Why is this bad?
+    /// Self-assignments are redundant and unlikely to be
     /// intentional.
     ///
-    /// **Known problems:** If expression contains any deref coercions or
+    /// ### Known problems
+    /// If expression contains any deref coercions or
     /// indexing operations they are assumed not to have any side effects.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct Event {
     ///     id: usize,

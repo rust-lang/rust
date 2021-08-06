@@ -126,21 +126,19 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
             OverflowableItem::NestedMetaItem(nested_meta_item) => match nested_meta_item {
                 ast::NestedMetaItem::Literal(..) => true,
-                ast::NestedMetaItem::MetaItem(ref meta_item) => match meta_item.kind {
-                    ast::MetaItemKind::Word => true,
-                    _ => false,
-                },
+                ast::NestedMetaItem::MetaItem(ref meta_item) => {
+                    matches!(meta_item.kind, ast::MetaItemKind::Word)
+                }
             },
             _ => false,
         }
     }
 
     pub(crate) fn is_expr(&self) -> bool {
-        match self {
-            OverflowableItem::Expr(..) => true,
-            OverflowableItem::MacroArg(MacroArg::Expr(..)) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            OverflowableItem::Expr(..) | OverflowableItem::MacroArg(MacroArg::Expr(..))
+        )
     }
 
     pub(crate) fn is_nested_call(&self) -> bool {
@@ -154,10 +152,7 @@ impl<'a> OverflowableItem<'a> {
     pub(crate) fn to_expr(&self) -> Option<&'a ast::Expr> {
         match self {
             OverflowableItem::Expr(expr) => Some(expr),
-            OverflowableItem::MacroArg(macro_arg) => match macro_arg {
-                MacroArg::Expr(ref expr) => Some(expr),
-                _ => None,
-            },
+            OverflowableItem::MacroArg(MacroArg::Expr(ref expr)) => Some(expr),
             _ => None,
         }
     }
@@ -178,10 +173,9 @@ impl<'a> OverflowableItem<'a> {
                     ast::NestedMetaItem::MetaItem(..) => true,
                 }
             }
-            OverflowableItem::SegmentParam(seg) => match seg {
-                SegmentParam::Type(ty) => can_be_overflowed_type(context, ty, len),
-                _ => false,
-            },
+            OverflowableItem::SegmentParam(SegmentParam::Type(ty)) => {
+                can_be_overflowed_type(context, ty, len)
+            }
             OverflowableItem::TuplePatField(pat) => can_be_overflowed_pat(context, pat, len),
             OverflowableItem::Ty(ty) => can_be_overflowed_type(context, ty, len),
             _ => false,

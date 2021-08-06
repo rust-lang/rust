@@ -17,22 +17,17 @@ use std::cell::Cell;
 use std::mem;
 
 declare_clippy_lint! {
-    /// **What it does:**
-    ///
+    /// ### What it does
     /// Checks for unnested or-patterns, e.g., `Some(0) | Some(2)` and
     /// suggests replacing the pattern with a nested one, `Some(0 | 2)`.
     ///
     /// Another way to think of this is that it rewrites patterns in
     /// *disjunctive normal form (DNF)* into *conjunctive normal form (CNF)*.
     ///
-    /// **Why is this bad?**
-    ///
+    /// ### Why is this bad?
     /// In the example above, `Some` is repeated, which unncessarily complicates the pattern.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// fn main() {
     ///     if let Some(0) | Some(2) = Some(0) {}

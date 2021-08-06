@@ -242,7 +242,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .unwrap_or(false) =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_label(span, "try removing `&mut` here");
+                err.span_suggestion(
+                    span,
+                    "try removing `&mut` here",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
             }
 
             // We want to suggest users use `let mut` for local (user
@@ -324,7 +329,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 } =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
-                err.span_label(span, "try removing `&mut` here");
+                err.span_suggestion(
+                    span,
+                    "try removing `&mut` here",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
             }
 
             PlaceRef { local, projection: [ProjectionElem::Deref] }
@@ -721,7 +731,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if suggestions.peek().is_some() {
                         err.span_suggestions(
                             path_segment.ident.span,
-                            &format!("use mutable method"),
+                            "use mutable method",
                             suggestions,
                             Applicability::MaybeIncorrect,
                         );
@@ -905,6 +915,8 @@ fn suggest_ampmut<'tcx>(
                         Some(c) if c.is_whitespace() => true,
                         // e.g. `&mut(x)`
                         Some('(') => true,
+                        // e.g. `&mut{x}`
+                        Some('{') => true,
                         // e.g. `&mutablevar`
                         _ => false,
                     }
@@ -912,9 +924,7 @@ fn suggest_ampmut<'tcx>(
                     false
                 }
             };
-            if let (true, Some(ws_pos)) =
-                (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
-            {
+            if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
                 let lt_name = &src[1..ws_pos];
                 let ty = src[ws_pos..].trim_start();
                 if !is_mutbl(ty) {
@@ -940,9 +950,7 @@ fn suggest_ampmut<'tcx>(
     };
 
     if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span) {
-        if let (true, Some(ws_pos)) =
-            (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
-        {
+        if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
             let lt_name = &src[1..ws_pos];
             let ty = &src[ws_pos..];
             return (highlight_span, format!("&{} mut{}", lt_name, ty));

@@ -84,8 +84,10 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
             sess,
             span,
             E0774,
-            "`derive` may only be applied to structs, enums and unions",
+            "`derive` may only be applied to `struct`s, `enum`s and `union`s",
         )
+        .span_label(span, "not applicable here")
+        .span_label(item.span(), "not a `struct`, `enum` or `union`")
         .emit();
     }
     bad_target
@@ -99,6 +101,7 @@ fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };
     struct_span_err!(sess, lit.span, E0777, "expected path to a trait, found literal",)
+        .span_label(lit.span, "not a trait")
         .help(&help_msg)
         .emit();
 }

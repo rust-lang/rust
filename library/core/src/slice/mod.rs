@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! Slice management and manipulation.
 //!
 //! For more details see [`std::slice`].
@@ -95,12 +93,12 @@ impl<T> [T] {
     /// let a = [1, 2, 3];
     /// assert_eq!(a.len(), 3);
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "slice_len_fn")]
+    #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
-    #[rustc_allow_const_fn_unstable(const_fn_union)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_union))]
     pub const fn len(&self) -> usize {
         // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
         // As of this writing this causes a "Const-stable functions can only call other
@@ -139,7 +137,7 @@ impl<T> [T] {
     /// assert_eq!(None, w.first());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn first(&self) -> Option<&T> {
         if let [first, ..] = self { Some(first) } else { None }
@@ -177,7 +175,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn split_first(&self) -> Option<(&T, &[T])> {
         if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
@@ -217,7 +215,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn split_last(&self) -> Option<(&T, &[T])> {
         if let [init @ .., last] = self { Some((last, init)) } else { None }
@@ -256,7 +254,7 @@ impl<T> [T] {
     /// assert_eq!(None, w.last());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
+    #[rustc_const_stable(feature = "const_slice_first_last_not_mut", since = "1.56.0")]
     #[inline]
     pub const fn last(&self) -> Option<&T> {
         if let [.., last] = self { Some(last) } else { None }
@@ -2274,7 +2272,7 @@ impl<T> [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 
-    /// Sorts the slice, but may not preserve the order of equal elements.
+    /// Sorts the slice, but might not preserve the order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
     /// (i.e., does not allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -2309,7 +2307,7 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| a.lt(b));
     }
 
-    /// Sorts the slice with a comparator function, but may not preserve the order of equal
+    /// Sorts the slice with a comparator function, but might not preserve the order of equal
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
@@ -2364,7 +2362,7 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| compare(a, b) == Ordering::Less);
     }
 
-    /// Sorts the slice with a key extraction function, but may not preserve the order of equal
+    /// Sorts the slice with a key extraction function, but might not preserve the order of equal
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place

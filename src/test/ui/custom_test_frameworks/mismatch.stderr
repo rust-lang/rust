@@ -1,6 +1,8 @@
 error[E0277]: the trait bound `TestDescAndFn: Testable` is not satisfied
   --> $DIR/mismatch.rs:9:1
    |
+LL | #[test]
+   | ------- in this procedural macro expansion
 LL | fn wrong_kind(){}
    | ^^^^^^^^^^^^^^^^^ the trait `Testable` is not implemented for `TestDescAndFn`
    |

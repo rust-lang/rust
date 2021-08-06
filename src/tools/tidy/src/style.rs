@@ -344,7 +344,10 @@ pub fn check(path: &Path, bad: &mut bool) {
             } else {
                 trailing_new_lines = 0;
             }
-            lines = i;
+
+            if !line.trim().starts_with("//") {
+                lines += 1;
+            }
         }
         if leading_new_lines {
             tidy_error!(bad, "{}: leading newline", file.display());

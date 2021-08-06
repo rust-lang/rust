@@ -1,6 +1,9 @@
 error[E0624]: associated function `f` is private
   --> $DIR/private-method-inherited.rs:13:7
    |
+LL |         fn f(self) {}
+   |         ---------- private associated function defined here
+...
 LL |     x.f();
    |       ^ private associated function
 

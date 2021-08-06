@@ -63,21 +63,35 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
         Immediate::ScalarPair(val.into(), Scalar::from_machine_usize(len, cx).into())
     }
 
-    pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(val.into(), ScalarMaybeUninit::from_pointer(vtable, cx))
+    pub fn new_dyn_trait(
+        val: Scalar<Tag>,
+        vtable: Pointer<Option<Tag>>,
+        cx: &impl HasDataLayout,
+    ) -> Self {
+        Immediate::ScalarPair(val.into(), ScalarMaybeUninit::from_maybe_pointer(vtable, cx))
     }
 
     #[inline]
     pub fn to_scalar_or_uninit(self) -> ScalarMaybeUninit<Tag> {
         match self {
             Immediate::Scalar(val) => val,
-            Immediate::ScalarPair(..) => bug!("Got a wide pointer where a scalar was expected"),
+            Immediate::ScalarPair(..) => bug!("Got a scalar pair where a scalar was expected"),
         }
     }
 
     #[inline]
     pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
         self.to_scalar_or_uninit().check_init()
+    }
+
+    #[inline]
+    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
+        match self {
+            Immediate::ScalarPair(val1, val2) => Ok((val1.check_init()?, val2.check_init()?)),
+            Immediate::Scalar(..) => {
+                bug!("Got a scalar where a scalar pair was expected")
+            }
+        }
     }
 }
 
@@ -585,7 +599,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.global_base_pointer(Pointer::new(id, offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr.into(), layout.align.abi))
             }
-            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x.into())?.into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.

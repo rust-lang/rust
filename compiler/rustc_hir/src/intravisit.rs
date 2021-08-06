@@ -436,11 +436,15 @@ pub trait Visitor<'v>: Sized {
     fn visit_label(&mut self, label: &'v Label) {
         walk_label(self, label)
     }
+    fn visit_infer(&mut self, inf: &'v InferArg) {
+        walk_inf(self, inf);
+    }
     fn visit_generic_arg(&mut self, generic_arg: &'v GenericArg<'v>) {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             GenericArg::Type(ty) => self.visit_ty(ty),
             GenericArg::Const(ct) => self.visit_anon_const(&ct.value),
+            GenericArg::Infer(inf) => self.visit_infer(inf),
         }
     }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
@@ -478,8 +482,9 @@ pub trait Visitor<'v>: Sized {
 
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
-    visitor.visit_mod(&krate.item, krate.item.inner, CRATE_HIR_ID);
-    walk_list!(visitor, visit_macro_def, krate.exported_macros);
+    let top_mod = krate.module();
+    visitor.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
+    walk_list!(visitor, visit_macro_def, krate.exported_macros());
     for (&id, attrs) in krate.attrs.iter() {
         for a in *attrs {
             visitor.visit_attribute(id, a)
@@ -746,6 +751,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
     }
 }
 
+pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) {
+    visitor.visit_id(inf.hir_id);
+}
+
 pub fn walk_qpath<'v, V: Visitor<'v>>(
     visitor: &mut V,
     qpath: &'v QPath<'v>,
@@ -880,6 +889,7 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
             visitor.visit_generic_args(span, args);
         }
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
+        GenericBound::Unsized(_) => {}
     }
 }
 

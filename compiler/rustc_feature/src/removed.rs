@@ -111,7 +111,7 @@ declare_features! (
      Some("subsumed by `.await` syntax")),
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063), None,
-     Some("removed in favor of `#![feature(min_type_alias_impl_trait)]`")),
+     Some("removed in favor of `#![feature(type_alias_impl_trait)]`")),
     /// Allows using the macros:
     /// + `__diagnostic_used`
     /// + `__register_diagnostic`
@@ -147,6 +147,19 @@ declare_features! (
      /// Allows casting raw pointers to `usize` during const eval.
     (removed, const_raw_ptr_to_usize_cast, "1.55.0", Some(51910), None,
      Some("at compile-time, pointers do not have an integer value, so these casts cannot be properly supported")),
+
+    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
+    (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
+     Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
+
+    /// Allows the use of type alias impl trait in function return positions
+    (removed, min_type_alias_impl_trait, "1.56.0", Some(63063), None,
+     Some("removed in favor of full type_alias_impl_trait")),
+
+    /// Allows `#[unwind(..)]`.
+    ///
+    /// Permits specifying whether a function should permit unwinding or abort on unwind.
+    (removed, unwind_attributes, "1.56.0", Some(58760), None, Some("use the C-unwind ABI instead")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

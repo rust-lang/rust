@@ -99,7 +99,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             GenericArgKind::Type(t1) => {
                 // we don't actually use this for anything, but
                 // the `TypeOutlives` code needs an origin.
-                let origin = infer::RelateParamBound(DUMMY_SP, t1);
+                let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
 
                 TypeOutlives::new(
                     &mut *self,

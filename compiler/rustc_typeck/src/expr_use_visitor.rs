@@ -267,12 +267,21 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                     }
                                 }
                             }
-                            PatKind::Lit(_) => {
-                                // If the PatKind is a Lit then we want
+                            PatKind::Lit(_) | PatKind::Range(..) => {
+                                // If the PatKind is a Lit or a Range then we want
                                 // to borrow discr.
                                 needs_to_be_read = true;
                             }
-                            _ => {}
+                            PatKind::Or(_)
+                            | PatKind::Box(_)
+                            | PatKind::Slice(..)
+                            | PatKind::Ref(..)
+                            | PatKind::Wild => {
+                                // If the PatKind is Or, Box, Slice or Ref, the decision is made later
+                                // as these patterns contains subpatterns
+                                // If the PatKind is Wild, the decision is made based on the other patterns being
+                                // examined
+                            }
                         }
                     }));
                 }
@@ -667,7 +676,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// When the current body being handled is a closure, then we must make sure that
     /// - The parent closure only captures Places from the nested closure that are not local to it.
     ///
-    /// In the following example the closures `c` only captures `p.x`` even though `incr`
+    /// In the following example the closures `c` only captures `p.x` even though `incr`
     /// is a capture of the nested closure
     ///
     /// ```rust,ignore(cannot-test-this-because-pseudo-code)

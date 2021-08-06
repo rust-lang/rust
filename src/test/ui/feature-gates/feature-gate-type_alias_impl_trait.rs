@@ -1,5 +1,5 @@
 // ignore-compare-mode-chalk
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 use std::fmt::Debug;
 
 type Foo = impl Debug;
@@ -13,7 +13,7 @@ fn define() -> Bar {
 type Foo2 = impl Debug;
 
 fn define2() {
-    let x = || -> Foo2 { 42 }; //~ ERROR not permitted here
+    let x = || -> Foo2 { 42 };
 }
 
 type Foo3 = impl Debug;
@@ -31,7 +31,7 @@ type Foo4 = impl Debug;
 
 fn define4() {
     let y: Foo4 = 42;
-    //~^ ERROR not permitted here
+    //~^ ERROR mismatched types [E0308]
 }
 
 fn main() {}

@@ -84,12 +84,58 @@ pub struct Ipv4Addr {
 /// IPv6 addresses are defined as 128-bit integers in [IETF RFC 4291].
 /// They are usually represented as eight 16-bit segments.
 ///
-/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
-///
 /// The size of an `Ipv6Addr` struct may vary depending on the target operating
 /// system.
 ///
 /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+///
+/// # Embedding IPv4 Addresses
+///
+/// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// To assist in the transition from IPv4 to IPv6 two types of IPv6 addresses that embed an IPv4 address were defined:
+/// IPv4-compatible and IPv4-mapped addresses. Of these IPv4-compatible addresses have been officially deprecated.
+///
+/// Both types of addresses are not assigned any special meaning by this implementation,
+/// other than what the relevant standards prescribe. This means that an address like `::ffff:127.0.0.1`,
+/// while representing an IPv4 loopback address, is not itself an IPv6 loopback address; only `::1` is.
+/// To handle these so called "IPv4-in-IPv6" addresses, they have to first be converted to their canonical IPv4 address.
+///
+/// ### IPv4-Compatible IPv6 Addresses
+///
+/// IPv4-compatible IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.1], and have been officially deprecated.
+/// The RFC describes the format of an "IPv4-Compatible IPv6 address" as follows:
+///
+/// ```text
+/// |                80 bits               | 16 |      32 bits        |
+/// +--------------------------------------+--------------------------+
+/// |0000..............................0000|0000|    IPv4 address     |
+/// +--------------------------------------+----+---------------------+
+/// ```
+/// So `::a.b.c.d` would be an IPv4-compatible IPv6 address representing the IPv4 address `a.b.c.d`.
+///
+/// To convert from an IPv4 address to an IPv4-compatible IPv6 address, use [`Ipv4Addr::to_ipv6_compatible`].
+/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-compatible IPv6 address to the canonical IPv4 address.
+///
+/// [IETF RFC 4291 Section 2.5.5.1]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.1
+///
+/// ### IPv4-Mapped IPv6 Addresses
+///
+/// IPv4-mapped IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.2].
+/// The RFC describes the format of an "IPv4-Mapped IPv6 address" as follows:
+///
+/// ```text
+/// |                80 bits               | 16 |      32 bits        |
+/// +--------------------------------------+--------------------------+
+/// |0000..............................0000|FFFF|    IPv4 address     |
+/// +--------------------------------------+----+---------------------+
+/// ```
+/// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
+///
+/// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
+/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
+///
+/// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
 /// # Textual representation
 ///
@@ -116,16 +162,58 @@ pub struct Ipv6Addr {
     inner: c::in6_addr,
 }
 
-#[allow(missing_docs)]
+/// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
+///
+/// # Stability Guarantees
+///
+/// Not all possible values for a multicast scope have been assigned.
+/// Future RFCs may introduce new scopes, which will be added as variants to this enum;
+/// because of this the enum is marked as `#[non_exhaustive]`.
+///
+/// # Examples
+/// ```
+/// #![feature(ip)]
+///
+/// use std::net::Ipv6Addr;
+/// use std::net::Ipv6MulticastScope::*;
+///
+/// // An IPv6 multicast address with global scope (`ff0e::`).
+/// let address = Ipv6Addr::new(0xff0e, 0, 0, 0, 0, 0, 0, 0);
+///
+/// // Will print "Global scope".
+/// match address.multicast_scope() {
+///     Some(InterfaceLocal) => println!("Interface-Local scope"),
+///     Some(LinkLocal) => println!("Link-Local scope"),
+///     Some(RealmLocal) => println!("Realm-Local scope"),
+///     Some(AdminLocal) => println!("Admin-Local scope"),
+///     Some(SiteLocal) => println!("Site-Local scope"),
+///     Some(OrganizationLocal) => println!("Organization-Local scope"),
+///     Some(Global) => println!("Global scope"),
+///     Some(_) => println!("Unknown scope"),
+///     None => println!("Not a multicast address!")
+/// }
+///
+/// ```
+///
+/// [IPv6 multicast address]: Ipv6Addr
+/// [IETF RFC 7346 section 2]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 #[unstable(feature = "ip", issue = "27709")]
+#[non_exhaustive]
 pub enum Ipv6MulticastScope {
+    /// Interface-Local scope.
     InterfaceLocal,
+    /// Link-Local scope.
     LinkLocal,
+    /// Realm-Local scope.
     RealmLocal,
+    /// Admin-Local scope.
     AdminLocal,
+    /// Site-Local scope.
     SiteLocal,
+    /// Organization-Local scope.
     OrganizationLocal,
+    /// Global scope.
     Global,
 }
 
@@ -290,6 +378,29 @@ impl IpAddr {
     #[inline]
     pub const fn is_ipv6(&self) -> bool {
         matches!(self, IpAddr::V6(_))
+    }
+
+    /// Converts this address to an `IpAddr::V4` if it is a IPv4-mapped IPv6 addresses, otherwise it
+    /// return `self` as-is.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).to_canonical().is_loopback(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).is_loopback(), false);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).to_canonical().is_loopback(), true);
+    /// ```
+    #[inline]
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    pub const fn to_canonical(&self) -> IpAddr {
+        match self {
+            &v4 @ IpAddr::V4(_) => v4,
+            IpAddr::V6(v6) => v6.to_canonical(),
+        }
     }
 }
 
@@ -486,8 +597,7 @@ impl Ipv4Addr {
     /// - addresses used for documentation (see [`Ipv4Addr::is_documentation()`])
     /// - the unspecified address (see [`Ipv4Addr::is_unspecified()`]), and the whole
     ///   `0.0.0.0/8` block
-    /// - addresses reserved for future protocols (see
-    /// [`Ipv4Addr::is_ietf_protocol_assignment()`], except
+    /// - addresses reserved for future protocols, except
     /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
     /// - addresses reserved for future use (see [`Ipv4Addr::is_reserved()`]
     /// - addresses reserved for networking devices benchmarking (see
@@ -560,7 +670,8 @@ impl Ipv4Addr {
             && !self.is_broadcast()
             && !self.is_documentation()
             && !self.is_shared()
-            && !self.is_ietf_protocol_assignment()
+            // addresses reserved for future protocols (`192.0.0.0/24`)
+            && !(self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0)
             && !self.is_reserved()
             && !self.is_benchmarking()
             // Make sure the address is not in 0.0.0.0/8
@@ -587,40 +698,6 @@ impl Ipv4Addr {
     #[inline]
     pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
-    }
-
-    /// Returns [`true`] if this address is part of `192.0.0.0/24`, which is reserved to
-    /// IANA for IETF protocol assignments, as documented in [IETF RFC 6890].
-    ///
-    /// Note that parts of this block are in use:
-    ///
-    /// - `192.0.0.8/32` is the "IPv4 dummy address" (see [IETF RFC 7600])
-    /// - `192.0.0.9/32` is the "Port Control Protocol Anycast" (see [IETF RFC 7723])
-    /// - `192.0.0.10/32` is used for NAT traversal (see [IETF RFC 8155])
-    ///
-    /// [IETF RFC 6890]: https://tools.ietf.org/html/rfc6890
-    /// [IETF RFC 7600]: https://tools.ietf.org/html/rfc7600
-    /// [IETF RFC 7723]: https://tools.ietf.org/html/rfc7723
-    /// [IETF RFC 8155]: https://tools.ietf.org/html/rfc8155
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    /// use std::net::Ipv4Addr;
-    ///
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 8).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 9).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_ietf_protocol_assignment(), true);
-    /// assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
-    /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
-    /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[inline]
-    pub const fn is_ietf_protocol_assignment(&self) -> bool {
-        self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
 
     /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
@@ -758,13 +835,14 @@ impl Ipv4Addr {
         }
     }
 
-    /// Converts this address to an IPv4-compatible [`IPv6` address].
+    /// Converts this address to an [IPv4-compatible] [`IPv6` address].
     ///
     /// `a.b.c.d` becomes `::a.b.c.d`
     ///
-    /// This isn't typically the method you want; these addresses don't typically
-    /// function on modern systems. Use `to_ipv6_mapped` instead.
+    /// Note that IPv4-compatible addresses have been officially deprecated.
+    /// If you don't explicitly need an IPv4-compatible address for legacy reasons, consider using `to_ipv6_mapped` instead.
     ///
+    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
     /// [`IPv6` address]: Ipv6Addr
     ///
     /// # Examples
@@ -787,10 +865,11 @@ impl Ipv4Addr {
         }
     }
 
-    /// Converts this address to an IPv4-mapped [`IPv6` address].
+    /// Converts this address to an [IPv4-mapped] [`IPv6` address].
     ///
     /// `a.b.c.d` becomes `::ffff:a.b.c.d`
     ///
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
     /// [`IPv6` address]: Ipv6Addr
     ///
     /// # Examples
@@ -1087,7 +1166,7 @@ impl Ipv6Addr {
     ///
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
-    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1149,7 +1228,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
     ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
     /// ```
-    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_fn_transmute))]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1193,11 +1272,13 @@ impl Ipv6Addr {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
     }
 
-    /// Returns [`true`] if this is a loopback address (::1).
+    /// Returns [`true`] if this is the [loopback address] (`::1`),
+    /// as defined in [IETF RFC 4291 section 2.5.3].
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// Contrary to IPv4, in IPv6 there is only one loopback address.
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [loopback address]: Ipv6Addr::LOCALHOST
+    /// [IETF RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
     ///
     /// # Examples
     ///
@@ -1468,13 +1549,14 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
-    /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
-    /// defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
+    /// Converts this address to an [`IPv4` address] if it's an [IPv4-mapped] address,
+    /// as defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
     ///
     /// `::ffff:a.b.c.d` becomes `a.b.c.d`.
     /// All addresses *not* starting with `::ffff` will return `None`.
     ///
     /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4-mapped]: Ipv6Addr
     /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
     ///
     /// # Examples
@@ -1501,12 +1583,19 @@ impl Ipv6Addr {
         }
     }
 
-    /// Converts this address to an [`IPv4` address]. Returns [`None`] if this address is
-    /// neither IPv4-compatible or IPv4-mapped.
+    /// Converts this address to an [`IPv4` address] if it is either
+    /// an [IPv4-compatible] address as defined in [IETF RFC 4291 section 2.5.5.1],
+    /// or an [IPv4-mapped] address as defined in [IETF RFC 4291 section 2.5.5.2],
+    /// otherwise returns [`None`].
     ///
     /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`
+    /// All addresses *not* starting with either all zeroes or `::ffff` will return `None`.
     ///
-    /// [`IPv4` address]: Ipv4Addr
+    /// [IPv4 address]: Ipv4Addr
+    /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
+    /// [IPv4-mapped]: Ipv6Addr#ipv4-mapped-ipv6-addresses
+    /// [IETF RFC 4291 section 2.5.5.1]: https://tools.ietf.org/html/rfc4291#section-2.5.5.1
+    /// [IETF RFC 4291 section 2.5.5.2]: https://tools.ietf.org/html/rfc4291#section-2.5.5.2
     ///
     /// # Examples
     ///
@@ -1530,6 +1619,28 @@ impl Ipv6Addr {
         } else {
             None
         }
+    }
+
+    /// Converts this address to an `IpAddr::V4` if it is a IPv4-mapped addresses, otherwise it
+    /// returns self wrapped in a `IpAddr::V6`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).to_canonical().is_loopback(), true);
+    /// ```
+    #[inline]
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    pub const fn to_canonical(&self) -> IpAddr {
+        if let Some(mapped) = self.to_ipv4_mapped() {
+            return IpAddr::V4(mapped);
+        }
+        IpAddr::V6(*self)
     }
 
     /// Returns the sixteen eight-bit integers the IPv6 address consists of.

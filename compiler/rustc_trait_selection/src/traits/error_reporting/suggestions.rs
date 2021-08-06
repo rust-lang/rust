@@ -290,13 +290,9 @@ fn suggest_restriction(
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
         let (sp, suggestion) = match (
-            generics
-                .params
-                .iter()
-                .filter(|p| {
-                    !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
-                })
-                .next(),
+            generics.params.iter().find(|p| {
+                !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
+            }),
             super_traits,
         ) {
             (_, None) => predicate_constraint(
@@ -1163,15 +1159,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if is_object_safe {
                 // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
                 // Get all the return values and collect their span and suggestion.
-                if let Some(mut suggestions) = visitor
+                let mut suggestions: Vec<_> = visitor
                     .returns
                     .iter()
-                    .map(|expr| {
-                        let snip = sm.span_to_snippet(expr.span).ok()?;
-                        Some((expr.span, format!("Box::new({})", snip)))
+                    .flat_map(|expr| {
+                        vec![
+                            (expr.span.shrink_to_lo(), "Box::new(".to_string()),
+                            (expr.span.shrink_to_hi(), ")".to_string()),
+                        ]
+                        .into_iter()
                     })
-                    .collect::<Option<Vec<_>>>()
-                {
+                    .collect();
+                if !suggestions.is_empty() {
                     // Add the suggestion for the return type.
                     suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
                     err.multipart_suggestion(
@@ -1857,12 +1856,37 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
             GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
+                // `Some(ref_ty)` if `target_ty` is `&T` and `T` fails to impl `Sync`
+                let refers_to_non_sync = match target_ty.kind() {
+                    ty::Ref(_, ref_ty, _) => match self.evaluate_obligation(&obligation) {
+                        Ok(eval) if !eval.may_apply() => Some(ref_ty),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+
+                let (span_label, span_note) = match refers_to_non_sync {
+                    // if `target_ty` is `&T` and `T` fails to impl `Sync`,
+                    // include suggestions to make `T: Sync` so that `&T: Send`
+                    Some(ref_ty) => (
+                        format!(
+                            "has type `{}` which {}, because `{}` is not `Sync`",
+                            target_ty, trait_explanation, ref_ty
+                        ),
+                        format!(
+                            "captured value {} because `&` references cannot be sent unless their referent is `Sync`",
+                            trait_explanation
+                        ),
+                    ),
+                    None => (
+                        format!("has type `{}` which {}", target_ty, trait_explanation),
+                        format!("captured value {}", trait_explanation),
+                    ),
+                };
+
                 let mut span = MultiSpan::from_span(upvar_span);
-                span.push_span_label(
-                    upvar_span,
-                    format!("has type `{}` which {}", target_ty, trait_explanation),
-                );
-                err.span_note(span, &format!("captured value {}", trait_explanation));
+                span.push_span_label(upvar_span, span_label);
+                err.span_note(span, &span_note);
             }
         }
 
@@ -1903,7 +1927,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::UnifyReceiver(..)
             | ObligationCauseCode::OpaqueType
             | ObligationCauseCode::MiscObligation
-            | ObligationCauseCode::WellFormed(..) => {}
+            | ObligationCauseCode::WellFormed(..)
+            | ObligationCauseCode::MatchImpl(..) => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -1928,12 +1953,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ItemObligation(item_def_id) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by `{}`", item_name);
-                if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
-                    let sp = tcx.sess.source_map().guess_head_span(sp);
-                    err.span_label(sp, &msg);
-                } else {
-                    err.note(&msg);
-                }
+                let sp = tcx
+                    .hir()
+                    .span_if_local(item_def_id)
+                    .unwrap_or_else(|| tcx.def_span(item_def_id));
+                let sp = tcx.sess.source_map().guess_head_span(sp);
+                err.span_note(sp, &msg);
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);
@@ -1952,7 +1977,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if span != DUMMY_SP {
                     err.span_label(span, &msg);
                 } else {
-                    err.note(&msg);
+                    err.span_note(
+                        tcx.def_span(item_def_id),
+                        &format!("required by a bound in `{}`", item_name),
+                    );
                 }
             }
             ObligationCauseCode::ObjectCastObligation(object_ty) => {
@@ -1979,9 +2007,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 if self.tcx.sess.is_nightly_build() && is_const_fn {
                     err.help(
-                        "create an inline `const` block, see RFC \
-                        #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
-                        for more information",
+                        "create an inline `const` block, see RFC #2920 \
+                         <https://github.com/rust-lang/rfcs/pull/2920> for more information",
                     );
                 }
             }
@@ -2168,8 +2195,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.for_each_relevant_impl(
                     parent_def_id,
                     parent_trait_ref.self_ty().skip_binder(),
-                    |impl_def_id| {
-                        candidates.push(impl_def_id);
+                    |impl_def_id| match self.tcx.hir().get_if_local(impl_def_id) {
+                        Some(Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl(hir::Impl { .. }),
+                            ..
+                        })) => {
+                            candidates.push(impl_def_id);
+                        }
+                        _ => {}
                     },
                 );
                 match &candidates[..] {

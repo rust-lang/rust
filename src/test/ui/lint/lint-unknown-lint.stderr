@@ -16,5 +16,11 @@ error: unknown lint: `dead_cod`
 LL | #![deny(dead_cod)]
    |         ^^^^^^^^ help: did you mean: `dead_code`
 
-error: aborting due to 2 previous errors
+error: unknown lint: `rust_2018_idiots`
+  --> $DIR/lint-unknown-lint.rs:9:9
+   |
+LL | #![deny(rust_2018_idiots)]
+   |         ^^^^^^^^^^^^^^^^ help: did you mean: `rust_2018_idioms`
+
+error: aborting due to 3 previous errors
 

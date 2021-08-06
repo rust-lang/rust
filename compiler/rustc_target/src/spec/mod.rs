@@ -802,6 +802,7 @@ supported_targets! {
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
     ("armv7-unknown-freebsd", armv7_unknown_freebsd),
     ("i686-unknown-freebsd", i686_unknown_freebsd),
+    ("powerpc-unknown-freebsd", powerpc_unknown_freebsd),
     ("powerpc64-unknown-freebsd", powerpc64_unknown_freebsd),
     ("powerpc64le-unknown-freebsd", powerpc64le_unknown_freebsd),
     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
@@ -2017,7 +2018,7 @@ impl Target {
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
-            return Err(format!("may not set is_builtin for targets not built-in"));
+            return Err("may not set is_builtin for targets not built-in".to_string());
         }
         // Each field should have been read using `Json::remove_key` so any keys remaining are unused.
         let remaining_keys = obj.as_object().ok_or("Expected JSON object for target")?.keys();

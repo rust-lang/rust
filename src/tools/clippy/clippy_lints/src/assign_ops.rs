@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{eq_expr_value, get_trait_def_id, trait_ref_of_method};
-use clippy_utils::{higher, paths, sugg};
+use clippy_utils::{binop_traits, sugg};
+use clippy_utils::{eq_expr_value, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -12,15 +12,18 @@ use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
+    /// ### What it does
+    /// Checks for `a = a op b` or `a = b commutative_op a`
     /// patterns.
     ///
-    /// **Why is this bad?** These can be written as the shorter `a op= b`.
+    /// ### Why is this bad?
+    /// These can be written as the shorter `a op= b`.
     ///
-    /// **Known problems:** While forbidden by the spec, `OpAssign` traits may have
+    /// ### Known problems
+    /// While forbidden by the spec, `OpAssign` traits may have
     /// implementations that differ from the regular `Op` impl.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut a = 5;
     /// let b = 0;
@@ -37,17 +40,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `a op= a op b` or `a op= b op a` patterns.
+    /// ### What it does
+    /// Checks for `a op= a op b` or `a op= b op a` patterns.
     ///
-    /// **Why is this bad?** Most likely these are bugs where one meant to write `a
+    /// ### Why is this bad?
+    /// Most likely these are bugs where one meant to write `a
     /// op= b`.
     ///
-    /// **Known problems:** Clippy cannot know for sure if `a op= a op b` should have
+    /// ### Known problems
+    /// Clippy cannot know for sure if `a op= a op b` should have
     /// been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
     /// If `a op= a op b` is really the correct behaviour it should be
     /// written as `a = a op a op b` as it's less confusing.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let mut a = 5;
     /// let b = 2;
@@ -85,70 +91,33 @@ impl<'tcx> LateLintPass<'tcx> for AssignOps {
                     let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
                         let ty = cx.typeck_results().expr_ty(assignee);
                         let rty = cx.typeck_results().expr_ty(rhs);
-                        macro_rules! ops {
-                            ($op:expr,
-                             $cx:expr,
-                             $ty:expr,
-                             $rty:expr,
-                             $($trait_name:ident),+) => {
-                                match $op {
-                                    $(hir::BinOpKind::$trait_name => {
-                                        let [krate, module] = paths::OPS_MODULE;
-                                        let path: [&str; 3] = [krate, module, concat!(stringify!($trait_name), "Assign")];
-                                        let trait_id = if let Some(trait_id) = get_trait_def_id($cx, &path) {
-                                            trait_id
-                                        } else {
-                                            return; // useless if the trait doesn't exist
-                                        };
-                                        // check that we are not inside an `impl AssignOp` of this exact operation
-                                        let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
-                                        if_chain! {
-                                            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
-                                            if trait_ref.path.res.def_id() == trait_id;
-                                            then { return; }
+                        if_chain! {
+                            if let Some((_, lang_item)) = binop_traits(op.node);
+                            if let Ok(trait_id) = cx.tcx.lang_items().require(lang_item);
+                            let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
+                            if trait_ref_of_method(cx, parent_fn)
+                                .map_or(true, |t| t.path.res.def_id() != trait_id);
+                            if implements_trait(cx, ty, trait_id, &[rty.into()]);
+                            then {
+                                span_lint_and_then(
+                                    cx,
+                                    ASSIGN_OP_PATTERN,
+                                    expr.span,
+                                    "manual implementation of an assign operation",
+                                    |diag| {
+                                        if let (Some(snip_a), Some(snip_r)) =
+                                            (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
+                                        {
+                                            diag.span_suggestion(
+                                                expr.span,
+                                                "replace it with",
+                                                format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                                Applicability::MachineApplicable,
+                                            );
                                         }
-                                        implements_trait($cx, $ty, trait_id, &[$rty])
-                                    },)*
-                                    _ => false,
-                                }
+                                    },
+                                );
                             }
-                        }
-                        if ops!(
-                            op.node,
-                            cx,
-                            ty,
-                            rty.into(),
-                            Add,
-                            Sub,
-                            Mul,
-                            Div,
-                            Rem,
-                            And,
-                            Or,
-                            BitAnd,
-                            BitOr,
-                            BitXor,
-                            Shr,
-                            Shl
-                        ) {
-                            span_lint_and_then(
-                                cx,
-                                ASSIGN_OP_PATTERN,
-                                expr.span,
-                                "manual implementation of an assign operation",
-                                |diag| {
-                                    if let (Some(snip_a), Some(snip_r)) =
-                                        (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
-                                    {
-                                        diag.span_suggestion(
-                                            expr.span,
-                                            "replace it with",
-                                            format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                                            Applicability::MachineApplicable,
-                                        );
-                                    }
-                                },
-                            );
                         }
                     };
 
@@ -206,7 +175,7 @@ fn lint_misrefactored_assign_op(
             if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
                 let a = &sugg::Sugg::hir(cx, assignee, "..");
                 let r = &sugg::Sugg::hir(cx, rhs, "..");
-                let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
+                let long = format!("{} = {}", snip_a, sugg::make_binop(op.node.into(), a, r));
                 diag.span_suggestion(
                     expr.span,
                     &format!(

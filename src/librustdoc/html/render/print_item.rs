@@ -1,6 +1,7 @@
 use clean::AttributesExt;
 
 use std::cmp::Ordering;
+use std::fmt;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -118,7 +119,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
     // [src] link in the downstream documentation will actually come back to
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
-    if cx.shared.include_sources && !item.is_primitive() {
+    if cx.include_sources && !item.is_primitive() {
         write_srclink(cx, item, buf);
     }
 
@@ -155,7 +156,7 @@ fn should_hide_fields(n_fields: usize) -> bool {
     n_fields > 12
 }
 
-fn toggle_open(w: &mut Buffer, text: &str) {
+fn toggle_open(w: &mut Buffer, text: impl fmt::Display) {
     write!(
         w,
         "<details class=\"rustdoc-toggle type-contents-toggle\">\
@@ -481,6 +482,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
     let provided = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
+    let count_types = types.len();
+    let count_consts = consts.len();
+    let count_methods = required.len() + provided.len();
 
     // Output the trait definition
     wrap_into_docblock(w, |w| {
@@ -511,9 +515,12 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             let mut toggle = false;
 
             // If there are too many associated types, hide _everything_
-            if should_hide_fields(types.len()) {
+            if should_hide_fields(count_types) {
                 toggle = true;
-                toggle_open(w, "associated items");
+                toggle_open(
+                    w,
+                    format_args!("{} associated items", count_types + count_consts + count_methods),
+                );
             }
             for t in &types {
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
@@ -523,9 +530,18 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             // We also do this if the types + consts is large because otherwise we could
             // render a bunch of types and _then_ a bunch of consts just because both were
             // _just_ under the limit
-            if !toggle && should_hide_fields(types.len() + consts.len()) {
+            if !toggle && should_hide_fields(count_types + count_consts) {
                 toggle = true;
-                toggle_open(w, "associated constants and methods");
+                toggle_open(
+                    w,
+                    format_args!(
+                        "{} associated constant{} and {} method{}",
+                        count_consts,
+                        pluralize(count_consts),
+                        count_methods,
+                        pluralize(count_methods),
+                    ),
+                );
             }
             if !types.is_empty() && !consts.is_empty() {
                 w.write_str("\n");
@@ -534,9 +550,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                 w.write_str(";\n");
             }
-            if !toggle && should_hide_fields(required.len() + provided.len()) {
+            if !toggle && should_hide_fields(count_methods) {
                 toggle = true;
-                toggle_open(w, "methods");
+                toggle_open(w, format_args!("{} methods", count_methods));
             }
             if !consts.is_empty() && !required.is_empty() {
                 w.write_str("\n");
@@ -605,9 +621,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w);
         write!(w, "</div>");
-        write!(w, "<code>");
+        write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
-        w.write_str("</code>");
+        w.write_str("</h4>");
         w.write_str("</div>");
         if toggled {
             write!(w, "</summary>");
@@ -872,7 +888,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     wrap_into_docblock(w, |w| {
         w.write_str("<pre class=\"rust union\">");
         render_attributes_in_pre(w, it, "");
-        render_union(w, it, Some(&s.generics), &s.fields, "", true, cx);
+        render_union(w, it, Some(&s.generics), &s.fields, "", cx);
         w.write_str("</pre>")
     });
 
@@ -933,9 +949,10 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str(" {}");
         } else {
             w.write_str(" {\n");
-            let toggle = should_hide_fields(e.variants.len());
+            let count_variants = e.variants.len();
+            let toggle = should_hide_fields(count_variants);
             if toggle {
-                toggle_open(w, "variants");
+                toggle_open(w, format_args!("{} variants", count_variants));
             }
             for v in &e.variants {
                 w.write_str("    ");
@@ -1012,17 +1029,17 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
             use crate::clean::Variant;
             if let clean::VariantItem(Variant::Struct(ref s)) = *variant.kind {
-                toggle_open(w, "fields");
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
                     variant.name.as_ref().unwrap()
                 ));
-                write!(w, "<div class=\"autohide sub-variant\" id=\"{id}\">", id = variant_id);
+                write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(
                     w,
-                    "<h3>Fields of <b>{name}</b></h3><div>",
-                    name = variant.name.as_ref().unwrap()
+                    "<h3>{extra}Fields of <b>{name}</b></h3><div>",
+                    extra = if s.struct_type == CtorKind::Fn { "Tuple " } else { "" },
+                    name = variant.name.as_ref().unwrap(),
                 );
                 for field in &s.fields {
                     use crate::clean::StructFieldItem;
@@ -1046,7 +1063,6 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     }
                 }
                 w.write_str("</div></div>");
-                toggle_close(w);
             }
         }
     }
@@ -1064,6 +1080,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             None,
             None,
             it.span(cx.tcx()).inner().edition(),
+            None,
             None,
         );
     });
@@ -1161,21 +1178,21 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             _ => None,
         })
         .peekable();
-    if let CtorKind::Fictive = s.struct_type {
+    if let CtorKind::Fictive | CtorKind::Fn = s.struct_type {
         if fields.peek().is_some() {
             write!(
                 w,
                 "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                       Fields{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
+                     {}{}<a href=\"#fields\" class=\"anchor\"></a>\
+                 </h2>",
+                if let CtorKind::Fictive = s.struct_type { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it)
             );
             document_non_exhaustive(w, it);
-            for (field, ty) in fields {
-                let id = cx.derive_id(format!(
-                    "{}.{}",
-                    ItemType::StructField,
-                    field.name.as_ref().unwrap()
-                ));
+            for (index, (field, ty)) in fields.enumerate() {
+                let field_name =
+                    field.name.map_or_else(|| index.to_string(), |sym| (*sym.as_str()).to_string());
+                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
@@ -1184,7 +1201,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                      </span>",
                     item_type = ItemType::StructField,
                     id = id,
-                    name = field.name.as_ref().unwrap(),
+                    name = field_name,
                     ty = ty.print(cx)
                 );
                 document(w, cx, field, Some(it));
@@ -1365,14 +1382,12 @@ fn render_union(
     g: Option<&clean::Generics>,
     fields: &[clean::Item],
     tab: &str,
-    structhead: bool,
     cx: &Context<'_>,
 ) {
     write!(
         w,
-        "{}{}{}",
+        "{}union {}",
         it.visibility.print_with_space(it.def_id, cx),
-        if structhead { "union " } else { "" },
         it.name.as_ref().unwrap()
     );
     if let Some(g) = g {
@@ -1385,7 +1400,7 @@ fn render_union(
         fields.iter().filter(|f| matches!(*f.kind, clean::StructFieldItem(..))).count();
     let toggle = should_hide_fields(count_fields);
     if toggle {
-        toggle_open(w, "fields");
+        toggle_open(w, format_args!("{} fields", count_fields));
     }
 
     for field in fields {
@@ -1441,7 +1456,7 @@ fn render_struct(
             let has_visible_fields = count_fields > 0;
             let toggle = should_hide_fields(count_fields);
             if toggle {
-                toggle_open(w, "fields");
+                toggle_open(w, format_args!("{} fields", count_fields));
             }
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = *field.kind {
@@ -1494,7 +1509,10 @@ fn render_struct(
             if let Some(g) = g {
                 write!(w, "{}", print_where_clause(g, cx, 0, false),)
             }
-            w.write_str(";");
+            // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
+            if structhead {
+                w.write_str(";");
+            }
         }
         CtorKind::Const => {
             // Needed for PhantomData.
@@ -1617,4 +1635,8 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
     }
 
     writeln!(w, "</div>");
+}
+
+fn pluralize(count: usize) -> &'static str {
+    if count > 1 { "s" } else { "" }
 }

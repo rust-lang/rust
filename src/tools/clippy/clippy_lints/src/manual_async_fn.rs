@@ -14,14 +14,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** It checks for manual implementations of `async` functions.
+    /// ### What it does
+    /// It checks for manual implementations of `async` functions.
     ///
-    /// **Why is this bad?** It's more idiomatic to use the dedicated syntax.
+    /// ### Why is this bad?
+    /// It's more idiomatic to use the dedicated syntax.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// use std::future::Future;
     ///

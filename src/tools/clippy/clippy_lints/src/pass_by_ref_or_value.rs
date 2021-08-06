@@ -14,21 +14,25 @@ use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, M
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::Target;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions taking arguments by reference, where
+    /// ### What it does
+    /// Checks for functions taking arguments by reference, where
     /// the argument type is `Copy` and small enough to be more efficient to always
     /// pass by value.
     ///
-    /// **Why is this bad?** In many calling conventions instances of structs will
+    /// ### Why is this bad?
+    /// In many calling conventions instances of structs will
     /// be passed through registers if they fit into two or less general purpose
     /// registers.
     ///
-    /// **Known problems:** This lint is target register size dependent, it is
+    /// ### Known problems
+    /// This lint is target register size dependent, it is
     /// limited to 32-bit to try and reduce portability problems between 32 and
     /// 64-bit, but if you are compiling for 8 or 16-bit targets then the limit
     /// will be different.
@@ -50,7 +54,7 @@ declare_clippy_lint! {
     /// that explains a real case in which this false positive
     /// led to an **undefined behaviour** introduced with unsafe code.
     ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust
     /// // Bad
@@ -67,18 +71,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions taking arguments by value, where
+    /// ### What it does
+    /// Checks for functions taking arguments by value, where
     /// the argument type is `Copy` and large enough to be worth considering
     /// passing by reference. Does not trigger if the function is being exported,
     /// because that might induce API breakage, if the parameter is declared as mutable,
     /// or if the argument is a `self`.
     ///
-    /// **Why is this bad?** Arguments passed by value might result in an unnecessary
+    /// ### Why is this bad?
+    /// Arguments passed by value might result in an unnecessary
     /// shallow copy, taking up more space in the stack and requiring a call to
     /// `memcpy`, which can be expensive.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// #[derive(Clone, Copy)]
     /// struct TooLarge([u8; 2048]);
@@ -130,13 +135,12 @@ impl<'tcx> PassByRefOrValue {
         }
     }
 
-    fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, decl: &FnDecl<'_>, span: Option<Span>) {
-        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(hir_id) {
+    fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
+        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
             return;
         }
-        let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
-        let fn_sig = cx.tcx.fn_sig(fn_def_id);
+        let fn_sig = cx.tcx.fn_sig(def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
 
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
@@ -227,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.hir_id(), &*method_sig.decl, None);
+            self.check_poly_fn(cx, item.def_id, &*method_sig.decl, None);
         }
     }
 
@@ -274,6 +278,6 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
             }
         }
 
-        self.check_poly_fn(cx, hir_id, decl, Some(span));
+        self.check_poly_fn(cx, cx.tcx.hir().local_def_id(hir_id), decl, Some(span));
     }
 }

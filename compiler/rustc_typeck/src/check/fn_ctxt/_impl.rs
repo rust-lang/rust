@@ -40,6 +40,7 @@ use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
+    WellFormedLoc,
 };
 
 use std::collections::hash_map::Entry;
@@ -419,13 +420,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         value: T,
-        hir_id: hir::HirId,
+        loc: WellFormedLoc,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
     {
         self.inh.normalize_associated_types_in_with_cause(
-            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(Some(hir_id))),
+            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(Some(loc))),
             self.param_env,
             value,
         )
@@ -577,6 +578,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tag()
                 );
             }
+        }
+    }
+
+    pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+        match self.typeck_results.borrow().node_types().get(id) {
+            Some(&t) => Some(t),
+            None if self.is_tainted_by_errors() => Some(self.tcx.ty_error()),
+            None => None,
         }
     }
 
@@ -1469,6 +1478,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
+                        self.fcx.ty_infer(Some(param), inf.span).into()
+                    }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                        let tcx = self.fcx.tcx();
+                        self.fcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
                     }
                     _ => unreachable!(),
                 }

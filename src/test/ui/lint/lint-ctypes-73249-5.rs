@@ -1,16 +1,15 @@
-// revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
-#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
-//[full_tait]~^ WARN incomplete
+#![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
 
-pub trait Baz { }
+pub trait Baz {}
 
-impl Baz for u32 { }
+impl Baz for u32 {}
 
 type Qux = impl Baz;
 
-fn assign() -> Qux { 3 }
+fn assign() -> Qux {
+    3
+}
 
 #[repr(transparent)]
 pub struct A {

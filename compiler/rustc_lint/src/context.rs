@@ -370,7 +370,7 @@ impl LintStore {
                 match level {
                     Level::Allow => "-A",
                     Level::Warn => "-W",
-                    Level::ForceWarn => "--force-warns",
+                    Level::ForceWarn => "--force-warn",
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
                 },
@@ -481,17 +481,17 @@ impl LintStore {
 
     fn no_lint_suggestion(&self, lint_name: &str) -> CheckLintNameResult<'_> {
         let name_lower = lint_name.to_lowercase();
-        let symbols =
-            self.get_lints().iter().map(|l| Symbol::intern(&l.name_lower())).collect::<Vec<_>>();
 
         if lint_name.chars().any(char::is_uppercase) && self.find_lints(&name_lower).is_ok() {
             // First check if the lint name is (partly) in upper case instead of lower case...
-            CheckLintNameResult::NoLint(Some(Symbol::intern(&name_lower)))
-        } else {
-            // ...if not, search for lints with a similar name
-            let suggestion = find_best_match_for_name(&symbols, Symbol::intern(&name_lower), None);
-            CheckLintNameResult::NoLint(suggestion)
+            return CheckLintNameResult::NoLint(Some(Symbol::intern(&name_lower)));
         }
+        // ...if not, search for lints with a similar name
+        let groups = self.lint_groups.keys().copied().map(Symbol::intern);
+        let lints = self.lints.iter().map(|l| Symbol::intern(&l.name_lower()));
+        let names: Vec<Symbol> = groups.chain(lints).collect();
+        let suggestion = find_best_match_for_name(&names, Symbol::intern(&name_lower), None);
+        CheckLintNameResult::NoLint(suggestion)
     }
 
     fn check_tool_name_for_backwards_compat(
@@ -732,6 +732,30 @@ pub trait LintContext: Sized {
                         "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
                         " ".into(),
                         Applicability::MachineApplicable,
+                    );
+                }
+                BuiltinLintDiagnostics::UnusedBuiltinAttribute {
+                    attr_name,
+                    macro_name,
+                    invoc_span
+                } => {
+                    db.span_note(
+                        invoc_span,
+                        &format!("the built-in attribute `{attr_name}` will be ignored, since it's applied to the macro invocation `{macro_name}`")
+                    );
+                }
+                BuiltinLintDiagnostics::TrailingMacro(is_trailing, name) => {
+                    if is_trailing {
+                        db.note("macro invocations at the end of a block are treated as expressions");
+                        db.note(&format!("to ignore the value produced by the macro, add a semicolon after the invocation of `{name}`"));
+                    }
+                }
+                BuiltinLintDiagnostics::BreakWithLabelAndLoop(span) => {
+                    db.multipart_suggestion(
+                        "wrap this expression in parentheses",
+                        vec![(span.shrink_to_lo(), "(".to_string()),
+                             (span.shrink_to_hi(), ")".to_string())],
+                        Applicability::MachineApplicable
                     );
                 }
             }

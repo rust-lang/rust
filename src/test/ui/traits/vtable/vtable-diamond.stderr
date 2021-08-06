@@ -1,0 +1,35 @@
+error: Vtable entries for `<S as D>`: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method(<S as A>::foo_a),
+    Method(<S as B>::foo_b),
+    Method(<S as C>::foo_c),
+    TraitVPtr(<S as C>),
+    Method(<S as D>::foo_d),
+]
+  --> $DIR/vtable-diamond.rs:21:1
+   |
+LL | / trait D: B + C {
+LL | |
+LL | |     fn foo_d(&self) {}
+LL | | }
+   | |_^
+
+error: Vtable entries for `<S as C>`: [
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Method(<S as A>::foo_a),
+    Method(<S as C>::foo_c),
+]
+  --> $DIR/vtable-diamond.rs:15:1
+   |
+LL | / trait C: A {
+LL | |
+LL | |     fn foo_c(&self) {}
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

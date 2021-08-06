@@ -1,4 +1,4 @@
-// compile-flags: --force-warns elided_lifetimes_in_paths -Zunstable-options
+// compile-flags: --force-warn elided_lifetimes_in_paths -Zunstable-options
 // check-pass
 
 struct Foo<'a> {

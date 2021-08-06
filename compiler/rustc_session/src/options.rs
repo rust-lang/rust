@@ -135,7 +135,6 @@ top_level_options!(
         debuginfo: DebugInfo [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED_NO_CRATE_HASH],
         lint_cap: Option<lint::Level> [TRACKED_NO_CRATE_HASH],
-        force_warns: Vec<String> [TRACKED_NO_CRATE_HASH],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
@@ -685,7 +684,7 @@ mod parse {
             Some(v) => v,
         };
 
-        *slot = Some(match v.trim_end_matches("s") {
+        *slot = Some(match v.trim_end_matches('s') {
             "statement" | "stmt" => MirSpanview::Statement,
             "terminator" | "term" => MirSpanview::Terminator,
             "block" | "basicblock" => MirSpanview::Block,
@@ -1149,6 +1148,8 @@ options! {
         (default: no)"),
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes for LLVM >= 12, otherwise no)"),
     new_llvm_pass_manager: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1171,6 +1172,8 @@ options! {
         "compile without linking"),
     no_parallel_llvm: bool = (false, parse_no_flag, [UNTRACKED],
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
+    no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
+        "prevent automatic injection of the profiler_builtins crate"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
@@ -1216,8 +1219,8 @@ options! {
     profile_emit: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "file path to emit profiling data at runtime when using 'profile' \
         (default based on relative source path)"),
-    profiler_runtime: Option<String> = (Some(String::from("profiler_builtins")), parse_opt_string, [TRACKED],
-        "name of the profiler runtime crate to automatically inject, or None to disable"),
+    profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
+        "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     query_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -1251,7 +1254,7 @@ options! {
         "specify the events recorded by the self profiler;
         for example: `-Z self-profile-events=default,query-keys`
         all options: none, all, default, generic-activity, query-provider, query-cache-hit
-                     query-blocked, incr-cache-load, query-keys, function-args, args, llvm"),
+                     query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm"),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make the current crate share its generic instantiations"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
@@ -1309,7 +1312,7 @@ options! {
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "present the input source, unstable (and less-pretty) variants;
-        valid types are any of the types for `--pretty`, as well as:
+        `normal`, `identified`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
         `everybody_loops` (all function bodies replaced with `loop {}`),

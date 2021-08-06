@@ -72,7 +72,7 @@ use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
     ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -411,10 +411,20 @@ pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, 
 }
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
+///
+/// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     expr_path_res(cx, expr)
         .opt_def_id()
         .map_or(false, |id| match_def_path(cx, id, segments))
+}
+
+/// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
+/// diagnostic item.
+pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
+    expr_path_res(cx, expr)
+        .opt_def_id()
+        .map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -480,6 +490,9 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
 
     let (krate, first, path) = match *path {
         [krate, first, ref path @ ..] => (krate, first, path),
+        [primitive] => {
+            return PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy);
+        },
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
@@ -909,12 +922,8 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     if is_integer_literal(e, value) {
         return true;
     }
-    let map = cx.tcx.hir();
-    let parent_item = map.get_parent_item(e.hir_id);
-    if let Some((Constant::Int(v), _)) = map
-        .maybe_body_owned_by(parent_item)
-        .and_then(|body_id| constant(cx, cx.tcx.typeck_body(body_id), e))
-    {
+    let enclosing_body = cx.tcx.hir().local_def_id(cx.tcx.hir().enclosing_body_owner(e.hir_id));
+    if let Some((Constant::Int(v), _)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
         value == v
     } else {
         false
@@ -1041,18 +1050,14 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Struct(ref qpath, fields, _) => {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, fields.iter().map(|field| &*field.pat))
         },
-        PatKind::TupleStruct(ref qpath, pats, _) => {
-            is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats)
-        },
+        PatKind::TupleStruct(ref qpath, pats, _) => is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats),
         PatKind::Slice(head, middle, tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
                 rustc_ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
                 },
-                rustc_ty::Array(..) => {
-                    are_refutable(cx, head.iter().chain(middle).chain(tail.iter()))
-                },
+                rustc_ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter())),
                 _ => {
                     // unreachable!()
                     true
@@ -1239,11 +1244,21 @@ pub fn match_function_call<'tcx>(
 
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
 /// any.
+///
+/// Please use `match_any_diagnostic_items` if the targets are all diagnostic items.
 pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) -> Option<usize> {
     let search_path = cx.get_def_path(did);
     paths
         .iter()
         .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().copied()))
+}
+
+/// Checks if the given `DefId` matches any of provided diagnostic items. Returns the index of
+/// matching path, if any.
+pub fn match_any_diagnostic_items(cx: &LateContext<'_>, def_id: DefId, diag_items: &[Symbol]) -> Option<usize> {
+    diag_items
+        .iter()
+        .position(|item| cx.tcx.is_diagnostic_item(*item, def_id))
 }
 
 /// Checks if the given `DefId` matches the path.
@@ -1709,4 +1724,35 @@ pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
     }
 
     matches!(item.kind, ItemKind::Mod(..)) && item.ident.name.as_str().contains("test")
+}
+
+macro_rules! op_utils {
+    ($($name:ident $assign:ident)*) => {
+        /// Binary operation traits like `LangItem::Add`
+        pub static BINOP_TRAITS: &[LangItem] = &[$(LangItem::$name,)*];
+
+        /// Operator-Assign traits like `LangItem::AddAssign`
+        pub static OP_ASSIGN_TRAITS: &[LangItem] = &[$(LangItem::$assign,)*];
+
+        /// Converts `BinOpKind::Add` to `(LangItem::Add, LangItem::AddAssign)`, for example
+        pub fn binop_traits(kind: hir::BinOpKind) -> Option<(LangItem, LangItem)> {
+            match kind {
+                $(hir::BinOpKind::$name => Some((LangItem::$name, LangItem::$assign)),)*
+                _ => None,
+            }
+        }
+    };
+}
+
+op_utils! {
+    Add    AddAssign
+    Sub    SubAssign
+    Mul    MulAssign
+    Div    DivAssign
+    Rem    RemAssign
+    BitXor BitXorAssign
+    BitAnd BitAndAssign
+    BitOr  BitOrAssign
+    Shl    ShlAssign
+    Shr    ShrAssign
 }

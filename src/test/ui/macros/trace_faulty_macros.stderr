@@ -60,11 +60,13 @@ LL |     let a = pat_macro!();
    |
    = note: this error originates in the macro `pat_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0774]: `derive` may only be applied to structs, enums and unions
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
   --> $DIR/trace_faulty_macros.rs:42:1
    |
 LL | #[derive(Debug)]
-   | ^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^ not applicable here
+LL | fn use_derive_macro_as_attr() {}
+   | -------------------------------- not a `struct`, `enum` or `union`
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:36:13

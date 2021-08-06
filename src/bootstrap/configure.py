@@ -57,6 +57,7 @@ o("cargo-native-static", "build.cargo-native-static", "static native libraries i
 o("profiler", "build.profiler", "build the profiler runtime")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
+o("clang", "llvm.clang", "build clang")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
 o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
@@ -72,6 +73,7 @@ v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 o("optimize", "rust.optimize", "build optimized rust code")
 o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
 o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
+o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface")
 o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
 o("llvm-release-debuginfo", "llvm.release-debuginfo", "build LLVM with debugger metadata")
 v("debuginfo-level", "rust.debuginfo-level", "debuginfo level for Rust code")
@@ -160,6 +162,7 @@ o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of tw
 o("extended", "build.extended", "build an extended rust tool set")
 
 v("tools", None, "List of extended tools will be installed")
+v("codegen-backends", None, "List of codegen backends to build")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
 v("host", None, "GNUs ./configure syntax LLVM host triples")
 v("target", None, "GNUs ./configure syntax LLVM target triples")
@@ -339,6 +342,8 @@ for key in known_args:
         set('target.{}.llvm-filecheck'.format(build()), value)
     elif option.name == 'tools':
         set('build.tools', value.split(','))
+    elif option.name == 'codegen-backends':
+        set('rust.codegen-backends', value.split(','))
     elif option.name == 'host':
         set('build.host', value.split(','))
     elif option.name == 'target':

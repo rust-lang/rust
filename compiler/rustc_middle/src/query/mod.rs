@@ -230,6 +230,12 @@ rustc_queries! {
         desc { |tcx| "building THIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
     }
 
+    /// Create a THIR tree for debugging.
+    query thir_tree(key: ty::WithOptConstParam<LocalDefId>) -> String {
+        no_hash
+        desc { |tcx| "constructing THIR tree for `{}`", tcx.def_path_str(key.did.to_def_id()) }
+    }
+
     /// Set of all the `DefId`s in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.
@@ -969,6 +975,11 @@ rustc_queries! {
     query vtable_entries(key: ty::PolyTraitRef<'tcx>)
                         -> &'tcx [ty::VtblEntry<'tcx>] {
         desc { |tcx| "finding all vtable entries for trait {}", tcx.def_path_str(key.def_id()) }
+    }
+
+    query vtable_trait_upcasting_coercion_new_vptr_slot(key: (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>)) -> Option<usize> {
+        desc { |tcx| "finding the slot within vtable for trait {} vtable ptr during trait upcasting coercion from {} vtable",
+            tcx.def_path_str(key.1.def_id()), tcx.def_path_str(key.0.def_id()) }
     }
 
     query codegen_fulfill_obligation(
@@ -1722,7 +1733,7 @@ rustc_queries! {
     /// span) for an *existing* error. Therefore, it is best-effort, and may never handle
     /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
     /// because the `ty::Ty`-based wfcheck is always run.
-    query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, hir::HirId)) -> Option<traits::ObligationCause<'tcx>> {
+    query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, traits::WellFormedLoc)) -> Option<traits::ObligationCause<'tcx>> {
         eval_always
         no_hash
         desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }

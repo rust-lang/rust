@@ -5,7 +5,8 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `as` conversions.
+    /// ### What it does
+    /// Checks for usage of `as` conversions.
     ///
     /// Note that this lint is specialized in linting *every single* use of `as`
     /// regardless of whether good alternatives exist or not.
@@ -15,14 +16,13 @@ declare_clippy_lint! {
     /// There is a good explanation the reason why this lint should work in this way and how it is useful
     /// [in this issue](https://github.com/rust-lang/rust-clippy/issues/5122).
     ///
-    /// **Why is this bad?** `as` conversions will perform many kinds of
+    /// ### Why is this bad?
+    /// `as` conversions will perform many kinds of
     /// conversions, including silently lossy conversions and dangerous coercions.
     /// There are cases when it makes sense to use `as`, so the lint is
     /// Allow by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// let a: u32;
     /// ...

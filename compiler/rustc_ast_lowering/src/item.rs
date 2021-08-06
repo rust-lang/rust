@@ -82,15 +82,11 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
             AssocCtxt::Trait => {
                 let hir_item = lctx.lower_trait_item(item);
-                let id = hir_item.trait_item_id();
-                lctx.trait_items.insert(id, hir_item);
-                lctx.modules.entry(lctx.current_module).or_default().trait_items.insert(id);
+                lctx.insert_trait_item(hir_item);
             }
             AssocCtxt::Impl => {
                 let hir_item = lctx.lower_impl_item(item);
-                let id = hir_item.impl_item_id();
-                lctx.impl_items.insert(id, hir_item);
-                lctx.modules.entry(lctx.current_module).or_default().impl_items.insert(id);
+                lctx.insert_impl_item(hir_item);
             }
         });
 
@@ -101,9 +97,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_foreign_item(item);
-            let id = hir_item.foreign_item_id();
-            lctx.foreign_items.insert(id, hir_item);
-            lctx.modules.entry(lctx.current_module).or_default().foreign_items.insert(id);
+            lctx.insert_foreign_item(hir_item);
         });
 
         visit::walk_foreign_item(self, item);
@@ -123,7 +117,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
-        let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
+        let parent_generics = match self.owners[parent_hir_id.def_id].unwrap().expect_item().kind {
             hir::ItemKind::Impl(hir::Impl { ref generics, .. })
             | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
             _ => &[],
@@ -224,7 +218,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let hir_id = self.lower_node_id(i.id);
                 self.lower_attrs(hir_id, &i.attrs);
                 let body = P(self.lower_mac_args(body));
-                self.exported_macros.push(hir::MacroDef {
+                self.insert_macro_def(hir::MacroDef {
                     ident,
                     vis,
                     def_id: hir_id.expect_owner(),
@@ -343,9 +337,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // opaque type Foo1: Trait
                 let ty = self.lower_ty(
                     ty,
-                    ImplTraitContext::OtherOpaqueTy {
+                    ImplTraitContext::TypeAliasesOpaqueTy {
                         capturable_lifetimes: &mut FxHashSet::default(),
-                        origin: hir::OpaqueTyOrigin::TyAlias,
                     },
                 );
                 let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
@@ -484,17 +477,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         body: Option<&Expr>,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let mut capturable_lifetimes;
-        let itctx = if self.sess.features_untracked().impl_trait_in_bindings {
-            capturable_lifetimes = FxHashSet::default();
-            ImplTraitContext::OtherOpaqueTy {
-                capturable_lifetimes: &mut capturable_lifetimes,
-                origin: hir::OpaqueTyOrigin::Misc,
-            }
-        } else {
-            ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
-        };
-        let ty = self.lower_ty(ty, itctx);
+        let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Binding));
         (ty, self.lower_const_body(span, body))
     }
 
@@ -926,9 +909,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(ty) => {
                         let ty = self.lower_ty(
                             ty,
-                            ImplTraitContext::OtherOpaqueTy {
+                            ImplTraitContext::TypeAliasesOpaqueTy {
                                 capturable_lifetimes: &mut FxHashSet::default(),
-                                origin: hir::OpaqueTyOrigin::TyAlias,
                             },
                         );
                         hir::ImplItemKind::TyAlias(ty)
@@ -1385,50 +1367,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> GenericsCtor<'hir> {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
-        // FIXME: this could probably be done with less rightward drift. It also looks like two
-        // control paths where `report_error` is called are the only paths that advance to after the
-        // match statement, so the error reporting could probably just be moved there.
         let mut add_bounds: NodeMap<Vec<_>> = Default::default();
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
                     if let GenericBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
-                        let report_error = |this: &mut Self| {
-                            this.diagnostic().span_err(
-                                bound_pred.bounded_ty.span,
-                                "`?Trait` bounds are only permitted at the \
-                                 point where a type parameter is declared",
-                            );
-                        };
                         // Check if the where clause type is a plain type parameter.
-                        match bound_pred.bounded_ty.kind {
-                            TyKind::Path(None, ref path)
-                                if path.segments.len() == 1
-                                    && bound_pred.bound_generic_params.is_empty() =>
+                        match self
+                            .resolver
+                            .get_partial_res(bound_pred.bounded_ty.id)
+                            .map(|d| (d.base_res(), d.unresolved_segments()))
+                        {
+                            Some((Res::Def(DefKind::TyParam, def_id), 0))
+                                if bound_pred.bound_generic_params.is_empty() =>
                             {
-                                if let Some(Res::Def(DefKind::TyParam, def_id)) = self
-                                    .resolver
-                                    .get_partial_res(bound_pred.bounded_ty.id)
-                                    .map(|d| d.base_res())
-                                {
-                                    if let Some(def_id) = def_id.as_local() {
-                                        for param in &generics.params {
-                                            if let GenericParamKind::Type { .. } = param.kind {
-                                                if def_id == self.resolver.local_def_id(param.id) {
-                                                    add_bounds
-                                                        .entry(param.id)
-                                                        .or_default()
-                                                        .push(bound.clone());
-                                                    continue 'next_bound;
-                                                }
-                                            }
-                                        }
+                                for param in &generics.params {
+                                    if def_id == self.resolver.local_def_id(param.id).to_def_id() {
+                                        add_bounds.entry(param.id).or_default().push(bound.clone());
+                                        continue 'next_bound;
                                     }
                                 }
-                                report_error(self)
                             }
-                            _ => report_error(self),
+                            _ => {}
                         }
+                        self.diagnostic().span_err(
+                            bound_pred.bounded_ty.span,
+                            "`?Trait` bounds are only permitted at the \
+                                 point where a type parameter is declared",
+                        );
                     }
                 }
             }
@@ -1477,16 +1443,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::disallowed(),
                         ),
                         bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
-                        bounds: this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| {
-                            match *bound {
-                                // Ignore `?Trait` bounds.
-                                // They were copied into type parameters already.
-                                GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
-                                _ => Some(
-                                    this.lower_param_bound(bound, ImplTraitContext::disallowed()),
-                                ),
-                            }
-                        })),
+                        bounds: this.arena.alloc_from_iter(bounds.iter().map(
+                            |bound| match bound {
+                                // We used to ignore `?Trait` bounds, as they were copied into type
+                                // parameters already, but we need to keep them around only for
+                                // diagnostics when we suggest removal of `?Sized` bounds. See
+                                // `suggest_constraining_type_param`. This will need to change if
+                                // we ever allow something *other* than `?Sized`.
+                                GenericBound::Trait(p, TraitBoundModifier::Maybe) => {
+                                    hir::GenericBound::Unsized(p.span)
+                                }
+                                _ => this.lower_param_bound(bound, ImplTraitContext::disallowed()),
+                            },
+                        )),
                         span,
                     })
                 })

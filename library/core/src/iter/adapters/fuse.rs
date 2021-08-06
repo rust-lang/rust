@@ -2,6 +2,7 @@ use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::{
     DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNoCoerce,
 };
 use crate::ops::Try;
 
@@ -131,7 +132,7 @@ where
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
-        Self: TrustedRandomAccess,
+        Self: TrustedRandomAccessNoCoerce,
     {
         match self.iter {
             // SAFETY: the caller must uphold the contract for
@@ -221,9 +222,13 @@ unsafe impl<I> TrustedLen for Fuse<I> where I: TrustedLen {}
 //
 // This is safe to implement as `Fuse` is just forwarding these to the wrapped iterator `I`, which
 // preserves these properties.
-unsafe impl<I> TrustedRandomAccess for Fuse<I>
+unsafe impl<I> TrustedRandomAccess for Fuse<I> where I: TrustedRandomAccess {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNoCoerce for Fuse<I>
 where
-    I: TrustedRandomAccess,
+    I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
 }

@@ -1,9 +1,8 @@
 [package]
 name = "clippy_lints"
 # begin automatic update
-version = "0.1.55"
+version = "0.1.56"
 # end automatic update
-authors = ["The Rust Clippy Developers"]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"

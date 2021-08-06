@@ -42,20 +42,20 @@ use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** The lint checks for `if`-statements appearing in loops
+    /// ### What it does
+    /// The lint checks for `if`-statements appearing in loops
     /// that contain a `continue` statement in either their main blocks or their
     /// `else`-blocks, when omitting the `else`-block possibly with some
     /// rearrangement of code can make the code easier to understand.
     ///
-    /// **Why is this bad?** Having explicit `else` blocks for `if` statements
+    /// ### Why is this bad?
+    /// Having explicit `else` blocks for `if` statements
     /// containing `continue` in their THEN branch adds unnecessary branching and
     /// nesting to the code. Having an else block containing just `continue` can
     /// also be better written by grouping the statements following the whole `if`
     /// statement within the THEN block and omitting the else block completely.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn condition() -> bool { false }
     /// # fn update_condition() {}
@@ -273,6 +273,8 @@ struct LintData<'a> {
     block_stmts: &'a [ast::Stmt],
 }
 
+const MSG_REDUNDANT_CONTINUE_EXPRESSION: &str = "this `continue` expression is redundant";
+
 const MSG_REDUNDANT_ELSE_BLOCK: &str = "this `else` block is redundant";
 
 const MSG_ELSE_BLOCK_NOT_NEEDED: &str = "there is no need for an explicit `else` block for this `if` \
@@ -282,6 +284,8 @@ const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "consider dropping the `else` clause
                                              follows (in the loop) with the `if` block";
 
 const DROP_ELSE_BLOCK_MSG: &str = "consider dropping the `else` clause";
+
+const DROP_CONTINUE_EXPRESSION_MSG: &str = "consider dropping the `continue` expression";
 
 fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
@@ -364,6 +368,22 @@ fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: 
 }
 
 fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
+    if_chain! {
+        if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind;
+        if let Some(last_stmt) = loop_block.stmts.last();
+        if let ast::StmtKind::Expr(inner_expr) | ast::StmtKind::Semi(inner_expr) = &last_stmt.kind;
+        if let ast::ExprKind::Continue(_) = inner_expr.kind;
+        then {
+            span_lint_and_help(
+                cx,
+                NEEDLESS_CONTINUE,
+                last_stmt.span,
+                MSG_REDUNDANT_CONTINUE_EXPRESSION,
+                None,
+                DROP_CONTINUE_EXPRESSION_MSG,
+            );
+        }
+    }
     with_loop_block(expr, |loop_block, label| {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {

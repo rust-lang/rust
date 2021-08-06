@@ -26,10 +26,6 @@ pub mod fs;
 pub mod io;
 pub mod memchr;
 pub mod mutex;
-// `doc` is required because `sys/mod.rs` imports `unix/ext/mod.rs` on Windows
-// when generating documentation.
-#[cfg(any(doc, not(windows)))]
-pub mod os_str_bytes;
 pub mod process;
 pub mod remutex;
 #[macro_use]

@@ -156,6 +156,8 @@ crate struct Options {
     crate run_check: bool,
     /// Whether doctests should emit unused externs
     crate json_unused_externs: bool,
+    /// Whether to skip capturing stdout and stderr of tests.
+    crate nocapture: bool,
 }
 
 impl fmt::Debug for Options {
@@ -199,6 +201,7 @@ impl fmt::Debug for Options {
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
+            .field("nocapture", &self.nocapture)
             .finish()
     }
 }
@@ -273,6 +276,8 @@ crate struct RenderOptions {
     crate show_type_layout: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
     crate emit: Vec<EmitType>,
+    /// If `true`, HTML source pages will generate links for items to their definition.
+    crate generate_link_to_definition: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -456,7 +461,31 @@ impl Options {
                 })
                 .collect(),
         ];
-        let default_settings = default_settings.into_iter().flatten().collect();
+        let default_settings = default_settings
+            .into_iter()
+            .flatten()
+            .map(
+                // The keys here become part of `data-` attribute names in the generated HTML.  The
+                // browser does a strange mapping when converting them into attributes on the
+                // `dataset` property on the DOM HTML Node:
+                //   https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/dataset
+                //
+                // The original key values we have are the same as the DOM storage API keys and the
+                // command line options, so contain `-`.  Our Javascript needs to be able to look
+                // these values up both in `dataset` and in the storage API, so it needs to be able
+                // to convert the names back and forth.  Despite doing this kebab-case to
+                // StudlyCaps transformation automatically, the JS DOM API does not provide a
+                // mechanism for doing the just transformation on a string.  So we want to avoid
+                // the StudlyCaps representation in the `dataset` property.
+                //
+                // We solve this by replacing all the `-`s with `_`s.  We do that here, when we
+                // generate the `data-` attributes, and in the JS, when we look them up.  (See
+                // `getSettingValue` in `storage.js.`) Converting `-` to `_` is simple in JS.
+                //
+                // The values will be HTML-escaped by the default Tera escaping.
+                |(k, v)| (k.replace('-', "_"), v),
+            )
+            .collect();
 
         let test_args = matches.opt_strs("test-args");
         let test_args: Vec<String> =
@@ -627,8 +656,18 @@ impl Options {
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
+        let nocapture = matches.opt_present("nocapture");
+        let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
 
-        let (lint_opts, describe_lints, lint_cap, _) =
+        if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
+            diag.struct_err(
+                "--generate-link-to-definition option can only be used with HTML output format",
+            )
+            .emit();
+            return Err(1);
+        }
+
+        let (lint_opts, describe_lints, lint_cap) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
 
         Ok(Options {
@@ -665,6 +704,7 @@ impl Options {
             test_builder,
             run_check,
             no_run,
+            nocapture,
             render_options: RenderOptions {
                 output,
                 external_html,
@@ -692,6 +732,7 @@ impl Options {
                     crate_name.as_deref(),
                 ),
                 emit,
+                generate_link_to_definition,
             },
             crate_name,
             output_format,

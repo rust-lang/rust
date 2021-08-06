@@ -906,7 +906,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     } else {
                         return FfiUnsafe {
                             ty,
-                            reason: format!("box cannot be represented as a single pointer"),
+                            reason: "box cannot be represented as a single pointer".to_string(),
                             help: None,
                         };
                     }

@@ -12,7 +12,7 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer,
+    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
     ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
     UnsupportedOpInfo,
 };
@@ -28,7 +28,7 @@ use crate::ty;
 pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Vec<u8>,
+    bytes: Box<[u8]>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -53,6 +53,8 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
 pub enum AllocError {
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
+    /// Partially overwriting a pointer.
+    PartialPointerOverwrite(Size),
     /// Using uninitialized data where it is not allowed.
     InvalidUninitBytes(Option<UninitBytesAccess>),
 }
@@ -60,11 +62,13 @@ pub type AllocResult<T = ()> = Result<T, AllocError>;
 
 impl AllocError {
     pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpError<'tcx> {
+        use AllocError::*;
         match self {
-            AllocError::ReadPointerAsBytes => {
-                InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes)
-            }
-            AllocError::InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
+            ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
+            PartialPointerOverwrite(offset) => InterpError::Unsupported(
+                UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
+            ),
+            InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
                 UndefinedBehaviorInfo::InvalidUninitBytes(info.map(|b| (alloc_id, b))),
             ),
         }
@@ -108,7 +112,7 @@ impl<Tag> Allocation<Tag> {
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let bytes = slice.into().into_owned();
+        let bytes = Box::<[u8]>::from(slice.into());
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -127,8 +131,7 @@ impl<Tag> Allocation<Tag> {
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
     pub fn uninit(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'static, Self> {
-        let mut bytes = Vec::new();
-        bytes.try_reserve(size.bytes_usize()).map_err(|_| {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-determinstic here because all uses of const
@@ -142,7 +145,8 @@ impl<Tag> Allocation<Tag> {
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
-        bytes.resize(size.bytes_usize(), 0);
+        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
+        let bytes = unsafe { bytes.assume_init() };
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),
@@ -218,7 +222,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 }
 
 /// Byte accessors.
-impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are uninitialized
     /// or pointer bytes. You should never call this, call `get_bytes` or
     /// `get_bytes_with_uninit_and_ptr` instead,
@@ -275,30 +279,35 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// It is the caller's responsibility to check bounds and alignment beforehand.
     /// Most likely, you want to use the `PlaceTy` and `OperandTy`-based methods
     /// on `InterpCx` instead.
-    pub fn get_bytes_mut(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> &mut [u8] {
+    pub fn get_bytes_mut(
+        &mut self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+    ) -> AllocResult<&mut [u8]> {
         self.mark_init(range, true);
-        self.clear_relocations(cx, range);
+        self.clear_relocations(cx, range)?;
 
-        &mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
+        Ok(&mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
     }
 
     /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this memory.
-    pub fn get_bytes_mut_ptr(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> *mut [u8] {
+    pub fn get_bytes_mut_ptr(
+        &mut self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+    ) -> AllocResult<*mut [u8]> {
         self.mark_init(range, true);
-        // This also clears relocations that just overlap with the written range. So writing to some
-        // byte can de-initialize its neighbors! See
-        // <https://github.com/rust-lang/rust/issues/87184> for details.
-        self.clear_relocations(cx, range);
+        self.clear_relocations(cx, range)?;
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
         let begin_ptr = self.bytes.as_mut_ptr().wrapping_add(range.start.bytes_usize());
         let len = range.end().bytes_usize() - range.start.bytes_usize();
-        ptr::slice_from_raw_parts_mut(begin_ptr, len)
+        Ok(ptr::slice_from_raw_parts_mut(begin_ptr, len))
     }
 }
 
 /// Reading and writing.
-impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
     /// relocation. If `allow_uninit_and_ptr` is `false`, also enforces that the memory in the
     /// given range contains neither relocations nor uninitialized bytes.
@@ -395,7 +404,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         };
 
         let endian = cx.data_layout().endian;
-        let dst = self.get_bytes_mut(cx, range);
+        let dst = self.get_bytes_mut(cx, range)?;
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation.
@@ -433,13 +442,16 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// uninitialized. This is a somewhat odd "spooky action at a distance",
     /// but it allows strictly more code to run than if we would just error
     /// immediately in that case.
-    fn clear_relocations(&mut self, cx: &impl HasDataLayout, range: AllocRange) {
+    fn clear_relocations(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult
+    where
+        Tag: Provenance,
+    {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
             let relocations = self.get_relocations(cx, range);
             if relocations.is_empty() {
-                return;
+                return Ok(());
             }
 
             (
@@ -450,17 +462,27 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         let start = range.start;
         let end = range.end();
 
-        // Mark parts of the outermost relocations as uninitialized if they partially fall outside the
-        // given range.
+        // We need to handle clearing the relocations from parts of a pointer. See
+        // <https://github.com/rust-lang/rust/issues/87184> for details.
         if first < start {
+            if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
+                return Err(AllocError::PartialPointerOverwrite(first));
+            }
             self.init_mask.set_range(first, start, false);
         }
         if last > end {
+            if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
+                return Err(AllocError::PartialPointerOverwrite(
+                    last - cx.data_layout().pointer_size,
+                ));
+            }
             self.init_mask.set_range(end, last, false);
         }
 
         // Forget all the relocations.
         self.relocations.0.remove_range(first..last);
+
+        Ok(())
     }
 
     /// Errors if there are relocations overlapping with the edges of the

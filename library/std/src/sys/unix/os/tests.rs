@@ -1,12 +1,14 @@
 use super::*;
 
 #[test]
+#[cfg(not(target_os = "vxworks"))]
 fn test_glibc_version() {
     // This mostly just tests that the weak linkage doesn't panic wildly...
     glibc_version();
 }
 
 #[test]
+#[cfg(not(target_os = "vxworks"))]
 fn test_parse_glibc_version() {
     let cases = [
         ("0.0", Some((0, 0))),

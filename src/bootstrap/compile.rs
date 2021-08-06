@@ -2,8 +2,8 @@
 //! library.
 //!
 //! This module contains some of the real meat in the rustbuild build system
-//! which is where Cargo is used to compiler the standard library, libtest, and
-//! compiler. This module is also responsible for assembling the sysroot as it
+//! which is where Cargo is used to compile the standard library, libtest, and
+//! the compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
@@ -78,6 +78,8 @@ impl Step for Std {
             builder.ensure(StdLink { compiler, target_compiler: compiler, target });
             return;
         }
+
+        builder.update_submodule(&Path::new("library").join("stdarch"));
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 

@@ -1,0 +1,17 @@
+error[E0107]: this function takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/explicit-generic-args-for-impl.rs:6:5
+   |
+LL |     foo::<str, String>("".to_string());
+   |     ^^^        ------ help: remove this generic argument
+   |     |
+   |     expected 1 generic argument
+   |
+note: function defined here, with 1 generic parameter: `T`
+  --> $DIR/explicit-generic-args-for-impl.rs:3:4
+   |
+LL | fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
+   |    ^^^ -
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

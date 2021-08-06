@@ -248,6 +248,7 @@ E0493: include_str!("./error_codes/E0493.md"),
 E0495: include_str!("./error_codes/E0495.md"),
 E0496: include_str!("./error_codes/E0496.md"),
 E0497: include_str!("./error_codes/E0497.md"),
+E0498: include_str!("./error_codes/E0498.md"),
 E0499: include_str!("./error_codes/E0499.md"),
 E0500: include_str!("./error_codes/E0500.md"),
 E0501: include_str!("./error_codes/E0501.md"),
@@ -287,6 +288,7 @@ E0539: include_str!("./error_codes/E0539.md"),
 E0541: include_str!("./error_codes/E0541.md"),
 E0542: include_str!("./error_codes/E0542.md"),
 E0543: include_str!("./error_codes/E0543.md"),
+E0544: include_str!("./error_codes/E0544.md"),
 E0545: include_str!("./error_codes/E0545.md"),
 E0546: include_str!("./error_codes/E0546.md"),
 E0547: include_str!("./error_codes/E0547.md"),
@@ -357,6 +359,7 @@ E0621: include_str!("./error_codes/E0621.md"),
 E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
+E0625: include_str!("./error_codes/E0625.md"),
 E0626: include_str!("./error_codes/E0626.md"),
 E0627: include_str!("./error_codes/E0627.md"),
 E0628: include_str!("./error_codes/E0628.md"),
@@ -418,6 +421,7 @@ E0716: include_str!("./error_codes/E0716.md"),
 E0718: include_str!("./error_codes/E0718.md"),
 E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
+E0722: include_str!("./error_codes/E0722.md"),
 E0724: include_str!("./error_codes/E0724.md"),
 E0725: include_str!("./error_codes/E0725.md"),
 E0727: include_str!("./error_codes/E0727.md"),
@@ -449,6 +453,7 @@ E0753: include_str!("./error_codes/E0753.md"),
 E0754: include_str!("./error_codes/E0754.md"),
 E0755: include_str!("./error_codes/E0755.md"),
 E0756: include_str!("./error_codes/E0756.md"),
+E0757: include_str!("./error_codes/E0757.md"),
 E0758: include_str!("./error_codes/E0758.md"),
 E0759: include_str!("./error_codes/E0759.md"),
 E0760: include_str!("./error_codes/E0760.md"),
@@ -601,14 +606,12 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0498,  // malformed plugin attribute
     E0514, // metadata version mismatch
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     // two dependencies have same (crate-name, disambiguator) but different SVH
     E0523,
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
-    E0544, // multiple stability levels
 //  E0548, // replaced with a generic attribute input check
 //  E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
@@ -620,7 +623,6 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
-    E0625, // thread-local statics cannot be accessed at compile-time
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
@@ -634,10 +636,8 @@ E0783: include_str!("./error_codes/E0783.md"),
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
-    E0722, // Malformed `#[optimize]` attribute
 //    E0723, unstable feature in `const` context
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
-    E0757, // `#[ffi_const]` functions cannot be `#[ffi_pure]`
     E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
 }

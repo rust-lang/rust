@@ -32,7 +32,7 @@ use clippy_utils::{
 };
 
 /// This is the output file of the lint collector.
-const OUTPUT_FILE: &str = "../util/gh-pages/metadata_collection.json";
+const OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
@@ -68,7 +68,7 @@ const CLIPPY_LINT_GROUP_PREFIX: &str = "clippy::";
 macro_rules! CONFIGURATION_SECTION_TEMPLATE {
     () => {
         r#"
-**Configuration**
+### Configuration
 This lint has the following configuration variables:
 
 {configurations}
@@ -114,20 +114,25 @@ const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "Cl
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
 const APPLICABILITY_NAME_INDEX: usize = 2;
+/// This applicability will be set for unresolved applicability values.
+const APPLICABILITY_UNRESOLVED_STR: &str = "Unresolved";
 
 declare_clippy_lint! {
-    /// **What it does:** Collects metadata about clippy lints for the website.
+    /// ### What it does
+    /// Collects metadata about clippy lints for the website.
     ///
     /// This lint will be used to report problems of syntax parsing. You should hopefully never
     /// see this but never say never I guess ^^
     ///
-    /// **Why is this bad?** This is not a bad thing but definitely a hacky way to do it. See
+    /// ### Why is this bad?
+    /// This is not a bad thing but definitely a hacky way to do it. See
     /// issue [#4310](https://github.com/rust-lang/rust-clippy/issues/4310) for a discussion
     /// about the implementation.
     ///
-    /// **Known problems:** Hopefully none. It would be pretty uncool to have a problem here :)
+    /// ### Known problems
+    /// Hopefully none. It would be pretty uncool to have a problem here :)
     ///
-    /// **Example output:**
+    /// ### Example output
     /// ```json,ignore
     /// {
     ///     "id": "internal_metadata_collector",
@@ -136,7 +141,7 @@ declare_clippy_lint! {
     ///         "line": 1
     ///     },
     ///     "group": "clippy::internal",
-    ///     "docs": " **What it does:** Collects metadata about clippy lints for the website. [...] "
+    ///     "docs": " ### What it does\nCollects metadata about clippy lints for the website. [...] "
     /// }
     /// ```
     pub INTERNAL_METADATA_COLLECTOR,
@@ -192,7 +197,7 @@ impl Drop for MetadataCollector {
         let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
         lints
             .iter_mut()
-            .for_each(|x| x.applicability = applicability_info.remove(&x.id));
+            .for_each(|x| x.applicability = Some(applicability_info.remove(&x.id).unwrap_or_default()));
 
         // Outputting
         if Path::new(OUTPUT_FILE).exists() {
@@ -208,7 +213,7 @@ struct LintMetadata {
     id: String,
     id_span: SerializableSpan,
     group: String,
-    level: &'static str,
+    level: String,
     docs: String,
     /// This field is only used in the output and will only be
     /// mapped shortly before the actual output.
@@ -221,7 +226,7 @@ impl LintMetadata {
             id,
             id_span,
             group,
-            level,
+            level: level.to_string(),
             docs,
             applicability: None,
         }
@@ -269,14 +274,16 @@ impl Serialize for ApplicabilityInfo {
     where
         S: Serializer,
     {
-        let index = self.applicability.unwrap_or_default();
-
         let mut s = serializer.serialize_struct("ApplicabilityInfo", 2)?;
         s.serialize_field("is_multi_part_suggestion", &self.is_multi_part_suggestion)?;
-        s.serialize_field(
-            "applicability",
-            &paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX],
-        )?;
+        if let Some(index) = self.applicability {
+            s.serialize_field(
+                "applicability",
+                &paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX],
+            )?;
+        } else {
+            s.serialize_field("applicability", APPLICABILITY_UNRESOLVED_STR)?;
+        }
         s.end()
     }
 }
@@ -374,7 +381,8 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// Collecting lint declarations like:
     /// ```rust, ignore
     /// declare_clippy_lint! {
-    ///     /// **What it does:** Something IDK.
+    ///     /// ### What it does
+    ///     /// Something IDK.
     ///     pub SOME_LINT,
     ///     internal,
     ///     "Who am I?"
@@ -486,6 +494,13 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 /// ```
 ///
 /// Would result in `Hello world!\n=^.^=\n`
+///
+/// ---
+///
+/// This function may modify the doc comment to ensure that the string can be displayed using a
+/// markdown viewer in Clippy's lint list. The following modifications could be applied:
+/// * Removal of leading space after a new line. (Important to display tables)
+/// * Ensures that code blocks only contain language information
 fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
@@ -510,7 +525,12 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
                 continue;
             }
         }
-        docs.push_str(line);
+        // This removes the leading space that the macro translation introduces
+        if let Some(stripped_doc) = line.strip_prefix(' ') {
+            docs.push_str(stripped_doc);
+        } else if !line.is_empty() {
+            docs.push_str(line);
+        }
     }
     Some(docs)
 }

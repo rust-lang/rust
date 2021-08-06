@@ -1,4 +1,4 @@
-#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 #![feature(type_alias_impl_trait)]
 #![allow(incomplete_features)]
 
@@ -28,7 +28,7 @@ impl Bar for () {
     }
 }
 
-// FIXME(#86731): The below is illegal use of `min_type_alias_impl_trait`
+// FIXME(#86731): The below is illegal use of `type_alias_impl_trait`
 // but the compiler doesn't report it, we should fix it.
 pub type FooImpl = impl Foo;
 pub type BarImpl = impl Bar<Foo = FooImpl>;

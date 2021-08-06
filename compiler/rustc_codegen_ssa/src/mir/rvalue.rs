@@ -220,34 +220,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::Pointer(PointerCast::Unsize) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
-                        match operand.val {
+                        let (lldata, llextra) = match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer -- this is a
-                                // "trait-object-to-supertrait" coercion, for
-                                // example, `&'a fmt::Debug + Send => &'a fmt::Debug`.
-
-                                // HACK(eddyb) have to bitcast pointers
-                                // until LLVM removes pointee types.
-                                let lldata = bx.pointercast(
-                                    lldata,
-                                    bx.cx().scalar_pair_element_backend_type(cast, 0, true),
-                                );
-                                OperandValue::Pair(lldata, llextra)
+                                // "trait-object-to-supertrait" coercion.
+                                (lldata, Some(llextra))
                             }
                             OperandValue::Immediate(lldata) => {
                                 // "standard" unsize
-                                let (lldata, llextra) = base::unsize_thin_ptr(
-                                    &mut bx,
-                                    lldata,
-                                    operand.layout.ty,
-                                    cast.ty,
-                                );
-                                OperandValue::Pair(lldata, llextra)
+                                (lldata, None)
                             }
                             OperandValue::Ref(..) => {
                                 bug!("by-ref operand {:?} in `codegen_rvalue_operand`", operand);
                             }
-                        }
+                        };
+                        let (lldata, llextra) =
+                            base::unsize_ptr(&mut bx, lldata, operand.layout.ty, cast.ty, llextra);
+                        OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::Pointer(PointerCast::MutToConstPointer)
                     | mir::CastKind::Misc
@@ -647,7 +636,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitOr => bx.or(lhs, rhs),
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
-            mir::BinOp::Offset => bx.inbounds_gep(lhs, &[rhs]),
+            mir::BinOp::Offset => {
+                let pointee_type = input_ty
+                    .builtin_deref(true)
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty))
+                    .ty;
+                let llty = bx.cx().backend_type(bx.cx().layout_of(pointee_type));
+                bx.inbounds_gep(llty, lhs, &[rhs])
+            }
             mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne

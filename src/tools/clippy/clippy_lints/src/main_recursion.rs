@@ -7,14 +7,14 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for recursion using the entrypoint.
+    /// ### What it does
+    /// Checks for recursion using the entrypoint.
     ///
-    /// **Why is this bad?** Apart from special setups (which we could detect following attributes like #![no_std]),
+    /// ### Why is this bad?
+    /// Apart from special setups (which we could detect following attributes like #![no_std]),
     /// recursing into main() seems like an unintuitive antipattern we should be able to detect.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```no_run
     /// fn main() {
     ///     main();

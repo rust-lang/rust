@@ -133,9 +133,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     traits::NonStructuralMatchTy::Generator => {
                         "generators cannot be used in patterns".to_string()
                     }
-                    traits::NonStructuralMatchTy::Closure => {
-                        "closures cannot be used in patterns".to_string()
-                    }
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of a constant whose type is a parameter inside a pattern")
                     }

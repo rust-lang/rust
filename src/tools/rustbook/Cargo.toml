@@ -1,5 +1,4 @@
 [package]
-authors = ["The Rust Project Developers"]
 name = "rustbook"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
@@ -10,6 +9,6 @@ clap = "2.25.0"
 env_logger = "0.7.1"
 
 [dependencies.mdbook]
-version = "0.4.6"
+version = "0.4.12"
 default-features = false
 features = ["search"]

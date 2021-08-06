@@ -1,7 +1,5 @@
 // Test that `by_move_binding @ pat_with_by_ref_bindings` is prevented.
 
-#![feature(bindings_after_at)]
-
 fn main() {
     struct U;
 

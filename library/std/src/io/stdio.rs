@@ -7,7 +7,7 @@ use crate::io::prelude::*;
 
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
-use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Lines, Split};
 use crate::lazy::SyncOnceCell;
 use crate::pin::Pin;
 use crate::sync::atomic::{AtomicBool, Ordering};
@@ -445,6 +445,49 @@ impl Stdin {
     #[unstable(feature = "stdio_locked", issue = "86845")]
     pub fn into_locked(self) -> StdinLock<'static> {
         self.lock_any()
+    }
+
+    /// Consumes this handle and returns an iterator over input lines.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`BufRead::lines`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stdin_forwarders)]
+    /// use std::io;
+    ///
+    /// let lines = io::stdin().lines();
+    /// for line in lines {
+    ///     println!("got a line: {}", line.unwrap());
+    /// }
+    /// ```
+    #[unstable(feature = "stdin_forwarders", issue = "87096")]
+    pub fn lines(self) -> Lines<StdinLock<'static>> {
+        self.into_locked().lines()
+    }
+
+    /// Consumes this handle and returns an iterator over input bytes,
+    /// split at the specified byte value.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`BufRead::split`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stdin_forwarders)]
+    /// use std::io;
+    ///
+    /// let splits = io::stdin().split(b'-');
+    /// for split in splits {
+    ///     println!("got a chunk: {}", String::from_utf8_lossy(&split.unwrap()));
+    /// }
+    /// ```
+    #[unstable(feature = "stdin_forwarders", issue = "87096")]
+    pub fn split(self, byte: u8) -> Split<StdinLock<'static>> {
+        self.into_locked().split(byte)
     }
 }
 

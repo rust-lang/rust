@@ -1,7 +1,7 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use crate::config::{self, CrateType, OutputType, PrintRequest, SwitchWithOptPath};
+use crate::config::{self, CrateType, OutputType, SwitchWithOptPath};
 use crate::filesearch;
 use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
@@ -198,10 +198,6 @@ pub struct Session {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
 
-    /// Path for libraries that will take preference over libraries shipped by Rust.
-    /// Used by windows-gnu targets to priortize system mingw-w64 libraries.
-    pub system_library_path: OneThread<RefCell<Option<Option<PathBuf>>>>,
-
     /// Tracks the current behavior of the CTFE engine when an error occurs.
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
@@ -219,7 +215,6 @@ pub struct Session {
     /// Set of enabled features for the current target.
     pub target_features: FxHashSet<Symbol>,
 
-    known_attrs: Lock<MarkedAttrs>,
     used_attrs: Lock<MarkedAttrs>,
 
     /// `Span`s for `if` conditions that we have suggested turning into `if let`.
@@ -503,6 +498,10 @@ impl Session {
     #[inline]
     pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic
+    }
+
+    pub fn with_disabled_diagnostic<T, F: FnOnce() -> T>(&self, f: F) -> T {
+        self.parse_sess.span_diagnostic.with_disabled_diagnostic(f)
     }
 
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
@@ -1076,14 +1075,6 @@ impl Session {
             == config::InstrumentCoverage::ExceptUnusedFunctions
     }
 
-    pub fn mark_attr_known(&self, attr: &Attribute) {
-        self.known_attrs.lock().mark(attr)
-    }
-
-    pub fn is_attr_known(&self, attr: &Attribute) -> bool {
-        self.known_attrs.lock().is_marked(attr)
-    }
-
     pub fn mark_attr_used(&self, attr: &Attribute) {
         self.used_attrs.lock().mark(attr)
     }
@@ -1384,12 +1375,10 @@ pub fn build_session(
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
-        system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         target_features: FxHashSet::default(),
-        known_attrs: Lock::new(MarkedAttrs::new()),
         used_attrs: Lock::new(MarkedAttrs::new()),
         if_let_suggestions: Default::default(),
     };
@@ -1438,25 +1427,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                      `-C force-unwind-tables=no`.",
             );
         }
-    }
-
-    // PGO does not work reliably with panic=unwind on Windows. Let's make it
-    // an error to combine the two for now. It always runs into an assertions
-    // if LLVM is built with assertions, but without assertions it sometimes
-    // does not crash and will probably generate a corrupted binary.
-    // We should only display this error if we're actually going to run PGO.
-    // If we're just supposed to print out some data, don't show the error (#61002).
-    if sess.opts.cg.profile_generate.enabled()
-        && sess.target.is_like_msvc
-        && sess.panic_strategy() == PanicStrategy::Unwind
-        && sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs)
-    {
-        sess.err(
-            "Profile-guided optimization does not yet work in conjunction \
-                  with `-Cpanic=unwind` on Windows when targeting MSVC. \
-                  See issue #61002 <https://github.com/rust-lang/rust/issues/61002> \
-                  for more information.",
-        );
     }
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.

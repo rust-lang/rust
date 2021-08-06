@@ -71,7 +71,7 @@ use rustc_middle::ty::{
     subst::{GenericArgKind, Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
+use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
 use rustc_target::spec::abi;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, iter};
@@ -89,16 +89,17 @@ pub(super) fn note_and_explain_region(
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
+    alt_span: Option<Span>,
 ) {
     let (description, span) = match *region {
         ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
-            msg_span_from_free_region(tcx, region)
+            msg_span_from_free_region(tcx, region, alt_span)
         }
 
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), None),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), alt_span),
 
         // uh oh, hope no user ever sees THIS
-        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), None),
+        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), alt_span),
 
         ty::RePlaceholder(_) => return,
 
@@ -108,7 +109,7 @@ pub(super) fn note_and_explain_region(
         // We shouldn't really be having unification failures with ReVar
         // and ReLateBound though.
         ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-            (format!("lifetime {:?}", region), None)
+            (format!("lifetime {:?}", region), alt_span)
         }
     };
 
@@ -122,7 +123,7 @@ pub(super) fn note_and_explain_free_region(
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
-    let (description, span) = msg_span_from_free_region(tcx, region);
+    let (description, span) = msg_span_from_free_region(tcx, region, None);
 
     emit_msg_span(err, prefix, description, span, suffix);
 }
@@ -130,14 +131,15 @@ pub(super) fn note_and_explain_free_region(
 fn msg_span_from_free_region(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
+    alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
     match *region {
         ty::ReEarlyBound(_) | ty::ReFree(_) => {
             msg_span_from_early_bound_and_free_regions(tcx, region)
         }
-        ty::ReStatic => ("the static lifetime".to_owned(), None),
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), None),
-        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), None),
+        ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), alt_span),
+        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), alt_span),
         _ => bug!("{:?}", region),
     }
 }
@@ -319,6 +321,7 @@ pub fn unexpected_hidden_region_diagnostic(
                 &format!("hidden type `{}` captures ", hidden_ty),
                 hidden_region,
                 "",
+                None,
             );
         }
     }
@@ -995,7 +998,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
             let mut s = String::new();
-            let (_, (sig, reg)) = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS)
+            let (_, sig, reg) = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS)
                 .name_all_regions(sig)
                 .unwrap();
             let lts: Vec<String> = reg.into_iter().map(|(_, kind)| kind.to_string()).collect();
@@ -1485,31 +1488,49 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let count = values.len();
                     let kind = key.descr();
                     let mut returned_async_output_error = false;
-                    for sp in values {
-                        err.span_label(
-                            *sp,
-                            format!(
-                                "{}{}{} {}{}",
-                                if sp.is_desugaring(DesugaringKind::Async)
-                                    && !returned_async_output_error
-                                {
-                                    "checked the `Output` of this `async fn`, "
-                                } else if count == 1 {
-                                    "the "
-                                } else {
-                                    ""
-                                },
-                                if count > 1 { "one of the " } else { "" },
-                                target,
-                                kind,
-                                pluralize!(count),
-                            ),
-                        );
-                        if sp.is_desugaring(DesugaringKind::Async)
-                            && returned_async_output_error == false
-                        {
-                            err.note("while checking the return type of the `async fn`");
+                    for &sp in values {
+                        if sp.is_desugaring(DesugaringKind::Async) && !returned_async_output_error {
+                            if &[sp] != err.span.primary_spans() {
+                                let mut span: MultiSpan = sp.into();
+                                span.push_span_label(
+                                    sp,
+                                    format!(
+                                        "checked the `Output` of this `async fn`, {}{} {}{}",
+                                        if count > 1 { "one of the " } else { "" },
+                                        target,
+                                        kind,
+                                        pluralize!(count),
+                                    ),
+                                );
+                                err.span_note(
+                                    span,
+                                    "while checking the return type of the `async fn`",
+                                );
+                            } else {
+                                err.span_label(
+                                    sp,
+                                    format!(
+                                        "checked the `Output` of this `async fn`, {}{} {}{}",
+                                        if count > 1 { "one of the " } else { "" },
+                                        target,
+                                        kind,
+                                        pluralize!(count),
+                                    ),
+                                );
+                                err.note("while checking the return type of the `async fn`");
+                            }
                             returned_async_output_error = true;
+                        } else {
+                            err.span_label(
+                                sp,
+                                format!(
+                                    "{}{} {}{}",
+                                    if count == 1 { "the " } else { "one of the " },
+                                    target,
+                                    kind,
+                                    pluralize!(count),
+                                ),
+                            );
                         }
                     }
                 }
@@ -1590,17 +1611,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
         if let Some((expected, found)) = expected_found {
-            let expected_label = match exp_found {
-                Mismatch::Variable(ef) => ef.expected.prefix_string(self.tcx),
-                Mismatch::Fixed(s) => s.into(),
-            };
-            let found_label = match exp_found {
-                Mismatch::Variable(ef) => ef.found.prefix_string(self.tcx),
-                Mismatch::Fixed(s) => s.into(),
-            };
-            let exp_found = match exp_found {
-                Mismatch::Variable(exp_found) => Some(exp_found),
-                Mismatch::Fixed(_) => None,
+            let (expected_label, found_label, exp_found) = match exp_found {
+                Mismatch::Variable(ef) => (
+                    ef.expected.prefix_string(self.tcx),
+                    ef.found.prefix_string(self.tcx),
+                    Some(ef),
+                ),
+                Mismatch::Fixed(s) => (s.into(), s.into(), None),
             };
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {
@@ -2134,7 +2151,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let new_lt = generics
             .as_ref()
             .and_then(|(parent_g, g)| {
-                let possible: Vec<_> = (b'a'..=b'z').map(|c| format!("'{}", c as char)).collect();
+                let mut possible = (b'a'..=b'z').map(|c| format!("'{}", c as char));
                 let mut lts_names = g
                     .params
                     .iter()
@@ -2150,7 +2167,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     );
                 }
                 let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
-                possible.into_iter().find(|candidate| !lts.contains(&candidate.as_str()))
+                possible.find(|candidate| !lts.contains(&candidate.as_str()))
             })
             .unwrap_or("'lt".to_string());
         let add_lt_sugg = generics
@@ -2289,8 +2306,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &format!("{} must be valid for ", labeled_user_string),
                     sub,
                     "...",
+                    None,
                 );
-                if let Some(infer::RelateParamBound(_, t)) = origin {
+                if let Some(infer::RelateParamBound(_, t, _)) = origin {
                     let return_impl_trait = self
                         .in_progress_typeck_results
                         .map(|typeck_results| typeck_results.borrow().hir_owner)
@@ -2336,6 +2354,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "first, the lifetime cannot outlive ",
             sup_region,
             "...",
+            None,
         );
 
         debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
@@ -2362,6 +2381,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         "...but the lifetime must also be valid for ",
                         sub_region,
                         "...",
+                        None,
                     );
                     err.span_note(
                         sup_trace.cause.span,
@@ -2383,6 +2403,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "but, the lifetime must be valid for ",
             sub_region,
             "...",
+            None,
         );
 
         self.note_region_origin(&mut err, &sub_origin);

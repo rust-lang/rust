@@ -1,5 +1,4 @@
 [package]
-authors = ["The Rust Project Developers"]
 name = "test"
 version = "0.0.0"
 edition = "2018"
@@ -10,7 +9,6 @@ crate-type = ["dylib", "rlib"]
 [dependencies]
 cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
-term = { path = "../term" }
 std = { path = "../std" }
 core = { path = "../core" }
 libc = { version = "0.2", default-features = false }

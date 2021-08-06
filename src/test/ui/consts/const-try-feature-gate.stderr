@@ -1,0 +1,12 @@
+error[E0658]: `?` is not allowed in a `const fn`
+  --> $DIR/const-try-feature-gate.rs:4:5
+   |
+LL |     Some(())?;
+   |     ^^^^^^^^^
+   |
+   = note: see issue #74935 <https://github.com/rust-lang/rust/issues/74935> for more information
+   = help: add `#![feature(const_try)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

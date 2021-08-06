@@ -1,0 +1,7 @@
+// This test ensures that the item information don't take 100% of the width if unnecessary.
+goto: file://|DOC_PATH|/lib2/struct.Foo.html
+// We set a fixed size so there is no chance of "random" resize.
+size: (1100, 800)
+// We check that ".item-info" is bigger than its content.
+assert-css: (".item-info", {"width": "807px"})
+assert-css: (".item-info .stab", {"width": "343px"})

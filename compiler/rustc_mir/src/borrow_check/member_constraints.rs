@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::MemberConstraint;
 use rustc_middle::ty::{self, Ty};
@@ -31,9 +30,6 @@ where
 /// Represents a `R0 member of [R1..Rn]` constraint
 crate struct NllMemberConstraint<'tcx> {
     next_constraint: Option<NllMemberConstraintIndex>,
-
-    /// The opaque type whose hidden type is being inferred. (Used in error reporting.)
-    crate opaque_type_def_id: DefId,
 
     /// The span where the hidden type was instantiated.
     crate definition_span: Span,
@@ -91,7 +87,6 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
         let constraint_index = self.constraints.push(NllMemberConstraint {
             next_constraint,
             member_region_vid,
-            opaque_type_def_id: m_c.opaque_type_def_id,
             definition_span: m_c.definition_span,
             hidden_ty: m_c.hidden_ty,
             start_index,

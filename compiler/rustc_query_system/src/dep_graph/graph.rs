@@ -1,28 +1,24 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::profiling::QueryInvocationId;
-use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
-use rustc_data_structures::unlikely;
-use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 
-use parking_lot::{Condvar, Mutex};
+use parking_lot::Mutex;
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::mem;
 use std::sync::atomic::Ordering::Relaxed;
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
-use crate::query::QueryContext;
+use crate::query::{QueryContext, QuerySideEffects};
 
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -36,6 +32,12 @@ pub struct DepGraph<K: DepKind> {
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
     virtual_dep_node_index: Lrc<AtomicU32>,
+
+    /// The cached event id for profiling node interning. This saves us
+    /// from having to look up the event id every time we intern a node
+    /// which may incur too much overhead.
+    /// This will be None if self-profiling is disabled.
+    node_intern_event_id: Option<EventId>,
 }
 
 rustc_index::newtype_index! {
@@ -82,11 +84,7 @@ struct DepGraphData<K: DepKind> {
 
     colors: DepNodeColorMap,
 
-    /// A set of loaded diagnostics that is in the progress of being emitted.
-    emitting_diagnostics: Mutex<FxHashSet<DepNodeIndex>>,
-
-    /// Used to wait for diagnostics to be emitted.
-    emitting_diagnostics_cond_var: Condvar,
+    processed_side_effects: Mutex<FxHashSet<DepNodeIndex>>,
 
     /// When we load, there may be `.o` files, cached MIR, or other such
     /// things available to us. If we find that they are not dirty, we
@@ -130,22 +128,30 @@ impl<K: DepKind> DepGraph<K> {
         );
         debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
 
+        let node_intern_event_id = profiler
+            .get_or_alloc_cached_string("incr_comp_intern_dep_graph_node")
+            .map(EventId::from_label);
+
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
                 current,
-                emitting_diagnostics: Default::default(),
-                emitting_diagnostics_cond_var: Condvar::new(),
+                processed_side_effects: Default::default(),
                 previous: prev_graph,
                 colors: DepNodeColorMap::new(prev_graph_node_count),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
+            node_intern_event_id,
         }
     }
 
     pub fn new_disabled() -> DepGraph<K> {
-        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
+        DepGraph {
+            data: None,
+            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
+            node_intern_event_id: None,
+        }
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -244,10 +250,15 @@ impl<K: DepKind> DepGraph<K> {
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
             let mut hcx = dcx.create_stable_hashing_context();
+            let hashing_timer = dcx.profiler().incr_result_hashing();
             let current_fingerprint = hash_result(&mut hcx, &result);
 
             let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
+            // Get timer for profiling `DepNode` interning
+            let node_intern_timer = self
+                .node_intern_event_id
+                .map(|eid| dcx.profiler().generic_activity_with_event_id(eid));
             // Intern the new `DepNode`.
             let (dep_node_index, prev_and_color) = data.current.intern_node(
                 dcx.profiler(),
@@ -257,6 +268,9 @@ impl<K: DepKind> DepGraph<K> {
                 current_fingerprint,
                 print_status,
             );
+            drop(node_intern_timer);
+
+            hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             if let Some((prev_index, color)) = prev_and_color {
                 debug_assert!(
@@ -669,7 +683,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // FIXME: Store the fact that a node has diagnostics in a bit in the dep graph somewhere
         // Maybe store a list on disk and encode this fact in the DepNodeState
-        let diagnostics = tcx.load_diagnostics(prev_dep_node_index);
+        let side_effects = tcx.load_side_effects(prev_dep_node_index);
 
         #[cfg(not(parallel_compiler))]
         debug_assert!(
@@ -679,8 +693,8 @@ impl<K: DepKind> DepGraph<K> {
             dep_node
         );
 
-        if unlikely!(!diagnostics.is_empty()) {
-            self.emit_diagnostics(tcx, data, dep_node_index, prev_dep_node_index, diagnostics);
+        if unlikely!(!side_effects.is_empty()) {
+            self.emit_side_effects(tcx, data, dep_node_index, side_effects);
         }
 
         // ... and finally storing a "Green" entry in the color map.
@@ -695,53 +709,26 @@ impl<K: DepKind> DepGraph<K> {
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
-    fn emit_diagnostics<Ctxt: QueryContext<DepKind = K>>(
+    fn emit_side_effects<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData<K>,
         dep_node_index: DepNodeIndex,
-        prev_dep_node_index: SerializedDepNodeIndex,
-        diagnostics: Vec<Diagnostic>,
+        side_effects: QuerySideEffects,
     ) {
-        let mut emitting = data.emitting_diagnostics.lock();
+        let mut processed = data.processed_side_effects.lock();
 
-        if data.colors.get(prev_dep_node_index) == Some(DepNodeColor::Green(dep_node_index)) {
-            // The node is already green so diagnostics must have been emitted already
-            return;
-        }
-
-        if emitting.insert(dep_node_index) {
+        if processed.insert(dep_node_index) {
             // We were the first to insert the node in the set so this thread
-            // must emit the diagnostics and signal other potentially waiting
-            // threads after.
-            mem::drop(emitting);
+            // must process side effects
 
             // Promote the previous diagnostics to the current session.
-            tcx.store_diagnostics(dep_node_index, diagnostics.clone().into());
+            tcx.store_side_effects(dep_node_index, side_effects.clone());
 
             let handle = tcx.dep_context().sess().diagnostic();
 
-            for diagnostic in diagnostics {
+            for diagnostic in side_effects.diagnostics {
                 handle.emit_diagnostic(&diagnostic);
-            }
-
-            // Mark the node as green now that diagnostics are emitted
-            data.colors.insert(prev_dep_node_index, DepNodeColor::Green(dep_node_index));
-
-            // Remove the node from the set
-            data.emitting_diagnostics.lock().remove(&dep_node_index);
-
-            // Wake up waiters
-            data.emitting_diagnostics_cond_var.notify_all();
-        } else {
-            // We must wait for the other thread to finish emitting the diagnostic
-
-            loop {
-                data.emitting_diagnostics_cond_var.wait(&mut emitting);
-                if data.colors.get(prev_dep_node_index) == Some(DepNodeColor::Green(dep_node_index))
-                {
-                    break;
-                }
             }
         }
     }

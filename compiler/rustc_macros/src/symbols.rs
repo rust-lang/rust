@@ -135,7 +135,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut check_dup = |span: Span, str: &str, errors: &mut Errors| {
         if let Some(prev_span) = keys.get(str) {
             errors.error(span, format!("Symbol `{}` is duplicated", str));
-            errors.error(*prev_span, format!("location of previous definition"));
+            errors.error(*prev_span, "location of previous definition".to_string());
         } else {
             keys.insert(str.to_string(), span);
         }
@@ -207,7 +207,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             #keyword_stream
         }
 
-        #[cfg_attr(bootstrap, allow(rustc::default_hash_types))]
         #[allow(non_upper_case_globals)]
         #[doc(hidden)]
         pub mod sym_generated {

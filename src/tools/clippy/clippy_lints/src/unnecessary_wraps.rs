@@ -13,15 +13,17 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for private functions that only return `Ok` or `Some`.
+    /// ### What it does
+    /// Checks for private functions that only return `Ok` or `Some`.
     ///
-    /// **Why is this bad?** It is not meaningful to wrap values when no `None` or `Err` is returned.
+    /// ### Why is this bad?
+    /// It is not meaningful to wrap values when no `None` or `Err` is returned.
     ///
-    /// **Known problems:** There can be false positives if the function signature is designed to
+    /// ### Known problems
+    /// There can be false positives if the function signature is designed to
     /// fit some external requirement.
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// fn get_cool_number(a: bool, b: bool) -> Option<i32> {
     ///     if a && b {
@@ -79,7 +81,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         // Abort if public function/method or closure.
         match fn_kind {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(hir_id) {
+                let def_id = cx.tcx.hir().local_def_id(hir_id);
+                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
                     return;
                 }
             },

@@ -12,13 +12,16 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions of type Result that contain `expect()` or `unwrap()`
+    /// ### What it does
+    /// Checks for functions of type Result that contain `expect()` or `unwrap()`
     ///
-    /// **Why is this bad?** These functions promote recoverable errors to non-recoverable errors which may be undesirable in code bases which wish to avoid panics.
+    /// ### Why is this bad?
+    /// These functions promote recoverable errors to non-recoverable errors which may be undesirable in code bases which wish to avoid panics.
     ///
-    /// **Known problems:** This can cause false positives in functions that handle both recoverable and non recoverable errors.
+    /// ### Known problems
+    /// This can cause false positives in functions that handle both recoverable and non recoverable errors.
     ///
-    /// **Example:**
+    /// ### Example
     /// Before:
     /// ```rust
     /// fn divisible_by_3(i_str: String) -> Result<(), String> {

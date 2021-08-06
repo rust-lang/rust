@@ -2,7 +2,6 @@
 
 // run-pass
 
-#![feature(bindings_after_at)]
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {

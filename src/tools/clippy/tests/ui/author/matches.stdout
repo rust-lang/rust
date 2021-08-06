@@ -11,7 +11,6 @@ if_chain! {
     if let ExprKind::Lit(ref lit2) = lit_expr.kind;
     if let LitKind::Int(16, _) = lit2.node;
     if let ExprKind::Block(ref block) = arms[1].body.kind;
-    if let Some(trailing_expr) = &block.expr;
     if block.stmts.len() == 1;
     if let StmtKind::Local(ref local1) = block.stmts[0].kind;
     if let Some(ref init1) = local1.init;
@@ -19,6 +18,9 @@ if_chain! {
     if let LitKind::Int(3, _) = lit3.node;
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local1.pat.kind;
     if name.as_str() == "x";
+    if let Some(trailing_expr) = &block.expr;
+    if let ExprKind::Path(ref path) = trailing_expr.kind;
+    if match_qpath(path, &["x"]);
     if let PatKind::Lit(ref lit_expr1) = arms[1].pat.kind
     if let ExprKind::Lit(ref lit4) = lit_expr1.kind;
     if let LitKind::Int(17, _) = lit4.node;

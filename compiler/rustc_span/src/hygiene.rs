@@ -1071,7 +1071,7 @@ pub enum AstPass {
 }
 
 impl AstPass {
-    fn descr(self) -> &'static str {
+    pub fn descr(self) -> &'static str {
         match self {
             AstPass::StdImports => "standard library imports",
             AstPass::TestHarness => "test harness",
@@ -1108,7 +1108,7 @@ pub enum ForLoopLoc {
 
 impl DesugaringKind {
     /// The description wording should combine well with "desugaring of {}".
-    fn descr(self) -> &'static str {
+    pub fn descr(self) -> &'static str {
         match self {
             DesugaringKind::CondTemporary => "`if` or `while` condition",
             DesugaringKind::Async => "`async` block or function",

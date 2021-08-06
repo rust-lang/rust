@@ -1,6 +1,9 @@
 error[E0277]: `Error` doesn't implement `Debug`
   --> $DIR/derives-span-Debug-enum.rs:9:6
    |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
 LL |      Error
    |      ^^^^^ `Error` cannot be formatted using `{:?}`
    |

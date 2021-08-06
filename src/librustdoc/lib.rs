@@ -511,10 +511,10 @@ fn opts() -> Vec<RustcOptGroup> {
                 "LEVEL",
             )
         }),
-        unstable("force-warns", |o| {
+        unstable("force-warn", |o| {
             o.optopt(
                 "",
-                "force-warns",
+                "force-warn",
                 "Lints that will warn even if allowed somewhere else",
                 "LINTS",
             )
@@ -603,6 +603,16 @@ fn opts() -> Vec<RustcOptGroup> {
         }),
         unstable("show-type-layout", |o| {
             o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
+        }),
+        unstable("nocapture", |o| {
+            o.optflag("", "nocapture", "Don't capture stdout and stderr of tests")
+        }),
+        unstable("generate-link-to-definition", |o| {
+            o.optflag(
+                "",
+                "generate-link-to-definition",
+                "Make the identifiers in the HTML source code pages navigable",
+            )
         }),
     ]
 }

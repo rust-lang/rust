@@ -933,6 +933,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_name
                 );
                 err.span_label(item_name.span, &format!("private {}", kind));
+                let sp = self
+                    .tcx
+                    .hir()
+                    .span_if_local(def_id)
+                    .unwrap_or_else(|| self.tcx.def_span(def_id));
+                err.span_label(sp, &format!("private {} defined here", kind));
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }

@@ -13,14 +13,14 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `if` conditions that use blocks containing an
+    /// ### What it does
+    /// Checks for `if` conditions that use blocks containing an
     /// expression, statements or conditions that use closures with blocks.
     ///
-    /// **Why is this bad?** Style, using blocks in the condition makes it hard to read.
+    /// ### Why is this bad?
+    /// Style, using blocks in the condition makes it hard to read.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Examples:**
+    /// ### Examples
     /// ```rust
     /// // Bad
     /// if { true } { /* ... */ }

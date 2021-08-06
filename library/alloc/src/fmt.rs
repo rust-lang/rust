@@ -138,7 +138,7 @@
 //! the `0` flag (see below) is specified for numerics, then the implicit fill character is
 //! `0`.
 //!
-//! Note that alignment may not be implemented by some types. In particular, it
+//! Note that alignment might not be implemented by some types. In particular, it
 //! is not generally implemented for the `Debug` trait.  A good way to ensure
 //! padding is applied is to format your input, then pad this resulting string
 //! to obtain your output:
@@ -300,7 +300,7 @@
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
-//! In the above grammar, `text` may not contain any `'{'` or `'}'` characters.
+//! In the above grammar, `text` must not contain any `'{'` or `'}'` characters.
 //!
 //! # Formatting traits
 //!

@@ -6,7 +6,7 @@
 //!
 //! Note that the current implementation of this queue has a caveat of the `pop`
 //! method, and see the method for more information about it. Due to this
-//! caveat, this queue may not be appropriate for all use-cases.
+//! caveat, this queue might not be appropriate for all use-cases.
 
 // https://www.1024cores.net/home/lock-free-algorithms
 //                          /queues/non-intrusive-mpsc-node-based-queue

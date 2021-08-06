@@ -159,7 +159,7 @@ pub fn expand_include<'cx>(
         }
     }
 
-    Box::new(ExpandResult { p, node_id: cx.resolver.lint_node_id(cx.current_expansion.id) })
+    Box::new(ExpandResult { p, node_id: cx.current_expansion.lint_node_id })
 }
 
 // include_str! : read the given file, insert it as a literal string expr

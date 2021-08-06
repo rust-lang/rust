@@ -1,12 +1,14 @@
 error[E0277]: the trait bound `<G as GetToInt>::R: ToInt` is not satisfied
   --> $DIR/associated-types-bound-failure.rs:19:19
    |
-LL |     fn to_int(&self) -> isize;
-   |     -------------------------- required by `ToInt::to_int`
-...
 LL |     ToInt::to_int(&g.get())
    |                   ^^^^^^^^ the trait `ToInt` is not implemented for `<G as GetToInt>::R`
    |
+note: required by `ToInt::to_int`
+  --> $DIR/associated-types-bound-failure.rs:6:5
+   |
+LL |     fn to_int(&self) -> isize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider further restricting the associated type
    |
 LL |     where G : GetToInt, <G as GetToInt>::R: ToInt

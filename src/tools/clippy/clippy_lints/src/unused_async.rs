@@ -7,16 +7,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for functions that are declared `async` but have no `.await`s inside of them.
+    /// ### What it does
+    /// Checks for functions that are declared `async` but have no `.await`s inside of them.
     ///
-    /// **Why is this bad?** Async functions with no async code create overhead, both mentally and computationally.
+    /// ### Why is this bad?
+    /// Async functions with no async code create overhead, both mentally and computationally.
     /// Callers of async methods either need to be calling from an async function themselves or run it on an executor, both of which
     /// causes runtime overhead and hassle for the caller.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// async fn get_random_number() -> i64 {
