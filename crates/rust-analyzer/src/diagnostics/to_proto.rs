@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use flycheck::{DiagnosticLevel, DiagnosticSpan};
+use itertools::Itertools;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
@@ -134,19 +135,33 @@ fn map_rust_child_diagnostic(
     }
 
     let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
+    let mut suggested_replacements = Vec::new();
     for &span in &spans {
         if let Some(suggested_replacement) = &span.suggested_replacement {
+            if !suggested_replacement.is_empty() {
+                suggested_replacements.push(suggested_replacement);
+            }
             let location = location(config, workspace_root, span);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
             edit_map.entry(location.uri).or_default().push(edit);
         }
     }
 
+    // rustc renders suggestion diagnostics by appending the suggested replacement, so do the same
+    // here, otherwise the diagnostic text is missing useful information.
+    let mut message = rd.message.clone();
+    if !suggested_replacements.is_empty() {
+        message.push_str(": ");
+        let suggestions =
+            suggested_replacements.iter().map(|suggestion| format!("`{}`", suggestion)).join(", ");
+        message.push_str(&suggestions);
+    }
+
     if edit_map.is_empty() {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
                 location: location(config, workspace_root, spans[0]),
-                message: rd.message.clone(),
+                message,
             },
             suggested_fix: None,
         })
@@ -154,10 +169,10 @@ fn map_rust_child_diagnostic(
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
                 location: location(config, workspace_root, spans[0]),
-                message: rd.message.clone(),
+                message: message.clone(),
             },
             suggested_fix: Some(lsp_ext::CodeAction {
-                title: rd.message.clone(),
+                title: message,
                 group: None,
                 kind: Some(lsp_types::CodeActionKind::QUICKFIX),
                 edit: Some(lsp_ext::SnippetWorkspaceEdit {

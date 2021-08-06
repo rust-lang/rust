@@ -61,7 +61,7 @@
                                 },
                             },
                         },
-                        message: "consider prefixing with an underscore",
+                        message: "consider prefixing with an underscore: `_foo`",
                     },
                 ],
             ),
@@ -109,7 +109,7 @@
             source: Some(
                 "rustc",
             ),
-            message: "consider prefixing with an underscore",
+            message: "consider prefixing with an underscore: `_foo`",
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -145,7 +145,7 @@
         },
         fixes: [
             CodeAction {
-                title: "consider prefixing with an underscore",
+                title: "consider prefixing with an underscore: `_foo`",
                 group: None,
                 kind: Some(
                     CodeActionKind(

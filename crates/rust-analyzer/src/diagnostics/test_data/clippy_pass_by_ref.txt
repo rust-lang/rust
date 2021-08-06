@@ -107,7 +107,7 @@
                                 },
                             },
                         },
-                        message: "consider passing by value instead",
+                        message: "consider passing by value instead: `self`",
                     },
                 ],
             ),
@@ -262,7 +262,7 @@
             source: Some(
                 "clippy",
             ),
-            message: "consider passing by value instead",
+            message: "consider passing by value instead: `self`",
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -298,7 +298,7 @@
         },
         fixes: [
             CodeAction {
-                title: "consider passing by value instead",
+                title: "consider passing by value instead: `self`",
                 group: None,
                 kind: Some(
                     CodeActionKind(

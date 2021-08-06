@@ -107,7 +107,7 @@
                                 },
                             },
                         },
-                        message: "return the expression directly",
+                        message: "return the expression directly: `(0..10).collect()`",
                     },
                 ],
             ),
@@ -262,7 +262,7 @@
             source: Some(
                 "clippy",
             ),
-            message: "return the expression directly",
+            message: "return the expression directly: `(0..10).collect()`",
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -298,7 +298,7 @@
         },
         fixes: [
             CodeAction {
-                title: "return the expression directly",
+                title: "return the expression directly: `(0..10).collect()`",
                 group: None,
                 kind: Some(
                     CodeActionKind(
