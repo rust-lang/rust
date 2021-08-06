@@ -7,7 +7,6 @@ use crate::{LaneCount, SupportedLaneCount};
 /// representation. Called from `define_float_vector!`.
 macro_rules! impl_float_vector {
     { $name:ident, $type:ident, $bits_ty:ident, $mask_ty:ident, $mask_impl_ty:ident } => {
-        impl_vector! { $name, $type }
         impl_float_reductions! { $name, $type }
 
         impl<const LANES: usize> $name<LANES>

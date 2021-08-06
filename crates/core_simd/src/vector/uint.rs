@@ -1,35 +1,9 @@
 #![allow(non_camel_case_types)]
 
-use crate::{LaneCount, SupportedLaneCount};
-
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_unsigned_vector {
     { $name:ident, $type:ty } => {
-        impl_vector! { $name, $type }
         impl_integer_reductions! { $name, $type }
-
-        impl<const LANES: usize> Eq for $name<LANES> where LaneCount<LANES>: SupportedLaneCount {}
-
-        impl<const LANES: usize> Ord for $name<LANES> where LaneCount<LANES>: SupportedLaneCount {
-            #[inline]
-            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                // TODO use SIMD cmp
-                self.as_array().cmp(other.as_ref())
-            }
-        }
-
-        impl<const LANES: usize> core::hash::Hash for $name<LANES>
-        where
-            LaneCount<LANES>: SupportedLaneCount,
-        {
-            #[inline]
-            fn hash<H>(&self, state: &mut H)
-            where
-                H: core::hash::Hasher
-            {
-                self.as_array().hash(state)
-            }
-        }
     }
 }
 
