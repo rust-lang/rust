@@ -187,19 +187,12 @@ macro_rules! impl_float_vector {
 }
 
 /// A SIMD vector of containing `LANES` `f32` values.
-#[repr(simd)]
-pub struct SimdF32<const LANES: usize>([f32; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
-
-impl_float_vector! { SimdF32, f32, SimdU32, Mask32, SimdI32 }
+pub type SimdF32<const LANES: usize> = crate::Simd<f32, LANES>;
 
 /// A SIMD vector of containing `LANES` `f64` values.
-#[repr(simd)]
-pub struct SimdF64<const LANES: usize>([f64; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
+pub type SimdF64<const LANES: usize> = crate::Simd<f64, LANES>;
 
+impl_float_vector! { SimdF32, f32, SimdU32, Mask32, SimdI32 }
 impl_float_vector! { SimdF64, f64, SimdU64, Mask64, SimdI64 }
 
 /// Vector of two `f32` values

@@ -33,44 +33,25 @@ macro_rules! impl_unsigned_vector {
     }
 }
 
-/// A SIMD vector of containing `LANES` `usize` values.
-#[repr(simd)]
-pub struct SimdUsize<const LANES: usize>([usize; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
-
-impl_unsigned_vector! { SimdUsize, usize }
+/// A SIMD vector of containing `LANES` `u8` values.
+pub type SimdU8<const LANES: usize> = crate::Simd<u8, LANES>;
 
 /// A SIMD vector of containing `LANES` `u16` values.
-#[repr(simd)]
-pub struct SimdU16<const LANES: usize>([u16; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
-
-impl_unsigned_vector! { SimdU16, u16 }
+pub type SimdU16<const LANES: usize> = crate::Simd<u16, LANES>;
 
 /// A SIMD vector of containing `LANES` `u32` values.
-#[repr(simd)]
-pub struct SimdU32<const LANES: usize>([u32; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
-
-impl_unsigned_vector! { SimdU32, u32 }
+pub type SimdU32<const LANES: usize> = crate::Simd<u32, LANES>;
 
 /// A SIMD vector of containing `LANES` `u64` values.
-#[repr(simd)]
-pub struct SimdU64<const LANES: usize>([u64; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
+pub type SimdU64<const LANES: usize> = crate::Simd<u64, LANES>;
 
+/// A SIMD vector of containing `LANES` `usize` values.
+pub type SimdUsize<const LANES: usize> = crate::Simd<usize, LANES>;
+
+impl_unsigned_vector! { SimdUsize, usize }
+impl_unsigned_vector! { SimdU16, u16 }
+impl_unsigned_vector! { SimdU32, u32 }
 impl_unsigned_vector! { SimdU64, u64 }
-
-/// A SIMD vector of containing `LANES` `u8` values.
-#[repr(simd)]
-pub struct SimdU8<const LANES: usize>([u8; LANES])
-where
-    LaneCount<LANES>: SupportedLaneCount;
-
 impl_unsigned_vector! { SimdU8, u8 }
 
 /// Vector of two `usize` values
