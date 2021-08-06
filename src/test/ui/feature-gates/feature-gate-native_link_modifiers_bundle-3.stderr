@@ -1,0 +1,2 @@
+error: linking modifiers are currently unstable, the `-Z unstable-options` flag must also be passed to use it
+
