@@ -1,18 +1,21 @@
 //! Creation of ar archives like for the lib and staticlib crate type
 
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::fs::File;
+use std::io::{self, Read, Seek};
 use std::path::{Path, PathBuf};
 
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_session::Session;
 
-use object::{Object, ObjectSymbol, SymbolKind};
+use object::read::archive::ArchiveFile;
+use object::{Object, ObjectSymbol, ReadCache, SymbolKind};
 
 #[derive(Debug)]
 enum ArchiveEntry {
-    FromArchive { archive_index: usize, entry_index: usize },
+    FromArchive { archive_index: usize, file_range: (u64, u64) },
     File(PathBuf),
 }
 
@@ -23,7 +26,7 @@ pub(crate) struct ArArchiveBuilder<'a> {
     use_gnu_style_archive: bool,
     no_builtin_ranlib: bool,
 
-    src_archives: Vec<(PathBuf, ar::Archive<File>)>,
+    src_archives: Vec<File>,
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
     // the end of an archive for linkers to not get confused.
     entries: Vec<(String, ArchiveEntry)>,
@@ -34,20 +37,19 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         use rustc_codegen_ssa::back::link::archive_search_paths;
 
         let (src_archives, entries) = if let Some(input) = input {
-            let mut archive = ar::Archive::new(File::open(input).unwrap());
+            let read_cache = ReadCache::new(File::open(input).unwrap());
+            let archive = ArchiveFile::parse(&read_cache).unwrap();
             let mut entries = Vec::new();
 
-            let mut i = 0;
-            while let Some(entry) = archive.next_entry() {
+            for entry in archive.members() {
                 let entry = entry.unwrap();
                 entries.push((
-                    String::from_utf8(entry.header().identifier().to_vec()).unwrap(),
-                    ArchiveEntry::FromArchive { archive_index: 0, entry_index: i },
+                    String::from_utf8(entry.name().to_vec()).unwrap(),
+                    ArchiveEntry::FromArchive { archive_index: 0, file_range: entry.file_range() },
                 ));
-                i += 1;
             }
 
-            (vec![(input.to_owned(), archive)], entries)
+            (vec![read_cache.into_inner()], entries)
         } else {
             (vec![], Vec::new())
         };
@@ -98,7 +100,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         name: &str,
         lto: bool,
         skip_objects: bool,
-    ) -> std::io::Result<()> {
+    ) -> io::Result<()> {
         let obj_start = name.to_owned();
 
         self.add_archive(rlib.to_owned(), move |fname: &str| {
@@ -141,14 +143,14 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             // FIXME only read the symbol table of the object files to avoid having to keep all
             // object files in memory at once, or read them twice.
             let data = match entry {
-                ArchiveEntry::FromArchive { archive_index, entry_index } => {
+                ArchiveEntry::FromArchive { archive_index, file_range } => {
                     // FIXME read symbols from symtab
-                    use std::io::Read;
-                    let (ref _src_archive_path, ref mut src_archive) =
-                        self.src_archives[archive_index];
-                    let mut entry = src_archive.jump_to_entry(entry_index).unwrap();
-                    let mut data = Vec::new();
-                    entry.read_to_end(&mut data).unwrap();
+                    let src_read_cache = &mut self.src_archives[archive_index];
+
+                    src_read_cache.seek(io::SeekFrom::Start(file_range.0)).unwrap();
+                    let mut data = std::vec::from_elem(0, usize::try_from(file_range.1).unwrap());
+                    src_read_cache.read_exact(&mut data).unwrap();
+
                     data
                 }
                 ArchiveEntry::File(file) => std::fs::read(file).unwrap_or_else(|err| {
@@ -266,26 +268,27 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArArchiveBuilder<'a> {
-    fn add_archive<F>(&mut self, archive_path: PathBuf, mut skip: F) -> std::io::Result<()>
+    fn add_archive<F>(&mut self, archive_path: PathBuf, mut skip: F) -> io::Result<()>
     where
         F: FnMut(&str) -> bool + 'static,
     {
-        let mut archive = ar::Archive::new(std::fs::File::open(&archive_path)?);
+        let read_cache = ReadCache::new(std::fs::File::open(&archive_path)?);
+        let archive = ArchiveFile::parse(&read_cache).unwrap();
         let archive_index = self.src_archives.len();
 
-        let mut i = 0;
-        while let Some(entry) = archive.next_entry() {
-            let entry = entry?;
-            let file_name = String::from_utf8(entry.header().identifier().to_vec())
-                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+        for entry in archive.members() {
+            let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+            let file_name = String::from_utf8(entry.name().to_vec())
+                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
-                self.entries
-                    .push((file_name, ArchiveEntry::FromArchive { archive_index, entry_index: i }));
+                self.entries.push((
+                    file_name,
+                    ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
+                ));
             }
-            i += 1;
         }
 
-        self.src_archives.push((archive_path, archive));
+        self.src_archives.push(read_cache.into_inner());
         Ok(())
     }
 }
