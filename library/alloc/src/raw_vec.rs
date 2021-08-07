@@ -428,7 +428,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         let ptr = unsafe {
             // `Layout::array` cannot overflow here because it would have
-            // owerflown earlier when capacity was larger.
+            // overflowed earlier when capacity was larger.
             let new_layout = Layout::array::<T>(cap).unwrap_unchecked();
             self.alloc
                 .shrink(ptr, layout, new_layout)
