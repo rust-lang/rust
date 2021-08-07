@@ -1,4 +1,5 @@
 #![feature(allocator_api)]
+#![feature(assert_matches)]
 #![feature(box_syntax)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
