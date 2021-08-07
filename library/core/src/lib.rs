@@ -142,6 +142,7 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
 #![feature(min_specialization)]
+#![feature(mixed_integer_ops)]
 #![cfg_attr(not(bootstrap), feature(must_not_suspend))]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -159,7 +160,6 @@
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
-#![feature(uint_add_signed)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 //

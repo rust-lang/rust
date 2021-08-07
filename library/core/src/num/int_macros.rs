@@ -433,6 +433,28 @@ macro_rules! int_impl {
             unsafe { intrinsics::unchecked_add(self, rhs) }
         }
 
+        /// Checked addition with an unsigned integer. Computes `self + rhs`,
+        /// returning `None` if overflow occurred.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_unsigned(2), Some(3));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_unsigned(3), None);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_add_unsigned(self, rhs: $UnsignedT) -> Option<Self> {
+            let (a, b) = self.overflowing_add_unsigned(rhs);
+            if unlikely!(b) {None} else {Some(a)}
+        }
+
         /// Checked integer subtraction. Computes `self - rhs`, returning `None` if
         /// overflow occurred.
         ///
@@ -477,6 +499,28 @@ macro_rules! int_impl {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
             unsafe { intrinsics::unchecked_sub(self, rhs) }
+        }
+
+        /// Checked addition with an unsigned integer. Computes `self + rhs`,
+        /// returning `None` if overflow occurred.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_unsigned(2), Some(-1));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub_unsigned(3), None);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_sub_unsigned(self, rhs: $UnsignedT) -> Option<Self> {
+            let (a, b) = self.overflowing_sub_unsigned(rhs);
+            if unlikely!(b) {None} else {Some(a)}
         }
 
         /// Checked integer multiplication. Computes `self * rhs`, returning `None` if
@@ -822,6 +866,31 @@ macro_rules! int_impl {
             intrinsics::saturating_add(self, rhs)
         }
 
+        /// Saturating addition with an unsigned integer. Computes `self + rhs`,
+        /// saturating at the numeric bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_add_unsigned(2), 3);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_add_unsigned(100), ", stringify!($SelfT), "::MAX);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn saturating_add_unsigned(self, rhs: $UnsignedT) -> Self {
+            // Overflow can only happen at the upper bound
+            match self.checked_add_unsigned(rhs) {
+                Some(x) => x,
+                None => Self::MAX,
+            }
+        }
+
         /// Saturating integer subtraction. Computes `self - rhs`, saturating at the
         /// numeric bounds instead of overflowing.
         ///
@@ -841,6 +910,31 @@ macro_rules! int_impl {
         #[inline(always)]
         pub const fn saturating_sub(self, rhs: Self) -> Self {
             intrinsics::saturating_sub(self, rhs)
+        }
+
+        /// Saturating substraction with an unsigned integer. Computes `self - rhs`,
+        /// saturating at the numeric bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".saturating_sub_unsigned(127), -27);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_sub_unsigned(100), ", stringify!($SelfT), "::MIN);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn saturating_sub_unsigned(self, rhs: $UnsignedT) -> Self {
+            // Overflow can only happen at the lower bound
+            match self.checked_sub_unsigned(rhs) {
+                Some(x) => x,
+                None => Self::MIN,
+            }
         }
 
         /// Saturating integer negation. Computes `-self`, returning `MAX` if `self == MIN`
@@ -998,6 +1092,27 @@ macro_rules! int_impl {
             intrinsics::wrapping_add(self, rhs)
         }
 
+        /// Wrapping (modular) addition with an unsigned integer. Computes
+        /// `self + rhs`, wrapping around at the boundary of the type.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_add_unsigned(27), 127);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add_unsigned(2), ", stringify!($SelfT), "::MIN + 1);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn wrapping_add_unsigned(self, rhs: $UnsignedT) -> Self {
+            self.wrapping_add(rhs as Self)
+        }
+
         /// Wrapping (modular) subtraction. Computes `self - rhs`, wrapping around at the
         /// boundary of the type.
         ///
@@ -1016,6 +1131,27 @@ macro_rules! int_impl {
         #[inline(always)]
         pub const fn wrapping_sub(self, rhs: Self) -> Self {
             intrinsics::wrapping_sub(self, rhs)
+        }
+
+        /// Wrapping (modular) substraction with an unsigned integer. Computes
+        /// `self - rhs`, wrapping around at the boundary of the type.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".wrapping_sub_unsigned(127), -127);")]
+        #[doc = concat!("assert_eq!((-2", stringify!($SelfT), ").wrapping_sub_unsigned(", stringify!($UnsignedT), "::MAX), -1);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn wrapping_sub_unsigned(self, rhs: $UnsignedT) -> Self {
+            self.wrapping_sub(rhs as Self)
         }
 
         /// Wrapping (modular) multiplication. Computes `self * rhs`, wrapping around at
@@ -1368,6 +1504,33 @@ macro_rules! int_impl {
             (sum as $SelfT, carry)
         }
 
+        /// Calculates `self` + `rhs` with an unsigned `rhs`
+        ///
+        /// Returns a tuple of the addition along with a boolean indicating
+        /// whether an arithmetic overflow would occur. If an overflow would
+        /// have occurred then the wrapped value is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_unsigned(2), (3, false));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN).overflowing_add_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MAX, false));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_unsigned(3), (", stringify!($SelfT), "::MIN, true));")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn overflowing_add_unsigned(self, rhs: $UnsignedT) -> (Self, bool) {
+            let rhs = rhs as Self;
+            let (res, overflowed) = self.overflowing_add(rhs);
+            (res, overflowed ^ (rhs < 0))
+        }
+
         /// Calculates `self` - `rhs`
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow
@@ -1417,6 +1580,33 @@ macro_rules! int_impl {
         pub const fn borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
             let (sum, borrow) = (self as $UnsignedT).borrowing_sub(rhs as $UnsignedT, borrow);
             (sum as $SelfT, borrow)
+        }
+
+        /// Calculates `self` - `rhs` with an unsigned `rhs`
+        ///
+        /// Returns a tuple of the substraction along with a boolean indicating
+        /// whether an arithmetic overflow would occur. If an overflow would
+        /// have occurred then the wrapped value is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// # #![feature(mixed_integer_ops)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_unsigned(2), (-1, false));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX).overflowing_sub_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MIN, false));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).overflowing_sub_unsigned(3), (", stringify!($SelfT), "::MAX, true));")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[rustc_const_unstable(feature = "mixed_integer_ops", issue = "87840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn overflowing_sub_unsigned(self, rhs: $UnsignedT) -> (Self, bool) {
+            let rhs = rhs as Self;
+            let (res, overflowed) = self.overflowing_sub(rhs);
+            (res, overflowed ^ (rhs < 0))
         }
 
         /// Calculates the multiplication of `self` and `rhs`.
