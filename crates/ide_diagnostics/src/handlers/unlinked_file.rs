@@ -38,7 +38,7 @@ fn fixes(ctx: &DiagnosticsContext, file_id: FileId) -> Option<Vec<Assist>> {
 
     let source_root = ctx.sema.db.source_root(ctx.sema.db.file_source_root(file_id));
     let our_path = source_root.path_for_file(&file_id)?;
-    let module_name = our_path.name_and_extension()?.0;
+    let (module_name, _) = our_path.name_and_extension()?;
 
     // Candidates to look for:
     // - `mod.rs` in the same folder
@@ -48,26 +48,23 @@ fn fixes(ctx: &DiagnosticsContext, file_id: FileId) -> Option<Vec<Assist>> {
     let mut paths = vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
 
     // `submod/bla.rs` -> `submod.rs`
-    if let Some(newmod) = (|| {
-        let name = parent.name_and_extension()?.0;
+    let parent_mod = (|| {
+        let (name, _) = parent.name_and_extension()?;
         parent.parent()?.join(&format!("{}.rs", name))
-    })() {
-        paths.push(newmod);
-    }
+    })();
+    paths.extend(parent_mod);
 
-    for path in &paths {
-        if let Some(parent_id) = source_root.file_for_path(path) {
-            for krate in ctx.sema.db.relevant_crates(*parent_id).iter() {
-                let crate_def_map = ctx.sema.db.crate_def_map(*krate);
-                for (_, module) in crate_def_map.modules() {
-                    if module.origin.is_inline() {
-                        // We don't handle inline `mod parent {}`s, they use different paths.
-                        continue;
-                    }
+    for &parent_id in paths.iter().filter_map(|path| source_root.file_for_path(path)) {
+        for &krate in ctx.sema.db.relevant_crates(parent_id).iter() {
+            let crate_def_map = ctx.sema.db.crate_def_map(krate);
+            for (_, module) in crate_def_map.modules() {
+                if module.origin.is_inline() {
+                    // We don't handle inline `mod parent {}`s, they use different paths.
+                    continue;
+                }
 
-                    if module.origin.file_id() == Some(*parent_id) {
-                        return make_fixes(ctx.sema.db, *parent_id, module_name, file_id);
-                    }
+                if module.origin.file_id() == Some(parent_id) {
+                    return make_fixes(ctx.sema.db, parent_id, module_name, file_id);
                 }
             }
         }

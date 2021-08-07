@@ -248,7 +248,7 @@ fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Opti
                 "is_err" => "is_ok",
                 _ => return None,
             };
-            Some(make::expr_method_call(receiver, method, arg_list))
+            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list))
         }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::PrefixOp::Not => {
             if let ast::Expr::ParenExpr(parexpr) = pe.expr()? {

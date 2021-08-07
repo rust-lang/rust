@@ -48,7 +48,7 @@ impl ast::Expr {
     }
 
     /// Preorder walk all the expression's child expressions preserving events.
-    /// If the callback returns true the subtree of the expression will be skipped.
+    /// If the callback returns true on an [`WalkEvent::Enter`], the subtree of the expression will be skipped.
     /// Note that the subtree may already be skipped due to the context analysis this function does.
     pub fn preorder(&self, cb: &mut dyn FnMut(WalkEvent<ast::Expr>) -> bool) {
         let mut preorder = self.syntax().preorder();
