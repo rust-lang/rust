@@ -102,6 +102,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
         /// Whether to automatically update stderr/stdout files
         bless: bool,
+        force_rerun: bool,
         compare_mode: Option<String>,
         pass: Option<String>,
         run: Option<String>,
@@ -284,6 +285,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 opts.optflag("", "no-doc", "do not run doc tests");
                 opts.optflag("", "doc", "only run doc tests");
                 opts.optflag("", "bless", "update all stderr/stdout files of failing ui tests");
+                opts.optflag("", "force-rerun", "rerun tests even if the inputs are unchanged");
                 opts.optopt(
                     "",
                     "compare-mode",
@@ -558,6 +560,7 @@ Arguments:
             "test" | "t" => Subcommand::Test {
                 paths,
                 bless: matches.opt_present("bless"),
+                force_rerun: matches.opt_present("force-rerun"),
                 compare_mode: matches.opt_str("compare-mode"),
                 pass: matches.opt_str("pass"),
                 run: matches.opt_str("run"),
@@ -722,6 +725,13 @@ impl Subcommand {
     pub fn bless(&self) -> bool {
         match *self {
             Subcommand::Test { bless, .. } => bless,
+            _ => false,
+        }
+    }
+
+    pub fn force_rerun(&self) -> bool {
+        match *self {
+            Subcommand::Test { force_rerun, .. } => force_rerun,
             _ => false,
         }
     }

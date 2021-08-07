@@ -362,6 +362,9 @@ pub struct Config {
     pub nodejs: Option<String>,
     /// Path to a npm executable. Used for rustdoc GUI tests
     pub npm: Option<String>,
+
+    /// Whether to rerun tests even if the inputs are unchanged.
+    pub force_rerun: bool,
 }
 
 impl Config {
