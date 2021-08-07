@@ -26,10 +26,12 @@
 // pub(crate) so tests can use the TokenStream, more notes in test/utils.rs
 pub(crate) mod abi_1_47;
 mod abi_1_55;
+mod abi_1_56;
 
 use super::dylib::LoadProcMacroDylibError;
 pub(crate) use abi_1_47::Abi as Abi_1_47;
 pub(crate) use abi_1_55::Abi as Abi_1_55;
+pub(crate) use abi_1_56::Abi as Abi_1_56;
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
 
@@ -46,6 +48,7 @@ impl PanicMessage {
 pub(crate) enum Abi {
     Abi1_47(Abi_1_47),
     Abi1_55(Abi_1_55),
+    Abi1_56(Abi_1_56),
 }
 
 impl Abi {
@@ -70,9 +73,12 @@ impl Abi {
         } else if info.version.1 < 54 {
             let inner = unsafe { Abi_1_47::from_lib(lib, symbol_name) }?;
             Ok(Abi::Abi1_47(inner))
-        } else {
+        } else if info.version.1 < 56 {
             let inner = unsafe { Abi_1_55::from_lib(lib, symbol_name) }?;
             Ok(Abi::Abi1_55(inner))
+        } else {
+            let inner = unsafe { Abi_1_56::from_lib(lib, symbol_name) }?;
+            Ok(Abi::Abi1_56(inner))
         }
     }
 
@@ -85,6 +91,7 @@ impl Abi {
         match self {
             Self::Abi1_55(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_47(abi) => abi.expand(macro_name, macro_body, attributes),
+            Self::Abi1_56(abi) => abi.expand(macro_name, macro_body, attributes),
         }
     }
 
@@ -92,6 +99,7 @@ impl Abi {
         match self {
             Self::Abi1_47(abi) => abi.list_macros(),
             Self::Abi1_55(abi) => abi.list_macros(),
+            Self::Abi1_56(abi) => abi.list_macros(),
         }
     }
 }
