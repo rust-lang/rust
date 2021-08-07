@@ -453,7 +453,7 @@ macro_rules! uint_impl {
         /// # #![feature(uint_add_signed)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(2), Some(3));")]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_add_signed(-2), None);")]
-        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add_signed(3), None);")]
         /// ```
         #[unstable(feature = "uint_add_signed", issue = "none")]
         #[rustc_const_unstable(feature = "uint_add_signed", issue = "none")]
