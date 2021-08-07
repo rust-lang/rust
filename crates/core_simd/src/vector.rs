@@ -9,7 +9,7 @@ pub use uint::*;
 // Vectors of pointers are not for public use at the current time.
 pub(crate) mod ptr;
 
-use crate::{LaneCount, SupportedLaneCount};
+use crate::{LaneCount, MaskElement, SupportedLaneCount};
 
 /// A SIMD vector of `LANES` elements of type `Element`.
 #[repr(simd)]
@@ -338,32 +338,32 @@ use sealed::Sealed;
 /// Marker trait for types that may be used as SIMD vector elements.
 pub unsafe trait SimdElement: Sealed + Copy {
     /// The mask element type corresponding to this element type.
-    type Mask: SimdElement;
+    type Mask: MaskElement;
 }
 
 impl Sealed for u8 {}
 unsafe impl SimdElement for u8 {
-    type Mask = u8;
+    type Mask = i8;
 }
 
 impl Sealed for u16 {}
 unsafe impl SimdElement for u16 {
-    type Mask = u16;
+    type Mask = i16;
 }
 
 impl Sealed for u32 {}
 unsafe impl SimdElement for u32 {
-    type Mask = u32;
+    type Mask = i32;
 }
 
 impl Sealed for u64 {}
 unsafe impl SimdElement for u64 {
-    type Mask = u64;
+    type Mask = i64;
 }
 
 impl Sealed for usize {}
 unsafe impl SimdElement for usize {
-    type Mask = usize;
+    type Mask = isize;
 }
 
 impl Sealed for i8 {}
