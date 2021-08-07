@@ -14,20 +14,6 @@ mod mask_impl;
 
 use crate::{SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
 
-mod sealed {
-    pub trait Sealed {}
-}
-
-/// Helper trait for mask types.
-pub trait Mask: sealed::Sealed {
-    /// The number of lanes for this mask.
-    const LANES: usize;
-
-    /// Generates a mask with the same value in every lane.
-    #[must_use]
-    fn splat(val: bool) -> Self;
-}
-
 macro_rules! define_opaque_mask {
     {
         $(#[$attr:meta])*
@@ -39,23 +25,6 @@ macro_rules! define_opaque_mask {
         pub struct $name<const LANES: usize>($inner_ty)
         where
             crate::LaneCount<LANES>: crate::SupportedLaneCount;
-
-        impl<const LANES: usize> sealed::Sealed for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {}
-
-        impl<const LANES: usize> Mask for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            const LANES: usize = LANES;
-
-            #[inline]
-            fn splat(value: bool) -> Self {
-                Self::splat(value)
-            }
-        }
 
         impl_opaque_mask_reductions! { $name, $bits_ty }
 
