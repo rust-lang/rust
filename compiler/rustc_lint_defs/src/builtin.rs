@@ -2733,7 +2733,7 @@ declare_lint! {
     /// #![feature(naked_functions)]
     ///
     /// #[naked]
-    /// pub extern "sysv64" fn f() -> u32 {
+    /// pub extern "C" fn f() -> u32 {
     ///     42
     /// }
     /// ```
