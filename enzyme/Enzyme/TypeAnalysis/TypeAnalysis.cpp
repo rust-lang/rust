@@ -4328,14 +4328,40 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 
+  bool hasDown = direction & DOWN;
+  bool hasUp = direction & UP;
+
+  if (hasDown) {
+      if (call.getType()->isVoidTy()) hasDown = false;
+      else {
+          if (getAnalysis(&call).IsFullyDetermined())
+              hasDown = false;
+      }
+  }
+  if (hasUp) {
+    bool unknown = false;
+    for (auto& arg : call.arg_operands()) {
+        if (isa<ConstantData>(arg)) continue;
+        if (!getAnalysis(arg).IsFullyDetermined()) {
+            unknown = true;
+            break;
+        }
+    }
+    if (!unknown) hasUp = false;
+  }
+
+  // Fast path where all information has already been derived
+  if (!hasUp && !hasDown) return;
+
   FnTypeInfo typeInfo = getCallInfo(call, fn);
 
   if (EnzymePrintType)
     llvm::errs() << " starting IPO of " << call << "\n";
 
-  if (direction & UP) {
+  TypeResults STR = interprocedural.analyzeFunction(typeInfo);
+
+  if (hasUp) {
     auto a = fn.arg_begin();
-    TypeResults STR = interprocedural.analyzeFunction(typeInfo);
     for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
       auto dt = STR.query(a);
       updateAnalysis(call.getArgOperand(i), dt, &call);
@@ -4343,8 +4369,8 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
     }
   }
 
-  if (direction & DOWN) {
-    TypeTree vd = interprocedural.getReturnAnalysis(typeInfo);
+  if (hasDown) {
+    TypeTree vd = STR.getReturnAnalysis();
     if (call.getType()->isIntOrIntVectorTy() &&
         vd.Inner0() == BaseType::Anything) {
       bool returned = false;
@@ -4412,22 +4438,6 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
   }
 
   return TypeResults(analysis);
-}
-
-ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
-                                   bool errIfNotFound, bool pointerIntSame) {
-  return analyzeFunction(fn).intType(num, val, errIfNotFound, pointerIntSame);
-}
-
-Type *TypeAnalysis::addingType(size_t num, Value *val, const FnTypeInfo &fn) {
-  return analyzeFunction(fn).addingType(num, val);
-}
-
-ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
-                                        const FnTypeInfo &fn,
-                                        bool errIfNotFound,
-                                        bool pointerIntSame) {
-  return analyzeFunction(fn).firstPointer(num, val, errIfNotFound, pointerIntSame);
 }
 
 TypeResults::TypeResults(TypeAnalyzer &analyzer)

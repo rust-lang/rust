@@ -143,8 +143,6 @@ class TypeAnalysis;
 /// on a given function
 class TypeResults {
 public:
-  //TypeAnalysis &analysis;
-  //const FnTypeInfo info;
   TypeAnalyzer &analyzer;
 
 public:
@@ -362,31 +360,6 @@ public:
 
   /// Analyze a particular function, returning the results
   TypeResults analyzeFunction(const FnTypeInfo &fn);
-
-  /// Get the TypeTree of a given value from a given function context
-  // TypeTree query(llvm::Value *val, const FnTypeInfo &fn);
-
-  /// Get the underlying data type of value val given a particular context
-  /// If the type is not known err if errIfNotFound
-  ConcreteType intType(size_t num, llvm::Value *val, const FnTypeInfo &fn,
-                       bool errIfNotFound = true, bool pointerIntSame = false);
-
-  /// Get the underlying data type of value val, purging anything
-  // given a particular context. Return the underlying float type, if any
-  llvm::Type *addingType(size_t num, llvm::Value *val, const FnTypeInfo &fn);
-
-  /// Get the underlying data type of first num bytes of val given a particular
-  /// context If the type is not known err if errIfNotFound. Consider ints and
-  /// pointers the same if pointerIntSame.
-  ConcreteType firstPointer(size_t num, llvm::Value *val, const FnTypeInfo &fn,
-                            bool errIfNotFound = true,
-                            bool pointerIntSame = false);
-
-  /// Get the TyeTree of the returned value of a given function and context
-  inline TypeTree getReturnAnalysis(const FnTypeInfo &fn) {
-    analyzeFunction(fn);
-    return analyzedFunctions.find(fn)->second->getReturnAnalysis();
-  }
 
   /// Clear existing analyses
   void clear();
