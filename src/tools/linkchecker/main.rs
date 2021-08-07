@@ -129,7 +129,7 @@ enum FileEntry {
     /// An HTML file.
     ///
     /// This includes the contents of the HTML file, and an optional set of
-    /// HTML IDs. The IDs are used for checking fragments. The are computed
+    /// HTML IDs. The IDs are used for checking fragments. They are computed
     /// as-needed. The source is discarded (replaced with an empty string)
     /// after the file has been checked, to conserve on memory.
     HtmlFile { source: Rc<String>, ids: RefCell<HashSet<String>> },
