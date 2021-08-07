@@ -11,9 +11,9 @@ use crate::config::Version;
 use crate::config::{BraceStyle, Config};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
-    format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
-    rewrite_associated_impl_type, rewrite_extern_crate, rewrite_opaque_impl_type,
-    rewrite_opaque_type, rewrite_type_alias, FnBraceStyle, FnSig, StaticParts, StructParts,
+    format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
+    rewrite_impl_type, rewrite_opaque_type, rewrite_type, FnBraceStyle, FnSig, StaticParts,
+    StructParts,
 };
 use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::modules::Module;
@@ -579,14 +579,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         **alias_kind;
                     match ty {
                         Some(ty) => {
-                            let rewrite = rewrite_type_alias(
-                                item.ident,
-                                Some(&*ty),
-                                generics,
-                                Some(generic_bounds),
+                            let rewrite = rewrite_type(
                                 &self.get_context(),
                                 self.block_indent,
+                                item.ident,
                                 &item.vis,
+                                generics,
+                                Some(generic_bounds),
+                                Some(&*ty),
                                 item.span,
                             );
                             self.push_rewrite(item.span, rewrite);
@@ -665,14 +665,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::AssocItemKind::TyAlias(ref ty_alias_kind) => {
                 let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
                     **ty_alias_kind;
-                let rewrite = rewrite_type_alias(
-                    ti.ident,
-                    type_default.as_ref(),
-                    generics,
-                    Some(generic_bounds),
+                let rewrite = rewrite_type(
                     &self.get_context(),
                     self.block_indent,
+                    ti.ident,
                     &ti.vis,
+                    generics,
+                    Some(generic_bounds),
+                    type_default.as_ref(),
                     ti.span,
                 );
                 self.push_rewrite(ti.span, rewrite);
@@ -715,8 +715,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
             ast::AssocItemKind::TyAlias(ref ty_alias_kind) => {
                 let ast::TyAliasKind(defaultness, ref generics, _, ref ty) = **ty_alias_kind;
-                let rewrite_associated = || {
-                    rewrite_associated_impl_type(
+                self.push_rewrite(
+                    ii.span,
+                    rewrite_impl_type(
                         ii.ident,
                         &ii.vis,
                         defaultness,
@@ -725,22 +726,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         &self.get_context(),
                         self.block_indent,
                         ii.span,
-                    )
-                };
-                let rewrite = match ty {
-                    None => rewrite_associated(),
-                    Some(ty) => match ty.kind {
-                        ast::TyKind::ImplTrait(_, ref bounds) => rewrite_opaque_impl_type(
-                            &self.get_context(),
-                            ii.ident,
-                            generics,
-                            bounds,
-                            self.block_indent,
-                        ),
-                        _ => rewrite_associated(),
-                    },
-                };
-                self.push_rewrite(ii.span, rewrite);
+                    ),
+                );
             }
             ast::AssocItemKind::MacCall(ref mac) => {
                 self.visit_mac(mac, Some(ii.ident), MacroPosition::Item);

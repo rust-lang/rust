@@ -1497,7 +1497,7 @@ fn format_tuple_struct(
     Some(result)
 }
 
-fn rewrite_type<R: Rewrite>(
+pub(crate) fn rewrite_type<R: Rewrite>(
     context: &RewriteContext<'_>,
     indent: Indent,
     ident: symbol::Ident,
@@ -1841,29 +1841,6 @@ fn rewrite_static(
         Some(format!("{}{};", prefix, ty_str))
     }
 }
-
-pub(crate) fn rewrite_type_alias(
-    ident: symbol::Ident,
-    ty_opt: Option<&ptr::P<ast::Ty>>,
-    generics: &ast::Generics,
-    generic_bounds_opt: Option<&ast::GenericBounds>,
-    context: &RewriteContext<'_>,
-    indent: Indent,
-    vis: &ast::Visibility,
-    span: Span,
-) -> Option<String> {
-    rewrite_type(
-        context,
-        indent,
-        ident,
-        vis,
-        generics,
-        generic_bounds_opt,
-        ty_opt,
-        span,
-    )
-}
-
 struct OpaqueType<'a> {
     bounds: &'a ast::GenericBounds,
 }
@@ -1877,32 +1854,7 @@ impl<'a> Rewrite for OpaqueType<'a> {
     }
 }
 
-pub(crate) fn rewrite_opaque_impl_type(
-    context: &RewriteContext<'_>,
-    ident: symbol::Ident,
-    generics: &ast::Generics,
-    generic_bounds: &ast::GenericBounds,
-    indent: Indent,
-) -> Option<String> {
-    let ident_str = rewrite_ident(context, ident);
-    // 5 = "type "
-    let generics_shape = Shape::indented(indent, context.config).offset_left(5)?;
-    let generics_str = rewrite_generics(context, ident_str, generics, generics_shape)?;
-    let prefix = format!("type {} =", generics_str);
-    let rhs = OpaqueType {
-        bounds: generic_bounds,
-    };
-
-    rewrite_assign_rhs(
-        context,
-        &prefix,
-        &rhs,
-        Shape::indented(indent, context.config).sub_width(1)?,
-    )
-    .map(|s| s + ";")
-}
-
-pub(crate) fn rewrite_associated_impl_type(
+pub(crate) fn rewrite_impl_type(
     ident: symbol::Ident,
     vis: &ast::Visibility,
     defaultness: ast::Defaultness,
@@ -1912,7 +1864,25 @@ pub(crate) fn rewrite_associated_impl_type(
     indent: Indent,
     span: Span,
 ) -> Option<String> {
-    let result = rewrite_type_alias(ident, ty_opt, generics, None, context, indent, vis, span)?;
+    // Opaque type
+    let result = if let Some(rustc_ast::ast::Ty {
+        kind: ast::TyKind::ImplTrait(_, ref bounds),
+        ..
+    }) = ty_opt.map(|t| &**t)
+    {
+        rewrite_type(
+            context,
+            indent,
+            ident,
+            &DEFAULT_VISIBILITY,
+            generics,
+            None,
+            Some(&OpaqueType { bounds }),
+            span,
+        )
+    } else {
+        rewrite_type(context, indent, ident, vis, generics, None, ty_opt, span)
+    }?;
 
     match defaultness {
         ast::Defaultness::Default(..) => Some(format!("default {}", result)),
@@ -3164,14 +3134,14 @@ impl Rewrite for ast::ForeignItem {
             ast::ForeignItemKind::TyAlias(ref ty_alias_kind) => {
                 let ast::TyAliasKind(_, ref generics, ref generic_bounds, ref type_default) =
                     **ty_alias_kind;
-                rewrite_type_alias(
-                    self.ident,
-                    type_default.as_ref(),
-                    generics,
-                    Some(generic_bounds),
+                rewrite_type(
                     &context,
                     shape.indent,
+                    self.ident,
                     &self.vis,
+                    generics,
+                    Some(generic_bounds),
+                    type_default.as_ref(),
                     self.span,
                 )
             }
