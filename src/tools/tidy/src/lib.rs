@@ -46,6 +46,7 @@ pub mod errors;
 pub mod extdeps;
 pub mod features;
 pub mod pal;
+pub mod rustdoc_ui_test_parity;
 pub mod style;
 pub mod target_specific_tests;
 pub mod ui_tests;
