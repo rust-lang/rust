@@ -522,21 +522,21 @@ pub type masksizex4 = MaskSize<4>;
 pub type masksizex8 = MaskSize<8>;
 
 macro_rules! impl_from {
-    { $from:ident ($from_inner:ident) => $($to:ident ($to_inner:ident)),* } => {
+    { $from:ty  => $($to:ty),* } => {
         $(
-        impl<const LANES: usize> From<$from<LANES>> for $to<LANES>
+        impl<const LANES: usize> From<Mask<$from, LANES>> for Mask<$to, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+            LaneCount<LANES>: SupportedLaneCount,
         {
-            fn from(value: $from<LANES>) -> Self {
+            fn from(value: Mask<$from, LANES>) -> Self {
                 Self(value.0.convert())
             }
         }
         )*
     }
 }
-impl_from! { Mask8 (SimdI8) => Mask16 (SimdI16), Mask32 (SimdI32), Mask64 (SimdI64), MaskSize (SimdIsize) }
-impl_from! { Mask16 (SimdI16) => Mask32 (SimdI32), Mask64 (SimdI64), MaskSize (SimdIsize), Mask8 (SimdI8) }
-impl_from! { Mask32 (SimdI32) => Mask64 (SimdI64), MaskSize (SimdIsize), Mask8 (SimdI8), Mask16 (SimdI16) }
-impl_from! { Mask64 (SimdI64) => MaskSize (SimdIsize), Mask8 (SimdI8), Mask16 (SimdI16), Mask32 (SimdI32) }
-impl_from! { MaskSize (SimdIsize) => Mask8 (SimdI8), Mask16 (SimdI16), Mask32 (SimdI32), Mask64 (SimdI64) }
+impl_from! { i8 => i16, i32, i64, isize }
+impl_from! { i16 => i32, i64, isize, i8 }
+impl_from! { i32 => i64, isize, i8, i16 }
+impl_from! { i64 => isize, i8, i16, i32 }
+impl_from! { isize => i8, i16, i32, i64 }

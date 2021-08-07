@@ -158,6 +158,16 @@ where
             ))
         }
     }
+
+    #[inline]
+    pub fn any(self) -> bool {
+        unsafe { crate::intrinsics::simd_reduce_any(self.to_int()) }
+    }
+
+    #[inline]
+    pub fn all(self) -> bool {
+        unsafe { crate::intrinsics::simd_reduce_all(self.to_int()) }
+    }
 }
 
 impl<Element, const LANES: usize> core::convert::From<Mask<Element, LANES>> for Simd<Element, LANES>
@@ -217,5 +227,3 @@ where
         Self::splat(true) ^ self
     }
 }
-
-impl_full_mask_reductions! {}

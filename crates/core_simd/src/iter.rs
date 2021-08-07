@@ -1,54 +1,58 @@
-use crate::{LaneCount, SupportedLaneCount};
+use crate::{LaneCount, Simd, SupportedLaneCount};
+use core::{
+    iter::{Product, Sum},
+    ops::{Add, Mul},
+};
 
 macro_rules! impl_traits {
-    { $type:ident } => {
-        impl<const LANES: usize> core::iter::Sum<Self> for crate::$type<LANES>
+    { $type:ty } => {
+        impl<const LANES: usize> Sum<Self> for Simd<$type, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            fn sum<I: core::iter::Iterator<Item = Self>>(iter: I) -> Self {
-                iter.fold(Default::default(), core::ops::Add::add)
+            fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+                iter.fold(Simd::splat(0 as $type), Add::add)
             }
         }
 
-        impl<const LANES: usize> core::iter::Product<Self> for crate::$type<LANES>
+        impl<const LANES: usize> core::iter::Product<Self> for Simd<$type, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            fn product<I: core::iter::Iterator<Item = Self>>(iter: I) -> Self {
-                iter.fold(Default::default(), core::ops::Mul::mul)
+            fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+                iter.fold(Simd::splat(1 as $type), Mul::mul)
             }
         }
 
-        impl<'a, const LANES: usize> core::iter::Sum<&'a Self> for crate::$type<LANES>
+        impl<'a, const LANES: usize> Sum<&'a Self> for Simd<$type, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            fn sum<I: core::iter::Iterator<Item = &'a Self>>(iter: I) -> Self {
-                iter.fold(Default::default(), core::ops::Add::add)
+            fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+                iter.fold(Simd::splat(0 as $type), Add::add)
             }
         }
 
-        impl<'a, const LANES: usize> core::iter::Product<&'a Self> for crate::$type<LANES>
+        impl<'a, const LANES: usize> Product<&'a Self> for Simd<$type, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            fn product<I: core::iter::Iterator<Item = &'a Self>>(iter: I) -> Self {
-                iter.fold(Default::default(), core::ops::Mul::mul)
+            fn product<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+                iter.fold(Simd::splat(1 as $type), Mul::mul)
             }
         }
     }
 }
 
-impl_traits! { SimdF32 }
-impl_traits! { SimdF64 }
-impl_traits! { SimdU8 }
-impl_traits! { SimdU16 }
-impl_traits! { SimdU32 }
-impl_traits! { SimdU64 }
-impl_traits! { SimdUsize }
-impl_traits! { SimdI8 }
-impl_traits! { SimdI16 }
-impl_traits! { SimdI32 }
-impl_traits! { SimdI64 }
-impl_traits! { SimdIsize }
+impl_traits! { f32 }
+impl_traits! { f64 }
+impl_traits! { u8 }
+impl_traits! { u16 }
+impl_traits! { u32 }
+impl_traits! { u64 }
+impl_traits! { usize }
+impl_traits! { i8 }
+impl_traits! { i16 }
+impl_traits! { i32 }
+impl_traits! { i64 }
+impl_traits! { isize }

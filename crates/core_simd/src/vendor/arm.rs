@@ -28,26 +28,26 @@ from_transmute! { unsafe u32x4 => uint32x4_t }
 from_transmute! { unsafe i32x2 => int32x2_t }
 from_transmute! { unsafe i32x4 => int32x4_t }
 
-from_transmute! { unsafe SimdU64<1> => uint64x1_t }
+from_transmute! { unsafe Simd<u64, 1> => uint64x1_t }
 from_transmute! { unsafe u64x2 => uint64x2_t }
-from_transmute! { unsafe SimdI64<1> => int64x1_t }
+from_transmute! { unsafe Simd<i64, 1> => int64x1_t }
 from_transmute! { unsafe i64x2 => int64x2_t }
-from_transmute! { unsafe SimdU64<1> => poly64x1_t }
+from_transmute! { unsafe Simd<u64, 1> => poly64x1_t }
 from_transmute! { unsafe u64x2 => poly64x2_t }
 
 #[cfg(target_arch = "arm")]
 mod arm {
     use super::*;
-    from_transmute! { unsafe SimdU8<4> => uint8x4_t }
-    from_transmute! { unsafe SimdI8<4> => int8x4_t }
+    from_transmute! { unsafe Simd<u8, 4> => uint8x4_t }
+    from_transmute! { unsafe Simd<i8, 4> => int8x4_t }
 
-    from_transmute! { unsafe SimdU16<2> => uint16x2_t }
-    from_transmute! { unsafe SimdI16<2> => int16x2_t }
+    from_transmute! { unsafe Simd<u16, 2> => uint16x2_t }
+    from_transmute! { unsafe Simd<i16, 2> => int16x2_t }
 }
 
 #[cfg(target_arch = "aarch64")]
 mod aarch64 {
     use super::*;
-    from_transmute! { unsafe SimdF64<1> => float64x1_t }
+    from_transmute! { unsafe Simd<f64, 1> => float64x1_t }
     from_transmute! { unsafe f64x2 => float64x2_t }
 }

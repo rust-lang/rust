@@ -5,8 +5,6 @@ use crate::{LaneCount, SupportedLaneCount};
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_integer_vector {
     { $name:ident, $type:ty, $mask_ty:ident, $mask_impl_ty:ident } => {
-        impl_integer_reductions! { $name, $type }
-
         impl<const LANES: usize> $name<LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,

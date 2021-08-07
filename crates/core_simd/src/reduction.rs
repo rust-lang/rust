@@ -1,8 +1,10 @@
+use crate::{LaneCount, Simd, SupportedLaneCount};
+
 macro_rules! impl_integer_reductions {
-    { $name:ident, $scalar:ty } => {
-        impl<const LANES: usize> crate::$name<LANES>
+    { $scalar:ty } => {
+        impl<const LANES: usize> Simd<$scalar, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+            LaneCount<LANES>: SupportedLaneCount,
         {
             /// Horizontal wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
             #[inline]
@@ -52,11 +54,22 @@ macro_rules! impl_integer_reductions {
     }
 }
 
+impl_integer_reductions! { i8 }
+impl_integer_reductions! { i16 }
+impl_integer_reductions! { i32 }
+impl_integer_reductions! { i64 }
+impl_integer_reductions! { isize }
+impl_integer_reductions! { u8 }
+impl_integer_reductions! { u16 }
+impl_integer_reductions! { u32 }
+impl_integer_reductions! { u64 }
+impl_integer_reductions! { usize }
+
 macro_rules! impl_float_reductions {
-    { $name:ident, $scalar:ty } => {
-        impl<const LANES: usize> crate::$name<LANES>
+    { $scalar:ty } => {
+        impl<const LANES: usize> Simd<$scalar, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+            LaneCount<LANES>: SupportedLaneCount,
         {
 
             /// Horizontal add.  Returns the sum of the lanes of the vector.
@@ -102,22 +115,5 @@ macro_rules! impl_float_reductions {
     }
 }
 
-macro_rules! impl_full_mask_reductions {
-    {} => {
-        impl<Element, const LANES: usize> Mask<Element, LANES>
-        where
-            Element: MaskElement,
-            LaneCount<LANES>: SupportedLaneCount,
-        {
-            #[inline]
-            pub fn any(self) -> bool {
-                unsafe { crate::intrinsics::simd_reduce_any(self.to_int()) }
-            }
-
-            #[inline]
-            pub fn all(self) -> bool {
-                unsafe { crate::intrinsics::simd_reduce_all(self.to_int()) }
-            }
-        }
-    }
-}
+impl_float_reductions! { f32 }
+impl_float_reductions! { f64 }

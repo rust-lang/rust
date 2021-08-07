@@ -1,12 +1,5 @@
 #![allow(non_camel_case_types)]
 
-/// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
-macro_rules! impl_unsigned_vector {
-    { $name:ident, $type:ty } => {
-        impl_integer_reductions! { $name, $type }
-    }
-}
-
 /// A SIMD vector of containing `LANES` `u8` values.
 pub type SimdU8<const LANES: usize> = crate::Simd<u8, LANES>;
 
@@ -21,12 +14,6 @@ pub type SimdU64<const LANES: usize> = crate::Simd<u64, LANES>;
 
 /// A SIMD vector of containing `LANES` `usize` values.
 pub type SimdUsize<const LANES: usize> = crate::Simd<usize, LANES>;
-
-impl_unsigned_vector! { SimdUsize, usize }
-impl_unsigned_vector! { SimdU16, u16 }
-impl_unsigned_vector! { SimdU32, u32 }
-impl_unsigned_vector! { SimdU64, u64 }
-impl_unsigned_vector! { SimdU8, u8 }
 
 /// Vector of two `usize` values
 pub type usizex2 = SimdUsize<2>;
