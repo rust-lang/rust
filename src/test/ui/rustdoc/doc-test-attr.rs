@@ -10,7 +10,5 @@
 #![doc(test(a))]
 //~^ ERROR unknown `doc(test)` attribute `a`
 //~^^ WARN this was previously accepted by the compiler
-#![doc(test(no_crate_inject))]
-#![doc(test(attr(deny(warnings))))]
 
 pub fn foo() {}
