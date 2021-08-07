@@ -452,74 +452,59 @@ where
     }
 }
 
-/// A SIMD mask of `LANES` 8-bit values.
-pub type Mask8<const LANES: usize> = Mask<i8, LANES>;
-
-/// A SIMD mask of `LANES` 16-bit values.
-pub type Mask16<const LANES: usize> = Mask<i16, LANES>;
-
-/// A SIMD mask of `LANES` 32-bit values.
-pub type Mask32<const LANES: usize> = Mask<i32, LANES>;
-
-/// A SIMD mask of `LANES` 64-bit values.
-pub type Mask64<const LANES: usize> = Mask<i64, LANES>;
-
-/// A SIMD mask of `LANES` pointer-width values.
-pub type MaskSize<const LANES: usize> = Mask<isize, LANES>;
-
 /// Vector of eight 8-bit masks
-pub type mask8x8 = Mask8<8>;
+pub type mask8x8 = Mask<i8, 8>;
 
 /// Vector of 16 8-bit masks
-pub type mask8x16 = Mask8<16>;
+pub type mask8x16 = Mask<i8, 16>;
 
 /// Vector of 32 8-bit masks
-pub type mask8x32 = Mask8<32>;
+pub type mask8x32 = Mask<i8, 32>;
 
 /// Vector of 16 8-bit masks
-pub type mask8x64 = Mask8<64>;
+pub type mask8x64 = Mask<i8, 64>;
 
 /// Vector of four 16-bit masks
-pub type mask16x4 = Mask16<4>;
+pub type mask16x4 = Mask<i16, 4>;
 
 /// Vector of eight 16-bit masks
-pub type mask16x8 = Mask16<8>;
+pub type mask16x8 = Mask<i16, 8>;
 
 /// Vector of 16 16-bit masks
-pub type mask16x16 = Mask16<16>;
+pub type mask16x16 = Mask<i16, 16>;
 
 /// Vector of 32 16-bit masks
-pub type mask16x32 = Mask32<32>;
+pub type mask16x32 = Mask<i32, 32>;
 
 /// Vector of two 32-bit masks
-pub type mask32x2 = Mask32<2>;
+pub type mask32x2 = Mask<i32, 2>;
 
 /// Vector of four 32-bit masks
-pub type mask32x4 = Mask32<4>;
+pub type mask32x4 = Mask<i32, 4>;
 
 /// Vector of eight 32-bit masks
-pub type mask32x8 = Mask32<8>;
+pub type mask32x8 = Mask<i32, 8>;
 
 /// Vector of 16 32-bit masks
-pub type mask32x16 = Mask32<16>;
+pub type mask32x16 = Mask<i32, 16>;
 
 /// Vector of two 64-bit masks
-pub type mask64x2 = Mask64<2>;
+pub type mask64x2 = Mask<i64, 2>;
 
 /// Vector of four 64-bit masks
-pub type mask64x4 = Mask64<4>;
+pub type mask64x4 = Mask<i64, 4>;
 
 /// Vector of eight 64-bit masks
-pub type mask64x8 = Mask64<8>;
+pub type mask64x8 = Mask<i64, 8>;
 
 /// Vector of two pointer-width masks
-pub type masksizex2 = MaskSize<2>;
+pub type masksizex2 = Mask<isize, 2>;
 
 /// Vector of four pointer-width masks
-pub type masksizex4 = MaskSize<4>;
+pub type masksizex4 = Mask<isize, 4>;
 
 /// Vector of eight pointer-width masks
-pub type masksizex8 = MaskSize<8>;
+pub type masksizex8 = Mask<isize, 8>;
 
 macro_rules! impl_from {
     { $from:ty  => $($to:ty),* } => {
