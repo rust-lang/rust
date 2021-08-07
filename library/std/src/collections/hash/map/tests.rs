@@ -3,7 +3,7 @@ use super::HashMap;
 use super::RandomState;
 use crate::cell::RefCell;
 use rand::{thread_rng, Rng};
-use realstd::collections::TryReserveError::*;
+use realstd::collections::TryReserveErrorKind::*;
 
 // https://github.com/rust-lang/rust/issues/62301
 fn _assert_hashmap_is_unwind_safe() {
@@ -821,12 +821,12 @@ fn test_try_reserve() {
 
     const MAX_USIZE: usize = usize::MAX;
 
-    if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE) {
+    if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE).map_err(|e| e.kind()) {
     } else {
         panic!("usize::MAX should trigger an overflow!");
     }
 
-    if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8) {
+    if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8).map_err(|e| e.kind()) {
     } else {
         panic!("usize::MAX / 8 should trigger an OOM!")
     }
