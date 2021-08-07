@@ -8,8 +8,8 @@ use rustc_hash::FxHashMap;
 use syntax::SmolStr;
 
 use crate::{
-    db::DefDatabase, AdtId, AttrDefId, CrateId, EnumId, FunctionId, ImplId, ModuleDefId, StaticId,
-    StructId, TraitId,
+    db::DefDatabase, AdtId, AttrDefId, CrateId, EnumId, EnumVariantId, FunctionId, ImplId,
+    ModuleDefId, StaticId, StructId, TraitId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -20,6 +20,7 @@ pub enum LangItemTarget {
     StaticId(StaticId),
     StructId(StructId),
     TraitId(TraitId),
+    EnumVariantId(EnumVariantId),
 }
 
 impl LangItemTarget {
@@ -64,6 +65,13 @@ impl LangItemTarget {
             _ => None,
         }
     }
+
+    pub fn as_enum_variant(self) -> Option<EnumVariantId> {
+        match self {
+            LangItemTarget::EnumVariantId(id) => Some(id),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -92,19 +100,31 @@ impl LangItems {
             for def in module_data.scope.declarations() {
                 match def {
                     ModuleDefId::TraitId(trait_) => {
-                        lang_items.collect_lang_item(db, trait_, LangItemTarget::TraitId)
+                        lang_items.collect_lang_item(db, trait_, LangItemTarget::TraitId);
+                        db.trait_data(trait_).items.iter().for_each(|&(_, assoc_id)| {
+                            if let crate::AssocItemId::FunctionId(f) = assoc_id {
+                                lang_items.collect_lang_item(db, f, LangItemTarget::FunctionId);
+                            }
+                        });
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
-                        lang_items.collect_lang_item(db, e, LangItemTarget::EnumId)
+                        lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
+                        db.enum_data(e).variants.iter().for_each(|(local_id, _)| {
+                            lang_items.collect_lang_item(
+                                db,
+                                EnumVariantId { parent: e, local_id },
+                                LangItemTarget::EnumVariantId,
+                            );
+                        });
                     }
                     ModuleDefId::AdtId(AdtId::StructId(s)) => {
-                        lang_items.collect_lang_item(db, s, LangItemTarget::StructId)
+                        lang_items.collect_lang_item(db, s, LangItemTarget::StructId);
                     }
                     ModuleDefId::FunctionId(f) => {
-                        lang_items.collect_lang_item(db, f, LangItemTarget::FunctionId)
+                        lang_items.collect_lang_item(db, f, LangItemTarget::FunctionId);
                     }
                     ModuleDefId::StaticId(s) => {
-                        lang_items.collect_lang_item(db, s, LangItemTarget::StaticId)
+                        lang_items.collect_lang_item(db, s, LangItemTarget::StaticId);
                     }
                     _ => {}
                 }
