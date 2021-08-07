@@ -1,4 +1,4 @@
-use hir::{HirDisplay, TypeInfo};
+use hir::{HasSource, HirDisplay, InFile, Module, TypeInfo};
 use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
@@ -13,7 +13,7 @@ use syntax::{
 
 use crate::{
     utils::useless_type_special_case,
-    utils::{render_snippet, Cursor},
+    utils::{find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -103,10 +103,22 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
 pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let fn_name: ast::NameRef = ctx.find_node_at_offset()?;
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
-    let module = ctx.sema.scope(call.syntax()).module();
-    let ty = ctx.sema.type_of_expr(&call.receiver()?)?.as_adt()?;
+    let ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
-    let function_builder = FunctionBuilder::from_method_call(ctx, &call, &fn_name, module)?;
+    let (impl_, file) = match ty {
+        hir::Adt::Struct(strukt) => get_impl(strukt.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
+        hir::Adt::Enum(en) => get_impl(en.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
+        hir::Adt::Union(union) => get_impl(union.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
+    }?;
+
+    let function_builder = FunctionBuilder::from_method_call(
+        ctx,
+        &call,
+        &fn_name,
+        &impl_,
+        file,
+        ty.module(ctx.sema.db),
+    )?;
     let target = call.syntax().text_range();
 
     acc.add(
@@ -116,17 +128,28 @@ pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<
         |builder| {
             let function_template = function_builder.render();
             builder.edit_file(function_template.file);
-            let new_fn = format!(
-                "impl {} {{{}}}",
-                ty.name(ctx.sema.db),
-                function_template.to_string(ctx.config.snippet_cap)
-            );
+            let mut new_fn = function_template.to_string(ctx.config.snippet_cap);
+            if impl_.is_none() {
+                new_fn = format!("\nimpl {} {{\n   {}\n}}", ty.name(ctx.sema.db), new_fn,);
+            }
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
                 None => builder.insert(function_template.insert_offset, new_fn),
             }
         },
     )
+}
+
+fn get_impl(
+    adt: InFile<&SyntaxNode>,
+    fn_name: &ast::NameRef,
+    ctx: &AssistContext,
+) -> Option<(Option<ast::Impl>, FileId)> {
+    let file = adt.file_id.original_file(ctx.sema.db);
+    let adt = adt.value;
+    let adt = ast::Adt::cast(adt.clone())?;
+    let r = find_struct_impl(ctx, &adt, fn_name.text().as_str())?;
+    Some((r, file))
 }
 
 struct FunctionTemplate {
@@ -235,20 +258,24 @@ impl FunctionBuilder {
         ctx: &AssistContext,
         call: &ast::MethodCallExpr,
         name: &ast::NameRef,
-        target_module: Option<hir::Module>,
+        impl_: &Option<ast::Impl>,
+        file: FileId,
+        target_module: Module,
     ) -> Option<Self> {
-        let mut file = ctx.frange.file_id;
-        let target = match &target_module {
-            Some(target_module) => {
-                let module_source = target_module.definition_source(ctx.db());
-                let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
-                file = in_file;
-                target
+        // let mut file = ctx.frange.file_id;
+        // let target_module = ctx.sema.scope(call.syntax()).module()?;
+        let target = match impl_ {
+            Some(impl_) => next_space_for_fn_in_impl(&impl_)?,
+            None => {
+                next_space_for_fn_in_module(
+                    ctx.sema.db,
+                    &target_module.definition_source(ctx.sema.db),
+                )?
+                .1
             }
-            None => next_space_for_fn_after_call_site(FuncExpr::Method(call))?,
         };
+
         let needs_pub = false;
-        let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = make::name(&name.text());
         let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call))?;
 
@@ -268,7 +295,11 @@ impl FunctionBuilder {
         // type, but that the current state of their code doesn't allow that return type
         // to be accurately inferred.
         let (ret_ty, should_render_snippet) = {
-            match ctx.sema.type_of_expr(&ast::Expr::MethodCallExpr(call.clone())) {
+            match ctx
+                .sema
+                .type_of_expr(&ast::Expr::MethodCallExpr(call.clone()))
+                .map(TypeInfo::original)
+            {
                 Some(ty) if ty.is_unknown() || ty.is_unit() => (make::ty_unit(), true),
                 Some(ty) => {
                     let rendered = ty.display_source_code(ctx.db(), target_module.into());
@@ -523,6 +554,14 @@ fn next_space_for_fn_in_module(
         }
     };
     Some((file, assist_item))
+}
+
+fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarget> {
+    if let Some(last_item) = impl_.assoc_item_list().and_then(|it| it.assoc_items().last()) {
+        Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
+    } else {
+        Some(GeneratedFunctionTarget::InEmptyItemList(impl_.assoc_item_list()?.syntax().clone()))
+    }
 }
 
 #[cfg(test)]
