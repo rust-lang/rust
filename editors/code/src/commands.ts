@@ -473,7 +473,7 @@ export function viewItemTree(ctx: Ctx): Cmd {
 
 function crateGraph(ctx: Ctx, full: boolean): Cmd {
     return async () => {
-        let node_modules_path = vscode.Uri.file(path.join(ctx.extensionPath, "node_modules"));
+        const node_modules_path = vscode.Uri.file(path.join(ctx.extensionPath, "node_modules"));
 
         const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two, {
             enableScripts: true,
@@ -486,7 +486,7 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
 
         const dot = await ctx.client.sendRequest(ra.viewCrateGraph, params);
 
-        let scripts = [
+        const scripts = [
             { file: vscode.Uri.joinPath(node_modules_path, 'd3', 'dist', 'd3.min.js') },
             { file: vscode.Uri.joinPath(node_modules_path, '@hpcc-js', 'wasm', 'dist', 'index.min.js'), worker: true },
             { file: vscode.Uri.joinPath(node_modules_path, 'd3-graphviz', 'build', 'd3-graphviz.min.js') },
