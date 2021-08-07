@@ -1,23 +1,23 @@
 #![allow(non_camel_case_types)]
 
-use crate::{LaneCount, SupportedLaneCount};
+use crate::{LaneCount, Mask, Simd, SupportedLaneCount};
 
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_integer_vector {
-    { $name:ident, $type:ty, $mask_ty:ident, $mask_impl_ty:ident } => {
-        impl<const LANES: usize> $name<LANES>
+    { $type:ty } => {
+        impl<const LANES: usize> Simd<$type, LANES>
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
             /// Returns true for each positive lane and false if it is zero or negative.
             #[inline]
-            pub fn is_positive(self) -> crate::$mask_ty<LANES> {
+            pub fn is_positive(self) -> Mask<$type, LANES> {
                 self.lanes_gt(Self::splat(0))
             }
 
             /// Returns true for each negative lane and false if it is zero or positive.
             #[inline]
-            pub fn is_negative(self) -> crate::$mask_ty<LANES> {
+            pub fn is_negative(self) -> Mask<$type, LANES> {
                 self.lanes_lt(Self::splat(0))
             }
 
@@ -51,11 +51,11 @@ pub type SimdI64<const LANES: usize> = crate::Simd<i64, LANES>;
 /// A SIMD vector of containing `LANES` `isize` values.
 pub type SimdIsize<const LANES: usize> = crate::Simd<isize, LANES>;
 
-impl_integer_vector! { SimdIsize, isize, MaskSize, SimdIsize }
-impl_integer_vector! { SimdI16, i16, Mask16, SimdI16 }
-impl_integer_vector! { SimdI32, i32, Mask32, SimdI32 }
-impl_integer_vector! { SimdI64, i64, Mask64, SimdI64 }
-impl_integer_vector! { SimdI8, i8, Mask8, SimdI8 }
+impl_integer_vector! { isize }
+impl_integer_vector! { i16 }
+impl_integer_vector! { i32 }
+impl_integer_vector! { i64 }
+impl_integer_vector! { i8 }
 
 /// Vector of two `isize` values
 pub type isizex2 = SimdIsize<2>;

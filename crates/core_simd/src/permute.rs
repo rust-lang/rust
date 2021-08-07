@@ -15,12 +15,12 @@ macro_rules! impl_shuffle_lane {
             ///
             /// ```
             /// #![feature(portable_simd)]
-            /// # use core_simd::*;
-            /// let a = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
-            /// let b = f32x4::from_array([5.0, 6.0, 7.0, 8.0]);
+            /// # use core_simd::Simd;
+            /// let a = Simd::from_array([1.0, 2.0, 3.0, 4.0]);
+            /// let b = Simd::from_array([5.0, 6.0, 7.0, 8.0]);
             /// const IDXS: [u32; 4] = [4,0,3,7];
-            /// let c = f32x4::shuffle::<IDXS>(a,b);
-            /// assert_eq!(f32x4::from_array([5.0, 1.0, 4.0, 8.0]), c);
+            /// let c = Simd::<_, 4>::shuffle::<IDXS>(a,b);
+            /// assert_eq!(Simd::from_array([5.0, 1.0, 4.0, 8.0]), c);
             /// ```
             #[inline]
             pub fn shuffle<const IDX: [u32; $n]>(self, second: Self) -> Self {
@@ -56,9 +56,9 @@ macro_rules! impl_shuffle_lane {
             ///
             /// ```
             /// #![feature(portable_simd)]
-            /// # use core_simd::SimdU32;
-            /// let a = SimdU32::from_array([0, 1, 2, 3]);
-            /// let b = SimdU32::from_array([4, 5, 6, 7]);
+            /// # use core_simd::Simd;
+            /// let a = Simd::from_array([0, 1, 2, 3]);
+            /// let b = Simd::from_array([4, 5, 6, 7]);
             /// let (x, y) = a.interleave(b);
             /// assert_eq!(x.to_array(), [0, 4, 1, 5]);
             /// assert_eq!(y.to_array(), [2, 6, 3, 7]);
@@ -108,9 +108,9 @@ macro_rules! impl_shuffle_lane {
             ///
             /// ```
             /// #![feature(portable_simd)]
-            /// # use core_simd::SimdU32;
-            /// let a = SimdU32::from_array([0, 4, 1, 5]);
-            /// let b = SimdU32::from_array([2, 6, 3, 7]);
+            /// # use core_simd::Simd;
+            /// let a = Simd::from_array([0, 4, 1, 5]);
+            /// let b = Simd::from_array([2, 6, 3, 7]);
             /// let (x, y) = a.deinterleave(b);
             /// assert_eq!(x.to_array(), [0, 1, 2, 3]);
             /// assert_eq!(y.to_array(), [4, 5, 6, 7]);

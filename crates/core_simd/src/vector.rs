@@ -9,7 +9,7 @@ pub use uint::*;
 // Vectors of pointers are not for public use at the current time.
 pub(crate) mod ptr;
 
-use crate::{LaneCount, MaskElement, SupportedLaneCount};
+use crate::{LaneCount, Mask, MaskElement, SupportedLaneCount};
 
 /// A SIMD vector of `LANES` elements of type `Element`.
 #[repr(simd)]
@@ -54,16 +54,16 @@ where
     /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
-    /// let alt = SimdI32::from_array([-5, -4, -3, -2]);
+    /// let idxs = Simd::from_array([9, 3, 0, 5]);
+    /// let alt = Simd::from_array([-5, -4, -3, -2]);
     ///
-    /// let result = SimdI32::<4>::gather_or(&vec, idxs, alt); // Note the lane that is out-of-bounds.
-    /// assert_eq!(result, SimdI32::from_array([-5, 13, 10, 15]));
+    /// let result = Simd::gather_or(&vec, idxs, alt); // Note the lane that is out-of-bounds.
+    /// assert_eq!(result, Simd::from_array([-5, 13, 10, 15]));
     /// ```
     #[must_use]
     #[inline]
-    pub fn gather_or(slice: &[Element], idxs: crate::SimdUsize<LANES>, or: Self) -> Self {
-        Self::gather_select(slice, crate::MaskSize::splat(true), idxs, or)
+    pub fn gather_or(slice: &[Element], idxs: Simd<usize, LANES>, or: Self) -> Self {
+        Self::gather_select(slice, Mask::splat(true), idxs, or)
     }
 
     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
@@ -72,14 +72,14 @@ where
     /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
+    /// let idxs = Simd::from_array([9, 3, 0, 5]);
     ///
-    /// let result = SimdI32::<4>::gather_or_default(&vec, idxs); // Note the lane that is out-of-bounds.
-    /// assert_eq!(result, SimdI32::from_array([0, 13, 10, 15]));
+    /// let result = Simd::gather_or_default(&vec, idxs); // Note the lane that is out-of-bounds.
+    /// assert_eq!(result, Simd::from_array([0, 13, 10, 15]));
     /// ```
     #[must_use]
     #[inline]
-    pub fn gather_or_default(slice: &[Element], idxs: crate::SimdUsize<LANES>) -> Self
+    pub fn gather_or_default(slice: &[Element], idxs: Simd<usize, LANES>) -> Self
     where
         Element: Default,
     {
@@ -92,22 +92,22 @@ where
     /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
-    /// let alt = SimdI32::from_array([-5, -4, -3, -2]);
-    /// let mask = MaskSize::from_array([true, true, true, false]); // Note the mask of the last lane.
+    /// let idxs = Simd::from_array([9, 3, 0, 5]);
+    /// let alt = Simd::from_array([-5, -4, -3, -2]);
+    /// let mask = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     ///
-    /// let result = SimdI32::<4>::gather_select(&vec, mask, idxs, alt); // Note the lane that is out-of-bounds.
-    /// assert_eq!(result, SimdI32::from_array([-5, 13, 10, -2]));
+    /// let result = Simd::gather_select(&vec, mask, idxs, alt); // Note the lane that is out-of-bounds.
+    /// assert_eq!(result, Simd::from_array([-5, 13, 10, -2]));
     /// ```
     #[must_use]
     #[inline]
     pub fn gather_select(
         slice: &[Element],
-        mask: crate::MaskSize<LANES>,
-        idxs: crate::SimdUsize<LANES>,
+        mask: Mask<isize, LANES>,
+        idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
-        let mask = (mask & idxs.lanes_lt(crate::SimdUsize::splat(slice.len()))).to_int();
+        let mask = (mask & idxs.lanes_lt(Simd::splat(slice.len()))).to_int();
         let base_ptr = crate::vector::ptr::SimdConstPtr::splat(slice.as_ptr());
         // Ferris forgive me, I have done pointer arithmetic here.
         let ptrs = base_ptr.wrapping_add(idxs);
@@ -122,15 +122,15 @@ where
     /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 0]);
-    /// let vals = SimdI32::from_array([-27, 82, -41, 124]);
+    /// let idxs = Simd::from_array([9, 3, 0, 0]);
+    /// let vals = Simd::from_array([-27, 82, -41, 124]);
     ///
     /// vals.scatter(&mut vec, idxs); // index 0 receives two writes.
     /// assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
     /// ```
     #[inline]
-    pub fn scatter(self, slice: &mut [Element], idxs: crate::SimdUsize<LANES>) {
-        self.scatter_select(slice, crate::MaskSize::splat(true), idxs)
+    pub fn scatter(self, slice: &mut [Element], idxs: Simd<usize, LANES>) {
+        self.scatter_select(slice, Mask::splat(true), idxs)
     }
 
     /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
@@ -140,9 +140,9 @@ where
     /// # #![feature(portable_simd)]
     /// # use core_simd::*;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 0]);
-    /// let vals = SimdI32::from_array([-27, 82, -41, 124]);
-    /// let mask = MaskSize::from_array([true, true, true, false]); // Note the mask of the last lane.
+    /// let idxs = Simd::from_array([9, 3, 0, 0]);
+    /// let vals = Simd::from_array([-27, 82, -41, 124]);
+    /// let mask = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     ///
     /// vals.scatter_select(&mut vec, mask, idxs); // index 0's second write is masked, thus omitted.
     /// assert_eq!(vec, vec![-41, 11, 12, 82, 14, 15, 16, 17, 18]);
@@ -151,11 +151,11 @@ where
     pub fn scatter_select(
         self,
         slice: &mut [Element],
-        mask: crate::MaskSize<LANES>,
-        idxs: crate::SimdUsize<LANES>,
+        mask: Mask<isize, LANES>,
+        idxs: Simd<usize, LANES>,
     ) {
         // We must construct our scatter mask before we derive a pointer!
-        let mask = (mask & idxs.lanes_lt(crate::SimdUsize::splat(slice.len()))).to_int();
+        let mask = (mask & idxs.lanes_lt(Simd::splat(slice.len()))).to_int();
         // SAFETY: This block works with *mut T derived from &mut 'a [T],
         // which means it is delicate in Rust's borrowing model, circa 2021:
         // &mut 'a [T] asserts uniqueness, so deriving &'a [T] invalidates live *mut Ts!
