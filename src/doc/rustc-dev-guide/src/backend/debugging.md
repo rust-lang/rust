@@ -56,6 +56,17 @@ different stages during compilation, which is sometimes useful. One just needs
 to convert the bitcode files to `.ll` files using `llvm-dis` which should be in
 the target local compilation of rustc.
 
+If you are seeing incorrect behavior due to an optimization pass, a very handy
+LLVM option is `-opt-bisect-limit`, which takes an integer denoting the index
+value of the highest pass to run.  Index values for taken passes are stable
+from run to run; by coupling this with software that automates bisecting the
+search space based on the resulting program, an errant pass can be quickly
+determined.  When an `-opt-bisect-limit` is specified, all runs are displayed
+to standard error, along with their index and output indicating if the
+pass was run or skipped.  Setting the limit to an index of -1 (e.g.,
+`RUSTFLAGS="-C llvm-args=-opt-bisect-limit=-1"`) will show all passes and
+their corresponding index values.
+
 If you want to play with the optimization pipeline, you can use the `opt` tool
 from `./build/<host-triple>/llvm/bin/` with the LLVM IR emitted by rustc.  Note
 that rustc emits different IR depending on whether `-O` is enabled, even
@@ -125,6 +136,8 @@ tutorial above):
 - The `-Z no-parallel-llvm` will disable parallel compilation of distinct compilation units
 - The `-Z llvm-time-trace` option will output a Chrome profiler compatible JSON file
   which contains details and timings for LLVM passes.
+- The `-C llvm-args=-opt-bisect-limit=<index>` option allows for bisecting LLVM
+  optimizations.
 
 ### Filing LLVM bug reports
 
