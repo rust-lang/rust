@@ -91,8 +91,7 @@ public:
         dretAlloca(dretAlloca) {
 
     assert(TR.getFunction() == gutils->oldFunc);
-    for (auto &pair :
-         TR.analyzer.analysis) {
+    for (auto &pair : TR.analyzer.analysis) {
       if (auto in = dyn_cast<Instruction>(pair.first)) {
         if (in->getParent()->getParent() != gutils->oldFunc) {
           llvm::errs() << "inf: " << *in->getParent()->getParent() << "\n";
@@ -6635,8 +6634,8 @@ public:
             Mode == DerivativeMode::ReverseModeCombined) {
           subdata = &gutils->Logic.CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
-              TR.analyzer.interprocedural, /*return is used*/ subretused, nextTypeInfo,
-              uncacheable_args, false, gutils->AtomicAdd,
+              TR.analyzer.interprocedural, /*return is used*/ subretused,
+              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd,
               /*PostOpt*/ false);
           if (Mode == DerivativeMode::ReverseModePrimal) {
             assert(augmentedReturn);

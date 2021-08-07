@@ -108,29 +108,29 @@ static inline bool operator<(const FnTypeInfo &lhs, const FnTypeInfo &rhs) {
     return true;
   if (rhs.Return < lhs.Return)
     return false;
-  
-  for (auto& arg : lhs.Function->args()) {
-      {
-    auto foundLHS = lhs.Arguments.find(&arg);
-    assert(foundLHS != lhs.Arguments.end());
-    auto foundRHS = rhs.Arguments.find(&arg);
-    assert(foundRHS != rhs.Arguments.end());
-    if (foundLHS->second < foundRHS->second)
+
+  for (auto &arg : lhs.Function->args()) {
+    {
+      auto foundLHS = lhs.Arguments.find(&arg);
+      assert(foundLHS != lhs.Arguments.end());
+      auto foundRHS = rhs.Arguments.find(&arg);
+      assert(foundRHS != rhs.Arguments.end());
+      if (foundLHS->second < foundRHS->second)
         return true;
-    if (foundRHS->second < foundLHS->second)
+      if (foundRHS->second < foundLHS->second)
         return false;
-      }
-      
-      {
-    auto foundLHS = lhs.KnownValues.find(&arg);
-    assert(foundLHS != lhs.KnownValues.end());
-    auto foundRHS = rhs.KnownValues.find(&arg);
-    assert(foundRHS != rhs.KnownValues.end());
-    if (foundLHS->second < foundRHS->second)
+    }
+
+    {
+      auto foundLHS = lhs.KnownValues.find(&arg);
+      assert(foundLHS != lhs.KnownValues.end());
+      auto foundRHS = rhs.KnownValues.find(&arg);
+      assert(foundRHS != rhs.KnownValues.end());
+      if (foundLHS->second < foundRHS->second)
         return true;
-    if (foundRHS->second < foundLHS->second)
+      if (foundRHS->second < foundLHS->second)
         return false;
-      }
+    }
   }
   // equal;
   return false;
@@ -175,7 +175,7 @@ public:
 
   FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
 
-  llvm::Function* getFunction() const;
+  llvm::Function *getFunction() const;
 };
 
 /// Helper class that computes the fixed-point type results of a given function
@@ -356,7 +356,7 @@ public:
       CustomRules;
 
   /// Map of possible query states to TypeAnalyzer intermediate results
-  std::map<FnTypeInfo, std::unique_ptr<TypeAnalyzer>> analyzedFunctions;
+  std::map<FnTypeInfo, std::shared_ptr<TypeAnalyzer>> analyzedFunctions;
 
   /// Analyze a particular function, returning the results
   TypeResults analyzeFunction(const FnTypeInfo &fn);

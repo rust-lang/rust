@@ -186,12 +186,12 @@ TypeAnalyzer::TypeAnalyzer(
 }
 
 /// Given a constant value, deduce any type information applicable
-void
-getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
-                    std::map<llvm::Value *, TypeTree> &analysis) {
+void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
+                         std::map<llvm::Value *, TypeTree> &analysis) {
   auto found = analysis.find(Val);
-  if (found != analysis.end()) return;
-  
+  if (found != analysis.end())
+    return;
+
   auto &DL = TA.fntypeinfo.Function->getParent()->getDataLayout();
 
   // Undefined value is an anything everywhere
@@ -213,44 +213,44 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
     analysis[Val].insert({-1}, BaseType::Pointer);
     return;
   }
-    
+
   // Any constants == 0 are considered Anything
-    // other floats are assumed to be that type
-    if (auto FP = dyn_cast<ConstantFP>(Val)) {
-      if (FP->isExactlyValue(0.0)) {
-        analysis[Val].insert({-1}, BaseType::Anything);
-        return;
-      }
-      analysis[Val].insert({-1}, ConcreteType(FP->getType()->getScalarType()));
-      return;
-    }
-
-    if (auto ci = dyn_cast<ConstantInt>(Val)) {
-      // Constants in range [1, 4096] are assumed to be integral since
-      // any float or pointers they may represent are ill-formed
-      if (!ci->isNegative() && ci->getLimitedValue() >= 1 &&
-          ci->getLimitedValue() <= 4096) {
-        analysis[Val].insert({-1}, BaseType::Integer);
-        return;
-      }
-
-      // Constants explicitly marked as negative that aren't -1 are considered
-      // integral
-      if (ci->isNegative() && ci->getSExtValue() < -1) {
-        analysis[Val].insert({-1}, BaseType::Integer);
-        return;
-      }
-
-      // Values of size < 16 (half size) are considered integral
-      // since they cannot possibly represent a float or pointer
-      if (ci->getType()->getBitWidth() < 16) {
-        analysis[Val].insert({-1}, BaseType::Integer);
-        return;
-      }
-      // All other constant-ints could be any type
+  // other floats are assumed to be that type
+  if (auto FP = dyn_cast<ConstantFP>(Val)) {
+    if (FP->isExactlyValue(0.0)) {
       analysis[Val].insert({-1}, BaseType::Anything);
       return;
     }
+    analysis[Val].insert({-1}, ConcreteType(FP->getType()->getScalarType()));
+    return;
+  }
+
+  if (auto ci = dyn_cast<ConstantInt>(Val)) {
+    // Constants in range [1, 4096] are assumed to be integral since
+    // any float or pointers they may represent are ill-formed
+    if (!ci->isNegative() && ci->getLimitedValue() >= 1 &&
+        ci->getLimitedValue() <= 4096) {
+      analysis[Val].insert({-1}, BaseType::Integer);
+      return;
+    }
+
+    // Constants explicitly marked as negative that aren't -1 are considered
+    // integral
+    if (ci->isNegative() && ci->getSExtValue() < -1) {
+      analysis[Val].insert({-1}, BaseType::Integer);
+      return;
+    }
+
+    // Values of size < 16 (half size) are considered integral
+    // since they cannot possibly represent a float or pointer
+    if (ci->getType()->getBitWidth() < 16) {
+      analysis[Val].insert({-1}, BaseType::Integer);
+      return;
+    }
+    // All other constant-ints could be any type
+    analysis[Val].insert({-1}, BaseType::Anything);
+    return;
+  }
 
   // Type of an aggregate is the aggregation of
   // the subtypes
@@ -284,14 +284,15 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       delete g2;
 
       int Off = (int)ai.getLimitedValue();
-      
+
       getConstantAnalysis(Op, TA, analysis);
       auto mid = analysis[Op].ShiftIndices(DL, /*init offset*/ 0,
-                                  /*maxSize*/ ObjSize,
-                                  /*addOffset*/ Off);
+                                           /*maxSize*/ ObjSize,
+                                           /*addOffset*/ Off);
 
-      if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
-              CA->getType()) >= 16) {
+      if (TA.fntypeinfo.Function->getParent()
+              ->getDataLayout()
+              .getTypeSizeInBits(CA->getType()) >= 16) {
         mid.ReplaceIntWithAnything();
       }
 
@@ -333,19 +334,19 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       delete g2;
 
       int Off = (int)ai.getLimitedValue();
-      
+
       getConstantAnalysis(Op, TA, analysis);
       auto mid = analysis[Op].ShiftIndices(DL, /*init offset*/ 0,
-                                  /*maxSize*/ ObjSize,
-                                  /*addOffset*/ Off);
+                                           /*maxSize*/ ObjSize,
+                                           /*addOffset*/ Off);
 
-      if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
-              CD->getType()) >= 16) {
+      if (TA.fntypeinfo.Function->getParent()
+              ->getDataLayout()
+              .getTypeSizeInBits(CD->getType()) >= 16) {
         mid.ReplaceIntWithAnything();
       }
 
       Result |= mid;
-
     }
     return;
   }
@@ -381,13 +382,15 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
         analysis[Val] = TypeTree(BaseType::Pointer).Only(-1);
         return;
       }
-      
+
       getConstantAnalysis(CE->getOperand(0), TA, analysis);
       auto gepData0 = analysis[CE->getOperand(0)].Data0();
 
       TypeTree result =
-          gepData0.ShiftIndices(DL, /*init offset*/ off, /*max size*/ -1,
-                                /*new offset*/ 0).Only(-1);
+          gepData0
+              .ShiftIndices(DL, /*init offset*/ off, /*max size*/ -1,
+                            /*new offset*/ 0)
+              .Only(-1);
       result.insert({-1}, BaseType::Pointer);
       analysis[Val] = result;
       return;
@@ -409,7 +412,7 @@ getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
   }
 
   if (auto GV = dyn_cast<GlobalVariable>(Val)) {
-    
+
     if (GV->getName() == "__cxa_thread_atexit_impl") {
       analysis[Val] = TypeTree(BaseType::Pointer).Only(-1);
       return;
@@ -3402,9 +3405,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
     if (funcName == "memcmp") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
       return;
     }
 
@@ -4332,26 +4338,30 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
   bool hasUp = direction & UP;
 
   if (hasDown) {
-      if (call.getType()->isVoidTy()) hasDown = false;
-      else {
-          if (getAnalysis(&call).IsFullyDetermined())
-              hasDown = false;
-      }
+    if (call.getType()->isVoidTy())
+      hasDown = false;
+    else {
+      if (getAnalysis(&call).IsFullyDetermined())
+        hasDown = false;
+    }
   }
   if (hasUp) {
     bool unknown = false;
-    for (auto& arg : call.arg_operands()) {
-        if (isa<ConstantData>(arg)) continue;
-        if (!getAnalysis(arg).IsFullyDetermined()) {
-            unknown = true;
-            break;
-        }
+    for (auto &arg : call.arg_operands()) {
+      if (isa<ConstantData>(arg))
+        continue;
+      if (!getAnalysis(arg).IsFullyDetermined()) {
+        unknown = true;
+        break;
+      }
     }
-    if (!unknown) hasUp = false;
+    if (!unknown)
+      hasUp = false;
   }
 
   // Fast path where all information has already been derived
-  if (!hasUp && !hasDown) return;
+  if (!hasUp && !hasDown)
+    return;
 
   FnTypeInfo typeInfo = getCallInfo(call, fn);
 
@@ -4437,18 +4447,20 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
     assert(analysis.fntypeinfo.Function == fn.Function);
   }
 
+  // Store the steady state result (if changed) to avoid
+  // a second analysis later.
+  analyzedFunctions.emplace(TypeResults(analysis).getAnalyzedTypeInfo(),
+                            res.first->second);
+
   return TypeResults(analysis);
 }
 
-TypeResults::TypeResults(TypeAnalyzer &analyzer)
-    : analyzer(analyzer) {
-}
+TypeResults::TypeResults(TypeAnalyzer &analyzer) : analyzer(analyzer) {}
 
 FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
   FnTypeInfo res(analyzer.fntypeinfo.Function);
   for (auto &arg : analyzer.fntypeinfo.Function->args()) {
-    res.Arguments.insert(
-        std::pair<Argument *, TypeTree>(&arg, query(&arg)));
+    res.Arguments.insert(std::pair<Argument *, TypeTree>(&arg, query(&arg)));
   }
   res.Return = getReturnAnalysis();
   res.KnownValues = analyzer.fntypeinfo.KnownValues;
@@ -4469,9 +4481,7 @@ TypeTree TypeResults::query(Value *val) {
   return analyzer.getAnalysis(val);
 }
 
-void TypeResults::dump() {
-  analyzer.dump();
-}
+void TypeResults::dump() { analyzer.dump(); }
 
 ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
                                   bool pointerIntSame) {
@@ -4582,8 +4592,10 @@ ConcreteType TypeResults::firstPointer(size_t num, Value *val,
     llvm::errs() << "could not deduce type of integer " << *val
                  << " num:" << num << " q:" << q.str() << " \n";
 
-    llvm::DiagnosticLocation loc = analyzer.fntypeinfo.Function->getSubprogram();
-    Instruction *codeLoc = &*analyzer.fntypeinfo.Function->getEntryBlock().begin();
+    llvm::DiagnosticLocation loc =
+        analyzer.fntypeinfo.Function->getSubprogram();
+    Instruction *codeLoc =
+        &*analyzer.fntypeinfo.Function->getEntryBlock().begin();
     if (auto inst = dyn_cast<Instruction>(val)) {
       loc = inst->getDebugLoc();
       codeLoc = inst;
@@ -4596,7 +4608,7 @@ ConcreteType TypeResults::firstPointer(size_t num, Value *val,
   return dt;
 }
 
-Function* TypeResults::getFunction() const {
+Function *TypeResults::getFunction() const {
   return analyzer.fntypeinfo.Function;
 }
 

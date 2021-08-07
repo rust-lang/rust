@@ -110,16 +110,17 @@ public:
   }
 
   // Return true if this type tree is fully known (i.e. there
-  // is no more information which could be added). 
+  // is no more information which could be added).
   bool IsFullyDetermined() const {
-      std::vector<int> offsets = {-1};
-      while(1) {
-        auto found = mapping.find(offsets);
-        if (found == mapping.end()) return false;
-        if (found->second != BaseType::Pointer)
-            return true;
-        offsets.push_back(-1);
-      }
+    std::vector<int> offsets = {-1};
+    while (1) {
+      auto found = mapping.find(offsets);
+      if (found == mapping.end())
+        return false;
+      if (found->second != BaseType::Pointer)
+        return true;
+      offsets.push_back(-1);
+    }
   }
 
   /// Return if changed
