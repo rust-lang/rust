@@ -183,32 +183,26 @@ macro_rules! impl_float_vector {
     };
 }
 
-/// A SIMD vector of containing `LANES` `f32` values.
-pub type SimdF32<const LANES: usize> = crate::Simd<f32, LANES>;
-
-/// A SIMD vector of containing `LANES` `f64` values.
-pub type SimdF64<const LANES: usize> = crate::Simd<f64, LANES>;
-
 impl_float_vector! { f32, u32, i32 }
 impl_float_vector! { f64, u64, i64 }
 
 /// Vector of two `f32` values
-pub type f32x2 = SimdF32<2>;
+pub type f32x2 = Simd<f32, 2>;
 
 /// Vector of four `f32` values
-pub type f32x4 = SimdF32<4>;
+pub type f32x4 = Simd<f32, 4>;
 
 /// Vector of eight `f32` values
-pub type f32x8 = SimdF32<8>;
+pub type f32x8 = Simd<f32, 8>;
 
 /// Vector of 16 `f32` values
-pub type f32x16 = SimdF32<16>;
+pub type f32x16 = Simd<f32, 16>;
 
 /// Vector of two `f64` values
-pub type f64x2 = SimdF64<2>;
+pub type f64x2 = Simd<f64, 2>;
 
 /// Vector of four `f64` values
-pub type f64x4 = SimdF64<4>;
+pub type f64x4 = Simd<f64, 4>;
 
 /// Vector of eight `f64` values
-pub type f64x8 = SimdF64<8>;
+pub type f64x8 = Simd<f64, 8>;

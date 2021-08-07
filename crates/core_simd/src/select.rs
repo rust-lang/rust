@@ -60,10 +60,10 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::{Mask32, SimdI32};
-    /// let a = SimdI32::from_array([0, 1, 2, 3]);
-    /// let b = SimdI32::from_array([4, 5, 6, 7]);
-    /// let mask = Mask32::from_array([true, false, false, true]);
+    /// # use core_simd::{Mask, Simd};
+    /// let a = Simd::from_array([0, 1, 2, 3]);
+    /// let b = Simd::from_array([4, 5, 6, 7]);
+    /// let mask = Mask::from_array([true, false, false, true]);
     /// let c = mask.select(a, b);
     /// assert_eq!(c.to_array(), [0, 5, 6, 3]);
     /// ```
@@ -71,10 +71,10 @@ where
     /// `select` can also be used on masks:
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::Mask32;
-    /// let a = Mask32::from_array([true, true, false, false]);
-    /// let b = Mask32::from_array([false, false, true, true]);
-    /// let mask = Mask32::from_array([true, false, false, true]);
+    /// # use core_simd::Mask;
+    /// let a = Mask::<i32, 4>::from_array([true, true, false, false]);
+    /// let b = Mask::<i32, 4>::from_array([false, false, true, true]);
+    /// let mask = Mask::<i32, 4>::from_array([true, false, false, true]);
     /// let c = mask.select(a, b);
     /// assert_eq!(c.to_array(), [true, false, true, false]);
     /// ```

@@ -36,21 +36,6 @@ macro_rules! impl_integer_vector {
     }
 }
 
-/// A SIMD vector of containing `LANES` `i8` values.
-pub type SimdI8<const LANES: usize> = crate::Simd<i8, LANES>;
-
-/// A SIMD vector of containing `LANES` `i16` values.
-pub type SimdI16<const LANES: usize> = crate::Simd<i16, LANES>;
-
-/// A SIMD vector of containing `LANES` `i32` values.
-pub type SimdI32<const LANES: usize> = crate::Simd<i32, LANES>;
-
-/// A SIMD vector of containing `LANES` `i64` values.
-pub type SimdI64<const LANES: usize> = crate::Simd<i64, LANES>;
-
-/// A SIMD vector of containing `LANES` `isize` values.
-pub type SimdIsize<const LANES: usize> = crate::Simd<isize, LANES>;
-
 impl_integer_vector! { isize }
 impl_integer_vector! { i16 }
 impl_integer_vector! { i32 }
@@ -58,61 +43,61 @@ impl_integer_vector! { i64 }
 impl_integer_vector! { i8 }
 
 /// Vector of two `isize` values
-pub type isizex2 = SimdIsize<2>;
+pub type isizex2 = Simd<isize, 2>;
 
 /// Vector of four `isize` values
-pub type isizex4 = SimdIsize<4>;
+pub type isizex4 = Simd<isize, 4>;
 
 /// Vector of eight `isize` values
-pub type isizex8 = SimdIsize<8>;
+pub type isizex8 = Simd<isize, 8>;
 
 /// Vector of two `i16` values
-pub type i16x2 = SimdI16<2>;
+pub type i16x2 = Simd<i16, 2>;
 
 /// Vector of four `i16` values
-pub type i16x4 = SimdI16<4>;
+pub type i16x4 = Simd<i16, 4>;
 
 /// Vector of eight `i16` values
-pub type i16x8 = SimdI16<8>;
+pub type i16x8 = Simd<i16, 8>;
 
 /// Vector of 16 `i16` values
-pub type i16x16 = SimdI16<16>;
+pub type i16x16 = Simd<i16, 16>;
 
 /// Vector of 32 `i16` values
-pub type i16x32 = SimdI16<32>;
+pub type i16x32 = Simd<i16, 32>;
 
 /// Vector of two `i32` values
-pub type i32x2 = SimdI32<2>;
+pub type i32x2 = Simd<i32, 2>;
 
 /// Vector of four `i32` values
-pub type i32x4 = SimdI32<4>;
+pub type i32x4 = Simd<i32, 4>;
 
 /// Vector of eight `i32` values
-pub type i32x8 = SimdI32<8>;
+pub type i32x8 = Simd<i32, 8>;
 
 /// Vector of 16 `i32` values
-pub type i32x16 = SimdI32<16>;
+pub type i32x16 = Simd<i32, 16>;
 
 /// Vector of two `i64` values
-pub type i64x2 = SimdI64<2>;
+pub type i64x2 = Simd<i64, 2>;
 
 /// Vector of four `i64` values
-pub type i64x4 = SimdI64<4>;
+pub type i64x4 = Simd<i64, 4>;
 
 /// Vector of eight `i64` values
-pub type i64x8 = SimdI64<8>;
+pub type i64x8 = Simd<i64, 8>;
 
 /// Vector of four `i8` values
-pub type i8x4 = SimdI8<4>;
+pub type i8x4 = Simd<i8, 4>;
 
 /// Vector of eight `i8` values
-pub type i8x8 = SimdI8<8>;
+pub type i8x8 = Simd<i8, 8>;
 
 /// Vector of 16 `i8` values
-pub type i8x16 = SimdI8<16>;
+pub type i8x16 = Simd<i8, 16>;
 
 /// Vector of 32 `i8` values
-pub type i8x32 = SimdI8<32>;
+pub type i8x32 = Simd<i8, 32>;
 
 /// Vector of 64 `i8` values
-pub type i8x64 = SimdI8<64>;
+pub type i8x64 = Simd<i8, 64>;
