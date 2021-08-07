@@ -157,12 +157,12 @@ pub fn compile_codegen_unit(
             }
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
-            // also be added to the `llvm.used` variable, created next.
+            // also be added to the `llvm.compiler.used` variable, created next.
             if cx.sess().instrument_coverage() {
                 cx.coverageinfo_finalize();
             }
 
-            // Create the llvm.used variable
+            // Create the llvm.compiler.used variable
             // This variable has type [N x i8*] and is stored in the llvm.metadata section
             if !cx.used_statics().borrow().is_empty() {
                 cx.create_used_variable()

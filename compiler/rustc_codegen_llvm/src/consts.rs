@@ -479,7 +479,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
+    /// Add a global value to a list to be stored in the `llvm.compiler.used` variable, an array of i8*.
     fn add_used_global(&self, global: &'ll Value) {
         let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
         self.used_statics.borrow_mut().push(cast);

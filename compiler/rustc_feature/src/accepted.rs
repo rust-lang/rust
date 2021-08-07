@@ -178,7 +178,7 @@ declare_features! (
     /// Allows annotating functions conforming to `fn(&PanicInfo) -> !` with `#[panic_handler]`.
     /// This defines the behavior of panics.
     (accepted, panic_handler, "1.30.0", Some(44489), None),
-    /// Allows `#[used]` to preserve symbols (see llvm.used).
+    /// Allows `#[used]` to preserve symbols (see llvm.compiler.used).
     (accepted, used, "1.30.0", Some(40289), None),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477), None),

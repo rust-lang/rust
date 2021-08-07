@@ -71,8 +71,8 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// to constants.)
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
-    /// Statics that will be placed in the llvm.used variable
-    /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
+    /// Statics that will be placed in the llvm.compiler.used variable
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     /// Mapping of non-scalar types to llvm types and field remapping if needed.
@@ -447,7 +447,13 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn create_used_variable(&self) {
-        let name = cstr!("llvm.used");
+        // The semantics of #[used] in Rust only require the symbol to make it into the object
+        // file. It is explicitly allowed for the linker to strip the symbol if it is dead.
+        // As such, use llvm.compiler.used instead of llvm.used.
+        // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
+        // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs in
+        // some versions of the gold linker.
+        let name = cstr!("llvm.compiler.used");
         let section = cstr!("llvm.metadata");
         let array =
             self.const_array(&self.type_ptr_to(self.type_i8()), &*self.used_statics.borrow());
