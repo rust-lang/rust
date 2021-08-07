@@ -7,6 +7,10 @@ fn from() {
     const FROM: i64 = i64::from(1i32);
     assert_eq!(FROM, 1i64);
 
+    // From int to float
+    const FROM_F64: f64 = f64::from(42u8);
+    assert_eq!(FROM_F64, 42f64);
+
     // Upper bounded
     const U8_FROM_U16: Result<u8, TryFromIntError> = u8::try_from(1u16);
     assert_eq!(U8_FROM_U16, Ok(1u8));
