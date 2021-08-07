@@ -3452,7 +3452,7 @@ pub trait Iterator {
         self.map(f).is_sorted()
     }
 
-    /// See [TrustedRandomAccess]
+    /// See [TrustedRandomAccess][super::super::TrustedRandomAccess]
     // The unusual name is to avoid name collisions in method resolution
     // see #76479.
     #[inline]
