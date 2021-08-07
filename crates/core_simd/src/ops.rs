@@ -1,4 +1,27 @@
-use crate::{LaneCount, SupportedLaneCount};
+use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+
+impl<I, Element, const LANES: usize> core::ops::Index<I> for Simd<Element, LANES>
+where
+    Element: SimdElement,
+    LaneCount<LANES>: SupportedLaneCount,
+    I: core::slice::SliceIndex<[Element]>,
+{
+    type Output = I::Output;
+    fn index(&self, index: I) -> &Self::Output {
+        &self.as_array()[index]
+    }
+}
+
+impl<I, Element, const LANES: usize> core::ops::IndexMut<I> for Simd<Element, LANES>
+where
+    Element: SimdElement,
+    LaneCount<LANES>: SupportedLaneCount,
+    I: core::slice::SliceIndex<[Element]>,
+{
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        &mut self.as_mut_array()[index]
+    }
+}
 
 /// Checks if the right-hand side argument of a left- or right-shift would cause overflow.
 fn invalid_shift_rhs<T>(rhs: T) -> bool
@@ -191,31 +214,6 @@ macro_rules! impl_op {
         }
     };
 
-    { impl Index for $type:ident, $scalar:ty } => {
-        impl<I, const LANES: usize> core::ops::Index<I> for crate::$type<LANES>
-        where
-            LaneCount<LANES>: SupportedLaneCount,
-            I: core::slice::SliceIndex<[$scalar]>,
-        {
-            type Output = I::Output;
-            fn index(&self, index: I) -> &Self::Output {
-                let slice: &[_] = self.as_ref();
-                &slice[index]
-            }
-        }
-
-        impl<I, const LANES: usize> core::ops::IndexMut<I> for crate::$type<LANES>
-        where
-            LaneCount<LANES>: SupportedLaneCount,
-            I: core::slice::SliceIndex<[$scalar]>,
-        {
-            fn index_mut(&mut self, index: I) -> &mut Self::Output {
-                let slice: &mut [_] = self.as_mut();
-                &mut slice[index]
-            }
-        }
-    };
-
     // generic binary op with assignment when output is `Self`
     { @binary $type:ident, $scalar:ty, $trait:ident :: $trait_fn:ident, $assign_trait:ident :: $assign_trait_fn:ident, $intrinsic:ident } => {
         impl_ref_ops! {
@@ -301,7 +299,6 @@ macro_rules! impl_float_ops {
                 impl_op! { impl Div for $vector, $scalar }
                 impl_op! { impl Rem for $vector, $scalar }
                 impl_op! { impl Neg for $vector, $scalar }
-                impl_op! { impl Index for $vector, $scalar }
             )*
         )*
     };
@@ -319,7 +316,6 @@ macro_rules! impl_unsigned_int_ops {
                 impl_op! { impl BitOr  for $vector, $scalar }
                 impl_op! { impl BitXor for $vector, $scalar }
                 impl_op! { impl Not for $vector, $scalar }
-                impl_op! { impl Index for $vector, $scalar }
 
                 // Integers panic on divide by 0
                 impl_ref_ops! {

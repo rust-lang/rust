@@ -12,419 +12,460 @@
 )]
 mod mask_impl;
 
-use crate::{SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
+use crate::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 
-macro_rules! define_opaque_mask {
-    {
-        $(#[$attr:meta])*
-        struct $name:ident<const $lanes:ident: usize>($inner_ty:ty);
-        @bits $bits_ty:ident
-    } => {
-        $(#[$attr])*
-        #[allow(non_camel_case_types)]
-        pub struct $name<const LANES: usize>($inner_ty)
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount;
+/// Marker trait for types that may be used as SIMD mask elements.
+pub unsafe trait MaskElement: SimdElement {
+    #[doc(hidden)]
+    fn valid<const LANES: usize>(values: Simd<Self, LANES>) -> bool
+    where
+        LaneCount<LANES>: SupportedLaneCount;
 
-        impl_opaque_mask_reductions! { $name, $bits_ty }
+    #[doc(hidden)]
+    fn eq(self, other: Self) -> bool;
 
-        impl<const LANES: usize> $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            /// Construct a mask by setting all lanes to the given value.
-            pub fn splat(value: bool) -> Self {
-                Self(<$inner_ty>::splat(value))
-            }
+    #[doc(hidden)]
+    const TRUE: Self;
 
-            /// Converts an array to a SIMD vector.
-            pub fn from_array(array: [bool; LANES]) -> Self {
-                let mut vector = Self::splat(false);
-                let mut i = 0;
-                while i < $lanes {
-                    vector.set(i, array[i]);
-                    i += 1;
-                }
-                vector
-            }
-
-            /// Converts a SIMD vector to an array.
-            pub fn to_array(self) -> [bool; LANES] {
-                let mut array = [false; LANES];
-                let mut i = 0;
-                while i < $lanes {
-                    array[i] = self.test(i);
-                    i += 1;
-                }
-                array
-            }
-
-            /// Converts a vector of integers to a mask, where 0 represents `false` and -1
-            /// represents `true`.
-            ///
-            /// # Safety
-            /// All lanes must be either 0 or -1.
-            #[inline]
-            pub unsafe fn from_int_unchecked(value: $bits_ty<LANES>) -> Self {
-                Self(<$inner_ty>::from_int_unchecked(value))
-            }
-
-            /// Converts a vector of integers to a mask, where 0 represents `false` and -1
-            /// represents `true`.
-            ///
-            /// # Panics
-            /// Panics if any lane is not 0 or -1.
-            #[inline]
-            pub fn from_int(value: $bits_ty<LANES>) -> Self {
-                assert!(
-                    (value.lanes_eq($bits_ty::splat(0)) | value.lanes_eq($bits_ty::splat(-1))).all(),
-                    "all values must be either 0 or -1",
-                );
-                unsafe { Self::from_int_unchecked(value) }
-            }
-
-            /// Converts the mask to a vector of integers, where 0 represents `false` and -1
-            /// represents `true`.
-            #[inline]
-            pub fn to_int(self) -> $bits_ty<LANES> {
-                self.0.to_int()
-            }
-
-            /// Tests the value of the specified lane.
-            ///
-            /// # Safety
-            /// `lane` must be less than `LANES`.
-            #[inline]
-            pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
-                self.0.test_unchecked(lane)
-            }
-
-            /// Tests the value of the specified lane.
-            ///
-            /// # Panics
-            /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
-            #[inline]
-            pub fn test(&self, lane: usize) -> bool {
-                assert!(lane < LANES, "lane index out of range");
-                unsafe { self.test_unchecked(lane) }
-            }
-
-            /// Sets the value of the specified lane.
-            ///
-            /// # Safety
-            /// `lane` must be less than `LANES`.
-            #[inline]
-            pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
-                self.0.set_unchecked(lane, value);
-            }
-
-            /// Sets the value of the specified lane.
-            ///
-            /// # Panics
-            /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
-            #[inline]
-            pub fn set(&mut self, lane: usize, value: bool) {
-                assert!(lane < LANES, "lane index out of range");
-                unsafe { self.set_unchecked(lane, value); }
-            }
-
-            /// Convert this mask to a bitmask, with one bit set per lane.
-            pub fn to_bitmask(self) -> [u8; crate::LaneCount::<LANES>::BITMASK_LEN] {
-                self.0.to_bitmask()
-            }
-
-            /// Convert a bitmask to a mask.
-            pub fn from_bitmask(bitmask: [u8; crate::LaneCount::<LANES>::BITMASK_LEN]) -> Self {
-                Self(<$inner_ty>::from_bitmask(bitmask))
-            }
-        }
-
-        // vector/array conversion
-        impl<const LANES: usize> From<[bool; LANES]> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            fn from(array: [bool; LANES]) -> Self {
-                Self::from_array(array)
-            }
-        }
-
-        impl <const LANES: usize> From<$name<LANES>> for [bool; LANES]
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            fn from(vector: $name<LANES>) -> Self {
-                vector.to_array()
-            }
-        }
-
-        impl<const LANES: usize> Copy for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {}
-
-        impl<const LANES: usize> Clone for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-
-        impl<const LANES: usize> Default for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn default() -> Self {
-                Self::splat(false)
-            }
-        }
-
-        impl<const LANES: usize> PartialEq for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn eq(&self, other: &Self) -> bool {
-                self.0 == other.0
-            }
-        }
-
-        impl<const LANES: usize> PartialOrd for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-                self.0.partial_cmp(&other.0)
-            }
-        }
-
-        impl<const LANES: usize> core::fmt::Debug for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                f.debug_list()
-                    .entries((0..LANES).map(|lane| self.test(lane)))
-                    .finish()
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitAnd for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = Self;
-            #[inline]
-            fn bitand(self, rhs: Self) -> Self {
-                Self(self.0 & rhs.0)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitAnd<bool> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = Self;
-            #[inline]
-            fn bitand(self, rhs: bool) -> Self {
-                self & Self::splat(rhs)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitAnd<$name<LANES>> for bool
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = $name<LANES>;
-            #[inline]
-            fn bitand(self, rhs: $name<LANES>) -> $name<LANES> {
-                $name::<LANES>::splat(self) & rhs
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitOr for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = Self;
-            #[inline]
-            fn bitor(self, rhs: Self) -> Self {
-                Self(self.0 | rhs.0)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitOr<bool> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = Self;
-            #[inline]
-            fn bitor(self, rhs: bool) -> Self {
-                self | Self::splat(rhs)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitOr<$name<LANES>> for bool
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = $name<LANES>;
-            #[inline]
-            fn bitor(self, rhs: $name<LANES>) -> $name<LANES> {
-                $name::<LANES>::splat(self) | rhs
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitXor for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = Self;
-            #[inline]
-            fn bitxor(self, rhs: Self) -> Self::Output {
-                Self(self.0 ^ rhs.0)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitXor<bool> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = Self;
-            #[inline]
-            fn bitxor(self, rhs: bool) -> Self::Output {
-                self ^ Self::splat(rhs)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitXor<$name<LANES>> for bool
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = $name<LANES>;
-            #[inline]
-            fn bitxor(self, rhs: $name<LANES>) -> Self::Output {
-                $name::<LANES>::splat(self) ^ rhs
-            }
-        }
-
-        impl<const LANES: usize> core::ops::Not for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            type Output = $name<LANES>;
-            #[inline]
-            fn not(self) -> Self::Output {
-                Self(!self.0)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitAndAssign for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn bitand_assign(&mut self, rhs: Self) {
-                self.0 = self.0 & rhs.0;
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitAndAssign<bool> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn bitand_assign(&mut self, rhs: bool) {
-                *self &= Self::splat(rhs);
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitOrAssign for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn bitor_assign(&mut self, rhs: Self) {
-                self.0 = self.0 | rhs.0;
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitOrAssign<bool> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn bitor_assign(&mut self, rhs: bool) {
-                *self |= Self::splat(rhs);
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitXorAssign for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn bitxor_assign(&mut self, rhs: Self) {
-                self.0 = self.0 ^ rhs.0;
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitXorAssign<bool> for $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            #[inline]
-            fn bitxor_assign(&mut self, rhs: bool) {
-                *self ^= Self::splat(rhs);
-            }
-        }
-    };
+    #[doc(hidden)]
+    const FALSE: Self;
 }
 
-define_opaque_mask! {
-    /// Mask for vectors with `LANES` 8-bit elements.
+macro_rules! impl_element {
+    { $ty:ty } => {
+        unsafe impl MaskElement for $ty {
+            fn valid<const LANES: usize>(value: Simd<Self, LANES>) -> bool
+            where
+                LaneCount<LANES>: SupportedLaneCount,
+            {
+                (value.lanes_eq(Simd::splat(0)) | value.lanes_eq(Simd::splat(-1))).all()
+            }
+
+            fn eq(self, other: Self) -> bool { self == other }
+
+            const TRUE: Self = -1;
+            const FALSE: Self = 0;
+        }
+    }
+}
+
+impl_element! { i8 }
+impl_element! { i16 }
+impl_element! { i32 }
+impl_element! { i64 }
+impl_element! { isize }
+
+/// A SIMD vector mask for `LANES` elements of width specified by `Element`.
+///
+/// The layout of this type is unspecified.
+#[repr(transparent)]
+pub struct Mask<Element, const LANES: usize>(mask_impl::Mask<Element, LANES>)
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount;
+
+impl<Element, const LANES: usize> Copy for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+}
+
+impl<Element, const LANES: usize> Clone for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<Element, const LANES: usize> Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    /// Construct a mask by setting all lanes to the given value.
+    pub fn splat(value: bool) -> Self {
+        Self(mask_impl::Mask::splat(value))
+    }
+
+    /// Converts an array to a SIMD vector.
+    pub fn from_array(array: [bool; LANES]) -> Self {
+        let mut vector = Self::splat(false);
+        for (i, v) in array.iter().enumerate() {
+            vector.set(i, *v);
+        }
+        vector
+    }
+
+    /// Converts a SIMD vector to an array.
+    pub fn to_array(self) -> [bool; LANES] {
+        let mut array = [false; LANES];
+        for (i, v) in array.iter_mut().enumerate() {
+            *v = self.test(i);
+        }
+        array
+    }
+
+    /// Converts a vector of integers to a mask, where 0 represents `false` and -1
+    /// represents `true`.
     ///
-    /// The layout of this type is unspecified.
-    struct Mask8<const LANES: usize>(mask_impl::Mask8<LANES>);
-    @bits SimdI8
+    /// # Safety
+    /// All lanes must be either 0 or -1.
+    #[inline]
+    pub unsafe fn from_int_unchecked(value: Simd<Element, LANES>) -> Self {
+        Self(mask_impl::Mask::from_int_unchecked(value))
+    }
+
+    /// Converts a vector of integers to a mask, where 0 represents `false` and -1
+    /// represents `true`.
+    ///
+    /// # Panics
+    /// Panics if any lane is not 0 or -1.
+    #[inline]
+    pub fn from_int(value: Simd<Element, LANES>) -> Self {
+        assert!(Element::valid(value), "all values must be either 0 or -1",);
+        unsafe { Self::from_int_unchecked(value) }
+    }
+
+    /// Converts the mask to a vector of integers, where 0 represents `false` and -1
+    /// represents `true`.
+    #[inline]
+    pub fn to_int(self) -> Simd<Element, LANES> {
+        self.0.to_int()
+    }
+
+    /// Tests the value of the specified lane.
+    ///
+    /// # Safety
+    /// `lane` must be less than `LANES`.
+    #[inline]
+    pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
+        self.0.test_unchecked(lane)
+    }
+
+    /// Tests the value of the specified lane.
+    ///
+    /// # Panics
+    /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
+    #[inline]
+    pub fn test(&self, lane: usize) -> bool {
+        assert!(lane < LANES, "lane index out of range");
+        unsafe { self.test_unchecked(lane) }
+    }
+
+    /// Sets the value of the specified lane.
+    ///
+    /// # Safety
+    /// `lane` must be less than `LANES`.
+    #[inline]
+    pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
+        self.0.set_unchecked(lane, value);
+    }
+
+    /// Sets the value of the specified lane.
+    ///
+    /// # Panics
+    /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
+    #[inline]
+    pub fn set(&mut self, lane: usize, value: bool) {
+        assert!(lane < LANES, "lane index out of range");
+        unsafe {
+            self.set_unchecked(lane, value);
+        }
+    }
+
+    /// Convert this mask to a bitmask, with one bit set per lane.
+    pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
+        self.0.to_bitmask()
+    }
+
+    /// Convert a bitmask to a mask.
+    pub fn from_bitmask(bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
+        Self(mask_impl::Mask::from_bitmask(bitmask))
+    }
+
+    /// Returns true if any lane is set, or false otherwise.
+    #[inline]
+    pub fn any(self) -> bool {
+        self.0.any()
+    }
+
+    /// Returns true if all lanes are set, or false otherwise.
+    #[inline]
+    pub fn all(self) -> bool {
+        self.0.all()
+    }
 }
 
-define_opaque_mask! {
-    /// Mask for vectors with `LANES` 16-bit elements.
-    ///
-    /// The layout of this type is unspecified.
-    struct Mask16<const LANES: usize>(mask_impl::Mask16<LANES>);
-    @bits SimdI16
+// vector/array conversion
+impl<Element, const LANES: usize> From<[bool; LANES]> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    fn from(array: [bool; LANES]) -> Self {
+        Self::from_array(array)
+    }
 }
 
-define_opaque_mask! {
-    /// Mask for vectors with `LANES` 32-bit elements.
-    ///
-    /// The layout of this type is unspecified.
-    struct Mask32<const LANES: usize>(mask_impl::Mask32<LANES>);
-    @bits SimdI32
+impl<Element, const LANES: usize> From<Mask<Element, LANES>> for [bool; LANES]
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    fn from(vector: Mask<Element, LANES>) -> Self {
+        vector.to_array()
+    }
 }
 
-define_opaque_mask! {
-    /// Mask for vectors with `LANES` 64-bit elements.
-    ///
-    /// The layout of this type is unspecified.
-    struct Mask64<const LANES: usize>(mask_impl::Mask64<LANES>);
-    @bits SimdI64
+impl<Element, const LANES: usize> Default for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn default() -> Self {
+        Self::splat(false)
+    }
 }
 
-define_opaque_mask! {
-    /// Mask for vectors with `LANES` pointer-width elements.
-    ///
-    /// The layout of this type is unspecified.
-    struct MaskSize<const LANES: usize>(mask_impl::MaskSize<LANES>);
-    @bits SimdIsize
+impl<Element, const LANES: usize> PartialEq for Mask<Element, LANES>
+where
+    Element: MaskElement + PartialEq,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
 }
+
+impl<Element, const LANES: usize> PartialOrd for Mask<Element, LANES>
+where
+    Element: MaskElement + PartialOrd,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<Element, const LANES: usize> core::fmt::Debug for Mask<Element, LANES>
+where
+    Element: MaskElement + core::fmt::Debug,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_list()
+            .entries((0..LANES).map(|lane| self.test(lane)))
+            .finish()
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitAnd for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Self;
+    #[inline]
+    fn bitand(self, rhs: Self) -> Self {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitAnd<bool> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Self;
+    #[inline]
+    fn bitand(self, rhs: bool) -> Self {
+        self & Self::splat(rhs)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitAnd<Mask<Element, LANES>> for bool
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Mask<Element, LANES>;
+    #[inline]
+    fn bitand(self, rhs: Mask<Element, LANES>) -> Mask<Element, LANES> {
+        Mask::splat(self) & rhs
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitOr for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Self;
+    #[inline]
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitOr<bool> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Self;
+    #[inline]
+    fn bitor(self, rhs: bool) -> Self {
+        self | Self::splat(rhs)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitOr<Mask<Element, LANES>> for bool
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Mask<Element, LANES>;
+    #[inline]
+    fn bitor(self, rhs: Mask<Element, LANES>) -> Mask<Element, LANES> {
+        Mask::splat(self) | rhs
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitXor for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Self;
+    #[inline]
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Self(self.0 ^ rhs.0)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitXor<bool> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Self;
+    #[inline]
+    fn bitxor(self, rhs: bool) -> Self::Output {
+        self ^ Self::splat(rhs)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitXor<Mask<Element, LANES>> for bool
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Mask<Element, LANES>;
+    #[inline]
+    fn bitxor(self, rhs: Mask<Element, LANES>) -> Self::Output {
+        Mask::splat(self) ^ rhs
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::Not for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Output = Mask<Element, LANES>;
+    #[inline]
+    fn not(self) -> Self::Output {
+        Self(!self.0)
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitAndAssign for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 = self.0 & rhs.0;
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitAndAssign<bool> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn bitand_assign(&mut self, rhs: bool) {
+        *self &= Self::splat(rhs);
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitOrAssign for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 = self.0 | rhs.0;
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitOrAssign<bool> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn bitor_assign(&mut self, rhs: bool) {
+        *self |= Self::splat(rhs);
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitXorAssign for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 = self.0 ^ rhs.0;
+    }
+}
+
+impl<Element, const LANES: usize> core::ops::BitXorAssign<bool> for Mask<Element, LANES>
+where
+    Element: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    #[inline]
+    fn bitxor_assign(&mut self, rhs: bool) {
+        *self ^= Self::splat(rhs);
+    }
+}
+
+/// A SIMD mask of `LANES` 8-bit values.
+pub type Mask8<const LANES: usize> = Mask<i8, LANES>;
+
+/// A SIMD mask of `LANES` 16-bit values.
+pub type Mask16<const LANES: usize> = Mask<i16, LANES>;
+
+/// A SIMD mask of `LANES` 32-bit values.
+pub type Mask32<const LANES: usize> = Mask<i32, LANES>;
+
+/// A SIMD mask of `LANES` 64-bit values.
+pub type Mask64<const LANES: usize> = Mask<i64, LANES>;
+
+/// A SIMD mask of `LANES` pointer-width values.
+pub type MaskSize<const LANES: usize> = Mask<isize, LANES>;
 
 /// Vector of eight 8-bit masks
 pub type mask8x8 = Mask8<8>;
@@ -488,7 +529,7 @@ macro_rules! impl_from {
             crate::LaneCount<LANES>: crate::SupportedLaneCount,
         {
             fn from(value: $from<LANES>) -> Self {
-                Self(value.0.into())
+                Self(value.0.convert())
             }
         }
         )*

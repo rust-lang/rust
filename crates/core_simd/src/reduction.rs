@@ -103,10 +103,11 @@ macro_rules! impl_float_reductions {
 }
 
 macro_rules! impl_full_mask_reductions {
-    { $name:ident, $bits_ty:ident } => {
-        impl<const LANES: usize> $name<LANES>
+    {} => {
+        impl<Element, const LANES: usize> Mask<Element, LANES>
         where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
+            Element: MaskElement,
+            LaneCount<LANES>: SupportedLaneCount,
         {
             #[inline]
             pub fn any(self) -> bool {
@@ -116,27 +117,6 @@ macro_rules! impl_full_mask_reductions {
             #[inline]
             pub fn all(self) -> bool {
                 unsafe { crate::intrinsics::simd_reduce_all(self.to_int()) }
-            }
-        }
-    }
-}
-
-macro_rules! impl_opaque_mask_reductions {
-    { $name:ident, $bits_ty:ident } => {
-        impl<const LANES: usize> $name<LANES>
-        where
-            crate::LaneCount<LANES>: crate::SupportedLaneCount,
-        {
-            /// Returns true if any lane is set, or false otherwise.
-            #[inline]
-            pub fn any(self) -> bool {
-                self.0.any()
-            }
-
-            /// Returns true if all lanes are set, or false otherwise.
-            #[inline]
-            pub fn all(self) -> bool {
-                self.0.all()
             }
         }
     }
