@@ -417,6 +417,25 @@ impl EarlyLintPass for UnsafeCode {
         }
     }
 
+    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
+        if let ast::AssocItemKind::Fn(..) = it.kind {
+            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
+                self.report_overriden_symbol_name(
+                    cx,
+                    attr.span,
+                    "declaration of a `no_mangle` method",
+                );
+            }
+            if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
+                self.report_overriden_symbol_name(
+                    cx,
+                    attr.span,
+                    "declaration of a method with `export_name`",
+                );
+            }
+        }
+    }
+
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, span: Span, _: ast::NodeId) {
         if let FnKind::Fn(
             ctxt,
@@ -1115,31 +1134,37 @@ declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GEN
 impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
+        let check_no_mangle_on_generic_fn = |no_mangle_attr: &ast::Attribute,
+                                             impl_generics: Option<&hir::Generics<'_>>,
+                                             generics: &hir::Generics<'_>,
+                                             span| {
+            for param in
+                generics.params.iter().chain(impl_generics.map(|g| g.params).into_iter().flatten())
+            {
+                match param.kind {
+                    GenericParamKind::Lifetime { .. } => {}
+                    GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
+                        cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS, span, |lint| {
+                            lint.build("functions generic over types or consts must be mangled")
+                                .span_suggestion_short(
+                                    no_mangle_attr.span,
+                                    "remove this attribute",
+                                    String::new(),
+                                    // Use of `#[no_mangle]` suggests FFI intent; correct
+                                    // fix may be to monomorphize source by hand
+                                    Applicability::MaybeIncorrect,
+                                )
+                                .emit();
+                        });
+                        break;
+                    }
+                }
+            }
+        };
         match it.kind {
             hir::ItemKind::Fn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = cx.sess().find_by_name(attrs, sym::no_mangle) {
-                    for param in generics.params {
-                        match param.kind {
-                            GenericParamKind::Lifetime { .. } => {}
-                            GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                                cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS, it.span, |lint| {
-                                    lint.build(
-                                        "functions generic over types or consts must be mangled",
-                                    )
-                                    .span_suggestion_short(
-                                        no_mangle_attr.span,
-                                        "remove this attribute",
-                                        String::new(),
-                                        // Use of `#[no_mangle]` suggests FFI intent; correct
-                                        // fix may be to monomorphize source by hand
-                                        Applicability::MaybeIncorrect,
-                                    )
-                                    .emit();
-                                });
-                                break;
-                            }
-                        }
-                    }
+                    check_no_mangle_on_generic_fn(no_mangle_attr, None, generics, it.span);
                 }
             }
             hir::ItemKind::Const(..) => {
@@ -1168,6 +1193,23 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         );
                         err.emit();
                     });
+                }
+            }
+            hir::ItemKind::Impl(hir::Impl { ref generics, items, .. }) => {
+                for it in items {
+                    if let hir::AssocItemKind::Fn { .. } = it.kind {
+                        if let Some(no_mangle_attr) = cx
+                            .sess()
+                            .find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
+                        {
+                            check_no_mangle_on_generic_fn(
+                                no_mangle_attr,
+                                Some(generics),
+                                cx.tcx.hir().get_generics(it.id.def_id.to_def_id()).unwrap(),
+                                it.span,
+                            );
+                        }
+                    }
                 }
             }
             _ => {}

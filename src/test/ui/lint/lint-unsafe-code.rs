@@ -31,8 +31,32 @@ macro_rules! unsafe_in_macro {
 #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
 #[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
 
+trait AssocFnTrait {
+    fn foo();
+}
+
+struct AssocFnFoo;
+
+impl AssocFnFoo {
+    #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` method
+}
+
+impl AssocFnTrait for AssocFnFoo {
+    #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` method
+}
+
 #[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a function with `export_name`
 #[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: declaration of a static with `export_name`
+
+struct AssocFnBar;
+
+impl AssocFnBar {
+    #[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a method with `export_name`
+}
+
+impl AssocFnTrait for AssocFnBar {
+    #[export_name = "bar"] fn foo() {} //~ ERROR: declaration of a method with `export_name`
+}
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
 unsafe trait Foo {} //~ ERROR: declaration of an `unsafe` trait

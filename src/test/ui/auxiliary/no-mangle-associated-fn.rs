@@ -8,3 +8,14 @@ impl Bar {
         2
     }
 }
+
+trait Foo {
+    fn baz() -> u8;
+}
+
+impl Foo for Bar {
+    #[no_mangle]
+    fn baz() -> u8 {
+        3
+    }
+}

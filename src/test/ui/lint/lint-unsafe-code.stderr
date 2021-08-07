@@ -19,8 +19,24 @@ LL | #[no_mangle] static FOO: u32 = 5;
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
+error: declaration of a `no_mangle` method
+  --> $DIR/lint-unsafe-code.rs:41:5
+   |
+LL |     #[no_mangle] fn foo() {}
+   |     ^^^^^^^^^^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
+
+error: declaration of a `no_mangle` method
+  --> $DIR/lint-unsafe-code.rs:45:5
+   |
+LL |     #[no_mangle] fn foo() {}
+   |     ^^^^^^^^^^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
+
 error: declaration of a function with `export_name`
-  --> $DIR/lint-unsafe-code.rs:34:1
+  --> $DIR/lint-unsafe-code.rs:48:1
    |
 LL | #[export_name = "bar"] fn bar() {}
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -28,60 +44,58 @@ LL | #[export_name = "bar"] fn bar() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: declaration of a static with `export_name`
-  --> $DIR/lint-unsafe-code.rs:35:1
+  --> $DIR/lint-unsafe-code.rs:49:1
    |
 LL | #[export_name = "BAR"] static BAR: u32 = 5;
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
+error: declaration of a method with `export_name`
+  --> $DIR/lint-unsafe-code.rs:54:5
+   |
+LL |     #[export_name = "bar"] fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
+
+error: declaration of a method with `export_name`
+  --> $DIR/lint-unsafe-code.rs:58:5
+   |
+LL |     #[export_name = "bar"] fn foo() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
+
 error: declaration of an `unsafe` function
-  --> $DIR/lint-unsafe-code.rs:37:1
+  --> $DIR/lint-unsafe-code.rs:61:1
    |
 LL | unsafe fn baz() {}
    | ^^^^^^^^^^^^^^^^^^
 
 error: declaration of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:38:1
+  --> $DIR/lint-unsafe-code.rs:62:1
    |
 LL | unsafe trait Foo {}
    | ^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:39:1
+  --> $DIR/lint-unsafe-code.rs:63:1
    |
 LL | unsafe impl Foo for Bar {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: declaration of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:42:5
+  --> $DIR/lint-unsafe-code.rs:66:5
    |
 LL |     unsafe fn baz(&self);
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:43:5
+  --> $DIR/lint-unsafe-code.rs:67:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:44:5
-   |
-LL |     unsafe fn provided_override(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:48:5
-   |
-LL |     unsafe fn baz(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:49:5
-   |
-LL |     unsafe fn provided_override(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
   --> $DIR/lint-unsafe-code.rs:68:5
@@ -90,25 +104,43 @@ LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:79:5
+  --> $DIR/lint-unsafe-code.rs:72:5
+   |
+LL |     unsafe fn baz(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:73:5
+   |
+LL |     unsafe fn provided_override(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:92:5
+   |
+LL |     unsafe fn provided_override(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of an `unsafe` method
+  --> $DIR/lint-unsafe-code.rs:103:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:85:5
+  --> $DIR/lint-unsafe-code.rs:109:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:89:5
+  --> $DIR/lint-unsafe-code.rs:113:5
    |
 LL |     unsafe fn baz(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:100:5
+  --> $DIR/lint-unsafe-code.rs:124:5
    |
 LL |     unsafe {}
    |     ^^^^^^^^^
@@ -172,5 +204,5 @@ LL |     unsafe_in_macro!()
    |
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 22 previous errors
+error: aborting due to 26 previous errors
 
