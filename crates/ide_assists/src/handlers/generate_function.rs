@@ -105,6 +105,14 @@ pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     let ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
+    let current_module =
+        ctx.sema.scope(ctx.find_node_at_offset::<ast::MethodCallExpr>()?.syntax()).module()?;
+    let target_module = ty.module(ctx.sema.db);
+
+    if current_module.krate() != target_module.krate() {
+        return None;
+    }
+
     let (impl_, file) = match ty {
         hir::Adt::Struct(strukt) => get_impl(strukt.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
         hir::Adt::Enum(en) => get_impl(en.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
@@ -117,7 +125,8 @@ pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<
         &fn_name,
         &impl_,
         file,
-        ty.module(ctx.sema.db),
+        target_module,
+        current_module,
     )?;
     let target = call.syntax().text_range();
 
@@ -261,6 +270,7 @@ impl FunctionBuilder {
         impl_: &Option<ast::Impl>,
         file: FileId,
         target_module: Module,
+        current_module: Module,
     ) -> Option<Self> {
         // let mut file = ctx.frange.file_id;
         // let target_module = ctx.sema.scope(call.syntax()).module()?;
@@ -274,8 +284,8 @@ impl FunctionBuilder {
                 .1
             }
         };
+        let needs_pub = !module_is_descendant(&current_module, &target_module, ctx);
 
-        let needs_pub = false;
         let fn_name = make::name(&name.text());
         let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call))?;
 
@@ -562,6 +572,18 @@ fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarge
     } else {
         Some(GeneratedFunctionTarget::InEmptyItemList(impl_.assoc_item_list()?.syntax().clone()))
     }
+}
+
+fn module_is_descendant(module: &hir::Module, ans: &hir::Module, ctx: &AssistContext) -> bool {
+    if module == ans {
+        return true;
+    }
+    for c in ans.children(ctx.sema.db) {
+        if module_is_descendant(module, &c, ctx) {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
