@@ -110,9 +110,10 @@ public:
     bool used =
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
     if (!used) {
+      // if decided to cache a value, preserve it here for later
+      // replacement in EnzymeLogic
       auto found = gutils->knownRecomputeHeuristic.find(&I);
-      if (found != gutils->knownRecomputeHeuristic.end() &&
-          !gutils->unnecessaryIntermediates.count(&I))
+      if (found != gutils->knownRecomputeHeuristic.end() && !found->second)
         used = true;
     }
     auto iload = gutils->getNewFromOriginal((Value *)&I);

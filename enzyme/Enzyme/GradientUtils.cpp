@@ -4724,6 +4724,38 @@ void GradientUtils::computeMinCache(
       }
     }
 
+    SmallPtrSet<Instruction *, 3> NewLoopBoundReq;
+    {
+      std::deque<Instruction *> LoopBoundRequirements;
+
+      for (auto &context : loopContexts) {
+        for (auto val : {context.second.maxLimit, context.second.trueLimit}) {
+          if (auto inst = dyn_cast_or_null<Instruction>(val)) {
+            LoopBoundRequirements.push_back(inst);
+          }
+        }
+      }
+      while (LoopBoundRequirements.size()) {
+        Instruction *val = LoopBoundRequirements.front();
+        LoopBoundRequirements.pop_front();
+        if (NewLoopBoundReq.count(val))
+          continue;
+        if (auto orig = isOriginal(val)) {
+          NewLoopBoundReq.insert(orig);
+        } else {
+          for (auto &op : val->operands()) {
+            if (auto inst = dyn_cast<Instruction>(op)) {
+              LoopBoundRequirements.push_back(inst);
+            }
+          }
+        }
+      }
+      for (auto inst : NewLoopBoundReq) {
+        OneLevelSeen[UsageKey(inst, ValueType::Primal)] = true;
+        FullSeen[UsageKey(inst, ValueType::Primal)] = true;
+      }
+    }
+
     for (BasicBlock &BB : *oldFunc) {
       if (guaranteedUnreachable.count(&BB))
         continue;

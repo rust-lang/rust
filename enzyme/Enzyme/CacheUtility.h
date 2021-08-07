@@ -152,7 +152,7 @@ protected:
 public:
   virtual ~CacheUtility();
 
-private:
+protected:
   /// Map of Loop to requisite loop information needed for AD (forward/reverse
   /// induction/etc)
   std::map<llvm::Loop *, LoopContext> loopContexts;
