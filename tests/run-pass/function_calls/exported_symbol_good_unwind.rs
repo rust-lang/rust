@@ -2,15 +2,9 @@
 // found in this form" errors works without `-C prefer-dynamic` (`panic!` calls foreign function
 // `__rust_start_panic`).
 // no-prefer-dynamic
-#![feature(c_unwind, unboxed_closures, unwind_attributes)]
+#![feature(c_unwind, unboxed_closures)]
 
 use std::panic;
-
-#[no_mangle]
-#[unwind(allowed)]
-extern "C" fn good_unwind_allowed() {
-    panic!();
-}
 
 #[no_mangle]
 extern "C-unwind" fn good_unwind_c() {
@@ -29,11 +23,6 @@ extern "rust-call" fn good_unwind_rust_call(_: ()) -> ! {
 }
 
 fn main() -> ! {
-    extern "C" {
-        #[unwind(allowed)]
-        fn good_unwind_allowed();
-    }
-    panic::catch_unwind(|| unsafe { good_unwind_allowed() }).unwrap_err();
     extern "C-unwind" {
         fn good_unwind_c();
     }
