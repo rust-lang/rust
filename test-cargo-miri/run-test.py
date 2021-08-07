@@ -46,12 +46,13 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
         # All good!
         return
     # Show output
-    print("--- BEGIN stdout ---")
+    print("Test stdout or stderr did not match reference!")
+    print("--- BEGIN test stdout ---")
     print(stdout, end="")
-    print("--- END stdout ---")
-    print("--- BEGIN stderr ---")
+    print("--- END test stdout ---")
+    print("--- BEGIN test stderr ---")
     print(stderr, end="")
-    print("--- END stderr ---")
+    print("--- END test stderr ---")
     fail("exit code was {}".format(p.returncode))
 
 def test_no_rebuild(name, cmd, env={}):
