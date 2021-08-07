@@ -100,7 +100,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
                 body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
 
             let fun = Function {
-                name: "fun_name".to_string(),
+                name: make::name_ref("fun_name"),
                 self_param,
                 params,
                 control_flow,
@@ -170,7 +170,7 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
 
 #[derive(Debug)]
 struct Function {
-    name: String,
+    name: ast::NameRef,
     self_param: Option<ast::SelfParam>,
     params: Vec<Param>,
     control_flow: ControlFlow,
@@ -1077,11 +1077,12 @@ fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String
 
     let args = fun.params.iter().map(|param| param.to_arg(ctx));
     let args = make::arg_list(args);
+    let name = fun.name.clone();
     let call_expr = if fun.self_param.is_some() {
         let self_arg = make::expr_path(make::ext::ident_path("self"));
-        make::expr_method_call(self_arg, &fun.name, args)
+        make::expr_method_call(self_arg, name, args)
     } else {
-        let func = make::expr_path(make::ext::ident_path(&fun.name));
+        let func = make::expr_path(make::path_unqualified(make::path_segment(name)));
         make::expr_call(func, args)
     };
 

@@ -35,7 +35,7 @@ pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     // This assist should not apply for if-let.
-    if expr.condition()?.pat().is_some() {
+    if expr.condition()?.is_pattern_cond() {
         return None;
     }
 

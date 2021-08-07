@@ -115,7 +115,7 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
         return None;
     }
     // Not support moving if let to arm guard
-    if cond.pat().is_some() {
+    if cond.is_pattern_cond() {
         return None;
     }
 
