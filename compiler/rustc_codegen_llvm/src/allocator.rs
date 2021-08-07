@@ -78,8 +78,14 @@ pub(crate) unsafe fn codegen(
             .enumerate()
             .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
             .collect::<Vec<_>>();
-        let ret =
-            llvm::LLVMRustBuildCall(llbuilder, callee, args.as_ptr(), args.len() as c_uint, None);
+        let ret = llvm::LLVMRustBuildCall(
+            llbuilder,
+            ty,
+            callee,
+            args.as_ptr(),
+            args.len() as c_uint,
+            None,
+        );
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {
             llvm::LLVMBuildRet(llbuilder, ret);
@@ -121,7 +127,8 @@ pub(crate) unsafe fn codegen(
         .enumerate()
         .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
         .collect::<Vec<_>>();
-    let ret = llvm::LLVMRustBuildCall(llbuilder, callee, args.as_ptr(), args.len() as c_uint, None);
+    let ret =
+        llvm::LLVMRustBuildCall(llbuilder, ty, callee, args.as_ptr(), args.len() as c_uint, None);
     llvm::LLVMSetTailCall(ret, True);
     llvm::LLVMBuildRetVoid(llbuilder);
     llvm::LLVMDisposeBuilder(llbuilder);

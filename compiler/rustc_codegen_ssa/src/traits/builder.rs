@@ -72,6 +72,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     );
     fn invoke(
         &mut self,
+        llty: Self::Type,
         llfn: Self::Value,
         args: &[Self::Value],
         then: Self::BasicBlock,
@@ -303,6 +304,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn call(
         &mut self,
+        llty: Self::Type,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,

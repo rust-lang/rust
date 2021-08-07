@@ -84,9 +84,9 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     eh_personality: Cell<Option<&'ll Value>>,
     eh_catch_typeinfo: Cell<Option<&'ll Value>>,
-    pub rust_try_fn: Cell<Option<&'ll Value>>,
+    pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, &'ll Value>>,
+    intrinsics: RefCell<FxHashMap<&'static str, (&'ll Type, &'ll Value)>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -452,7 +452,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl CodegenCx<'b, 'tcx> {
-    crate fn get_intrinsic(&self, key: &str) -> &'b Value {
+    crate fn get_intrinsic(&self, key: &str) -> (&'b Type, &'b Value) {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
@@ -465,18 +465,18 @@ impl CodegenCx<'b, 'tcx> {
         name: &'static str,
         args: Option<&[&'b llvm::Type]>,
         ret: &'b llvm::Type,
-    ) -> &'b llvm::Value {
+    ) -> (&'b llvm::Type, &'b llvm::Value) {
         let fn_ty = if let Some(args) = args {
             self.type_func(args, ret)
         } else {
             self.type_variadic_func(&[], ret)
         };
         let f = self.declare_cfn(name, llvm::UnnamedAddr::No, fn_ty);
-        self.intrinsics.borrow_mut().insert(name, f);
-        f
+        self.intrinsics.borrow_mut().insert(name, (fn_ty, f));
+        (fn_ty, f)
     }
 
-    fn declare_intrinsic(&self, key: &str) -> Option<&'b Value> {
+    fn declare_intrinsic(&self, key: &str) -> Option<(&'b Type, &'b Value)> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {

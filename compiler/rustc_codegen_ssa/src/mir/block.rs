@@ -132,14 +132,21 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     ) {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
+        let fn_ty = bx.fn_decl_backend_type(&fn_abi);
         if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
             let ret_llbb = if let Some((_, target)) = destination {
                 fx.llbb(target)
             } else {
                 fx.unreachable_block()
             };
-            let invokeret =
-                bx.invoke(fn_ptr, &llargs, ret_llbb, self.llblock(fx, cleanup), self.funclet(fx));
+            let invokeret = bx.invoke(
+                fn_ty,
+                fn_ptr,
+                &llargs,
+                ret_llbb,
+                self.llblock(fx, cleanup),
+                self.funclet(fx),
+            );
             bx.apply_attrs_callsite(&fn_abi, invokeret);
 
             if let Some((ret_dest, target)) = destination {
@@ -148,7 +155,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
-            let llret = bx.call(fn_ptr, &llargs, self.funclet(fx));
+            let llret = bx.call(fn_ty, fn_ptr, &llargs, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, llret);
             if fx.mir[self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline

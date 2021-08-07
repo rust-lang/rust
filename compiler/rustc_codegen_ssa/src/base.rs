@@ -441,9 +441,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
+        let isize_ty = cx.type_isize();
+        let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
-        let (start_fn, args) = if use_start_lang_item {
+        let (start_fn, start_ty, args) = if use_start_lang_item {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_fn = cx.get_fn_addr(
                 ty::Instance::resolve(
@@ -455,16 +457,15 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 .unwrap()
                 .unwrap(),
             );
-            (
-                start_fn,
-                vec![bx.pointercast(rust_main, cx.type_ptr_to(cx.type_i8p())), arg_argc, arg_argv],
-            )
+            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty], isize_ty);
+            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv])
         } else {
             debug!("using user-defined start fn");
-            (rust_main, vec![arg_argc, arg_argv])
+            let start_ty = cx.type_func(&[isize_ty, i8pp_ty], isize_ty);
+            (rust_main, start_ty, vec![arg_argc, arg_argv])
         };
 
-        let result = bx.call(start_fn, &args, None);
+        let result = bx.call(start_ty, start_fn, &args, None);
         let cast = bx.intcast(result, cx.type_int(), true);
         bx.ret(cast);
 
