@@ -67,16 +67,16 @@ attributes #4 = { nounwind }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"float", !4, i64 0}
 
-; CHECK: define internal void @diffemsg1(i8** %ptr, i8** %"ptr'", i32 %numprocprec, i32 %etiquette, { i8*, i8* } %tapeArg) {
+; CHECK: define internal void @diffemsg1(i8** %ptr, i8** %"ptr'", i32 %numprocprec, i32 %etiquette, { i8*, i8* } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca %struct.ompi_status_public_t, align 8
-; CHECK-NEXT:   %1 = alloca i32, align 4
+; CHECK-NEXT:   %0 = alloca %struct.ompi_status_public_t
+; CHECK-NEXT:   %1 = alloca i32
 ; CHECK-NEXT:   %"malloccall'mi" = extractvalue { i8*, i8* } %tapeArg, 1
 ; CHECK-NEXT:   %"r2'ipc" = bitcast i8* %"malloccall'mi" to %struct.ompi_request_t**
 ; CHECK-NEXT:   %"into'il_phi" = extractvalue { i8*, i8* } %tapeArg, 0
 ; CHECK-NEXT:   %2 = bitcast %struct.ompi_request_t** %"r2'ipc" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
-; CHECK-NEXT:   %3 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %2, align 8
-; CHECK-NEXT:   %4 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %3, align 8
+; CHECK-NEXT:   %3 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %2
+; CHECK-NEXT:   %4 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %3
 ; CHECK-NEXT:   %5 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %3 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %5)
 ; CHECK-NEXT:   %6 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %4, 0
@@ -89,7 +89,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %6, i64 %7, i8* %8, i64 %9, i64 %10, i8* %11, i8 %12, %struct.ompi_request_t** %"r2'ipc")
 ; CHECK-NEXT:   %13 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r2'ipc", %struct.ompi_status_public_t* %0)
 ; CHECK-NEXT:   %14 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %1)
-; CHECK-NEXT:   %15 = load i32, i32* %1, align 4
+; CHECK-NEXT:   %15 = load i32, i32* %1
 ; CHECK-NEXT:   %16 = zext i32 %15 to i64
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"into'il_phi", i8 0, i64 %16, i1 false)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")

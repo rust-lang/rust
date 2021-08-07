@@ -259,6 +259,13 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
     return val != CI->getOperand(0) && val != CI->getOperand(6);
   }
 
+  // only request is active
+  if (Name == "MPI_Wait")
+    return val != CI->getOperand(0);
+
+  if (Name == "MPI_Waitall")
+    return val != CI->getOperand(1);
+
   // TODO interprocedural detection
   // Before potential introprocedural detection, any function without definition
   // may to be assumed to have an active use

@@ -1160,14 +1160,15 @@ public:
           }
         }
       }
-#if LLVM_VERSION_MAJOR >= 10
       if (F.getName() == "MPI_Irecv") {
         F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
         F.addFnAttr(Attribute::NoUnwind);
         F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
         F.addFnAttr(Attribute::WillReturn);
+        F.addFnAttr(Attribute::NoFree);
+        F.addFnAttr(Attribute::NoSync);
+#endif
         F.addParamAttr(0, Attribute::WriteOnly);
         if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
           F.addParamAttr(2, Attribute::NoCapture);
@@ -1177,11 +1178,13 @@ public:
       }
       if (F.getName() == "MPI_Isend") {
         F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
         F.addFnAttr(Attribute::NoUnwind);
         F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
         F.addFnAttr(Attribute::WillReturn);
+        F.addFnAttr(Attribute::NoFree);
+        F.addFnAttr(Attribute::NoSync);
+#endif
         F.addParamAttr(0, Attribute::WriteOnly);
         if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
           F.addParamAttr(2, Attribute::NoCapture);
@@ -1191,11 +1194,13 @@ public:
       }
       if (F.getName() == "MPI_Comm_rank") {
         F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
         F.addFnAttr(Attribute::NoUnwind);
         F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
         F.addFnAttr(Attribute::WillReturn);
+        F.addFnAttr(Attribute::NoFree);
+        F.addFnAttr(Attribute::NoSync);
+#endif
         if (F.getFunctionType()->getParamType(0)->isPointerTy()) {
           F.addParamAttr(0, Attribute::NoCapture);
           F.addParamAttr(0, Attribute::ReadOnly);
@@ -1204,28 +1209,31 @@ public:
         F.addParamAttr(1, Attribute::NoCapture);
       }
       if (F.getName() == "MPI_Wait") {
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
         F.addFnAttr(Attribute::NoUnwind);
         F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
         F.addFnAttr(Attribute::WillReturn);
+        F.addFnAttr(Attribute::NoFree);
+        F.addFnAttr(Attribute::NoSync);
+#endif
         F.addParamAttr(0, Attribute::ReadOnly);
         F.addParamAttr(0, Attribute::NoCapture);
         F.addParamAttr(1, Attribute::WriteOnly);
         F.addParamAttr(1, Attribute::NoCapture);
       }
       if (F.getName() == "MPI_Waitall") {
-        F.addFnAttr(Attribute::NoFree);
-        F.addFnAttr(Attribute::NoSync);
         F.addFnAttr(Attribute::NoUnwind);
         F.addFnAttr(Attribute::NoRecurse);
+#if LLVM_VERSION_MAJOR >= 9
         F.addFnAttr(Attribute::WillReturn);
+        F.addFnAttr(Attribute::NoFree);
+        F.addFnAttr(Attribute::NoSync);
+#endif
         F.addParamAttr(1, Attribute::ReadOnly);
         F.addParamAttr(1, Attribute::NoCapture);
         F.addParamAttr(2, Attribute::WriteOnly);
         F.addParamAttr(2, Attribute::NoCapture);
       }
-#endif
       if (F.getName() == "frexp" || F.getName() == "frexpf" ||
           F.getName() == "frexpl") {
         F.addFnAttr(Attribute::ArgMemOnly);
