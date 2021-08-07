@@ -260,9 +260,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             // We have an allocated chunk of memory, so we can bypass runtime
             // checks to get our current layout.
             unsafe {
-                let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>() * self.cap;
-                let layout = Layout::from_size_align_unchecked(size, align);
+                let layout = Layout::array::<T>(self.cap).unwrap_unchecked();
                 Some((self.ptr.cast().into(), layout))
             }
         }
@@ -404,7 +402,8 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     fn capacity_from_bytes(excess: usize) -> usize {
         debug_assert_ne!(mem::size_of::<T>(), 0);
-        excess / mem::size_of::<T>()
+        let size_of_item = Layout::new::<T>().pad_to_align().size();
+        excess / size_of_item
     }
 
     fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
@@ -468,13 +467,17 @@ impl<T, A: Allocator> RawVec<T, A> {
         assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
-        let new_size = amount * mem::size_of::<T>();
 
         let ptr = unsafe {
-            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-            self.alloc
-                .shrink(ptr, layout, new_layout)
-                .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
+            // `Layout::array` cannot overflow here because it would have
+            // owerflown earlier when capacity was larger.
+            let new_layout = Layout::array::<T>(amount).unwrap_unchecked();
+            // We avoid `map_err` here because it bloats the amount of LLVM IR
+            // generated.
+            match self.alloc.shrink(ptr, layout, new_layout) {
+                Ok(ptr) => ptr,
+                Err(_) => Err(AllocError { layout: new_layout, non_exhaustive: () })?,
+            }
         };
         self.set_ptr(ptr);
         Ok(())
