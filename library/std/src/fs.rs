@@ -2039,6 +2039,8 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`.
 /// New errors may be encountered after an iterator is initially constructed.
+/// Entries for the current and parent directories (typically `.` and `..`) are
+/// skipped.
 ///
 /// # Platform-specific behavior
 ///
