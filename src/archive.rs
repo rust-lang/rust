@@ -101,8 +101,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         lto: bool,
         skip_objects: bool,
     ) -> io::Result<()> {
-        let obj_start = name.to_owned();
-
         self.add_archive(rlib.to_owned(), move |fname: &str| {
             // Ignore metadata files, no matter the name.
             if fname == METADATA_FILENAME {
@@ -110,13 +108,13 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             }
 
             // Don't include Rust objects if LTO is enabled
-            if lto && fname.starts_with(&obj_start) && fname.ends_with(".o") {
+            if lto && fname.starts_with(name) && fname.ends_with(".o") {
                 return true;
             }
 
             // Otherwise if this is *not* a rust object and we're skipping
             // objects then skip this file
-            if skip_objects && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
+            if skip_objects && (!fname.starts_with(name) || !fname.ends_with(".o")) {
                 return true;
             }
 
@@ -271,7 +269,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 impl<'a> ArArchiveBuilder<'a> {
     fn add_archive<F>(&mut self, archive_path: PathBuf, mut skip: F) -> io::Result<()>
     where
-        F: FnMut(&str) -> bool + 'static,
+        F: FnMut(&str) -> bool,
     {
         let read_cache = ReadCache::new(std::fs::File::open(&archive_path)?);
         let archive = ArchiveFile::parse(&read_cache).unwrap();
