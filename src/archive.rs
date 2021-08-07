@@ -29,7 +29,7 @@ pub(crate) struct ArArchiveBuilder<'a> {
     src_archives: Vec<File>,
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
     // the end of an archive for linkers to not get confused.
-    entries: Vec<(String, ArchiveEntry)>,
+    entries: Vec<(Vec<u8>, ArchiveEntry)>,
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
@@ -44,7 +44,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             for entry in archive.members() {
                 let entry = entry.unwrap();
                 entries.push((
-                    String::from_utf8(entry.name().to_vec()).unwrap(),
+                    entry.name().to_vec(),
                     ArchiveEntry::FromArchive { archive_index: 0, file_range: entry.file_range() },
                 ));
             }
@@ -68,21 +68,21 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn src_files(&mut self) -> Vec<String> {
-        self.entries.iter().map(|(name, _)| name.clone()).collect()
+        self.entries.iter().map(|(name, _)| String::from_utf8(name.clone()).unwrap()).collect()
     }
 
     fn remove_file(&mut self, name: &str) {
         let index = self
             .entries
             .iter()
-            .position(|(entry_name, _)| entry_name == name)
+            .position(|(entry_name, _)| entry_name == name.as_bytes())
             .expect("Tried to remove file not existing in src archive");
         self.entries.remove(index);
     }
 
     fn add_file(&mut self, file: &Path) {
         self.entries.push((
-            file.file_name().unwrap().to_str().unwrap().to_string(),
+            file.file_name().unwrap().to_str().unwrap().to_string().into_bytes(),
             ArchiveEntry::File(file.to_owned()),
         ));
     }
@@ -165,7 +165,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 match object::File::parse(&*data) {
                     Ok(object) => {
                         symbol_table.insert(
-                            entry_name.as_bytes().to_vec(),
+                            entry_name.to_vec(),
                             object
                                 .symbols()
                                 .filter_map(|symbol| {
@@ -190,7 +190,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                         } else {
                             sess.fatal(&format!(
                                 "error parsing `{}` during archive creation: {}",
-                                entry_name, err
+                                String::from_utf8_lossy(&entry_name),
+                                err
                             ));
                         }
                     }
@@ -209,7 +210,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                             err
                         ));
                     }),
-                    entries.iter().map(|(name, _)| name.as_bytes().to_vec()).collect(),
+                    entries.iter().map(|(name, _)| name.clone()).collect(),
                     ar::GnuSymbolTableFormat::Size32,
                     symbol_table,
                 )
@@ -232,7 +233,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
         // Add all files
         for (entry_name, data) in entries.into_iter() {
-            let header = ar::Header::new(entry_name.into_bytes(), data.len() as u64);
+            let header = ar::Header::new(entry_name, data.len() as u64);
             match builder {
                 BuilderKind::Bsd(ref mut builder) => builder.append(&header, &mut &*data).unwrap(),
                 BuilderKind::Gnu(ref mut builder) => builder.append(&header, &mut &*data).unwrap(),
@@ -282,7 +283,7 @@ impl<'a> ArArchiveBuilder<'a> {
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
                 self.entries.push((
-                    file_name,
+                    file_name.into_bytes(),
                     ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
                 ));
             }
