@@ -134,14 +134,12 @@ unsafe extern "C" fn invalid_options_continued() {
 #[naked]
 pub unsafe fn default_abi() {
     //~^ WARN Rust ABI is unsupported in naked functions
-    //~| WARN this was previously accepted
     asm!("", options(noreturn));
 }
 
 #[naked]
 pub unsafe extern "Rust" fn rust_abi() {
     //~^ WARN Rust ABI is unsupported in naked functions
-    //~| WARN this was previously accepted
     asm!("", options(noreturn));
 }
 

@@ -7,6 +7,7 @@ use rustc_hir::intravisit::{ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{ExprKind, HirId, InlineAsmOperand, StmtKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
 use rustc_session::lint::builtin::UNSUPPORTED_NAKED_FUNCTIONS;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -87,7 +88,7 @@ fn check_inline(tcx: TyCtxt<'_>, hir_id: HirId, attrs: &[Attribute]) {
 /// Checks that function uses non-Rust ABI.
 fn check_abi(tcx: TyCtxt<'_>, hir_id: HirId, abi: Abi, fn_ident_span: Span) {
     if abi == Abi::Rust {
-        tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_ident_span, |lint| {
+        tcx.struct_span_lint_hir(UNDEFINED_NAKED_FUNCTION_ABI, hir_id, fn_ident_span, |lint| {
             lint.build("Rust ABI is unsupported in naked functions").emit();
         });
     }

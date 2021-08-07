@@ -2690,6 +2690,38 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `undefined_naked_function_abi` lint detects naked function definitions that
+    /// either do not specify an ABI or specify the Rust ABI.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(naked_functions)]
+    /// #![feature(asm)]
+    ///
+    /// #[naked]
+    /// pub fn default_abi() -> u32 {
+    ///     unsafe { asm!("", options(noreturn)); }
+    /// }
+    ///
+    /// #[naked]
+    /// pub extern "Rust" fn rust_abi() -> u32 {
+    ///     unsafe { asm!("", options(noreturn)); }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The Rust ABI is currently undefined. Therefore, naked functions should
+    /// specify a non-Rust ABI.
+    pub UNDEFINED_NAKED_FUNCTION_ABI,
+    Warn,
+    "undefined naked function ABI"
+}
+
+declare_lint! {
     /// The `unsupported_naked_functions` lint detects naked function
     /// definitions that are unsupported but were previously accepted.
     ///
@@ -2699,7 +2731,7 @@ declare_lint! {
     /// #![feature(naked_functions)]
     ///
     /// #[naked]
-    /// pub fn f() -> u32 {
+    /// pub extern "C" fn f() -> u32 {
     ///     42
     /// }
     /// ```
