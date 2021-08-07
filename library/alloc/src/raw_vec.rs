@@ -472,9 +472,12 @@ impl<T, A: Allocator> RawVec<T, A> {
             // `Layout::array` cannot overflow here because it would have
             // owerflown earlier when capacity was larger.
             let new_layout = Layout::array::<T>(amount).unwrap_unchecked();
-            self.alloc
-                .shrink(ptr, layout, new_layout)
-                .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
+            // We avoid `map_err` here because it bloats the amount of LLVM IR
+            // generated.
+            match self.alloc.shrink(ptr, layout, new_layout) {
+                Ok(ptr) => ptr,
+                Err(_) => Err(AllocError { layout: new_layout, non_exhaustive: () })?,
+            }
         };
         self.set_ptr(ptr);
         Ok(())
