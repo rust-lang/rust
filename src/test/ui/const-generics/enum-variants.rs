@@ -1,5 +1,5 @@
 // check-pass
-pub enum Foo<const N: usize> {
+enum Foo<const N: usize> {
     Variant,
     Variant2(),
     Variant3{},

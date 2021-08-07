@@ -192,9 +192,9 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
                 use def::CtorOf;
                 let generics = match res {
-                    Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => {
-                        tcx.generics_of(tcx.parent(def_id).and_then(|def_id| tcx.parent(def_id)).unwrap())
-                    }
+                    Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => tcx.generics_of(
+                        tcx.parent(def_id).and_then(|def_id| tcx.parent(def_id)).unwrap(),
+                    ),
                     Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Struct, _), def_id) => {
                         tcx.generics_of(tcx.parent(def_id).unwrap())
                     }
