@@ -400,39 +400,3 @@ impl Sealed for f64 {}
 unsafe impl SimdElement for f64 {
     type Mask = i64;
 }
-
-/// A representation of a vector as an "array" with indices, implementing
-/// operations applicable to any vector type based solely on "having lanes",
-/// and describing relationships between vector and scalar types.
-pub trait Vector: sealed::Sealed {
-    /// The scalar type in every lane of this vector type.
-    type Scalar: Copy + Sized;
-
-    /// The number of lanes for this vector.
-    const LANES: usize;
-
-    /// Generates a SIMD vector with the same value in every lane.
-    #[must_use]
-    fn splat(val: Self::Scalar) -> Self;
-}
-
-impl<Element, const LANES: usize> Sealed for Simd<Element, LANES>
-where
-    LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
-{
-}
-
-impl<Element, const LANES: usize> Vector for Simd<Element, LANES>
-where
-    LaneCount<LANES>: SupportedLaneCount,
-    Element: SimdElement,
-{
-    type Scalar = Element;
-    const LANES: usize = LANES;
-
-    #[inline]
-    fn splat(val: Self::Scalar) -> Self {
-        Self::splat(val)
-    }
-}
