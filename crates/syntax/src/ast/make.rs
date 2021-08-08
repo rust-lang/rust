@@ -318,6 +318,9 @@ pub fn expr_closure(pats: impl IntoIterator<Item = ast::Param>, expr: ast::Expr)
     let params = pats.into_iter().join(", ");
     expr_from_text(&format!("|{}| {}", params, expr))
 }
+pub fn expr_field(receiver: ast::Expr, field: &str) -> ast::Expr {
+    expr_from_text(&format!("{}.{}", receiver, field))
+}
 pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("({})", expr))
 }

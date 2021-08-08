@@ -36,7 +36,7 @@ use crate::{
 //
 // impl Debug for S {
 //     $0fn fmt(&self, f: &mut Formatter) -> Result<()> {
-//         f.debug_struct(S)
+//         f.debug_struct("S").finish()
 //     }
 // }
 // ```
@@ -183,25 +183,37 @@ fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
     match adt {
         ast::Adt::Union(_) => {} // `Debug` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Enum(_) => {}  // TODO
-        ast::Adt::Struct(strukt) => {
-            match strukt.field_list() {
-                Some(ast::FieldList::RecordFieldList(field_list)) => {
-                    let name = format!("\"{}\"", annotated_name);
-                    let args = make::arg_list(Some(make::expr_literal(&name).into()));
-                    let target = make::expr_path(make::ext::ident_path("f"));
-                    let mut expr = make::expr_method_call(target, "debug_struct", args);
-                    for field in field_list.fields() {
-                        let args = make::arg_list(Some(make::expr_path(&name).into()));
+        ast::Adt::Struct(strukt) => match strukt.field_list() {
+            Some(ast::FieldList::RecordFieldList(field_list)) => {
+                let name = format!("\"{}\"", annotated_name);
+                let args = make::arg_list(Some(make::expr_literal(&name).into()));
+                let target = make::expr_path(make::ext::ident_path("f"));
+                let mut expr = make::expr_method_call(target, "debug_struct", args);
+                for field in field_list.fields() {
+                    if let Some(name) = field.name() {
+                        let f_name = make::expr_literal(&(format!("\"{}\"", name))).into();
+                        let f_path = make::expr_path(make::ext::ident_path("self"));
+                        let f_path = make::expr_ref(f_path, false);
+                        let f_path = make::expr_field(f_path, &format!("{}", name)).into();
+                        let args = make::arg_list(vec![f_name, f_path]);
                         expr = make::expr_method_call(expr, "field", args);
                     }
-                    let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
-                    let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-                    ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
                 }
-                Some(ast::FieldList::TupleFieldList(field_list)) => {}
-                None => {} // `Debug` cannot be implemented for an incomplete struct.
+                let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
+                let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+                ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
             }
-        }
+            Some(ast::FieldList::TupleFieldList(field_list)) => {}
+            None => {
+                let name = format!("\"{}\"", annotated_name);
+                let args = make::arg_list(Some(make::expr_literal(&name).into()));
+                let target = make::expr_path(make::ext::ident_path("f"));
+                let expr = make::expr_method_call(target, "debug_struct", args);
+                let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
+                let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+                ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
+            }
+        },
     }
 }
 

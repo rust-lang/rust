@@ -1364,7 +1364,7 @@ struct S;
 
 impl Debug for S {
     $0fn fmt(&self, f: &mut Formatter) -> Result<()> {
-        f.debug_struct(S)
+        f.debug_struct("S").finish()
     }
 }
 "#####,
