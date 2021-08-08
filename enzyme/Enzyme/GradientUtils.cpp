@@ -623,7 +623,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                   BuilderM.GetInsertBlock()->getName(), " - ",
                   BuilderM.GetInsertBlock()->getParent()->getName(), " mode ",
                   mode);
-      return nullptr;
+      goto endCheck;
     }
 
     Value *pidx = getOp(load->getOperand(0));
@@ -2594,7 +2594,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM,
           }
         }
       endCheck:;
-        if (!seen) {
+        if (!seen && false) {
           IRBuilder<> bb(inversionAllocs);
           AllocaInst *antialloca = bb.CreateAlloca(
               arg->getValueType(), arg->getType()->getPointerAddressSpace(),
