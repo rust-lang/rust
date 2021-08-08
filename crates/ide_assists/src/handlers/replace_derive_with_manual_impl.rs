@@ -304,36 +304,19 @@ mod tests {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
+//- minicore: fmt
 #[derive(Debu$0g)]
 struct Foo {
     bar: String,
 }
 "#,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
 struct Foo {
     bar: String,
 }
 
-impl fmt::Debug for Foo {
-    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Foo").field("bar", &self.bar).finish()
     }
 }
@@ -345,32 +328,14 @@ impl fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
+//- minicore: fmt
 #[derive(Debu$0g)]
 struct Foo(String, usize);
 "#,
-            r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
+            r#"struct Foo(String, usize);
 
-struct Foo(String, usize);
-
-impl fmt::Debug for Foo {
-    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("Foo").field(&self.0).field(&self.1).finish()
     }
 }
@@ -382,32 +347,15 @@ impl fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
+//- minicore: fmt
 #[derive(Debu$0g)]
 struct Foo;
 "#,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
 struct Foo;
 
-impl fmt::Debug for Foo {
-    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Foo").finish()
     }
 }
@@ -419,15 +367,7 @@ impl fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
+//- minicore: fmt
 #[derive(Debu$0g)]
 enum Foo {
     Bar,
@@ -435,22 +375,13 @@ enum Foo {
 }
 "#,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
 enum Foo {
     Bar,
     Baz,
 }
 
-impl fmt::Debug for Foo {
-    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Bar => write!(f, "Bar"),
             Self::Baz => write!(f, "Baz"),

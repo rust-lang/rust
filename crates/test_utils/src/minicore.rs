@@ -31,6 +31,7 @@
 //!     eq: sized
 //!     ord: eq, option
 //!     derive:
+//!     fmt:
 
 pub mod marker {
     // region:sized
@@ -333,6 +334,17 @@ pub mod cmp {
     // endregion:ord
 }
 // endregion:eq
+
+// region:fmt
+pub mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+// endregion:fmt
 
 // region:slice
 pub mod slice {
