@@ -311,6 +311,9 @@ pub fn expr_method_call(
 ) -> ast::Expr {
     expr_from_text(&format!("{}.{}{}", receiver, method, arg_list))
 }
+pub fn expr_macro_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
+    expr_from_text(&format!("{}!{}", f, arg_list))
+}
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
     expr_from_text(&if exclusive { format!("&mut {}", expr) } else { format!("&{}", expr) })
 }

@@ -181,7 +181,37 @@ fn impl_def_from_trait(
 fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) {
     match adt {
         ast::Adt::Union(_) => {} // `Debug` cannot be derived for unions, so no default impl can be provided.
-        ast::Adt::Enum(enum_) => {} // TODO
+        ast::Adt::Enum(enum_) => {
+            if let Some(list) = enum_.variant_list() {
+                let mut arms = vec![];
+                for variant in list.variants() {
+                    let name = variant.name().unwrap();
+
+                    // => Self::<Variant>
+                    let first = make::ext::ident_path("Self");
+                    let second = make::ext::ident_path(&format!("{}", name));
+                    let pat = make::path_pat(make::path_concat(first, second));
+
+                    // => write!(f, "<Variant>")
+                    let target = make::expr_path(make::ext::ident_path("f").into());
+                    let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
+                    let args = make::arg_list(vec![target, fmt_string]);
+                    let target = make::expr_path(make::ext::ident_path("write"));
+                    let expr = make::expr_macro_call(target, args);
+
+                    // => Self::<Variant> => write!(f, "<Variant>"),
+                    arms.push(make::match_arm(Some(pat.into()), None, expr.into()));
+                }
+
+                // => match self { ... }
+                let f_path = make::expr_path(make::ext::ident_path("self"));
+                let list = make::match_arm_list(arms);
+                let expr = make::expr_match(f_path, list);
+
+                let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+                ted::replace(func.body().unwrap().syntax(), body.clone_for_update().syntax());
+            }
+        }
         ast::Adt::Struct(strukt) => match strukt.field_list() {
             Some(ast::FieldList::RecordFieldList(field_list)) => {
                 let name = format!("\"{}\"", annotated_name);
@@ -381,6 +411,52 @@ struct Foo;
 impl fmt::Debug for Foo {
     $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Foo").finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+
+#[derive(Debu$0g)]
+enum Foo {
+    Bar,
+    Baz,
+}
+"#,
+            r#"
+mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+        Self::Bar => write!(f, "Bar"),
+        Self::Baz => write!(f, "Baz"),
+        }
     }
 }
 "#,
