@@ -21,7 +21,7 @@ impl<'a, 'b> Container<'b> for &'a str {
 impl<'a, T> Test<'a, T> where T: for<'b> Container<'b> {
     fn new(root: RootOf<'a, T>) -> Test<'a, T> {
         Test {
-            root: root,
+            root,
             marker: PhantomData
         }
     }

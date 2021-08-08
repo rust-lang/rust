@@ -296,7 +296,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let tcx = self.cx.tcx;
         let no_res = || ResolutionFailure::NotResolved {
-            module_id: module_id,
+            module_id,
             partial_res: None,
             unresolved: path_str.into(),
         };

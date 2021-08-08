@@ -268,10 +268,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.type_lowering.borrow_mut().insert(
-            (self.ty, variant_index),
-            TypeLowering { lltype: llty, field_remapping },
-        );
+        cx.type_lowering
+            .borrow_mut()
+            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping });
 
         if let Some((llty, layout)) = defer {
             let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
