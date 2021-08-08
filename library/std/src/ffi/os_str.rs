@@ -332,7 +332,7 @@ impl OsString {
     /// assert!(s.capacity() >= 3);
     /// ```
     #[inline]
-    #[stable(feature = "shrink_to", since = "1.55.0")]
+    #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }

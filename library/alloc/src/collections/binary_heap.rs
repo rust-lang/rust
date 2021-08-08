@@ -973,7 +973,7 @@ impl<T> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable(feature = "shrink_to", since = "1.55.0")]
+    #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.data.shrink_to(min_capacity)
     }

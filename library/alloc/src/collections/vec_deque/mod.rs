@@ -776,7 +776,7 @@ impl<T> VecDeque<T> {
     /// buf.shrink_to(0);
     /// assert!(buf.capacity() >= 4);
     /// ```
-    #[stable(feature = "shrink_to", since = "1.55.0")]
+    #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         let min_capacity = cmp::min(min_capacity, self.capacity());
         // We don't have to worry about an overflow as neither `self.len()` nor `self.capacity()`

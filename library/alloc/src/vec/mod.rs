@@ -951,7 +951,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "shrink_to", since = "1.55.0")]
+    #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         if self.capacity() > min_capacity {
             self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
