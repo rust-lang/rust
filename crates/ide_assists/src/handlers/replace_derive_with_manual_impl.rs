@@ -205,7 +205,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) {
 
                 // => match self { ... }
                 let f_path = make::expr_path(make::ext::ident_path("self"));
-                let list = make::match_arm_list(arms);
+                let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
                 let expr = make::expr_match(f_path, list);
 
                 let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
@@ -454,8 +454,8 @@ enum Foo {
 impl fmt::Debug for Foo {
     $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-        Self::Bar => write!(f, "Bar"),
-        Self::Baz => write!(f, "Baz"),
+            Self::Bar => write!(f, "Bar"),
+            Self::Baz => write!(f, "Baz"),
         }
     }
 }
