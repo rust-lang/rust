@@ -357,9 +357,9 @@ impl<R: Read> Read for BufReader<R> {
             let mut bytes = Vec::new();
             self.read_to_end(&mut bytes)?;
             let string = crate::str::from_utf8(&bytes).map_err(|_| {
-                io::Error::new_const(
+                io::const_io_error!(
                     io::ErrorKind::InvalidData,
-                    &"stream did not contain valid UTF-8",
+                    "stream did not contain valid UTF-8",
                 )
             })?;
             *buf += string;

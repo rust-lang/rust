@@ -110,9 +110,9 @@ fn write(
         if data[0] >> 6 != 0b10 {
             // not a continuation byte - reject
             incomplete_utf8.len = 0;
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidData,
-                &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
             ));
         }
         incomplete_utf8.bytes[incomplete_utf8.len as usize] = data[0];
@@ -132,9 +132,9 @@ fn write(
                 return Ok(1);
             }
             Err(_) => {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidData,
-                    &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                 ));
             }
         }
@@ -156,9 +156,9 @@ fn write(
                 incomplete_utf8.len = 1;
                 return Ok(1);
             } else {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidData,
-                    &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                 ));
             }
         }
@@ -364,9 +364,9 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
             }
             Err(_) => {
                 // We can't really do any better than forget all data and return an error.
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidData,
-                    &"Windows stdin in console mode does not support non-UTF-16 input; \
+                    "Windows stdin in console mode does not support non-UTF-16 input; \
                      encountered unpaired surrogate",
                 ));
             }

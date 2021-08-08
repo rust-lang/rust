@@ -1,4 +1,4 @@
-use super::{Custom, Error, ErrorKind, Repr};
+use super::{const_io_error, Custom, Error, ErrorKind, Repr};
 use crate::error;
 use crate::fmt;
 use crate::mem::size_of;
@@ -16,9 +16,9 @@ fn test_debug_error() {
     let msg = error_string(code);
     let kind = decode_error_kind(code);
     let err = Error {
-        repr: Repr::Custom(box Custom {
+        repr: Repr::new_custom(box Custom {
             kind: ErrorKind::InvalidInput,
-            error: box Error { repr: super::Repr::Os(code) },
+            error: box Error { repr: super::Repr::new_os(code) },
         }),
     };
     let expected = format!(
@@ -60,7 +60,7 @@ fn test_downcasting() {
 
 #[test]
 fn test_const() {
-    const E: Error = Error::new_const(ErrorKind::NotFound, &"hello");
+    const E: Error = const_io_error!(ErrorKind::NotFound, "hello");
 
     assert_eq!(E.kind(), ErrorKind::NotFound);
     assert_eq!(E.to_string(), "hello");

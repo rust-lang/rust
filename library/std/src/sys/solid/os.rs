@@ -173,11 +173,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
 /// In kmclib, `setenv` and `unsetenv` don't always set `errno`, so this
 /// function just returns a generic error.
 fn cvt_env(t: c_int) -> io::Result<c_int> {
-    if t == -1 {
-        Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"failure"))
-    } else {
-        Ok(t)
-    }
+    if t == -1 { Err(io::const_io_error!(io::ErrorKind::Uncategorized, "failure")) } else { Ok(t) }
 }
 
 pub fn temp_dir() -> PathBuf {

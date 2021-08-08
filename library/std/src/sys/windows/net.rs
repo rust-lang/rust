@@ -152,9 +152,9 @@ impl Socket {
         match result {
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
                 if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::InvalidInput,
-                        &"cannot set a 0 duration timeout",
+                        "cannot set a 0 duration timeout",
                     ));
                 }
 
@@ -185,9 +185,7 @@ impl Socket {
                 };
 
                 match count {
-                    0 => {
-                        Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out"))
-                    }
+                    0 => Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out")),
                     _ => {
                         if writefds.fd_count != 1 {
                             if let Some(e) = self.take_error()? {
@@ -353,9 +351,9 @@ impl Socket {
             Some(dur) => {
                 let timeout = sys::dur2timeout(dur);
                 if timeout == 0 {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::InvalidInput,
-                        &"cannot set a 0 duration timeout",
+                        "cannot set a 0 duration timeout",
                     ));
                 }
                 timeout

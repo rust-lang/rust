@@ -93,9 +93,9 @@ impl OwnedFd {
 
     #[cfg(target_os = "wasi")]
     pub fn try_clone(&self) -> crate::io::Result<Self> {
-        Err(crate::io::Error::new_const(
+        Err(crate::io::const_io_error!(
             crate::io::ErrorKind::Unsupported,
-            &"operation not supported on WASI yet",
+            "operation not supported on WASI yet",
         ))
     }
 }

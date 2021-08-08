@@ -39,7 +39,7 @@ impl Thread {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(p));
-            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Unable to create thread!"))
+            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })
         };

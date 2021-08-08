@@ -461,7 +461,7 @@ impl fmt::Debug for File {
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
-        Err(io::Error::new_const(io::ErrorKind::IsADirectory, &"is a directory"))
+        Err(io::const_io_error!(io::ErrorKind::IsADirectory, "is a directory"))
     } else {
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
@@ -491,7 +491,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
             .map_err(|e| e.as_io_error())?;
         Ok(())
     } else {
-        Err(io::Error::new_const(io::ErrorKind::NotADirectory, &"not a directory"))
+        Err(io::const_io_error!(io::ErrorKind::NotADirectory, "not a directory"))
     }
 }
 
@@ -511,7 +511,7 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     // This target doesn't support symlinks
     stat(p)?;
-    Err(io::Error::new_const(io::ErrorKind::InvalidInput, &"not a symbolic link"))
+    Err(io::const_io_error!(io::ErrorKind::InvalidInput, "not a symbolic link"))
 }
 
 pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {

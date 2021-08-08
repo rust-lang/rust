@@ -149,7 +149,7 @@ impl AsRef<OsStr> for EnvKey {
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::Error::new_const(ErrorKind::InvalidInput, &"nul byte found in provided data"))
+        Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
         Ok(str)
     }
@@ -369,9 +369,9 @@ fn resolve_exe<'a>(
 ) -> io::Result<PathBuf> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
-        return Err(io::Error::new_const(
+        return Err(io::const_io_error!(
             io::ErrorKind::InvalidInput,
-            &"program path has no file name",
+            "program path has no file name",
         ));
     }
     // Test if the file name has the `exe` extension.
@@ -422,7 +422,7 @@ fn resolve_exe<'a>(
         }
     }
     // If we get here then the executable cannot be found.
-    Err(io::Error::new_const(io::ErrorKind::NotFound, &"program not found"))
+    Err(io::const_io_error!(io::ErrorKind::NotFound, "program not found"))
 }
 
 // Calls `f` for every path that should be used to find an executable.

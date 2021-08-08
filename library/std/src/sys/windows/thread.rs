@@ -107,9 +107,9 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
         sysinfo.dwNumberOfProcessors as usize
     };
     match res {
-        0 => Err(io::Error::new_const(
+        0 => Err(io::const_io_error!(
             io::ErrorKind::NotFound,
-            &"The number of hardware threads is not known for the target platform",
+            "The number of hardware threads is not known for the target platform",
         )),
         cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus) }),
     }

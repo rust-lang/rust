@@ -58,7 +58,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new_const(ErrorKind::Unsupported, &"operation not supported on SGX yet")
+    crate::io::const_io_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -69,9 +69,9 @@ pub fn unsupported_err() -> crate::io::Error {
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::Error::new_const(
+        Err(crate::io::const_io_error!(
             ErrorKind::Uncategorized,
-            &"operation can't be trusted to have any effect on SGX",
+            "operation can't be trusted to have any effect on SGX",
         ))
     } else {
         Ok(v)

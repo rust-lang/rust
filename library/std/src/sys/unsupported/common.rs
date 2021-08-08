@@ -21,9 +21,9 @@ pub fn unsupported<T>() -> std_io::Result<T> {
 }
 
 pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new_const(
+    std_io::const_io_error!(
         std_io::ErrorKind::Unsupported,
-        &"operation not supported on this platform",
+        "operation not supported on this platform",
     )
 }
 

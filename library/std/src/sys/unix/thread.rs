@@ -287,7 +287,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
-                0 => Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform")),
+                0 => Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform")),
                 cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) }),
             }
         } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
@@ -318,7 +318,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                 if res == -1 {
                     return Err(io::Error::last_os_error());
                 } else if cpus == 0 {
-                    return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
+                    return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
                 }
             }
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
@@ -344,7 +344,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             if res == -1 {
                 return Err(io::Error::last_os_error());
             } else if cpus == 0 {
-                return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
+                return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
             }
 
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
@@ -356,14 +356,14 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                 let res = libc::get_system_info(&mut sinfo);
 
                 if res != libc::B_OK {
-                    return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
+                    return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
                 }
 
                 Ok(NonZeroUsize::new_unchecked(sinfo.cpu_count as usize))
             }
         } else {
             // FIXME: implement on vxWorks, Redox, l4re
-            Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Getting the number of hardware threads is not supported on the target platform"))
+            Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
         }
     }
 }

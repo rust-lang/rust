@@ -2263,9 +2263,9 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::Uncategorized,
-                    &"failed to create whole tree",
+                    "failed to create whole tree",
                 ));
             }
         }

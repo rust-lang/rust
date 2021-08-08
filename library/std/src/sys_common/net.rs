@@ -5,7 +5,7 @@ use crate::cmp;
 use crate::convert::{TryFrom, TryInto};
 use crate::ffi::CString;
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
@@ -102,7 +102,7 @@ pub fn sockaddr_to_addr(storage: &c::sockaddr_storage, len: usize) -> io::Result
                 *(storage as *const _ as *const c::sockaddr_in6)
             })))
         }
-        _ => Err(Error::new_const(ErrorKind::InvalidInput, &"invalid argument")),
+        _ => Err(io::const_io_error!(ErrorKind::InvalidInput, "invalid argument")),
     }
 }
 
@@ -165,7 +165,7 @@ impl TryFrom<&str> for LookupHost {
             ($e:expr, $msg:expr) => {
                 match $e {
                     Some(r) => r,
-                    None => return Err(io::Error::new_const(io::ErrorKind::InvalidInput, &$msg)),
+                    None => return Err(io::const_io_error!(io::ErrorKind::InvalidInput, $msg)),
                 }
             };
         }
