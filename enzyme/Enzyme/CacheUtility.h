@@ -236,7 +236,8 @@ private:
   /// loop limit multiple times if possible. Map's a desired limitMinus1 (see
   /// getSubLimits) and the block the true limit requested to the value of the
   /// limit accessible at that block
-  llvm::ValueMap<llvm::Value *, std::map<llvm::BasicBlock *, llvm::WeakTrackingVH>>
+  llvm::ValueMap<llvm::Value *,
+                 std::map<llvm::BasicBlock *, llvm::WeakTrackingVH>>
       LimitCache;
   /// Internal data structure used by getSubLimit to avoid computing the
   /// cumulative loop limit multiple times if possible. Map's a desired pair of
@@ -268,22 +269,27 @@ private:
 
 protected:
   /// A map of values being cached to their underlying allocation/limit context
-  std::map<llvm::Value *, std::pair<llvm::AssertingVH<llvm::AllocaInst>, LimitContext>> scopeMap;
+  std::map<llvm::Value *,
+           std::pair<llvm::AssertingVH<llvm::AllocaInst>, LimitContext>>
+      scopeMap;
 
   /// A map of allocations to a vector of instruction used to create by the
   /// allocation Keeping track of these values is useful for deallocation. This
   /// is stored as a vector explicitly to order theses instructions in such a
   /// way that they can be erased by iterating in reverse order.
-  std::map<llvm::AllocaInst *, std::vector<llvm::AssertingVH<llvm::Instruction>>>
+  std::map<llvm::AllocaInst *,
+           std::vector<llvm::AssertingVH<llvm::Instruction>>>
       scopeInstructions;
 
   /// A map of allocations to a set of instructions which free memory as part of
   /// the cache.
-  std::map<llvm::AllocaInst *, std::set<llvm::AssertingVH<llvm::CallInst>>> scopeFrees;
+  std::map<llvm::AllocaInst *, std::set<llvm::AssertingVH<llvm::CallInst>>>
+      scopeFrees;
 
   /// A map of allocations to a set of instructions which allocate memory as
   /// part of the cache
-  std::map<llvm::AllocaInst *, std::vector<llvm::AssertingVH<llvm::CallInst>>> scopeAllocs;
+  std::map<llvm::AllocaInst *, std::vector<llvm::AssertingVH<llvm::CallInst>>>
+      scopeAllocs;
 
   /// Perform the final load from the cache, applying requisite invariant
   /// group and alignment

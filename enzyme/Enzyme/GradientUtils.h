@@ -92,16 +92,17 @@ extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 }
 
-struct InvertedPointerConfig : ValueMapConfig<const llvm::Value*> {
-  typedef GradientUtils* ExtraData;
-  static void onDelete(ExtraData gutils, const llvm::Value* old);
+struct InvertedPointerConfig : ValueMapConfig<const llvm::Value *> {
+  typedef GradientUtils *ExtraData;
+  static void onDelete(ExtraData gutils, const llvm::Value *old);
 };
 
 class InvertedPointerVH : public llvm::CallbackVH {
 public:
   GradientUtils *gutils;
   InvertedPointerVH(GradientUtils *gutils) : gutils(gutils) {}
-  InvertedPointerVH(GradientUtils *gutils, llvm::Value* V) : InvertedPointerVH(gutils) {
+  InvertedPointerVH(GradientUtils *gutils, llvm::Value *V)
+      : InvertedPointerVH(gutils) {
     setValPtr(V);
   }
   void deleted() override final;
@@ -112,16 +113,14 @@ public:
   virtual ~InvertedPointerVH() {}
 };
 
-
 enum class AugmentedStruct;
 class GradientUtils : public CacheUtility {
 public:
-
   EnzymeLogic &Logic;
   bool AtomicAdd;
   DerivativeMode mode;
   llvm::Function *oldFunc;
-  llvm::ValueMap<const Value*, InvertedPointerVH> invertedPointers;
+  llvm::ValueMap<const Value *, InvertedPointerVH> invertedPointers;
   DominatorTree &OrigDT;
   PostDominatorTree &OrigPDT;
   LoopInfo &OrigLI;
@@ -650,7 +649,8 @@ public:
         bb.SetInsertPoint(inst);
 
       anti = cacheForReverse(bb, anti, idx);
-      invertedPointers.insert(std::make_pair(orig, InvertedPointerVH(this, anti)));
+      invertedPointers.insert(
+          std::make_pair(orig, InvertedPointerVH(this, anti)));
       return anti;
     }
 
@@ -691,7 +691,8 @@ public:
     erase(placeholder);
 
     anti = cacheForReverse(bb, anti, idx);
-    invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(this, anti)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)orig, InvertedPointerVH(this, anti)));
 
     if (tape == nullptr) {
       if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
@@ -842,7 +843,8 @@ public:
     OrigPDT.recalculate(*oldFunc_);
 #endif
     for (auto pair : invertedPointers_) {
-      invertedPointers.insert(std::make_pair((const Value*)pair.first, InvertedPointerVH(this, pair.second)));
+      invertedPointers.insert(std::make_pair(
+          (const Value *)pair.first, InvertedPointerVH(this, pair.second)));
     }
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
     for (BasicBlock &oBB : *oldFunc) {
@@ -1046,7 +1048,8 @@ public:
 
           PHINode *anti = BuilderZ.CreatePHI(inst->getType(), 1,
                                              inst->getName() + "'il_phi");
-          invertedPointers.insert(std::make_pair((const Value*)inst, InvertedPointerVH(this, anti)));
+          invertedPointers.insert(std::make_pair(
+              (const Value *)inst, InvertedPointerVH(this, anti)));
           continue;
         }
 
@@ -1074,7 +1077,8 @@ public:
 
         PHINode *anti =
             BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
-        invertedPointers.insert(std::make_pair((const Value*)inst, InvertedPointerVH(this, anti)));
+        invertedPointers.insert(
+            std::make_pair((const Value *)inst, InvertedPointerVH(this, anti)));
 
         if (called && isAllocationFunction(*called, TLI)) {
           anti->setName(op->getName() + "'mi");
@@ -1109,8 +1113,9 @@ public:
         createCacheForScope(lctx, inst->getType(), inst->getName(), shouldFree);
     assert(cache);
     Value *Val = inst;
-    insert_or_assign(scopeMap, Val,
-                     std::pair<AssertingVH<AllocaInst>, LimitContext>(cache, lctx));
+    insert_or_assign(
+        scopeMap, Val,
+        std::pair<AssertingVH<AllocaInst>, LimitContext>(cache, lctx));
     storeInstructionInCache(lctx, inst, cache);
   }
 

@@ -430,7 +430,8 @@ public:
           }
           placeholder->replaceAllUsesWith(newip);
           gutils->erase(placeholder);
-          gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
+          gutils->invertedPointers.insert(std::make_pair(
+              (const Value *)&I, InvertedPointerVH(gutils, newip)));
           break;
         }
         case DerivativeMode::ForwardMode: {
@@ -438,7 +439,8 @@ public:
           assert(newip->getType() == type);
           placeholder->replaceAllUsesWith(newip);
           gutils->erase(placeholder);
-          gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
+          gutils->invertedPointers.insert(std::make_pair(
+              (const Value *)&I, InvertedPointerVH(gutils, newip)));
           break;
         }
         case DerivativeMode::ReverseModeGradient: {
@@ -450,13 +452,15 @@ public:
               newip = gutils->cacheForReverse(BuilderZ, placeholder,
                                               getIndex(&I, CacheType::Shadow));
               assert(newip->getType() == type);
-              gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
+              gutils->invertedPointers.insert(std::make_pair(
+                  (const Value *)&I, InvertedPointerVH(gutils, newip)));
             } else {
               newip = gutils->invertPointerM(&I, BuilderZ);
               assert(newip->getType() == type);
               placeholder->replaceAllUsesWith(newip);
               gutils->erase(placeholder);
-              gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
+              gutils->invertedPointers.insert(std::make_pair(
+                  (const Value *)&I, InvertedPointerVH(gutils, newip)));
             }
           }
           break;
@@ -5181,7 +5185,8 @@ public:
           invertedReturn = gutils->cacheForReverse(
               BuilderZ, invertedReturn, getIndex(orig, CacheType::Shadow));
 
-          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, invertedReturn)));
+          gutils->invertedPointers.insert(std::make_pair(
+              (const Value *)orig, InvertedPointerVH(gutils, invertedReturn)));
         }
       }
 
@@ -5776,7 +5781,8 @@ public:
             if (Mode == DerivativeMode::ReverseModeGradient)
               needsReplacement = false;
           }
-          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, shadow)));
+          gutils->invertedPointers.insert(std::make_pair(
+              (const Value *)orig, InvertedPointerVH(gutils, shadow)));
           if (needsReplacement) {
             assert(shadow != placeholder);
             gutils->replaceAWithB(placeholder, shadow);
@@ -6398,7 +6404,8 @@ public:
     // Remove free's in forward pass so the memory can be used in the reverse
     // pass
     if (called && isDeallocationFunction(*called, gutils->TLI)) {
-      assert(gutils->invertedPointers.find(orig) == gutils->invertedPointers.end());
+      assert(gutils->invertedPointers.find(orig) ==
+             gutils->invertedPointers.end());
 
       if (gutils->forwardDeallocations.count(orig)) {
         if (Mode == DerivativeMode::ReverseModeGradient) {
@@ -6882,7 +6889,8 @@ public:
           newip = gutils->cacheForReverse(BuilderZ, newip,
                                           getIndex(orig, CacheType::Shadow));
 
-          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, newip)));
+          gutils->invertedPointers.insert(std::make_pair(
+              (const Value *)orig, InvertedPointerVH(gutils, newip)));
         } else {
           gutils->invertedPointers.erase(ifound);
           if (placeholder == &*BuilderZ.GetInsertPoint()) {
@@ -7106,7 +7114,8 @@ public:
               cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
           /* todo handle this case later */
           assert(!subretused);
-          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, dretval)));
+          gutils->invertedPointers.insert(std::make_pair(
+              (const Value *)orig, InvertedPointerVH(gutils, dretval)));
         }
         gutils->erase(placeholder);
       }

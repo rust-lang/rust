@@ -84,7 +84,8 @@ void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
       assert(isa<Instruction>(B));
       auto stfound = scopeInstructions.find(cache);
       if (stfound != scopeInstructions.end()) {
-        SmallVector<Instruction*, 3> tmpInstructions(stfound->second.begin(), stfound->second.end());
+        SmallVector<Instruction *, 3> tmpInstructions(stfound->second.begin(),
+                                                      stfound->second.end());
         scopeInstructions.erase(stfound);
         for (auto st : tmpInstructions)
           cast<StoreInst>(&*st)->eraseFromParent();

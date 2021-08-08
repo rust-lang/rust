@@ -1587,7 +1587,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       if (!ignoreType && malloc) {
         assert(v->getType() == malloc->getType());
       }
-      insert_or_assign(scopeMap, v, std::make_pair(AssertingVH<AllocaInst>(cache), ctx));
+      insert_or_assign(scopeMap, v,
+                       std::make_pair(AssertingVH<AllocaInst>(cache), ctx));
       ret = cast<Instruction>(v);
     }
 
@@ -1618,7 +1619,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         if (!inLoop) {
 
           // Remove stores into
-          SmallVector<Instruction*, 3> stores(scopeInstructions[found->first].begin(), scopeInstructions[found->first].end());
+          SmallVector<Instruction *, 3> stores(
+              scopeInstructions[found->first].begin(),
+              scopeInstructions[found->first].end());
           scopeInstructions.erase(found->first);
           for (int i = stores.size() - 1; i >= 0; i--) {
             erase(stores[i]);
@@ -1659,7 +1662,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           }
         } else {
           // Remove stores into
-          SmallVector<Instruction*, 3> stores(scopeInstructions[found->first].begin(), scopeInstructions[found->first].end());
+          SmallVector<Instruction *, 3> stores(
+              scopeInstructions[found->first].begin(),
+              scopeInstructions[found->first].end());
           scopeInstructions.erase(found->first);
           for (int i = stores.size() - 1; i >= 0; i--) {
             erase(stores[i]);
@@ -1667,7 +1672,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
 
           // Remove allocations for scopealloc since it is already allocated
           // by the augmented forward pass
-          SmallVector<CallInst*, 3> allocs(scopeAllocs[found->first].begin(), scopeAllocs[found->first].end());
+          SmallVector<CallInst *, 3> allocs(scopeAllocs[found->first].begin(),
+                                            scopeAllocs[found->first].end());
           scopeAllocs.erase(found->first);
           for (auto allocinst : allocs) {
             CastInst *cast = nullptr;
@@ -1709,7 +1715,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           }
 
           // Remove frees
-          SmallVector<CallInst*, 3> tofree(scopeFrees[found->first].begin(), scopeFrees[found->first].end());
+          SmallVector<CallInst *, 3> tofree(scopeFrees[found->first].begin(),
+                                            scopeFrees[found->first].end());
           scopeFrees.erase(found->first);
           for (auto freeinst : tofree) {
             // This deque contains a list of operations
@@ -2543,7 +2550,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         cast<PointerType>(oval->getType())->getElementType(),
         cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
         oval->getName() + "'ipa");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, antialloca)));
+    invertedPointers.insert(std::make_pair(
+        (const Value *)oval, InvertedPointerVH(this, antialloca)));
     auto dst_arg =
         bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
     auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
@@ -2614,7 +2622,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
           AllocaInst *antialloca = bb.CreateAlloca(
               arg->getValueType(), arg->getType()->getPointerAddressSpace(),
               nullptr, arg->getName() + "'ipa");
-          invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, antialloca)));
+          invertedPointers.insert(std::make_pair(
+              (const Value *)oval, InvertedPointerVH(this, antialloca)));
 
           if (arg->getAlignment()) {
 #if LLVM_VERSION_MAJOR >= 10
@@ -2693,7 +2702,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         shadow->setAlignment(arg->getAlignment());
 #endif
         shadow->setUnnamedAddr(arg->getUnnamedAddr());
-        invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+        invertedPointers.insert(std::make_pair(
+            (const Value *)oval, InvertedPointerVH(this, shadow)));
         return shadow;
       }
 
@@ -2719,7 +2729,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         shadow->setAlignment(arg->getAlignment());
 #endif
         shadow->setUnnamedAddr(arg->getUnnamedAddr());
-        invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+        invertedPointers.insert(std::make_pair(
+            (const Value *)oval, InvertedPointerVH(this, shadow)));
         return shadow;
       }
 
@@ -2746,7 +2757,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
     auto cs = gvemd->getValue();
 
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, cs)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, cs)));
     return cs;
   } else if (auto fn = dyn_cast<Function>(oval)) {
     //! Todo allow tape propagation
@@ -2826,7 +2838,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     Value *shadow =
         bb.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb),
                       arg->getDestTy(), arg->getName() + "'ipc");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
     IRBuilder<> bb(inversionAllocs);
@@ -2844,7 +2857,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         Value *shadow =
             bb.CreateCast((Instruction::CastOps)arg->getOpcode(), ip,
                           arg->getType(), arg->getName() + "'ipc");
-        invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+        invertedPointers.insert(std::make_pair(
+            (const Value *)oval, InvertedPointerVH(this, shadow)));
         return lookupM(shadow, BuilderM);
       }
     } else if (arg->getOpcode() == Instruction::GetElementPtr) {
@@ -2858,7 +2872,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         }
         // TODO mark this the same inbounds as the original
         Value *shadow = bb.CreateGEP(ip, invertargs, arg->getName() + "'ipg");
-        invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+        invertedPointers.insert(std::make_pair(
+            (const Value *)oval, InvertedPointerVH(this, shadow)));
         return lookupM(shadow, BuilderM);
       }
     } else {
@@ -2871,7 +2886,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     Value *shadow =
         bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb),
                               arg->getIndices(), arg->getName() + "'ipev");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<InsertValueInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
@@ -2879,14 +2895,16 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb),
                              invertPointerM(arg->getOperand(1), bb),
                              arg->getIndices(), arg->getName() + "'ipiv");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<ExtractElementInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *shadow = bb.CreateExtractElement(
         invertPointerM(arg->getVectorOperand(), bb),
         getNewFromOriginal(arg->getIndexOperand()), arg->getName() + "'ipee");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<InsertElementInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
@@ -2896,7 +2914,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     Value *shadow = bb.CreateInsertElement(
         invertPointerM(op0, bb), invertPointerM(op1, bb),
         getNewFromOriginal(op2), arg->getName() + "'ipie");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<ShuffleVectorInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
@@ -2911,15 +2930,17 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         bb.CreateShuffleVector(invertPointerM(op0, bb), invertPointerM(op1, bb),
                                arg->getOperand(2), arg->getName() + "'ipsv");
 #endif
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<SelectInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *shadow = bb.CreateSelect(getNewFromOriginal(arg->getCondition()),
-                                  invertPointerM(arg->getTrueValue(), bb),
-                                  invertPointerM(arg->getFalseValue(), bb),
-                                  arg->getName() + "'ipse");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+                                    invertPointerM(arg->getTrueValue(), bb),
+                                    invertPointerM(arg->getFalseValue(), bb),
+                                    arg->getName() + "'ipse");
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto arg = dyn_cast<LoadInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
@@ -2934,7 +2955,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     li->setVolatile(arg->isVolatile());
     li->setOrdering(arg->getOrdering());
     li->setSyncScopeID(arg->getSyncScopeID());
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, li)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, li)));
     return lookupM(li, BuilderM);
   } else if (auto arg = dyn_cast<BinaryOperator>(oval)) {
     if (arg->getOpcode() == Instruction::FAdd)
@@ -2954,7 +2976,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
     if (auto BI = dyn_cast<BinaryOperator>(li))
       BI->copyIRFlags(arg);
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, li)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, li)));
     return lookupM(li, BuilderM);
   } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
@@ -2967,7 +2990,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
                                invertargs, arg->getName() + "'ipg");
     if (auto gep = dyn_cast<GetElementPtrInst>(shadow))
       gep->setIsInBounds(arg->isInBounds());
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, shadow)));
+    invertedPointers.insert(
+        std::make_pair((const Value *)oval, InvertedPointerVH(this, shadow)));
     return lookupM(shadow, BuilderM);
   } else if (auto inst = dyn_cast<AllocaInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(inst));
@@ -2975,7 +2999,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     AllocaInst *antialloca = bb.CreateAlloca(
         inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(),
         asize, inst->getName() + "'ipa");
-    invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, antialloca)));
+    invertedPointers.insert(std::make_pair(
+        (const Value *)oval, InvertedPointerVH(this, antialloca)));
     if (inst->getAlignment()) {
 #if LLVM_VERSION_MAJOR >= 10
       antialloca->setAlignment(Align(inst->getAlignment()));
@@ -3087,7 +3112,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         bb.SetInsertPoint(bb.GetInsertBlock(), bb.GetInsertBlock()->begin());
       }
       auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
-      invertedPointers.insert(std::make_pair((const Value*)oval, InvertedPointerVH(this, which)));
+      invertedPointers.insert(
+          std::make_pair((const Value *)oval, InvertedPointerVH(this, which)));
 
       for (unsigned int i = 0; i < phi->getNumIncomingValues(); ++i) {
         IRBuilder<> pre(
@@ -4883,7 +4909,6 @@ void GradientUtils::computeMinCache(
     }
   }
 }
-
 
 void InvertedPointerVH::deleted() {
   llvm::errs() << *gutils->oldFunc << "\n";
