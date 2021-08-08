@@ -6305,7 +6305,7 @@ public:
     }
 
     if (funcName == "posix_memalign") {
-      bool constval = gutils->isConstantValue(orig);
+      bool constval = gutils->isConstantInstruction(orig);
 
       if (!constval) {
         Value *val;
