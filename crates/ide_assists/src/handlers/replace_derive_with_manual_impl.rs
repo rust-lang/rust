@@ -3,7 +3,6 @@ use ide_db::helpers::{import_assets::NameToImport, mod_path_to_ast};
 use ide_db::items_locator;
 use itertools::Itertools;
 use syntax::ast::edit::AstNodeEdit;
-use syntax::ast::Pat;
 use syntax::ted;
 use syntax::{
     ast::{self, make, AstNode, NameOwner},
@@ -203,7 +202,22 @@ fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
                 let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
                 ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
             }
-            Some(ast::FieldList::TupleFieldList(field_list)) => {}
+            Some(ast::FieldList::TupleFieldList(field_list)) => {
+                let name = format!("\"{}\"", annotated_name);
+                let args = make::arg_list(Some(make::expr_literal(&name).into()));
+                let target = make::expr_path(make::ext::ident_path("f"));
+                let mut expr = make::expr_method_call(target, "debug_tuple", args);
+                for (idx, _) in field_list.fields().enumerate() {
+                    let f_path = make::expr_path(make::ext::ident_path("self"));
+                    let f_path = make::expr_ref(f_path, false);
+                    let f_path = make::expr_field(f_path, &format!("{}", idx)).into();
+                    let args = make::arg_list(Some(f_path));
+                    expr = make::expr_method_call(expr, "field", args);
+                }
+                let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
+                let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+                ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
+            }
             None => {
                 let name = format!("\"{}\"", annotated_name);
                 let args = make::arg_list(Some(make::expr_literal(&name).into()));
@@ -258,7 +272,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn add_custom_impl_debug() {
+    fn add_custom_impl_debug_record_struct() {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
@@ -293,6 +307,80 @@ struct Foo {
 impl fmt::Debug for Foo {
     $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Foo").field("bar", &self.bar).finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+
+#[derive(Debu$0g)]
+struct Foo(String, usize);
+"#,
+            r#"
+mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+
+struct Foo(String, usize);
+
+impl fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Foo").field(&self.0).field(&self.1).finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_empty_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+
+#[derive(Debu$0g)]
+struct Foo;
+"#,
+            r#"
+mod fmt {
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
+}
+
+struct Foo;
+
+impl fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Foo").finish()
     }
 }
 "#,
