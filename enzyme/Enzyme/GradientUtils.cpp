@@ -2583,96 +2583,107 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       if ((mode == DerivativeMode::ReverseModeCombined ||
            mode == DerivativeMode::ForwardMode) &&
           arg->getType()->getPointerAddressSpace() == 0) {
-        bool seen = false;
-        MemoryLocation
+        assert(my_TR);
+        auto CT = my_TR->query(arg)[{-1, -1}];
+        // Can only localy replace a global variable if it is
+        // known not to contain a pointer, which may be initialized
+        // outside of this function to contain other memory which
+        // will not have a shadow within the current function.
+        if (CT.isKnown() && CT != BaseType::Pointer) {
+          bool seen = false;
+          MemoryLocation
 #if LLVM_VERSION_MAJOR >= 12
-            Loc = MemoryLocation(oval, LocationSize::beforeOrAfterPointer());
+              Loc = MemoryLocation(oval, LocationSize::beforeOrAfterPointer());
 #elif LLVM_VERSION_MAJOR >= 9
-            Loc = MemoryLocation(oval, LocationSize::unknown());
+              Loc = MemoryLocation(oval, LocationSize::unknown());
 #else
-            Loc = MemoryLocation(oval, MemoryLocation::UnknownSize);
+              Loc = MemoryLocation(oval, MemoryLocation::UnknownSize);
 #endif
-        for (CallInst *CI : originalCalls) {
-          if (isa<IntrinsicInst>(CI))
-            continue;
-          if (!isConstantInstruction(CI)) {
-            Function *F = CI->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-#else
-            if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-#endif
-            {
-              if (castinst->isCast())
-                if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                  F = fn;
-                }
-            }
-            if (F && (isMemFreeLibMFunction(F->getName()) ||
-                      F->getName() == "__fd_sincos_1")) {
+          for (CallInst *CI : originalCalls) {
+            if (isa<IntrinsicInst>(CI))
               continue;
-            }
-            if (llvm::isModOrRefSet(OrigAA.getModRefInfo(CI, Loc))) {
-              seen = true;
-              llvm::errs() << " cannot shadow-inline global " << *oval
-                           << " due to " << *CI << "\n";
-              goto endCheck;
-            }
-          }
-        }
-      endCheck:;
-        if (!seen) {
-          IRBuilder<> bb(inversionAllocs);
-          AllocaInst *antialloca = bb.CreateAlloca(
-              arg->getValueType(), arg->getType()->getPointerAddressSpace(),
-              nullptr, arg->getName() + "'ipa");
-          invertedPointers.insert(std::make_pair(
-              (const Value *)oval, InvertedPointerVH(this, antialloca)));
-
-          if (arg->getAlignment()) {
-#if LLVM_VERSION_MAJOR >= 10
-            antialloca->setAlignment(Align(arg->getAlignment()));
+            if (!isConstantInstruction(CI)) {
+              Function *F = CI->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+              if (auto castinst =
+                      dyn_cast<ConstantExpr>(CI->getCalledOperand()))
 #else
-            antialloca->setAlignment(arg->getAlignment());
+              if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
 #endif
+              {
+                if (castinst->isCast())
+                  if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                    F = fn;
+                  }
+              }
+              if (F && (isMemFreeLibMFunction(F->getName()) ||
+                        F->getName() == "__fd_sincos_1")) {
+                continue;
+              }
+              if (llvm::isModOrRefSet(OrigAA.getModRefInfo(CI, Loc))) {
+                seen = true;
+                llvm::errs() << " cannot shadow-inline global " << *oval
+                             << " due to " << *CI << "\n";
+                goto endCheck;
+              }
+            }
           }
+        endCheck:;
+          if (!seen) {
+            IRBuilder<> bb(inversionAllocs);
+            AllocaInst *antialloca = bb.CreateAlloca(
+                arg->getValueType(), arg->getType()->getPointerAddressSpace(),
+                nullptr, arg->getName() + "'ipa");
+            invertedPointers.insert(std::make_pair(
+                (const Value *)oval, InvertedPointerVH(this, antialloca)));
 
-          auto dst_arg = bb.CreateBitCast(
-              antialloca, Type::getInt8PtrTy(arg->getContext()));
-          auto val_arg =
-              ConstantInt::get(Type::getInt8Ty(arg->getContext()), 0);
-          auto len_arg = ConstantInt::get(
-              Type::getInt64Ty(arg->getContext()),
-              M->getDataLayout().getTypeAllocSizeInBits(arg->getValueType()) /
-                  8);
-          auto volatile_arg = ConstantInt::getFalse(oval->getContext());
+            if (arg->getAlignment()) {
+#if LLVM_VERSION_MAJOR >= 10
+              antialloca->setAlignment(Align(arg->getAlignment()));
+#else
+              antialloca->setAlignment(arg->getAlignment());
+#endif
+            }
+
+            auto dst_arg = bb.CreateBitCast(
+                antialloca, Type::getInt8PtrTy(arg->getContext()));
+            auto val_arg =
+                ConstantInt::get(Type::getInt8Ty(arg->getContext()), 0);
+            auto len_arg = ConstantInt::get(
+                Type::getInt64Ty(arg->getContext()),
+                M->getDataLayout().getTypeAllocSizeInBits(arg->getValueType()) /
+                    8);
+            auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-          auto align_arg = ConstantInt::get(
-              Type::getInt32Ty(oval->getContext()), antialloca->getAlignment());
-          Value *args[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+            auto align_arg =
+                ConstantInt::get(Type::getInt32Ty(oval->getContext()),
+                                 antialloca->getAlignment());
+            Value *args[] = {dst_arg, val_arg, len_arg, align_arg,
+                             volatile_arg};
 #else
-          Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
+            Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
 #endif
-          Type *tys[] = {dst_arg->getType(), len_arg->getType()};
-          auto memset = cast<CallInst>(bb.CreateCall(
-              Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
+            Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+            auto memset = cast<CallInst>(bb.CreateCall(
+                Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
 #if LLVM_VERSION_MAJOR >= 10
-          if (arg->getAlignment()) {
-            memset->addParamAttr(
-                0, Attribute::getWithAlignment(arg->getContext(),
-                                               Align(arg->getAlignment())));
-          }
+            if (arg->getAlignment()) {
+              memset->addParamAttr(
+                  0, Attribute::getWithAlignment(arg->getContext(),
+                                                 Align(arg->getAlignment())));
+            }
 #else
-          if (arg->getAlignment() != 0) {
-            memset->addParamAttr(
-                0, Attribute::getWithAlignment(arg->getContext(),
-                                               arg->getAlignment()));
-          }
+            if (arg->getAlignment() != 0) {
+              memset->addParamAttr(
+                  0, Attribute::getWithAlignment(arg->getContext(),
+                                                 arg->getAlignment()));
+            }
 #endif
-          memset->addParamAttr(0, Attribute::NonNull);
-          assert(antialloca->getType() == arg->getType());
-          return lookupM(antialloca, BuilderM);
+            memset->addParamAttr(0, Attribute::NonNull);
+            assert(antialloca->getType() == arg->getType());
+            return lookupM(antialloca, BuilderM);
+          }
         }
       }
 
