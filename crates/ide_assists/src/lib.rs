@@ -55,10 +55,11 @@ mod handlers {
     mod apply_demorgan;
     mod auto_import;
     mod change_visibility;
-    mod convert_integer_literal;
+    mod convert_bool_then;
     mod convert_comment_block;
-    mod convert_iter_for_each_to_for;
+    mod convert_integer_literal;
     mod convert_into_to_from;
+    mod convert_iter_for_each_to_for;
     mod convert_tuple_struct_to_named_struct;
     mod early_return;
     mod expand_glob_import;
@@ -73,7 +74,6 @@ mod handlers {
     mod flip_trait_bound;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
-    mod generate_is_empty_from_len;
     mod generate_deref;
     mod generate_derive;
     mod generate_enum_is_method;
@@ -82,6 +82,7 @@ mod handlers {
     mod generate_function;
     mod generate_getter;
     mod generate_impl;
+    mod generate_is_empty_from_len;
     mod generate_new;
     mod generate_setter;
     mod infer_function_return_type;
@@ -124,10 +125,11 @@ mod handlers {
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             change_visibility::change_visibility,
-            convert_integer_literal::convert_integer_literal,
+            convert_bool_then::convert_if_to_bool_then,
             convert_comment_block::convert_comment_block,
-            convert_iter_for_each_to_for::convert_iter_for_each_to_for,
+            convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
+            convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,

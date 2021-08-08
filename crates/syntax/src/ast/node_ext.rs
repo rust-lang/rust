@@ -56,6 +56,10 @@ impl ast::BlockExpr {
     pub fn is_empty(&self) -> bool {
         self.statements().next().is_none() && self.tail_expr().is_none()
     }
+
+    pub fn as_lone_tail(&self) -> Option<ast::Expr> {
+        self.statements().next().is_none().then(|| self.tail_expr()).flatten()
+    }
 }
 
 impl ast::Pat {

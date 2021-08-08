@@ -192,6 +192,28 @@ pub(crate) fn frobnicate() {}
 }
 
 #[test]
+fn doctest_convert_if_to_bool_then() {
+    check_doc_test(
+        "convert_if_to_bool_then",
+        r#####"
+//- minicore: option
+fn main() {
+    if$0 cond {
+        Some(val)
+    } else {
+        None
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    cond.then(|| val)
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_integer_literal() {
     check_doc_test(
         "convert_integer_literal",

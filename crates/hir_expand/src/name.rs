@@ -200,6 +200,7 @@ pub mod known {
         Range,
         Neg,
         Not,
+        None,
         Index,
         // Components of known path (function name)
         filter_map,
