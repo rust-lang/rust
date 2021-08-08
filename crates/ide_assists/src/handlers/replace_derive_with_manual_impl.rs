@@ -35,8 +35,8 @@ use crate::{
 // struct S;
 //
 // impl Debug for S {
-//     fn fmt(&self, f: &mut Formatter) -> Result<()> {
-//         ${0:todo!()}
+//     $0fn fmt(&self, f: &mut Formatter) -> Result<()> {
+//         f.debug_struct(S)
 //     }
 // }
 // ```
@@ -114,7 +114,7 @@ fn add_assist(
         |builder| {
             let insert_pos = adt.syntax().text_range().end();
             let impl_def_with_items =
-                impl_def_from_trait(&ctx.sema, &annotated_name, trait_, trait_path);
+                impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, trait_path);
             update_attribute(builder, input, &trait_name, attr);
             let trait_path = format!("{}", trait_path);
             match (ctx.config.snippet_cap, impl_def_with_items) {
@@ -155,6 +155,7 @@ fn add_assist(
 
 fn impl_def_from_trait(
     sema: &hir::Semantics<ide_db::RootDatabase>,
+    adt: &ast::Adt,
     annotated_name: &ast::Name,
     trait_: Option<hir::Trait>,
     trait_path: &ast::Path,
@@ -169,23 +170,39 @@ fn impl_def_from_trait(
         make::impl_trait(trait_path.clone(), make::ext::ident_path(&annotated_name.text()));
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
+
     if let ast::AssocItem::Fn(fn_) = &first_assoc_item {
         if trait_path.segment().unwrap().name_ref().unwrap().text() == "Debug" {
-            let f_expr = make::expr_path(make::ext::ident_path("f"));
-            let args = make::arg_list(Some(make::expr_path(make::ext::ident_path(
-                annotated_name.text().as_str(),
-            ))));
-            let body =
-                make::block_expr(None, Some(make::expr_method_call(f_expr, "debug_struct", args)))
-                    .indent(ast::edit::IndentLevel(1));
-
-            ted::replace(
-                fn_.body().unwrap().tail_expr().unwrap().syntax(),
-                body.clone_for_update().syntax(),
-            );
+            gen_debug_impl(adt, fn_, annotated_name);
         }
     }
     Some((impl_def, first_assoc_item))
+}
+
+fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
+    match adt {
+        ast::Adt::Union(_) => {} // `Debug` cannot be derived for unions, so no default impl can be provided.
+        ast::Adt::Enum(_) => {}  // TODO
+        ast::Adt::Struct(strukt) => {
+            match strukt.field_list() {
+                Some(ast::FieldList::RecordFieldList(field_list)) => {
+                    let name = format!("\"{}\"", annotated_name);
+                    let args = make::arg_list(Some(make::expr_literal(&name).into()));
+                    let target = make::expr_path(make::ext::ident_path("f"));
+                    let mut expr = make::expr_method_call(target, "debug_struct", args);
+                    for field in field_list.fields() {
+                        let args = make::arg_list(Some(make::expr_path(&name).into()));
+                        expr = make::expr_method_call(expr, "field", args);
+                    }
+                    let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
+                    let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+                    ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
+                }
+                Some(ast::FieldList::TupleFieldList(field_list)) => {}
+                None => {} // `Debug` cannot be implemented for an incomplete struct.
+            }
+        }
+    }
 }
 
 fn update_attribute(
