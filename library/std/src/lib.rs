@@ -308,7 +308,6 @@
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
-#![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
