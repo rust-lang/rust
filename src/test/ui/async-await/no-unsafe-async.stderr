@@ -5,15 +5,25 @@ LL | impl S {
    |        - while parsing this item list starting here
 LL |     #[cfg(FALSE)]
 LL |     unsafe async fn g() {}
-   |            ^^^^^ expected one of `extern` or `fn`
+   |     -------^^^^^
+   |     |      |
+   |     |      expected one of `extern` or `fn`
+   |     help: `async` must come before `unsafe`: `async unsafe`
 LL | }
    | - the item list ends here
+   |
+   = note: keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`
 
 error: expected one of `extern` or `fn`, found keyword `async`
   --> $DIR/no-unsafe-async.rs:11:8
    |
 LL | unsafe async fn f() {}
-   |        ^^^^^ expected one of `extern` or `fn`
+   | -------^^^^^
+   | |      |
+   | |      expected one of `extern` or `fn`
+   | help: `async` must come before `unsafe`: `async unsafe`
+   |
+   = note: keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`
 
 error: aborting due to 2 previous errors
 
