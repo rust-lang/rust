@@ -617,12 +617,16 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                            /*legalRecomputeCache*/ false);
     }
     if (!legalMove) {
-      EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
-                  load->getParent()->getParent(), load->getParent(),
-                  "Load cannot be unwrapped ", *load, " in ",
-                  BuilderM.GetInsertBlock()->getName(), " - ",
-                  BuilderM.GetInsertBlock()->getParent()->getName(), " mode ",
-                  mode);
+      auto &warnMap = UnwrappedWarnings[load];
+      if (!warnMap.count(BuilderM.GetInsertBlock())) {
+        EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
+                    load->getParent()->getParent(), load->getParent(),
+                    "Load cannot be unwrapped ", *load, " in ",
+                    BuilderM.GetInsertBlock()->getName(), " - ",
+                    BuilderM.GetInsertBlock()->getParent()->getName(), " mode ",
+                    mode);
+        warnMap.insert(BuilderM.GetInsertBlock());
+      }
       goto endCheck;
     }
 
@@ -721,10 +725,14 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           legalMove = legalRecompute(dli, available, &BuilderM);
         }
         if (!legalMove) {
-          EmitWarning("UncacheableUnwrap", dli->getDebugLoc(),
-                      dli->getParent()->getParent(), dli->getParent(),
-                      "Differential Load cannot be unwrapped ", *dli, " in ",
-                      BuilderM.GetInsertBlock()->getName(), " mode ", mode);
+          auto &warnMap = UnwrappedWarnings[phi];
+          if (!warnMap.count(BuilderM.GetInsertBlock())) {
+            EmitWarning("UncacheableUnwrap", dli->getDebugLoc(),
+                        dli->getParent()->getParent(), dli->getParent(),
+                        "Differential Load cannot be unwrapped ", *dli, " in ",
+                        BuilderM.GetInsertBlock()->getName(), " mode ", mode);
+            warnMap.insert(BuilderM.GetInsertBlock());
+          }
           return nullptr;
         }
 
@@ -1402,9 +1410,13 @@ endCheck:
       }
     }
     assert(val->getName() != "<badref>");
-    EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
-                "Cannot unwrap ", *val, " in ",
-                BuilderM.GetInsertBlock()->getName());
+    auto &warnMap = UnwrappedWarnings[inst];
+    if (!warnMap.count(BuilderM.GetInsertBlock())) {
+      EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
+                  "Cannot unwrap ", *val, " in ",
+                  BuilderM.GetInsertBlock()->getName());
+      warnMap.insert(BuilderM.GetInsertBlock());
+    }
   }
   return nullptr;
 }

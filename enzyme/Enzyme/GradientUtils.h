@@ -573,8 +573,14 @@ public:
       auto found = newToOriginalFn.find(I);
       if (found != newToOriginalFn.end()) {
         Value *orig = found->second;
-        newToOriginalFn.erase(I);
+        newToOriginalFn.erase(found);
         originalToNewFn.erase(orig);
+      }
+    }
+    {
+      auto found = UnwrappedWarnings.find(I);
+      if (found != UnwrappedWarnings.end()) {
+        UnwrappedWarnings.erase(found);
       }
     }
     unwrappedLoads.erase(I);
@@ -1114,6 +1120,12 @@ public:
     }
   }
 
+private:
+  // For a given value, a list of basic blocks where an unwrap to has already
+  // produced a warning.
+  std::map<llvm::Instruction *, std::set<llvm::BasicBlock *>> UnwrappedWarnings;
+
+public:
   /// if full unwrap, don't just unwrap this instruction, but also its operands,
   /// etc
   Value *unwrapM(Value *const val, IRBuilder<> &BuilderM,
