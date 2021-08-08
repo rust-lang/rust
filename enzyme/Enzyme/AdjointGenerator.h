@@ -3042,6 +3042,13 @@ public:
             if (auto ci = dyn_cast<CastInst>(alloc)) {
               alloc = ci->getOperand(0);
             }
+            if (auto uload = dyn_cast<Instruction>(replacement)) {
+              gutils->unwrappedLoads.erase(uload);
+              if (auto ci = dyn_cast<CastInst>(replacement)) {
+                if (auto ucast = dyn_cast<Instruction>(ci->getOperand(0)))
+                  gutils->unwrappedLoads.erase(ucast);
+              }
+            }
             if (auto ci = dyn_cast<CallInst>(alloc)) {
               if (auto F = ci->getCalledFunction()) {
                 // Store cached values
