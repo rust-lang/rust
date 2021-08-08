@@ -1,10 +1,10 @@
-error: union expressions should have exactly one field
+error[E0784]: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:10:13
    |
 LL |     let u = U {};
    |             ^
 
-error: union expressions should have exactly one field
+error[E0784]: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:12:13
    |
 LL |     let u = U { a: 0, b: 1 };
@@ -18,13 +18,13 @@ LL |     let u = U { a: 0, b: 1, c: 2 };
    |
    = note: available fields are: `a`, `b`
 
-error: union expressions should have exactly one field
+error[E0784]: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:13:13
    |
 LL |     let u = U { a: 0, b: 1, c: 2 };
    |             ^
 
-error: union expressions should have exactly one field
+error[E0784]: union expressions should have exactly one field
   --> $DIR/union-fields-2.rs:15:13
    |
 LL |     let u = U { ..u };
@@ -80,5 +80,5 @@ LL |     let U { a, .. } = u;
 
 error: aborting due to 13 previous errors
 
-Some errors have detailed explanations: E0026, E0436, E0560.
+Some errors have detailed explanations: E0026, E0436, E0560, E0784.
 For more information about an error, try `rustc --explain E0026`.

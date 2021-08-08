@@ -1304,7 +1304,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Make sure the programmer specified correct number of fields.
         if kind_name == "union" {
             if ast_fields.len() != 1 {
-                tcx.sess.span_err(span, "union expressions should have exactly one field");
+                struct_span_err!(
+                    tcx.sess,
+                    span,
+                    E0784,
+                    "union expressions should have exactly one field",
+                )
+                .emit();
             }
         } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
             let no_accessible_remaining_fields = remaining_fields

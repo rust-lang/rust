@@ -479,6 +479,7 @@ E0780: include_str!("./error_codes/E0780.md"),
 E0781: include_str!("./error_codes/E0781.md"),
 E0782: include_str!("./error_codes/E0782.md"),
 E0783: include_str!("./error_codes/E0783.md"),
+E0784: include_str!("./error_codes/E0784.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -636,7 +637,7 @@ E0783: include_str!("./error_codes/E0783.md"),
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
-//    E0723, unstable feature in `const` context
+//  E0723, unstable feature in `const` context
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
     E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
