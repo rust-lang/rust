@@ -5,7 +5,8 @@
 use std::{cell::RefCell, sync::Arc};
 
 use hir_def::{
-    expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId, HasModule,
+    expr::Statement, path::path, resolver::HasResolver, type_ref::Mutability, AssocItemId,
+    DefWithBodyId, HasModule,
 };
 use hir_expand::name;
 use itertools::Either;
@@ -17,7 +18,7 @@ use crate::{
         self,
         usefulness::{compute_match_usefulness, expand_pattern, MatchCheckCtx, PatternArena},
     },
-    AdtId, InferenceResult, Interner, TyExt, TyKind,
+    AdtId, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
 
 pub(crate) use hir_def::{
@@ -49,6 +50,10 @@ pub enum BodyValidationDiagnostic {
     },
     MissingMatchArms {
         match_expr: ExprId,
+    },
+    AddReferenceHere {
+        arg_expr: ExprId,
+        mutability: Mutability,
     },
 }
 
@@ -118,6 +123,22 @@ impl ExprValidator {
                 self.validate_missing_tail_expr(body.body_expr, *id);
             }
         }
+
+        let infer = &self.infer;
+        let diagnostics = &mut self.diagnostics;
+
+        infer
+            .expr_type_mismatches()
+            .filter_map(|(expr, mismatch)| {
+                let (expr_without_ref, mutability) =
+                    check_missing_refs(infer, expr, &mismatch.expected)?;
+
+                Some((expr_without_ref, mutability))
+            })
+            .for_each(|(arg_expr, mutability)| {
+                diagnostics
+                    .push(BodyValidationDiagnostic::AddReferenceHere { arg_expr, mutability });
+            });
     }
 
     fn check_for_filter_map_next(&mut self, db: &dyn HirDatabase) {
@@ -490,4 +511,31 @@ fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResul
     let mut has_type_mismatches = false;
     walk(pat, body, infer, &mut has_type_mismatches);
     !has_type_mismatches
+}
+
+fn check_missing_refs(
+    infer: &InferenceResult,
+    arg: ExprId,
+    param: &Ty,
+) -> Option<(ExprId, Mutability)> {
+    let arg_ty = infer.type_of_expr.get(arg)?;
+
+    let reference_one = arg_ty.as_reference();
+    let reference_two = param.as_reference();
+
+    match (reference_one, reference_two) {
+        (None, Some((referenced_ty, _, mutability))) if referenced_ty == arg_ty => {
+            Some((arg, Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut))))
+        }
+        (None, Some((referenced_ty, _, mutability))) => match referenced_ty.kind(&Interner) {
+            TyKind::Slice(subst) if matches!(arg_ty.kind(&Interner), TyKind::Array(arr_subst, _) if arr_subst == subst) => {
+                Some((
+                    arg,
+                    Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut)),
+                ))
+            }
+            _ => None,
+        },
+        _ => None,
+    }
 }
