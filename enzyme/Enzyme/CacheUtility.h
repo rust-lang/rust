@@ -48,13 +48,13 @@ extern llvm::cl::opt<bool> EfficientBoolCache;
 /// Container for all loop information to synthesize gradients
 struct LoopContext {
   /// Canonical induction variable of the loop
-  llvm::PHINode *var;
+  llvm::AssertingVH<llvm::PHINode> var;
 
   /// Increment of the induction
-  llvm::Instruction *incvar;
+  llvm::AssertingVH<llvm::Instruction> incvar;
 
   /// Allocation of induction variable of reverse pass
-  llvm::AllocaInst *antivaralloc;
+  llvm::AssertingVH<llvm::AllocaInst> antivaralloc;
 
   /// Header of this loop
   llvm::BasicBlock *header;
@@ -236,7 +236,7 @@ private:
   /// loop limit multiple times if possible. Map's a desired limitMinus1 (see
   /// getSubLimits) and the block the true limit requested to the value of the
   /// limit accessible at that block
-  std::map<llvm::Value *, std::map<llvm::BasicBlock *, llvm::WeakTrackingVH>>
+  llvm::ValueMap<llvm::Value *, std::map<llvm::BasicBlock *, llvm::WeakTrackingVH>>
       LimitCache;
   /// Internal data structure used by getSubLimit to avoid computing the
   /// cumulative loop limit multiple times if possible. Map's a desired pair of

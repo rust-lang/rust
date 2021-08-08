@@ -51,20 +51,6 @@ CacheUtility::~CacheUtility() {}
 void CacheUtility::erase(Instruction *I) {
   assert(I);
 
-  // Being itself a cache for ease of computation
-  // erasing is legal (and done as follows).
-  {
-    auto found = LimitCache.find(I);
-    if (found != LimitCache.end())
-      LimitCache.erase(found);
-  }
-
-  for (auto &ctx : loopContexts) {
-    assert(ctx.second.var != I);
-    assert(ctx.second.incvar != I);
-    assert(ctx.second.antivaralloc != I);
-  }
-
   if (auto found = findInMap(scopeMap, (Value *)I)) {
     scopeFrees.erase(found->first);
     scopeAllocs.erase(found->first);
