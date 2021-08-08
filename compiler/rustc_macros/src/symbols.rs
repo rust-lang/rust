@@ -215,7 +215,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         }
 
         impl Interner {
-            pub fn fresh() -> Self {
+            pub(crate) fn fresh() -> Self {
                 Interner::prefill(&[
                     #prefill_stream
                 ])

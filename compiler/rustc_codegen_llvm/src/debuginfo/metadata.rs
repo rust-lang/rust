@@ -34,7 +34,7 @@ use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, AdtKind, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
-use rustc_span::symbol::{Interner, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_span::FileNameDisplayPreference;
 use rustc_span::{self, SourceFile, SourceFileHash, Span};
 use rustc_target::abi::{Abi, Align, HasDataLayout, Integer, TagEncoding};
@@ -89,8 +89,54 @@ pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 pub const NO_SCOPE_METADATA: Option<&DIScope> = None;
 
-#[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
-pub struct UniqueTypeId(Symbol);
+mod unique_type_id {
+    use super::*;
+    use rustc_arena::DroplessArena;
+
+    #[derive(Copy, Hash, Eq, PartialEq, Clone)]
+    pub(super) struct UniqueTypeId(u32);
+
+    // The `&'static str`s in this type actually point into the arena.
+    //
+    // The `FxHashMap`+`Vec` pair could be replaced by `FxIndexSet`, but #75278
+    // found that to regress performance up to 2% in some cases. This might be
+    // revisited after further improvements to `indexmap`.
+    #[derive(Default)]
+    pub(super) struct TypeIdInterner {
+        arena: DroplessArena,
+        names: FxHashMap<&'static str, UniqueTypeId>,
+        strings: Vec<&'static str>,
+    }
+
+    impl TypeIdInterner {
+        #[inline]
+        pub(super) fn intern(&mut self, string: &str) -> UniqueTypeId {
+            if let Some(&name) = self.names.get(string) {
+                return name;
+            }
+
+            let name = UniqueTypeId(self.strings.len() as u32);
+
+            // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
+            // UTF-8.
+            let string: &str =
+                unsafe { std::str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes())) };
+            // It is safe to extend the arena allocation to `'static` because we only access
+            // these while the arena is still alive.
+            let string: &'static str = unsafe { &*(string as *const str) };
+            self.strings.push(string);
+            self.names.insert(string, name);
+            name
+        }
+
+        // Get the symbol as a string. `Symbol::as_str()` should be used in
+        // preference to this function.
+        pub(super) fn get(&self, symbol: UniqueTypeId) -> &str {
+            self.strings[symbol.0 as usize]
+        }
+    }
+}
+use unique_type_id::*;
 
 /// The `TypeMap` is where the `CrateDebugContext` holds the type metadata nodes
 /// created so far. The metadata nodes are indexed by `UniqueTypeId`, and, for
@@ -99,7 +145,7 @@ pub struct UniqueTypeId(Symbol);
 #[derive(Default)]
 pub struct TypeMap<'ll, 'tcx> {
     /// The `UniqueTypeId`s created so far.
-    unique_id_interner: Interner,
+    unique_id_interner: TypeIdInterner,
     /// A map from `UniqueTypeId` to debuginfo metadata for that type. This is a 1:1 mapping.
     unique_id_to_metadata: FxHashMap<UniqueTypeId, &'ll DIType>,
     /// A map from types to debuginfo metadata. This is an N:1 mapping.
@@ -166,8 +212,7 @@ impl TypeMap<'ll, 'tcx> {
     /// Gets the string representation of a `UniqueTypeId`. This method will fail if
     /// the ID is unknown.
     fn get_unique_type_id_as_string(&self, unique_type_id: UniqueTypeId) -> &str {
-        let UniqueTypeId(interner_key) = unique_type_id;
-        self.unique_id_interner.get(interner_key)
+        self.unique_id_interner.get(unique_type_id)
     }
 
     /// Gets the `UniqueTypeId` for the given type. If the `UniqueTypeId` for the given
@@ -197,9 +242,9 @@ impl TypeMap<'ll, 'tcx> {
         let unique_type_id = hasher.finish::<Fingerprint>().to_hex();
 
         let key = self.unique_id_interner.intern(&unique_type_id);
-        self.type_to_unique_id.insert(type_, UniqueTypeId(key));
+        self.type_to_unique_id.insert(type_, key);
 
-        UniqueTypeId(key)
+        key
     }
 
     /// Gets the `UniqueTypeId` for an enum variant. Enum variants are not really
@@ -215,7 +260,7 @@ impl TypeMap<'ll, 'tcx> {
         let enum_variant_type_id =
             format!("{}::{}", self.get_unique_type_id_as_string(enum_type_id), variant_name);
         let interner_key = self.unique_id_interner.intern(&enum_variant_type_id);
-        UniqueTypeId(interner_key)
+        interner_key
     }
 
     /// Gets the unique type ID string for an enum variant part.
