@@ -331,20 +331,24 @@ enum class LLVMRustPassBuilderOptLevel {
   Oz,
 };
 
-static PassBuilder::OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
+#if LLVM_VERSION_LT(14,0)
+using OptimizationLevel = PassBuilder::OptimizationLevel;
+#endif
+
+static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
   switch (Level) {
   case LLVMRustPassBuilderOptLevel::O0:
-    return PassBuilder::OptimizationLevel::O0;
+    return OptimizationLevel::O0;
   case LLVMRustPassBuilderOptLevel::O1:
-    return PassBuilder::OptimizationLevel::O1;
+    return OptimizationLevel::O1;
   case LLVMRustPassBuilderOptLevel::O2:
-    return PassBuilder::OptimizationLevel::O2;
+    return OptimizationLevel::O2;
   case LLVMRustPassBuilderOptLevel::O3:
-    return PassBuilder::OptimizationLevel::O3;
+    return OptimizationLevel::O3;
   case LLVMRustPassBuilderOptLevel::Os:
-    return PassBuilder::OptimizationLevel::Os;
+    return OptimizationLevel::Os;
   case LLVMRustPassBuilderOptLevel::Oz:
-    return PassBuilder::OptimizationLevel::Oz;
+    return OptimizationLevel::Oz;
   default:
     report_fatal_error("Bad PassBuilderOptLevel.");
   }
@@ -754,7 +758,7 @@ LLVMRustOptimizeWithNewPassManager(
     const char *ExtraPasses, size_t ExtraPassesLen) {
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
-  PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
+  OptimizationLevel OptLevel = fromRust(OptLevelRust);
 
 
   PipelineTuningOptions PTO;
@@ -827,19 +831,19 @@ LLVMRustOptimizeWithNewPassManager(
 
   // We manually collect pipeline callbacks so we can apply them at O0, where the
   // PassBuilder does not create a pipeline.
-  std::vector<std::function<void(ModulePassManager &, PassBuilder::OptimizationLevel)>>
+  std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
       PipelineStartEPCallbacks;
 #if LLVM_VERSION_GE(11, 0)
-  std::vector<std::function<void(ModulePassManager &, PassBuilder::OptimizationLevel)>>
+  std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
       OptimizerLastEPCallbacks;
 #else
-  std::vector<std::function<void(FunctionPassManager &, PassBuilder::OptimizationLevel)>>
+  std::vector<std::function<void(FunctionPassManager &, OptimizationLevel)>>
       OptimizerLastEPCallbacks;
 #endif
 
   if (VerifyIR) {
     PipelineStartEPCallbacks.push_back(
-      [VerifyIR](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+      [VerifyIR](ModulePassManager &MPM, OptimizationLevel Level) {
         MPM.addPass(VerifierPass());
       }
     );
@@ -847,7 +851,7 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (InstrumentGCOV) {
     PipelineStartEPCallbacks.push_back(
-      [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+      [](ModulePassManager &MPM, OptimizationLevel Level) {
         MPM.addPass(GCOVProfilerPass(GCOVOptions::getDefault()));
       }
     );
@@ -855,7 +859,7 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (InstrumentCoverage) {
     PipelineStartEPCallbacks.push_back(
-      [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+      [](ModulePassManager &MPM, OptimizationLevel Level) {
         InstrProfOptions Options;
         MPM.addPass(InstrProfiling(Options, false));
       }
@@ -870,19 +874,19 @@ LLVMRustOptimizeWithNewPassManager(
           /*CompileKernel=*/false);
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
-        [Options](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [Options](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(MemorySanitizerPass(Options));
           MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
         }
       );
 #else
       PipelineStartEPCallbacks.push_back(
-        [Options](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [Options](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(MemorySanitizerPass(Options));
         }
       );
       OptimizerLastEPCallbacks.push_back(
-        [Options](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
+        [Options](FunctionPassManager &FPM, OptimizationLevel Level) {
           FPM.addPass(MemorySanitizerPass(Options));
         }
       );
@@ -892,19 +896,19 @@ LLVMRustOptimizeWithNewPassManager(
     if (SanitizerOptions->SanitizeThread) {
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
-        [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(ThreadSanitizerPass());
           MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
         }
       );
 #else
       PipelineStartEPCallbacks.push_back(
-        [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(ThreadSanitizerPass());
         }
       );
       OptimizerLastEPCallbacks.push_back(
-        [](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
+        [](FunctionPassManager &FPM, OptimizationLevel Level) {
           FPM.addPass(ThreadSanitizerPass());
         }
       );
@@ -914,7 +918,7 @@ LLVMRustOptimizeWithNewPassManager(
     if (SanitizerOptions->SanitizeAddress) {
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
-        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
@@ -925,19 +929,19 @@ LLVMRustOptimizeWithNewPassManager(
       );
 #else
       PipelineStartEPCallbacks.push_back(
-        [&](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [&](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
         }
       );
       OptimizerLastEPCallbacks.push_back(
-        [SanitizerOptions](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
+        [SanitizerOptions](FunctionPassManager &FPM, OptimizationLevel Level) {
           FPM.addPass(AddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
               /*UseAfterScope=*/true));
         }
       );
       PipelineStartEPCallbacks.push_back(
-        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
         }
@@ -947,14 +951,14 @@ LLVMRustOptimizeWithNewPassManager(
     if (SanitizerOptions->SanitizeHWAddress) {
 #if LLVM_VERSION_GE(11, 0)
       OptimizerLastEPCallbacks.push_back(
-        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(HWAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
         }
       );
 #else
       PipelineStartEPCallbacks.push_back(
-        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(HWAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
         }
@@ -970,7 +974,7 @@ LLVMRustOptimizeWithNewPassManager(
 #endif
   bool NeedThinLTOBufferPasses = UseThinLTOBuffers;
   if (!NoPrepopulatePasses) {
-    if (OptLevel == PassBuilder::OptimizationLevel::O0) {
+    if (OptLevel == OptimizationLevel::O0) {
 #if LLVM_VERSION_GE(12, 0)
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
