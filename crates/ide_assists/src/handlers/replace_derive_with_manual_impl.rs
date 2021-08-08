@@ -129,9 +129,6 @@ fn add_assist(
                     let mut cursor = Cursor::Before(first_assoc_item.syntax());
                     let placeholder;
                     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-                        // need to know what kind of derive this is: if it's Derive Debug, special case it.
-                        // the name of the struct
-                        // list of fields of the struct
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
                             if m.syntax().text() == "todo!()" {
@@ -170,10 +167,12 @@ fn impl_def_from_trait(
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
 
+    // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(func) = &first_assoc_item {
-        if trait_path.segment().unwrap().name_ref().unwrap().text() == "Debug" {
-            gen_debug_impl(adt, func, annotated_name);
-        }
+        match trait_path.segment().unwrap().name_ref().unwrap().text().as_str() {
+            "Debug" => gen_debug_impl(adt, func, annotated_name),
+            _ => {} // => If we don't know about the trait, the function body is left as `todo!`.
+        };
     }
     Some((impl_def, first_assoc_item))
 }
@@ -183,31 +182,31 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) {
     match adt {
         ast::Adt::Union(_) => {} // `Debug` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Enum(enum_) => {
+            // => match self { Self::Variant => write!(f, "Variant") }
             if let Some(list) = enum_.variant_list() {
                 let mut arms = vec![];
                 for variant in list.variants() {
-                    // => Self::<Variant>
                     let name = variant.name().unwrap();
-                    let first = make::ext::ident_path("Self");
-                    let second = make::ext::ident_path(&format!("{}", name));
-                    let pat = make::path_pat(make::path_concat(first, second));
 
-                    // => write!(f, "<Variant>")
+                    let left = make::ext::ident_path("Self");
+                    let right = make::ext::ident_path(&format!("{}", name));
+                    let variant_name = make::path_pat(make::path_concat(left, right));
+
                     let target = make::expr_path(make::ext::ident_path("f").into());
                     let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
                     let args = make::arg_list(vec![target, fmt_string]);
-                    let target = make::expr_path(make::ext::ident_path("write"));
-                    let expr = make::expr_macro_call(target, args);
+                    let macro_name = make::expr_path(make::ext::ident_path("write"));
+                    let macro_call = make::expr_macro_call(macro_name, args);
 
-                    arms.push(make::match_arm(Some(pat.into()), None, expr.into()));
+                    arms.push(make::match_arm(Some(variant_name.into()), None, macro_call.into()));
                 }
 
-                // => match self { ... }
-                let f_path = make::expr_path(make::ext::ident_path("self"));
+                let match_target = make::expr_path(make::ext::ident_path("self"));
                 let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-                let expr = make::expr_match(f_path, list);
+                let match_expr = make::expr_match(match_target, list);
 
-                let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+                let body = make::block_expr(None, Some(match_expr));
+                let body = body.indent(ast::edit::IndentLevel(1));
                 ted::replace(func.body().unwrap().syntax(), body.clone_for_update().syntax());
             }
         }
@@ -217,8 +216,12 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) {
             let target = make::expr_path(make::ext::ident_path("f"));
 
             let expr = match strukt.field_list() {
-                None => make::expr_method_call(target, "debug_struct", args),
+                None => {
+                    // => f.debug_struct("Name").finish()
+                    make::expr_method_call(target, "debug_struct", args)
+                }
                 Some(ast::FieldList::RecordFieldList(field_list)) => {
+                    // => f.debug_struct("Name").field("foo", &self.foo).finish()
                     let mut expr = make::expr_method_call(target, "debug_struct", args);
                     for field in field_list.fields() {
                         if let Some(name) = field.name() {
@@ -233,6 +236,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) {
                     expr
                 }
                 Some(ast::FieldList::TupleFieldList(field_list)) => {
+                    // => f.debug_tuple("Name").field(self.0).finish()
                     let mut expr = make::expr_method_call(target, "debug_tuple", args);
                     for (idx, _) in field_list.fields().enumerate() {
                         let f_path = make::expr_path(make::ext::ident_path("self"));
