@@ -57,6 +57,9 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         Use { source } => visitor.visit_expr(&visitor.thir()[source]),
         NeverToAny { source } => visitor.visit_expr(&visitor.thir()[source]),
         Pointer { source, cast: _ } => visitor.visit_expr(&visitor.thir()[source]),
+        Let { expr, .. } => {
+            visitor.visit_expr(&visitor.thir()[expr]);
+        }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
         Match { scrutinee, ref arms } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);

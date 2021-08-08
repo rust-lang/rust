@@ -4,6 +4,7 @@
 
 #![feature(lang_items, start, libc)]
 #![no_std]
+#![allow(clippy::if_same_then_else)]
 #![allow(clippy::redundant_pattern_matching)]
 
 use core::panic::PanicInfo;

@@ -644,17 +644,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 scrut_span,
                 ..
             }) => match source {
-                hir::MatchSource::IfLetDesugar { .. } => {
-                    let msg = "`if let` arms have incompatible types";
-                    err.span_label(cause.span, msg);
-                    if let Some(ret_sp) = opt_suggest_box_span {
-                        self.suggest_boxing_for_return_impl_trait(
-                            err,
-                            ret_sp,
-                            prior_arms.iter().chain(std::iter::once(&arm_span)).map(|s| *s),
-                        );
-                    }
-                }
                 hir::MatchSource::TryDesugar => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
                         let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
@@ -2581,9 +2570,6 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             CompareImplTypeObligation { .. } => Error0308("type not compatible with trait"),
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => {
                 Error0308(match source {
-                    hir::MatchSource::IfLetDesugar { .. } => {
-                        "`if let` arms have incompatible types"
-                    }
                     hir::MatchSource::TryDesugar => {
                         "try expression alternatives have incompatible types"
                     }
@@ -2619,10 +2605,6 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
             CompareImplTypeObligation { .. } => "associated type is compatible with trait",
             ExprAssignable => "expression is assignable",
-            MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
-                hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
-                _ => "`match` arms have compatible types",
-            },
             IfExpression { .. } => "`if` and `else` have incompatible types",
             IfExpressionWithNoElse => "`if` missing an `else` returns `()`",
             MainFunctionType => "`main` function has the correct type",

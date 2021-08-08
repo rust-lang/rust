@@ -2537,12 +2537,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(blk)
     }
 
-    /// Constructs a `true` or `false` literal pattern.
-    fn pat_bool(&mut self, span: Span, val: bool) -> &'hir hir::Pat<'hir> {
-        let expr = self.expr_bool(span, val);
-        self.pat(span, hir::PatKind::Lit(expr))
-    }
-
     fn pat_cf_continue(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
         self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field)
@@ -2622,10 +2616,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             },
             hir_id,
         )
-    }
-
-    fn pat_wild(&mut self, span: Span) -> &'hir hir::Pat<'hir> {
-        self.pat(span, hir::PatKind::Wild)
     }
 
     fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {

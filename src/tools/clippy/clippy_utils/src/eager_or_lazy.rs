@@ -60,6 +60,7 @@ fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
         | ExprKind::MethodCall(..)
         | ExprKind::Binary(..)
         | ExprKind::Unary(..)
+        | ExprKind::Let(..)
         | ExprKind::Cast(..)
         | ExprKind::Type(..)
         | ExprKind::DropTemps(..)

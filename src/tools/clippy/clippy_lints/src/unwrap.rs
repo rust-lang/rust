@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{differing_macro_contexts, usage::is_potentially_mutated};
 use if_chain::if_chain;
@@ -160,11 +161,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         if in_external_macro(self.cx.tcx.sess, expr.span) {
             return;
         }
-        if let ExprKind::If(cond, then, els) = &expr.kind {
+        if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr) {
             walk_expr(self, cond);
             self.visit_branch(cond, then, false);
-            if let Some(els) = els {
-                self.visit_branch(cond, els, true);
+            if let Some(else_inner) = r#else {
+                self.visit_branch(cond, else_inner, true);
             }
         } else {
             // find `unwrap[_err]()` calls:

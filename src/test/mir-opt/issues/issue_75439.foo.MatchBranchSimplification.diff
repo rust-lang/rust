@@ -13,8 +13,8 @@
           let _4: u32;                     // in scope 1 at $DIR/issue-75439.rs:9:27: 9:29
           scope 3 {
               debug ip => _4;              // in scope 3 at $DIR/issue-75439.rs:9:27: 9:29
-              scope 4 {
-              }
+          }
+          scope 4 {
           }
       }
       scope 2 {
@@ -49,7 +49,7 @@
       }
   
       bb5: {
-          StorageLive(_5);                 // scope 3 at $DIR/issue-75439.rs:10:14: 10:38
+          StorageLive(_5);                 // scope 1 at $DIR/issue-75439.rs:10:14: 10:38
           StorageLive(_6);                 // scope 4 at $DIR/issue-75439.rs:10:33: 10:35
           _6 = _4;                         // scope 4 at $DIR/issue-75439.rs:10:33: 10:35
           _5 = transmute::<u32, [u8; 4]>(move _6) -> bb8; // scope 4 at $DIR/issue-75439.rs:10:23: 10:36
@@ -61,25 +61,25 @@
       bb6: {
           StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
           _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          goto -> bb5;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
+          goto -> bb5;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb7: {
           StorageLive(_4);                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
           _4 = _2[3 of 4];                 // scope 1 at $DIR/issue-75439.rs:9:27: 9:29
-          goto -> bb5;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
+          goto -> bb5;                     // scope 1 at $DIR/issue-75439.rs:9:12: 9:30
       }
   
       bb8: {
           StorageDead(_6);                 // scope 4 at $DIR/issue-75439.rs:10:35: 10:36
-          ((_0 as Some).0: [u8; 4]) = move _5; // scope 3 at $DIR/issue-75439.rs:10:9: 10:39
-          discriminant(_0) = 1;            // scope 3 at $DIR/issue-75439.rs:10:9: 10:39
-          StorageDead(_5);                 // scope 3 at $DIR/issue-75439.rs:10:38: 10:39
-          StorageDead(_4);                 // scope 1 at $DIR/issue-75439.rs:11:5: 11:6
+          ((_0 as Some).0: [u8; 4]) = move _5; // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
+          discriminant(_0) = 1;            // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
+          StorageDead(_5);                 // scope 1 at $DIR/issue-75439.rs:10:38: 10:39
           goto -> bb9;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
       }
   
       bb9: {
+          StorageDead(_4);                 // scope 1 at $DIR/issue-75439.rs:13:5: 13:6
           StorageDead(_2);                 // scope 0 at $DIR/issue-75439.rs:14:1: 14:2
           return;                          // scope 0 at $DIR/issue-75439.rs:14:2: 14:2
       }

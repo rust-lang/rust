@@ -1,3 +1,4 @@
+use clippy_utils::higher;
 use clippy_utils::{
     can_move_expr_to_closure_no_visit,
     diagnostics::span_lint_and_sugg,
@@ -5,6 +6,7 @@ use clippy_utils::{
     source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context},
     SpanlessEq,
 };
+use core::fmt::Write;
 use rustc_errors::Applicability;
 use rustc_hir::{
     intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
@@ -13,7 +15,6 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, SyntaxContext, DUMMY_SP};
-use std::fmt::Write;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -62,10 +63,11 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let (cond_expr, then_expr, else_expr) = match expr.kind {
-            ExprKind::If(c, t, e) => (c, t, e),
+        let (cond_expr, then_expr, else_expr) = match higher::If::hir(expr) {
+            Some(higher::If { cond, then, r#else }) => (cond, then, r#else),
             _ => return,
         };
+
         let (map_ty, contains_expr) = match try_parse_contains(cx, cond_expr) {
             Some(x) => x,
             None => return,

@@ -325,6 +325,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Return { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Loop { .. }
+            | ExprKind::Let { .. }
             | ExprKind::Match { .. }
             | ExprKind::Box { .. }
             | ExprKind::If { .. }
@@ -472,6 +473,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
                         }
                         BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {}
+                    }
+                }
+            }
+            ExprKind::Let { expr: expr_id, .. } => {
+                let let_expr = &self.thir[expr_id];
+                if let ty::Adt(adt_def, _) = let_expr.ty.kind() {
+                    if adt_def.is_union() {
+                        self.requires_unsafe(expr.span, AccessToUnionField);
                     }
                 }
             }

@@ -94,35 +94,34 @@
       bb7: {
           StorageLive(_10);                // scope 2 at $DIR/funky_arms.rs:24:17: 24:26
           _10 = ((_7 as Some).0: usize);   // scope 2 at $DIR/funky_arms.rs:24:17: 24:26
-          StorageLive(_11);                // scope 3 at $DIR/funky_arms.rs:26:43: 26:46
-          _11 = &mut (*_1);                // scope 3 at $DIR/funky_arms.rs:26:43: 26:46
-          StorageLive(_12);                // scope 3 at $DIR/funky_arms.rs:26:48: 26:51
-          _12 = _2;                        // scope 3 at $DIR/funky_arms.rs:26:48: 26:51
-          StorageLive(_13);                // scope 3 at $DIR/funky_arms.rs:26:53: 26:57
-          _13 = _6;                        // scope 3 at $DIR/funky_arms.rs:26:53: 26:57
-          StorageLive(_14);                // scope 3 at $DIR/funky_arms.rs:26:59: 26:79
-          StorageLive(_15);                // scope 3 at $DIR/funky_arms.rs:26:59: 26:75
-          StorageLive(_16);                // scope 3 at $DIR/funky_arms.rs:26:59: 26:68
-          _16 = _10;                       // scope 3 at $DIR/funky_arms.rs:26:59: 26:68
-          _15 = move _16 as u32 (Misc);    // scope 3 at $DIR/funky_arms.rs:26:59: 26:75
-          StorageDead(_16);                // scope 3 at $DIR/funky_arms.rs:26:74: 26:75
-          _14 = Add(move _15, const 1_u32); // scope 3 at $DIR/funky_arms.rs:26:59: 26:79
-          StorageDead(_15);                // scope 3 at $DIR/funky_arms.rs:26:78: 26:79
-          StorageLive(_17);                // scope 3 at $DIR/funky_arms.rs:26:81: 26:86
-          _17 = _3;                        // scope 3 at $DIR/funky_arms.rs:26:81: 26:86
-          _0 = float_to_exponential_common_exact::<T>(move _11, move _12, move _13, move _14, move _17) -> bb8; // scope 3 at $DIR/funky_arms.rs:26:9: 26:87
+          StorageLive(_11);                // scope 2 at $DIR/funky_arms.rs:26:43: 26:46
+          _11 = &mut (*_1);                // scope 2 at $DIR/funky_arms.rs:26:43: 26:46
+          StorageLive(_12);                // scope 2 at $DIR/funky_arms.rs:26:48: 26:51
+          _12 = _2;                        // scope 2 at $DIR/funky_arms.rs:26:48: 26:51
+          StorageLive(_13);                // scope 2 at $DIR/funky_arms.rs:26:53: 26:57
+          _13 = _6;                        // scope 2 at $DIR/funky_arms.rs:26:53: 26:57
+          StorageLive(_14);                // scope 2 at $DIR/funky_arms.rs:26:59: 26:79
+          StorageLive(_15);                // scope 2 at $DIR/funky_arms.rs:26:59: 26:75
+          StorageLive(_16);                // scope 2 at $DIR/funky_arms.rs:26:59: 26:68
+          _16 = _10;                       // scope 2 at $DIR/funky_arms.rs:26:59: 26:68
+          _15 = move _16 as u32 (Misc);    // scope 2 at $DIR/funky_arms.rs:26:59: 26:75
+          StorageDead(_16);                // scope 2 at $DIR/funky_arms.rs:26:74: 26:75
+          _14 = Add(move _15, const 1_u32); // scope 2 at $DIR/funky_arms.rs:26:59: 26:79
+          StorageDead(_15);                // scope 2 at $DIR/funky_arms.rs:26:78: 26:79
+          StorageLive(_17);                // scope 2 at $DIR/funky_arms.rs:26:81: 26:86
+          _17 = _3;                        // scope 2 at $DIR/funky_arms.rs:26:81: 26:86
+          _0 = float_to_exponential_common_exact::<T>(move _11, move _12, move _13, move _14, move _17) -> bb8; // scope 2 at $DIR/funky_arms.rs:26:9: 26:87
                                            // mir::Constant
                                            // + span: $DIR/funky_arms.rs:26:9: 26:42
                                            // + literal: Const { ty: for<'r, 's, 't0> fn(&'r mut std::fmt::Formatter<'s>, &'t0 T, core::num::flt2dec::Sign, u32, bool) -> std::result::Result<(), std::fmt::Error> {float_to_exponential_common_exact::<T>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb8: {
-          StorageDead(_17);                // scope 3 at $DIR/funky_arms.rs:26:86: 26:87
-          StorageDead(_14);                // scope 3 at $DIR/funky_arms.rs:26:86: 26:87
-          StorageDead(_13);                // scope 3 at $DIR/funky_arms.rs:26:86: 26:87
-          StorageDead(_12);                // scope 3 at $DIR/funky_arms.rs:26:86: 26:87
-          StorageDead(_11);                // scope 3 at $DIR/funky_arms.rs:26:86: 26:87
-          StorageDead(_10);                // scope 2 at $DIR/funky_arms.rs:27:5: 27:6
+          StorageDead(_17);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
+          StorageDead(_14);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
+          StorageDead(_13);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
+          StorageDead(_12);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
+          StorageDead(_11);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
           goto -> bb10;                    // scope 2 at $DIR/funky_arms.rs:24:5: 29:6
       }
   
@@ -135,6 +134,7 @@
       }
   
       bb10: {
+          StorageDead(_10);                // scope 2 at $DIR/funky_arms.rs:29:5: 29:6
           StorageDead(_6);                 // scope 1 at $DIR/funky_arms.rs:30:1: 30:2
           StorageDead(_4);                 // scope 0 at $DIR/funky_arms.rs:30:1: 30:2
           StorageDead(_7);                 // scope 0 at $DIR/funky_arms.rs:30:1: 30:2

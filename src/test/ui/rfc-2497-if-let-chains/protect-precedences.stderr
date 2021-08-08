@@ -1,8 +1,8 @@
-warning: unreachable block in `if` expression
+warning: unreachable block in `if` or `while` expression
   --> $DIR/protect-precedences.rs:13:41
    |
 LL |         if let _ = return true && false {};
-   |                    -------------------- ^^ unreachable block in `if` expression
+   |                    -------------------- ^^ unreachable block in `if` or `while` expression
    |                    |
    |                    any code following this expression is unreachable
    |

@@ -354,6 +354,7 @@ pub trait MacResult {
     fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         None
     }
+
     /// Creates zero or more items.
     fn make_items(self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
         None

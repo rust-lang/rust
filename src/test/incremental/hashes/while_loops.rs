@@ -141,7 +141,7 @@ pub fn change_break_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_break_label() {
     let mut _x = 0;
@@ -191,7 +191,7 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_label() {
     let mut _x = 0;

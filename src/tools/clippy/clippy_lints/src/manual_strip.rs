@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
         }
 
         if_chain! {
-            if let ExprKind::If(cond, then, _) = &expr.kind;
+            if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
             if let ExprKind::MethodCall(_, _, [target_arg, pattern], _) = cond.kind;
             if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id);
             if let ExprKind::Path(target_path) = &target_arg.kind;
@@ -212,7 +212,7 @@ fn find_stripping<'tcx>(
                 if is_ref_str(self.cx, ex);
                 let unref = peel_ref(ex);
                 if let ExprKind::Index(indexed, index) = &unref.kind;
-                if let Some(higher::Range { start, end, .. }) = higher::range(index);
+                if let Some(higher::Range { start, end, .. }) = higher::Range::hir(index);
                 if let ExprKind::Path(path) = &indexed.kind;
                 if self.cx.qpath_res(path, ex.hir_id) == self.target;
                 then {

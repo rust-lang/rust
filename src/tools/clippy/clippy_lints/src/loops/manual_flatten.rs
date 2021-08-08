@@ -1,11 +1,12 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher;
 use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
-use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, StmtKind};
+use rustc_hir::{Expr, ExprKind, Pat, PatKind, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Span;
@@ -36,14 +37,12 @@ pub(super) fn check<'tcx>(
 
         if_chain! {
             if let Some(inner_expr) = inner_expr;
-            if let ExprKind::Match(
-                match_expr, match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
-            ) = inner_expr.kind;
+            if let Some(higher::IfLet { let_pat, let_expr, if_else: None, .. }) = higher::IfLet::hir(inner_expr);
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
-            if path_to_local_id(match_expr, pat_hir_id);
+            if path_to_local_id(let_expr, pat_hir_id);
             // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
-            if let PatKind::TupleStruct(ref qpath, _, _) = match_arms[0].pat.kind;
+            if let PatKind::TupleStruct(ref qpath, _, _) = let_pat.kind;
             let some_ctor = is_lang_ctor(cx, qpath, OptionSome);
             let ok_ctor = is_lang_ctor(cx, qpath, ResultOk);
             if some_ctor || ok_ctor;
@@ -55,7 +54,7 @@ pub(super) fn check<'tcx>(
                 // Prepare the help message
                 let mut applicability = Applicability::MaybeIncorrect;
                 let arg_snippet = make_iterator_snippet(cx, arg, &mut applicability);
-                let copied = match cx.typeck_results().expr_ty(match_expr).kind() {
+                let copied = match cx.typeck_results().expr_ty(let_expr).kind() {
                     ty::Ref(_, inner, _) => match inner.kind() {
                         ty::Ref(..) => ".copied()",
                         _ => ""

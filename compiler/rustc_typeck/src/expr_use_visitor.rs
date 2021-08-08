@@ -229,6 +229,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 }
             }
 
+            hir::ExprKind::Let(ref pat, ref expr, _) => {
+                self.walk_local(expr, pat, |t| t.borrow_expr(&expr, ty::ImmBorrow));
+            }
+
             hir::ExprKind::Match(ref discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(&discr));
 
@@ -428,9 +432,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt<'_>) {
         match stmt.kind {
-            hir::StmtKind::Local(ref local) => {
-                self.walk_local(&local);
+            hir::StmtKind::Local(hir::Local { pat, init: Some(ref expr), .. }) => {
+                self.walk_local(expr, pat, |_| {});
             }
+
+            hir::StmtKind::Local(_) => {}
 
             hir::StmtKind::Item(_) => {
                 // We don't visit nested items in this visitor,
@@ -443,16 +449,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_local(&mut self, local: &hir::Local<'_>) {
-        if let Some(ref expr) = local.init {
-            // Variable declarations with
-            // initializers are considered
-            // "assigns", which is handled by
-            // `walk_pat`:
-            self.walk_expr(&expr);
-            let init_place = return_if_err!(self.mc.cat_expr(&expr));
-            self.walk_irrefutable_pat(&init_place, &local.pat);
-        }
+    fn walk_local<F>(&mut self, expr: &hir::Expr<'_>, pat: &hir::Pat<'_>, mut f: F)
+    where
+        F: FnMut(&mut Self),
+    {
+        self.walk_expr(&expr);
+        let expr_place = return_if_err!(self.mc.cat_expr(&expr));
+        f(self);
+        self.walk_irrefutable_pat(&expr_place, &pat);
     }
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved

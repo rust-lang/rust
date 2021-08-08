@@ -201,7 +201,6 @@ fn outside_if_and_while_expr() {
 
     (let true = let true = true);
     //~^ ERROR `let` expressions are not supported here
-    //~| ERROR `let` expressions are not supported here
 
     // Check function tail position.
     &let 0 = 0
