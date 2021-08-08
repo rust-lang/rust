@@ -24,6 +24,7 @@
 //! don't yet have a great pattern for how to do them properly.
 
 mod handlers {
+    pub(crate) mod add_reference_here;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
@@ -176,6 +177,7 @@ pub fn diagnostics(
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
+            AnyDiagnostic::AddReferenceHere(d) => handlers::add_reference_here::add_reference_here(&ctx, &d),
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::IncorrectCase(d) => handlers::incorrect_case::incorrect_case(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),

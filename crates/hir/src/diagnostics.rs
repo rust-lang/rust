@@ -5,7 +5,7 @@
 //! be expressed in terms of hir types themselves.
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_def::path::ModPath;
+use hir_def::{path::ModPath, type_ref::Mutability};
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
@@ -28,6 +28,7 @@ macro_rules! diagnostics {
 }
 
 diagnostics![
+    AddReferenceHere,
     BreakOutsideOfLoop,
     InactiveCode,
     IncorrectCase,
@@ -152,6 +153,12 @@ pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
     pub arms: AstPtr<ast::MatchArmList>,
+}
+
+#[derive(Debug)]
+pub struct AddReferenceHere {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub mutability: Mutability,
 }
 
 pub use hir_ty::diagnostics::IncorrectCase;

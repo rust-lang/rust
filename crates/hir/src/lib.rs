@@ -82,8 +82,8 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, MacroError,
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
+        AddReferenceHere, AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase,
+        MacroError, MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
         MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
         UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
         UnresolvedModule, UnresolvedProcMacro,
@@ -1248,6 +1248,12 @@ impl Function {
                                 }
                             }
                         }
+                        Err(SyntheticSyntax) => (),
+                    }
+                }
+                BodyValidationDiagnostic::AddReferenceHere { arg_expr, mutability } => {
+                    match source_map.expr_syntax(arg_expr) {
+                        Ok(expr) => acc.push(AddReferenceHere { expr, mutability }.into()),
                         Err(SyntheticSyntax) => (),
                     }
                 }
