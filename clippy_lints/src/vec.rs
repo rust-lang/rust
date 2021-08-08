@@ -49,8 +49,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         if_chain! {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(expr).kind();
             if let ty::Slice(..) = ty.kind();
-            if let ExprKind::AddrOf(BorrowKind::Ref, mutability, addressee) = expr.kind;
-            if let Some(vec_args) = higher::vec_macro(cx, addressee);
+            if let ExprKind::AddrOf(BorrowKind::Ref, mutability, ref addressee) = expr.kind;
+            if let Some(vec_args) = higher::VecArgs::hir(cx, addressee);
             then {
                 self.check_vec_macro(cx, &vec_args, mutability, expr.span);
             }
@@ -58,8 +58,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
 
         // search for `for _ in vec![…]`
         if_chain! {
-            if let Some((_, arg, _, _)) = higher::for_loop(expr);
-            if let Some(vec_args) = higher::vec_macro(cx, arg);
+            if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr);
+            if let Some(vec_args) = higher::VecArgs::hir(cx, arg);
             if is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(arg)));
             then {
                 // report the error around the `vec!` not inside `<std macros>:`

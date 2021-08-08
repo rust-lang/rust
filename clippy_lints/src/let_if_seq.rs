@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 if let hir::StmtKind::Local(local) = stmt.kind;
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind;
                 if let hir::StmtKind::Expr(if_) = expr.kind;
-                if let hir::ExprKind::If(cond, then, ref else_) = if_.kind;
+                if let hir::ExprKind::If(hir::Expr { kind: hir::ExprKind::DropTemps(cond), ..}, then, else_) = if_.kind;
                 let mut used_visitor = LocalUsedVisitor::new(cx, canonical_id);
                 if !used_visitor.check_expr(cond);
                 if let hir::ExprKind::Block(then, _) = then.kind;
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     );
                     if has_interior_mutability { return; }
 
-                    let (default_multi_stmts, default) = if let Some(else_) = *else_ {
+                    let (default_multi_stmts, default) = if let Some(else_) = else_ {
                         if let hir::ExprKind::Block(else_, _) = else_.kind {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)

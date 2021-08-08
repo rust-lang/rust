@@ -53,7 +53,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             return;
         }
 
-        if let Some((_, arg, body, _)) = higher::for_loop(expr) {
+        if let Some(higher::ForLoop { arg, body, .. }) = higher::ForLoop::hir(expr) {
             // A `for` loop lowers to:
             // ```rust
             // match ::std::iter::Iterator::next(&mut iter) {

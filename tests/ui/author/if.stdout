@@ -12,7 +12,8 @@ if_chain! {
     if let ExprKind::Lit(ref lit1) = right.kind;
     if let LitKind::Int(2, _) = lit1.node;
     if block.expr.is_none();
-    if let ExprKind::Lit(ref lit2) = cond.kind;
+    if let ExprKind::DropTemps(ref expr) = cond.kind;
+    if let ExprKind::Lit(ref lit2) = expr.kind;
     if let LitKind::Bool(true) = lit2.node;
     if let ExprKind::Block(ref block1) = then.kind;
     if block1.stmts.len() == 1;

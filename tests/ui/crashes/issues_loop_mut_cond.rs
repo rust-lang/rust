@@ -1,3 +1,4 @@
+#![allow(clippy::blocks_in_if_conditions)]
 #![allow(dead_code)]
 
 /// Issue: https://github.com/rust-lang/rust-clippy/issues/2596
