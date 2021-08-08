@@ -92,14 +92,36 @@ extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 }
 
+struct InvertedPointerConfig : ValueMapConfig<const llvm::Value*> {
+  typedef GradientUtils* ExtraData;
+  static void onDelete(ExtraData gutils, const llvm::Value* old);
+};
+
+class InvertedPointerVH : public llvm::CallbackVH {
+public:
+  GradientUtils *gutils;
+  InvertedPointerVH(GradientUtils *gutils) : gutils(gutils) {}
+  InvertedPointerVH(GradientUtils *gutils, llvm::Value* V) : InvertedPointerVH(gutils) {
+    setValPtr(V);
+  }
+  void deleted() override final;
+
+  void allUsesReplacedWith(Value *new_value) override final {
+    setValPtr(new_value);
+  }
+  virtual ~InvertedPointerVH() {}
+};
+
+
 enum class AugmentedStruct;
 class GradientUtils : public CacheUtility {
 public:
+
   EnzymeLogic &Logic;
   bool AtomicAdd;
   DerivativeMode mode;
   llvm::Function *oldFunc;
-  ValueToValueMapTy invertedPointers;
+  llvm::ValueMap<const Value*, InvertedPointerVH> invertedPointers;
   DominatorTree &OrigDT;
   PostDominatorTree &OrigPDT;
   LoopInfo &OrigLI;
@@ -517,21 +539,7 @@ public:
     if (A == B)
       return;
     assert(A->getType() == B->getType());
-    // Following should be handled by tracking VH
-    /*
-    for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
-      if (addedTapeVals[i] == A) {
-        addedTapeVals[i] = B;
-      }
-    }
-    */
-    // Following should be handled by tracking VH
-    /*
-    for (auto pair : unwrappedLoads) {
-      if (pair->second == A)
-        pair->second = B;
-    }
-    */
+
     if (auto iA = dyn_cast<Instruction>(A)) {
       if (unwrappedLoads.find(iA) != unwrappedLoads.end()) {
         auto iB = cast<Instruction>(B);
@@ -540,15 +548,12 @@ public:
       }
     }
 
-    if (invertedPointers.find(A) != invertedPointers.end()) {
-      invertedPointers[B] = invertedPointers[A];
-      invertedPointers.erase(A);
-    }
-    if (auto orig = isOriginal(A)) {
-      originalToNewFn[orig] = B;
-      assert(newToOriginalFn.count(A));
-      newToOriginalFn.erase(A);
-      newToOriginalFn[B] = orig;
+    // Check that the replacement doesn't already exist in the mapping
+    // thereby resulting in a conflict.
+    {
+      auto found = newToOriginalFn.find(A);
+      if (found != newToOriginalFn.end())
+        assert(newToOriginalFn.find(B) == newToOriginalFn.end());
     }
 
     CacheUtility::replaceAWithB(A, B, storeInCache);
@@ -584,16 +589,7 @@ public:
       }
     }
     unwrappedLoads.erase(I);
-    for (auto v : invertedPointers) {
-      if (v.second == I) {
-        llvm::errs() << *oldFunc << "\n";
-        llvm::errs() << *newFunc << "\n";
-        dumpPointers();
-        llvm::errs() << *v.first << "\n";
-        llvm::errs() << *I << "\n";
-        assert(0 && "erasing something in invertedPointers map");
-      }
-    }
+
     for (auto v : unwrappedLoads) {
       if (v.second == I) {
         assert(0 && "erasing something in unwrappedLoads map");
@@ -603,39 +599,11 @@ public:
     for (auto &pair : unwrap_cache) {
       if (pair.second.find(I) != pair.second.end())
         pair.second.erase(I);
-      // following should be handled by valuehandle
-      /*
-      std::vector<std::pair<Value *, BasicBlock *>> cache_pairs;
-      for (auto &a : pair.second) {
-        if (a.second == I) {
-          cache_pairs.push_back(a.first);
-        }
-        if (a.first.first == I) {
-          cache_pairs.push_back(a.first);
-        }
-      }
-      for (auto a : cache_pairs) {
-        pair.second.erase(a);
-      }
-      */
     }
 
     for (auto &pair : lookup_cache) {
       if (pair.second.find(I) != pair.second.end())
         pair.second.erase(I);
-
-      // following should be handled by valuehandle
-      /*
-      std::vector<Value *> cache_pairs;
-      for (auto &a : pair.second) {
-        if (a.second == I) {
-          cache_pairs.push_back(a.first);
-        }
-      }
-      for (auto a : cache_pairs) {
-        pair.second.erase(a);
-      }
-      */
     }
     CacheUtility::erase(I);
   }
@@ -660,7 +628,8 @@ public:
 
   Value *createAntiMalloc(CallInst *orig, unsigned idx) {
     assert(orig->getParent()->getParent() == oldFunc);
-    PHINode *placeholder = cast<PHINode>(invertedPointers[orig]);
+    auto found = invertedPointers.find(orig);
+    PHINode *placeholder = cast<PHINode>(&*found->second);
 
     assert(placeholder->getParent()->getParent() == newFunc);
     placeholder->setName("");
@@ -676,9 +645,8 @@ public:
       bb.SetInsertPoint(placeholder);
       Value *anti = shadowHandlers[orig->getCalledFunction()->getName().str()](
           bb, orig, args);
-      invertedPointers[orig] = anti;
-      // assert(placeholder != anti);
 
+      invertedPointers.erase(found);
       bb.SetInsertPoint(placeholder);
 
       replaceAWithB(placeholder, anti);
@@ -688,7 +656,7 @@ public:
         bb.SetInsertPoint(inst);
 
       anti = cacheForReverse(bb, anti, idx);
-      invertedPointers[orig] = anti;
+      invertedPointers.insert(std::make_pair(orig, InvertedPointerVH(this, anti)));
       return anti;
     }
 
@@ -723,14 +691,13 @@ public:
       }
     }
 
-    invertedPointers[orig] = anti;
-    // assert(placeholder != anti);
+    invertedPointers.erase(found);
     bb.SetInsertPoint(placeholder->getNextNode());
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
     anti = cacheForReverse(bb, anti, idx);
-    invertedPointers[orig] = anti;
+    invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(this, anti)));
 
     if (tape == nullptr) {
       if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
@@ -880,7 +847,9 @@ public:
 #if LLVM_VERSION_MAJOR <= 6
     OrigPDT.recalculate(*oldFunc_);
 #endif
-    invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
+    for (auto pair : invertedPointers_) {
+      invertedPointers.insert(std::make_pair((const Value*)pair.first, InvertedPointerVH(this, pair.second)));
+    }
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
     for (BasicBlock &oBB : *oldFunc) {
       for (Instruction &oI : oBB) {
@@ -1083,7 +1052,7 @@ public:
 
           PHINode *anti = BuilderZ.CreatePHI(inst->getType(), 1,
                                              inst->getName() + "'il_phi");
-          invertedPointers[inst] = anti;
+          invertedPointers.insert(std::make_pair((const Value*)inst, InvertedPointerVH(this, anti)));
           continue;
         }
 
@@ -1111,10 +1080,10 @@ public:
 
         PHINode *anti =
             BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
-        invertedPointers[inst] = anti;
+        invertedPointers.insert(std::make_pair((const Value*)inst, InvertedPointerVH(this, anti)));
 
         if (called && isAllocationFunction(*called, TLI)) {
-          invertedPointers[inst]->setName(op->getName() + "'mi");
+          anti->setName(op->getName() + "'mi");
         }
       }
     }

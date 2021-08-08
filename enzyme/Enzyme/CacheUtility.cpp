@@ -128,15 +128,6 @@ void CacheUtility::erase(Instruction *I) {
 
 /// Replace this instruction both in LLVM modules and any local data-structures
 void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
-  for (auto &ctx : loopContexts) {
-    if (ctx.second.maxLimit == A) {
-      ctx.second.maxLimit = B;
-    }
-    if (ctx.second.trueLimit == A) {
-      ctx.second.trueLimit = B;
-    }
-  }
-
   auto found = scopeMap.find(A);
   if (found != scopeMap.end()) {
     insert_or_assign2(scopeMap, B, found->second);

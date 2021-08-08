@@ -67,9 +67,9 @@ struct LoopContext {
 
   /// limit is last value of a canonical induction variable
   /// iters is number of times loop is run (thus iters = limit + 1)
-  llvm::Value *maxLimit;
+  llvm::WeakTrackingVH maxLimit;
 
-  llvm::Value *trueLimit;
+  llvm::WeakTrackingVH trueLimit;
 
   /// All blocks this loop exits too
   llvm::SmallPtrSet<llvm::BasicBlock *, 8> exitBlocks;

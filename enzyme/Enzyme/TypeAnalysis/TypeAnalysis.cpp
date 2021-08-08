@@ -3647,6 +3647,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       TypeTree ptrptr;
       ptrptr.insert({-1}, BaseType::Pointer);
       ptrptr.insert({-1, 0}, BaseType::Pointer);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), ptrptr, &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
                      &call);

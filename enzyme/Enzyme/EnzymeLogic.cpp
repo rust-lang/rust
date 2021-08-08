@@ -2219,9 +2219,11 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     PreservedAnalyses PA;
     PPC.FAM.invalidate(*gutils->newFunc, PA);
   }
-  gutils->newFunc->eraseFromParent();
 
+  Function *tempFunc = gutils->newFunc;
   delete gutils;
+  tempFunc->eraseFromParent();
+
   if (PostOpt)
     PPC.optimizeIntermediate(NewF);
   if (EnzymePrint)

@@ -398,10 +398,11 @@ public:
     //! pass
     if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() &&
         TR.query(&I).Inner0().isPossiblePointer()) {
-      Instruction *placeholder =
-          cast<Instruction>(gutils->invertedPointers[&I]);
+      auto found = gutils->invertedPointers.find(&I);
+      assert(found != gutils->invertedPointers.end());
+      Instruction *placeholder = cast<Instruction>(&*found->second);
       assert(placeholder->getType() == type);
-      gutils->invertedPointers.erase(&I);
+      gutils->invertedPointers.erase(found);
 
       if (!constantval) {
         IRBuilder<> BuilderZ(newi);
@@ -429,7 +430,7 @@ public:
           }
           placeholder->replaceAllUsesWith(newip);
           gutils->erase(placeholder);
-          gutils->invertedPointers[&I] = newip;
+          gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
           break;
         }
         case DerivativeMode::ForwardMode: {
@@ -437,7 +438,7 @@ public:
           assert(newip->getType() == type);
           placeholder->replaceAllUsesWith(newip);
           gutils->erase(placeholder);
-          gutils->invertedPointers[&I] = newip;
+          gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
           break;
         }
         case DerivativeMode::ReverseModeGradient: {
@@ -449,13 +450,13 @@ public:
               newip = gutils->cacheForReverse(BuilderZ, placeholder,
                                               getIndex(&I, CacheType::Shadow));
               assert(newip->getType() == type);
-              gutils->invertedPointers[&I] = newip;
+              gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
             } else {
               newip = gutils->invertPointerM(&I, BuilderZ);
               assert(newip->getType() == type);
               placeholder->replaceAllUsesWith(newip);
               gutils->erase(placeholder);
-              gutils->invertedPointers[&I] = newip;
+              gutils->invertedPointers.insert(std::make_pair((const Value*)&I, InvertedPointerVH(gutils, newip)));
             }
           }
           break;
@@ -5102,7 +5103,8 @@ public:
 
       Value *invertedReturn = nullptr;
       bool hasNonReturnUse = false;
-      if (gutils->invertedPointers.count(orig)) {
+      auto ifound = gutils->invertedPointers.find(orig);
+      if (ifound != gutils->invertedPointers.end()) {
         //! We only need the shadow pointer for non-forward Mode if it is used
         //! in a non return setting
         for (auto use : orig->users()) {
@@ -5114,7 +5116,7 @@ public:
           }
         }
         if (hasNonReturnUse)
-          invertedReturn = cast<PHINode>(gutils->invertedPointers[orig]);
+          invertedReturn = cast<PHINode>(&*ifound->second);
       }
 
       Value *normalReturn = subretused ? newCall : nullptr;
@@ -5146,10 +5148,10 @@ public:
                              tape);
       }
 
-      if (gutils->invertedPointers.count(orig)) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+      if (ifound != gutils->invertedPointers.end()) {
+        auto placeholder = cast<PHINode>(&*ifound->second);
         if (!hasNonReturnUse) {
-          gutils->invertedPointers.erase(orig);
+          gutils->invertedPointers.erase(ifound);
           gutils->erase(placeholder);
         } else {
           if (invertedReturn && invertedReturn != placeholder) {
@@ -5172,7 +5174,7 @@ public:
           invertedReturn = gutils->cacheForReverse(
               BuilderZ, invertedReturn, getIndex(orig, CacheType::Shadow));
 
-          gutils->invertedPointers[orig] = invertedReturn;
+          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, invertedReturn)));
         }
       }
 
@@ -5304,8 +5306,10 @@ public:
           cacheval = BuilderZ.CreateInsertValue(valins1, arg2, 1);
         } else if (xcache)
           cacheval = arg1;
-        else if (ycache)
+        else {
+          assert(ycache);
           cacheval = arg2;
+        }
         gutils->cacheForReverse(BuilderZ, cacheval,
                                 getIndex(&call, CacheType::Tape));
       }
@@ -5732,9 +5736,10 @@ public:
         bool lrc = gutils->legalRecompute(orig, empty, nullptr);
 
         if (!gutils->isConstantValue(orig)) {
-          assert(gutils->invertedPointers.count(orig));
-          auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-          gutils->invertedPointers.erase(orig);
+          auto ifound = gutils->invertedPointers.find(orig);
+          assert(ifound != gutils->invertedPointers.end());
+          auto placeholder = cast<PHINode>(&*ifound->second);
+          gutils->invertedPointers.erase(ifound);
 
           Value *shadow = placeholder;
           if (lrc || Mode == DerivativeMode::ReverseModePrimal ||
@@ -5764,7 +5769,7 @@ public:
             if (Mode == DerivativeMode::ReverseModeGradient)
               needsReplacement = false;
           }
-          gutils->invertedPointers[orig] = shadow;
+          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, shadow)));
           if (needsReplacement) {
             assert(shadow != placeholder);
             gutils->replaceAWithB(placeholder, shadow);
@@ -6275,11 +6280,11 @@ public:
           gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
       Value *val =
           BuilderZ.CreateCall(called, std::vector<Value *>({ptrshadow}));
-      assert(gutils->invertedPointers.count(orig));
 
-      auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-      gutils->invertedPointers.erase(orig);
-      gutils->invertedPointers[orig] = val;
+      auto ifound = gutils->invertedPointers.find(orig);
+      assert(ifound != gutils->invertedPointers.end());
+
+      auto placeholder = cast<PHINode>(&*ifound->second);
       gutils->replaceAWithB(placeholder, val);
       gutils->erase(placeholder);
       eraseIfUnused(*orig);
@@ -6287,12 +6292,6 @@ public:
     }
 
     if (funcName == "posix_memalign") {
-      if (gutils->invertedPointers.count(orig)) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-        gutils->invertedPointers.erase(orig);
-        gutils->erase(placeholder);
-      }
-
       bool constval = gutils->isConstantValue(orig);
 
       if (!constval) {
@@ -6392,11 +6391,7 @@ public:
     // Remove free's in forward pass so the memory can be used in the reverse
     // pass
     if (called && isDeallocationFunction(*called, gutils->TLI)) {
-      if (gutils->invertedPointers.count(orig)) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-        gutils->invertedPointers.erase(orig);
-        gutils->erase(placeholder);
-      }
+      assert(gutils->invertedPointers.find(orig) == gutils->invertedPointers.end());
 
       if (gutils->forwardDeallocations.count(orig)) {
         if (Mode == DerivativeMode::ReverseModeGradient) {
@@ -6841,9 +6836,9 @@ public:
         }
       }
 
-      if (gutils->invertedPointers.count(orig)) {
-
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+      auto ifound = gutils->invertedPointers.find(orig);
+      if (ifound != gutils->invertedPointers.end()) {
+        auto placeholder = cast<PHINode>(&*ifound->second);
 
         bool subcheck = (subretType == DIFFE_TYPE::DUP_ARG ||
                          subretType == DIFFE_TYPE::DUP_NONEED);
@@ -6880,9 +6875,9 @@ public:
           newip = gutils->cacheForReverse(BuilderZ, newip,
                                           getIndex(orig, CacheType::Shadow));
 
-          gutils->invertedPointers[orig] = newip;
+          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, newip)));
         } else {
-          gutils->invertedPointers.erase(orig);
+          gutils->invertedPointers.erase(ifound);
           if (placeholder == &*BuilderZ.GetInsertPoint()) {
             BuilderZ.SetInsertPoint(placeholder->getNextNode());
           }
@@ -6905,9 +6900,10 @@ public:
         tape = truetape;
       }
     } else {
-      if (gutils->invertedPointers.count(orig)) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-        gutils->invertedPointers.erase(orig);
+      auto ifound = gutils->invertedPointers.find(orig);
+      if (ifound != gutils->invertedPointers.end()) {
+        auto placeholder = cast<PHINode>(&*ifound->second);
+        gutils->invertedPointers.erase(ifound);
         gutils->erase(placeholder);
       }
       if (/*!topLevel*/ Mode != DerivativeMode::ReverseModeCombined &&
@@ -7093,16 +7089,17 @@ public:
 
       // if a function is replaced for joint forward/reverse, handle inverted
       // pointers
-      if (gutils->invertedPointers.count(orig)) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-        gutils->invertedPointers.erase(orig);
+      auto ifound = gutils->invertedPointers.find(orig);
+      if (ifound != gutils->invertedPointers.end()) {
+        auto placeholder = cast<PHINode>(&*ifound->second);
+        gutils->invertedPointers.erase(ifound);
         if (subdretptr) {
           dumpMap(gutils->invertedPointers);
           auto dretval =
               cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
           /* todo handle this case later */
           assert(!subretused);
-          gutils->invertedPointers[orig] = dretval;
+          gutils->invertedPointers.insert(std::make_pair((const Value*)orig, InvertedPointerVH(gutils, dretval)));
         }
         gutils->erase(placeholder);
       }
