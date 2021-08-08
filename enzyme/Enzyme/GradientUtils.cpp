@@ -4735,11 +4735,15 @@ void GradientUtils::computeMinCache(
           }
         }
       }
+      SmallPtrSet<Instruction *, 3> Seen;
       while (LoopBoundRequirements.size()) {
         Instruction *val = LoopBoundRequirements.front();
         LoopBoundRequirements.pop_front();
         if (NewLoopBoundReq.count(val))
           continue;
+        if (Seen.count(val))
+          continue;
+        Seen.insert(val);
         if (auto orig = isOriginal(val)) {
           NewLoopBoundReq.insert(orig);
         } else {
