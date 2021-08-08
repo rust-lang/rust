@@ -170,18 +170,18 @@ fn impl_def_from_trait(
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
 
-    if let ast::AssocItem::Fn(fn_) = &first_assoc_item {
+    if let ast::AssocItem::Fn(func) = &first_assoc_item {
         if trait_path.segment().unwrap().name_ref().unwrap().text() == "Debug" {
-            gen_debug_impl(adt, fn_, annotated_name);
+            gen_debug_impl(adt, func, annotated_name);
         }
     }
     Some((impl_def, first_assoc_item))
 }
 
-fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
+fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) {
     match adt {
         ast::Adt::Union(_) => {} // `Debug` cannot be derived for unions, so no default impl can be provided.
-        ast::Adt::Enum(_) => {}  // TODO
+        ast::Adt::Enum(enum_) => {} // TODO
         ast::Adt::Struct(strukt) => match strukt.field_list() {
             Some(ast::FieldList::RecordFieldList(field_list)) => {
                 let name = format!("\"{}\"", annotated_name);
@@ -200,7 +200,7 @@ fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
                 }
                 let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
                 let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-                ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
+                ted::replace(func.body().unwrap().syntax(), body.clone_for_update().syntax());
             }
             Some(ast::FieldList::TupleFieldList(field_list)) => {
                 let name = format!("\"{}\"", annotated_name);
@@ -216,7 +216,7 @@ fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
                 }
                 let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
                 let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-                ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
+                ted::replace(func.body().unwrap().syntax(), body.clone_for_update().syntax());
             }
             None => {
                 let name = format!("\"{}\"", annotated_name);
@@ -225,7 +225,7 @@ fn gen_debug_impl(adt: &ast::Adt, fn_: &ast::Fn, annotated_name: &ast::Name) {
                 let expr = make::expr_method_call(target, "debug_struct", args);
                 let expr = make::expr_method_call(expr, "finish", make::arg_list(None));
                 let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
-                ted::replace(fn_.body().unwrap().syntax(), body.clone_for_update().syntax());
+                ted::replace(func.body().unwrap().syntax(), body.clone_for_update().syntax());
             }
         },
     }
