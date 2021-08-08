@@ -1,7 +1,14 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(target_pointer_width = "64")]
+mod repr_bitpacked;
+#[cfg(target_pointer_width = "64")]
+use repr_bitpacked::Repr;
+
+#[cfg(not(target_pointer_width = "64"))]
 mod repr_unpacked;
+#[cfg(not(target_pointer_width = "64"))]
 use repr_unpacked::Repr;
 
 use crate::convert::From;
@@ -780,7 +787,7 @@ impl Error {
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
             ErrorData::Os(code) => sys::decode_error_kind(code),
-            ErrorData::Custom(ref c) => c.kind,
+            ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
         }
@@ -829,7 +836,7 @@ impl error::Error for Error {
         match self.repr.data() {
             ErrorData::Os(..) | ErrorData::Simple(..) => self.kind().as_str(),
             ErrorData::SimpleMessage(msg) => msg.message,
-            ErrorData::Custom(ref c) => c.error.description(),
+            ErrorData::Custom(c) => c.error.description(),
         }
     }
 
@@ -839,7 +846,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(ref c) => c.error.cause(),
+            ErrorData::Custom(c) => c.error.cause(),
         }
     }
 
@@ -848,7 +855,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(ref c) => c.error.source(),
+            ErrorData::Custom(c) => c.error.source(),
         }
     }
 }

@@ -1,0 +1,338 @@
+//! This is a densely packed error representation which is used on targets with
+//! 64-bit pointers.
+//!
+//! (Note that `bitpacked` vs `unpacked` here has no relationship to
+//! `#[repr(packed)]`, it just refers to attempting to use any available
+//! bits in a more clever manner than `rustc`'s default layout algorithm would).
+//!
+//! Conceptually, it stores the same information as the "unpacked" equivalent we
+//! use on other targets: `repr_unpacked::Repr` (see repr_unpacked.rs), however
+//! it packs it into a 64bit non-zero value.
+//!
+//! This optimization not only allows `io::Error` to occupy a single pointer,
+//! but improves `io::Result` as well, especially for situations like
+//! `Result<()>` (which is now 64 bits) or `Result<u64>` (which i), which are
+//! quite common.
+//!
+//! # Layout
+//! Tagged values are 64 bits, with the 2 least significant bits used for the
+//! tag. This means there are there are 4 "variants":
+//!
+//! - **Tag 0b00**: The first variant is equivalent to
+//!   `ErrorData::SimpleMessage`, and holds a `&'static SimpleMessage` directly.
+//!
+//!   `SimpleMessage` has an alignment >= 4 (which is requested with
+//!   `#[repr(align)]` and checked statically at the bottom of this file), which
+//!   means every `&'static SimpleMessage` should have the both tag bits as 0,
+//!   meaning its tagged and untagged representation are equivalent.
+//!
+//!   This means we can skip tagging it, which is necessary as this variant can
+//!   be constructed from a `const fn`, which probably cannot tag pointers (or
+//!   at least it would be difficult.
+//!
+//! - **Tag 0b01**: The other pointer variant holds the data for
+//!   `ErrorData::Custom` and the remaining 62 bits are used to store a
+//!   `Box<Custom>`. `Custom` also has alignment >= 4, so the bottom two bits
+//!   are free to use for the tag.
+//!
+//!   The only important thing to note is that `ptr::add` and `ptr::sub` are
+//!   used to tag the pointer, rather than bitwise operations. This should
+//!   preserve the pointer's provenance, which would otherwise be lost.
+//!
+//! - **Tag 0b10**: Holds the data for `ErrorData::Os(i32)`. We store the `i32`
+//!   in the pointers most significant 32 bits, and don't use the bits `2..32`
+//!   for anything. Using the top 32 bits is just to let us easily recover the
+//!   `i32` code with the correct sign.
+//!
+//! - **Tag 0b11**: Holds the data for `ErrorData::Simple(ErrorKind)`. This
+//!   stores the `ErrorKind` in the top 32 bits as well, although it doesn't
+//!   occupy nearly that many. Most of the bits are unused here, but it's not
+//!   like we need them for anything else yet.
+//!
+//! # Use of `NonNull<()>`
+//!
+//! Everything is stored in a `NonNull<()>`, which is odd, but actually serves a
+//! purpose.
+//!
+//! Conceptually you might think of this more like:
+//!
+//! ```ignore
+//! union Repr {
+//!     // holds integer (Simple/Os) variants, and
+//!     // provides access to the tag bits.
+//!     bits: NonZeroU64,
+//!     // Tag is 0, so this is stored untagged.
+//!     msg: &'static SimpleMessage,
+//!     // Tagged (offset) `Box<Custom>` pointer.
+//!     tagged_custom: NonNull<()>,
+//! }
+//! ```
+//!
+//! But there are a few problems with this:
+//!
+//! 1. Union access is equivalent to a transmute, so this representation would
+//!    require we transmute between integers and pointers in at least one
+//!    direction, which may be UB (and even if not, it is likely harder for a
+//!    compiler to reason about than explicit ptr->int operations).
+//!
+//! 2. Even if all fields of a union have a niche, the union itself doesn't,
+//!    although this may change in the future. This would make things like
+//!    `io::Result<()>` and `io::Result<usize>` larger, which defeats part of
+//!    the motivation of this bitpacking.
+//!
+//! Storing everything in a `NonZeroUsize` (or some other integer) would be a
+//! bit more traditional for pointer tagging, but it would lose provenance
+//! information, couldn't be constructed from a `const fn`, and would probably
+//! run into other issues as well.
+//!
+//! The `NonNull<()>` seems like the only alternative, even if it's fairly odd
+//! to use a pointer type to store something that may hold an integer, some of
+//! the time.
+
+use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
+use alloc::boxed::Box;
+use core::mem::{align_of, size_of};
+use core::ptr::NonNull;
+
+// The 2 least-significant bits are used as tag.
+const TAG_MASK: usize = 0b11;
+const TAG_SIMPLE_MESSAGE: usize = 0b00;
+const TAG_CUSTOM: usize = 0b01;
+const TAG_OS: usize = 0b10;
+const TAG_SIMPLE: usize = 0b11;
+
+#[repr(transparent)]
+pub(super) struct Repr(NonNull<()>);
+
+// All the types `Repr` stores internally are Send + Sync, and so is it.
+unsafe impl Send for Repr {}
+unsafe impl Sync for Repr {}
+
+impl Repr {
+    pub(super) fn new_custom(b: Box<Custom>) -> Self {
+        let p = Box::into_raw(b).cast::<u8>();
+        // Should only be possible if an allocator handed out a pointer with
+        // wrong alignment.
+        debug_assert_eq!((p as usize & TAG_MASK), 0);
+        // Safety: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
+        // end of file), and both the start and end of the expression must be
+        // valid without address space wraparound due to `Box`'s semantics.
+        // Note: `add` is used as a provenance-preserving way of pointer tagging.
+        let tagged = unsafe { p.add(TAG_CUSTOM).cast::<()>() };
+        // Safety: the above safety comment also means the result can't be null.
+        let res = Self(unsafe { NonNull::new_unchecked(tagged) });
+        // quickly smoke-check we encoded the right thing (This generally will
+        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        debug_assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
+        res
+    }
+
+    #[inline]
+    pub(super) fn new_os(code: i32) -> Self {
+        let utagged = ((code as usize) << 32) | TAG_OS;
+        // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
+        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) });
+        // quickly smoke-check we encoded the right thing (This generally will
+        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        debug_assert!(
+            matches!(res.data(), ErrorData::Os(c) if c == code),
+            "repr(os) encoding failed for {}",
+            code,
+        );
+        res
+    }
+
+    #[inline]
+    pub(super) fn new_simple(kind: ErrorKind) -> Self {
+        let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
+        // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
+        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) });
+        // quickly smoke-check we encoded the right thing (This generally will
+        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        debug_assert!(
+            matches!(res.data(), ErrorData::Simple(k) if k == kind),
+            "repr(simple) encoding failed {:?}",
+            kind,
+        );
+        res
+    }
+
+    #[inline]
+    pub(super) const fn new_simple_message(m: &'static SimpleMessage) -> Self {
+        // Safety: We're a Repr, decode_repr is fine.
+        Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) })
+    }
+
+    #[inline]
+    pub(super) fn data(&self) -> ErrorData<&Custom> {
+        // Safety: We're a Repr, decode_repr is fine.
+        unsafe { decode_repr(self.0, |c| &*c) }
+    }
+
+    #[inline]
+    pub(super) fn data_mut(&mut self) -> ErrorData<&mut Custom> {
+        // Safety: We're a Repr, decode_repr is fine.
+        unsafe { decode_repr(self.0, |c| &mut *c) }
+    }
+
+    #[inline]
+    pub(super) fn into_data(self) -> ErrorData<Box<Custom>> {
+        let this = core::mem::ManuallyDrop::new(self);
+        // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
+        // safe because we prevent double-drop using `ManuallyDrop`.
+        unsafe { decode_repr(this.0, |p| Box::from_raw(p)) }
+    }
+}
+
+impl Drop for Repr {
+    #[inline]
+    fn drop(&mut self) {
+        // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
+        // safe because we're being dropped.
+        unsafe {
+            let _ = decode_repr(self.0, |p| Box::<Custom>::from_raw(p));
+        }
+    }
+}
+
+// Shared helper to decode a `Repr`'s internal pointer into an ErrorData.
+//
+// Safety: `ptr`'s bits should be encoded as described in the document at the
+// top (it should `some_repr.0`)
+#[inline]
+unsafe fn decode_repr<C, F>(ptr: NonNull<()>, make_custom: F) -> ErrorData<C>
+where
+    F: FnOnce(*mut Custom) -> C,
+{
+    let bits = ptr.as_ptr() as usize;
+    match bits & TAG_MASK {
+        TAG_OS => {
+            let code = ((bits as i64) >> 32) as i32;
+            ErrorData::Os(code)
+        }
+        TAG_SIMPLE => {
+            let kind_bits = (bits >> 32) as u32;
+            let kind = kind_from_prim(kind_bits).unwrap_or_else(|| {
+                debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#016x})`", bits);
+                // This means the `ptr` passed in was not valid, which voilates
+                // the unsafe contract of `decode_repr`.
+                //
+                // Using this rather than unwrap meaningfully improves the code
+                // for callers which only care about one variant (usually
+                // `Custom`)
+                core::hint::unreachable_unchecked();
+            });
+            ErrorData::Simple(kind)
+        }
+        TAG_SIMPLE_MESSAGE => ErrorData::SimpleMessage(&*ptr.cast::<SimpleMessage>().as_ptr()),
+        TAG_CUSTOM => {
+            let custom = ptr.as_ptr().cast::<u8>().sub(TAG_CUSTOM).cast::<Custom>();
+            ErrorData::Custom(make_custom(custom))
+        }
+        _ => {
+            // Can't happen, and compiler can tell
+            unreachable!();
+        }
+    }
+}
+
+// This compiles to the same code as the check+transmute, but doesn't require
+// unsafe, or to hard-code max ErrorKind or its size in a way the compiler
+// couldn't verify.
+#[inline]
+fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
+    macro_rules! from_prim {
+        ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
+            // Force a compile error if the list gets out of date.
+            const _: fn(e: $Enum) = |e: $Enum| match e {
+                $($Enum::$Variant => ()),*
+            };
+            match $prim {
+                $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
+                _ => None,
+            }
+        }}
+    }
+    from_prim!(ek => ErrorKind {
+        NotFound,
+        PermissionDenied,
+        ConnectionRefused,
+        ConnectionReset,
+        HostUnreachable,
+        NetworkUnreachable,
+        ConnectionAborted,
+        NotConnected,
+        AddrInUse,
+        AddrNotAvailable,
+        NetworkDown,
+        BrokenPipe,
+        AlreadyExists,
+        WouldBlock,
+        NotADirectory,
+        IsADirectory,
+        DirectoryNotEmpty,
+        ReadOnlyFilesystem,
+        FilesystemLoop,
+        StaleNetworkFileHandle,
+        InvalidInput,
+        InvalidData,
+        TimedOut,
+        WriteZero,
+        StorageFull,
+        NotSeekable,
+        FilesystemQuotaExceeded,
+        FileTooLarge,
+        ResourceBusy,
+        ExecutableFileBusy,
+        Deadlock,
+        CrossesDevices,
+        TooManyLinks,
+        FilenameTooLong,
+        ArgumentListTooLong,
+        Interrupted,
+        Other,
+        UnexpectedEof,
+        Unsupported,
+        OutOfMemory,
+        Uncategorized,
+    })
+}
+
+// Some static checking to alert us if a change breaks any of the assumptions
+// that our encoding relies on. If any of these are hit on a platform that
+// libstd supports, we should just make sure `repr_unpacked.rs` is used.
+macro_rules! static_assert {
+    ($condition:expr) => {
+        const _: [(); 0] = [(); (!$condition) as usize];
+    };
+}
+
+// The bitpacking we use requires pointers be exactly 64 bits.
+static_assert!(size_of::<NonNull<()>>() == 8);
+
+// We also require pointers and usize be the same size.
+static_assert!(size_of::<NonNull<()>>() == size_of::<usize>());
+
+// `Custom` and `SimpleMessage` need to be thin pointers.
+static_assert!(size_of::<&'static SimpleMessage>() == 8);
+static_assert!(size_of::<Box<Custom>>() == 8);
+
+// And they must have >= 4 byte alignment.
+static_assert!(align_of::<SimpleMessage>() >= 4);
+static_assert!(align_of::<Custom>() >= 4);
+
+// This is obviously true (`TAG_CUSTOM` is `0b01`), but our implementation of
+// `Repr::new_custom` and such would be UB if it were not, so we check.
+static_assert!(size_of::<Custom>() >= TAG_CUSTOM);
+// These two store a payload which is allowed to be zero, so they must be
+// non-zero to preserve the `NonNull`'s range invariant.
+static_assert!(TAG_OS != 0);
+static_assert!(TAG_SIMPLE != 0);
+// We can't tag `SimpleMessage`s, the tag must be 0.
+static_assert!(TAG_SIMPLE_MESSAGE == 0);
+
+// Check that the point of all of this still holds.
+static_assert!(size_of::<Repr>() == 8);
+static_assert!(size_of::<Option<Repr>>() == 8);
+static_assert!(size_of::<Result<(), Repr>>() == 8);
+static_assert!(size_of::<Result<usize, Repr>>() == 16);
