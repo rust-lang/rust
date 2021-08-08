@@ -1149,7 +1149,7 @@ bool legalCombinedForwardReverse(
   Value *calledValue = origop->getCalledValue();
 #endif
 
-  if (origop->getNumUses() != 0 && isa<PointerType>(origop->getType())) {
+  if (subretused && isa<PointerType>(origop->getType())) {
     if (EnzymePrintPerf) {
       if (called)
         llvm::errs()
