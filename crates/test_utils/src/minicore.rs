@@ -31,7 +31,7 @@
 //!     eq: sized
 //!     ord: eq, option
 //!     derive:
-//!     fmt:
+//!     fmt: result
 
 pub mod marker {
     // region:sized
