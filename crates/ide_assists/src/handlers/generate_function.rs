@@ -131,8 +131,8 @@ pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let target = call.syntax().text_range();
 
     acc.add(
-        AssistId("generate_method", AssistKind::Generate),
-        format!("Generate `{}` method", function_builder.fn_name),
+        AssistId("generate_function", AssistKind::Generate),
+        format!("Generate `{}` function", function_builder.fn_name),
         target,
         |builder| {
             let function_template = function_builder.render();
