@@ -65,16 +65,18 @@ impl CommandEnv {
 
     // The following functions build up changes
     pub fn set(&mut self, key: &OsStr, value: &OsStr) {
+        let key = EnvKey::from(key);
         self.maybe_saw_path(&key);
-        self.vars.insert(key.to_owned().into(), Some(value.to_owned()));
+        self.vars.insert(key, Some(value.to_owned()));
     }
 
     pub fn remove(&mut self, key: &OsStr) {
+        let key = EnvKey::from(key);
         self.maybe_saw_path(&key);
         if self.clear {
-            self.vars.remove(key);
+            self.vars.remove(&key);
         } else {
-            self.vars.insert(key.to_owned().into(), None);
+            self.vars.insert(key, None);
         }
     }
 
@@ -87,7 +89,7 @@ impl CommandEnv {
         self.saw_path || self.clear
     }
 
-    fn maybe_saw_path(&mut self, key: &OsStr) {
+    fn maybe_saw_path(&mut self, key: &EnvKey) {
         if !self.saw_path && key == "PATH" {
             self.saw_path = true;
         }

@@ -3,7 +3,6 @@
 #[cfg(test)]
 mod tests;
 
-use crate::borrow::Borrow;
 use crate::cmp;
 use crate::collections::BTreeMap;
 use crate::convert::{TryFrom, TryInto};
@@ -44,6 +43,12 @@ pub struct EnvKey {
     // Normally converting on every API call is acceptable but here
     // `c::CompareStringOrdinal` will be called for every use of `==`.
     utf16: Vec<u16>,
+}
+
+impl EnvKey {
+    fn new<T: Into<OsString>>(key: T) -> Self {
+        EnvKey::from(key.into())
+    }
 }
 
 // Comparing Windows environment variable keys[1] are behaviourally the
@@ -100,6 +105,20 @@ impl PartialEq for EnvKey {
         }
     }
 }
+impl PartialOrd<str> for EnvKey {
+    fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
+        Some(self.cmp(&EnvKey::new(other)))
+    }
+}
+impl PartialEq<str> for EnvKey {
+    fn eq(&self, other: &str) -> bool {
+        if self.os_string.len() != other.len() {
+            false
+        } else {
+            self.cmp(&EnvKey::new(other)) == cmp::Ordering::Equal
+        }
+    }
+}
 
 // Environment variable keys should preserve their original case even though
 // they are compared using a caseless string mapping.
@@ -115,9 +134,9 @@ impl From<EnvKey> for OsString {
     }
 }
 
-impl Borrow<OsStr> for EnvKey {
-    fn borrow(&self) -> &OsStr {
-        &self.os_string
+impl From<&OsStr> for EnvKey {
+    fn from(k: &OsStr) -> Self {
+        Self::from(k.to_os_string())
     }
 }
 
@@ -242,7 +261,7 @@ impl Command {
         // to read the *child's* PATH if one is provided. See #15149 for more
         // details.
         let program = maybe_env.as_ref().and_then(|env| {
-            if let Some(v) = env.get(OsStr::new("PATH")) {
+            if let Some(v) = env.get(&EnvKey::new("PATH")) {
                 // Split the value and test each path to see if the
                 // program exists.
                 for path in split_paths(&v) {
