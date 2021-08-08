@@ -49,15 +49,19 @@ impl<'a> MacroRender<'a> {
             .add_import(import_to_add)
             .set_detail(self.detail());
 
-        let needs_bang = self.needs_bang();
+        let needs_bang = !(self.ctx.completion.in_use_tree()
+            || matches!(self.ctx.completion.path_call_kind(), Some(CallKind::Mac)));
+        let has_parens = self.ctx.completion.path_call_kind().is_some();
+
         match self.ctx.snippet_cap() {
-            Some(cap) if needs_bang => {
-                let snippet = self.snippet();
-                let lookup = self.lookup();
+            Some(cap) if needs_bang && !has_parens => {
+                let snippet = format!("{}!{}$0{}", self.name, self.bra, self.ket);
+                let lookup = self.banged_name();
                 item.insert_snippet(cap, snippet).lookup_by(lookup);
             }
-            None if needs_bang => {
-                item.insert_text(self.banged_name());
+            _ if needs_bang => {
+                let lookup = self.banged_name();
+                item.insert_text(self.banged_name()).lookup_by(lookup);
             }
             _ => {
                 cov_mark::hit!(dont_insert_macro_call_parens_unncessary);
@@ -81,14 +85,6 @@ impl<'a> MacroRender<'a> {
         } else {
             self.banged_name()
         }
-    }
-
-    fn snippet(&self) -> String {
-        format!("{}!{}$0{}", self.name, self.bra, self.ket)
-    }
-
-    fn lookup(&self) -> String {
-        self.banged_name()
     }
 
     fn banged_name(&self) -> String {
@@ -159,6 +155,25 @@ fn main() { frob$0!(); }
             r#"
 macro_rules! frobnicate { () => () }
 fn main() { frobnicate!(); }
+"#,
+        );
+    }
+
+    #[test]
+    fn add_bang_to_parens() {
+        check_edit(
+            "frobnicate!",
+            r#"
+macro_rules! frobnicate { () => () }
+fn main() {
+    frob$0()
+}
+"#,
+            r#"
+macro_rules! frobnicate { () => () }
+fn main() {
+    frobnicate!()
+}
 "#,
         );
     }
