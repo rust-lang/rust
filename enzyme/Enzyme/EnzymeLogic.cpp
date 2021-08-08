@@ -622,6 +622,8 @@ struct CacheAnalysis {
         return false;
 
       for (unsigned i = 0; i < args.size(); ++i) {
+        if (!args_safe[i])
+          continue;
         auto CD = TR.query(args[i])[{-1}];
         if (CD == BaseType::Integer || CD.isFloat())
           continue;
