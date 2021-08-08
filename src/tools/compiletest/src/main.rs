@@ -144,6 +144,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "enable this to generate a Rustfix coverage file, which is saved in \
                 `./<build_base>/rustfix_missing_coverage.txt`",
         )
+        .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL");
 
@@ -289,6 +290,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
         npm: matches.opt_str("npm"),
+
+        force_rerun: matches.opt_present("force-rerun"),
     }
 }
 
@@ -644,13 +647,15 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
             let test_name = crate::make_test_name(config, testpaths, revision);
             let mut desc = make_test_description(config, test_name, &test_path, src_file, cfg);
             // Ignore tests that already run and are up to date with respect to inputs.
-            desc.ignore |= is_up_to_date(
-                config,
-                testpaths,
-                &early_props,
-                revision.map(|s| s.as_str()),
-                inputs,
-            );
+            if !config.force_rerun {
+                desc.ignore |= is_up_to_date(
+                    config,
+                    testpaths,
+                    &early_props,
+                    revision.map(|s| s.as_str()),
+                    inputs,
+                );
+            }
             test::TestDescAndFn { desc, testfn: make_test_closure(config, testpaths, revision) }
         })
         .collect()

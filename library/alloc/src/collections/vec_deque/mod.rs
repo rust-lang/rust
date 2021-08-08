@@ -19,6 +19,7 @@ use core::slice;
 
 use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
+use crate::collections::TryReserveErrorKind;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
@@ -773,7 +774,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let new_cap = used_cap
             .checked_add(additional)
             .and_then(|needed_cap| needed_cap.checked_next_power_of_two())
-            .ok_or(TryReserveError::CapacityOverflow)?;
+            .ok_or(TryReserveErrorKind::CapacityOverflow)?;
 
         if new_cap > old_cap {
             self.buf.try_reserve_exact(used_cap, new_cap - used_cap)?;

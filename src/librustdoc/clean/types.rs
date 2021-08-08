@@ -1937,7 +1937,7 @@ crate enum Variant {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around [`rustc_span::Span]` that adds helper methods
+/// Small wrapper around [`rustc_span::Span`] that adds helper methods
 /// and enforces calling [`rustc_span::Span::source_callsite()`].
 #[derive(Copy, Clone, Debug)]
 crate struct Span(rustc_span::Span);

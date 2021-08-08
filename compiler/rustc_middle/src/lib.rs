@@ -51,6 +51,7 @@
 #![feature(iter_zip)]
 #![feature(thread_local_const_init)]
 #![feature(try_reserve)]
+#![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
 #![recursion_limit = "512"]
 

@@ -284,20 +284,16 @@ warning: Rust ABI is unsupported in naked functions
 LL | pub unsafe fn default_abi() {
    |               ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+   = note: `#[warn(undefined_naked_function_abi)]` on by default
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:142:29
+  --> $DIR/naked-functions.rs:141:29
    |
 LL | pub unsafe extern "Rust" fn rust_abi() {
    |                             ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:177:1
+  --> $DIR/naked-functions.rs:175:1
    |
 LL | #[inline]
    | ^^^^^^^^^
@@ -306,7 +302,7 @@ LL | #[inline]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:185:1
+  --> $DIR/naked-functions.rs:183:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -315,7 +311,7 @@ LL | #[inline(always)]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:193:1
+  --> $DIR/naked-functions.rs:191:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
@@ -324,7 +320,7 @@ LL | #[inline(never)]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:201:1
+  --> $DIR/naked-functions.rs:199:1
    |
 LL | #[inline]
    | ^^^^^^^^^
@@ -333,7 +329,7 @@ LL | #[inline]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:204:1
+  --> $DIR/naked-functions.rs:202:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -342,7 +338,7 @@ LL | #[inline(always)]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:207:1
+  --> $DIR/naked-functions.rs:205:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^

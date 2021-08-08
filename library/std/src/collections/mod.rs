@@ -422,6 +422,12 @@ pub use self::hash_set::HashSet;
 
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 pub use alloc_crate::collections::TryReserveError;
+#[unstable(
+    feature = "try_reserve_kind",
+    reason = "Uncertain how much info should be exposed",
+    issue = "48043"
+)]
+pub use alloc_crate::collections::TryReserveErrorKind;
 
 mod hash;
 
