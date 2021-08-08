@@ -171,7 +171,7 @@ fn impl_def_from_trait(
     if let ast::AssocItem::Fn(func) = &first_assoc_item {
         match trait_path.segment().unwrap().name_ref().unwrap().text().as_str() {
             "Debug" => gen_debug_impl(adt, func, annotated_name),
-            _ => {} // => If we don't know about the trait, the function body is left as `todo!`.
+            _ => {}
         };
     }
     Some((impl_def, first_assoc_item))
