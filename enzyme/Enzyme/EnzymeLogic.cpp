@@ -3381,16 +3381,17 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     report_fatal_error("function failed verification (4)");
   }
 
-  {
-    PreservedAnalyses PA;
-    PPC.FAM.invalidate(*gutils->newFunc, PA);
-  }
-  PPC.AlwaysInline(gutils->newFunc);
-  if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
-    PPC.ReplaceReallocs(gutils->newFunc, /*mem2reg*/ true);
-
   auto nf = gutils->newFunc;
   delete gutils;
+
+  {
+    PreservedAnalyses PA;
+    PPC.FAM.invalidate(*nf, PA);
+  }
+  PPC.AlwaysInline(nf);
+  if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
+    PPC.ReplaceReallocs(nf, /*mem2reg*/ true);
+
   if (PostOpt)
     PPC.optimizeIntermediate(nf);
   if (EnzymePrint) {

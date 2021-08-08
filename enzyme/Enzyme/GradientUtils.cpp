@@ -1587,7 +1587,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       if (!ignoreType && malloc) {
         assert(v->getType() == malloc->getType());
       }
-      insert_or_assign(scopeMap, v, std::make_pair(cache, ctx));
+      insert_or_assign(scopeMap, v, std::make_pair(AssertingVH<AllocaInst>(cache), ctx));
       ret = cast<Instruction>(v);
     }
 
@@ -1618,7 +1618,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         if (!inLoop) {
 
           // Remove stores into
-          auto stores = scopeInstructions[found->first];
+          SmallVector<Instruction*, 3> stores(scopeInstructions[found->first].begin(), scopeInstructions[found->first].end());
           scopeInstructions.erase(found->first);
           for (int i = stores.size() - 1; i >= 0; i--) {
             erase(stores[i]);
@@ -1659,7 +1659,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           }
         } else {
           // Remove stores into
-          auto stores = scopeInstructions[found->first];
+          SmallVector<Instruction*, 3> stores(scopeInstructions[found->first].begin(), scopeInstructions[found->first].end());
           scopeInstructions.erase(found->first);
           for (int i = stores.size() - 1; i >= 0; i--) {
             erase(stores[i]);
@@ -1667,7 +1667,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
 
           // Remove allocations for scopealloc since it is already allocated
           // by the augmented forward pass
-          auto allocs = scopeAllocs[found->first];
+          SmallVector<CallInst*, 3> allocs(scopeAllocs[found->first].begin(), scopeAllocs[found->first].end());
           scopeAllocs.erase(found->first);
           for (auto allocinst : allocs) {
             CastInst *cast = nullptr;
@@ -1709,7 +1709,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           }
 
           // Remove frees
-          auto tofree = scopeFrees[found->first];
+          SmallVector<CallInst*, 3> tofree(scopeFrees[found->first].begin(), scopeFrees[found->first].end());
           scopeFrees.erase(found->first);
           for (auto freeinst : tofree) {
             // This deque contains a list of operations
@@ -4751,9 +4751,10 @@ void GradientUtils::computeMinCache(
 
       for (auto &context : loopContexts) {
         for (auto val : {context.second.maxLimit, context.second.trueLimit}) {
-          if (auto inst = dyn_cast_or_null<Instruction>(val)) {
-            LoopBoundRequirements.push_back(inst);
-          }
+          if (val)
+            if (auto inst = dyn_cast<Instruction>(&*val)) {
+              LoopBoundRequirements.push_back(inst);
+            }
         }
       }
       SmallPtrSet<Instruction *, 3> Seen;

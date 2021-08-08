@@ -63,45 +63,6 @@ void CacheUtility::erase(Instruction *I) {
     assert(ctx.second.var != I);
     assert(ctx.second.incvar != I);
     assert(ctx.second.antivaralloc != I);
-    assert(ctx.second.trueLimit != I);
-    assert(ctx.second.maxLimit != I);
-  }
-  for (const auto &pair : scopeMap) {
-    if (pair.second.first == I) {
-      llvm::errs() << *newFunc << "\n";
-      dumpScope();
-      llvm::errs() << *pair.first << "\n";
-      llvm::errs() << *I << "\n";
-      assert(0 && "erasing something in scope map");
-    }
-  }
-  if (auto CI = dyn_cast<CallInst>(I)) {
-    for (const auto &pair : scopeFrees) {
-      if (pair.second.count(CI)) {
-        llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *pair.first << "\n";
-        llvm::errs() << *I << "\n";
-        assert(0 && "erasing something in scopeFrees map");
-      }
-    }
-    for (const auto &pair : scopeAllocs) {
-      if (std::find(pair.second.begin(), pair.second.end(), CI) !=
-          pair.second.end()) {
-        llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *pair.first << "\n";
-        llvm::errs() << *I << "\n";
-        assert(0 && "erasing something in scopeAllocs map");
-      }
-    }
-  }
-  for (const auto &pair : scopeInstructions) {
-    if (std::find(pair.second.begin(), pair.second.end(), I) !=
-        pair.second.end()) {
-      llvm::errs() << *newFunc << "\n";
-      llvm::errs() << *pair.first << "\n";
-      llvm::errs() << *I << "\n";
-      assert(0 && "erasing something in scopeInstructions map");
-    }
   }
 
   if (auto found = findInMap(scopeMap, (Value *)I)) {
@@ -135,10 +96,12 @@ void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
     llvm::AllocaInst *cache = found->second.first;
     if (storeInCache) {
       assert(isa<Instruction>(B));
-      if (scopeInstructions.find(cache) != scopeInstructions.end()) {
-        for (auto st : scopeInstructions[cache])
-          cast<StoreInst>(st)->eraseFromParent();
-        scopeInstructions.erase(cache);
+      auto stfound = scopeInstructions.find(cache);
+      if (stfound != scopeInstructions.end()) {
+        SmallVector<Instruction*, 3> tmpInstructions(stfound->second.begin(), stfound->second.end());
+        scopeInstructions.erase(stfound);
+        for (auto st : tmpInstructions)
+          cast<StoreInst>(&*st)->eraseFromParent();
         storeInstructionInCache(found->second.second, cast<Instruction>(B),
                                 cache);
       }
@@ -414,7 +377,7 @@ llvm::AllocaInst *CacheUtility::getDynamicLoopLimit(llvm::Loop *L,
   auto &found = loopContexts[L];
   assert(found.dynamic);
   if (found.trueLimit)
-    return cast<AllocaInst>(found.trueLimit);
+    return cast<AllocaInst>(&*found.trueLimit);
 
   LimitContext lctx(ReverseLimit,
                     ReverseLimit ? found.preheader : &newFunc->getEntryBlock());
@@ -1045,9 +1008,9 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
       // loop and create a new chunk.
       if (limitMinus1 == nullptr) {
         EmitWarning("NoOuterLimit",
-                    cast<Instruction>(contexts[i].maxLimit)->getDebugLoc(),
+                    cast<Instruction>(&*contexts[i].maxLimit)->getDebugLoc(),
                     newFunc,
-                    cast<Instruction>(contexts[i].maxLimit)->getParent(),
+                    cast<Instruction>(&*contexts[i].maxLimit)->getParent(),
                     "Could not compute outermost loop limit by moving value ",
                     *contexts[i].maxLimit, " computed at block",
                     contexts[i].header->getName(), " function ",

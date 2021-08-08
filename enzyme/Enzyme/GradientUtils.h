@@ -1110,7 +1110,7 @@ public:
     assert(cache);
     Value *Val = inst;
     insert_or_assign(scopeMap, Val,
-                     std::pair<AllocaInst *, LimitContext>(cache, lctx));
+                     std::pair<AssertingVH<AllocaInst>, LimitContext>(cache, lctx));
     storeInstructionInCache(lctx, inst, cache);
   }
 

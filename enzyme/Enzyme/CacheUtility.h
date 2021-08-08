@@ -67,9 +67,9 @@ struct LoopContext {
 
   /// limit is last value of a canonical induction variable
   /// iters is number of times loop is run (thus iters = limit + 1)
-  llvm::WeakTrackingVH maxLimit;
+  AssertingReplacingVH maxLimit;
 
-  llvm::WeakTrackingVH trueLimit;
+  AssertingReplacingVH trueLimit;
 
   /// All blocks this loop exits too
   llvm::SmallPtrSet<llvm::BasicBlock *, 8> exitBlocks;
@@ -268,22 +268,22 @@ private:
 
 protected:
   /// A map of values being cached to their underlying allocation/limit context
-  std::map<llvm::Value *, std::pair<llvm::AllocaInst *, LimitContext>> scopeMap;
+  std::map<llvm::Value *, std::pair<llvm::AssertingVH<llvm::AllocaInst>, LimitContext>> scopeMap;
 
   /// A map of allocations to a vector of instruction used to create by the
   /// allocation Keeping track of these values is useful for deallocation. This
   /// is stored as a vector explicitly to order theses instructions in such a
   /// way that they can be erased by iterating in reverse order.
-  std::map<llvm::AllocaInst *, std::vector<llvm::Instruction *>>
+  std::map<llvm::AllocaInst *, std::vector<llvm::AssertingVH<llvm::Instruction>>>
       scopeInstructions;
 
   /// A map of allocations to a set of instructions which free memory as part of
   /// the cache.
-  std::map<llvm::AllocaInst *, std::set<llvm::CallInst *>> scopeFrees;
+  std::map<llvm::AllocaInst *, std::set<llvm::AssertingVH<llvm::CallInst>>> scopeFrees;
 
   /// A map of allocations to a set of instructions which allocate memory as
   /// part of the cache
-  std::map<llvm::AllocaInst *, std::vector<llvm::CallInst *>> scopeAllocs;
+  std::map<llvm::AllocaInst *, std::vector<llvm::AssertingVH<llvm::CallInst>>> scopeAllocs;
 
   /// Perform the final load from the cache, applying requisite invariant
   /// group and alignment
