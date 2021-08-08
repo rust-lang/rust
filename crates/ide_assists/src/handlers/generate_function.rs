@@ -17,21 +17,21 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 
-enum FuncExpr<'a> {
-    Func(&'a ast::CallExpr),
-    Method(&'a ast::MethodCallExpr),
+enum FuncExpr {
+    Func(ast::CallExpr),
+    Method(ast::MethodCallExpr),
 }
 
-impl<'a> FuncExpr<'a> {
+impl FuncExpr {
     fn arg_list(&self) -> Option<ArgList> {
-        match *self {
+        match self {
             FuncExpr::Func(fn_call) => fn_call.arg_list(),
             FuncExpr::Method(m_call) => m_call.arg_list(),
         }
     }
 
     fn syntax(&self) -> &SyntaxNode {
-        match *self {
+        match self {
             FuncExpr::Func(fn_call) => fn_call.syntax(),
             FuncExpr::Method(m_call) => m_call.syntax(),
         }
@@ -212,12 +212,12 @@ impl FunctionBuilder {
                 file = in_file;
                 target
             }
-            None => next_space_for_fn_after_call_site(FuncExpr::Func(call))?,
+            None => next_space_for_fn_after_call_site(FuncExpr::Func(call.clone()))?,
         };
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = fn_name(path)?;
-        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call))?;
+        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Func(call.clone()))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
@@ -287,7 +287,7 @@ impl FunctionBuilder {
         let needs_pub = !module_is_descendant(&current_module, &target_module, ctx);
 
         let fn_name = make::name(&name.text());
-        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call))?;
+        let (type_params, params) = fn_args(ctx, target_module, FuncExpr::Method(call.clone()))?;
 
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
