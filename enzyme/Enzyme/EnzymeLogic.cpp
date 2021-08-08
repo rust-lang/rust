@@ -742,9 +742,12 @@ void calculateUnusedValuesInFunction(
               hasPDFree = true;
             }
 
-            if (!primalNeededInReverse && hasPDFree) {
+            if (hasPDFree) {
               gutils->allocationsWithGuaranteedFree.insert(dc);
-              gutils->forwardDeallocations.insert(CI);
+              if (!primalNeededInReverse)
+                gutils->forwardDeallocations.insert(CI);
+              else
+                gutils->postDominatingFrees.insert(CI);
             }
           }
         }

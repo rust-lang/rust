@@ -133,6 +133,9 @@ public:
   // Allocations which are known to always be freed before the
   // reverse.
   SmallPtrSet<const CallInst *, 1> allocationsWithGuaranteedFree;
+  // Frees which can always be eliminated as the post dominate
+  // an allocation (which will itself be freed).
+  SmallPtrSet<const CallInst *, 1> postDominatingFrees;
   // Deallocations that should be kept in the forward pass because
   // they deallocation memory which isn't necessary for the reverse
   // pass

@@ -6414,6 +6414,11 @@ public:
         return;
       }
 
+      if (gutils->postDominatingFrees.count(orig)) {
+        eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+        return;
+      }
+
       llvm::Value *val = orig->getArgOperand(0);
       while (auto cast = dyn_cast<CastInst>(val))
         val = cast->getOperand(0);
