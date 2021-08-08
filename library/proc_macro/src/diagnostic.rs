@@ -56,10 +56,9 @@ pub struct Diagnostic {
 
 macro_rules! diagnostic_child_methods {
     ($spanned:ident, $regular:ident, $level:expr) => {
-        /// Adds a new child diagnostic message to `self` with the level
-        /// identified by this method's name with the given `spans` and
-        /// `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+        #[doc = concat!("Adds a new child diagnostics message to `self` with the [`",
+                        stringify!($level), "`] level, and the given `spans` and `message`.")]
         pub fn $spanned<S, T>(mut self, spans: S, message: T) -> Diagnostic
         where
             S: MultiSpan,
@@ -69,9 +68,9 @@ macro_rules! diagnostic_child_methods {
             self
         }
 
-        /// Adds a new child diagnostic message to `self` with the level
-        /// identified by this method's name with the given `message`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+        #[doc = concat!("Adds a new child diagnostic message to `self` with the [`",
+                        stringify!($level), "`] level, and the given `message`.")]
         pub fn $regular<T: Into<String>>(mut self, message: T) -> Diagnostic {
             self.children.push(Diagnostic::new($level, message));
             self
