@@ -534,7 +534,7 @@ public:
   bool shouldRecompute(const Value *val, const ValueToValueMapTy &available,
                        IRBuilder<> *BuilderM);
 
-  ValueMap<const Instruction *, WeakTrackingVH> unwrappedLoads;
+  ValueMap<const Instruction *, AssertingReplacingVH> unwrappedLoads;
   void replaceAWithB(Value *A, Value *B, bool storeInCache = false) override {
     if (A == B)
       return;
@@ -589,12 +589,6 @@ public:
       }
     }
     unwrappedLoads.erase(I);
-
-    for (auto v : unwrappedLoads) {
-      if (v.second == I) {
-        assert(0 && "erasing something in unwrappedLoads map");
-      }
-    }
 
     for (auto &pair : unwrap_cache) {
       if (pair.second.find(I) != pair.second.end())

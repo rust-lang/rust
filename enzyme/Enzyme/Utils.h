@@ -803,4 +803,25 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
                                    ConcreteType CT, llvm::Type *intType,
                                    llvm::IRBuilder<> &B2);
 llvm::Function *getOrInsertExponentialAllocator(llvm::Module &M);
+
+
+class AssertingReplacingVH : public llvm::CallbackVH {
+public:
+  AssertingReplacingVH() = default;
+
+  AssertingReplacingVH(llvm::Value* new_value) {
+    setValPtr(new_value);
+  }
+
+  void deleted() override final {
+    assert(0 && "attempted to delete value with remaining handle use");
+    llvm_unreachable("attempted to delete value with remaining handle use");
+  }
+
+  void allUsesReplacedWith(llvm::Value *new_value) override final {
+    setValPtr(new_value);
+  }
+  virtual ~AssertingReplacingVH() {}
+};
+
 #endif
