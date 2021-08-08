@@ -533,8 +533,8 @@ public:
     }
     */
     if (auto iA = dyn_cast<Instruction>(A)) {
-      auto iB = cast<Instruction>(B);
       if (unwrappedLoads.find(iA) != unwrappedLoads.end()) {
+        auto iB = cast<Instruction>(B);
         unwrappedLoads[iB] = unwrappedLoads[iA];
         unwrappedLoads.erase(iA);
       }

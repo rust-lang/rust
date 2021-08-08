@@ -2594,7 +2594,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM,
           }
         }
       endCheck:;
-        if (!seen && false) {
+        if (!seen) {
           IRBuilder<> bb(inversionAllocs);
           AllocaInst *antialloca = bb.CreateAlloca(
               arg->getValueType(), arg->getType()->getPointerAddressSpace(),

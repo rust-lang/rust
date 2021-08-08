@@ -50,10 +50,15 @@ CacheUtility::~CacheUtility() {}
 /// Erase this instruction both from LLVM modules and any local data-structures
 void CacheUtility::erase(Instruction *I) {
   assert(I);
-  for (auto &lim : LimitCache) {
-    assert(I != lim.first.first);
-    assert(I != lim.second);
+
+  // Being itself a cache for ease of computation
+  // erasing is legal (and done as follows).
+  {
+    auto found = LimitCache.find(I);
+    if (found != LimitCache.end())
+      LimitCache.erase(found);
   }
+
   for (auto &ctx : loopContexts) {
     assert(ctx.second.var != I);
     assert(ctx.second.incvar != I);
@@ -1093,17 +1098,21 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
       }
 
       // We now need to compute the actual limit as opposed to the limit
-      // minus one. For efficiency, avoid doing this multiple times for
-      // the same <limitMinus1, Block requested at> pair by caching inside
-      // of LimitCache.
-      auto cidx = std::make_pair(limitMinus1, allocationPreheaders[i]);
-      if (LimitCache.find(cidx) == LimitCache.end()) {
-        LimitCache[cidx] = allocationBuilder.CreateNUWAdd(
-            limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
-      }
-      if (inForwardPass)
-        limits[i] = LimitCache[cidx];
-      else {
+      // minus one.
+      if (inForwardPass) {
+        // For efficiency, avoid doing this multiple times for
+        // the same <limitMinus1, Block requested at> pair by caching inside
+        // of LimitCache.
+        auto &map = LimitCache[limitMinus1];
+        auto found = map.find(allocationPreheaders[i]);
+        if (found != map.end() && found->second != nullptr) {
+          limits[i] = found->second;
+        } else {
+          limits[i] = map[allocationPreheaders[i]] =
+              allocationBuilder.CreateNUWAdd(
+                  limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
+        }
+      } else {
         Value *lim = unwrapM(contexts[i].maxLimit, *RB, reverseMap,
                              UnwrapMode::AttemptFullUnwrapWithLookup);
         if (!lim) {

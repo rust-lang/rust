@@ -236,7 +236,7 @@ private:
   /// loop limit multiple times if possible. Map's a desired limitMinus1 (see
   /// getSubLimits) and the block the true limit requested to the value of the
   /// limit accessible at that block
-  std::map<std::pair<llvm::Value *, llvm::BasicBlock *>, llvm::Value *>
+  std::map<llvm::Value *, std::map<llvm::BasicBlock *, llvm::WeakTrackingVH>>
       LimitCache;
   /// Internal data structure used by getSubLimit to avoid computing the
   /// cumulative loop limit multiple times if possible. Map's a desired pair of

@@ -3160,7 +3160,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     for (auto pair : newIToNextI) {
       auto newi = pair.first;
       auto nexti = pair.second;
-      newi->replaceAllUsesWith(nexti);
+      gutils->replaceAWithB(newi, nexti);
       gutils->erase(newi);
     }
 
