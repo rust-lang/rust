@@ -1385,8 +1385,8 @@ trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
 struct S;
 
 impl Debug for S {
-    fn fmt(&self, f: &mut Formatter) -> Result<()> {
-        ${0:todo!()}
+    $0fn fmt(&self, f: &mut Formatter) -> Result<()> {
+        f.debug_struct("S").finish()
     }
 }
 "#####,

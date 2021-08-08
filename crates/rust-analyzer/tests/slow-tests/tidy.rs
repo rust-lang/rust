@@ -274,11 +274,13 @@ fn check_todo(path: &Path, text: &str) {
         "handlers/add_turbo_fish.rs",
         "handlers/generate_function.rs",
         "handlers/fill_match_arms.rs",
+        "handlers/replace_derive_with_manual_impl.rs",
         // To support generating `todo!()` in assists, we have `expr_todo()` in
         // `ast::make`.
         "ast/make.rs",
         // The documentation in string literals may contain anything for its own purposes
         "ide_db/src/helpers/generated_lints.rs",
+        "ide_assists/src/tests/generated.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
         return;

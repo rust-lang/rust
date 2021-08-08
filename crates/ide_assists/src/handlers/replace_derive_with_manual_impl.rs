@@ -2,6 +2,8 @@ use hir::ModuleDef;
 use ide_db::helpers::{import_assets::NameToImport, mod_path_to_ast};
 use ide_db::items_locator;
 use itertools::Itertools;
+use syntax::ast::edit::AstNodeEdit;
+use syntax::ted;
 use syntax::{
     ast::{self, make, AstNode, NameOwner},
     SyntaxKind::{IDENT, WHITESPACE},
@@ -32,8 +34,8 @@ use crate::{
 // struct S;
 //
 // impl Debug for S {
-//     fn fmt(&self, f: &mut Formatter) -> Result<()> {
-//         ${0:todo!()}
+//     $0fn fmt(&self, f: &mut Formatter) -> Result<()> {
+//         f.debug_struct("S").finish()
 //     }
 // }
 // ```
@@ -111,7 +113,7 @@ fn add_assist(
         |builder| {
             let insert_pos = adt.syntax().text_range().end();
             let impl_def_with_items =
-                impl_def_from_trait(&ctx.sema, &annotated_name, trait_, trait_path);
+                impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, trait_path);
             update_attribute(builder, input, &trait_name, attr);
             let trait_path = format!("{}", trait_path);
             match (ctx.config.snippet_cap, impl_def_with_items) {
@@ -149,6 +151,7 @@ fn add_assist(
 
 fn impl_def_from_trait(
     sema: &hir::Semantics<ide_db::RootDatabase>,
+    adt: &ast::Adt,
     annotated_name: &ast::Name,
     trait_: Option<hir::Trait>,
     trait_path: &ast::Path,
@@ -163,7 +166,114 @@ fn impl_def_from_trait(
         make::impl_trait(trait_path.clone(), make::ext::ident_path(&annotated_name.text()));
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
+
+    // Generate a default `impl` function body for the derived trait.
+    if let ast::AssocItem::Fn(ref func) = first_assoc_item {
+        let _ = gen_default_impl(func, trait_path, adt, annotated_name);
+    };
+
     Some((impl_def, first_assoc_item))
+}
+
+/// Generate custom trait bodies where possible.
+///
+/// Returns `Option` so that we can use `?` rather than `if let Some`. Returning
+/// `None` means that generating a custom trait body failed, and the body will remain
+/// as `todo!` instead.
+fn gen_default_impl(
+    func: &ast::Fn,
+    trait_path: &ast::Path,
+    adt: &ast::Adt,
+    annotated_name: &ast::Name,
+) -> Option<()> {
+    match trait_path.segment()?.name_ref()?.text().as_str() {
+        "Debug" => gen_debug_impl(adt, func, annotated_name),
+        _ => Some(()),
+    }
+}
+
+/// Generate a `Debug` impl based on the fields and members of the target type.
+fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) -> Option<()> {
+    match adt {
+        // `Debug` cannot be derived for unions, so no default impl can be provided.
+        ast::Adt::Union(_) => Some(()),
+
+        // => match self { Self::Variant => write!(f, "Variant") }
+        ast::Adt::Enum(enum_) => {
+            let list = enum_.variant_list()?;
+            let mut arms = vec![];
+            for variant in list.variants() {
+                let name = variant.name()?;
+                let left = make::ext::ident_path("Self");
+                let right = make::ext::ident_path(&format!("{}", name));
+                let variant_name = make::path_pat(make::path_concat(left, right));
+
+                let target = make::expr_path(make::ext::ident_path("f").into());
+                let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
+                let args = make::arg_list(vec![target, fmt_string]);
+                let macro_name = make::expr_path(make::ext::ident_path("write"));
+                let macro_call = make::expr_macro_call(macro_name, args);
+
+                arms.push(make::match_arm(Some(variant_name.into()), None, macro_call.into()));
+            }
+
+            let match_target = make::expr_path(make::ext::ident_path("self"));
+            let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
+            let match_expr = make::expr_match(match_target, list);
+
+            let body = make::block_expr(None, Some(match_expr));
+            let body = body.indent(ast::edit::IndentLevel(1));
+            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+            Some(())
+        }
+
+        ast::Adt::Struct(strukt) => {
+            let name = format!("\"{}\"", annotated_name);
+            let args = make::arg_list(Some(make::expr_literal(&name).into()));
+            let target = make::expr_path(make::ext::ident_path("f"));
+
+            let expr = match strukt.field_list() {
+                // => f.debug_struct("Name").finish()
+                None => make::expr_method_call(target, make::name_ref("debug_struct"), args),
+
+                // => f.debug_struct("Name").field("foo", &self.foo).finish()
+                Some(ast::FieldList::RecordFieldList(field_list)) => {
+                    let method = make::name_ref("debug_struct");
+                    let mut expr = make::expr_method_call(target, method, args);
+                    for field in field_list.fields() {
+                        let name = field.name()?;
+                        let f_name = make::expr_literal(&(format!("\"{}\"", name))).into();
+                        let f_path = make::expr_path(make::ext::ident_path("self"));
+                        let f_path = make::expr_ref(f_path, false);
+                        let f_path = make::expr_field(f_path, &format!("{}", name)).into();
+                        let args = make::arg_list(vec![f_name, f_path]);
+                        expr = make::expr_method_call(expr, make::name_ref("field"), args);
+                    }
+                    expr
+                }
+
+                // => f.debug_tuple("Name").field(self.0).finish()
+                Some(ast::FieldList::TupleFieldList(field_list)) => {
+                    let method = make::name_ref("debug_tuple");
+                    let mut expr = make::expr_method_call(target, method, args);
+                    for (idx, _) in field_list.fields().enumerate() {
+                        let f_path = make::expr_path(make::ext::ident_path("self"));
+                        let f_path = make::expr_ref(f_path, false);
+                        let f_path = make::expr_field(f_path, &format!("{}", idx)).into();
+                        let method = make::name_ref("field");
+                        expr = make::expr_method_call(expr, method, make::arg_list(Some(f_path)));
+                    }
+                    expr
+                }
+            };
+
+            let method = make::name_ref("finish");
+            let expr = make::expr_method_call(expr, method, make::arg_list(None));
+            let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+            Some(())
+        }
+    }
 }
 
 fn update_attribute(
@@ -207,41 +317,92 @@ mod tests {
     use super::*;
 
     #[test]
-    fn add_custom_impl_debug() {
+    fn add_custom_impl_debug_record_struct() {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
+//- minicore: fmt
 #[derive(Debu$0g)]
 struct Foo {
     bar: String,
 }
 "#,
             r#"
-mod fmt {
-    pub struct Error;
-    pub type Result = Result<(), Error>;
-    pub struct Formatter<'a>;
-    pub trait Debug {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-    }
-}
-
 struct Foo {
     bar: String,
 }
 
-impl fmt::Debug for Foo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ${0:todo!()}
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Foo").field("bar", &self.bar).finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: fmt
+#[derive(Debu$0g)]
+struct Foo(String, usize);
+"#,
+            r#"struct Foo(String, usize);
+
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("Foo").field(&self.0).field(&self.1).finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_empty_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: fmt
+#[derive(Debu$0g)]
+struct Foo;
+"#,
+            r#"
+struct Foo;
+
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Foo").finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_debug_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: fmt
+#[derive(Debu$0g)]
+enum Foo {
+    Bar,
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl core::fmt::Debug for Foo {
+    $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Bar => write!(f, "Bar"),
+            Self::Baz => write!(f, "Baz"),
+        }
     }
 }
 "#,
