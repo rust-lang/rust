@@ -641,9 +641,12 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility in object files typically takes care of this.
-        if crate_type == CrateType::Executable && self.sess.target.override_export_symbols.is_none()
-        {
-            return;
+        if crate_type == CrateType::Executable {
+            if self.sess.target.override_export_symbols.is_none()
+                && !self.sess.opts.cg.export_executable_symbols
+            {
+                return;
+            }
         }
 
         // We manually create a list of exported symbols to ensure we don't expose any more.
@@ -970,7 +973,9 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
-            return;
+            if !self.sess.opts.cg.export_executable_symbols {
+                return;
+            }
         }
 
         let path = tmpdir.join("lib.def");
