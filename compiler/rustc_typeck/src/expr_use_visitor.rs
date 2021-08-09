@@ -243,7 +243,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
                 let mut needs_to_be_read = false;
                 for arm in arms.iter() {
-                    return_if_err!(mc.cat_pattern(discr_place.clone(), &arm.pat, |place, pat| {
+                    match mc.cat_pattern(discr_place.clone(), &arm.pat, |place, pat| {
                         match &pat.kind {
                             PatKind::Binding(.., opt_sub_pat) => {
                                 // If the opt_sub_pat is None, than the binding does not count as
@@ -290,7 +290,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 // examined
                             }
                         }
-                    }));
+                    }) {
+                        Ok(_) => (),
+                        Err(_) => {
+                            // If typeck failed, assume borrow is needed.
+                            needs_to_be_read = true;
+                        }
+                    }
                 }
 
                 if needs_to_be_read {
