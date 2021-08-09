@@ -83,6 +83,10 @@ enum ErrorData<C> {
     Custom(C),
 }
 
+// `#[repr(align(4))]` is probably redundant, it should have that value or
+// higher already. We include it just because repr_bitpacked.rs's encoding
+// requires an alignment >= 4 (note that `#[repr(align)]` will not reduce the
+// alignment required by the struct, only increase it).
 #[repr(align(4))]
 #[doc(hidden)]
 pub(crate) struct SimpleMessage {
@@ -106,6 +110,9 @@ pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
     })
 }
 
+// As with `SimpleMessage`: `#[repr(align(4))]` here is just because
+// repr_bitpacked's encoding requires it. In practice it almost certainly be
+// already be this high or higher.
 #[derive(Debug)]
 #[repr(align(4))]
 struct Custom {

@@ -56,7 +56,7 @@
 //!
 //! Conceptually you might think of this more like:
 //!
-//! ```ignore
+//! ```ignore (exposition-only)
 //! union Repr {
 //!     // holds integer (Simple/Os) variants, and
 //!     // provides access to the tag bits.
@@ -159,7 +159,7 @@ impl Repr {
 
     #[inline]
     pub(super) const fn new_simple_message(m: &'static SimpleMessage) -> Self {
-        // Safety: We're a Repr, decode_repr is fine.
+        // Safety: References are never null.
         Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) })
     }
 
@@ -213,7 +213,7 @@ where
         TAG_SIMPLE => {
             let kind_bits = (bits >> 32) as u32;
             let kind = kind_from_prim(kind_bits).unwrap_or_else(|| {
-                debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#016x})`", bits);
+                debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
                 // This means the `ptr` passed in was not valid, which voilates
                 // the unsafe contract of `decode_repr`.
                 //
@@ -299,8 +299,11 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
 }
 
 // Some static checking to alert us if a change breaks any of the assumptions
-// that our encoding relies on. If any of these are hit on a platform that
-// libstd supports, we should just make sure `repr_unpacked.rs` is used.
+// that our encoding relies on for correctness and soundness. (Some of these are
+// a bit overly thorough/cautious, admittedly)
+//
+// If any of these are hit on a platform that libstd supports, we should just
+// make sure `repr_unpacked.rs` is used instead.
 macro_rules! static_assert {
     ($condition:expr) => {
         const _: [(); 0] = [(); (!$condition) as usize];
@@ -332,6 +335,11 @@ static_assert!(TAG_SIMPLE != 0);
 static_assert!(TAG_SIMPLE_MESSAGE == 0);
 
 // Check that the point of all of this still holds.
+//
+// We'd check against `io::Error`, but *technically* it's allowed to vary,
+// as it's not `#[repr(transparent)]`/`#[repr(C)]`. We could add that, but
+// the `#[repr()]` would show up in rustdoc, which might be seen as a stable
+// commitment.
 static_assert!(size_of::<Repr>() == 8);
 static_assert!(size_of::<Option<Repr>>() == 8);
 static_assert!(size_of::<Result<(), Repr>>() == 8);
