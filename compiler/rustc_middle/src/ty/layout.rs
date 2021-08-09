@@ -19,6 +19,7 @@ use rustc_target::abi::call::{
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
+use smallvec::SmallVec;
 
 use std::cmp;
 use std::fmt;
@@ -265,8 +266,8 @@ enum StructKind {
 // and `inverse_memory_index` (memory order to source field order).
 // See also `FieldsShape::Arbitrary::memory_index` for more details.
 // FIXME(eddyb) build a better abstraction for permutations, if possible.
-fn invert_mapping(map: &[u32]) -> Vec<u32> {
-    let mut inverse = vec![0; map.len()];
+fn invert_mapping(map: &[u32]) -> SmallVec<[u32; 4]> {
+    let mut inverse = smallvec![0; map.len()];
     for i in 0..map.len() {
         inverse[map[i] as usize] = i as u32;
     }
@@ -291,8 +292,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
-                offsets: vec![Size::ZERO, b_offset],
-                memory_index: vec![0, 1],
+                offsets: smallvec![Size::ZERO, b_offset],
+                memory_index: smallvec![0, 1],
             },
             abi: Abi::ScalarPair(a, b),
             largest_niche,
@@ -317,7 +318,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
 
-        let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
+        let mut inverse_memory_index: SmallVec<[u32; 4]> = (0..fields.len() as u32).collect();
 
         let optimize = !repr.inhibit_struct_field_reordering_opt();
         if optimize {
@@ -352,7 +353,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // produce `memory_index` (see `invert_mapping`).
 
         let mut sized = true;
-        let mut offsets = vec![Size::ZERO; fields.len()];
+        let mut offsets: SmallVec<[Size; 2]> = smallvec![Size::ZERO; fields.len()];
         let mut offset = Size::ZERO;
         let mut largest_niche = None;
         let mut largest_niche_available = 0;
@@ -466,7 +467,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let pair = self.scalar_pair(a.clone(), b.clone());
                     let pair_offsets = match pair.fields {
                         FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                            assert_eq!(memory_index, &[0, 1]);
+                            assert_eq!(memory_index.as_slice(), &[0, 1]);
                             offsets
                         }
                         _ => bug!(),
@@ -777,7 +778,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Compute the placement of the vector fields:
                 let fields = if is_array {
-                    FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] }
+                    FieldsShape::Arbitrary {
+                        offsets: smallvec![Size::ZERO],
+                        memory_index: smallvec![0],
+                    }
                 } else {
                     FieldsShape::Array { stride: e_ly.size, count: e_len }
                 };
@@ -1104,8 +1108,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     variants: st,
                                 },
                                 fields: FieldsShape::Arbitrary {
-                                    offsets: vec![offset],
-                                    memory_index: vec![0],
+                                    offsets: smallvec![offset],
+                                    memory_index: smallvec![0],
                                 },
                                 abi,
                                 largest_niche,
@@ -1311,7 +1315,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let pair = self.scalar_pair(tag.clone(), scalar_unit(prim));
                         let pair_offsets = match pair.fields {
                             FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                                assert_eq!(memory_index, &[0, 1]);
+                                assert_eq!(memory_index.as_slice(), &[0, 1]);
                                 offsets
                             }
                             _ => bug!(),
@@ -1342,8 +1346,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         variants: layout_variants,
                     },
                     fields: FieldsShape::Arbitrary {
-                        offsets: vec![Size::ZERO],
-                        memory_index: vec![0],
+                        offsets: smallvec![Size::ZERO],
+                        memory_index: smallvec![0],
                     },
                     largest_niche,
                     abi,
@@ -1580,7 +1584,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
                 // "outer" and "promoted" fields respectively.
                 let b_start = (tag_index + 1) as u32;
-                let offsets_b = offsets.split_off(b_start as usize);
+                let offsets_b = SmallVec::<[Size; 2]>::from_slice(&offsets[b_start as usize..]);
+                offsets.truncate(b_start as usize);
                 let offsets_a = offsets;
 
                 // Disentangle the "a" and "b" components of `inverse_memory_index`
@@ -1588,7 +1593,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // FIXME(eddyb) build a better abstraction for permutations, if possible.
                 let inverse_memory_index_b: Vec<_> =
                     inverse_memory_index.iter().filter_map(|&i| i.checked_sub(b_start)).collect();
-                inverse_memory_index.retain(|&i| i < b_start);
+                inverse_memory_index.retain(|&mut i| i < b_start);
                 let inverse_memory_index_a = inverse_memory_index;
 
                 // Since `inverse_memory_index_{a,b}` each only refer to their
@@ -1645,8 +1650,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // subset as `INVALID_FIELD_IDX`, which we can filter out later to
                 // obtain a valid (bijective) mapping.
                 const INVALID_FIELD_IDX: u32 = !0;
-                let mut combined_inverse_memory_index =
-                    vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
+                let mut combined_inverse_memory_index: SmallVec<[u32; 4]> =
+                    smallvec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
                 let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
                 let combined_offsets = variant_fields
                     .iter()
@@ -1671,7 +1676,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Remove the unused slots and invert the mapping to obtain the
                 // combined `memory_index` (also see previous comment).
-                combined_inverse_memory_index.retain(|&i| i != INVALID_FIELD_IDX);
+                combined_inverse_memory_index.retain(|&mut i| i != INVALID_FIELD_IDX);
                 let combined_memory_index = invert_mapping(&combined_inverse_memory_index);
 
                 variant.fields = FieldsShape::Arbitrary {
@@ -2149,7 +2154,7 @@ where
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
-                        None => FieldsShape::Arbitrary { offsets: vec![], memory_index: vec![] },
+                        None => FieldsShape::Arbitrary { offsets: smallvec![], memory_index: smallvec![] },
                     },
                     abi: Abi::Uninhabited,
                     largest_niche: None,

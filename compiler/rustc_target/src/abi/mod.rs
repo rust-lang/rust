@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 pub use Integer::*;
 pub use Primitive::*;
 
@@ -729,8 +730,7 @@ pub enum FieldsShape {
         /// Offsets for the first byte of each field,
         /// ordered to match the source definition order.
         /// This vector does not go in increasing order.
-        // FIXME(eddyb) use small vector optimization for the common case.
-        offsets: Vec<Size>,
+        offsets: SmallVec<[Size; 2]>,
 
         /// Maps source order field indices to memory order indices,
         /// depending on how the fields were reordered (if at all).
@@ -743,8 +743,7 @@ pub enum FieldsShape {
         /// named `inverse_memory_index`.
         ///
         // FIXME(eddyb) build a better abstraction for permutations, if possible.
-        // FIXME(camlorn) also consider small vector  optimization here.
-        memory_index: Vec<u32>,
+        memory_index: SmallVec<[u32; 4]>,
     },
 }
 

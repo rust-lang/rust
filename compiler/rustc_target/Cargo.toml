@@ -11,3 +11,4 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_index = { path = "../rustc_index" }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
