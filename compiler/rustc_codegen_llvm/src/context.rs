@@ -103,7 +103,7 @@ pub struct TypeLowering<'ll> {
 
     /// If padding is used the slice maps fields from source order
     /// to llvm order.
-    pub field_remapping: Option<Box<SmallVec<[u32; 4]>>>,
+    pub field_remapping: Option<SmallVec<[u32; 4]>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {

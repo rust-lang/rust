@@ -19,7 +19,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
-    field_remapping: &mut Option<Box<SmallVec<[u32; 4]>>>,
+    field_remapping: &mut Option<SmallVec<[u32; 4]>>,
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -94,7 +94,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool, Option<Box<SmallVec<[u32; 4]>>>) {
+) -> (Vec<&'a Type>, bool, Option<SmallVec<[u32; 4]>>) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -150,7 +150,7 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    let field_remapping = if padding_used { Some(Box::new(field_remapping)) } else { None };
+    let field_remapping = if padding_used { Some(field_remapping) } else { None };
     (result, packed, field_remapping)
 }
 
