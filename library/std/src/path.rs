@@ -1403,6 +1403,32 @@ impl PathBuf {
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
+
+    /// Adjoins `path` to `self` in-place, without allocating a new `PathBuf`.
+    ///
+    /// See [`Path::join`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// assert_eq!(PathBuf::from("/etc").with_join("passwd"), PathBuf::from("/etc/passwd"));
+    ///
+    /// // Equivalent to:
+    /// assert_eq!(PathBuf::from("/etc").with_join("passwd"), Path::new("/etc").join("passwd"));
+    /// assert_eq!(PathBuf::from("/etc").with_join("passwd"), {
+    ///    let mut path = PathBuf::from("/etc");
+    ///    path.push("passwd");
+    ///    path
+    /// });
+    /// ```
+    #[unstable(feature = "path_with_join", issue = "none")]
+    #[must_use]
+    pub fn with_join<P: AsRef<Path>>(mut self, path: P) -> PathBuf {
+        self.push(path);
+        self
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
