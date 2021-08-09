@@ -10,8 +10,8 @@ use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Const, ConstParam, Enum, Field, FieldSource, Function, Impl, LifetimeParam,
-    MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
+    db::HirDatabase, Adt, Const, ConstParam, Enum, Field, FieldSource, Function, Impl,
+    LifetimeParam, MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -54,6 +54,16 @@ impl HasSource for Field {
             Either::Right(it) => FieldSource::Named(it),
         });
         Some(field_source)
+    }
+}
+impl HasSource for Adt {
+    type Ast = ast::Adt;
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        match self {
+            Adt::Struct(s) => Some(s.source(db)?.map(|s| ast::Adt::Struct(s))),
+            Adt::Union(u) => Some(u.source(db)?.map(|u| ast::Adt::Union(u))),
+            Adt::Enum(e) => Some(e.source(db)?.map(|e| ast::Adt::Enum(e))),
+        }
     }
 }
 impl HasSource for Struct {

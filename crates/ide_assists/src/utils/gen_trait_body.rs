@@ -1,3 +1,5 @@
+//! This module contains functions to generate default trait impl function bodies where possible.
+
 use syntax::ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner};
 use syntax::ted;
 
@@ -6,21 +8,17 @@ use syntax::ted;
 /// Returns `Option` so that we can use `?` rather than `if let Some`. Returning
 /// `None` means that generating a custom trait body failed, and the body will remain
 /// as `todo!` instead.
-pub(crate) fn gen_trait_body(
-    func: &ast::Fn,
-    trait_path: &ast::Path,
-    adt: &ast::Adt,
-    annotated_name: &ast::Name,
-) -> Option<()> {
+pub(crate) fn gen_trait_body(func: &ast::Fn, trait_path: &ast::Path, adt: &ast::Adt) -> Option<()> {
     match trait_path.segment()?.name_ref()?.text().as_str() {
-        "Debug" => gen_debug_impl(adt, func, annotated_name),
+        "Debug" => gen_debug_impl(adt, func),
         "Default" => gen_default_impl(adt, func),
         _ => None,
     }
 }
 
 /// Generate a `Debug` impl based on the fields and members of the target type.
-fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) -> Option<()> {
+fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    let annotated_name = adt.name()?;
     match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Union(_) => None,

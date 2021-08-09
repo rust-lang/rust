@@ -1,10 +1,12 @@
+use hir::HasSource;
 use ide_db::traits::resolve_target_trait;
-use syntax::ast::{self, AstNode};
+use syntax::ast::{self, make, AstNode};
 
 use crate::{
     assist_context::{AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, render_snippet, Cursor, DefaultMethods,
+        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_body, render_snippet, Cursor,
+        DefaultMethods,
     },
     AssistId, AssistKind,
 };
@@ -115,18 +117,26 @@ fn add_missing_impl_members_inner(
     let target = impl_def.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
         let target_scope = ctx.sema.scope(impl_def.syntax());
-        let (new_impl_def, first_new_item) =
-            add_trait_assoc_items_to_impl(&ctx.sema, missing_items, trait_, impl_def, target_scope);
+        let (new_impl_def, first_new_item) = add_trait_assoc_items_to_impl(
+            &ctx.sema,
+            missing_items,
+            trait_,
+            impl_def.clone(),
+            target_scope,
+        );
         match ctx.config.snippet_cap {
             None => builder.replace(target, new_impl_def.to_string()),
             Some(cap) => {
                 let mut cursor = Cursor::Before(first_new_item.syntax());
                 let placeholder;
                 if let ast::AssocItem::Fn(func) = &first_new_item {
-                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
-                        if m.syntax().text() == "todo!()" {
-                            placeholder = m;
-                            cursor = Cursor::Replace(placeholder.syntax());
+                    if try_gen_trait_body(ctx, func, &trait_, &impl_def).is_none() {
+                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                        {
+                            if m.syntax().text() == "todo!()" {
+                                placeholder = m;
+                                cursor = Cursor::Replace(placeholder.syntax());
+                            }
                         }
                     }
                 }
@@ -138,6 +148,18 @@ fn add_missing_impl_members_inner(
             }
         };
     })
+}
+
+fn try_gen_trait_body(
+    ctx: &AssistContext,
+    func: &ast::Fn,
+    trait_: &hir::Trait,
+    impl_def: &ast::Impl,
+) -> Option<()> {
+    let trait_path = make::path_from_text(&trait_.name(ctx.db()).to_string());
+    let hir_ty = ctx.sema.resolve_type(&impl_def.self_ty()?)?;
+    let adt = hir_ty.as_adt()?.source(ctx.db())?;
+    gen_trait_body(func, &trait_path, &adt.value)
 }
 
 #[cfg(test)]
@@ -846,5 +868,29 @@ impl T for () {
 }
 ",
         );
+    }
+
+    #[test]
+    fn test_default_body_generation() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+//- minicore: default
+struct Foo(usize);
+
+impl Default for Foo {
+    $0
+}
+"#,
+            r#"
+struct Foo(usize);
+
+impl Default for Foo {
+    $0fn default() -> Self {
+        Self(Default::default())
+    }
+}
+"#,
+        )
     }
 }

@@ -280,6 +280,7 @@ fn check_todo(path: &Path, text: &str) {
         "ast/make.rs",
         // The documentation in string literals may contain anything for its own purposes
         "ide_db/src/helpers/generated_lints.rs",
+        "ide_assists/src/utils/gen_trait_body.rs",
         "ide_assists/src/tests/generated.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
