@@ -3,7 +3,7 @@
 //! `ide` crate.
 
 use std::{
-    io::{Write as _},
+    io::Write as _,
     process::{self, Stdio},
 };
 
