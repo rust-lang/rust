@@ -54,7 +54,8 @@ impl EarlyLintPass for DerefAddrOf {
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if e.span.from_expansion() {
-                    if let Ok(macro_source) = cx.sess.source_map().span_to_snippet(e.span) {
+                    #[allow(clippy::option_if_let_else)]
+                    if let Some(macro_source) = snippet_opt(cx, e.span) {
                         // Remove leading whitespace from the given span
                         // e.g: ` $visitor` turns into `$visitor`
                         let trim_leading_whitespaces = |span| {
