@@ -1411,6 +1411,7 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
+    /// #![feature(path_with_join)]
     /// use std::path::{Path, PathBuf};
     ///
     /// assert_eq!(PathBuf::from("/etc").with_join("passwd"), PathBuf::from("/etc/passwd"));
