@@ -64,6 +64,7 @@ mod lub;
 pub mod nll_relate;
 pub mod opaque_types;
 pub mod outlives;
+mod projection;
 pub mod region_constraints;
 pub mod resolve;
 mod sub;
