@@ -115,6 +115,7 @@ The `std` column in the table below has the following meanings:
 target | std | notes
 -------|:---:|-------
 `aarch64-apple-ios` | ✓ | ARM64 iOS
+[`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ | Apple iOS Simulator on ARM64
 `aarch64-fuchsia` | ✓ | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ | ARM64 Android
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
@@ -165,7 +166,6 @@ target | std | notes
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
-[`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ |  | Apple iOS Simulator on ARM64
 `x86_64-fortanix-unknown-sgx` | ✓ | [Fortanix ABI] for 64-bit Intel SGX
 `x86_64-fuchsia` | ✓ | 64-bit Fuchsia
 `x86_64-linux-android` | ✓ | 64-bit x86 Android
