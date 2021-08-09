@@ -649,6 +649,25 @@ fn test(s: Arc<S>) {
 }
 
 #[test]
+fn deref_trait_with_implicit_sized_requirement_on_inference_var() {
+    check_types(
+        r#"
+//- minicore: deref
+struct Foo<T>;
+impl<T> core::ops::Deref for Foo<T> {
+    type Target = ();
+}
+fn test() {
+    let foo = Foo;
+    *foo;
+  //^^^^ ()
+    let _: Foo<u8> = foo;
+}
+"#,
+    )
+}
+
+#[test]
 fn obligation_from_function_clause() {
     check_types(
         r#"
