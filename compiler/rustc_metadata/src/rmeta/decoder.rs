@@ -36,6 +36,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
+use sha2::{Digest, Sha256};
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -583,8 +584,10 @@ where
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
 impl MetadataBlob {
-    crate fn new(metadata_ref: MetadataRef) -> MetadataBlob {
-        MetadataBlob(metadata_ref)
+    crate fn new(metadata_ref: MetadataRef, filename: &Path) -> MetadataBlob {
+        let blob = MetadataBlob(metadata_ref);
+        blob.check_hash(filename);
+        blob
     }
 
     crate fn is_compatible(&self) -> bool {
@@ -594,6 +597,23 @@ impl MetadataBlob {
     crate fn get_rustc_version(&self) -> String {
         Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
             .decode(self)
+    }
+
+    // Hashes the entire contents of the metadata blob,
+    // panicking if the computed hash is not equal to
+    // the original hash stored in the file.
+    fn check_hash(&self, filename: &Path) {
+        // We store our 32-byte (256-bit) SHA256 hash at
+        // the end of the file
+        let hash_offset = self.raw_bytes().len() - 32;
+        let stored_hash = &self.raw_bytes()[hash_offset..];
+        let recomputed_hash = Sha256::digest(&self.raw_bytes()[..hash_offset]);
+        if stored_hash != &*recomputed_hash {
+            panic!(
+                "Expected metadata hash {:?}, found {:?} for file {:?}",
+                stored_hash, recomputed_hash, filename
+            );
+        }
     }
 
     crate fn get_root(&self) -> CrateRoot<'tcx> {

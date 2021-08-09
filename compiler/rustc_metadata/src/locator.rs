@@ -773,7 +773,7 @@ fn get_metadata_section(
             rustc_erase_owner!(OwningRef::new(mmap).map_owner_box())
         }
     };
-    let blob = MetadataBlob::new(raw_bytes);
+    let blob = MetadataBlob::new(raw_bytes, filename);
     if blob.is_compatible() {
         Ok(blob)
     } else {

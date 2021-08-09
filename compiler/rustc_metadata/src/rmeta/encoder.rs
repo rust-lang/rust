@@ -35,6 +35,7 @@ use rustc_span::{
     RealFileName,
 };
 use rustc_target::abi::VariantIdx;
+use sha2::{Digest, Sha256};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -2144,7 +2145,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
-    let mut result = ecx.opaque.into_inner();
+    let result = &mut ecx.opaque.data;
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
@@ -2154,5 +2155,11 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     result[header + 2] = (pos >> 8) as u8;
     result[header + 3] = (pos >> 0) as u8;
 
-    EncodedMetadata { raw_data: result }
+    // Encode a hash of the file contents. We check
+    // this when decoding the blob, to protect
+    // against file corruption.
+    let hash = Sha256::digest(&result);
+    ecx.opaque.emit_raw_bytes(&hash).unwrap();
+
+    EncodedMetadata { raw_data: ecx.opaque.into_inner() }
 }
