@@ -21,7 +21,7 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 // ->
 // ```
 // fn main() {
-//     let (_0, _1) = (1,2);
+//     let ($0_0, _1) = (1,2);
 //     let v = _0;
 // }
 // ```
@@ -41,7 +41,7 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 // ->
 // ```
 // fn main() {
-//     let t @ (_0, _1) = (1,2);
+//     let t @ ($0_0, _1) = (1,2);
 //     let v = _0;
 // }
 // ```
@@ -54,7 +54,7 @@ pub(crate) fn destructure_tuple_binding_impl(acc: &mut Assists, ctx: &AssistCont
     let data = collect_data(ident_pat, ctx)?;
 
     acc.add(
-        AssistId("destructure_tuple", AssistKind::RefactorRewrite),
+        AssistId("destructure_tuple_binding", AssistKind::RefactorRewrite),
         if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
         data.range,
         |builder| {
@@ -65,7 +65,7 @@ pub(crate) fn destructure_tuple_binding_impl(acc: &mut Assists, ctx: &AssistCont
 
     if with_sub_pattern {
         acc.add(
-            AssistId("destructure_tuple_in_sub_pattern", AssistKind::RefactorRewrite),
+            AssistId("destructure_tuple_binding_in_sub_pattern", AssistKind::RefactorRewrite),
             "Destructure tuple in sub-pattern",
             data.range,
             |builder| {
