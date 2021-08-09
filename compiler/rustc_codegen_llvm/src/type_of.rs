@@ -101,8 +101,7 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
-    let mut projection = vec![0; field_count];
-    let mut padding_used = false;
+    let mut field_remapping = vec![0; field_count];
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -122,17 +121,17 @@ fn struct_llfields<'a, 'tcx>(
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         if padding != Size::ZERO {
-            padding_used = true;
             let padding_align = prev_effective_align.min(effective_field_align);
             assert_eq!(offset.align_to(padding_align) + padding, target_offset);
             result.push(cx.type_padding_filler(padding, padding_align));
             debug!("    padding before: {:?}", padding);
         }
-        projection[i] = result.len() as u32;
+        field_remapping[i] = result.len() as u32;
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
+    let padding_used = result.len() > field_count;
     if !layout.is_unsized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
@@ -151,7 +150,7 @@ fn struct_llfields<'a, 'tcx>(
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
 
-    (result, packed, padding_used.then_some(projection.into_boxed_slice()))
+    (result, packed, padding_used.then_some(field_remapping.into_boxed_slice()))
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
@@ -268,17 +267,20 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.type_lowering
-            .borrow_mut()
-            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping: None });
+        cx.type_lowering.borrow_mut().insert(
+            (self.ty, variant_index),
+            TypeLowering { lltype: llty, field_remapping: field_remapping },
+        );
 
         if let Some((llty, layout)) = defer {
             let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
             cx.set_struct_body(llty, &llfields, packed);
-            field_remapping = new_field_remapping;
+            cx.type_lowering
+                .borrow_mut()
+                .get_mut(&(self.ty, variant_index))
+                .unwrap()
+                .field_remapping = new_field_remapping;
         }
-        cx.type_lowering.borrow_mut().get_mut(&(self.ty, variant_index)).unwrap().field_remapping =
-            field_remapping;
         llty
     }
 
@@ -378,7 +380,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 // `field_remapping` is `None` no padding was used and the llvm field index
                 // matches the memory index.
                 match cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
-                    Some(TypeLowering { field_remapping: Some(ref prj), .. }) => prj[index] as u64,
+                    Some(TypeLowering { field_remapping: Some(ref remap), .. }) => {
+                        remap[index] as u64
+                    }
                     Some(_) => self.fields.memory_index(index) as u64,
                     None => {
                         bug!("TyAndLayout::llvm_field_index({:?}): type info not found", self)
