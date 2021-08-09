@@ -62,7 +62,7 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 
 use if_chain::if_chain;
-use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
+use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -78,9 +78,11 @@ use rustc_hir::{
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
+use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
-use rustc_middle::ty::{layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable};
+use rustc_middle::ty::binding::BindingMode;
+use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -91,7 +93,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
-use crate::ty::{can_partially_move_ty, is_recursively_primitive_type};
+use crate::ty::{can_partially_move_ty, is_copy, is_recursively_primitive_type};
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -628,6 +630,11 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 }
 
 /// Checks if the top level expression can be moved into a closure as is.
+/// Currently checks for:
+/// * Break/Continue outside the given jump targets
+/// * Yield/Return statments.
+/// * Inline assembly
+/// * Usages of a field of a local where the type of the local can be partially moved.
 pub fn can_move_expr_to_closure_no_visit(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
@@ -699,6 +706,22 @@ impl std::ops::BitOrAssign for CaptureKind {
 /// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
 /// function argument (other than a receiver).
 pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
+    fn pat_capture_kind(cx: &LateContext<'_>, pat: &Pat<'_>) -> CaptureKind {
+        let mut capture = CaptureKind::Ref(Mutability::Not);
+        pat.each_binding(|_, id, span, _| {
+            match cx.typeck_results().extract_binding_mode(cx.sess(), id, span).unwrap() {
+                BindingMode::BindByValue(_) if !is_copy(cx, cx.typeck_results().node_type(id)) => {
+                    capture = CaptureKind::Value;
+                },
+                BindingMode::BindByReference(Mutability::Mut) if capture != CaptureKind::Value => {
+                    capture = CaptureKind::Ref(Mutability::Mut);
+                },
+                _ => (),
+            }
+        });
+        capture
+    }
+
     debug_assert!(matches!(
         e.kind,
         ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
@@ -707,6 +730,7 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
     let map = cx.tcx.hir();
     let mut child_id = e.hir_id;
     let mut capture = CaptureKind::Value;
+    let mut capture_expr_ty = e;
 
     for (parent_id, parent) in map.parent_iter(e.hir_id) {
         if let [Adjustment {
@@ -725,23 +749,47 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
             }
         }
 
-        if let Node::Expr(e) = parent {
-            match e.kind {
+        match parent {
+            Node::Expr(e) => match e.kind {
                 ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(mutability),
                 ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, _) => capture = CaptureKind::Ref(Mutability::Not),
                 ExprKind::Assign(lhs, ..) | ExprKind::Assign(_, lhs, _) if lhs.hir_id == child_id => {
                     return CaptureKind::Ref(Mutability::Mut);
                 },
+                ExprKind::Field(..) => {
+                    if capture == CaptureKind::Value {
+                        capture_expr_ty = e;
+                    }
+                },
+                ExprKind::Match(_, arms, _) => {
+                    let mut mutability = Mutability::Not;
+                    for capture in arms.iter().map(|arm| pat_capture_kind(cx, arm.pat)) {
+                        match capture {
+                            CaptureKind::Value => break,
+                            CaptureKind::Ref(Mutability::Mut) => mutability = Mutability::Mut,
+                            CaptureKind::Ref(Mutability::Not) => (),
+                        }
+                    }
+                    return CaptureKind::Ref(mutability);
+                },
                 _ => break,
-            }
-        } else {
-            break;
+            },
+            Node::Local(l) => match pat_capture_kind(cx, l.pat) {
+                CaptureKind::Value => break,
+                capture @ CaptureKind::Ref(_) => return capture,
+            },
+            _ => break,
         }
 
         child_id = parent_id;
     }
 
-    capture
+    if capture == CaptureKind::Value && is_copy(cx, cx.typeck_results().expr_ty(capture_expr_ty)) {
+        // Copy types are never automatically captured by value.
+        CaptureKind::Ref(Mutability::Not)
+    } else {
+        capture
+    }
 }
 
 /// Checks if the expression can be moved into a closure as is. This will return a list of captures
@@ -775,6 +823,31 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
                     if !self.locals.contains(&l) {
                         let cap = capture_local_usage(self.cx, e);
                         self.captures.entry(l).and_modify(|e| *e |= cap).or_insert(cap);
+                    }
+                },
+                ExprKind::Closure(..) => {
+                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id).to_def_id();
+                    for capture in self.cx.typeck_results().closure_min_captures_flattened(closure_id) {
+                        let local_id = match capture.place.base {
+                            PlaceBase::Local(id) => id,
+                            PlaceBase::Upvar(var) => var.var_path.hir_id,
+                            _ => continue,
+                        };
+                        if !self.locals.contains(&local_id) {
+                            let capture = match capture.info.capture_kind {
+                                UpvarCapture::ByValue(_) => CaptureKind::Value,
+                                UpvarCapture::ByRef(borrow) => match borrow.kind {
+                                    BorrowKind::ImmBorrow => CaptureKind::Ref(Mutability::Not),
+                                    BorrowKind::UniqueImmBorrow | BorrowKind::MutBorrow => {
+                                        CaptureKind::Ref(Mutability::Mut)
+                                    },
+                                },
+                            };
+                            self.captures
+                                .entry(local_id)
+                                .and_modify(|e| *e |= capture)
+                                .or_insert(capture);
+                        }
                     }
                 },
                 ExprKind::Loop(b, ..) => {
@@ -1830,7 +1903,7 @@ pub fn peel_hir_expr_while<'tcx>(
 pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
     let mut remaining = count;
     let e = peel_hir_expr_while(expr, |e| match e.kind {
-        ExprKind::AddrOf(BorrowKind::Ref, _, e) if remaining != 0 => {
+        ExprKind::AddrOf(ast::BorrowKind::Ref, _, e) if remaining != 0 => {
             remaining -= 1;
             Some(e)
         },
@@ -1844,7 +1917,7 @@ pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, 
 pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
     let mut count = 0;
     let e = peel_hir_expr_while(expr, |e| match e.kind {
-        ExprKind::AddrOf(BorrowKind::Ref, _, e) => {
+        ExprKind::AddrOf(ast::BorrowKind::Ref, _, e) => {
             count += 1;
             Some(e)
         },
