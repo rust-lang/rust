@@ -1149,18 +1149,26 @@ bool legalCombinedForwardReverse(
   Value *calledValue = origop->getCalledValue();
 #endif
 
-  if (subretused && isa<PointerType>(origop->getType())) {
-    if (EnzymePrintPerf) {
-      if (called)
-        llvm::errs()
-            << " [not implemented] pointer return for combined forward/reverse "
-            << called->getName() << "\n";
-      else
-        llvm::errs()
-            << " [not implemented] pointer return for combined forward/reverse "
-            << *calledValue << "\n";
+  if (isa<PointerType>(origop->getType())) {
+    bool sret = subretused;
+    if (!sret && !gutils->isConstantValue(origop)) {
+      sret = is_value_needed_in_reverse<ValueType::ShadowPtr>(
+          TR, gutils, origop, gutils->mode, oldUnreachable);
     }
-    return false;
+
+    if (sret) {
+      if (EnzymePrintPerf) {
+        if (called)
+          llvm::errs() << " [not implemented] pointer return for combined "
+                          "forward/reverse "
+                       << called->getName() << "\n";
+        else
+          llvm::errs() << " [not implemented] pointer return for combined "
+                          "forward/reverse "
+                       << *calledValue << "\n";
+      }
+      return false;
+    }
   }
 
   // Check any users of the returned value and determine all values that would

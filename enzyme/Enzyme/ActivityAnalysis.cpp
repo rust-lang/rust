@@ -1942,7 +1942,11 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
     // This use is only active if specified
     if (isa<ReturnInst>(a)) {
-      return !ActiveReturns;
+      if (ActiveReturns == DIFFE_TYPE::CONSTANT) {
+        continue;
+      } else {
+        return false;
+      }
     }
 
     if (auto call = dyn_cast<CallInst>(a)) {
@@ -2036,7 +2040,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
     }
 
     if (isa<ReturnInst>(a)) {
-      if (!ActiveReturns)
+      if (ActiveReturns == DIFFE_TYPE::CONSTANT)
         continue;
 
       if (EnzymePrintActivity)

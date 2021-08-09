@@ -245,7 +245,8 @@ static inline bool is_value_needed_in_reverse(
       }
 
       if (isa<ReturnInst>(user)) {
-        if (gutils->ATA->ActiveReturns)
+        if (gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_ARG ||
+            gutils->ATA->ActiveReturns == DIFFE_TYPE::DUP_NONEED)
           return seen[idx] = true;
         else
           continue;

@@ -2443,8 +2443,7 @@ GradientUtils *GradientUtils::CreateFromClone(
 
   auto res =
       new GradientUtils(Logic, newFunc, todiff, TLI, TA, invertedPointers,
-                        constant_values, nonconstant_values,
-                        /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
+                        constant_values, nonconstant_values, retType,
                         originalToNew, DerivativeMode::ReverseModePrimal, omp);
   return res;
 }
@@ -2474,8 +2473,7 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
   auto res = new DiffeGradientUtils(
       Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
-      nonconstant_values, /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
-      originalToNew, mode, omp);
+      nonconstant_values, retType, originalToNew, mode, omp);
   return res;
 }
 

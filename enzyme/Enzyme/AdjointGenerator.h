@@ -6576,8 +6576,11 @@ public:
       subretType = DIFFE_TYPE::CONSTANT;
     } else if (!orig->getType()->isFPOrFPVectorTy() &&
                TR.query(orig).Inner0().isPossiblePointer()) {
-      subretType = DIFFE_TYPE::DUP_ARG;
-      // TODO interprocedural dup_noneed
+      if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
+              TR, gutils, orig, Mode, oldUnreachable))
+        subretType = DIFFE_TYPE::DUP_ARG;
+      else
+        subretType = DIFFE_TYPE::CONSTANT;
     } else {
       subretType = DIFFE_TYPE::OUT_DIFF;
     }
@@ -6961,7 +6964,7 @@ public:
 
     bool subdretptr = (subretType == DIFFE_TYPE::DUP_ARG ||
                        subretType == DIFFE_TYPE::DUP_NONEED) &&
-                      replaceFunction && (call.getNumUses() != 0);
+                      replaceFunction; // && (call.getNumUses() != 0);
     DerivativeMode subMode = (replaceFunction || !modifyPrimal)
                                  ? DerivativeMode::ReverseModeCombined
                                  : DerivativeMode::ReverseModeGradient;

@@ -865,9 +865,9 @@ public:
                 TargetLibraryInfo &TLI_, TypeAnalysis &TA_,
                 ValueToValueMapTy &invertedPointers_,
                 const SmallPtrSetImpl<Value *> &constantvalues_,
-                const SmallPtrSetImpl<Value *> &activevals_, bool ActiveReturn,
-                ValueToValueMapTy &originalToNewFn_, DerivativeMode mode,
-                bool omp)
+                const SmallPtrSetImpl<Value *> &activevals_,
+                DIFFE_TYPE ReturnActivity, ValueToValueMapTy &originalToNewFn_,
+                DerivativeMode mode, bool omp)
       : CacheUtility(TLI_, newFunc_), Logic(Logic), mode(mode),
         oldFunc(oldFunc_), invertedPointers(),
         OrigDT(Logic.PPC.FAM.getResult<llvm::DominatorTreeAnalysis>(*oldFunc_)),
@@ -877,9 +877,10 @@ public:
         OrigSE(
             Logic.PPC.FAM.getResult<llvm::ScalarEvolutionAnalysis>(*oldFunc_)),
         notForAnalysis(getGuaranteedUnreachable(oldFunc_)),
-        ATA(new ActivityAnalyzer(
-            Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_),
-            notForAnalysis, TLI_, constantvalues_, activevals_, ActiveReturn)),
+        ATA(new ActivityAnalyzer(Logic.PPC,
+                                 Logic.PPC.getAAResultsFromFunction(oldFunc_),
+                                 notForAnalysis, TLI_, constantvalues_,
+                                 activevals_, ReturnActivity)),
         tid(nullptr), numThreads(nullptr),
         OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_),
         omp(omp) {
@@ -1380,7 +1381,7 @@ class DiffeGradientUtils : public GradientUtils {
                      ValueToValueMapTy &invertedPointers_,
                      const SmallPtrSetImpl<Value *> &constantvalues_,
                      const SmallPtrSetImpl<Value *> &returnvals_,
-                     bool ActiveReturn, ValueToValueMapTy &origToNew_,
+                     DIFFE_TYPE ActiveReturn, ValueToValueMapTy &origToNew_,
                      DerivativeMode mode, bool omp)
       : GradientUtils(Logic, newFunc_, oldFunc_, TLI, TA, invertedPointers_,
                       constantvalues_, returnvals_, ActiveReturn, origToNew_,

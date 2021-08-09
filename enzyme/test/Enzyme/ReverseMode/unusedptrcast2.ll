@@ -10,11 +10,19 @@ entry:
 
 define void @called(double* %mat1) {
 entry:
+  %all = alloca double*
   %call17 = call double* @callrt(double* %mat1)
+  store double* %call17, double** %all
+  %er = bitcast double** %all to i8*
   ret void
 }
 
 define double* @callrt(double* %c) {
+  %call17 = call double* @callrt2(double* %c)
+  ret double* %call17
+}
+
+define double* @callrt2(double* %c) {
   %call17 = call double* @sqret(double* %c)
   ret double* %call17
 }

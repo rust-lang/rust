@@ -42,6 +42,7 @@
 #include "llvm/IR/InstVisitor.h"
 
 #include "TypeAnalysis/TypeAnalysis.h"
+#include "Utils.h"
 
 extern "C" {
 extern llvm::cl::opt<bool> EnzymePrintActivity;
@@ -69,7 +70,7 @@ class ActivityAnalyzer {
 
 public:
   /// Whether the returns of the function being analyzed are active
-  const bool ActiveReturns;
+  const DIFFE_TYPE ActiveReturns;
 
 private:
   /// Direction of current analysis
@@ -105,7 +106,7 @@ public:
       llvm::TargetLibraryInfo &TLI_,
       const llvm::SmallPtrSetImpl<llvm::Value *> &ConstantValues,
       const llvm::SmallPtrSetImpl<llvm::Value *> &ActiveValues,
-      bool ActiveReturns)
+      DIFFE_TYPE ActiveReturns)
       : PPC(PPC), AA(AA_), notForAnalysis(notForAnalysis_), TLI(TLI_),
         ActiveReturns(ActiveReturns), directions(UP | DOWN),
         ConstantValues(ConstantValues.begin(), ConstantValues.end()),

@@ -85,18 +85,12 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   %arr = alloca double, align 8
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
-; CHECK-NEXT:   %call.i_augmented = call double* @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
 ; CHECK-NEXT:   call void @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
 ; CHECK-NEXT:   %[[prevv:.+]] = load double, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[prevv]], %differeturn
 ; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[add]], 0
 ; CHECK-NEXT:   ret { double } %[[res]]
-; CHECK-NEXT: }
-
-; CHECK: define internal double* @augmented_sub(double* %a, double* %"a'") {
-; CHECK-NEXT: entry:
-; CHECK-NEXT:   ret double* %"a'"
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffesub(double* %a, double* %"a'") {
