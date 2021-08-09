@@ -28,6 +28,7 @@ pub struct Unevaluated<'tcx, P = Option<Promoted>> {
 }
 
 impl<'tcx> Unevaluated<'tcx> {
+    #[inline]
     pub fn shrink(self) -> Unevaluated<'tcx, ()> {
         debug_assert_eq!(self.promoted, None);
         Unevaluated { def: self.def, substs_: self.substs_, promoted: () }
@@ -35,18 +36,21 @@ impl<'tcx> Unevaluated<'tcx> {
 }
 
 impl<'tcx> Unevaluated<'tcx, ()> {
+    #[inline]
     pub fn expand(self) -> Unevaluated<'tcx> {
         Unevaluated { def: self.def, substs_: self.substs_, promoted: None }
     }
 }
 
 impl<'tcx, P: Default> Unevaluated<'tcx, P> {
+    #[inline]
     pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx, P> {
         Unevaluated { def, substs_: Some(substs), promoted: Default::default() }
     }
 }
 
 impl<'tcx, P: Default + PartialEq + fmt::Debug> Unevaluated<'tcx, P> {
+    #[inline]
     pub fn substs(self, tcx: TyCtxt<'tcx>) -> SubstsRef<'tcx> {
         self.substs_.unwrap_or_else(|| {
             // We must not use the parents default substs for promoted constants
