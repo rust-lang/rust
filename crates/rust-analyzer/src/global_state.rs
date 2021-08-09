@@ -27,7 +27,6 @@ use crate::{
     mem_docs::MemDocs,
     op_queue::OpQueue,
     reload::SourceRootConfig,
-    request_metrics::{LatestRequests, RequestMetrics},
     thread_pool::TaskPool,
     to_proto::url_from_abs_path,
     Result,
@@ -105,8 +104,6 @@ pub(crate) struct GlobalState {
         OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
 
     pub(crate) prime_caches_queue: OpQueue<()>,
-
-    latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -114,7 +111,6 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) config: Arc<Config>,
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
-    pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
@@ -169,7 +165,6 @@ impl GlobalState {
             prime_caches_queue: OpQueue::default(),
 
             fetch_build_data_queue: OpQueue::default(),
-            latest_requests: Default::default(),
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -230,7 +225,6 @@ impl GlobalState {
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
-            latest_requests: Arc::clone(&self.latest_requests),
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
@@ -270,9 +264,7 @@ impl GlobalState {
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
         if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
             let duration = start.elapsed();
-            log::info!("handled req#{} in {:?}", response.id, duration);
-            let metrics = RequestMetrics { id: response.id.clone(), method, duration };
-            self.latest_requests.write().record(metrics);
+            log::info!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
             self.send(response.into());
         }
     }
