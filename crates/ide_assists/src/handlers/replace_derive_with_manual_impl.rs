@@ -279,7 +279,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) ->
 
 /// Generate a `Debug` impl based on the fields and members of the target type.
 fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    match adt {
+    return match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Union(_) => Some(()),
         // Deriving `Debug` for enums is not stable yet.
@@ -289,10 +289,7 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 Some(ast::FieldList::RecordFieldList(field_list)) => {
                     let mut fields = vec![];
                     for field in field_list.fields() {
-                        let trait_name = make::ext::ident_path("Default");
-                        let method_name = make::ext::ident_path("default");
-                        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
-                        let method_call = make::expr_call(fn_name, make::arg_list(None));
+                        let method_call = gen_default_call();
                         let name_ref = make::name_ref(&field.name()?.to_string());
                         let field = make::record_expr_field(name_ref, Some(method_call));
                         fields.push(field);
@@ -302,23 +299,27 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     make::record_expr(struct_name, fields).into()
                 }
                 Some(ast::FieldList::TupleFieldList(field_list)) => {
-                    let mut fields = vec![];
-                    for _ in field_list.fields() {
-                        let trait_name = make::ext::ident_path("Default");
-                        let method_name = make::ext::ident_path("default");
-                        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
-                        let method_call = make::expr_call(fn_name, make::arg_list(None));
-                        fields.push(method_call);
-                    }
                     let struct_name = make::expr_path(make::ext::ident_path("Self"));
+                    let fields = field_list.fields().map(|_| gen_default_call());
                     make::expr_call(struct_name, make::arg_list(fields))
                 }
-                None => todo!(),
+                None => {
+                    let struct_name = make::ext::ident_path("Self");
+                    let fields = make::record_expr_field_list(None);
+                    make::record_expr(struct_name, fields).into()
+                }
             };
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
             ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-            Some(())
+            return Some(());
         }
+    };
+
+    fn gen_default_call() -> ast::Expr {
+        let trait_name = make::ext::ident_path("Default");
+        let method_name = make::ext::ident_path("default");
+        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
+        make::expr_call(fn_name, make::arg_list(None))
     }
 }
 fn update_attribute(
@@ -492,6 +493,26 @@ struct Foo(usize);
 impl Default for Foo {
     $0fn default() -> Self {
         Self(Default::default())
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_default_empty_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: default
+#[derive(Defau$0lt)]
+struct Foo;
+"#,
+            r#"
+struct Foo;
+
+impl Default for Foo {
+    $0fn default() -> Self {
+        Self {  }
     }
 }
 "#,
