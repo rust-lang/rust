@@ -150,8 +150,8 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-
-    (result, packed, padding_used.then_some(Box::new(field_remapping)))
+    let field_remapping = if padding_used { Some(Box::new(field_remapping)) } else { None };
+    (result, packed, field_remapping)
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
