@@ -70,12 +70,33 @@ function parseOptions(args) {
     return null;
 }
 
-function print_test_successful() {
-    process.stdout.write(".");
+/// Print single char status information without \n
+function char_printer(n_tests) {
+    const max_per_line = 10;
+    let current = 0;
+    return {
+        successful: function() {
+            current += 1;
+            if (current % max_per_line === 0) {
+                process.stdout.write(`. (${current}/${n_tests})\n`);
+            } else {
+                process.stdout.write(".");
+            }
+        },
+        erroneous: function() {
+            current += 1;
+            if (current % max_per_line === 0) {
+                process.stderr.write(`F (${current}/${n_tests})\n`);
+            } else {
+                process.stderr.write("F");
+            }
+        },
+    };
 }
 
-function print_test_erroneous() {
-    process.stderr.write("F");
+/// Sort array by .file_name property
+function by_filename(a, b) {
+    return a.file_name - b.file_name;
 }
 
 async function main(argv) {
@@ -129,32 +150,36 @@ async function main(argv) {
     console.log(`Running ${files.length} rustdoc-gui tests...`);
     process.setMaxListeners(files.length + 1);
     let tests = [];
-    let results = new Array(files.length);
-    // poormans enum
-    const RUN_SUCCESS = 42, RUN_FAILED = 23, RUN_ERRORED = 13;
+    let results = {
+        successful: [],
+        failed: [],
+        errored: [],
+    };
+    const status_bar = char_printer(files.length);
     for (let i = 0; i < files.length; ++i) {
-        const testPath = path.join(opts["tests_folder"], files[i]);
+        const file_name = files[i];
+        const testPath = path.join(opts["tests_folder"], file_name);
         tests.push(
             runTest(testPath, options)
             .then(out => {
                 const [output, nb_failures] = out;
-                results[i] = {
-                    status: nb_failures === 0 ? RUN_SUCCESS : RUN_FAILED,
+                results[nb_failures === 0 ? "successful" : "failed"].push({
+                    file_name: file_name,
                     output: output,
-                };
+                });
                 if (nb_failures > 0) {
-                    print_test_erroneous()
+                    status_bar.erroneous()
                     failed = true;
                 } else {
-                    print_test_successful()
+                    status_bar.successful()
                 }
             })
             .catch(err => {
-                results[i] = {
-                    status: RUN_ERRORED,
+                results.errored.push({
+                    file_name: file_name,
                     output: err,
-                };
-                print_test_erroneous();
+                });
+                status_bar.erroneous();
                 failed = true;
             })
         );
@@ -166,28 +191,20 @@ async function main(argv) {
     // final \n after the tests
     console.log("\n");
 
-    results.forEach(r => {
-        switch (r.status) {
-            case RUN_SUCCESS:
-                if (debug === false) {
-                    break;
-                }
-            case RUN_FAILED:
-                console.log(r.output);
-                break;
-            case RUN_ERRORED:
-                // skip
-                break;
-            default:
-                console.error(`unexpected status = ${r.status}`);
-                process.exit(4);
-        }
+    if (debug === false) {
+        results.successful.sort(by_filename);
+        results.successful.forEach(r => {
+            console.log(r.output);
+        });
+    }
+    results.failed.sort(by_filename);
+    results.failed.forEach(r => {
+        console.log(r.output);
     });
     // print run errors on the bottom so developers see them better
-    results.forEach(r => {
-        if (r.status === RUN_ERRORED) {
-            console.error(r.output);
-        }
+    results.errored.sort(by_filename);
+    results.errored.forEach(r => {
+        console.error(r.output);
     });
 
     if (failed) {
