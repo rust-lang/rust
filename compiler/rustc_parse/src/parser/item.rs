@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
             (Ident::empty(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo)?;
+            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, Some(vis))?;
             (ident, ItemKind::Fn(Box::new(Fn { defaultness: def(), sig, generics, body })))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -1513,7 +1513,7 @@ impl<'a> Parser<'a> {
             let err = if self.check_fn_front_matter(false) {
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                if let Err(mut db) = self.parse_fn(&mut Vec::new(), fn_parse_mode, lo) {
+                if let Err(mut db) = self.parse_fn(&mut Vec::new(), fn_parse_mode, lo, None) {
                     db.delay_as_bug();
                 }
                 let mut err = self.struct_span_err(
@@ -1793,8 +1793,9 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         fn_parse_mode: FnParseMode,
         sig_lo: Span,
+        vis: Option<&Visibility>,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
-        let header = self.parse_fn_front_matter()?; // `const ... fn`
+        let header = self.parse_fn_front_matter(vis)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
         let decl =
@@ -1903,12 +1904,15 @@ impl<'a> Parser<'a> {
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
     /// up to and including the `fn` keyword. The formal grammar is:
     ///
-    /// ```
+    /// ```text
     /// Extern = "extern" StringLit? ;
     /// FnQual = "const"? "async"? "unsafe"? Extern? ;
     /// FnFrontMatter = FnQual "fn" ;
     /// ```
-    pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
+    pub(super) fn parse_fn_front_matter(
+        &mut self,
+        vis: Option<&Visibility>,
+    ) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
         let constness = self.parse_constness();
 
@@ -1962,23 +1966,43 @@ impl<'a> Parser<'a> {
                     }
                     // Recover incorrect visibility order such as `async pub`.
                     else if self.check_keyword(kw::Pub) {
+                        let orig_vis = vis.unwrap_or(&Visibility {
+                            span: rustc_span::DUMMY_SP,
+                            kind: VisibilityKind::Inherited,
+                            tokens: None,
+                        });
+
                         let sp = sp_start.to(self.prev_token.span);
                         if let Ok(snippet) = self.span_to_snippet(sp) {
-                            let vis = match self.parse_visibility(FollowedByType::No) {
+                            let current_vis = match self.parse_visibility(FollowedByType::No) {
                                 Ok(v) => v,
                                 Err(mut d) => {
                                     d.cancel();
                                     return Err(err);
                                 }
                             };
-                            let vs = pprust::vis_to_string(&vis);
+                            let vs = pprust::vis_to_string(&current_vis);
                             let vs = vs.trim_end();
-                            err.span_suggestion(
-                                sp_start.to(self.prev_token.span),
-                                &format!("visibility `{}` must come before `{}`", vs, snippet),
-                                format!("{} {}", vs, snippet),
-                                Applicability::MachineApplicable,
-                            );
+
+                            // There was no explicit visibility
+                            if matches!(orig_vis.kind, VisibilityKind::Inherited) {
+                                err.span_suggestion(
+                                    sp,
+                                    &format!("visibility `{}` must come before `{}`", vs, snippet),
+                                    format!("{} {}", vs, snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            // There was an explicit visibility
+                            else {
+                                err.span_suggestion(
+                                    current_vis.span,
+                                    "there is already a visibility, remove this one",
+                                    "".to_string(),
+                                    Applicability::MachineApplicable,
+                                )
+                                .span_note(orig_vis.span, "explicit visibility first seen here");
+                            }
                         }
                     }
                     return Err(err);
