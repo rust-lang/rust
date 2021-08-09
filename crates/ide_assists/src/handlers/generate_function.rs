@@ -6,7 +6,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, ArgList, ArgListOwner, AstNode, ModuleItemOwner,
+        make, ArgListOwner, AstNode, ModuleItemOwner,
     },
     SyntaxKind, SyntaxNode, TextSize,
 };
@@ -16,27 +16,6 @@ use crate::{
     utils::{find_struct_impl, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
-
-enum FuncExpr {
-    Func(ast::CallExpr),
-    Method(ast::MethodCallExpr),
-}
-
-impl FuncExpr {
-    fn arg_list(&self) -> Option<ArgList> {
-        match self {
-            FuncExpr::Func(fn_call) => fn_call.arg_list(),
-            FuncExpr::Method(m_call) => m_call.arg_list(),
-        }
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            FuncExpr::Func(fn_call) => fn_call.syntax(),
-            FuncExpr::Method(m_call) => m_call.syntax(),
-        }
-    }
-}
 
 // Assist: generate_function
 //
@@ -64,6 +43,31 @@ impl FuncExpr {
 //
 // ```
 pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    gen_fn(acc, ctx).or_else(|| gen_method(acc, ctx))
+}
+
+enum FuncExpr {
+    Func(ast::CallExpr),
+    Method(ast::MethodCallExpr),
+}
+
+impl FuncExpr {
+    fn arg_list(&self) -> Option<ast::ArgList> {
+        match self {
+            FuncExpr::Func(fn_call) => fn_call.arg_list(),
+            FuncExpr::Method(m_call) => m_call.arg_list(),
+        }
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            FuncExpr::Func(fn_call) => fn_call.syntax(),
+            FuncExpr::Method(m_call) => m_call.syntax(),
+        }
+    }
+}
+
+fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
 
@@ -100,7 +104,7 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
     )
 }
 
-pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     let fn_name: ast::NameRef = ast::NameRef::cast(
         call.syntax().children().find(|child| child.kind() == SyntaxKind::NAME_REF)?,
@@ -1351,8 +1355,7 @@ fn bar(baz: ()) {}
 
     #[test]
     fn create_method_with_no_args() {
-        // FIXME: This is wrong, this should just work.
-        check_assist_not_applicable(
+        check_assist(
             generate_function,
             r#"
 struct Foo;
@@ -1361,7 +1364,19 @@ impl Foo {
         self.bar()$0;
     }
 }
-        "#,
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {
+        self.bar();
+    }
+
+    fn bar(&self) ${0:-> ()} {
+        todo!()
+    }
+}
+"#,
         )
     }
 
@@ -1389,21 +1404,14 @@ async fn bar(arg: i32) ${0:-> ()} {
     #[test]
     fn create_method() {
         check_assist(
-            generate_method,
+            generate_function,
             r"
 struct S;
-
-fn foo() {
-    S.bar$0();
-}
-
+fn foo() {S.bar$0();}
 ",
             r"
 struct S;
-
-fn foo() {
-    S.bar();
-}
+fn foo() {S.bar();}
 impl S {
 
 
@@ -1411,7 +1419,6 @@ fn bar(&self) ${0:-> ()} {
     todo!()
 }
 }
-
 ",
         )
     }
@@ -1419,22 +1426,16 @@ fn bar(&self) ${0:-> ()} {
     #[test]
     fn create_method_within_an_impl() {
         check_assist(
-            generate_method,
+            generate_function,
             r"
 struct S;
-
-fn foo() {
-    S.bar$0();
-}
+fn foo() {S.bar$0();}
 impl S {}
 
 ",
             r"
 struct S;
-
-fn foo() {
-    S.bar();
-}
+fn foo() {S.bar();}
 impl S {
     fn bar(&self) ${0:-> ()} {
         todo!()
@@ -1448,15 +1449,12 @@ impl S {
     #[test]
     fn create_method_from_different_module() {
         check_assist(
-            generate_method,
+            generate_function,
             r"
 mod s {
     pub struct S;
 }
-fn foo() {
-    s::S.bar$0();
-}
-
+fn foo() {s::S.bar$0();}
 ",
             r"
 mod s {
@@ -1469,10 +1467,7 @@ impl S {
     }
 }
 }
-fn foo() {
-    s::S.bar();
-}
-
+fn foo() {s::S.bar();}
 ",
         )
     }
@@ -1480,7 +1475,7 @@ fn foo() {
     #[test]
     fn create_method_from_descendant_module() {
         check_assist(
-            generate_method,
+            generate_function,
             r"
 struct S;
 mod s {
@@ -1512,21 +1507,14 @@ fn bar(&self) ${0:-> ()} {
     #[test]
     fn create_method_with_cursor_anywhere_on_call_expresion() {
         check_assist(
-            generate_method,
+            generate_function,
             r"
 struct S;
-
-fn foo() {
-    $0S.bar();
-}
-
+fn foo() {$0S.bar();}
 ",
             r"
 struct S;
-
-fn foo() {
-    S.bar();
-}
+fn foo() {S.bar();}
 impl S {
 
 
@@ -1534,7 +1522,6 @@ fn bar(&self) ${0:-> ()} {
     todo!()
 }
 }
-
 ",
         )
     }
