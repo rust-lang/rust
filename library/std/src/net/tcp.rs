@@ -767,17 +767,24 @@ impl TcpListener {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::TcpListener;
+    /// use std::net::{TcpListener, TcpStream};
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// fn handle_connection(stream: TcpStream) {
+    ///    //...
+    /// }
     ///
-    /// for stream in listener.incoming() {
-    ///     match stream {
-    ///         Ok(stream) => {
-    ///             println!("new client!");
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    ///
+    ///     for stream in listener.incoming() {
+    ///         match stream {
+    ///             Ok(stream) => {
+    ///                 handle_connection(stream);
+    ///             }
+    ///             Err(e) => { /* connection failed */ }
     ///         }
-    ///         Err(e) => { /* connection failed */ }
     ///     }
+    ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
