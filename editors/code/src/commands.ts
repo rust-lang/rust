@@ -35,8 +35,6 @@ export function analyzerStatus(ctx: Ctx): Cmd {
         }
     }();
 
-    let poller: NodeJS.Timer | undefined = undefined;
-
     ctx.pushCleanup(
         vscode.workspace.registerTextDocumentContentProvider(
             'rust-analyzer-status',
@@ -44,20 +42,13 @@ export function analyzerStatus(ctx: Ctx): Cmd {
         ),
     );
 
-    ctx.pushCleanup({
-        dispose() {
-            if (poller !== undefined) {
-                clearInterval(poller);
-            }
-        },
-    });
-
     return async () => {
-        if (poller === undefined) {
-            poller = setInterval(() => tdcp.eventEmitter.fire(tdcp.uri), 1000);
-        }
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
-        return vscode.window.showTextDocument(document, vscode.ViewColumn.Two, true);
+        tdcp.eventEmitter.fire(tdcp.uri);
+        void await vscode.window.showTextDocument(document, {
+            viewColumn: vscode.ViewColumn.Two,
+            preserveFocus: true
+        });
     };
 }
 
