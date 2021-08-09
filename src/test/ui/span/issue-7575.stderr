@@ -61,10 +61,7 @@ error[E0599]: no method named `is_str` found for type parameter `T` in the curre
   --> $DIR/issue-7575.rs:70:7
    |
 LL |     t.is_str()
-   |     --^^^^^^--
-   |     | |
-   |     | this is an associated function, not a method
-   |     help: disambiguate the associated function for the candidate: `ManyImplTrait::is_str(t)`
+   |       ^^^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `ManyImplTrait`
@@ -73,6 +70,10 @@ note: the candidate is defined in the trait `ManyImplTrait`
 LL |     fn is_str() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^
    = help: items from traits can only be used if the type parameter is bounded by the trait
+help: disambiguate the associated function for the candidate
+   |
+LL |     ManyImplTrait::is_str(t)
+   |
 
 error: aborting due to 3 previous errors
 
