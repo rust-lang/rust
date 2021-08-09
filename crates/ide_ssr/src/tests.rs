@@ -921,13 +921,13 @@ fn preserves_whitespace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(1   *   2 + 3 + 4}
+            fn f() {macro1!(1   *   2 + 3 + 4)}
             "#,
         expect![[r#"
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(4 - (3 - 1   *   2)}
+            fn f() {macro1!(4 - (3 - 1   *   2))}
             "#]],
     )
 }

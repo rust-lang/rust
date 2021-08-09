@@ -1,7 +1,5 @@
 use syntax::{ast, AstNode};
 
-use crate::ast_to_token_tree;
-
 use super::*;
 
 #[test]
@@ -44,6 +42,7 @@ fn parse_macro_arm(arm_definition: &str) -> Result<crate::MacroRules, ParseError
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroRules::cast).unwrap();
 
-    let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap());
+    let (definition_tt, _) =
+        syntax_node_to_token_tree(macro_definition.token_tree().unwrap().syntax());
     crate::MacroRules::parse(&definition_tt)
 }

@@ -107,7 +107,7 @@ pub fn expand_eager_macro(
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<MacroCallId, ErrorEmitted> {
     let parsed_args = diagnostic_sink.option_with(
-        || Some(mbe::ast_to_token_tree(&macro_call.value.token_tree()?).0),
+        || Some(mbe::syntax_node_to_token_tree(&macro_call.value.token_tree()?.syntax()).0),
         || err("malformed macro invocation"),
     )?;
 

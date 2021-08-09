@@ -610,7 +610,7 @@ mod tests {
 
                 let fragment = crate::to_fragment_kind(&macro_call);
                 let args = macro_call.token_tree().unwrap();
-                let parsed_args = mbe::ast_to_token_tree(&args).0;
+                let parsed_args = mbe::syntax_node_to_token_tree(args.syntax()).0;
                 let call_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call));
 
                 let arg_id = db.intern_macro(MacroCallLoc {

@@ -8,9 +8,8 @@ use syntax::{
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
-    ast_to_token_tree,
     parser::{Op, RepeatKind, Separator},
-    MacroRules,
+    syntax_node_to_token_tree, MacroRules,
 };
 
 #[test]
@@ -65,7 +64,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree> {
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let (def_tt, _) = ast_to_token_tree(&rule.token_tree().unwrap());
+            let (def_tt, _) = syntax_node_to_token_tree(rule.token_tree().unwrap().syntax());
             (id, def_tt)
         })
         .collect()

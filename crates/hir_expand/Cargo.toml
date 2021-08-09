@@ -9,6 +9,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+cov-mark = "2.0.0-pre.1"
 log = "0.4.8"
 either = "1.5.3"
 rustc-hash = "1.0.0"

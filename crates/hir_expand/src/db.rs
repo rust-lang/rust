@@ -5,7 +5,7 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use limit::Limit;
 use mbe::{ExpandError, ExpandResult};
-use parser::FragmentKind;
+use parser::{FragmentKind, T};
 use syntax::{
     algo::diff,
     ast::{self, NameOwner},
@@ -273,6 +273,23 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
     let arg = process_macro_input(db, arg, id);
+    if matches!(loc.kind, MacroCallKind::FnLike { .. }) {
+        let first = arg.first_child_or_token().map_or(T![.], |it| it.kind());
+        let last = arg.last_child_or_token().map_or(T![.], |it| it.kind());
+        let well_formed_tt =
+            matches!((first, last), (T!['('], T![')']) | (T!['['], T![']']) | (T!['{'], T!['}']));
+        if !well_formed_tt {
+            // Don't expand malformed (unbalanced) macro invocations. This is
+            // less than ideal, but trying to expand unbalanced  macro calls
+            // sometimes produces pathological, deeply nested code which breaks
+            // all kinds of things.
+            //
+            // Some day, we'll have explicit recursion counters for all
+            // recursive things, at which point this code might be removed.
+            cov_mark::hit!(issue9358_bad_macro_stack_overflow);
+            return None;
+        }
+    }
     Some(arg.green().into())
 }
 
@@ -281,7 +298,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
         MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
             ast::Macro::MacroRules(macro_rules) => {
                 let arg = macro_rules.token_tree()?;
-                let (tt, def_site_token_map) = mbe::ast_to_token_tree(&arg);
+                let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
                 let mac = match mbe::MacroRules::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
@@ -294,7 +311,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
             }
             ast::Macro::MacroDef(macro_def) => {
                 let arg = macro_def.body()?;
-                let (tt, def_site_token_map) = mbe::ast_to_token_tree(&arg);
+                let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
                 let mac = match mbe::MacroDef::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {

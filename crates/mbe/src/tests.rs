@@ -29,7 +29,8 @@ macro_rules! impl_fixture {
                 let macro_invocation =
                     source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-                let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap());
+                let (invocation_tt, _) =
+                    syntax_node_to_token_tree(macro_invocation.token_tree().unwrap().syntax());
 
                 self.rules.expand(&invocation_tt).result()
             }
@@ -100,7 +101,7 @@ macro_rules! impl_fixture {
                         .descendants()
                         .find_map(ast::TokenTree::cast)
                         .unwrap();
-                    let mut wrapped = ast_to_token_tree(&wrapped).0;
+                    let mut wrapped = syntax_node_to_token_tree(wrapped.syntax()).0;
                     wrapped.delimiter = None;
                     wrapped
                 };
@@ -163,7 +164,8 @@ fn parse_macro_rules_to_tt(ra_fixture: &str) -> tt::Subtree {
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroRules::cast).unwrap();
 
-    let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap());
+    let (definition_tt, _) =
+        syntax_node_to_token_tree(macro_definition.token_tree().unwrap().syntax());
 
     let parsed = parse_to_token_tree(
         &ra_fixture[macro_definition.token_tree().unwrap().syntax().text_range()],
@@ -180,7 +182,7 @@ fn parse_macro_def_to_tt(ra_fixture: &str) -> tt::Subtree {
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroDef::cast).unwrap();
 
-    let (definition_tt, _) = ast_to_token_tree(&macro_definition.body().unwrap());
+    let (definition_tt, _) = syntax_node_to_token_tree(macro_definition.body().unwrap().syntax());
 
     let parsed =
         parse_to_token_tree(&ra_fixture[macro_definition.body().unwrap().syntax().text_range()])
