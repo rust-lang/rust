@@ -1,9 +1,5 @@
-// run-pass
-
-#![feature(const_trait_impl)]
-#![feature(const_identity_convert)]
-
-fn main() {
+#[test]
+fn convert() {
     const fn from(x: i32) -> i32 {
         i32::from(x)
     }
