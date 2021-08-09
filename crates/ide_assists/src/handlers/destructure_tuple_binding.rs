@@ -4,10 +4,7 @@ use ide_db::{
     search::{FileReference, SearchScope, UsageSearchResult},
 };
 use itertools::Itertools;
-use syntax::{
-    ast::{self, AstNode, FieldExpr, IdentPat, NameOwner},
-    SyntaxNode, TextRange,
-};
+use syntax::{TextRange, ast::{self, AstNode, IdentPat, NameOwner}};
 
 use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 
@@ -186,7 +183,7 @@ fn edit_tuple_usages(
     if let Some(usages) = data.usages.as_ref() {
         for (file_id, refs) in usages.iter() {
             builder.edit_file(*file_id);
-    
+
             for r in refs {
                 edit_tuple_usage(r, data, builder, ctx, in_sub_pattern);
             }
@@ -200,12 +197,10 @@ fn edit_tuple_usage(
     _ctx: &AssistContext,
     in_sub_pattern: bool,
 ) {
-    match detect_tuple_index(usage.name.syntax(), data) {
-        Some((expr, idx)) => {
-            // index field access
-            let text = &data.field_names[idx];
-            let range = expr.syntax().text_range();
-            builder.replace(range, text);
+    match detect_tuple_index(usage, data) {
+        Some(index) => {
+            let text = &data.field_names[index.index];
+            builder.replace(index.range, text);
         }
         None => {
             if in_sub_pattern {
@@ -221,7 +216,12 @@ fn edit_tuple_usage(
     }
 }
 
-fn detect_tuple_index(usage: &SyntaxNode, data: &TupleData) -> Option<(FieldExpr, usize)> {
+struct TupleIndex {
+    index: usize,
+    range: TextRange,
+}
+
+fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIndex> {
     // usage is IDENT
     // IDENT
     //  NAME_REF
@@ -230,7 +230,9 @@ fn detect_tuple_index(usage: &SyntaxNode, data: &TupleData) -> Option<(FieldExpr
     //     PATH_EXPR
     //      PAREN_EXRP*
     //       FIELD_EXPR
-    let node = usage
+
+    let node = 
+        usage.name.syntax()
         .ancestors()
         .skip_while(|s| !ast::PathExpr::can_cast(s.kind()))
         .skip(1) // PATH_EXPR
@@ -239,7 +241,29 @@ fn detect_tuple_index(usage: &SyntaxNode, data: &TupleData) -> Option<(FieldExpr
     if let Some(field_expr) = ast::FieldExpr::cast(node) {
         let idx = field_expr.name_ref()?.as_tuple_field()?;
         if idx < data.field_names.len() {
-            Some((field_expr, idx))
+
+            // special case: in macro call -> range of `field_expr` in applied macro, NOT range in actual file!
+            if field_expr.syntax().ancestors().any(|a| ast::MacroStmts::can_cast(a.kind())) {
+                cov_mark::hit!(destructure_tuple_macro_call);
+
+                // issue: cannot differentiate between tuple index passed into macro or tuple index as result of macro:
+                // ```rust
+                // macro_rules! m {
+                //     ($t1:expr, $t2:expr) => { $t1; $t2.0 }
+                // }
+                // let t = (1,2);
+                // m!(t.0, t)
+                // ```
+                // -> 2 tuple index usages detected!
+                //
+                // -> only handle `t`
+                return None;
+            }
+
+            Some(TupleIndex {
+                            index: idx,
+                            range: field_expr.syntax().text_range(),
+                        })
         } else {
             // tuple index out of range
             None
@@ -1030,32 +1054,7 @@ fn main {
         )
     }
 
-    // -----------------------
-    #[test]
-    #[ignore]
-    fn replace_in_macro_call() {
-        // doesn't work: cannot find usage in `println!`
-        // Note: Just `t` works, but not `t.0`
-        check_assist(
-            assist,
-            r#"
-fn main() {
-    let $0t = (1,2);
-    println!("{}", t.0);
-}
-            "#,
-            r#"
-fn main() {
-    let ($0_0, _1) = (1,2);
-    println!("{}", _0);
-}
-            "#,
-        )
-    }
-
-    /// Tests for destructure of tuple in sub-pattern: 
-    /// `let $0t = (1,2);` -> `let t @ (_0, _1) = (1,2);`
-    mod sub_pattern {
+    mod assist {
         use super::*;
         use crate::tests::check_assist_by_label;
 
@@ -1063,17 +1062,47 @@ fn main() {
             destructure_tuple_binding_impl(acc, ctx, true)
         }
 
-        fn check_sub_pattern_assist(
+        pub(crate) fn check_in_place_assist(
+
             ra_fixture_before: &str,
             ra_fixture_after: &str,
         ) {
-            // with sub-pattern there are two assists: One with and one without sub-pattern
             check_assist_by_label(
                 assist, 
                 ra_fixture_before, 
                 ra_fixture_after, 
-                "Destructure tuple in sub-pattern")
+                "Destructure tuple in place"
+            );
         }
+
+        pub(crate) fn check_sub_pattern_assist(
+            ra_fixture_before: &str,
+            ra_fixture_after: &str,
+        ) {
+            check_assist_by_label(
+                assist, 
+                ra_fixture_before, 
+                ra_fixture_after, 
+                "Destructure tuple in sub-pattern"
+            );
+        }
+
+        pub(crate) fn check_both_assists(
+            ra_fixture_before: &str,
+            ra_fixture_after_in_place: &str,
+            ra_fixture_after_in_sub_pattern: &str,
+        ) {
+            check_in_place_assist(ra_fixture_before, ra_fixture_after_in_place);
+            check_sub_pattern_assist(ra_fixture_before, ra_fixture_after_in_sub_pattern);
+        }
+    }
+
+    /// Tests for destructure of tuple in sub-pattern: 
+    /// `let $0t = (1,2);` -> `let t @ (_0, _1) = (1,2);`
+    mod sub_pattern {
+        use super::*;
+        use super::assist::*;
+        use crate::tests::check_assist_by_label;
 
         #[test]
         fn destructure_in_sub_pattern() {
@@ -1097,6 +1126,9 @@ fn main() {
     
         #[test]
         fn trigger_both_destructure_tuple_assists() {
+            fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+                destructure_tuple_binding_impl(acc, ctx, true)
+            }
             let text = r#"
 fn main() {
     let $0t = (1,2);
@@ -1257,6 +1289,257 @@ fn main() {
 }
                 "#,
             )
+        }
+    }
+
+    /// Tests for tuple usage in macro call:
+    /// `dbg!(t.0)`
+    mod in_macro_call {       
+        use super::assist::*;
+
+
+        #[test]
+        fn detect_macro_call() {
+            cov_mark::check!(destructure_tuple_macro_call);
+            check_in_place_assist(
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!(t.0);
+}
+                "#,
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!(/*t*/.0);
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn tuple_usage() {
+            check_both_assists(
+                // leading `"foo"` to ensure `$e` doesn't start at position `0`
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!(t);
+}
+                "#,
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!(/*t*/);
+}
+                "#,
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    m!(t);
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn tuple_function_usage() {
+            check_both_assists(
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!(t.into());
+}
+                "#,
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!(/*t*/.into());
+}
+                "#,
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    m!(t.into());
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn tuple_index_usage() {
+            check_both_assists(
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!(t.0);
+}
+                "#,
+                // FIXME: replace `t.0` with `_0` (cannot detect range of tuple index in macro call)
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!(/*t*/.0);
+}
+                "#,
+                // FIXME: replace `t.0` with `_0`
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    m!(t.0);
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn tuple_in_parentheses_index_usage() {
+            check_both_assists(
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!((t).0);
+}
+                "#,
+                // FIXME: replace `(t).0` with `_0`
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!((/*t*/).0);
+}
+                "#,
+                // FIXME: replace `(t).0` with `_0`
+                r#"
+macro_rules! m {
+    ($e:expr) => { "foo"; $e };
+}
+
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    m!((t).0);
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn empty_macro() {
+            check_in_place_assist(
+                r#"
+macro_rules! m {
+    () => { "foo" };
+    ($e:expr) => { $e; "foo" };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!(t);
+}
+                "#,
+                // FIXME: macro allows no arg -> is valid. But assist should result in invalid code
+                r#"
+macro_rules! m {
+    () => { "foo" };
+    ($e:expr) => { $e; "foo" };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!(/*t*/);
+}
+                "#,
+            )
+        }
+
+        #[test]
+        fn tuple_index_in_macro() {
+            check_both_assists(
+                r#"
+macro_rules! m {
+    ($t:expr, $i:expr) => { $t.0 + $i };
+}
+
+fn main() {
+    let $0t = (1,2);
+    m!(t, t.0);
+}
+                "#,
+                // FIXME: replace `t.0` in macro call (not IN macro) with `_0`
+                r#"
+macro_rules! m {
+    ($t:expr, $i:expr) => { $t.0 + $i };
+}
+
+fn main() {
+    let ($0_0, _1) = (1,2);
+    m!(/*t*/, /*t*/.0);
+}
+                "#,
+                // FIXME: replace `t.0` in macro call with `_0`
+                r#"
+macro_rules! m {
+    ($t:expr, $i:expr) => { $t.0 + $i };
+}
+
+fn main() {
+    let t @ ($0_0, _1) = (1,2);
+    m!(t, t.0);
+}
+                "#,
+            )
+
         }
     }
 }
