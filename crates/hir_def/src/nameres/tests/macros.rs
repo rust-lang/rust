@@ -1,4 +1,5 @@
 use super::*;
+
 use crate::nameres::proc_macro::{ProcMacroDef, ProcMacroKind};
 
 #[test]
@@ -1018,6 +1019,23 @@ pub mod prelude {
         expect![[r#"
             crate
             S: t v
+        "#]],
+    )
+}
+
+#[test]
+fn issue9358_bad_macro_stack_overflow() {
+    cov_mark::check!(issue9358_bad_macro_stack_overflow);
+    check(
+        r#"
+macro_rules! m {
+  ($cond:expr) => { m!($cond, stringify!($cond)) };
+  ($cond:expr, $($arg:tt)*) => { $cond };
+}
+m!(
+"#,
+        expect![[r#"
+            crate
         "#]],
     )
 }

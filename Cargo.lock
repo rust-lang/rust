@@ -508,6 +508,7 @@ version = "0.0.0"
 dependencies = [
  "base_db",
  "cfg",
+ "cov-mark",
  "either",
  "expect-test",
  "la-arena",
