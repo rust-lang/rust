@@ -1,5 +1,5 @@
 use expect_test::{expect, Expect};
-use mbe::ast_to_token_tree;
+use mbe::syntax_node_to_token_tree;
 use syntax::{ast, AstNode};
 
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
@@ -8,7 +8,7 @@ fn assert_parse_result(input: &str, expected: CfgExpr) {
     let (tt, _) = {
         let source_file = ast::SourceFile::parse(input).ok().unwrap();
         let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        ast_to_token_tree(&tt)
+        syntax_node_to_token_tree(tt.syntax())
     };
     let cfg = CfgExpr::parse(&tt);
     assert_eq!(cfg, expected);
@@ -18,7 +18,7 @@ fn check_dnf(input: &str, expect: Expect) {
     let (tt, _) = {
         let source_file = ast::SourceFile::parse(input).ok().unwrap();
         let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        ast_to_token_tree(&tt)
+        syntax_node_to_token_tree(tt.syntax())
     };
     let cfg = CfgExpr::parse(&tt);
     let actual = format!("#![cfg({})]", DnfExpr::new(cfg));
@@ -29,7 +29,7 @@ fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
     let (tt, _) = {
         let source_file = ast::SourceFile::parse(input).ok().unwrap();
         let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        ast_to_token_tree(&tt)
+        syntax_node_to_token_tree(tt.syntax())
     };
     let cfg = CfgExpr::parse(&tt);
     let dnf = DnfExpr::new(cfg);
@@ -42,7 +42,7 @@ fn check_enable_hints(input: &str, opts: &CfgOptions, expected_hints: &[&str]) {
     let (tt, _) = {
         let source_file = ast::SourceFile::parse(input).ok().unwrap();
         let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        ast_to_token_tree(&tt)
+        syntax_node_to_token_tree(tt.syntax())
     };
     let cfg = CfgExpr::parse(&tt);
     let dnf = DnfExpr::new(cfg);

@@ -12,7 +12,7 @@ use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
-use mbe::{ast_to_token_tree, DelimiterKind};
+use mbe::{syntax_node_to_token_tree, DelimiterKind};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -679,7 +679,7 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            Some(Interned::new(AttrInput::TokenTree(ast_to_token_tree(&tt).0)))
+            Some(Interned::new(AttrInput::TokenTree(syntax_node_to_token_tree(tt.syntax()).0)))
         } else {
             None
         };

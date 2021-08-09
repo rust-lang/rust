@@ -281,7 +281,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
         MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
             ast::Macro::MacroRules(macro_rules) => {
                 let arg = macro_rules.token_tree()?;
-                let (tt, def_site_token_map) = mbe::ast_to_token_tree(&arg);
+                let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
                 let mac = match mbe::MacroRules::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
@@ -294,7 +294,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
             }
             ast::Macro::MacroDef(macro_def) => {
                 let arg = macro_def.body()?;
-                let (tt, def_site_token_map) = mbe::ast_to_token_tree(&arg);
+                let (tt, def_site_token_map) = mbe::syntax_node_to_token_tree(arg.syntax());
                 let mac = match mbe::MacroDef::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {

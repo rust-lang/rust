@@ -13,12 +13,6 @@ use tt::buffer::{Cursor, TokenBuffer};
 use crate::{subtree_source::SubtreeTokenSource, tt_iter::TtIter};
 use crate::{ExpandError, TokenMap};
 
-/// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
-/// will consume).
-pub fn ast_to_token_tree(ast: &impl ast::AstNode) -> (tt::Subtree, TokenMap) {
-    syntax_node_to_token_tree(ast.syntax())
-}
-
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
@@ -812,7 +806,7 @@ mod tests {
         // - T!['}']
         // - WHITE_SPACE
         let token_tree = ast::TokenTree::cast(token_tree).unwrap();
-        let tt = ast_to_token_tree(&token_tree).0;
+        let tt = syntax_node_to_token_tree(token_tree.syntax()).0;
 
         assert_eq!(tt.delimiter_kind(), Some(tt::DelimiterKind::Brace));
     }
@@ -821,7 +815,7 @@ mod tests {
     fn test_token_tree_multi_char_punct() {
         let source_file = ast::SourceFile::parse("struct Foo { a: x::Y }").ok().unwrap();
         let struct_def = source_file.syntax().descendants().find_map(ast::Struct::cast).unwrap();
-        let tt = ast_to_token_tree(&struct_def).0;
+        let tt = syntax_node_to_token_tree(struct_def.syntax()).0;
         token_tree_to_syntax_node(&tt, FragmentKind::Item).unwrap();
     }
 
@@ -829,7 +823,7 @@ mod tests {
     fn test_missing_closing_delim() {
         let source_file = ast::SourceFile::parse("m!(x").tree();
         let node = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        let tt = ast_to_token_tree(&node).0.to_string();
+        let tt = syntax_node_to_token_tree(node.syntax()).0.to_string();
         assert_eq_text!(&*tt, "( x");
     }
 }
