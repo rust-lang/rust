@@ -200,6 +200,7 @@ target | std | host | notes
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
+`aarch64-unknown-uefi` | * |  | ARM64 UEFI
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 `aarch64-unknown-netbsd` | ✓ | ✓ |
 `aarch64-unknown-openbsd` | ✓ | ✓ | ARM64 OpenBSD
