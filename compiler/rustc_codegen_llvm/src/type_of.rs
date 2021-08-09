@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
+use smallvec::{smallvec, SmallVec};
 use tracing::debug;
 
 use std::fmt::Write;
@@ -18,7 +19,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
-    field_remapping: &mut Option<Box<[u32]>>,
+    field_remapping: &mut Option<Box<SmallVec<[u32; 4]>>>,
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -93,7 +94,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool, Option<Box<[u32]>>) {
+) -> (Vec<&'a Type>, bool, Option<Box<SmallVec<[u32; 4]>>>) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -101,7 +102,7 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
-    let mut field_remapping = vec![0; field_count];
+    let mut field_remapping = smallvec![0; field_count];
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -150,7 +151,7 @@ fn struct_llfields<'a, 'tcx>(
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
 
-    (result, packed, padding_used.then_some(field_remapping.into_boxed_slice()))
+    (result, packed, padding_used.then_some(Box::new(field_remapping)))
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {

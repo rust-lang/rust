@@ -24,6 +24,7 @@ use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
+use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
@@ -102,7 +103,7 @@ pub struct TypeLowering<'ll> {
 
     /// If padding is used the slice maps fields from source order
     /// to llvm order.
-    pub field_remapping: Option<Box<[u32]>>,
+    pub field_remapping: Option<Box<SmallVec<[u32; 4]>>>,
 }
 
 fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
