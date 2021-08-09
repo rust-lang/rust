@@ -101,8 +101,10 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
 }
 
 pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let fn_name: ast::NameRef = ctx.find_node_at_offset()?;
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
+    let fn_name: ast::NameRef = ast::NameRef::cast(
+        call.syntax().children().find(|child| child.kind() == SyntaxKind::NAME_REF)?,
+    )?;
     let ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
     let current_module =
@@ -1494,6 +1496,36 @@ mod s {
     fn foo() {
         super::S.bar();
     }
+}
+impl S {
+
+
+fn bar(&self) ${0:-> ()} {
+    todo!()
+}
+}
+
+",
+        )
+    }
+
+    #[test]
+    fn create_method_with_cursor_anywhere_on_call_expresion() {
+        check_assist(
+            generate_method,
+            r"
+struct S;
+
+fn foo() {
+    $0S.bar();
+}
+
+",
+            r"
+struct S;
+
+fn foo() {
+    S.bar();
 }
 impl S {
 
