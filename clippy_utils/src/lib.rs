@@ -631,20 +631,45 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 
 /// Checks if the top level expression can be moved into a closure as is.
 /// Currently checks for:
-/// * Break/Continue outside the given jump targets
+/// * Break/Continue outside the given loop HIR ids.
 /// * Yield/Return statments.
-/// * Inline assembly
+/// * Inline assembly.
 /// * Usages of a field of a local where the type of the local can be partially moved.
+///
+/// For example, given the following function:
+///
+/// ```
+/// fn f<'a>(iter: &mut impl Iterator<Item = (usize, &'a mut String)>) {
+///     for item in iter {
+///         let s = item.1;
+///         if item.0 > 10 {
+///             continue;
+///         } else {
+///             s.clear();
+///         }
+///     }
+/// }
+/// ```
+///
+/// When called on the expression `item.0` this will return false unless the local `item` is in the
+/// `ignore_locals` set. The type `(usize, &mut String)` can have the second element moved, so it
+/// isn't always safe to move into a closure when only a single field is needed.
+///
+/// When called on the `continue` expression this will return false unless the outer loop expression
+/// is in the `loop_ids` set.
+///
+/// Note that this check is not recursive, so passing the `if` expression will always return true
+/// even though sub-expressions might return false.
 pub fn can_move_expr_to_closure_no_visit(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
-    jump_targets: &[HirId],
+    loop_ids: &[HirId],
     ignore_locals: &HirIdSet,
 ) -> bool {
     match expr.kind {
         ExprKind::Break(Destination { target_id: Ok(id), .. }, _)
         | ExprKind::Continue(Destination { target_id: Ok(id), .. })
-            if jump_targets.contains(&id) =>
+            if loop_ids.contains(&id) =>
         {
             true
         },
