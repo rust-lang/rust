@@ -485,40 +485,53 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
 
         console.log(dot);
 
-        let script_d3 = vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3', 'dist', 'd3.min.js'));
-        let script_d3_gv = vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3-graphviz', 'build', 'd3-graphviz.min.js'));
-        let script_wasm = vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', '@hpcc-js', 'wasm', 'dist', 'index.min.js'));
+        let scripts = [
+            { file: vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3', 'dist', 'd3.min.js')) },
+            { file: vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', '@hpcc-js', 'wasm', 'dist', 'index.min.js')), worker: true },
+            { file: vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3-graphviz', 'build', 'd3-graphviz.min.js')) },
+        ]
+        console.log(scripts);
 
-        console.log(script_d3, script_d3_gv, script_wasm);
+        const scripts_html = scripts.map(({ file, worker }) => {
+            let uri = panel.webview.asWebviewUri(file);
+            return `<script type="${worker ? "javascript/worker" : "text/javascript"}" src="${uri}"></script>`
+        }).join("\n")
 
         const html = `
-        <!DOCTYPE html>
-        <meta charset="utf-8">
-        <head>
-            <style>
-                body {
-                    padding: 0px
-                }
-                ::-webkit-scrollbar {
-                    display: none;
-                }
-            </style>
-        </head>
-        <body>
-            <script src="${panel.webview.asWebviewUri(script_d3)}"></script>
-            <script src="${panel.webview.asWebviewUri(script_wasm)}"></script>
-            <script src="${panel.webview.asWebviewUri(script_d3_gv)}"></script>
-            <div id="graph"></div>
-            <script>
-                d3.select("#graph")
-                  .graphviz()
-                  .fit(true)
-                  .width(window.innerWidth)
-                  .height(window.innerHeight)
-                  .renderDot(\`${dot}\`);
-            </script>
-        </body>
-        `;
+            <!DOCTYPE html>
+            <meta charset="utf-8">
+            <head>
+                <style>
+                    /* Fill the entire view */
+                    html, body { margin:0; padding:0; overflow:hidden }
+                    svg { position:fixed; top:0; left:0; height:100%; width:100% }
+
+                    /* Disable the graphviz backgroud and fill the polygons */
+                    .graph > polygon { display:none; }
+                    :is(.node,.edge) polygon { fill: white; }
+
+                    /* Invert the line colours for dark themes */
+                    body:not(.vscode-light) .edge path { stroke: white; }
+                </style>
+            </head>
+            <body>
+                ${scripts_html}
+                <div id="graph"></div>
+                <script>
+                    let graph = d3.select("#graph")
+                                  .graphviz()
+                                  .fit(true)
+                                  .zoomScaleExtent([0.1, Infinity])
+                                  .renderDot(\`${dot}\`);
+
+                    d3.select(window).on("click", (event) => {
+                        if (event.ctrlKey) {
+                            graph.resetZoom(d3.transition().duration(100));
+                        }
+                    });
+                </script>
+            </body>
+            `;
 
         console.log(html);
 
