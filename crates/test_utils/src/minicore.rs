@@ -346,6 +346,14 @@ pub mod fmt {
 }
 // endregion:fmt
 
+// region:default
+pub mod default {
+    pub trait Default {
+        fn default() -> Self;
+    }
+}
+// endregion:default
+
 // region:slice
 pub mod slice {
     #[lang = "slice"]

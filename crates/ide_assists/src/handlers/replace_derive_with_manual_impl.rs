@@ -169,7 +169,7 @@ fn impl_def_from_trait(
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-        let _ = gen_default_impl(func, trait_path, adt, annotated_name);
+        let _ = gen_trait_body_impl(func, trait_path, adt, annotated_name);
     };
 
     Some((impl_def, first_assoc_item))
@@ -180,7 +180,7 @@ fn impl_def_from_trait(
 /// Returns `Option` so that we can use `?` rather than `if let Some`. Returning
 /// `None` means that generating a custom trait body failed, and the body will remain
 /// as `todo!` instead.
-fn gen_default_impl(
+fn gen_trait_body_impl(
     func: &ast::Fn,
     trait_path: &ast::Path,
     adt: &ast::Adt,
@@ -188,6 +188,7 @@ fn gen_default_impl(
 ) -> Option<()> {
     match trait_path.segment()?.name_ref()?.text().as_str() {
         "Debug" => gen_debug_impl(adt, func, annotated_name),
+        "Default" => gen_default_impl(adt, func),
         _ => Some(()),
     }
 }
@@ -276,6 +277,50 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) ->
     }
 }
 
+/// Generate a `Debug` impl based on the fields and members of the target type.
+fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    match adt {
+        // `Debug` cannot be derived for unions, so no default impl can be provided.
+        ast::Adt::Union(_) => Some(()),
+        // Deriving `Debug` for enums is not stable yet.
+        ast::Adt::Enum(_) => Some(()),
+        ast::Adt::Struct(strukt) => {
+            let expr = match strukt.field_list() {
+                Some(ast::FieldList::RecordFieldList(field_list)) => {
+                    let mut fields = vec![];
+                    for field in field_list.fields() {
+                        let trait_name = make::ext::ident_path("Default");
+                        let method_name = make::ext::ident_path("default");
+                        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
+                        let method_call = make::expr_call(fn_name, make::arg_list(None));
+                        let name_ref = make::name_ref(&field.name()?.to_string());
+                        let field = make::record_expr_field(name_ref, Some(method_call));
+                        fields.push(field);
+                    }
+                    let struct_name = make::ext::ident_path("Self");
+                    let fields = make::record_expr_field_list(fields);
+                    make::record_expr(struct_name, fields).into()
+                }
+                Some(ast::FieldList::TupleFieldList(field_list)) => {
+                    let mut fields = vec![];
+                    for _ in field_list.fields() {
+                        let trait_name = make::ext::ident_path("Default");
+                        let method_name = make::ext::ident_path("default");
+                        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
+                        let method_call = make::expr_call(fn_name, make::arg_list(None));
+                        fields.push(method_call);
+                    }
+                    let struct_name = make::expr_path(make::ext::ident_path("Self"));
+                    make::expr_call(struct_name, make::arg_list(fields))
+                }
+                None => todo!(),
+            };
+            let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+            ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+            Some(())
+        }
+    }
+}
 fn update_attribute(
     builder: &mut AssistBuilder,
     input: &ast::TokenTree,
@@ -403,6 +448,50 @@ impl core::fmt::Debug for Foo {
             Self::Bar => write!(f, "Bar"),
             Self::Baz => write!(f, "Baz"),
         }
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_default_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: default
+#[derive(Defau$0lt)]
+struct Foo {
+    foo: usize,
+}
+"#,
+            r#"
+struct Foo {
+    foo: usize,
+}
+
+impl Default for Foo {
+    $0fn default() -> Self {
+        Self { foo: Default::default() }
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_default_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: default
+#[derive(Defau$0lt)]
+struct Foo(usize);
+"#,
+            r#"
+struct Foo(usize);
+
+impl Default for Foo {
+    $0fn default() -> Self {
+        Self(Default::default())
     }
 }
 "#,
