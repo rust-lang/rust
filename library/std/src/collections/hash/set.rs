@@ -809,11 +809,11 @@ where
         other.is_subset(self)
     }
 
-    /// Adds a value to the set.
+    /// Inserts a value to the set.
     ///
-    /// If the set did not have this value present, `true` is returned.
+    /// If the insertion changed the set, `true` is returned.
     ///
-    /// If the set did have this value present, `false` is returned.
+    /// If the value already has been present, `false` is returned.
     ///
     /// # Examples
     ///
