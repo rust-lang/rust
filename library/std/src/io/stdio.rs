@@ -216,12 +216,12 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// # Examples
 ///
 /// ```no_run
-/// use std::io::{self, Read};
+/// use std::io;
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
 ///     let mut stdin = io::stdin(); // We get `Stdin` here.
-///     stdin.read_to_string(&mut buffer)?;
+///     stdin.read_line(&mut buffer)?;
 ///     Ok(())
 /// }
 /// ```
@@ -244,14 +244,14 @@ pub struct Stdin {
 /// # Examples
 ///
 /// ```no_run
-/// use std::io::{self, Read};
+/// use std::io::{self, BufRead};
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
 ///     let stdin = io::stdin(); // We get `Stdin` here.
 ///     {
 ///         let mut handle = stdin.lock(); // We get `StdinLock` here.
-///         handle.read_to_string(&mut buffer)?;
+///         handle.read_line(&mut buffer)?;
 ///     } // `StdinLock` is dropped here.
 ///     Ok(())
 /// }
@@ -277,11 +277,11 @@ pub struct StdinLock<'a> {
 /// Using implicit synchronization:
 ///
 /// ```no_run
-/// use std::io::{self, Read};
+/// use std::io;
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
-///     io::stdin().read_to_string(&mut buffer)?;
+///     io::stdin().read_line(&mut buffer)?;
 ///     Ok(())
 /// }
 /// ```
@@ -289,14 +289,14 @@ pub struct StdinLock<'a> {
 /// Using explicit synchronization:
 ///
 /// ```no_run
-/// use std::io::{self, Read};
+/// use std::io::{self, BufRead};
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
 ///     let stdin = io::stdin();
 ///     let mut handle = stdin.lock();
 ///
-///     handle.read_to_string(&mut buffer)?;
+///     handle.read_line(&mut buffer)?;
 ///     Ok(())
 /// }
 /// ```
@@ -337,13 +337,13 @@ pub fn stdin() -> Stdin {
 ///
 /// ```no_run
 /// #![feature(stdio_locked)]
-/// use std::io::{self, Read};
+/// use std::io::{self, BufRead};
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
 ///     let mut handle = io::stdin_locked();
 ///
-///     handle.read_to_string(&mut buffer)?;
+///     handle.read_line(&mut buffer)?;
 ///     Ok(())
 /// }
 /// ```
@@ -363,14 +363,14 @@ impl Stdin {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::{self, Read};
+    /// use std::io::{self, BufRead};
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut buffer = String::new();
     ///     let stdin = io::stdin();
     ///     let mut handle = stdin.lock();
     ///
-    ///     handle.read_to_string(&mut buffer)?;
+    ///     handle.read_line(&mut buffer)?;
     ///     Ok(())
     /// }
     /// ```
@@ -432,13 +432,13 @@ impl Stdin {
     ///
     /// ```no_run
     /// #![feature(stdio_locked)]
-    /// use std::io::{self, Read};
+    /// use std::io::{self, BufRead};
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut buffer = String::new();
     ///     let mut handle = io::stdin().into_locked();
     ///
-    ///     handle.read_to_string(&mut buffer)?;
+    ///     handle.read_line(&mut buffer)?;
     ///     Ok(())
     /// }
     /// ```
