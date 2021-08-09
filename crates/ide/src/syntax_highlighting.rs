@@ -140,7 +140,7 @@ pub struct HlRange {
 // library:: Emitted for items that are defined outside of the current crate.
 // mutable:: Emitted for mutable locals and statics as well as functions taking `&mut self`.
 // public:: Emitted for items that are from the current crate and are `pub`.
-// reference: Emitted for locals behind a reference and functions taking `self` by reference.
+// reference:: Emitted for locals behind a reference and functions taking `self` by reference.
 // static:: Emitted for "static" functions, also known as functions that do not take a `self` param, as well as statics and consts.
 // trait:: Emitted for associated trait items.
 // unsafe:: Emitted for unsafe operations, like unsafe function calls, as well as the `unsafe` token.
