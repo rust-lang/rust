@@ -139,7 +139,7 @@ pub(crate) fn generate_method(acc: &mut Assists, ctx: &AssistContext) -> Option<
             builder.edit_file(function_template.file);
             let mut new_fn = function_template.to_string(ctx.config.snippet_cap);
             if impl_.is_none() {
-                new_fn = format!("\nimpl {} {{\n   {}\n}}", ty.name(ctx.sema.db), new_fn,);
+                new_fn = format!("\nimpl {} {{\n{}\n}}", ty.name(ctx.sema.db), new_fn,);
             }
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
@@ -1380,6 +1380,129 @@ fn foo() {
 async fn bar(arg: i32) ${0:-> ()} {
     todo!()
 }
+",
+        )
+    }
+
+    #[test]
+    fn create_method() {
+        check_assist(
+            generate_method,
+            r"
+struct S;
+
+fn foo() {
+    S.bar$0();
+}
+
+",
+            r"
+struct S;
+
+fn foo() {
+    S.bar();
+}
+impl S {
+
+
+fn bar(&self) ${0:-> ()} {
+    todo!()
+}
+}
+
+",
+        )
+    }
+
+    #[test]
+    fn create_method_within_an_impl() {
+        check_assist(
+            generate_method,
+            r"
+struct S;
+
+fn foo() {
+    S.bar$0();
+}
+impl S {}
+
+",
+            r"
+struct S;
+
+fn foo() {
+    S.bar();
+}
+impl S {
+    fn bar(&self) ${0:-> ()} {
+        todo!()
+    }
+}
+
+",
+        )
+    }
+
+    #[test]
+    fn create_method_from_different_module() {
+        check_assist(
+            generate_method,
+            r"
+mod s {
+    pub struct S;
+}
+fn foo() {
+    s::S.bar$0();
+}
+
+",
+            r"
+mod s {
+    pub struct S;
+impl S {
+
+
+    pub(crate) fn bar(&self) ${0:-> ()} {
+        todo!()
+    }
+}
+}
+fn foo() {
+    s::S.bar();
+}
+
+",
+        )
+    }
+
+    #[test]
+    fn create_method_from_descendant_module() {
+        check_assist(
+            generate_method,
+            r"
+struct S;
+mod s {
+    fn foo() {
+        super::S.bar$0();
+    }
+}
+
+",
+            r"
+struct S;
+mod s {
+    fn foo() {
+        super::S.bar();
+    }
+}
+impl S {
+
+
+fn bar(&self) ${0:-> ()} {
+    todo!()
+}
+}
+
 ",
         )
     }
