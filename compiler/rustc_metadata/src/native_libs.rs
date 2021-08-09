@@ -77,6 +77,15 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                                 modifier `-bundle` with library kind `static`",
                             )
                             .emit();
+                            if !self.tcx.features().static_nobundle {
+                                feature_err(
+                                    &self.tcx.sess.parse_sess,
+                                    sym::static_nobundle,
+                                    item.span(),
+                                    "kind=\"static-nobundle\" is unstable",
+                                )
+                                .emit();
+                            }
                             NativeLibKind::Static { bundle: Some(false), whole_archive: None }
                         }
                         "dylib" => NativeLibKind::Dylib { as_needed: None },
@@ -249,17 +258,6 @@ impl Collector<'tcx> {
                 sym::link_cfg,
                 span.unwrap(),
                 "kind=\"link_cfg\" is unstable",
-            )
-            .emit();
-        }
-        if matches!(lib.kind, NativeLibKind::Static { bundle: Some(false), .. })
-            && !self.tcx.features().static_nobundle
-        {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::static_nobundle,
-                span.unwrap_or(rustc_span::DUMMY_SP),
-                "kind=\"static-nobundle\" is unstable",
             )
             .emit();
         }

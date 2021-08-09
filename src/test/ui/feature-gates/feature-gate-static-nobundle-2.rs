@@ -1,6 +1,4 @@
-//~ ERROR kind="static-nobundle" is unstable
-// Test the behavior of rustc when non-existent library is statically linked
-
+// check-pass
 // compile-flags: -l static-nobundle=nonexistent
 
 fn main() {}

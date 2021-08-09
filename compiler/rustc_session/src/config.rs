@@ -1609,8 +1609,20 @@ fn select_debuginfo(
     }
 }
 
-fn parse_native_lib_kind(kind: &str, error_format: ErrorOutputType) -> NativeLibKind {
-    match kind {
+fn parse_native_lib_kind(
+    matches: &getopts::Matches,
+    kind: &str,
+    error_format: ErrorOutputType,
+) -> (NativeLibKind, Option<bool>) {
+    let is_nightly = nightly_options::match_is_nightly_build(matches);
+    let enable_unstable = nightly_options::is_unstable_enabled(matches);
+
+    let (kind, modifiers) = match kind.split_once(':') {
+        None => (kind, None),
+        Some((kind, modifiers)) => (kind, Some(modifiers)),
+    };
+
+    let kind = match kind {
         "dylib" => NativeLibKind::Dylib { as_needed: None },
         "framework" => NativeLibKind::Framework { as_needed: None },
         "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
@@ -1620,17 +1632,49 @@ fn parse_native_lib_kind(kind: &str, error_format: ErrorOutputType) -> NativeLib
                 "library kind `static-nobundle` has been superseded by specifying \
                 `-bundle` on library kind `static`. Try `static:-bundle`",
             );
+            if modifiers.is_some() {
+                early_error(
+                    error_format,
+                    "linking modifier can't be used with library kind `static-nobundle`",
+                )
+            }
+            if !is_nightly {
+                early_error(
+                    error_format,
+                    "library kind `static-nobundle` are currently unstable and only accepted on \
+                the nightly compiler",
+                );
+            }
             NativeLibKind::Static { bundle: Some(false), whole_archive: None }
         }
         s => early_error(
             error_format,
             &format!("unknown library kind `{}`, expected one of dylib, framework, or static", s),
         ),
+    };
+    match modifiers {
+        None => (kind, None),
+        Some(modifiers) => {
+            if !is_nightly {
+                early_error(
+                    error_format,
+                    "linking modifiers are currently unstable and only accepted on \
+                the nightly compiler",
+                );
+            }
+            if !enable_unstable {
+                early_error(
+                    error_format,
+                    "linking modifiers are currently unstable, \
+                the `-Z unstable-options` flag must also be passed to use it",
+                )
+            }
+            parse_native_lib_modifiers(kind, modifiers, error_format)
+        }
     }
 }
 
 fn parse_native_lib_modifiers(
-    is_nightly: bool,
     mut kind: NativeLibKind,
     modifiers: &str,
     error_format: ErrorOutputType,
@@ -1645,14 +1689,6 @@ fn parse_native_lib_modifiers(
                     before one of: bundle, verbatim, whole-archive, as-needed",
             ),
         };
-
-        if !is_nightly {
-            early_error(
-                error_format,
-                "linking modifiers are currently unstable and only accepted on \
-                the nightly compiler",
-            );
-        }
 
         match (modifier, &mut kind) {
             ("bundle", NativeLibKind::Static { bundle, .. }) => {
@@ -1700,7 +1736,6 @@ fn parse_native_lib_modifiers(
 }
 
 fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<NativeLib> {
-    let is_nightly = nightly_options::match_is_nightly_build(matches);
     matches
         .opt_strs("l")
         .into_iter()
@@ -1714,13 +1749,7 @@ fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<
             let (name, kind, verbatim) = match s.split_once('=') {
                 None => (s, NativeLibKind::Unspecified, None),
                 Some((kind, name)) => {
-                    let (kind, verbatim) = match kind.split_once(':') {
-                        None => (parse_native_lib_kind(kind, error_format), None),
-                        Some((kind, modifiers)) => {
-                            let kind = parse_native_lib_kind(kind, error_format);
-                            parse_native_lib_modifiers(is_nightly, kind, modifiers, error_format)
-                        }
-                    };
+                    let (kind, verbatim) = parse_native_lib_kind(matches, kind, error_format);
                     (name.to_string(), kind, verbatim)
                 }
             };
