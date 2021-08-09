@@ -189,7 +189,7 @@ fn gen_trait_body_impl(
     match trait_path.segment()?.name_ref()?.text().as_str() {
         "Debug" => gen_debug_impl(adt, func, annotated_name),
         "Default" => gen_default_impl(adt, func),
-        _ => Some(()),
+        _ => None,
     }
 }
 
@@ -197,7 +197,7 @@ fn gen_trait_body_impl(
 fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) -> Option<()> {
     match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
-        ast::Adt::Union(_) => Some(()),
+        ast::Adt::Union(_) => None,
 
         // => match self { Self::Variant => write!(f, "Variant") }
         ast::Adt::Enum(enum_) => {
@@ -279,11 +279,17 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn, annotated_name: &ast::Name) ->
 
 /// Generate a `Debug` impl based on the fields and members of the target type.
 fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    return match adt {
+    fn gen_default_call() -> ast::Expr {
+        let trait_name = make::ext::ident_path("Default");
+        let method_name = make::ext::ident_path("default");
+        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
+        make::expr_call(fn_name, make::arg_list(None))
+    }
+    match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
-        ast::Adt::Union(_) => Some(()),
+        ast::Adt::Union(_) => None,
         // Deriving `Debug` for enums is not stable yet.
-        ast::Adt::Enum(_) => Some(()),
+        ast::Adt::Enum(_) => None,
         ast::Adt::Struct(strukt) => {
             let expr = match strukt.field_list() {
                 Some(ast::FieldList::RecordFieldList(field_list)) => {
@@ -311,15 +317,8 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             };
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
             ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
-            return Some(());
+            Some(())
         }
-    };
-
-    fn gen_default_call() -> ast::Expr {
-        let trait_name = make::ext::ident_path("Default");
-        let method_name = make::ext::ident_path("default");
-        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
-        make::expr_call(fn_name, make::arg_list(None))
     }
 }
 fn update_attribute(
