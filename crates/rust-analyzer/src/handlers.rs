@@ -79,12 +79,6 @@ pub(crate) fn handle_analyzer_status(
             .status(file_id)
             .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
     );
-    format_to!(buf, "\n\nRequests:\n");
-    let requests = snap.latest_requests.read();
-    for (is_last, r) in requests.iter() {
-        let mark = if is_last { "*" } else { " " };
-        format_to!(buf, "{}{:4} {:<36}{}ms\n", mark, r.id, r.method, r.duration.as_millis());
-    }
     Ok(buf)
 }
 
