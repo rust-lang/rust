@@ -516,3 +516,14 @@ fn ty_ctor(ty: &String, ctor: &str) -> Option<String> {
     let res = ty.to_string().strip_prefix(ctor)?.strip_prefix('<')?.strip_suffix('>')?.to_string();
     Some(res)
 }
+
+pub(crate) fn get_methods(items: &ast::AssocItemList) -> Vec<ast::Fn> {
+    items
+        .assoc_items()
+        .flat_map(|i| match i {
+            ast::AssocItem::Fn(f) => Some(f),
+            _ => None,
+        })
+        .filter(|f| f.name().is_some())
+        .collect()
+}

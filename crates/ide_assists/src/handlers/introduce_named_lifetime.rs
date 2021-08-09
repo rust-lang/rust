@@ -33,9 +33,9 @@ static ASSIST_LABEL: &str = "Introduce named lifetime";
 //     }
 // }
 // ```
-// FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
-// FIXME: should also add support for the case fun(f: &Foo) -> &$0Foo
 pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    // FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
+    // FIXME: should also add support for the case fun(f: &Foo) -> &$0Foo
     let lifetime =
         ctx.find_node_at_offset::<ast::Lifetime>().filter(|lifetime| lifetime.text() == "'_")?;
     let lifetime_loc = lifetime.lifetime_ident_token()?.text_range();

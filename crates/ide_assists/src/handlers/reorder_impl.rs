@@ -8,7 +8,7 @@ use syntax::{
     ted, AstNode,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: reorder_impl
 //
@@ -44,7 +44,6 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     fn c() {}
 // }
 // ```
-//
 pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;
@@ -76,7 +75,7 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let target = items.syntax().text_range();
     acc.add(
         AssistId("reorder_impl", AssistKind::RefactorRewrite),
-        "Sort methods",
+        "Sort methods by trait definition",
         target,
         |builder| {
             let methods = methods.into_iter().map(|fn_| builder.make_mut(fn_)).collect::<Vec<_>>();
@@ -109,17 +108,6 @@ fn trait_definition(path: &ast::Path, sema: &Semantics<RootDatabase>) -> Option<
         PathResolution::Def(hir::ModuleDef::Trait(trait_)) => Some(trait_),
         _ => None,
     }
-}
-
-fn get_methods(items: &ast::AssocItemList) -> Vec<ast::Fn> {
-    items
-        .assoc_items()
-        .flat_map(|i| match i {
-            ast::AssocItem::Fn(f) => Some(f),
-            _ => None,
-        })
-        .filter(|f| f.name().is_some())
-        .collect()
 }
 
 #[cfg(test)]
