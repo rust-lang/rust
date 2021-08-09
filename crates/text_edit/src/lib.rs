@@ -17,6 +17,7 @@ pub struct Indel {
 
 #[derive(Default, Debug, Clone)]
 pub struct TextEdit {
+    /// Invariant: disjoint and sorted by `delete`.
     indels: Vec<Indel>,
 }
 
