@@ -4,6 +4,7 @@ use crate::traits::{self, PredicateObligation};
 use hir::def_id::LocalDefId;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -81,7 +82,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///   obligations
     /// - `value` -- the value within which we are instantiating opaque types
     /// - `value_span` -- the span where the value came from, used in error reporting
-    pub fn instantiate_opaque_types_without_resolving_projections<T: TypeFoldable<'tcx>>(
+    pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
@@ -235,7 +236,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                 },
             );
             infcx.opaque_types_vars.insert(ty_var, ty);
-            infcx.register_obligation_for_opaque_type_queue.push((key, span));
         }
 
         debug!("generated new type inference var {:?}", ty_var.kind());
@@ -243,6 +243,23 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let item_bounds = tcx.explicit_item_bounds(def_id);
         let bounds: Vec<_> =
             item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
+
+        // We can't normalize associated types from `rustc_infer`, but we can eagerly register inference variables for them.
+        let bounds = bounds.fold_with(&mut BottomUpFolder {
+            tcx,
+            ty_op: |ty| match ty.kind() {
+                ty::Projection(projection_ty) => infcx.infer_projection(
+                    self.param_env,
+                    *projection_ty,
+                    ObligationCause::misc(span, self.body_id),
+                    0,
+                    &mut self.obligations,
+                ),
+                _ => ty,
+            },
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
+        });
 
         self.obligations.reserve(bounds.len());
         for predicate in bounds {

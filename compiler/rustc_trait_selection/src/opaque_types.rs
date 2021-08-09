@@ -1,5 +1,4 @@
-use crate::infer::InferCtxtExt as _;
-use crate::traits::{self, ObligationCause, PredicateObligation};
+use crate::traits;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -7,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::free_regions::FreeRegionRelations;
 use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
-use rustc_infer::infer::{self, InferCtxt, InferOk};
+use rustc_infer::infer::{self, InferCtxt};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
@@ -29,20 +28,6 @@ pub enum GenerateMemberConstraints {
 }
 
 pub trait InferCtxtExt<'tcx> {
-    fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
-        &self,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-        value_span: Span,
-    ) -> InferOk<'tcx, T>;
-
-    fn register_obligations_for_opaque_types(
-        &self,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> InferOk<'tcx, ()>;
-
     fn constrain_opaque_types<FRR: FreeRegionRelations<'tcx>>(&self, free_region_relations: &FRR);
 
     fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
@@ -71,84 +56,6 @@ pub trait InferCtxtExt<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
-    /// Replaces all opaque types in `value` with fresh inference variables
-    /// and creates appropriate obligations. For example, given the input:
-    ///
-    ///     impl Iterator<Item = impl Debug>
-    ///
-    /// this method would create two type variables, `?0` and `?1`. It would
-    /// return the type `?0` but also the obligations:
-    ///
-    ///     ?0: Iterator<Item = ?1>
-    ///     ?1: Debug
-    ///
-    /// Moreover, it returns a `OpaqueTypeMap` that would map `?0` to
-    /// info about the `impl Iterator<..>` type and `?1` to info about
-    /// the `impl Debug` type.
-    ///
-    /// # Parameters
-    ///
-    /// - `parent_def_id` -- the `DefId` of the function in which the opaque type
-    ///   is defined
-    /// - `body_id` -- the body-id with which the resulting obligations should
-    ///   be associated
-    /// - `param_env` -- the in-scope parameter environment to be used for
-    ///   obligations
-    /// - `value` -- the value within which we are instantiating opaque types
-    /// - `value_span` -- the span where the value came from, used in error reporting
-    #[instrument(skip(self), level = "debug")]
-    fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
-        &self,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-        value_span: Span,
-    ) -> InferOk<'tcx, T> {
-        let mut value = self.instantiate_opaque_types_without_resolving_projections(
-            body_id, param_env, value, value_span,
-        );
-
-        // We can't use normalization in `InferCtxt` as that needs to preserve lifetimes
-        // and we don't have access to this (trait_selection) crate's normalization/trait
-        // machinery.
-        // TODO: should probably do this in `register_predicates` so everything is less
-        // fragile.
-        let normalized = self.partially_normalize_associated_types_in(
-            ObligationCause::misc(value_span, body_id),
-            param_env,
-            value.obligations,
-        );
-        value.obligations = normalized.value;
-        value.obligations.extend(normalized.obligations);
-        let obligations =
-            self.register_obligations_for_opaque_types(body_id, param_env).obligations;
-        value.obligations.extend(obligations);
-        value
-    }
-
-    fn register_obligations_for_opaque_types(
-        &self,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> InferOk<'tcx, ()> {
-        let mut instantiator =
-            Instantiator { infcx: self, body_id, param_env, obligations: vec![] };
-        // Handling the obligations of the opaque types may introduce more opaque types for which we
-        // then need to handle the obligations.
-        loop {
-            let opaque_types = std::mem::take(
-                &mut self.inner.borrow_mut().register_obligation_for_opaque_type_queue,
-            );
-            if opaque_types.is_empty() {
-                break;
-            }
-            for (opaque_type_key, span) in opaque_types {
-                instantiator.compute_opaque_type_obligations(opaque_type_key, span);
-            }
-        }
-        InferOk { value: (), obligations: instantiator.obligations }
-    }
-
     /// Computes the obligations for an opaque type's bounds and instantiates
     /// nested opaque types within the obligations.
     /// Nested opaque types don't automatically have their obligations computed
@@ -889,66 +796,6 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             }
 
             _ => ct,
-        }
-    }
-}
-
-struct Instantiator<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    body_id: hir::HirId,
-    param_env: ty::ParamEnv<'tcx>,
-    obligations: Vec<PredicateObligation<'tcx>>,
-}
-
-impl<'a, 'tcx> Instantiator<'a, 'tcx> {
-    fn compute_opaque_type_obligations(
-        &mut self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        span: Span,
-    ) {
-        let infcx = self.infcx;
-        let tcx = infcx.tcx;
-        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
-
-        let item_bounds = tcx.explicit_item_bounds(def_id);
-        debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
-        let bounds: Vec<_> =
-            item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
-
-        let param_env = tcx.param_env(def_id);
-        let InferOk { value: bounds, obligations } = infcx.partially_normalize_associated_types_in(
-            ObligationCause::misc(span, self.body_id),
-            param_env,
-            bounds,
-        );
-        self.obligations.extend(obligations);
-
-        debug!("instantiate_opaque_types: bounds={:?}", bounds);
-
-        for predicate in &bounds {
-            if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
-                if projection.ty.references_error() {
-                    // No point on adding these obligations since there's a type error involved.
-                    return;
-                }
-            }
-        }
-
-        self.obligations.reserve(bounds.len());
-        for predicate in bounds {
-            // Change the predicate to refer to the type variable,
-            // which will be the concrete type instead of the opaque type.
-            // This also instantiates nested instances of `impl Trait`.
-            let predicate =
-                infcx.instantiate_opaque_types(self.body_id, self.param_env, predicate, span);
-            self.obligations.extend(predicate.obligations);
-            let predicate = predicate.value;
-
-            let cause = traits::ObligationCause::new(span, self.body_id, traits::OpaqueType);
-
-            // Require that the predicate holds for the concrete type.
-            debug!("instantiate_opaque_types: predicate={:?}", predicate);
-            self.obligations.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
     }
 }

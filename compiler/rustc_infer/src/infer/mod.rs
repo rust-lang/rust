@@ -27,7 +27,6 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 pub use rustc_middle::ty::IntVarValue;
-use rustc_middle::ty::OpaqueTypeKey;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_session::config::BorrowckMode;
@@ -203,23 +202,12 @@ pub struct InferCtxtInner<'tcx> {
     // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
     pub opaque_types: OpaqueTypeMap<'tcx>,
 
-    /// List of opaque types for which we still need to register obligations
-    /// on their normalized bounds. Otherwise we won't be able to equate
-    /// opaque types that are mentioned indirectly via associated types.
-    pub register_obligation_for_opaque_type_queue: Vec<(OpaqueTypeKey<'tcx>, Span)>,
-
     /// A map from inference variables created from opaque
     /// type instantiations (`ty::Infer`) to the actual opaque
     /// type (`ty::Opaque`). Used during fallback to map unconstrained
     /// opaque type inference variables to their corresponding
     /// opaque type.
     pub opaque_types_vars: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
-}
-
-impl<'tcx> Drop for InferCtxtInner<'tcx> {
-    fn drop(&mut self) {
-        assert_eq!(self.register_obligation_for_opaque_type_queue, []);
-    }
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -235,7 +223,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
             region_obligations: vec![],
             opaque_types: Default::default(),
             opaque_types_vars: Default::default(),
-            register_obligation_for_opaque_type_queue: Default::default(),
         }
     }
 

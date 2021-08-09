@@ -707,7 +707,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        // TODO self.register_obligations_for_opaque_types();
         let result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if let Err(mut errors) = result {
             mutate_fulfillment_errors(&mut errors);
