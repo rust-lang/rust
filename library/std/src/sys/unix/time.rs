@@ -293,7 +293,7 @@ mod inner {
 
     impl Instant {
         pub fn now() -> Instant {
-            Instant { t: now(libc::CLOCK_MONOTONIC) }
+            Instant { t: now(libc::CLOCK_BOOTTIME) }
         }
 
         pub const fn zero() -> Instant {
