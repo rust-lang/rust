@@ -335,6 +335,7 @@ symbols! {
         bitreverse,
         bitxor,
         bitxor_assign,
+        black_box,
         block,
         bool,
         borrowck_graphviz_format,
