@@ -626,7 +626,7 @@ macro_rules! saturating_int_impl_signed {
             /// #![feature(saturating_int_impl)]
             /// use std::num::Saturating;
             ///
-            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX) / 4;")]
+            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX) / Saturating(4", stringify!($t), ");")]
             ///
             /// assert_eq!(n.leading_zeros(), 3);
             /// ```
@@ -636,12 +636,8 @@ macro_rules! saturating_int_impl_signed {
                 self.0.leading_zeros()
             }
 
-            /// Computes the absolute value of `self`, saturating around at
-            /// the boundary of the type.
-            ///
-            /// The only case where such saturating can occur is when one takes the absolute value of the negative
-            /// minimal value for the type this is a positive value that is too large to represent in the type. In
-            /// such a case, this function returns `MIN` itself.
+            /// Saturating absolute value. Computes `self.abs()`, returning `MAX` if `self == MIN`
+            /// instead of overflowing.
             ///
             /// # Examples
             ///
@@ -653,8 +649,9 @@ macro_rules! saturating_int_impl_signed {
             ///
             #[doc = concat!("assert_eq!(Saturating(100", stringify!($t), ").abs(), Saturating(100));")]
             #[doc = concat!("assert_eq!(Saturating(-100", stringify!($t), ").abs(), Saturating(100));")]
-            #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN).abs(), Saturating(", stringify!($t), "::MIN));")]
-            /// assert_eq!(Saturating(-128i8).abs().0 as u8, 128u8);
+            #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN).abs(), Saturating((", stringify!($t), "::MIN + 1).abs()));")]
+            #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN).abs(), Saturating(", stringify!($t), "::MIN.saturating_abs()));")]
+            /// assert_eq!(Saturating(-128i8).abs().0 as u8, i8::MAX as u8);
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
@@ -744,7 +741,7 @@ macro_rules! saturating_int_impl_unsigned {
             /// #![feature(saturating_int_impl)]
             /// use std::num::Saturating;
             ///
-            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX) / 4;")]
+            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX) / Saturating(4", stringify!($t), ");")]
             ///
             /// assert_eq!(n.leading_zeros(), 2);
             /// ```
