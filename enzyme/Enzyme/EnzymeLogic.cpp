@@ -83,6 +83,10 @@ cl::opt<bool> cache_reads_never("enzyme-cache-never", cl::init(false),
 cl::opt<bool> nonmarkedglobals_inactiveloads(
     "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
     cl::desc("Consider loads of nonmarked globals to be inactive"));
+
+cl::opt<bool> EnzymeJuliaAddrLoad(
+    "enzyme-julia-addr-load", cl::init(true), cl::Hidden,
+    cl::desc("Mark all loads resulting in an addr(13)* to be legal to redo"));
 }
 
 struct CacheAnalysis {
@@ -243,6 +247,11 @@ struct CacheAnalysis {
                 ->getAddressSpace() == 4) {
       return false;
     }
+
+    if (EnzymeJuliaAddrLoad)
+      if (auto PT = dyn_cast<PointerType>(li.getType()))
+        if (PT->getAddressSpace() == 13)
+          return false;
 
     // Find the underlying object for the pointer operand of the load
     // instruction.

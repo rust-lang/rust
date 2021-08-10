@@ -6382,6 +6382,26 @@ public:
         return;
       }
 
+      // If an object is managed by the GC do not preserve it for later free,
+      // Thus it only needs caching if there is a need for it in the reverse.
+      if (funcName == "jl_alloc_array_1d" || funcName == "jl_alloc_array_2d" ||
+          funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
+          funcName == "julia.gc_alloc_obj") {
+        if (!primalNeededInReverse) {
+          if (Mode == DerivativeMode::ReverseModeGradient) {
+            auto pn = BuilderZ.CreatePHI(
+                orig->getType(), 1, (orig->getName() + "_replacementJ").str());
+            gutils->fictiousPHIs[pn] = orig;
+            gutils->replaceAWithB(newCall, pn);
+            gutils->erase(newCall);
+          }
+        } else if (Mode != DerivativeMode::ReverseModeCombined) {
+          gutils->cacheForReverse(BuilderZ, newCall,
+                                  getIndex(orig, CacheType::Self));
+        }
+        return;
+      }
+
       if (EnzymeFreeInternalAllocations)
         hasPDFree = true;
 

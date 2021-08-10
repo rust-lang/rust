@@ -552,6 +552,11 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
         continue;
       if (moreOuterLoop == -1)
         continue;
+      if (auto ASC = dyn_cast<AddrSpaceCastInst>((*found->second.begin()).V)) {
+        if (ASC->getDestAddressSpace() == 11 ||
+            ASC->getDestAddressSpace() == 13)
+          continue;
+      }
       if (moreOuterLoop == 1 ||
           (moreOuterLoop == 0 &&
            DL.getTypeSizeInBits(V->getType()) >=
