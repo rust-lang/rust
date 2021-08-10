@@ -1399,6 +1399,33 @@ impl<T> Option<T> {
     }
 }
 
+impl<T, U> Option<(T, U)> {
+    /// Unzips an option containing a tuple of two options
+    ///
+    /// If `self` is `Some((a, b))` this method returns `(Some(a), Some(b))`.
+    /// Otherwise, `(None, None)` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unzip_option)]
+    ///
+    /// let x = Some((1, "hi"));
+    /// let y = None::<(u8, u32)>;
+    ///
+    /// assert_eq!(x.unzip(), (Some(1), Some("hi")));
+    /// assert_eq!(y.unzip(), (None, None));
+    /// ```
+    #[inline]
+    #[unstable(feature = "unzip_option", issue = "87800", reason = "recently added")]
+    pub const fn unzip(self) -> (Option<T>, Option<U>) {
+        match self {
+            Some((a, b)) => (Some(a), Some(b)),
+            None => (None, None),
+        }
+    }
+}
+
 impl<T: Copy> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
     /// option.
