@@ -102,6 +102,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         | sym::maxnumf64
         | sym::type_name
         | sym::forget
+        | sym::black_box
         | sym::variant_count => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
@@ -386,6 +387,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0));
                 (1, vec![param_ty; 2], tcx.types.bool)
             }
+
+            sym::black_box => (1, vec![param(0)], param(0)),
 
             other => {
                 tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
