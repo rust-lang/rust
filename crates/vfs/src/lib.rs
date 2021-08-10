@@ -111,7 +111,9 @@ impl Vfs {
 
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
-        self.interner.get(path).filter(|&it| self.get(it).is_some())
+        let it = self.interner.get(path)?;
+        let _ = self.get(it).as_ref()?;
+        Some(it)
     }
 
     /// File path corresponding to the given `file_id`.
