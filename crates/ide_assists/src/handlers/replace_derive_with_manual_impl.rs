@@ -575,6 +575,40 @@ impl Clone for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn add_custom_impl_clone_record_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz,
+}
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        match self {
+            Self::Bar { bin } => Self::Bar { bin: bin.clone() },
+            Self::Baz => Self::Baz,
+        }
+    }
+}
+"#,
+        )
+    }
     #[test]
     fn add_custom_impl_all() {
         check_assist(

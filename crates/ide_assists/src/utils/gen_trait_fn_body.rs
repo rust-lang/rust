@@ -42,9 +42,40 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 let right = make::ext::ident_path(&format!("{}", name));
                 let variant_name = make::path_concat(left, right);
 
-                let pattern = make::path_pat(variant_name.clone());
-                let variant_expr = make::expr_path(variant_name);
-                arms.push(make::match_arm(Some(pattern.into()), None, variant_expr));
+                match variant.field_list() {
+                    // => match self { Self::Name { x } => Self::Name { x: x.clone() } }
+                    Some(ast::FieldList::RecordFieldList(list)) => {
+                        let mut pats = vec![];
+                        let mut fields = vec![];
+                        for field in list.fields() {
+                            let field_name = field.name()?;
+                            let pat = make::ident_pat(false, false, field_name.clone());
+                            pats.push(pat.into());
+
+                            let path = make::ext::ident_path(&field_name.to_string());
+                            let method_call = gen_clone_call(make::expr_path(path));
+                            let name_ref = make::name_ref(&field_name.to_string());
+                            let field = make::record_expr_field(name_ref, Some(method_call));
+                            fields.push(field);
+                        }
+                        let pattern = make::record_pat(variant_name.clone(), pats.into_iter());
+
+                        let fields = make::record_expr_field_list(fields);
+                        let record_expr = make::record_expr(variant_name, fields).into();
+
+                        arms.push(make::match_arm(Some(pattern.into()), None, record_expr));
+                    }
+
+                    // => match self { Self::Name(arg1) => Self::Name(arg1.clone()) }
+                    Some(ast::FieldList::TupleFieldList(list)) => todo!(),
+
+                    // => match self { Self::Name => Self::Name }
+                    None => {
+                        let pattern = make::path_pat(variant_name.clone());
+                        let variant_expr = make::expr_path(variant_name);
+                        arms.push(make::match_arm(Some(pattern.into()), None, variant_expr));
+                    }
+                }
             }
 
             let match_target = make::expr_path(make::ext::ident_path("self"));
