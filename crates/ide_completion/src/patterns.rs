@@ -191,6 +191,7 @@ pub(crate) fn determine_location(
             }
         }
     };
+
     let res = match_ast! {
         match parent {
             ast::IdentPat(_it) => ImmediateLocation::IdentPat,
@@ -206,6 +207,9 @@ pub(crate) fn determine_location(
             } else {
                 ImmediateLocation::RecordField
             },
+            ast::RecordExprFieldList(_it) => sema
+                .find_node_at_offset_with_macros(original_file, offset)
+                .map(ImmediateLocation::RecordExpr)?,
             ast::TupleField(_it) => ImmediateLocation::TupleField,
             ast::TupleFieldList(_it) => ImmediateLocation::TupleField,
             ast::TypeBound(_it) => ImmediateLocation::TypeBound,

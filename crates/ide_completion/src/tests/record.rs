@@ -8,36 +8,6 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
-fn with_default_impl() {
-    check(
-        r#"
-//- minicore: default
-struct Struct { foo: u32, bar: usize }
-
-impl Default for Struct {
-    fn default() -> Self {
-        Struct {
-            foo: 0,
-            bar: 0,
-        }
-    }
-}
-
-fn foo() {
-    let other = Struct {
-        foo: 5,
-        $0
-    };
-}
-"#,
-        expect![[r#"
-            fd ..Default::default()
-            fd bar                  usize
-        "#]],
-    );
-}
-
-#[test]
 fn without_default_impl() {
     check(
         r#"
@@ -129,9 +99,54 @@ fn foo(f: Struct) {
 #[test]
 fn functional_update() {
     // FIXME: This should filter out all completions that do not have the type `Foo`
+    // FIXME: Fields should not show up after `.`
     check(
         r#"
+//- minicore:default
 struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
+
+fn main() {
+    let thing = 1;
+    let foo = Foo { foo1: 0, foo2: 0 };
+    let foo2 = Foo { thing, $0 }
+}
+"#,
+        expect![[r#"
+            fd ..Default::default()
+            fd foo1                 u32
+            fd foo2                 u32
+        "#]],
+    );
+    check(
+        r#"
+//- minicore:default
+struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
+
+fn main() {
+    let thing = 1;
+    let foo = Foo { foo1: 0, foo2: 0 };
+    let foo2 = Foo { thing, .$0 }
+}
+"#,
+        expect![[r#"
+            fd ..Default::default()
+            fd foo1                 u32
+            fd foo2                 u32
+        "#]],
+    );
+    check(
+        r#"
+//- minicore:default
+struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
 
 fn main() {
     let thing = 1;
@@ -140,25 +155,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            kw unsafe
-            kw match
-            kw while
-            kw while let
-            kw loop
-            kw if
-            kw if let
-            kw for
-            kw true
-            kw false
-            kw return
-            kw self
-            kw super
-            kw crate
-            lc foo       Foo
-            lc thing     i32
-            st Foo
-            fn main()    fn()
-            bt u32
+            fd ..Default::default()
+            fd foo1                 u32
+            fd foo2                 u32
         "#]],
     );
 }

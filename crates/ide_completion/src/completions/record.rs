@@ -186,5 +186,37 @@ fn foo() {
 }
 "#,
         );
+        check_edit(
+            "..Default::default()",
+            r#"
+//- minicore: default
+struct Struct { foo: u32, bar: usize }
+
+impl Default for Struct {
+    fn default() -> Self {}
+}
+
+fn foo() {
+    let other = Struct {
+        foo: 5,
+        ..$0
+    };
+}
+"#,
+            r#"
+struct Struct { foo: u32, bar: usize }
+
+impl Default for Struct {
+    fn default() -> Self {}
+}
+
+fn foo() {
+    let other = Struct {
+        foo: 5,
+        ..Default::default()
+    };
+}
+"#,
+        );
     }
 }
