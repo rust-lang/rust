@@ -1,10 +1,11 @@
-use hir::{known, Semantics};
+use hir::{known, AsAssocItem, Semantics};
 use ide_db::{
     helpers::{for_each_tail_expr, FamousDefs},
     RootDatabase,
 };
+use itertools::Itertools;
 use syntax::{
-    ast::{self, make, ArgListOwner},
+    ast::{self, edit::AstNodeEdit, make, ArgListOwner},
     ted, AstNode, SyntaxNode,
 };
 
@@ -75,6 +76,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
         |builder| {
             let closure_body = closure_body.clone_for_update();
             // Rewrite all `Some(e)` in tail position to `e`
+            let mut replacements = Vec::new();
             for_each_tail_expr(&closure_body, &mut |e| {
                 let e = match e {
                     ast::Expr::BreakExpr(e) => e.expr(),
@@ -84,11 +86,12 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
                 if let Some(ast::Expr::CallExpr(call)) = e {
                     if let Some(arg_list) = call.arg_list() {
                         if let Some(arg) = arg_list.args().next() {
-                            ted::replace(call.syntax(), arg.syntax());
+                            replacements.push((call.syntax().clone(), arg.syntax().clone()));
                         }
                     }
                 }
             });
+            replacements.into_iter().for_each(|(old, new)| ted::replace(old, new));
             let closure_body = match closure_body {
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
@@ -98,6 +101,95 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
             let arg_list = make::arg_list(Some(make::expr_closure(None, closure_body)));
             let mcall = make::expr_method_call(cond, make::name_ref("then"), arg_list);
             builder.replace(target, mcall.to_string());
+        },
+    )
+}
+
+// Assist: convert_bool_then_to_if
+//
+// Converts a `bool::then` method call to an equivalent if expression.
+//
+// ```
+// # //- minicore: bool_impl
+// fn main() {
+//     (0 == 0).then$0(|| val)
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     if 0 == 0 {
+//         Some(val)
+//     } else {
+//         None
+//     }
+// }
+// ```
+pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let name_ref = ctx.find_node_at_offset::<ast::NameRef>()?;
+    let mcall = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
+    let receiver = mcall.receiver()?;
+    let closure_body = mcall.arg_list()?.args().exactly_one().ok()?;
+    let closure_body = match closure_body {
+        ast::Expr::ClosureExpr(expr) => expr.body()?,
+        _ => return None,
+    };
+    // Verify this is `bool::then` that is being called.
+    let func = ctx.sema.resolve_method_call(&mcall)?;
+    if func.name(ctx.sema.db).to_string() != "then" {
+        return None;
+    }
+    let assoc = func.as_assoc_item(ctx.sema.db)?;
+    match assoc.container(ctx.sema.db) {
+        hir::AssocItemContainer::Impl(impl_) if impl_.self_ty(ctx.sema.db).is_bool() => {}
+        _ => return None,
+    }
+
+    let target = mcall.syntax().text_range();
+    acc.add(
+        AssistId("convert_bool_then_to_if", AssistKind::RefactorRewrite),
+        "Convert `bool::then` call to `if`",
+        target,
+        |builder| {
+            let closure_body = match closure_body {
+                ast::Expr::BlockExpr(block) => block,
+                e => make::block_expr(None, Some(e)),
+            };
+
+            let closure_body = closure_body.clone_for_update();
+            // Wrap all tails in `Some(...)`
+            let none_path = make::expr_path(make::ext::ident_path("None"));
+            let some_path = make::expr_path(make::ext::ident_path("Some"));
+            let mut replacements = Vec::new();
+            for_each_tail_expr(&ast::Expr::BlockExpr(closure_body.clone()), &mut |e| {
+                let e = match e {
+                    ast::Expr::BreakExpr(e) => e.expr(),
+                    ast::Expr::ReturnExpr(e) => e.expr(),
+                    _ => Some(e.clone()),
+                };
+                if let Some(expr) = e {
+                    replacements.push((
+                        expr.syntax().clone(),
+                        make::expr_call(some_path.clone(), make::arg_list(Some(expr)))
+                            .syntax()
+                            .clone_for_update(),
+                    ));
+                }
+            });
+            replacements.into_iter().for_each(|(old, new)| ted::replace(old, new));
+
+            let cond = match &receiver {
+                ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
+                _ => receiver,
+            };
+            let if_expr = make::expr_if(
+                make::condition(cond, None),
+                closure_body.reset_indent(),
+                Some(ast::ElseBranch::Block(make::block_expr(None, Some(none_path)))),
+            )
+            .indent(mcall.indent_level());
+
+            builder.replace(target, if_expr.to_string());
         },
     )
 }
@@ -342,6 +434,113 @@ fn main() {
             return;
         }
         Some(15)
+    } else {
+        None
+    }
+}
+",
+        );
+    }
+
+    #[test]
+    fn convert_bool_then_to_if_inapplicable() {
+        check_assist_not_applicable(
+            convert_bool_then_to_if,
+            r"
+//- minicore:bool_impl
+fn main() {
+    0.t$0hen(|| 15);
+}
+",
+        );
+        check_assist_not_applicable(
+            convert_bool_then_to_if,
+            r"
+//- minicore:bool_impl
+fn main() {
+    true.t$0hen(15);
+}
+",
+        );
+        check_assist_not_applicable(
+            convert_bool_then_to_if,
+            r"
+//- minicore:bool_impl
+fn main() {
+    true.t$0hen(|| 15, 15);
+}
+",
+        );
+    }
+
+    #[test]
+    fn convert_bool_then_to_if_simple() {
+        check_assist(
+            convert_bool_then_to_if,
+            r"
+//- minicore:bool_impl
+fn main() {
+    true.t$0hen(|| 15)
+}
+",
+            r"
+fn main() {
+    if true {
+        Some(15)
+    } else {
+        None
+    }
+}
+",
+        );
+        check_assist(
+            convert_bool_then_to_if,
+            r"
+//- minicore:bool_impl
+fn main() {
+    true.t$0hen(|| {
+        15
+    })
+}
+",
+            r"
+fn main() {
+    if true {
+        Some(15)
+    } else {
+        None
+    }
+}
+",
+        );
+    }
+
+    #[test]
+    fn convert_bool_then_to_if_tails() {
+        check_assist(
+            convert_bool_then_to_if,
+            r"
+//- minicore:bool_impl
+fn main() {
+    true.t$0hen(|| {
+        loop {
+            if false {
+                break 0;
+            }
+            break 15;
+        }
+    })
+}
+",
+            r"
+fn main() {
+    if true {
+        loop {
+            if false {
+                break Some(0);
+            }
+            break Some(15);
+        }
     } else {
         None
     }

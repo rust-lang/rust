@@ -192,6 +192,28 @@ pub(crate) fn frobnicate() {}
 }
 
 #[test]
+fn doctest_convert_bool_then_to_if() {
+    check_doc_test(
+        "convert_bool_then_to_if",
+        r#####"
+//- minicore: bool_impl
+fn main() {
+    (0 == 0).then$0(|| val)
+}
+"#####,
+        r#####"
+fn main() {
+    if 0 == 0 {
+        Some(val)
+    } else {
+        None
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_if_to_bool_then() {
     check_doc_test(
         "convert_if_to_bool_then",
