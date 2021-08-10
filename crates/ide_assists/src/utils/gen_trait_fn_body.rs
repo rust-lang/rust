@@ -58,16 +58,29 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             let field = make::record_expr_field(name_ref, Some(method_call));
                             fields.push(field);
                         }
-                        let pattern = make::record_pat(variant_name.clone(), pats.into_iter());
-
+                        let pat = make::record_pat(variant_name.clone(), pats.into_iter());
                         let fields = make::record_expr_field_list(fields);
                         let record_expr = make::record_expr(variant_name, fields).into();
-
-                        arms.push(make::match_arm(Some(pattern.into()), None, record_expr));
+                        arms.push(make::match_arm(Some(pat.into()), None, record_expr));
                     }
 
                     // => match self { Self::Name(arg1) => Self::Name(arg1.clone()) }
-                    Some(ast::FieldList::TupleFieldList(list)) => todo!(),
+                    Some(ast::FieldList::TupleFieldList(list)) => {
+                        let mut pats = vec![];
+                        let mut fields = vec![];
+                        for (i, _) in list.fields().enumerate() {
+                            let field_name = format!("arg{}", i);
+                            let pat = make::ident_pat(false, false, make::name(&field_name));
+                            pats.push(pat.into());
+
+                            let f_path = make::expr_path(make::ext::ident_path(&field_name));
+                            fields.push(gen_clone_call(f_path));
+                        }
+                        let pat = make::tuple_struct_pat(variant_name.clone(), pats.into_iter());
+                        let struct_name = make::expr_path(variant_name);
+                        let tuple_expr = make::expr_call(struct_name, make::arg_list(fields));
+                        arms.push(make::match_arm(Some(pat.into()), None, tuple_expr));
+                    }
 
                     // => match self { Self::Name => Self::Name }
                     None => {

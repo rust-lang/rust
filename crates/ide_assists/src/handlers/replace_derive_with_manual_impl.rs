@@ -567,7 +567,7 @@ enum Foo {
 impl Clone for Foo {
     $0fn clone(&self) -> Self {
         match self {
-            Self::Bar(arg1) => Self::Bar(arg1.clone()),
+            Self::Bar(arg0) => Self::Bar(arg0.clone()),
             Self::Baz => Self::Baz,
         }
     }
