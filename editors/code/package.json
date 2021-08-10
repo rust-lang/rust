@@ -25,13 +25,14 @@
     },
     "enableProposedApi": true,
     "scripts": {
-        "vscode:prepublish": "tsc && rollup -c",
+        "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
-        "build": "tsc",
-        "watch": "tsc --watch",
+        "build-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+        "build": "npm run build-base -- --sourcemap",
+        "watch": "npm run build-base -- --sourcemap --watch",
         "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src ./tests",
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
-        "pretest": "npm run build",
+        "pretest": "tsc && npm run build",
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
@@ -40,8 +41,6 @@
         "vscode-languageclient": "^7.1.0-next.5"
     },
     "devDependencies": {
-        "@rollup/plugin-commonjs": "^17.0.0",
-        "@rollup/plugin-node-resolve": "^13.0.0",
         "@types/glob": "^7.1.4",
         "@types/mocha": "^8.2.3",
         "@types/node": "~14.17.5",
@@ -49,10 +48,10 @@
         "@types/vscode": "^1.57.0",
         "@typescript-eslint/eslint-plugin": "^4.28.2",
         "@typescript-eslint/parser": "^4.28.2",
+        "esbuild": "^0.12.19",
         "eslint": "^7.30.0",
         "glob": "^7.1.6",
         "mocha": "^9.0.2",
-        "rollup": "^2.51.1",
         "tslib": "^2.3.0",
         "typescript": "^4.3.5",
         "typescript-formatter": "^7.2.2",
@@ -66,7 +65,7 @@
         "onCommand:rust-analyzer.reloadWorkspace",
         "workspaceContains:**/Cargo.toml"
     ],
-    "main": "./out/src/main",
+    "main": "./out/main",
     "contributes": {
         "taskDefinitions": [
             {
