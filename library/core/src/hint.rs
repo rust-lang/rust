@@ -152,6 +152,7 @@ pub fn spin_loop() {
 /// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
 ///
 /// [`std::convert::identity`]: crate::convert::identity
+#[inline]
 #[unstable(feature = "bench_black_box", issue = "64102")]
 #[cfg_attr(not(bootstrap), allow(unused_mut))]
 pub fn black_box<T>(mut dummy: T) -> T {
