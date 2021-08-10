@@ -28,9 +28,11 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 //     let v = _0;
 // }
 // ```
-//
-//
-// And (currently disabled):
+pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    destructure_tuple_binding_impl(acc, ctx, false)
+}
+
+// And when `with_sub_pattern` enabled (currently disabled):
 // Assist: destructure_tuple_binding_in_sub_pattern
 //
 // Destructures tuple items in sub-pattern (after `@`).
@@ -48,10 +50,6 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 //     let v = _0;
 // }
 // ```
-pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    destructure_tuple_binding_impl(acc, ctx, false)
-}
-
 pub(crate) fn destructure_tuple_binding_impl(
     acc: &mut Assists,
     ctx: &AssistContext,
@@ -96,7 +94,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
 
     let ty = ctx.sema.type_of_pat(&ident_pat.clone().into())?;
     // might be reference
-    let ty = ty.strip_references();
+    let ty = ty.adjusted().strip_references();
     // must be tuple
     let field_types = ty.tuple_fields(ctx.db());
     if field_types.is_empty() {
