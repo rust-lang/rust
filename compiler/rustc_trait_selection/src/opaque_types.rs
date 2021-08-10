@@ -1,4 +1,3 @@
-use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -995,31 +994,37 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("generated new type inference var {:?}", ty_var.kind());
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
-        debug!(?item_bounds);
-        let bounds: Vec<_> =
-            item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
 
-        let param_env = tcx.param_env(def_id);
-        let InferOk { value: bounds, obligations } = infcx.partially_normalize_associated_types_in(
-            ObligationCause::misc(self.value_span, self.body_id),
-            param_env,
-            bounds,
-        );
-        self.obligations.extend(obligations);
+        self.obligations.reserve(item_bounds.len());
+        for (predicate, _) in item_bounds {
+            debug!(?predicate);
+            let predicate = predicate.subst(tcx, substs);
+            debug!(?predicate);
 
-        debug!(?bounds);
+            // We can't normalize associated types from `rustc_infer`, but we can eagerly register inference variables for them.
+            let predicate = predicate.fold_with(&mut BottomUpFolder {
+                tcx,
+                ty_op: |ty| match ty.kind() {
+                    ty::Projection(projection_ty) => infcx.infer_projection(
+                        self.param_env,
+                        *projection_ty,
+                        ObligationCause::misc(self.value_span, self.body_id),
+                        0,
+                        &mut self.obligations,
+                    ),
+                    _ => ty,
+                },
+                lt_op: |lt| lt,
+                ct_op: |ct| ct,
+            });
+            debug!(?predicate);
 
-        for predicate in &bounds {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return ty_var;
                 }
             }
-        }
-
-        self.obligations.reserve(bounds.len());
-        for predicate in bounds {
             // Change the predicate to refer to the type variable,
             // which will be the concrete type instead of the opaque type.
             // This also instantiates nested instances of `impl Trait`.
@@ -1029,7 +1034,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                 traits::ObligationCause::new(self.value_span, self.body_id, traits::OpaqueType);
 
             // Require that the predicate holds for the concrete type.
-            debug!("instantiate_opaque_types: predicate={:?}", predicate);
+            debug!(?predicate);
             self.obligations.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
 
