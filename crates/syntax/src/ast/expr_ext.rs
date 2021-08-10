@@ -350,6 +350,42 @@ impl ast::BinExpr {
     }
 }
 
+impl std::fmt::Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BinOp::BooleanOr => write!(f, "||"),
+            BinOp::BooleanAnd => write!(f, "&&"),
+            BinOp::EqualityTest => write!(f, "=="),
+            BinOp::NegatedEqualityTest => write!(f, "!="),
+            BinOp::LesserEqualTest => write!(f, "<="),
+            BinOp::GreaterEqualTest => write!(f, ">="),
+            BinOp::LesserTest => write!(f, "<"),
+            BinOp::GreaterTest => write!(f, ">"),
+            BinOp::Addition => write!(f, "+"),
+            BinOp::Multiplication => write!(f, "*"),
+            BinOp::Subtraction => write!(f, "-"),
+            BinOp::Division => write!(f, "/"),
+            BinOp::Remainder => write!(f, "%"),
+            BinOp::LeftShift => write!(f, "<<"),
+            BinOp::RightShift => write!(f, ">>"),
+            BinOp::BitwiseXor => write!(f, "^"),
+            BinOp::BitwiseOr => write!(f, "|"),
+            BinOp::BitwiseAnd => write!(f, "&"),
+            BinOp::Assignment => write!(f, "="),
+            BinOp::AddAssign => write!(f, "+="),
+            BinOp::DivAssign => write!(f, "/="),
+            BinOp::MulAssign => write!(f, "*="),
+            BinOp::RemAssign => write!(f, "%="),
+            BinOp::ShrAssign => write!(f, ">>="),
+            BinOp::ShlAssign => write!(f, "<<="),
+            BinOp::SubAssign => write!(f, "-"),
+            BinOp::BitOrAssign => write!(f, "|="),
+            BinOp::BitAndAssign => write!(f, "&="),
+            BinOp::BitXorAssign => write!(f, "^="),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RangeOp {
     /// `..`
