@@ -863,7 +863,6 @@ struct Instantiator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
     fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
@@ -954,6 +953,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         })
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn fold_opaque_ty(
         &mut self,
         ty: Ty<'tcx>,
@@ -961,27 +961,19 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         origin: hir::OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
-        let tcx = infcx.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
-
-        debug!("instantiate_opaque_types: Opaque(def_id={:?}, substs={:?})", def_id, substs);
 
         // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
         if let Some(opaque_defn) = infcx.inner.borrow().opaque_types.get(&opaque_type_key) {
-            debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
+            debug!("re-using cached concrete type {:?}", opaque_defn.concrete_ty.kind());
             return opaque_defn.concrete_ty;
         }
+
         let ty_var = infcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::TypeInference,
             span: self.value_span,
         });
-
-        // Make sure that we are in fact defining the *entire* type
-        // (e.g., `type Foo<T: Bound> = impl Bar;` needs to be
-        // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
-        debug!("instantiate_opaque_types: param_env={:#?}", self.param_env,);
-        debug!("instantiate_opaque_types: generics={:#?}", tcx.generics_of(def_id),);
 
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
@@ -999,7 +991,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             infcx.opaque_types_vars.insert(ty_var, ty);
         }
 
-        debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
+        debug!("generated new type inference var {:?}", ty_var.kind());
         self.compute_opaque_type_obligations(opaque_type_key);
 
         ty_var
@@ -1011,7 +1003,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
-        debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
+        debug!(?item_bounds);
         let bounds: Vec<_> =
             item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
 
@@ -1023,7 +1015,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         );
         self.obligations.extend(obligations);
 
-        debug!("instantiate_opaque_types: bounds={:?}", bounds);
+        debug!(?bounds);
 
         for predicate in &bounds {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
