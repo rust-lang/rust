@@ -344,12 +344,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // check.)
         let bounds = tcx.explicit_item_bounds(def_id);
         debug!("{:#?}", bounds);
-        let bounds: Vec<_> =
-            bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs)).collect();
+        let bounds = bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs));
         debug!("{:#?}", bounds);
         let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
 
-        let required_region_bounds = required_region_bounds(tcx, opaque_type, bounds.into_iter());
+        let required_region_bounds = required_region_bounds(tcx, opaque_type, bounds);
         if !required_region_bounds.is_empty() {
             for required_region in required_region_bounds {
                 concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
