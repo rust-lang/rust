@@ -925,6 +925,31 @@ Don't use the `ref` keyword.
 Today, it is redundant.
 Between `ref` and mach ergonomics, the latter is more ergonomic in most cases, and is simpler (does not require a keyword).
 
+## Functional Combinators
+
+Use high order monadic combinators like `map`, `then`, only when they are a natural choice, don't bend the code to fit into some combinator.
+If writing a chain of combinators creates friction, replace them with control flow constructs: `for`, `if`, `match`.
+Mostly avoid `bool::then` and `Option::filter`.
+
+```rust
+// GOOD
+if !x.cond() {
+    return None;
+}
+Some(x)
+
+// BAD
+Some(x).filter(|it| it.cond())
+```
+
+This rule is more "soft" then others, and boils down mostly to taste.
+The guiding principle behind this rule is that code should be dense in computation, and sparse in the number of expressions per line.
+The second example contains *less* computation -- `filter` function is an indirection for `if`, it doesn't do any useful work by itself.
+At the same time, it is more crowded -- it takes more time to visually scan it.
+
+**Rationale:** consistency, playing to language's strengths.
+Rust has first-class support for imperative control flow constructs like `for` and `if`, while functions are less first-class due to lack of universal function type, currying, and non-first-class effects (`?`, `.await`).
+
 ## Helper Functions
 
 Avoid creating singe-use helper functions:
