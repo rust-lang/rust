@@ -1,6 +1,7 @@
 //! Assorted functions shared by several assists.
 
 pub(crate) mod suggest_name;
+mod gen_trait_fn_body;
 
 use std::ops;
 
@@ -24,6 +25,8 @@ use syntax::{
 };
 
 use crate::assist_context::{AssistBuilder, AssistContext};
+
+pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block)
