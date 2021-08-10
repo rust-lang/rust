@@ -136,8 +136,7 @@ fn main() {
 "#,
         expect![[r#"
             fd ..Default::default()
-            fd foo1                 u32
-            fd foo2                 u32
+            sn ..
         "#]],
     );
     check(
@@ -155,6 +154,28 @@ fn main() {
 }
 "#,
         expect![[r#"
+            kw unsafe
+            kw match
+            kw while
+            kw while let
+            kw loop
+            kw if
+            kw if let
+            kw for
+            kw true
+            kw false
+            kw return
+            kw self
+            kw super
+            kw crate
+            lc foo                  Foo
+            lc thing                i32
+            st Foo
+            fn main()               fn()
+            md core
+            bt u32
+            tt Sized
+            tt Default
             fd ..Default::default()
             fd foo1                 u32
             fd foo2                 u32

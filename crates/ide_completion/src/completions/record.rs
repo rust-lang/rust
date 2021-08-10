@@ -1,15 +1,18 @@
 //! Complete fields in record literals and patterns.
 use ide_db::{helpers::FamousDefs, SymbolKind};
-use syntax::ast::Expr;
+use syntax::{ast::Expr, T};
 
 use crate::{
     item::CompletionKind, patterns::ImmediateLocation, CompletionContext, CompletionItem,
-    Completions,
+    CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let missing_fields = match &ctx.completion_location {
-        Some(ImmediateLocation::RecordExpr(record_expr)) => {
+        Some(
+            ImmediateLocation::RecordExpr(record_expr)
+            | ImmediateLocation::RecordExprUpdate(record_expr),
+        ) => {
             let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
             let default_trait = FamousDefs(&ctx.sema, ctx.krate).core_default_Default();
             let impl_default_trait = default_trait.zip(ty).map_or(false, |(default_trait, ty)| {
@@ -29,7 +32,13 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                 item.insert_text(completion_text).kind(SymbolKind::Field);
                 item.add_to(acc);
             }
-
+            if ctx.previous_token_is(T![.]) {
+                let mut item =
+                    CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), "..");
+                item.insert_text(".").kind(CompletionItemKind::Snippet);
+                item.add_to(acc);
+                return None;
+            }
             missing_fields
         }
         Some(ImmediateLocation::RecordPat(record_pat)) => {
