@@ -1,7 +1,6 @@
 //! Driver for rust-analyzer.
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
-mod flags;
 mod logger;
 mod rustc_wrapper;
 
@@ -9,13 +8,7 @@ use std::{convert::TryFrom, env, fs, path::Path, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;
-use rust_analyzer::{
-    cli::{self, AnalysisStatsCmd},
-    config::Config,
-    from_json,
-    lsp_ext::supports_utf8,
-    Result,
-};
+use rust_analyzer::{cli::flags, config::Config, from_json, lsp_ext::supports_utf8, Result};
 use vfs::AbsPathBuf;
 
 #[cfg(all(feature = "mimalloc"))]
@@ -86,29 +79,14 @@ fn try_main() -> Result<()> {
             }
             run_server()?
         }
-        flags::RustAnalyzerCmd::ProcMacro(_) => proc_macro_srv::cli::run()?,
-        flags::RustAnalyzerCmd::Parse(cmd) => cli::parse(cmd.no_dump)?,
-        flags::RustAnalyzerCmd::Symbols(_) => cli::symbols()?,
-        flags::RustAnalyzerCmd::Highlight(cmd) => cli::highlight(cmd.rainbow)?,
-        flags::RustAnalyzerCmd::AnalysisStats(cmd) => AnalysisStatsCmd {
-            randomize: cmd.randomize,
-            parallel: cmd.parallel,
-            memory_usage: cmd.memory_usage,
-            only: cmd.only,
-            with_deps: cmd.with_deps,
-            no_sysroot: cmd.no_sysroot,
-            path: cmd.path,
-            enable_build_scripts: !cmd.disable_build_scripts,
-            enable_proc_macros: !cmd.disable_proc_macros,
-            skip_inference: cmd.skip_inference,
-        }
-        .run(verbosity)?,
-
-        flags::RustAnalyzerCmd::Diagnostics(cmd) => {
-            cli::diagnostics(&cmd.path, !cmd.disable_build_scripts, !cmd.disable_proc_macros)?
-        }
-        flags::RustAnalyzerCmd::Ssr(cmd) => cli::apply_ssr_rules(cmd.rule)?,
-        flags::RustAnalyzerCmd::Search(cmd) => cli::search_for_patterns(cmd.pattern, cmd.debug)?,
+        flags::RustAnalyzerCmd::ProcMacro(flags::ProcMacro) => proc_macro_srv::cli::run()?,
+        flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Highlight(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::AnalysisStats(cmd) => cmd.run(verbosity)?,
+        flags::RustAnalyzerCmd::Diagnostics(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Ssr(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Search(cmd) => cmd.run()?,
     }
     Ok(())
 }
