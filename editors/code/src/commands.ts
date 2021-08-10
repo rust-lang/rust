@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as ra from './lsp_ext';
+import * as path from 'path';
 
 import { Ctx, Cmd } from './ctx';
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from './snippets';
@@ -474,8 +475,9 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
     return async () => {
         const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two, {
             enableScripts: true,
-            retainContextWhenHidden: true
-          });
+            retainContextWhenHidden: true,
+            localResourceRoots: [vscode.Uri.joinPath(vscode.Uri.parse(ctx.extensionPath), "node_modules")]
+        });
         const params = {
             full: full,
         };
@@ -483,19 +485,37 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
 
         console.log(dot);
 
+        let script_d3 = vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3', 'dist', 'd3.min.js'));
+        let script_d3_gv = vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', 'd3-graphviz', 'build', 'd3-graphviz.min.js'));
+        let script_wasm = vscode.Uri.file(path.join(ctx.extensionPath, 'node_modules', '@hpcc-js', 'wasm', 'dist', 'index.min.js'));
+
+        console.log(script_d3, script_d3_gv, script_wasm);
+
         const html = `
         <!DOCTYPE html>
         <meta charset="utf-8">
-
+        <head>
+            <style>
+                body {
+                    padding: 0px
+                }
+                ::-webkit-scrollbar {
+                    display: none;
+                }
+            </style>
+        </head>
         <body>
-            <script src="https://d3js.org/d3.v5.min.js"></script>
-            <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
-            <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
-            <div id="graph" style="text-align: center;"></div>
+            <script src="${panel.webview.asWebviewUri(script_d3)}"></script>
+            <script src="${panel.webview.asWebviewUri(script_wasm)}"></script>
+            <script src="${panel.webview.asWebviewUri(script_d3_gv)}"></script>
+            <div id="graph"></div>
             <script>
-                let margin = 0;
-                d3.select("#graph").graphviz().fit(true).width(window.innerWidth - margin).height(window.innerHeight - margin)
-                    .renderDot(\`${dot}\`);
+                d3.select("#graph")
+                  .graphviz()
+                  .fit(true)
+                  .width(window.innerWidth)
+                  .height(window.innerHeight)
+                  .renderDot(\`${dot}\`);
             </script>
         </body>
         `;

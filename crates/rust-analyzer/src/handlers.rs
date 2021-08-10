@@ -3,8 +3,8 @@
 //! `ide` crate.
 
 use std::{
-    io::{Read, Write as _},
-    process::{self, Command, Stdio},
+    io::{Write as _},
+    process::{self, Stdio},
 };
 
 use ide::{
