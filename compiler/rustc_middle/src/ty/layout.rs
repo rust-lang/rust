@@ -112,9 +112,6 @@ impl IntegerExt for Integer {
         let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u128, max as u128));
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
-        let mut min_from_extern = None;
-        let min_default = I8;
-
         if let Some(ity) = repr.int {
             let discr = Integer::from_attr(&tcx, ity);
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
@@ -128,19 +125,14 @@ impl IntegerExt for Integer {
             return (discr, ity.is_signed());
         }
 
-        if repr.c() {
-            match &tcx.sess.target.arch[..] {
-                "hexagon" => min_from_extern = Some(I8),
-                // WARNING: the ARM EABI has two variants; the one corresponding
-                // to `at_least == I32` appears to be used on Linux and NetBSD,
-                // but some systems may use the variant corresponding to no
-                // lower bound. However, we don't run on those yet...?
-                "arm" => min_from_extern = Some(I32),
-                _ => min_from_extern = Some(I32),
-            }
-        }
-
-        let at_least = min_from_extern.unwrap_or(min_default);
+        let at_least = if repr.c() {
+            // This is usually I32, however it can be different on some platforms,
+            // notably hexagon and arm-none/thumb-none
+            tcx.data_layout().c_enum_min_size
+        } else {
+            // repr(Rust) enums try to be as small as possible
+            I8
+        };
 
         // If there are no negative values, we can use the unsigned fit.
         if min >= 0 {
