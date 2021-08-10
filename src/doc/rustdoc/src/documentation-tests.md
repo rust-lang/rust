@@ -297,8 +297,13 @@ we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
 
 ## Attributes
 
-There are a few annotations that are useful to help `rustdoc` do the right
+Code blocks can be annotated with attributes that help `rustdoc` do the right
 thing when testing your code:
+
+The `ignore` attribute tells Rust to ignore your code. This is almost never
+what you want as it's the most generic. Instead, consider annotating it
+with `text` if it's not code or using `#`s to get a working example that
+only shows the part you care about.
 
 ```rust
 /// ```ignore
@@ -307,10 +312,8 @@ thing when testing your code:
 # fn foo() {}
 ```
 
-The `ignore` directive tells Rust to ignore your code. This is almost never
-what you want, as it's the most generic. Instead, consider annotating it
-with `text` if it's not code, or using `#`s to get a working example that
-only shows the part you care about.
+`should_panic` tells `rustdoc` that the code should compile correctly but
+panic during execution. If the code doesn't panic, the test will fail.
 
 ```rust
 /// ```should_panic
@@ -319,8 +322,10 @@ only shows the part you care about.
 # fn foo() {}
 ```
 
-`should_panic` tells `rustdoc` that the code should compile correctly, but
-not actually pass as a test.
+The `no_run` attribute will compile your code but not run it. This is
+important for examples such as "Here's how to retrieve a web page,"
+which you would want to ensure compiles, but might be run in a test
+environment that has no network access.
 
 ```rust
 /// ```no_run
@@ -331,24 +336,24 @@ not actually pass as a test.
 # fn foo() {}
 ```
 
-The `no_run` attribute will compile your code, but not run it. This is
-important for examples such as "Here's how to retrieve a web page,"
-which you would want to ensure compiles, but might be run in a test
-environment that has no network access.
+`compile_fail` tells `rustdoc` that the compilation should fail. If it
+compiles, then the test will fail. However, please note that code failing
+with the current Rust release may work in a future release, as new features
+are added.
 
-```text
+```rust
 /// ```compile_fail
 /// let x = 5;
 /// x += 2; // shouldn't compile!
 /// ```
+# fn foo() {}
 ```
 
-`compile_fail` tells `rustdoc` that the compilation should fail. If it
-compiles, then the test will fail. However please note that code failing
-with the current Rust release may work in a future release, as new features
-are added.
+`edition2018` tells `rustdoc` that the code sample should be compiled using
+the 2018 edition of Rust. Similarly, you can specify `edition2015` to compile
+the code with the 2015 edition.
 
-```text
+```rust
 /// Only runs on the 2018 edition.
 ///
 /// ```edition2018
@@ -358,11 +363,8 @@ are added.
 ///         + "3".parse::<i32>()?
 /// };
 /// ```
+# fn foo() {}
 ```
-
-`edition2018` tells `rustdoc` that the code sample should be compiled using
-the 2018 edition of Rust. Similarly, you can specify `edition2015` to compile
-the code with the 2015 edition.
 
 ## Syntax reference
 
@@ -385,7 +387,7 @@ section.
 
 However, it's preferable to use fenced code blocks over indented code blocks.
 Not only are fenced code blocks considered more idiomatic for Rust code,
-but there is no way to use directives such as `ignore` or `should_panic` with
+but there is no way to use attributes such as `ignore` or `should_panic` with
 indented code blocks.
 
 ### Include items only when collecting doctests
