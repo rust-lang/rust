@@ -2378,6 +2378,32 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     }
 }
 
+trait SpecCloneFrom {
+    fn clone_from(this: &mut Self, other: &Self);
+}
+
+impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
+    default fn clone_from(this: &mut Self, other: &Self) {
+        // drop anything that will not be overwritten
+        this.truncate(other.len());
+
+        // self.len <= other.len due to the truncate above, so the
+        // slices here are always in-bounds.
+        let (init, tail) = other.split_at(this.len());
+
+        // reuse the contained values' allocations/resources.
+        this.clone_from_slice(init);
+        this.extend_from_slice(tail);
+    }
+}
+
+impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
+    fn clone_from(this: &mut Self, other: &Self) {
+        this.clear();
+        this.extend_from_slice(other);
+    }
+}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
@@ -2398,16 +2424,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     }
 
     fn clone_from(&mut self, other: &Self) {
-        // drop anything that will not be overwritten
-        self.truncate(other.len());
-
-        // self.len <= other.len due to the truncate above, so the
-        // slices here are always in-bounds.
-        let (init, tail) = other.split_at(self.len());
-
-        // reuse the contained values' allocations/resources.
-        self.clone_from_slice(init);
-        self.extend_from_slice(tail);
+        SpecCloneFrom::clone_from(self, other)
     }
 }
 
