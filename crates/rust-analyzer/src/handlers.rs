@@ -133,18 +133,9 @@ pub(crate) fn handle_view_crate_graph(
     let _p = profile::span("handle_view_crate_graph");
     let dot = snap.analysis.view_crate_graph(params.full)??;
 
-    // We shell out to `dot` to render to SVG, as there does not seem to be a pure-Rust renderer.
-    let child = Command::new("dot")
-        .arg("-Tsvg")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .map_err(|err| format!("failed to spawn `dot`: {}", err))?;
-    child.stdin.unwrap().write_all(dot.as_bytes())?;
+    eprintln!("{}", dot);
 
-    let mut svg = String::new();
-    child.stdout.unwrap().read_to_string(&mut svg)?;
-    Ok(svg)
+    Ok(dot)
 }
 
 pub(crate) fn handle_expand_macro(

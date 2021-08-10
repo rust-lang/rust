@@ -472,12 +472,37 @@ export function viewItemTree(ctx: Ctx): Cmd {
 
 function crateGraph(ctx: Ctx, full: boolean): Cmd {
     return async () => {
-        const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two);
+        const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two, {
+            enableScripts: true,
+            retainContextWhenHidden: true
+          });
         const params = {
             full: full,
         };
-        const svg = await ctx.client.sendRequest(ra.viewCrateGraph, params);
-        panel.webview.html = svg;
+        const dot = await ctx.client.sendRequest(ra.viewCrateGraph, params);
+
+        console.log(dot);
+
+        const html = `
+        <!DOCTYPE html>
+        <meta charset="utf-8">
+
+        <body>
+            <script src="https://d3js.org/d3.v5.min.js"></script>
+            <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+            <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+            <div id="graph" style="text-align: center;"></div>
+            <script>
+                let margin = 0;
+                d3.select("#graph").graphviz().fit(true).width(window.innerWidth - margin).height(window.innerHeight - margin)
+                    .renderDot(\`${dot}\`);
+            </script>
+        </body>
+        `;
+
+        console.log(html);
+
+        panel.webview.html = html;
     };
 }
 
