@@ -11,7 +11,7 @@ LL |     write!(hello);
 help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
-   |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                   +                             +++++++++++++++++++++
 
 error[E0605]: non-primitive cast: `{integer}` as `()`
   --> $DIR/issue-26480.rs:22:19

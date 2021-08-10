@@ -7,7 +7,7 @@ LL |     test(22i32, 44i32);
 help: change the type of the numeric literal from `i32` to `u32`
    |
 LL |     test(22i32, 44u32);
-   |                 ~~~~~
+   |                   ~~~
 
 error: aborting due to previous error
 

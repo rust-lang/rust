@@ -7,7 +7,7 @@ LL |     let z = f(1_usize, 2);
 help: change the type of the numeric literal from `usize` to `isize`
    |
 LL |     let z = f(1_isize, 2);
-   |               ~~~~~~~
+   |                 ~~~~~
 
 error: aborting due to previous error
 

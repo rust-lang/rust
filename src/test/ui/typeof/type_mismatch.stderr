@@ -15,7 +15,7 @@ LL |     let b: typeof(a) = 1i8;
 help: change the type of the numeric literal from `i8` to `u8`
    |
 LL |     let b: typeof(a) = 1u8;
-   |                        ~~~
+   |                         ~~
 
 error: aborting due to 2 previous errors
 

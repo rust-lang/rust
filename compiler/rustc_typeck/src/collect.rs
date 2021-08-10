@@ -452,9 +452,9 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                             let suggestions = vec![
                                 (lt_sp, sugg),
                                 (
-                                    span,
+                                    span.with_hi(item_segment.ident.span.lo()),
                                     format!(
-                                        "{}::{}",
+                                        "{}::",
                                         // Replace the existing lifetimes with a new named lifetime.
                                         self.tcx
                                             .replace_late_bound_regions(poly_trait_ref, |_| {
@@ -467,7 +467,6 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                                                 ))
                                             })
                                             .0,
-                                        item_segment.ident
                                     ),
                                 ),
                             ];
@@ -489,14 +488,13 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                 | hir::Node::ForeignItem(_)
                 | hir::Node::TraitItem(_)
                 | hir::Node::ImplItem(_) => {
-                    err.span_suggestion(
-                        span,
+                    err.span_suggestion_verbose(
+                        span.with_hi(item_segment.ident.span.lo()),
                         "use a fully qualified path with inferred lifetimes",
                         format!(
-                            "{}::{}",
+                            "{}::",
                             // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
                             self.tcx.anonymize_late_bound_regions(poly_trait_ref).skip_binder(),
-                            item_segment.ident
                         ),
                         Applicability::MaybeIncorrect,
                     );

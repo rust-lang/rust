@@ -19,7 +19,7 @@ LL |     let y: f32 = 1f64;
 help: change the type of the numeric literal from `f64` to `f32`
    |
 LL |     let y: f32 = 1f32;
-   |                  ~~~~
+   |                   ~~~
 
 error: aborting due to 2 previous errors
 

@@ -17,7 +17,7 @@ LL |     let y: usize = x.foo();
 help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     let y: usize = x.foo().try_into().unwrap();
-   |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                           ++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

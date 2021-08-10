@@ -12,7 +12,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, SuggestionStyle};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -1950,11 +1950,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             introduce_suggestion.push((*span, formatter(&lt_name)));
                         }
                     }
-                    err.multipart_suggestion_with_style(
+                    err.multipart_suggestion_verbose(
                         &msg,
                         introduce_suggestion,
                         Applicability::MaybeIncorrect,
-                        SuggestionStyle::ShowAlways,
                     );
                 }
 
@@ -1966,14 +1965,13 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     })
                     .map(|(formatter, span)| (*span, formatter(name)))
                     .collect();
-                err.multipart_suggestion_with_style(
+                err.multipart_suggestion_verbose(
                     &format!(
                         "consider using the `{}` lifetime",
                         lifetime_names.iter().next().unwrap()
                     ),
                     spans_suggs,
                     Applicability::MaybeIncorrect,
-                    SuggestionStyle::ShowAlways,
                 );
             };
         let suggest_new = |err: &mut DiagnosticBuilder<'_>, suggs: Vec<Option<String>>| {
@@ -2064,11 +2062,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             };
                             spans_suggs.push((span, sugg.to_string()));
                         }
-                        err.multipart_suggestion_with_style(
+                        err.multipart_suggestion_verbose(
                             "consider using the `'static` lifetime",
                             spans_suggs,
                             Applicability::MaybeIncorrect,
-                            SuggestionStyle::ShowAlways,
                         );
                         continue;
                     }
@@ -2088,11 +2085,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         introduce_suggestion.push((span, sugg.to_string()));
                     }
                 }
-                err.multipart_suggestion_with_style(
+                err.multipart_suggestion_verbose(
                     &msg,
                     introduce_suggestion,
                     Applicability::MaybeIncorrect,
-                    SuggestionStyle::ShowAlways,
                 );
                 if should_break {
                     break;
@@ -2167,11 +2163,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 if spans_suggs.len() > 0 {
                     // This happens when we have `Foo<T>` where we point at the space before `T`,
                     // but this can be confusing so we give a suggestion with placeholders.
-                    err.multipart_suggestion_with_style(
+                    err.multipart_suggestion_verbose(
                         "consider using one of the available lifetimes here",
                         spans_suggs,
                         Applicability::HasPlaceholders,
-                        SuggestionStyle::ShowAlways,
                     );
                 }
             }

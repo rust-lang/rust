@@ -2,13 +2,23 @@ error[E0212]: cannot use the associated type of a trait with uninferred generic 
   --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:13:32
    |
 LL |     fn some_method(&self, arg: I::A);
-   |                                ^^^^ help: use a fully qualified path with inferred lifetimes: `<I as Foo<&isize>>::A`
+   |                                ^^^^
+   |
+help: use a fully qualified path with inferred lifetimes
+   |
+LL |     fn some_method(&self, arg: <I as Foo<&isize>>::A);
+   |                                ~~~~~~~~~~~~~~~~~~~~
 
 error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:32:24
    |
 LL |     fn mango(&self) -> X::Assoc {
-   |                        ^^^^^^^^ help: use a fully qualified path with inferred lifetimes: `<X as Banana<'_>>::Assoc`
+   |                        ^^^^^^^^
+   |
+help: use a fully qualified path with inferred lifetimes
+   |
+LL |     fn mango(&self) -> <X as Banana<'_>>::Assoc {
+   |                        ~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

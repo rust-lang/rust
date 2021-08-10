@@ -7,7 +7,7 @@ LL | const C: i32 = 1i8;
 help: change the type of the numeric literal from `i8` to `i32`
    |
 LL | const C: i32 = 1i32;
-   |                ~~~~
+   |                 ~~~
 
 error[E0308]: mismatched types
   --> $DIR/const-scope.rs:2:15
@@ -26,7 +26,7 @@ LL |     let c: i32 = 1i8;
 help: change the type of the numeric literal from `i8` to `i32`
    |
 LL |     let c: i32 = 1i32;
-   |                  ~~~~
+   |                   ~~~
 
 error[E0308]: mismatched types
   --> $DIR/const-scope.rs:6:17
@@ -47,7 +47,7 @@ LL |     let c: i32 = 1i8;
 help: change the type of the numeric literal from `i8` to `i32`
    |
 LL |     let c: i32 = 1i32;
-   |                  ~~~~
+   |                   ~~~
 
 error[E0308]: mismatched types
   --> $DIR/const-scope.rs:11:17
@@ -60,7 +60,7 @@ LL |     let d: i8 = c;
 help: you can convert an `i32` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     let d: i8 = c.try_into().unwrap();
-   |                 ~~~~~~~~~~~~~~~~~~~~~
+   |                  ++++++++++++++++++++
 
 error: aborting due to 6 previous errors
 

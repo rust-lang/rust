@@ -9,7 +9,7 @@ LL |   let x: u32 = 20i32;
 help: change the type of the numeric literal from `i32` to `u32`
    |
 LL |   let x: u32 = 20u32;
-   |                ~~~~~
+   |                  ~~~
 
 error: aborting due to previous error
 
