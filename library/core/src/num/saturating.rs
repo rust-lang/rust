@@ -80,39 +80,6 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
     }
 }
 
-#[allow(unused_macros)]
-macro_rules! sh_impl_signed {
-    ($t:ident, $f:ident) => {
-
-    };
-}
-
-macro_rules! sh_impl_unsigned {
-    ($t:ident, $f:ident) => {
-
-    };
-}
-
-// FIXME (#23545): uncomment the remaining impls
-macro_rules! sh_impl_all {
-    ($($t:ident)*) => ($(
-        //sh_impl_unsigned! { $t, u8 }
-        //sh_impl_unsigned! { $t, u16 }
-        //sh_impl_unsigned! { $t, u32 }
-        //sh_impl_unsigned! { $t, u64 }
-        //sh_impl_unsigned! { $t, u128 }
-        sh_impl_unsigned! { $t, usize }
-
-        //sh_impl_signed! { $t, i8 }
-        //sh_impl_signed! { $t, i16 }
-        //sh_impl_signed! { $t, i32 }
-        //sh_impl_signed! { $t, i64 }
-        //sh_impl_signed! { $t, i128 }
-        //sh_impl_signed! { $t, isize }
-    )*)
-}
-
-sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 // FIXME(30524): impl Op<T> for Saturating<T>, impl OpAssign<T> for Saturating<T>
 macro_rules! saturating_impl {
