@@ -514,10 +514,10 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
 
 /// Create function for type that performs the derivative memcpy on floating
 /// point memory
-llvm::Function *getOrInsertDifferentialFloatMemcpy(llvm::Module &M,
-                                                   llvm::PointerType *T,
-                                                   unsigned dstalign,
-                                                   unsigned srcalign);
+llvm::Function *
+getOrInsertDifferentialFloatMemcpy(llvm::Module &M, llvm::Type *T,
+                                   unsigned dstalign, unsigned srcalign,
+                                   unsigned dstaddr, unsigned srcaddr);
 
 /// Create function for type that performs memcpy with a stride
 llvm::Function *getOrInsertMemcpyStrided(llvm::Module &M, llvm::PointerType *T,
@@ -525,10 +525,10 @@ llvm::Function *getOrInsertMemcpyStrided(llvm::Module &M, llvm::PointerType *T,
 
 /// Create function for type that performs the derivative memmove on floating
 /// point memory
-llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
-                                                    llvm::PointerType *T,
-                                                    unsigned dstalign,
-                                                    unsigned srcalign);
+llvm::Function *
+getOrInsertDifferentialFloatMemmove(llvm::Module &M, llvm::Type *T,
+                                    unsigned dstalign, unsigned srcalign,
+                                    unsigned dstaddr, unsigned srcaddr);
 
 /// Create function for type that performs the derivative MPI_Wait
 llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,

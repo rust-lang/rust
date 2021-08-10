@@ -1940,12 +1940,15 @@ public:
 
         } else {
           SmallVector<Value *, 4> args;
-          auto secretpt = PointerType::getUnqual(secretty);
           auto dsto = gutils->invertPointerM(orig_dst, Builder2);
+          auto dstaddr = cast<PointerType>(dsto->getType())->getAddressSpace();
+          auto secretpt = PointerType::get(secretty, dstaddr);
           if (offset != 0)
             dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
           args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
           auto srco = gutils->invertPointerM(orig_src, Builder2);
+          auto srcaddr = cast<PointerType>(srco->getType())->getAddressSpace();
+          secretpt = PointerType::get(secretty, srcaddr);
           if (offset != 0)
             srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
           args.push_back(Builder2.CreatePointerCast(srco, secretpt));
@@ -1963,7 +1966,8 @@ public:
           auto dmemcpy = ((intrinsic == Intrinsic::memcpy)
                               ? getOrInsertDifferentialFloatMemcpy
                               : getOrInsertDifferentialFloatMemmove)(
-              *parent->getParent()->getParent(), secretpt, dstalign, srcalign);
+              *parent->getParent()->getParent(), secretty, dstalign, srcalign,
+              dstaddr, srcaddr);
           Builder2.CreateCall(dmemcpy, args);
         }
       }
@@ -3467,10 +3471,13 @@ public:
       if (auto secretty = dt.isFloat()) {
         auto offset = start;
         SmallVector<Value *, 4> args;
-        auto secretpt = PointerType::getUnqual(secretty);
+        auto dstaddr = cast<PointerType>(dsto->getType())->getAddressSpace();
+        auto secretpt = PointerType::get(secretty, dstaddr);
         if (offset != 0)
           dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
         args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
+        auto srcaddr = cast<PointerType>(srco->getType())->getAddressSpace();
+        secretpt = PointerType::get(secretty, srcaddr);
         if (offset != 0)
           srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
         args.push_back(Builder2.CreatePointerCast(srco, secretpt));
@@ -3486,8 +3493,8 @@ public:
                                  8)));
 
         auto dmemcpy = getOrInsertDifferentialFloatMemcpy(
-            *Builder2.GetInsertBlock()->getParent()->getParent(), secretpt,
-            /*dstalign*/ 1, /*srcalign*/ 1);
+            *Builder2.GetInsertBlock()->getParent()->getParent(), secretty,
+            /*dstalign*/ 1, /*srcalign*/ 1, dstaddr, srcaddr);
         Builder2.CreateCall(dmemcpy, args);
       }
 
@@ -5631,13 +5638,13 @@ public:
 #else
         auto callval = orig->getCalledValue();
 #endif
-        CallInst* cubcall = cast<CallInst>(Builder2.CreateCall(orig->getFunctionType(), callval, args));
+        CallInst *cubcall = cast<CallInst>(
+            Builder2.CreateCall(orig->getFunctionType(), callval, args));
         cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
         cubcall->setCallingConv(orig->getCallingConv());
         Value *dif0 = Builder2.CreateFDiv(
             Builder2.CreateFMul(diffe(orig, Builder2), x),
-            Builder2.CreateFMul(
-                ConstantFP::get(x->getType(), 3), cubcall));
+            Builder2.CreateFMul(ConstantFP::get(x->getType(), 3), cubcall));
         addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
         return;
       }

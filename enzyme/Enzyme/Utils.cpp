@@ -70,16 +70,23 @@ static inline std::string tofltstr(Type *T) {
 
 /// Create function for type that is equivalent to memcpy but adds to
 /// destination rather than a direct copy; dst, src, numelems
-Function *getOrInsertDifferentialFloatMemcpy(Module &M, PointerType *T,
+Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
                                              unsigned dstalign,
-                                             unsigned srcalign) {
-  Type *elementType = T->getElementType();
+                                             unsigned srcalign,
+                                             unsigned dstaddr,
+                                             unsigned srcaddr) {
   assert(elementType->isFloatingPointTy());
   std::string name = "__enzyme_memcpyadd_" + tofltstr(elementType) + "da" +
                      std::to_string(dstalign) + "sa" + std::to_string(srcalign);
-  FunctionType *FT =
-      FunctionType::get(Type::getVoidTy(M.getContext()),
-                        {T, T, Type::getInt64Ty(M.getContext())}, false);
+  if (dstaddr)
+    name += "dadd" + std::to_string(dstaddr);
+  if (srcaddr)
+    name += "sadd" + std::to_string(srcaddr);
+  FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()),
+                                       {PointerType::get(elementType, dstaddr),
+                                        PointerType::get(elementType, srcaddr),
+                                        Type::getInt64Ty(M.getContext())},
+                                       false);
 
 #if LLVM_VERSION_MAJOR >= 9
   Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
@@ -253,12 +260,15 @@ Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, unsigned dstalign,
 }
 
 // TODO implement differential memmove
-Function *getOrInsertDifferentialFloatMemmove(Module &M, PointerType *T,
+Function *getOrInsertDifferentialFloatMemmove(Module &M, Type *T,
                                               unsigned dstalign,
-                                              unsigned srcalign) {
+                                              unsigned srcalign,
+                                              unsigned dstaddr,
+                                              unsigned srcaddr) {
   llvm::errs() << "warning: didn't implement memmove, using memcpy as fallback "
                   "which can result in errors\n";
-  return getOrInsertDifferentialFloatMemcpy(M, T, dstalign, srcalign);
+  return getOrInsertDifferentialFloatMemcpy(M, T, dstalign, srcalign, dstaddr,
+                                            srcaddr);
 }
 
 /// Create function to computer nearest power of two

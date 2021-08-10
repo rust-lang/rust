@@ -3223,11 +3223,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           if (si->getDefaultDest() == reachables[0]) {
             std::set<int64_t> cases;
             for (auto c : si->cases()) {
-              // TODO this doesnt work with unsigned 64 bit ints or higher integer widths
+              // TODO this doesnt work with unsigned 64 bit ints or higher
+              // integer widths
               cases.insert(cast<ConstantInt>(c.getCaseValue())->getSExtValue());
             }
             int64_t legalNot = 0;
-            while (cases.count(legalNot)) legalNot++;
+            while (cases.count(legalNot))
+              legalNot++;
             repVal = ConstantInt::getSigned(condition->getType(), legalNot);
           } else {
             for (auto c : si->cases()) {
@@ -3238,7 +3240,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           }
           assert(repVal);
           for (auto UI = condition->use_begin(), E = condition->use_end();
-              UI != E;) {
+               UI != E;) {
             Use &U = *UI;
             ++UI;
             U.set(repVal);
