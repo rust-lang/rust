@@ -1,14 +1,20 @@
 //! This module contains functions to generate default trait impl function bodies where possible.
 
-use syntax::ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner};
-use syntax::ted;
+use syntax::{
+    ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner},
+    ted,
+};
 
 /// Generate custom trait bodies where possible.
 ///
 /// Returns `Option` so that we can use `?` rather than `if let Some`. Returning
 /// `None` means that generating a custom trait body failed, and the body will remain
 /// as `todo!` instead.
-pub(crate) fn gen_trait_body(func: &ast::Fn, trait_path: &ast::Path, adt: &ast::Adt) -> Option<()> {
+pub(crate) fn gen_trait_fn_body(
+    func: &ast::Fn,
+    trait_path: &ast::Path,
+    adt: &ast::Adt,
+) -> Option<()> {
     match trait_path.segment()?.name_ref()?.text().as_str() {
         "Debug" => gen_debug_impl(adt, func),
         "Default" => gen_default_impl(adt, func),

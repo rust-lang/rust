@@ -7,12 +7,11 @@ use syntax::{
     SyntaxKind::{IDENT, WHITESPACE},
 };
 
-use crate::utils::gen_trait_body;
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, generate_trait_impl_text,
-        render_snippet, Cursor, DefaultMethods,
+        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body,
+        generate_trait_impl_text, render_snippet, Cursor, DefaultMethods,
     },
     AssistId, AssistKind,
 };
@@ -168,7 +167,7 @@ fn impl_def_from_trait(
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-        let _ = gen_trait_body(func, trait_path, adt);
+        let _ = gen_trait_fn_body(func, trait_path, adt);
     };
 
     Some((impl_def, first_assoc_item))

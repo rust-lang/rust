@@ -5,8 +5,8 @@ use syntax::ast::{self, make, AstNode};
 use crate::{
     assist_context::{AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_body, render_snippet, Cursor,
-        DefaultMethods,
+        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, render_snippet,
+        Cursor, DefaultMethods,
     },
     AssistId, AssistKind,
 };
@@ -156,10 +156,10 @@ fn try_gen_trait_body(
     trait_: &hir::Trait,
     impl_def: &ast::Impl,
 ) -> Option<()> {
-    let trait_path = make::path_from_text(&trait_.name(ctx.db()).to_string());
+    let trait_path = make::ext::ident_path(&trait_.name(ctx.db()).to_string());
     let hir_ty = ctx.sema.resolve_type(&impl_def.self_ty()?)?;
     let adt = hir_ty.as_adt()?.source(ctx.db())?;
-    gen_trait_body(func, &trait_path, &adt.value)
+    gen_trait_fn_body(func, &trait_path, &adt.value)
 }
 
 #[cfg(test)]
