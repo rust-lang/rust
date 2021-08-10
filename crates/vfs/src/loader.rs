@@ -136,10 +136,13 @@ impl Entry {
 impl Directories {
     /// Returns `true` if `path` is included in `self`.
     pub fn contains_file(&self, path: &AbsPath) -> bool {
+        // First, check the file extension...
         let ext = path.extension().unwrap_or_default();
         if self.extensions.iter().all(|it| it.as_str() != ext) {
             return false;
         }
+
+        // Then, check for path inclusion...
         self.includes_path(path)
     }
 
