@@ -927,7 +927,7 @@ Between `ref` and mach ergonomics, the latter is more ergonomic in most cases, a
 
 ## Functional Combinators
 
-Use high order monadic combinators like `map`, `then`, only when they are a natural choice, don't bend the code to fit into some combinator.
+Use high order monadic combinators like `map`, `then` when they are a natural choice; don't bend the code to fit into some combinator.
 If writing a chain of combinators creates friction, replace them with control flow constructs: `for`, `if`, `match`.
 Mostly avoid `bool::then` and `Option::filter`.
 
@@ -944,7 +944,7 @@ Some(x).filter(|it| it.cond())
 
 This rule is more "soft" then others, and boils down mostly to taste.
 The guiding principle behind this rule is that code should be dense in computation, and sparse in the number of expressions per line.
-The second example contains *less* computation -- `filter` function is an indirection for `if`, it doesn't do any useful work by itself.
+The second example contains *less* computation -- the `filter` function is an indirection for `if`, it doesn't do any useful work by itself.
 At the same time, it is more crowded -- it takes more time to visually scan it.
 
 **Rationale:** consistency, playing to language's strengths.
