@@ -29,7 +29,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`,
-    // so `range` must be within the bounds of `alloc` and not within a relocation.
+    // so `range` must be within the bounds of `alloc` and not contain or overlap a relocation.
     fn append_chunks_of_init_and_uninit_bytes<'ll, 'a, 'b>(
         llvals: &mut Vec<&'ll Value>,
         cx: &'a CodegenCx<'ll, 'b>,
