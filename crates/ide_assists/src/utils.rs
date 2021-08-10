@@ -129,15 +129,11 @@ pub fn add_trait_assoc_items_to_impl(
 ) -> (ast::Impl, ast::AssocItem) {
     let source_scope = sema.scope_for_def(trait_);
 
-    let transform = PathTransform {
-        subst: (trait_, impl_.clone()),
-        source_scope: &source_scope,
-        target_scope: &target_scope,
-    };
+    let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
 
     let items = items.into_iter().map(|assoc_item| {
         let assoc_item = assoc_item.clone_for_update();
-        transform.apply(assoc_item.clone());
+        transform.apply(assoc_item.syntax());
         edit::remove_attrs_and_docs(&assoc_item).clone_subtree().clone_for_update()
     });
 

@@ -5,7 +5,7 @@ use hir::{HirDisplay, SemanticsScope};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstNode},
-    ted,
+    ted, SyntaxNode,
 };
 
 /// `PathTransform` substitutes path in SyntaxNodes in bulk.
@@ -32,38 +32,70 @@ use syntax::{
 /// }
 /// ```
 pub struct PathTransform<'a> {
-    pub subst: (hir::Trait, ast::Impl),
-    pub target_scope: &'a SemanticsScope<'a>,
-    pub source_scope: &'a SemanticsScope<'a>,
+    generic_def: hir::GenericDef,
+    substs: Vec<ast::Type>,
+    target_scope: &'a SemanticsScope<'a>,
+    source_scope: &'a SemanticsScope<'a>,
 }
 
 impl<'a> PathTransform<'a> {
-    pub fn apply(&self, item: ast::AssocItem) {
-        if let Some(ctx) = self.build_ctx() {
-            ctx.apply(item)
+    pub fn trait_impl(
+        target_scope: &'a SemanticsScope<'a>,
+        source_scope: &'a SemanticsScope<'a>,
+        trait_: hir::Trait,
+        impl_: ast::Impl,
+    ) -> PathTransform<'a> {
+        PathTransform {
+            source_scope,
+            target_scope,
+            generic_def: trait_.into(),
+            substs: get_syntactic_substs(impl_).unwrap_or_default(),
         }
     }
+
+    pub fn function_call(
+        target_scope: &'a SemanticsScope<'a>,
+        source_scope: &'a SemanticsScope<'a>,
+        function: hir::Function,
+        generic_arg_list: ast::GenericArgList,
+    ) -> PathTransform<'a> {
+        PathTransform {
+            source_scope,
+            target_scope,
+            generic_def: function.into(),
+            substs: get_type_args_from_arg_list(generic_arg_list).unwrap_or_default(),
+        }
+    }
+
+    pub fn apply(&self, syntax: &SyntaxNode) {
+        if let Some(ctx) = self.build_ctx() {
+            ctx.apply(syntax)
+        }
+    }
+
     fn build_ctx(&self) -> Option<Ctx<'a>> {
         let db = self.source_scope.db;
         let target_module = self.target_scope.module()?;
         let source_module = self.source_scope.module()?;
-
-        let substs = get_syntactic_substs(self.subst.1.clone()).unwrap_or_default();
-        let generic_def: hir::GenericDef = self.subst.0.into();
-        let substs_by_param: FxHashMap<_, _> = generic_def
+        let skip = match self.generic_def {
+            // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
+            hir::GenericDef::Trait(_) => 1,
+            _ => 0,
+        };
+        let substs_by_param: FxHashMap<_, _> = self
+            .generic_def
             .type_params(db)
             .into_iter()
-            // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
-            .skip(1)
+            .skip(skip)
             // The actual list of trait type parameters may be longer than the one
             // used in the `impl` block due to trailing default type parameters.
             // For that case we extend the `substs` with an empty iterator so we
             // can still hit those trailing values and check if they actually have
             // a default type. If they do, go for that type from `hir` to `ast` so
             // the resulting change can be applied correctly.
-            .zip(substs.into_iter().map(Some).chain(std::iter::repeat(None)))
+            .zip(self.substs.iter().map(Some).chain(std::iter::repeat(None)))
             .filter_map(|(k, v)| match v {
-                Some(v) => Some((k, v)),
+                Some(v) => Some((k, v.clone())),
                 None => {
                     let default = k.default(db)?;
                     Some((
@@ -73,7 +105,6 @@ impl<'a> PathTransform<'a> {
                 }
             })
             .collect();
-
         let res = Ctx { substs: substs_by_param, target_module, source_scope: self.source_scope };
         Some(res)
     }
@@ -86,8 +117,8 @@ struct Ctx<'a> {
 }
 
 impl<'a> Ctx<'a> {
-    fn apply(&self, item: ast::AssocItem) {
-        for event in item.syntax().preorder() {
+    fn apply(&self, item: &SyntaxNode) {
+        for event in item.preorder() {
             let node = match event {
                 syntax::WalkEvent::Enter(_) => continue,
                 syntax::WalkEvent::Leave(it) => it,
@@ -149,13 +180,14 @@ fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::Type>> {
     };
     let generic_arg_list = path_type.path()?.segment()?.generic_arg_list()?;
 
+    get_type_args_from_arg_list(generic_arg_list)
+}
+
+fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<Vec<ast::Type>> {
     let mut result = Vec::new();
     for generic_arg in generic_arg_list.generic_args() {
-        match generic_arg {
-            ast::GenericArg::TypeArg(type_arg) => result.push(type_arg.ty()?),
-            ast::GenericArg::AssocTypeArg(_)
-            | ast::GenericArg::LifetimeArg(_)
-            | ast::GenericArg::ConstArg(_) => (),
+        if let ast::GenericArg::TypeArg(type_arg) = generic_arg {
+            result.push(type_arg.ty()?)
         }
     }
 

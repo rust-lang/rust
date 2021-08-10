@@ -186,13 +186,14 @@ fn get_transformed_assoc_item(
     let trait_ = impl_def.trait_(ctx.db)?;
     let source_scope = &ctx.sema.scope_for_def(trait_);
     let target_scope = &ctx.sema.scope(impl_def.source(ctx.db)?.syntax().value);
-    let transform = PathTransform {
-        subst: (trait_, impl_def.source(ctx.db)?.value),
-        source_scope,
+    let transform = PathTransform::trait_impl(
         target_scope,
-    };
+        source_scope,
+        trait_,
+        impl_def.source(ctx.db)?.value,
+    );
 
-    transform.apply(assoc_item.clone());
+    transform.apply(assoc_item.syntax());
     Some(match assoc_item {
         ast::AssocItem::Fn(func) => ast::AssocItem::Fn(edit::remove_attrs_and_docs(&func)),
         _ => assoc_item,

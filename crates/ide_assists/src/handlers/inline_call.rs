@@ -1,6 +1,6 @@
 use ast::make;
 use hir::{HasSource, PathResolution, TypeInfo};
-use ide_db::{defs::Definition, search::FileReference};
+use ide_db::{defs::Definition, path_transform::PathTransform, search::FileReference};
 use itertools::izip;
 use syntax::{
     ast::{self, edit::AstNodeEdit, ArgListOwner},
@@ -34,7 +34,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let (label, function, arguments, expr) =
+    let (label, function, arguments, generic_arg_list, expr) =
         if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
             let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
             let path = path_expr.path()?;
@@ -48,6 +48,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
                 format!("Inline `{}`", path),
                 function,
                 call.arg_list()?.args().collect(),
+                path.segment().and_then(|it| it.generic_arg_list()),
                 ast::Expr::CallExpr(call),
             )
         } else {
@@ -57,10 +58,16 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             let function = ctx.sema.resolve_method_call(&call)?;
             let mut arguments = vec![receiver];
             arguments.extend(call.arg_list()?.args());
-            (format!("Inline `{}`", name_ref), function, arguments, ast::Expr::MethodCallExpr(call))
+            (
+                format!("Inline `{}`", name_ref),
+                function,
+                arguments,
+                call.generic_arg_list(),
+                ast::Expr::MethodCallExpr(call),
+            )
         };
 
-    inline_(acc, ctx, label, function, arguments, expr)
+    inline_(acc, ctx, label, function, arguments, expr, generic_arg_list)
 }
 
 pub(crate) fn inline_(
@@ -70,6 +77,7 @@ pub(crate) fn inline_(
     function: hir::Function,
     arg_list: Vec<ast::Expr>,
     expr: ast::Expr,
+    generic_arg_list: Option<ast::GenericArgList>,
 ) -> Option<()> {
     let hir::InFile { value: function_source, file_id } = function.source(ctx.db())?;
     let param_list = function_source.param_list()?;
@@ -100,14 +108,14 @@ pub(crate) fn inline_(
         return None;
     }
 
-    let body = function_source.body()?;
+    let fn_body = function_source.body()?;
 
     acc.add(
         AssistId("inline_call", AssistKind::RefactorInline),
         label,
         expr.syntax().text_range(),
         |builder| {
-            let body = body.clone_for_update();
+            let body = fn_body.clone_for_update();
 
             let file_id = file_id.original_file(ctx.sema.db);
             let usages_for_locals = |local| {
@@ -197,6 +205,15 @@ pub(crate) fn inline_(
                         )
                     }
                 }
+            }
+            if let Some(generic_arg_list) = generic_arg_list {
+                PathTransform::function_call(
+                    &ctx.sema.scope(expr.syntax()),
+                    &ctx.sema.scope(fn_body.syntax()),
+                    function,
+                    generic_arg_list,
+                )
+                .apply(body.syntax());
             }
 
             let original_indentation = expr.indent_level();
@@ -643,6 +660,36 @@ fn main() {
         let x: *const u32 = &222;
         x as u32
     };
+}
+"#,
+        );
+    }
+
+    // FIXME: const generics aren't being substituted, this is blocked on better support for them
+    #[test]
+    fn inline_substitutes_generics() {
+        check_assist(
+            inline_call,
+            r#"
+fn foo<T, const N: usize>() {
+    bar::<T, N>()
+}
+
+fn bar<U, const M: usize>() {}
+
+fn main() {
+    foo::<usize, {0}>$0();
+}
+"#,
+            r#"
+fn foo<T, const N: usize>() {
+    bar::<T, N>()
+}
+
+fn bar<U, const M: usize>() {}
+
+fn main() {
+    bar::<usize, N>();
 }
 "#,
         );
