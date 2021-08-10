@@ -7,6 +7,7 @@ use clippy_utils::{diagnostics::span_lint_and_help, in_macro, is_direct_expn_of,
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::DefId;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -91,13 +92,23 @@ impl EarlyLintPass for MacroBraces {
 }
 
 fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a MacroBraces) -> Option<MacroInfo<'a>> {
+    let unnested_or_local = || {
+        let nested = in_macro(span.ctxt().outer_expn_data().call_site);
+        !nested
+            || span
+                .macro_backtrace()
+                .last()
+                .map_or(false, |e| e.macro_def_id.map_or(false, DefId::is_local))
+    };
     if_chain! {
+        // Make sure we are only one level deep otherwise there are to many FP's
         if in_macro(span);
         if let Some((name, braces)) = find_matching_macro(span, &mac_braces.macro_braces);
         if let Some(snip) = snippet_opt(cx, span.ctxt().outer_expn_data().call_site);
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
-        if snip.starts_with(name);
+        if snip.starts_with(&format!("{}!", name));
+        if unnested_or_local();
         // make formatting consistent
         let c = snip.replace(" ", "");
         if !c.starts_with(&format!("{}!{}", name, braces.0));
