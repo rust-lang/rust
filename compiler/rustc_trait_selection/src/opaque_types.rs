@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
-                    return ty_var;
+                    return tcx.ty_error();
                 }
             }
             // Change the predicate to refer to the type variable,
