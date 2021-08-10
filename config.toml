@@ -434,7 +434,9 @@ debug-logging = true
 
 # Build a multi-threaded rustc
 # FIXME(#75760): Some UI tests fail when this option is enabled.
-parallel-compiler = true
+# NOTE(wcrichto): this option seems to break `cargo test`:
+#  thread 'rustc' panicked at 'SESSION_GLOBALS should never be overwritten! Use another thread if you need another SessionGlobals', /Users/will/Code/rust/compiler/rustc_span/src/lib.rs:99:5
+# parallel-compiler = true
 
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.
