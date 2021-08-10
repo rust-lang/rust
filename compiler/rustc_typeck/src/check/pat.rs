@@ -1250,15 +1250,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            let no_accessible_unmentioned_fields = !unmentioned_fields.iter().any(|(field, _)| {
-                field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
-            });
+            let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
+                .iter()
+                .copied()
+                .filter(|(field, _)| {
+                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                })
+                .collect();
 
-            if no_accessible_unmentioned_fields {
+            if accessible_unmentioned_fields.is_empty() {
                 unmentioned_err = Some(self.error_no_accessible_fields(pat, &fields));
             } else {
-                unmentioned_err =
-                    Some(self.error_unmentioned_fields(pat, &unmentioned_fields, &fields));
+                unmentioned_err = Some(self.error_unmentioned_fields(
+                    pat,
+                    &accessible_unmentioned_fields,
+                    accessible_unmentioned_fields.len() != unmentioned_fields.len(),
+                    &fields,
+                ));
             }
         }
         match (inexistent_fields_err, unmentioned_err) {
@@ -1583,17 +1591,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
+        have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
     ) -> DiagnosticBuilder<'tcx> {
+        let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if unmentioned_fields.len() == 1 {
-            format!("field `{}`", unmentioned_fields[0].1)
+            format!("field `{}`{}", unmentioned_fields[0].1, inaccessible)
         } else {
             let fields = unmentioned_fields
                 .iter()
                 .map(|(_, name)| format!("`{}`", name))
                 .collect::<Vec<String>>()
                 .join(", ");
-            format!("fields {}", fields)
+            format!("fields {}{}", fields, inaccessible)
         };
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -1624,17 +1634,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion(
             sp,
             &format!(
-                "include the missing field{} in the pattern",
+                "include the missing field{} in the pattern{}",
                 if len == 1 { "" } else { "s" },
+                if have_inaccessible_fields { " and ignore the inaccessible fields" } else { "" }
             ),
             format!(
-                "{}{}{}",
+                "{}{}{}{}",
                 prefix,
                 unmentioned_fields
                     .iter()
                     .map(|(_, name)| name.to_string())
                     .collect::<Vec<_>>()
                     .join(", "),
+                if have_inaccessible_fields { ", .." } else { "" },
                 postfix,
             ),
             Applicability::MachineApplicable,
