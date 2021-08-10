@@ -1987,7 +1987,7 @@ impl<'a> Parser<'a> {
                             // There was no explicit visibility
                             if matches!(orig_vis.kind, VisibilityKind::Inherited) {
                                 err.span_suggestion(
-                                    sp,
+                                    sp_start.to(self.prev_token.span),
                                     &format!("visibility `{}` must come before `{}`", vs, snippet),
                                     format!("{} {}", vs, snippet),
                                     Applicability::MachineApplicable,
