@@ -20,15 +20,15 @@ cd src/llvm-project
 git remote add my-target-llvm some-llvm-repository
 git checkout my-target-llvm/my-branch
 cd ..
-git add llvm_target
+git add llvm-project
 git commit -m 'Use my custom LLVM'
 ```
 
 ### Using pre-built LLVM
 
 If you have a local LLVM checkout that is already built, you may be
-able to configure Rust to treat your build as the [system LLVM][sysllvm]
-to avoid redundant builds.
+able to configure Rust to treat your build as the system LLVM to avoid
+redundant builds.
 
 You can tell Rust to use a pre-built version of LLVM using the `target` section
 of `config.toml`:
@@ -74,7 +74,7 @@ You will need to add a line to the big table inside of the
 will then add a corresponding file for your new target containing a
 `target` function.
 
-Look for existing targets to use as examples
+Look for existing targets to use as examples.
 
 ## Patching crates
 
@@ -125,8 +125,10 @@ compiler, you can use it instead of the JSON file for both arguments.
 ## Promoting a target from tier 2 (target) to tier 2 (host)
 
 There are two levels of tier 2 targets:
-a) Targets that are only cross-compiled (`rustup target add`)
-b) Targets that have a native toolchain (`rustup toolchain install`)
+  a) Targets that are only cross-compiled (`rustup target add`)
+  b) Targets that [have a native toolchain][tier2-native] (`rustup toolchain install`)
+
+[tier2-native]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html#tier-2-with-host-tools
 
 For an example of promoting a target from cross-compiled to native,
 see [#75914](https://github.com/rust-lang/rust/pull/75914).
