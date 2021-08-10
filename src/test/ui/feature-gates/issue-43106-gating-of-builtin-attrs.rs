@@ -295,31 +295,43 @@ mod automatically_derived {
 }
 
 #[no_mangle]
-//~^ WARN attribute should be applied to a function or static [unused_attributes]
+//~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
 //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 mod no_mangle {
-    //~^ NOTE not a function or static
+    //~^ NOTE not a free function, impl method or static
     mod inner { #![no_mangle] }
-    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
     //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //~| NOTE not a function or static
+    //~| NOTE not a free function, impl method or static
 
     #[no_mangle] fn f() { }
 
     #[no_mangle] struct S;
-    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
     //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //~| NOTE not a function or static
+    //~| NOTE not a free function, impl method or static
 
     #[no_mangle] type T = S;
-    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
     //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //~| NOTE not a function or static
+    //~| NOTE not a free function, impl method or static
 
     #[no_mangle] impl S { }
-    //~^ WARN attribute should be applied to a function or static [unused_attributes]
+    //~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
     //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //~| NOTE not a function or static
+    //~| NOTE not a free function, impl method or static
+
+    trait Tr {
+        #[no_mangle] fn foo();
+        //~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
+        //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        //~| NOTE not a free function, impl method or static
+
+        #[no_mangle] fn bar() {}
+        //~^ WARN attribute should be applied to a free function, impl method or static [unused_attributes]
+        //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        //~| NOTE not a free function, impl method or static
+    }
 }
 
 #[should_panic]

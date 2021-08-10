@@ -1,5 +1,5 @@
 //~ NOTE: not an `extern crate` item
-//~^ NOTE: not a function or static
+//~^ NOTE: not a free function, impl method or static
 //~^^ NOTE: not a function or closure
 // This is testing whether various builtin attributes signals an
 // error or warning when put in "weird" places.
@@ -25,7 +25,7 @@
 #![no_link]
 //~^ ERROR: attribute should be applied to an `extern crate` item
 #![export_name = "2200"]
-//~^ ERROR: attribute should be applied to a function or static
+//~^ ERROR: attribute should be applied to a free function, impl method or static
 #![inline]
 //~^ ERROR: attribute should be applied to function or closure
 #[inline]
@@ -83,27 +83,37 @@ mod no_link {
 }
 
 #[export_name = "2200"]
-//~^ ERROR attribute should be applied to a function or static
+//~^ ERROR attribute should be applied to a free function, impl method or static
 mod export_name {
-    //~^ NOTE not a function or static
+    //~^ NOTE not a free function, impl method or static
 
     mod inner { #![export_name="2200"] }
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
+    //~^ ERROR attribute should be applied to a free function, impl method or static
+    //~| NOTE not a free function, impl method or static
 
     #[export_name = "2200"] fn f() { }
 
     #[export_name = "2200"] struct S;
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
+    //~^ ERROR attribute should be applied to a free function, impl method or static
+    //~| NOTE not a free function, impl method or static
 
     #[export_name = "2200"] type T = S;
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
+    //~^ ERROR attribute should be applied to a free function, impl method or static
+    //~| NOTE not a free function, impl method or static
 
     #[export_name = "2200"] impl S { }
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
+    //~^ ERROR attribute should be applied to a free function, impl method or static
+    //~| NOTE not a free function, impl method or static
+
+    trait Tr {
+        #[export_name = "2200"] fn foo();
+        //~^ ERROR attribute should be applied to a free function, impl method or static
+        //~| NOTE not a free function, impl method or static
+
+        #[export_name = "2200"] fn bar() {}
+        //~^ ERROR attribute should be applied to a free function, impl method or static
+        //~| NOTE not a free function, impl method or static
+    }
 }
 
 #[start]
