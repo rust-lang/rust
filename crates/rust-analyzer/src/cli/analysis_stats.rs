@@ -14,16 +14,17 @@ use hir_def::{body::BodySourceMap, expr::ExprId, FunctionId};
 use hir_ty::{TyExt, TypeWalk};
 use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
 use ide_db::base_db::{
-    salsa::{self, ParallelDatabase},
-    SourceDatabaseExt,
+    salsa::{self, debug::DebugQueryTable, ParallelDatabase},
+    SourceDatabase, SourceDatabaseExt,
 };
 use itertools::Itertools;
 use oorandom::Rand32;
+use profile::{Bytes, StopWatch};
 use project_model::CargoConfig;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
-use syntax::AstNode;
+use syntax::{AstNode, SyntaxNode};
 use vfs::{Vfs, VfsPath};
 
 use crate::cli::{
@@ -33,7 +34,6 @@ use crate::cli::{
     progress_report::ProgressReport,
     report_metric, Result, Verbosity,
 };
-use profile::StopWatch;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
@@ -135,6 +135,21 @@ impl flags::AnalysisStats {
 
         if env::var("RA_COUNT").is_ok() {
             eprintln!("{}", profile::countme::get_all());
+        }
+
+        if self.source_stats {
+            let mut total_file_size = Bytes::default();
+            for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
+                total_file_size += syntax_len(db.parse(e.key).syntax_node())
+            }
+
+            let mut total_macro_file_size = Bytes::default();
+            for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
+                if let Some((val, _)) = db.parse_macro_expansion(e.key).value {
+                    total_macro_file_size += syntax_len(val.syntax_node())
+                }
+            }
+            eprintln!("source files: {}, macro files: {}", total_file_size, total_macro_file_size,);
         }
 
         if self.memory_usage && verbosity.is_verbose() {
@@ -360,4 +375,10 @@ fn shuffle<T>(rng: &mut Rand32, slice: &mut [T]) {
 
 fn percentage(n: u64, total: u64) -> u64 {
     (n * 100).checked_div(total).unwrap_or(100)
+}
+
+fn syntax_len(node: SyntaxNode) -> usize {
+    // Macro expanded code doesn't contain whitespace, so erase *all* whitespace
+    // to make macro and non-macro code comparable.
+    node.to_string().replace(|it: char| it.is_ascii_whitespace(), "").len()
 }

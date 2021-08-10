@@ -7,7 +7,7 @@ use ide_ssr::{SsrPattern, SsrRule};
 use crate::cli::Verbosity;
 
 xflags::xflags! {
-    src "./src/bin/flags.rs"
+    src "./src/cli/flags.rs"
 
     /// LSP server for the Rust programming language.
     cmd rust-analyzer {
@@ -60,6 +60,8 @@ xflags::xflags! {
             optional --parallel
             /// Collect memory usage statistics.
             optional --memory-usage
+            /// Print the total length of all source and macro files (whitespace is not counted).
+            optional --source-stats
 
             /// Only analyze items matching this path.
             optional -o, --only path: String
@@ -156,6 +158,7 @@ pub struct AnalysisStats {
     pub randomize: bool,
     pub parallel: bool,
     pub memory_usage: bool,
+    pub source_stats: bool,
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
@@ -190,8 +193,14 @@ pub struct ProcMacro;
 impl RustAnalyzer {
     pub const HELP: &'static str = Self::HELP_;
 
+    #[allow(dead_code)]
     pub fn from_env() -> xflags::Result<Self> {
         Self::from_env_()
+    }
+
+    #[allow(dead_code)]
+    pub fn from_vec(args: Vec<std::ffi::OsString>) -> xflags::Result<Self> {
+        Self::from_vec_(args)
     }
 }
 // generated end
