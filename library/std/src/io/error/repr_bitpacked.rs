@@ -28,7 +28,7 @@
 //!
 //!   This means we can skip tagging it, which is necessary as this variant can
 //!   be constructed from a `const fn`, which probably cannot tag pointers (or
-//!   at least it would be difficult.
+//!   at least it would be difficult).
 //!
 //! - **Tag 0b01**: The other pointer variant holds the data for
 //!   `ErrorData::Custom` and the remaining 62 bits are used to store a
@@ -40,7 +40,7 @@
 //!   preserve the pointer's provenance, which would otherwise be lost.
 //!
 //! - **Tag 0b10**: Holds the data for `ErrorData::Os(i32)`. We store the `i32`
-//!   in the pointers most significant 32 bits, and don't use the bits `2..32`
+//!   in the pointer's most significant 32 bits, and don't use the bits `2..32`
 //!   for anything. Using the top 32 bits is just to let us easily recover the
 //!   `i32` code with the correct sign.
 //!
