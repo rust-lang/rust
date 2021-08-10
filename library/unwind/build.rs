@@ -65,8 +65,8 @@ fn main() {
 }
 
 mod llvm_libunwind {
-    use std::env;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
+    use std::{env, fs, io};
 
     /// Compile the libunwind C/C++ source code.
     pub fn compile() {
@@ -75,6 +75,14 @@ mod llvm_libunwind {
         let mut cc_cfg = cc::Build::new();
         let mut cpp_cfg = cc::Build::new();
         let root = Path::new("../../src/llvm-project/libunwind");
+
+        // We depend on starting with a fresh build directory each time.
+        let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+        if let Err(x) = fs::remove_dir_all(&out_dir) {
+            if x.kind() != io::ErrorKind::NotFound {
+                panic!("Failed removing OUT_DIR at {}: {}", out_dir.display(), x);
+            }
+        }
 
         cpp_cfg.cpp(true);
         cpp_cfg.cpp_set_stdlib(None);
@@ -137,7 +145,7 @@ mod llvm_libunwind {
             "UnwindRegistersSave.S",
         ];
 
-        let cpp_sources = vec!["Unwind-EHABI.cpp", "Unwind-seh.cpp", "libunwind.cpp"];
+        let cpp_sources = &["Unwind-EHABI.cpp", "Unwind-seh.cpp", "libunwind.cpp"];
         let cpp_len = cpp_sources.len();
 
         if target.contains("x86_64-fortanix-unknown-sgx") {
