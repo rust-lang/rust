@@ -3,7 +3,6 @@
 
 use std::{
     env,
-    path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -28,6 +27,7 @@ use syntax::AstNode;
 use vfs::{Vfs, VfsPath};
 
 use crate::cli::{
+    flags,
     load_cargo::{load_workspace_at, LoadCargoConfig},
     print_memory_usage,
     progress_report::ProgressReport,
@@ -43,20 +43,7 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
     }
 }
 
-pub struct AnalysisStatsCmd {
-    pub randomize: bool,
-    pub parallel: bool,
-    pub memory_usage: bool,
-    pub only: Option<String>,
-    pub with_deps: bool,
-    pub no_sysroot: bool,
-    pub path: PathBuf,
-    pub enable_build_scripts: bool,
-    pub enable_proc_macros: bool,
-    pub skip_inference: bool,
-}
-
-impl AnalysisStatsCmd {
+impl flags::AnalysisStats {
     pub fn run(self, verbosity: Verbosity) -> Result<()> {
         let mut rng = {
             let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
@@ -67,8 +54,8 @@ impl AnalysisStatsCmd {
         let mut cargo_config = CargoConfig::default();
         cargo_config.no_sysroot = self.no_sysroot;
         let load_cargo_config = LoadCargoConfig {
-            load_out_dirs_from_check: self.enable_build_scripts,
-            with_proc_macro: self.enable_proc_macros,
+            load_out_dirs_from_check: !self.disable_build_scripts,
+            with_proc_macro: !self.disable_proc_macros,
             prefill_caches: false,
         };
         let (host, vfs, _proc_macro) =
