@@ -739,6 +739,10 @@ fn test_array_windows_count() {
     let v3: &[i32] = &[];
     let c3 = v3.array_windows::<2>();
     assert_eq!(c3.count(), 0);
+
+    let v4: &[()] = &[(); usize::MAX];
+    let c4 = v4.array_windows::<1>();
+    assert_eq!(c4.count(), usize::MAX);
 }
 
 #[test]
@@ -1050,6 +1054,10 @@ fn test_windows_count() {
     let v3: &[i32] = &[];
     let c3 = v3.windows(2);
     assert_eq!(c3.count(), 0);
+
+    let v4 = &[(); usize::MAX];
+    let c4 = v4.windows(1);
+    assert_eq!(c4.count(), usize::MAX);
 }
 
 #[test]
