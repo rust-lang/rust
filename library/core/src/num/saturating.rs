@@ -80,7 +80,6 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
     }
 }
 
-
 // FIXME(30524): impl Op<T> for Saturating<T>, impl OpAssign<T> for Saturating<T>
 macro_rules! saturating_impl {
     ($($t:ty)*) => ($(
