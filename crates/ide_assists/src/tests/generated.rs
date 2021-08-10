@@ -368,6 +368,25 @@ impl Point {
 }
 
 #[test]
+fn doctest_destructure_tuple_binding() {
+    check_doc_test(
+        "destructure_tuple_binding",
+        r#####"
+fn main() {
+    let $0t = (1,2);
+    let v = t.0;
+}
+"#####,
+        r#####"
+fn main() {
+    let ($0_0, _1) = (1,2);
+    let v = _0;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_expand_glob_import() {
     check_doc_test(
         "expand_glob_import",
