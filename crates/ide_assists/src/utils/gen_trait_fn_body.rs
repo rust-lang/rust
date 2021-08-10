@@ -18,6 +18,7 @@ pub(crate) fn gen_trait_fn_body(
     match trait_path.segment()?.name_ref()?.text().as_str() {
         "Debug" => gen_debug_impl(adt, func),
         "Default" => gen_default_impl(adt, func),
+        "Hash" => gen_hash_impl(adt, func),
         _ => None,
     }
 }
@@ -150,4 +151,50 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             Some(())
         }
     }
+}
+
+/// Generate a `Hash` impl based on the fields and members of the target type.
+fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    let body = match adt {
+        // `Hash` cannot be derived for unions, so no default impl can be provided.
+        ast::Adt::Union(_) => return None,
+
+        // => std::mem::discriminant(self).hash(state);
+        ast::Adt::Enum(_) => {
+            let root = make::ext::ident_path("core");
+            let submodule = make::ext::ident_path("mem");
+            let fn_name = make::ext::ident_path("discriminant");
+            let fn_name = make::path_concat(submodule, fn_name);
+            let fn_name = make::expr_path(make::path_concat(root, fn_name));
+
+            let arg = make::expr_path(make::ext::ident_path("self"));
+            let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg)));
+
+            let method = make::name_ref("hash");
+            let arg = make::expr_path(make::ext::ident_path("state"));
+            let expr = make::expr_method_call(fn_call, method, make::arg_list(Some(arg)));
+            let stmt = make::expr_stmt(expr);
+
+            make::block_expr(Some(stmt.into()), None).indent(ast::edit::IndentLevel(1))
+        }
+        ast::Adt::Struct(strukt) => match strukt.field_list() {
+            // => self.<field>.hash(state);*
+            Some(ast::FieldList::RecordFieldList(field_list)) => {
+                // let mut stmts = vec![];
+                for field in field_list.fields() {}
+                todo!();
+            }
+
+            // => self.<field_index>.hash(state);*
+            Some(ast::FieldList::TupleFieldList(field_list)) => {
+                todo!();
+            }
+
+            // No fields in the body means there's nothing to hash.
+            None => make::ext::empty_block_expr(),
+        },
+    };
+
+    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    Some(())
 }
