@@ -3108,26 +3108,31 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     // One must use this temporary map to first create all the replacements
     // prior to actually replacing to ensure that getSubLimits has the same
     // behavior and unwrap behavior for all replacements.
-    std::vector<std::pair<Instruction *, Value *>> newIToNextI;
+    std::vector<std::pair<Value *, Value *>> newIToNextI;
 
     for (const auto &m : mapping) {
-      if (m.first.second == CacheType::Self && !isa<CallInst>(m.first.first) &&
+      if (m.first.second == CacheType::Self &&
           gutils->knownRecomputeHeuristic.count(m.first.first)) {
         assert(gutils->knownRecomputeHeuristic.count(m.first.first));
-        auto newi = gutils->getNewFromOriginal(m.first.first);
-        if (auto PN = dyn_cast<PHINode>(newi))
-          if (gutils->fictiousPHIs.count(PN)) {
-            assert(gutils->fictiousPHIs[PN] == m.first.first);
-            gutils->fictiousPHIs.erase(PN);
-          }
-        IRBuilder<> BuilderZ(newi->getNextNode());
-        if (isa<PHINode>(m.first.first)) {
-          BuilderZ.SetInsertPoint(
-              cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+        if (!isa<CallInst>(m.first.first)) {
+            auto newi = gutils->getNewFromOriginal(m.first.first);
+            if (auto PN = dyn_cast<PHINode>(newi))
+              if (gutils->fictiousPHIs.count(PN)) {
+                assert(gutils->fictiousPHIs[PN] == m.first.first);
+                gutils->fictiousPHIs.erase(PN);
+              }
+            IRBuilder<> BuilderZ(newi->getNextNode());
+            if (isa<PHINode>(m.first.first)) {
+              BuilderZ.SetInsertPoint(
+                  cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+            }
+            Value *nexti = gutils->cacheForReverse(
+                BuilderZ, newi, m.second, /*ignoreType*/ false, /*replace*/ false);
+            newIToNextI.emplace_back(newi, nexti);
+        } else {
+            auto newi = gutils->getNewFromOriginal((Value*)m.first.first);
+            newIToNextI.emplace_back(newi, newi);
         }
-        Value *nexti = gutils->cacheForReverse(
-            BuilderZ, newi, m.second, /*ignoreType*/ false, /*replace*/ false);
-        newIToNextI.emplace_back(newi, nexti);
       }
     }
 
@@ -3140,8 +3145,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     for (auto pair : newIToNextI) {
       auto newi = pair.first;
       auto nexti = pair.second;
-      gutils->replaceAWithB(newi, nexti);
-      gutils->erase(newi);
+      if (newi != nexti) {
+          gutils->replaceAWithB(newi, nexti);
+      }
     }
 
     // This most occur after all the replacements have been made
@@ -3163,6 +3169,16 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         assert(nval);
         V->replaceAllUsesWith(nval);
         V->eraseFromParent();
+      }
+    }
+   
+    // Erasure happens after to not erase the key of unwrapToOrig
+    for (auto pair : newIToNextI) {
+      auto newi = pair.first;
+      auto nexti = pair.second;
+      if (newi != nexti) {
+          if (auto inst = dyn_cast<Instruction>(newi))
+              gutils->erase(inst);
       }
     }
 

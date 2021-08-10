@@ -420,18 +420,20 @@ public:
 
         case DerivativeMode::ReverseModePrimal:
         case DerivativeMode::ReverseModeCombined: {
-          newip = gutils->invertPointerM(&I, BuilderZ);
-          assert(newip->getType() == type);
-
-          if (Mode == DerivativeMode::ReverseModePrimal && can_modref &&
-              needShadow) {
-            gutils->cacheForReverse(BuilderZ, newip,
-                                    getIndex(&I, CacheType::Shadow));
+          if (!needShadow) {
+            gutils->erase(placeholder);
+          } else {
+            newip = gutils->invertPointerM(&I, BuilderZ);
+            assert(newip->getType() == type);
+            if (Mode == DerivativeMode::ReverseModePrimal && can_modref) {
+              gutils->cacheForReverse(BuilderZ, newip,
+                                      getIndex(&I, CacheType::Shadow));
+            }
+            placeholder->replaceAllUsesWith(newip);
+            gutils->erase(placeholder);
+            gutils->invertedPointers.insert(std::make_pair(
+                  (const Value *)&I, InvertedPointerVH(gutils, newip)));
           }
-          placeholder->replaceAllUsesWith(newip);
-          gutils->erase(placeholder);
-          gutils->invertedPointers.insert(std::make_pair(
-              (const Value *)&I, InvertedPointerVH(gutils, newip)));
           break;
         }
         case DerivativeMode::ForwardMode: {
@@ -5104,6 +5106,20 @@ public:
         subretused = true;
       }
     }
+    
+    DIFFE_TYPE subretType;
+    if (gutils->isConstantValue(orig)) {
+      subretType = DIFFE_TYPE::CONSTANT;
+    } else if (!orig->getType()->isFPOrFPVectorTy() &&
+               TR.query(orig).Inner0().isPossiblePointer()) {
+      if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
+              TR, gutils, orig, Mode, oldUnreachable))
+        subretType = DIFFE_TYPE::DUP_ARG;
+      else
+        subretType = DIFFE_TYPE::CONSTANT;
+    } else {
+      subretType = DIFFE_TYPE::OUT_DIFF;
+    }
 
     auto found = customCallHandlers.find(funcName.str());
     if (found != customCallHandlers.end()) {
@@ -5118,14 +5134,7 @@ public:
       if (ifound != gutils->invertedPointers.end()) {
         //! We only need the shadow pointer for non-forward Mode if it is used
         //! in a non return setting
-        for (auto use : orig->users()) {
-          if (Mode == DerivativeMode::ReverseModePrimal ||
-              !isa<ReturnInst>(
-                  use)) { // || returnuses.find(cast<Instruction>(use)) ==
-                          // returnuses.end()) {
-            hasNonReturnUse = true;
-          }
-        }
+        hasNonReturnUse = subretType == DIFFE_TYPE::DUP_ARG;
         if (hasNonReturnUse)
           invertedReturn = cast<PHINode>(&*ifound->second);
       }
@@ -5753,6 +5762,7 @@ public:
           auto placeholder = cast<PHINode>(&*ifound->second);
           gutils->invertedPointers.erase(ifound);
 
+          if (subretType == DIFFE_TYPE::DUP_ARG) {
           Value *shadow = placeholder;
           if (lrc || Mode == DerivativeMode::ReverseModePrimal ||
               Mode == DerivativeMode::ReverseModeCombined) {
@@ -5786,6 +5796,9 @@ public:
           if (needsReplacement) {
             assert(shadow != placeholder);
             gutils->replaceAWithB(placeholder, shadow);
+            gutils->erase(placeholder);
+          }
+          } else {
             gutils->erase(placeholder);
           }
         }
@@ -6569,20 +6582,6 @@ public:
              cast<Function>(called)->getFunctionType()->getNumParams());
       assert(argsInverted.size() ==
              cast<Function>(called)->getFunctionType()->getNumParams());
-    }
-
-    DIFFE_TYPE subretType;
-    if (gutils->isConstantValue(orig)) {
-      subretType = DIFFE_TYPE::CONSTANT;
-    } else if (!orig->getType()->isFPOrFPVectorTy() &&
-               TR.query(orig).Inner0().isPossiblePointer()) {
-      if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
-              TR, gutils, orig, Mode, oldUnreachable))
-        subretType = DIFFE_TYPE::DUP_ARG;
-      else
-        subretType = DIFFE_TYPE::CONSTANT;
-    } else {
-      subretType = DIFFE_TYPE::OUT_DIFF;
     }
 
     bool replaceFunction = false;
