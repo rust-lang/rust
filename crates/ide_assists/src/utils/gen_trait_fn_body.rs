@@ -330,6 +330,15 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
 fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    fn gen_discriminant() -> ast::Expr {
+        let root = make::ext::ident_path("core");
+        let submodule = make::ext::ident_path("mem");
+        let fn_name = make::ext::ident_path("discriminant");
+        let fn_name = make::path_concat(submodule, fn_name);
+        let fn_name = make::expr_path(make::path_concat(root, fn_name));
+        fn_name
+    }
+
     // FIXME: return `None` if the trait carries a generic type; we can only
     // generate this code `Self` for the time being.
 
@@ -338,9 +347,16 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         ast::Adt::Union(_) => return None,
 
         // FIXME: generate trait variants
-        ast::Adt::Enum(_) => todo!(),
+        ast::Adt::Enum(enum_) => {
+            // => std::mem::discriminant(self) == std::mem::discriminant(other)
+            let lhs = make::expr_path(make::ext::ident_path("self"));
+            let lhs = make::expr_call(gen_discriminant(), make::arg_list(Some(lhs)));
+            let rhs = make::expr_path(make::ext::ident_path("other"));
+            let rhs = make::expr_call(gen_discriminant(), make::arg_list(Some(rhs)));
+            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+            make::block_expr(None, Some(cmp)).indent(ast::edit::IndentLevel(1))
+        }
         ast::Adt::Struct(strukt) => match strukt.field_list() {
-            // => self.<field>.hash(state);
             Some(ast::FieldList::RecordFieldList(field_list)) => {
                 let mut expr = None;
                 for field in field_list.fields() {
@@ -357,7 +373,6 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
             }
 
-            // => self.<field_index>.hash(state);
             Some(ast::FieldList::TupleFieldList(field_list)) => {
                 let mut expr = None;
                 for (i, _) in field_list.fields().enumerate() {
