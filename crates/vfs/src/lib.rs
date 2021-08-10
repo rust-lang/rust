@@ -111,9 +111,7 @@ impl Vfs {
 
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
-        let it = self.interner.get(path)?;
-        let _ = self.get(it).as_ref()?;
-        Some(it)
+        self.interner.get(path).filter(|&it| self.get(it).is_some())
     }
 
     /// File path corresponding to the given `file_id`.
@@ -139,12 +137,13 @@ impl Vfs {
     ///
     /// This will skip deleted files.
     pub fn iter(&self) -> impl Iterator<Item = (FileId, &VfsPath)> + '_ {
-        (0..self.data.len()).filter_map(move |it| {
-            let file_id = FileId(it as u32);
-            let _ = self.get(file_id).as_ref()?;
-            let path = self.interner.lookup(file_id);
-            Some((file_id, path))
-        })
+        (0..self.data.len())
+            .map(|it| FileId(it as u32))
+            .filter(move |&file_id| self.get(file_id).is_some())
+            .map(move |file_id| {
+                let path = self.interner.lookup(file_id);
+                (file_id, path)
+            })
     }
 
     /// Update the `path` with the given `contents`. `None` means the file was deleted.
