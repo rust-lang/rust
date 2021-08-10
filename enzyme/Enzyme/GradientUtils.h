@@ -277,6 +277,8 @@ public:
     // TODO optimize if val is invariant to loopContext
     for (auto &I : *lc.header) {
       if (auto PN = dyn_cast<PHINode>(&I)) {
+        if (PN->getNumIncomingValues() == 0)
+          continue;
         if (PN->getType() != lc.incvar->getType())
           continue;
         Value *ival = PN->getIncomingValueForBlock(lc.preheader);
