@@ -961,6 +961,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         origin: hir::OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
+        let tcx = infcx.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Use the same type variable if the exact same opaque type appears more
@@ -992,15 +993,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         }
 
         debug!("generated new type inference var {:?}", ty_var.kind());
-        self.compute_opaque_type_obligations(opaque_type_key);
-
-        ty_var
-    }
-
-    fn compute_opaque_type_obligations(&mut self, opaque_type_key: OpaqueTypeKey<'tcx>) {
-        let infcx = self.infcx;
-        let tcx = infcx.tcx;
-        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
         debug!(?item_bounds);
@@ -1021,7 +1013,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
-                    return;
+                    return ty_var;
                 }
             }
         }
@@ -1040,6 +1032,8 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!("instantiate_opaque_types: predicate={:?}", predicate);
             self.obligations.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
+
+        ty_var
     }
 }
 
