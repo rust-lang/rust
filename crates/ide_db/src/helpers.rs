@@ -247,6 +247,8 @@ impl SnippetCap {
 
 /// Calls `cb` on each expression inside `expr` that is at "tail position".
 /// Does not walk into `break` or `return` expressions.
+/// Note that modifying the tree while iterating it will cause undefined iteration which might
+/// potentially results in an out of bounds panic.
 pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
     match expr {
         ast::Expr::BlockExpr(b) => {

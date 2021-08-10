@@ -33,6 +33,7 @@
 //!     ord: eq, option
 //!     derive:
 //!     fmt: result
+//!     bool_impl: option, fn
 
 pub mod marker {
     // region:sized
@@ -567,6 +568,19 @@ mod macros {
     }
 }
 // endregion:derive
+
+// region:bool_impl
+#[lang = "bool"]
+impl bool {
+    pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
+        if self {
+            Some(f())
+        } else {
+            None
+        }
+    }
+}
+// endregion:bool_impl
 
 pub mod prelude {
     pub mod v1 {

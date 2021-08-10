@@ -127,6 +127,7 @@ mod handlers {
             auto_import::auto_import,
             change_visibility::change_visibility,
             convert_bool_then::convert_if_to_bool_then,
+            convert_bool_then::convert_bool_then_to_if,
             convert_comment_block::convert_comment_block,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
