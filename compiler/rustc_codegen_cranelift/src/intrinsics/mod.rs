@@ -1138,6 +1138,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
 
         black_box, (c a) {
+            // FIXME implement black_box semantics
             ret.write_cvalue(fx, a);
         };
     }
