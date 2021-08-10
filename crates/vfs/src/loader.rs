@@ -161,16 +161,15 @@ impl Directories {
     ///   - This path is longer than any element in `self.exclude` that is a prefix
     ///     of `path`. In case of equality, exclusion wins.
     fn includes_path(&self, path: &AbsPath) -> bool {
-        let include = self.include.iter().fold(None::<&AbsPathBuf>, |include, incl| {
-            if !path.starts_with(incl) {
-                return include;
+        let mut include = None::<&AbsPathBuf>;
+        for incl in &self.include {
+            if path.starts_with(incl) {
+                include = Some(match include {
+                    Some(prev) if prev.starts_with(incl) => prev,
+                    _ => incl,
+                });
             }
-
-            Some(match include {
-                Some(prev) if prev.starts_with(incl) => prev,
-                _ => incl,
-            })
-        });
+        }
 
         let include = match include {
             Some(it) => it,
