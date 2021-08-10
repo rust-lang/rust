@@ -4806,6 +4806,10 @@ void GradientUtils::computeMinCache(
       }
     }
 
+    auto minCutMode = (mode == DerivativeMode::ReverseModePrimal)
+                          ? DerivativeMode::ReverseModeGradient
+                          : mode;
+
     for (BasicBlock &BB : *oldFunc) {
       if (guaranteedUnreachable.count(&BB))
         continue;
@@ -4822,10 +4826,10 @@ void GradientUtils::computeMinCache(
 
         if (!legalRecompute(&I, Available2, nullptr)) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, this, &I, mode, FullSeen, guaranteedUnreachable)) {
+                  TR, this, &I, minCutMode, FullSeen, guaranteedUnreachable)) {
             bool oneneed = is_value_needed_in_reverse<ValueType::Primal,
                                                       /*OneLevel*/ true>(
-                TR, this, &I, mode, OneLevelSeen, guaranteedUnreachable);
+                TR, this, &I, minCutMode, OneLevelSeen, guaranteedUnreachable);
             if (oneneed) {
               knownRecomputeHeuristic[&I] = false;
             } else
@@ -4848,7 +4852,7 @@ void GradientUtils::computeMinCache(
       if (Intermediates.count(V))
         continue;
       if (!is_value_needed_in_reverse<ValueType::Primal>(
-              TR, this, V, mode, FullSeen, guaranteedUnreachable)) {
+              TR, this, V, minCutMode, FullSeen, guaranteedUnreachable)) {
         continue;
       }
       if (!Recomputes.count(V)) {
@@ -4869,7 +4873,7 @@ void GradientUtils::computeMinCache(
       }
       Intermediates.insert(V);
       if (is_value_needed_in_reverse<ValueType::Primal, /*OneLevel*/ true>(
-              TR, this, V, mode, OneLevelSeen, guaranteedUnreachable)) {
+              TR, this, V, minCutMode, OneLevelSeen, guaranteedUnreachable)) {
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {

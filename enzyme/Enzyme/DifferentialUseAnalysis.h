@@ -223,7 +223,8 @@ static inline bool is_value_needed_in_reverse(
         // storing an active pointer into a location
         // doesn't require the shadow pointer for the
         // reverse pass
-        if (SI->getPointerOperand() != inst && mode == DerivativeMode::ReverseModeGradient)
+        if (SI->getPointerOperand() != inst &&
+            mode == DerivativeMode::ReverseModeGradient)
           continue;
 
         if (!gutils->isConstantValue(
@@ -254,7 +255,7 @@ static inline bool is_value_needed_in_reverse(
 
       // Assume active instructions require the operand.
       if (!gutils->isConstantInstruction(const_cast<Instruction *>(user))) {
-          return seen[idx] = true;
+        return seen[idx] = true;
       }
 
       // Now the remaining instructions are inactive, however note that

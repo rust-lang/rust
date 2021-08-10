@@ -3115,23 +3115,24 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           gutils->knownRecomputeHeuristic.count(m.first.first)) {
         assert(gutils->knownRecomputeHeuristic.count(m.first.first));
         if (!isa<CallInst>(m.first.first)) {
-            auto newi = gutils->getNewFromOriginal(m.first.first);
-            if (auto PN = dyn_cast<PHINode>(newi))
-              if (gutils->fictiousPHIs.count(PN)) {
-                assert(gutils->fictiousPHIs[PN] == m.first.first);
-                gutils->fictiousPHIs.erase(PN);
-              }
-            IRBuilder<> BuilderZ(newi->getNextNode());
-            if (isa<PHINode>(m.first.first)) {
-              BuilderZ.SetInsertPoint(
-                  cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+          auto newi = gutils->getNewFromOriginal(m.first.first);
+          if (auto PN = dyn_cast<PHINode>(newi))
+            if (gutils->fictiousPHIs.count(PN)) {
+              assert(gutils->fictiousPHIs[PN] == m.first.first);
+              gutils->fictiousPHIs.erase(PN);
             }
-            Value *nexti = gutils->cacheForReverse(
-                BuilderZ, newi, m.second, /*ignoreType*/ false, /*replace*/ false);
-            newIToNextI.emplace_back(newi, nexti);
+          IRBuilder<> BuilderZ(newi->getNextNode());
+          if (isa<PHINode>(m.first.first)) {
+            BuilderZ.SetInsertPoint(
+                cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+          }
+          Value *nexti =
+              gutils->cacheForReverse(BuilderZ, newi, m.second,
+                                      /*ignoreType*/ false, /*replace*/ false);
+          newIToNextI.emplace_back(newi, nexti);
         } else {
-            auto newi = gutils->getNewFromOriginal((Value*)m.first.first);
-            newIToNextI.emplace_back(newi, newi);
+          auto newi = gutils->getNewFromOriginal((Value *)m.first.first);
+          newIToNextI.emplace_back(newi, newi);
         }
       }
     }
@@ -3146,7 +3147,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       auto newi = pair.first;
       auto nexti = pair.second;
       if (newi != nexti) {
-          gutils->replaceAWithB(newi, nexti);
+        gutils->replaceAWithB(newi, nexti);
       }
     }
 
@@ -3171,14 +3172,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         V->eraseFromParent();
       }
     }
-   
+
     // Erasure happens after to not erase the key of unwrapToOrig
     for (auto pair : newIToNextI) {
       auto newi = pair.first;
       auto nexti = pair.second;
       if (newi != nexti) {
-          if (auto inst = dyn_cast<Instruction>(newi))
-              gutils->erase(inst);
+        if (auto inst = dyn_cast<Instruction>(newi))
+          gutils->erase(inst);
       }
     }
 

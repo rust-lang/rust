@@ -432,7 +432,7 @@ public:
             placeholder->replaceAllUsesWith(newip);
             gutils->erase(placeholder);
             gutils->invertedPointers.insert(std::make_pair(
-                  (const Value *)&I, InvertedPointerVH(gutils, newip)));
+                (const Value *)&I, InvertedPointerVH(gutils, newip)));
           }
           break;
         }
@@ -5106,7 +5106,7 @@ public:
         subretused = true;
       }
     }
-    
+
     DIFFE_TYPE subretType;
     if (gutils->isConstantValue(orig)) {
       subretType = DIFFE_TYPE::CONSTANT;
@@ -5763,41 +5763,41 @@ public:
           gutils->invertedPointers.erase(ifound);
 
           if (subretType == DIFFE_TYPE::DUP_ARG) {
-          Value *shadow = placeholder;
-          if (lrc || Mode == DerivativeMode::ReverseModePrimal ||
-              Mode == DerivativeMode::ReverseModeCombined) {
-            if (gutils->isConstantValue(orig->getArgOperand(0)))
-              shadow = gutils->getNewFromOriginal(orig);
-            else {
-              SmallVector<Value *, 2> args;
-              size_t i = 0;
-              for (auto &arg : call.arg_operands()) {
-                if (gutils->isConstantValue(arg) ||
-                    (funcName == "__dynamic_cast" && i > 0))
-                  args.push_back(gutils->getNewFromOriginal(arg));
-                else
-                  args.push_back(gutils->invertPointerM(arg, BuilderZ));
-                i++;
+            Value *shadow = placeholder;
+            if (lrc || Mode == DerivativeMode::ReverseModePrimal ||
+                Mode == DerivativeMode::ReverseModeCombined) {
+              if (gutils->isConstantValue(orig->getArgOperand(0)))
+                shadow = gutils->getNewFromOriginal(orig);
+              else {
+                SmallVector<Value *, 2> args;
+                size_t i = 0;
+                for (auto &arg : call.arg_operands()) {
+                  if (gutils->isConstantValue(arg) ||
+                      (funcName == "__dynamic_cast" && i > 0))
+                    args.push_back(gutils->getNewFromOriginal(arg));
+                  else
+                    args.push_back(gutils->invertPointerM(arg, BuilderZ));
+                  i++;
+                }
+                shadow = BuilderZ.CreateCall(called, args);
               }
-              shadow = BuilderZ.CreateCall(called, args);
             }
-          }
 
-          bool needsReplacement = true;
-          if (!lrc && (Mode == DerivativeMode::ReverseModePrimal ||
-                       Mode == DerivativeMode::ReverseModeGradient)) {
-            shadow = gutils->cacheForReverse(BuilderZ, shadow,
-                                             getIndex(orig, CacheType::Shadow));
-            if (Mode == DerivativeMode::ReverseModeGradient)
-              needsReplacement = false;
-          }
-          gutils->invertedPointers.insert(std::make_pair(
-              (const Value *)orig, InvertedPointerVH(gutils, shadow)));
-          if (needsReplacement) {
-            assert(shadow != placeholder);
-            gutils->replaceAWithB(placeholder, shadow);
-            gutils->erase(placeholder);
-          }
+            bool needsReplacement = true;
+            if (!lrc && (Mode == DerivativeMode::ReverseModePrimal ||
+                         Mode == DerivativeMode::ReverseModeGradient)) {
+              shadow = gutils->cacheForReverse(
+                  BuilderZ, shadow, getIndex(orig, CacheType::Shadow));
+              if (Mode == DerivativeMode::ReverseModeGradient)
+                needsReplacement = false;
+            }
+            gutils->invertedPointers.insert(std::make_pair(
+                (const Value *)orig, InvertedPointerVH(gutils, shadow)));
+            if (needsReplacement) {
+              assert(shadow != placeholder);
+              gutils->replaceAWithB(placeholder, shadow);
+              gutils->erase(placeholder);
+            }
           } else {
             gutils->erase(placeholder);
           }
