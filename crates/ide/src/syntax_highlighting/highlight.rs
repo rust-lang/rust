@@ -381,7 +381,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                                 h |= HlMod::Reference;
                             }
                             hir::Access::Shared => h |= HlMod::Reference,
-                            _ => {}
+                            hir::Access::Owned => h |= HlMod::Consuming,
                         },
                         None => h |= HlMod::Static,
                     }
