@@ -37,7 +37,7 @@ h4 {
 .docblock code {
 	color: #ffb454;
 }
-h3 > code, h4 > code, h5 > code {
+.code-header {
 	color: #e6e1cf;
 }
 pre > code {
