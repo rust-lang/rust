@@ -4,7 +4,10 @@ use ide_db::{
     search::{FileReference, SearchScope, UsageSearchResult},
 };
 use itertools::Itertools;
-use syntax::{TextRange, ast::{self, AstNode, IdentPat, NameOwner}};
+use syntax::{
+    ast::{self, AstNode, IdentPat, NameOwner},
+    TextRange,
+};
 
 use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 
@@ -49,7 +52,11 @@ pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext) 
     destructure_tuple_binding_impl(acc, ctx, false)
 }
 
-pub(crate) fn destructure_tuple_binding_impl(acc: &mut Assists, ctx: &AssistContext, with_sub_pattern: bool) -> Option<()> {
+pub(crate) fn destructure_tuple_binding_impl(
+    acc: &mut Assists,
+    ctx: &AssistContext,
+    with_sub_pattern: bool,
+) -> Option<()> {
     let ident_pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
     let data = collect_data(ident_pat, ctx)?;
 
@@ -121,7 +128,7 @@ fn generate_name(
     _usages: &Option<UsageSearchResult>,
     _ctx: &AssistContext,
 ) -> String {
-    //TODO: detect if name already used
+    // FIXME: detect if name already used
     format!("_{}", index)
 }
 
@@ -133,16 +140,19 @@ struct TupleData {
     // field_types: Vec<Type>,
     usages: Option<UsageSearchResult>,
 }
-fn edit_tuple_assignment(data: &TupleData, builder: &mut AssistBuilder, ctx: &AssistContext, in_sub_pattern: bool) {
+fn edit_tuple_assignment(
+    data: &TupleData,
+    builder: &mut AssistBuilder,
+    ctx: &AssistContext,
+    in_sub_pattern: bool,
+) {
     let tuple_pat = {
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
         let is_mut = original.mut_token().is_some();
-        let fields =
-            data
-            .field_names
-            .iter()
-            .map(|name| ast::Pat::from(ast::make::ident_pat(is_ref, is_mut, ast::make::name(name))));
+        let fields = data.field_names.iter().map(|name| {
+            ast::Pat::from(ast::make::ident_pat(is_ref, is_mut, ast::make::name(name)))
+        });
         ast::make::tuple_pat(fields)
     };
 
@@ -231,17 +241,17 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
     //      PAREN_EXRP*
     //       FIELD_EXPR
 
-    let node = 
-        usage.name.syntax()
+    let node = usage
+        .name
+        .syntax()
         .ancestors()
         .skip_while(|s| !ast::PathExpr::can_cast(s.kind()))
         .skip(1) // PATH_EXPR
-        .find(|s| !ast::ParenExpr::can_cast(s.kind()))?;    // skip parentheses
+        .find(|s| !ast::ParenExpr::can_cast(s.kind()))?; // skip parentheses
 
     if let Some(field_expr) = ast::FieldExpr::cast(node) {
         let idx = field_expr.name_ref()?.as_tuple_field()?;
         if idx < data.field_names.len() {
-
             // special case: in macro call -> range of `field_expr` in applied macro, NOT range in actual file!
             if field_expr.syntax().ancestors().any(|a| ast::MacroStmts::can_cast(a.kind())) {
                 cov_mark::hit!(destructure_tuple_macro_call);
@@ -260,10 +270,7 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
                 return None;
             }
 
-            Some(TupleIndex {
-                            index: idx,
-                            range: field_expr.syntax().text_range(),
-                        })
+            Some(TupleIndex { index: idx, range: field_expr.syntax().text_range() })
         } else {
             // tuple index out of range
             None
@@ -279,7 +286,7 @@ mod tests {
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 
-    // Tests for direct tuple destructure: 
+    // Tests for direct tuple destructure:
     // `let $0t = (1,2);` -> `let (_0, _1) = (1,2);`
 
     fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -459,13 +466,13 @@ fn main() {
             r#"
 fn main() {
     let $0t = ("3.14", 0);
-    let pi: f32 = t.0.parse().unwrap();
+    let pi: f32 = t.0.parse().unwrap_or(0.0);
 }
             "#,
             r#"
 fn main() {
     let ($0_0, _1) = ("3.14", 0);
-    let pi: f32 = _0.parse().unwrap();
+    let pi: f32 = _0.parse().unwrap_or(0.0);
 }
             "#,
         )
@@ -849,7 +856,6 @@ fn f(o: Option<(usize, usize)>) {
         )
     }
 
-
     #[test]
     fn in_match() {
         check_assist(
@@ -1019,7 +1025,7 @@ fn main() {
             assist,
             r#"
 fn main {
-    let $0t = 
+    let $0t =
         if 1 > 2 {
             (1,2)
         } else {
@@ -1036,7 +1042,7 @@ fn main {
             "#,
             r#"
 fn main {
-    let ($0_0, _1) = 
+    let ($0_0, _1) =
         if 1 > 2 {
             (1,2)
         } else {
@@ -1062,28 +1068,21 @@ fn main {
             destructure_tuple_binding_impl(acc, ctx, true)
         }
 
-        pub(crate) fn check_in_place_assist(
-
-            ra_fixture_before: &str,
-            ra_fixture_after: &str,
-        ) {
+        pub(crate) fn check_in_place_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
             check_assist_by_label(
-                assist, 
-                ra_fixture_before, 
-                ra_fixture_after, 
-                "Destructure tuple in place"
+                assist,
+                ra_fixture_before,
+                ra_fixture_after,
+                "Destructure tuple in place",
             );
         }
 
-        pub(crate) fn check_sub_pattern_assist(
-            ra_fixture_before: &str,
-            ra_fixture_after: &str,
-        ) {
+        pub(crate) fn check_sub_pattern_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
             check_assist_by_label(
-                assist, 
-                ra_fixture_before, 
-                ra_fixture_after, 
-                "Destructure tuple in sub-pattern"
+                assist,
+                ra_fixture_before,
+                ra_fixture_after,
+                "Destructure tuple in sub-pattern",
             );
         }
 
@@ -1097,11 +1096,11 @@ fn main {
         }
     }
 
-    /// Tests for destructure of tuple in sub-pattern: 
+    /// Tests for destructure of tuple in sub-pattern:
     /// `let $0t = (1,2);` -> `let t @ (_0, _1) = (1,2);`
     mod sub_pattern {
-        use super::*;
         use super::assist::*;
+        use super::*;
         use crate::tests::check_assist_by_label;
 
         #[test]
@@ -1123,7 +1122,7 @@ fn main() {
                 "#,
             )
         }
-    
+
         #[test]
         fn trigger_both_destructure_tuple_assists() {
             fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -1135,23 +1134,23 @@ fn main() {
 }
             "#;
             check_assist_by_label(
-                assist, 
-                text, 
+                assist,
+                text,
                 r#"
 fn main() {
     let ($0_0, _1) = (1,2);
 }
-            "#, 
+            "#,
                 "Destructure tuple in place",
             );
             check_assist_by_label(
-                assist, 
-                text, 
+                assist,
+                text,
                 r#"
 fn main() {
     let t @ ($0_0, _1) = (1,2);
 }
-            "#, 
+            "#,
                 "Destructure tuple in sub-pattern",
             );
         }
@@ -1175,7 +1174,7 @@ fn main() {
                 "#,
             )
         }
-    
+
         #[test]
         fn keep_function_call() {
             cov_mark::check!(destructure_tuple_call_with_subpattern);
@@ -1194,7 +1193,7 @@ fn main() {
                 "#,
             )
         }
-    
+
         #[test]
         fn keep_type() {
             check_sub_pattern_assist(
@@ -1293,10 +1292,9 @@ fn main() {
     }
 
     /// Tests for tuple usage in macro call:
-    /// `dbg!(t.0)`
-    mod in_macro_call {       
+    /// `println!("{}", t.0)`
+    mod in_macro_call {
         use super::assist::*;
-
 
         #[test]
         fn detect_macro_call() {
@@ -1539,7 +1537,6 @@ fn main() {
 }
                 "#,
             )
-
         }
     }
 }
