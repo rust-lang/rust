@@ -5631,11 +5631,13 @@ public:
 #else
         auto callval = orig->getCalledValue();
 #endif
+        CallInst* cubcall = cast<CallInst>(Builder2.CreateCall(orig->getFunctionType(), callval, args));
+        cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+        cubcall->setCallingConv(orig->getCallingConv());
         Value *dif0 = Builder2.CreateFDiv(
             Builder2.CreateFMul(diffe(orig, Builder2), x),
             Builder2.CreateFMul(
-                ConstantFP::get(x->getType(), 3),
-                Builder2.CreateCall(orig->getFunctionType(), callval, args)));
+                ConstantFP::get(x->getType(), 3), cubcall));
         addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
         return;
       }

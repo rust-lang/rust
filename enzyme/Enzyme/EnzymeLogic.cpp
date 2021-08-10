@@ -3215,6 +3215,35 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           U.set(repVal);
         }
       }
+      if (reachables.size() == 1)
+        if (auto si = dyn_cast<SwitchInst>(BB.getTerminator())) {
+          Value *condition = gutils->getNewFromOriginal(si->getCondition());
+
+          Constant *repVal = nullptr;
+          if (si->getDefaultDest() == reachables[0]) {
+            std::set<int64_t> cases;
+            for (auto c : si->cases()) {
+              // TODO this doesnt work with unsigned 64 bit ints or higher integer widths
+              cases.insert(cast<ConstantInt>(c.getCaseValue())->getSExtValue());
+            }
+            int64_t legalNot = 0;
+            while (cases.count(legalNot)) legalNot++;
+            repVal = ConstantInt::getSigned(condition->getType(), legalNot);
+          } else {
+            for (auto c : si->cases()) {
+              if (c.getCaseSuccessor() == reachables[0]) {
+                repVal = c.getCaseValue();
+              }
+            }
+          }
+          assert(repVal);
+          for (auto UI = condition->use_begin(), E = condition->use_end();
+              UI != E;) {
+            Use &U = *UI;
+            ++UI;
+            U.set(repVal);
+          }
+        }
     }
   }
 
