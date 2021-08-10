@@ -99,6 +99,7 @@
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_swap)]
+#![feature(const_trait_impl)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_unreachable_unchecked)]
