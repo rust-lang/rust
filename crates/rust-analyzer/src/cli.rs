@@ -1,5 +1,6 @@
 //! Various batch processing tasks, intended primarily for debugging.
 
+pub mod flags;
 pub mod load_cargo;
 mod analysis_stats;
 mod diagnostics;

@@ -1,7 +1,6 @@
 //! Driver for rust-analyzer.
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
-mod flags;
 mod logger;
 mod rustc_wrapper;
 
@@ -10,7 +9,7 @@ use std::{convert::TryFrom, env, fs, path::Path, process};
 use lsp_server::Connection;
 use project_model::ProjectManifest;
 use rust_analyzer::{
-    cli::{self, AnalysisStatsCmd},
+    cli::{self, flags, AnalysisStatsCmd},
     config::Config,
     from_json,
     lsp_ext::supports_utf8,

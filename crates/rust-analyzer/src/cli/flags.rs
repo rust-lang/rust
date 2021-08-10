@@ -3,7 +3,8 @@
 use std::path::PathBuf;
 
 use ide_ssr::{SsrPattern, SsrRule};
-use rust_analyzer::cli::Verbosity;
+
+use crate::cli::Verbosity;
 
 xflags::xflags! {
     src "./src/bin/flags.rs"
@@ -196,7 +197,7 @@ impl RustAnalyzer {
 // generated end
 
 impl RustAnalyzer {
-    pub(crate) fn verbosity(&self) -> Verbosity {
+    pub fn verbosity(&self) -> Verbosity {
         if self.quiet {
             return Verbosity::Quiet;
         }
