@@ -20,6 +20,7 @@ pub(crate) fn gen_trait_fn_body(
         "Debug" => gen_debug_impl(adt, func),
         "Default" => gen_default_impl(adt, func),
         "Hash" => gen_hash_impl(adt, func),
+        "PartialEq" => gen_partial_eq(adt, func),
         _ => None,
     }
 }
@@ -320,6 +321,65 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             // No fields in the body means there's nothing to hash.
             None => return None,
+        },
+    };
+
+    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    Some(())
+}
+
+/// Generate a `PartialEq` impl based on the fields and members of the target type.
+fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    // FIXME: return `None` if the trait carries a generic type; we can only
+    // generate this code `Self` for the time being.
+
+    let body = match adt {
+        // `Hash` cannot be derived for unions, so no default impl can be provided.
+        ast::Adt::Union(_) => return None,
+
+        // FIXME: generate trait variants
+        ast::Adt::Enum(_) => todo!(),
+        ast::Adt::Struct(strukt) => match strukt.field_list() {
+            // => self.<field>.hash(state);
+            Some(ast::FieldList::RecordFieldList(field_list)) => {
+                let mut expr = None;
+                for field in field_list.fields() {
+                    let lhs = make::expr_path(make::ext::ident_path("self"));
+                    let lhs = make::expr_field(lhs, &field.name()?.to_string());
+                    let rhs = make::expr_path(make::ext::ident_path("other"));
+                    let rhs = make::expr_field(rhs, &field.name()?.to_string());
+                    let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                    expr = match expr {
+                        Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
+                        None => Some(cmp),
+                    };
+                }
+                make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
+            }
+
+            // => self.<field_index>.hash(state);
+            Some(ast::FieldList::TupleFieldList(field_list)) => {
+                let mut expr = None;
+                for (i, _) in field_list.fields().enumerate() {
+                    let idx = format!("{}", i);
+                    let lhs = make::expr_path(make::ext::ident_path("self"));
+                    let lhs = make::expr_field(lhs, &idx);
+                    let rhs = make::expr_path(make::ext::ident_path("other"));
+                    let rhs = make::expr_field(rhs, &idx);
+                    let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                    expr = match expr {
+                        Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
+                        None => Some(cmp),
+                    };
+                }
+                make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
+            }
+
+            // No fields in the body means there's nothing to hash.
+            None => {
+                let expr = make::expr_literal("true").into();
+                make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))
+            }
         },
     };
 
