@@ -2,10 +2,7 @@ error[E0034]: multiple applicable items in scope
   --> $DIR/issue-18446.rs:18:7
    |
 LL |     x.foo();
-   |     --^^^--
-   |     | |
-   |     | multiple `foo` found
-   |     help: disambiguate the associated function for candidate #2: `T::foo(&x)`
+   |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl for the type `(dyn T + 'a)`
   --> $DIR/issue-18446.rs:9:5
@@ -17,6 +14,10 @@ note: candidate #2 is defined in the trait `T`
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
+help: disambiguate the associated function for candidate #2
+   |
+LL |     T::foo(&x);
+   |     ^^^^^^^^^^
 
 error: aborting due to previous error
 
