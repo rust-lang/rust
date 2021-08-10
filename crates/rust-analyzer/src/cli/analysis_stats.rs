@@ -149,7 +149,7 @@ impl flags::AnalysisStats {
                     total_macro_file_size += syntax_len(val.syntax_node())
                 }
             }
-            eprintln!("source files: {}, macro files: {}", total_file_size, total_macro_file_size,);
+            eprintln!("source files: {}, macro files: {}", total_file_size, total_macro_file_size);
         }
 
         if self.memory_usage && verbosity.is_verbose() {
