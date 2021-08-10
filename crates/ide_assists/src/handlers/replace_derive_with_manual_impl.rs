@@ -446,6 +446,169 @@ impl core::hash::Hash for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn add_custom_impl_clone_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+struct Foo {
+    bin: usize,
+    bar: usize,
+}
+"#,
+            r#"
+struct Foo {
+    bin: usize,
+    bar: usize,
+}
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        Self { bin: self.bin.clone(), bar: self.bar.clone() }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+struct Foo(usize, usize);
+"#,
+            r#"
+struct Foo(usize, usize);
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        Self(self.0.clone(), self.1.clone())
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_empty_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+struct Foo;
+"#,
+            r#"
+struct Foo;
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        Self {  }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+enum Foo {
+    Bar,
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        match self {
+            Self::Bar => Self::Bar,
+            Self::Baz => Self::Baz,
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_tuple_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+enum Foo {
+    Bar(String),
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar(String),
+    Baz,
+}
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        match self {
+            Self::Bar(arg0) => Self::Bar(arg0.clone()),
+            Self::Baz => Self::Baz,
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_record_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz,
+}
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        match self {
+            Self::Bar { bin } => Self::Bar { bin: bin.clone() },
+            Self::Baz => Self::Baz,
+        }
+    }
+}
+"#,
+        )
+    }
     #[test]
     fn add_custom_impl_all() {
         check_assist(
