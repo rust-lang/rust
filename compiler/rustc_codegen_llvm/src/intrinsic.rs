@@ -347,7 +347,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     ast::LlvmAsmDialect::Att,
                     &[span],
                 )
-                .unwrap();
+                .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
 
                 // We have copied the value to `result` already.
                 return;
