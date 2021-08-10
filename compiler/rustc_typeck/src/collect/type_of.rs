@@ -190,8 +190,12 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 // Try to use the segment resolution if it is valid, otherwise we
                 // default to the path resolution.
                 let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
+                use def::CtorOf;
                 let generics = match res {
-                    Res::Def(DefKind::Ctor(..), def_id) => {
+                    Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => tcx.generics_of(
+                        tcx.parent(def_id).and_then(|def_id| tcx.parent(def_id)).unwrap(),
+                    ),
+                    Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Struct, _), def_id) => {
                         tcx.generics_of(tcx.parent(def_id).unwrap())
                     }
                     // Other `DefKind`s don't have generics and would ICE when calling
@@ -200,7 +204,6 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         DefKind::Struct
                         | DefKind::Union
                         | DefKind::Enum
-                        | DefKind::Variant
                         | DefKind::Trait
                         | DefKind::OpaqueTy
                         | DefKind::TyAlias
