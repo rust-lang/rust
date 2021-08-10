@@ -155,6 +155,14 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `Hash` impl based on the fields and members of the target type.
 fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    fn gen_hash_call(target: ast::Expr) -> ast::Stmt {
+        let method = make::name_ref("hash");
+        let arg = make::expr_path(make::ext::ident_path("state"));
+        let expr = make::expr_method_call(target, method, make::arg_list(Some(arg)));
+        let stmt = make::expr_stmt(expr);
+        stmt.into()
+    }
+
     let body = match adt {
         // `Hash` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Union(_) => return None,
@@ -169,29 +177,35 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let arg = make::expr_path(make::ext::ident_path("self"));
             let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg)));
+            let stmt = gen_hash_call(fn_call);
 
-            let method = make::name_ref("hash");
-            let arg = make::expr_path(make::ext::ident_path("state"));
-            let expr = make::expr_method_call(fn_call, method, make::arg_list(Some(arg)));
-            let stmt = make::expr_stmt(expr);
-
-            make::block_expr(Some(stmt.into()), None).indent(ast::edit::IndentLevel(1))
+            make::block_expr(Some(stmt), None).indent(ast::edit::IndentLevel(1))
         }
         ast::Adt::Struct(strukt) => match strukt.field_list() {
             // => self.<field>.hash(state);*
             Some(ast::FieldList::RecordFieldList(field_list)) => {
-                // let mut stmts = vec![];
-                for field in field_list.fields() {}
-                todo!();
+                let mut stmts = vec![];
+                for field in field_list.fields() {
+                    let base = make::expr_path(make::ext::ident_path("self"));
+                    let target = make::expr_field(base, &field.name()?.to_string());
+                    stmts.push(gen_hash_call(target));
+                }
+                make::block_expr(stmts, None).indent(ast::edit::IndentLevel(1))
             }
 
             // => self.<field_index>.hash(state);*
             Some(ast::FieldList::TupleFieldList(field_list)) => {
-                todo!();
+                let mut stmts = vec![];
+                for (i, _) in field_list.fields().enumerate() {
+                    let base = make::expr_path(make::ext::ident_path("self"));
+                    let target = make::expr_field(base, &format!("{}", i));
+                    stmts.push(gen_hash_call(target));
+                }
+                make::block_expr(stmts, None).indent(ast::edit::IndentLevel(1))
             }
 
             // No fields in the body means there's nothing to hash.
-            None => make::ext::empty_block_expr(),
+            None => return None,
         },
     };
 
