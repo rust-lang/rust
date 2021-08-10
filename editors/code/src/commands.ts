@@ -485,17 +485,7 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
         };
 
         const dot = await ctx.client.sendRequest(ra.viewCrateGraph, params);
-
-        const scripts = [
-            { file: '/d3/dist/d3.min.js' },
-            { file: '/@hpcc-js/wasm/dist/index.min.js', worker: true },
-            { file: '/d3-graphviz/build/d3-graphviz.min.js' },
-        ];
-
-        const scriptsHtml = scripts.map(({ file, worker }) => {
-            const uri = panel.webview.asWebviewUri(vscode.Uri.joinPath(nodeModulesPath, file));
-            return `<script type="${worker ? "javascript/worker" : "text/javascript"}" src="${uri}"></script>`;
-        }).join("\n");
+        const uri = panel.webview.asWebviewUri(nodeModulesPath);
 
         const html = `
             <!DOCTYPE html>
@@ -515,7 +505,9 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
                 </style>
             </head>
             <body>
-                ${scriptsHtml}
+                <script type="text/javascript" src="${uri}/d3/dist/d3.min.js"></script>
+                <script type="javascript/worker" src="${uri}/@hpcc-js/wasm/dist/index.min.js"></script>
+                <script type="text/javascript" src="${uri}/d3-graphviz/build/d3-graphviz.min.js"></script>
                 <div id="graph"></div>
                 <script>
                     let graph = d3.select("#graph")
