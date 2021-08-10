@@ -25,6 +25,7 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     default: sized
+//!     hash:
 //!     clone: sized
 //!     copy: clone
 //!     from: sized
@@ -86,6 +87,16 @@ pub mod default {
     }
 }
 // endregion:default
+
+// region:hash
+pub mod hash {
+    pub trait Hasher {}
+
+    pub trait Hash {
+        fn hash<H: Hasher>(&self, state: &mut H);
+    }
+}
+// endregion:hash
 
 // region:clone
 pub mod clone {

@@ -369,6 +369,83 @@ impl Default for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn add_custom_impl_hash_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: hash
+#[derive(Has$0h)]
+struct Foo {
+    bin: usize,
+    bar: usize,
+}
+"#,
+            r#"
+struct Foo {
+    bin: usize,
+    bar: usize,
+}
+
+impl core::hash::Hash for Foo {
+    $0fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.bin.hash(state);
+        self.bar.hash(state);
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_hash_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: hash
+#[derive(Has$0h)]
+struct Foo(usize, usize);
+"#,
+            r#"
+struct Foo(usize, usize);
+
+impl core::hash::Hash for Foo {
+    $0fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_hash_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: hash
+#[derive(Has$0h)]
+enum Foo {
+    Bar,
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl core::hash::Hash for Foo {
+    $0fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+    }
+}
+"#,
+        )
+    }
     #[test]
     fn add_custom_impl_all() {
         check_assist(
