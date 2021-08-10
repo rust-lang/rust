@@ -765,7 +765,7 @@ enum Foo {
     Baz {
         quz: String,
         fez: String,
-    }
+    },
 }
 
 impl PartialEq for Foo {

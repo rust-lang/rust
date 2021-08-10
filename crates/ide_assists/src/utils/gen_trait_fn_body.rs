@@ -346,15 +346,73 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         // `Hash` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Union(_) => return None,
 
-        // FIXME: generate trait variants
         ast::Adt::Enum(enum_) => {
             // => std::mem::discriminant(self) == std::mem::discriminant(other)
-            let lhs = make::expr_path(make::ext::ident_path("self"));
-            let lhs = make::expr_call(gen_discriminant(), make::arg_list(Some(lhs)));
-            let rhs = make::expr_path(make::ext::ident_path("other"));
-            let rhs = make::expr_call(gen_discriminant(), make::arg_list(Some(rhs)));
-            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
-            make::block_expr(None, Some(cmp)).indent(ast::edit::IndentLevel(1))
+            let self_name = make::expr_path(make::ext::ident_path("self"));
+            let lhs = make::expr_call(gen_discriminant(), make::arg_list(Some(self_name.clone())));
+            let other_name = make::expr_path(make::ext::ident_path("other"));
+            let rhs = make::expr_call(gen_discriminant(), make::arg_list(Some(other_name.clone())));
+            let eq_check = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+
+            let mut case_count = 0;
+            let mut arms = vec![];
+            for variant in enum_.variant_list()?.variants() {
+                case_count += 1;
+                match variant.field_list() {
+                    // => (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
+                    Some(ast::FieldList::RecordFieldList(list)) => {
+                        // let mut pats = vec![];
+                        // let mut fields = vec![];
+                        for field in list.fields() {
+                            // let field_name = field.name()?;
+                            // let pat = make::record_pat(path, pats);
+                            // let pat = make::ident_pat(false, false, field_name.clone());
+                            // pats.push(pat.into());
+
+                            // let path = make::ext::ident_path(&field_name.to_string());
+                            // let method_call = gen_clone_call(make::expr_path(path));
+                            // let name_ref = make::name_ref(&field_name.to_string());
+                            // let field = make::record_expr_field(name_ref, Some(method_call));
+                            // fields.push(field);
+                        }
+                        // let pat = make::record_pat(variant_name.clone(), pats.into_iter());
+                        // let fields = make::record_expr_field_list(fields);
+                        // let record_expr = make::record_expr(variant_name, fields).into();
+                        // arms.push(make::match_arm(Some(pat.into()), None, record_expr));
+                        todo!("implement tuple record iteration")
+                    }
+                    Some(ast::FieldList::TupleFieldList(list)) => {
+                        todo!("implement tuple enum iteration")
+                    }
+                    None => continue,
+                }
+            }
+
+            if !arms.is_empty() && case_count > arms.len() {
+                let lhs = make::wildcard_pat().into();
+                arms.push(make::match_arm(Some(lhs), None, make::expr_literal("true").into()));
+            }
+
+            let expr = match arms.len() {
+                0 => eq_check,
+                _ => {
+                    let condition = make::condition(eq_check, None);
+
+                    let match_target = make::expr_tuple(vec![self_name, other_name]);
+                    let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
+                    let match_expr = Some(make::expr_match(match_target, list));
+                    let then_branch = make::block_expr(None, match_expr);
+                    let then_branch = then_branch.indent(ast::edit::IndentLevel(1));
+
+                    let else_branche = make::expr_literal("false");
+                    let else_branche = make::block_expr(None, Some(else_branche.into()))
+                        .indent(ast::edit::IndentLevel(1));
+
+                    make::expr_if(condition, then_branch, Some(else_branche.into()))
+                }
+            };
+
+            make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))
         }
         ast::Adt::Struct(strukt) => match strukt.field_list() {
             Some(ast::FieldList::RecordFieldList(field_list)) => {

@@ -160,6 +160,18 @@ pub enum ElseBranch {
     IfExpr(ast::IfExpr),
 }
 
+impl From<ast::BlockExpr> for ElseBranch {
+    fn from(block_expr: ast::BlockExpr) -> Self {
+        Self::Block(block_expr)
+    }
+}
+
+impl From<ast::IfExpr> for ElseBranch {
+    fn from(if_expr: ast::IfExpr) -> Self {
+        Self::IfExpr(if_expr)
+    }
+}
+
 impl ast::IfExpr {
     pub fn then_branch(&self) -> Option<ast::BlockExpr> {
         self.blocks().next()
