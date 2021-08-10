@@ -16,11 +16,81 @@ pub(crate) fn gen_trait_fn_body(
     adt: &ast::Adt,
 ) -> Option<()> {
     match trait_path.segment()?.name_ref()?.text().as_str() {
+        "Clone" => gen_clone_impl(adt, func),
         "Debug" => gen_debug_impl(adt, func),
         "Default" => gen_default_impl(adt, func),
         "Hash" => gen_hash_impl(adt, func),
         _ => None,
     }
+}
+
+/// Generate a `Clone` impl based on the fields and members of the target type.
+fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    fn gen_clone_call(target: ast::Expr) -> ast::Expr {
+        let method = make::name_ref("clone");
+        make::expr_method_call(target, method, make::arg_list(None))
+    }
+    let expr = match adt {
+        // `Clone` cannot be derived for unions, so no default impl can be provided.
+        ast::Adt::Union(_) => return None,
+        ast::Adt::Enum(enum_) => {
+            let list = enum_.variant_list()?;
+            let mut arms = vec![];
+            for variant in list.variants() {
+                let name = variant.name()?;
+                let left = make::ext::ident_path("Self");
+                let right = make::ext::ident_path(&format!("{}", name));
+                let variant_name = make::path_concat(left, right);
+
+                let pattern = make::path_pat(variant_name.clone());
+                let variant_expr = make::expr_path(variant_name);
+                arms.push(make::match_arm(Some(pattern.into()), None, variant_expr));
+            }
+
+            let match_target = make::expr_path(make::ext::ident_path("self"));
+            let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
+            make::expr_match(match_target, list)
+        }
+        ast::Adt::Struct(strukt) => {
+            match strukt.field_list() {
+                // => Self { name: self.name.clone() }
+                Some(ast::FieldList::RecordFieldList(field_list)) => {
+                    let mut fields = vec![];
+                    for field in field_list.fields() {
+                        let base = make::expr_path(make::ext::ident_path("self"));
+                        let target = make::expr_field(base, &field.name()?.to_string());
+                        let method_call = gen_clone_call(target);
+                        let name_ref = make::name_ref(&field.name()?.to_string());
+                        let field = make::record_expr_field(name_ref, Some(method_call));
+                        fields.push(field);
+                    }
+                    let struct_name = make::ext::ident_path("Self");
+                    let fields = make::record_expr_field_list(fields);
+                    make::record_expr(struct_name, fields).into()
+                }
+                // => Self(self.0.clone(), self.1.clone())
+                Some(ast::FieldList::TupleFieldList(field_list)) => {
+                    let mut fields = vec![];
+                    for (i, _) in field_list.fields().enumerate() {
+                        let f_path = make::expr_path(make::ext::ident_path("self"));
+                        let target = make::expr_field(f_path, &format!("{}", i)).into();
+                        fields.push(gen_clone_call(target));
+                    }
+                    let struct_name = make::expr_path(make::ext::ident_path("Self"));
+                    make::expr_call(struct_name, make::arg_list(fields))
+                }
+                // => Self { }
+                None => {
+                    let struct_name = make::ext::ident_path("Self");
+                    let fields = make::record_expr_field_list(None);
+                    make::record_expr(struct_name, fields).into()
+                }
+            }
+        }
+    };
+    let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
+    ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
+    Some(())
 }
 
 /// Generate a `Debug` impl based on the fields and members of the target type.
@@ -88,10 +158,10 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 Some(ast::FieldList::TupleFieldList(field_list)) => {
                     let method = make::name_ref("debug_tuple");
                     let mut expr = make::expr_method_call(target, method, args);
-                    for (idx, _) in field_list.fields().enumerate() {
+                    for (i, _) in field_list.fields().enumerate() {
                         let f_path = make::expr_path(make::ext::ident_path("self"));
                         let f_path = make::expr_ref(f_path, false);
-                        let f_path = make::expr_field(f_path, &format!("{}", idx)).into();
+                        let f_path = make::expr_field(f_path, &format!("{}", i)).into();
                         let method = make::name_ref("field");
                         expr = make::expr_method_call(expr, method, make::arg_list(Some(f_path)));
                     }
@@ -182,7 +252,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             make::block_expr(Some(stmt), None).indent(ast::edit::IndentLevel(1))
         }
         ast::Adt::Struct(strukt) => match strukt.field_list() {
-            // => self.<field>.hash(state);*
+            // => self.<field>.hash(state);
             Some(ast::FieldList::RecordFieldList(field_list)) => {
                 let mut stmts = vec![];
                 for field in field_list.fields() {
@@ -193,7 +263,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 make::block_expr(stmts, None).indent(ast::edit::IndentLevel(1))
             }
 
-            // => self.<field_index>.hash(state);*
+            // => self.<field_index>.hash(state);
             Some(ast::FieldList::TupleFieldList(field_list)) => {
                 let mut stmts = vec![];
                 for (i, _) in field_list.fields().enumerate() {

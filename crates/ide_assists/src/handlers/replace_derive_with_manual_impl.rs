@@ -467,10 +467,7 @@ struct Foo {
 
 impl Clone for Foo {
     $0fn clone(&self) -> Self {
-        Self {
-            bin: self.bin.clone(),
-            bar: self.bar.clone(),
-        }
+        Self { bin: self.bin.clone(), bar: self.bar.clone() }
     }
 }
 "#,
@@ -492,6 +489,27 @@ struct Foo(usize, usize);
 impl Clone for Foo {
     $0fn clone(&self) -> Self {
         Self(self.0.clone(), self.1.clone())
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_clone_empty_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: clone
+#[derive(Clo$0ne)]
+struct Foo;
+"#,
+            r#"
+struct Foo;
+
+impl Clone for Foo {
+    $0fn clone(&self) -> Self {
+        Self {  }
     }
 }
 "#,
@@ -536,7 +554,7 @@ impl Clone for Foo {
 //- minicore: clone
 #[derive(Clo$0ne)]
 enum Foo {
-    Bar,
+    Bar(String),
     Baz,
 }
 "#,
