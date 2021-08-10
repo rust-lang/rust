@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
                 *slot = p.read_separator('.', i, |p| {
                     // Disallow octal number in IP string.
                     // https://tools.ietf.org/html/rfc6943#section-3.1.1
-                    p.read_number(10, None, false)
+                    p.read_number(10, Some(3), false)
                 })?;
             }
 
