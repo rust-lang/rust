@@ -131,11 +131,14 @@ public:
   SmallVector<BasicBlock *, 12> originalBlocks;
 
   // Allocations which are known to always be freed before the
-  // reverse.
-  SmallPtrSet<const CallInst *, 1> allocationsWithGuaranteedFree;
+  // reverse, to the list of frees that must apply to this allocation.
+  ValueMap<const CallInst *, SmallPtrSet<const CallInst *, 1>>
+      allocationsWithGuaranteedFree;
+
   // Frees which can always be eliminated as the post dominate
   // an allocation (which will itself be freed).
   SmallPtrSet<const CallInst *, 1> postDominatingFrees;
+
   // Deallocations that should be kept in the forward pass because
   // they deallocation memory which isn't necessary for the reverse
   // pass
@@ -493,6 +496,61 @@ public:
   }
   BasicBlock *isOriginal(const BasicBlock *newinst) const {
     return cast_or_null<BasicBlock>(isOriginal((const Value *)newinst));
+  }
+
+  void computeGuaranteedFrees(
+      const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+    for (auto &BB : *oldFunc) {
+      if (oldUnreachable.count(&BB))
+        continue;
+      for (auto &I : BB) {
+        auto CI = dyn_cast<CallInst>(&I);
+        if (!CI)
+          continue;
+
+        Function *called = CI->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+#else
+        if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+#endif
+          if (castinst->isCast()) {
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              called = fn;
+            }
+          }
+        if (!called)
+          continue;
+        if (isDeallocationFunction(*called, TLI)) {
+
+          llvm::Value *val = CI->getArgOperand(0);
+          while (auto cast = dyn_cast<CastInst>(val))
+            val = cast->getOperand(0);
+
+          if (auto dc = dyn_cast<CallInst>(val)) {
+            if (dc->getCalledFunction() &&
+                isAllocationFunction(*dc->getCalledFunction(), TLI)) {
+
+              bool hasPDFree = false;
+              if (dc->getParent() == CI->getParent() ||
+                  OrigPDT.dominates(CI->getParent(), dc->getParent())) {
+                hasPDFree = true;
+              }
+
+              if (hasPDFree) {
+                allocationsWithGuaranteedFree[dc].insert(CI);
+              }
+            }
+          }
+        }
+        if (isAllocationFunction(*called, TLI)) {
+          if (hasMetadata(CI, "enzyme_fromstack")) {
+            allocationsWithGuaranteedFree[CI].insert(CI);
+          }
+        }
+      }
+    }
   }
 
 private:

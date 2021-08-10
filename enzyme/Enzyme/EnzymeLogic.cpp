@@ -86,6 +86,9 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 }
 
 struct CacheAnalysis {
+
+  const ValueMap<const CallInst *, SmallPtrSet<const CallInst *, 1>>
+      &allocationsWithGuaranteedFree;
   TypeResults &TR;
   AAResults &AA;
   Function *oldFunc;
@@ -100,14 +103,16 @@ struct CacheAnalysis {
   bool omp;
   SmallVector<CallInst *, 0> kmpcCall;
   CacheAnalysis(
+      const ValueMap<const CallInst *, SmallPtrSet<const CallInst *, 1>>
+          &allocationsWithGuaranteedFree,
       TypeResults &TR, AAResults &AA, Function *oldFunc, ScalarEvolution &SE,
       LoopInfo &OrigLI, DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode,
       bool omp)
-      : TR(TR), AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI),
-        OrigDT(OrigDT), TLI(TLI),
-        unnecessaryInstructions(unnecessaryInstructions),
+      : allocationsWithGuaranteedFree(allocationsWithGuaranteedFree), TR(TR),
+        AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), OrigDT(OrigDT),
+        TLI(TLI), unnecessaryInstructions(unnecessaryInstructions),
         uncacheable_args(uncacheable_args), mode(mode), omp(omp) {
 
     for (auto &BB : *oldFunc)
@@ -203,7 +208,14 @@ struct CacheAnalysis {
             }
           }
         }
-        if (called && isCertainMallocOrFree(called)) {
+
+        // If this is a known allocation which is not captured or returned,
+        // a caller function cannot overwrite this (since it cannot access).
+        // Since we don't currently perform this check, we can instead check
+        // if the pointer has a guaranteed free (which is a weaker form of
+        // the required property).
+        if (allocationsWithGuaranteedFree.find(obj_op) !=
+            allocationsWithGuaranteedFree.end()) {
 
         } else {
           // OP is a non malloc/free call so we need to cache
@@ -213,28 +225,13 @@ struct CacheAnalysis {
                       *obj_op);
         }
       } else if (isa<AllocaInst>(obj)) {
-        // No change to modref if alloca
+        // No change to modref if alloca since the memory only exists in
+        // this function.
       } else if (auto GV = dyn_cast<GlobalVariable>(obj)) {
         // In the absense of more fine-grained global info, assume object is
-        // written to in a subseqent call unless this is "topLevel";
-        if (mode != DerivativeMode::ReverseModeCombined && !GV->isConstant()) {
+        // written to in a subseqent call unless this is known to be constant
+        if (!GV->isConstant()) {
           mustcache = true;
-        }
-      } else if (auto sli = dyn_cast<LoadInst>(obj)) {
-        // If obj is from a load instruction conservatively consider it
-        // uncacheable if that load itself cannot be cached
-        mustcache = is_load_uncacheable(*sli);
-        if (mustcache) {
-          EmitWarning("UncacheableOrigin", sli->getDebugLoc(), oldFunc,
-                      sli->getParent(), "origin load may need caching ", *sli);
-        }
-      } else if (auto EI = dyn_cast<ExtractValueInst>(obj)) {
-        if (is_value_mustcache_from_origin(EI->getAggregateOperand())) {
-          mustcache = true;
-          EmitWarning("UncacheableOrigin",
-                      cast<Instruction>(obj)->getDebugLoc(), oldFunc,
-                      cast<Instruction>(obj)->getParent(),
-                      "unknown EVI origin may need caching ", *obj);
         }
       } else {
         // In absence of more information, assume that the underlying object for
@@ -280,7 +277,11 @@ struct CacheAnalysis {
         }
       }
 
-    bool can_modref = is_value_mustcache_from_origin(obj);
+    // If not running combined, check if pointer operand is overwritten
+    // by a subsequent call (i.e. not this function).
+    bool can_modref = false;
+    if (mode != DerivativeMode::ReverseModeCombined)
+      can_modref = is_value_mustcache_from_origin(obj);
 
     if (!can_modref) {
       allFollowersOf(&li, [&](Instruction *inst2) {
@@ -701,64 +702,22 @@ void calculateUnusedValuesInFunction(
         PrimalSeen[UsageKey(pair.first, ValueType::Primal)] = false;
     }
   }
-  for (auto &BB : *gutils->oldFunc) {
-    if (oldUnreachable.count(&BB))
+
+  for (const auto &pair : gutils->allocationsWithGuaranteedFree) {
+    if (pair.second.size() == 0)
       continue;
-    for (auto &I : BB) {
-      auto CI = dyn_cast<CallInst>(&I);
-      if (!CI)
-        continue;
 
-      Function *called = CI->getCalledFunction();
+    bool primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
+        TR, gutils, pair.first, mode, PrimalSeen, oldUnreachable);
 
-#if LLVM_VERSION_MAJOR >= 11
-      if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-#else
-      if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-#endif
-        if (castinst->isCast()) {
-          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-            called = fn;
-          }
-        }
-      if (!called)
-        continue;
-      if (isDeallocationFunction(*called, gutils->TLI)) {
-
-        llvm::Value *val = CI->getArgOperand(0);
-        while (auto cast = dyn_cast<CastInst>(val))
-          val = cast->getOperand(0);
-
-        if (auto dc = dyn_cast<CallInst>(val)) {
-          if (dc->getCalledFunction() &&
-              isAllocationFunction(*dc->getCalledFunction(), gutils->TLI)) {
-
-            bool primalNeededInReverse =
-                is_value_needed_in_reverse<ValueType::Primal>(
-                    TR, gutils, val, mode, PrimalSeen, oldUnreachable);
-            bool hasPDFree = false;
-            if (dc->getParent() == CI->getParent() ||
-                gutils->OrigPDT.dominates(CI->getParent(), dc->getParent())) {
-              hasPDFree = true;
-            }
-
-            if (hasPDFree) {
-              gutils->allocationsWithGuaranteedFree.insert(dc);
-              if (!primalNeededInReverse)
-                gutils->forwardDeallocations.insert(CI);
-              else
-                gutils->postDominatingFrees.insert(CI);
-            }
-          }
-        }
-      }
-      if (isAllocationFunction(*called, gutils->TLI)) {
-        if (hasMetadata(CI, "enzyme_fromstack")) {
-          gutils->allocationsWithGuaranteedFree.insert(CI);
-        }
-      }
+    for (auto freeCall : pair.second) {
+      if (!primalNeededInReverse)
+        gutils->forwardDeallocations.insert(freeCall);
+      else
+        gutils->postDominatingFrees.insert(freeCall);
     }
   }
+
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
@@ -1637,6 +1596,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.getFunction() == gutils->oldFunc);
 
+  gutils->forceActiveDetection(TR);
+
+  gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
+
   // TODO actually populate unnecessaryInstructions with what can be
   // derived without activity info
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
@@ -1644,7 +1607,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(TR, gutils->OrigAA, gutils->oldFunc,
+  gutils->computeGuaranteedFrees(guaranteedUnreachable);
+
+  CacheAnalysis CA(gutils->allocationsWithGuaranteedFree, TR, gutils->OrigAA,
+                   gutils->oldFunc,
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
                    unnecessaryInstructionsTmp, _uncacheable_argsPP,
@@ -1655,10 +1621,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   const std::map<Instruction *, bool> can_modref_map =
       CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
-
-  gutils->forceActiveDetection(TR);
-
-  gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
   gutils->computeMinCache(TR, guaranteedUnreachable);
 
@@ -2886,6 +2848,11 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.getFunction() == gutils->oldFunc);
 
+  gutils->forceActiveDetection(TR);
+  gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
+
+  gutils->computeGuaranteedFrees(guaranteedUnreachable);
+
   // TODO populate with actual unnecessaryInstructions once the dependency
   // cycle with activity analysis is removed
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
@@ -2893,7 +2860,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(TR, gutils->OrigAA, gutils->oldFunc,
+  CacheAnalysis CA(gutils->allocationsWithGuaranteedFree, TR, gutils->OrigAA,
+                   gutils->oldFunc,
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
                    unnecessaryInstructionsTmp, _uncacheable_argsPP, mode, omp);
@@ -2906,9 +2874,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       augmenteddata ? augmenteddata->can_modref_map
                     : CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
-
-  gutils->forceActiveDetection(TR);
-  gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
   std::map<std::pair<Instruction *, CacheType>, int> mapping;
   if (augmenteddata)

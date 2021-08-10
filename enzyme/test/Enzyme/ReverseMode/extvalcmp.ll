@@ -47,7 +47,9 @@ declare double @_Z17__enzyme_autodiffPviPdS0_iy(i8*, i32, { i1, double* }, { i1,
 
 attributes #0 = { readnone }
 
-; CHECK: define internal void @diffesubfn({ i1, double* } %agg, { i1, double* } %"agg'", double %differeturn)
+; TODO don't need to cache from subfn as readonly identity
+
+; CHECK: define internal void @diffesubfn({ i1, double* } %agg, { i1, double* } %"agg'", double %differeturn, double %ld)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp = extractvalue { i1, double* } %agg, 0
 ; CHECK-NEXT:   %0 = select {{(fast )?}}i1 %cmp, double %differeturn, double 0.000000e+00
@@ -57,10 +59,8 @@ attributes #0 = { readnone }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertlblock:                                     ; preds = %entry
-; CHECK-NEXT:   %ptr_unwrap = extractvalue { i1, double* } %agg, 1
-; CHECK-NEXT:   %ld_unwrap = load double, double* %ptr_unwrap, align 8, !invariant.group
-; CHECK-NEXT:   %m0diffeld = fmul fast double %0, %ld_unwrap
-; CHECK-NEXT:   %m1diffeld = fmul fast double %0, %ld_unwrap
+; CHECK-NEXT:   %m0diffeld = fmul fast double %0, %ld
+; CHECK-NEXT:   %m1diffeld = fmul fast double %0, %ld
 ; CHECK-NEXT:   %1 = fadd fast double %m0diffeld, %m1diffeld
 ; CHECK-NEXT:   %"ptr'ipev_unwrap" = extractvalue { i1, double* } %"agg'", 1
 ; CHECK-NEXT:   %2 = load double, double* %"ptr'ipev_unwrap"
