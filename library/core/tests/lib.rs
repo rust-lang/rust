@@ -13,6 +13,8 @@
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
+#![feature(const_trait_impl)]
+#![feature(const_num_from_num)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -66,6 +68,7 @@
 #![feature(slice_group_by)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
+#![feature(unzip_option)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

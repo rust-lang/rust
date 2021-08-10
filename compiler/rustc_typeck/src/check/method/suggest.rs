@@ -1695,8 +1695,8 @@ fn print_disambiguation_help(
     source_map: &source_map::SourceMap,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let sugg_args = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
-        format!(
+    let (span, sugg) = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
+        let args = format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {
                 if rcvr_ty.is_mutable_ptr() { "&mut " } else { "&" }
@@ -1710,12 +1710,12 @@ fn print_disambiguation_help(
                 }))
                 .collect::<Vec<_>>()
                 .join(", "),
-        )
+        );
+        (span, format!("{}::{}{}", trait_name, item_name, args))
     } else {
-        String::new()
+        (span.with_hi(item_name.span.lo()), format!("{}::", trait_name))
     };
-    let sugg = format!("{}::{}{}", trait_name, item_name, sugg_args);
-    err.span_suggestion(
+    err.span_suggestion_verbose(
         span,
         &format!(
             "disambiguate the {} for {}",

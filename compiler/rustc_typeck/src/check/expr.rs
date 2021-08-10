@@ -1313,15 +1313,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .emit();
             }
         } else if check_completeness && !error_happened && !remaining_fields.is_empty() {
-            let no_accessible_remaining_fields = remaining_fields
-                .iter()
-                .find(|(_, (_, field))| {
-                    field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
-                })
-                .is_none();
+            let inaccessible_remaining_fields = remaining_fields.iter().any(|(_, (_, field))| {
+                !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
+            });
 
-            if no_accessible_remaining_fields {
-                self.report_no_accessible_fields(adt_ty, span);
+            if inaccessible_remaining_fields {
+                self.report_inaccessible_fields(adt_ty, span);
             } else {
                 self.report_missing_fields(adt_ty, span, remaining_fields);
             }
@@ -1398,7 +1395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .emit();
     }
 
-    /// Report an error for a struct field expression when there are no visible fields.
+    /// Report an error for a struct field expression when there are invisible fields.
     ///
     /// ```text
     /// error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
@@ -1409,7 +1406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// error: aborting due to previous error
     /// ```
-    fn report_no_accessible_fields(&self, adt_ty: Ty<'tcx>, span: Span) {
+    fn report_inaccessible_fields(&self, adt_ty: Ty<'tcx>, span: Span) {
         self.tcx.sess.span_err(
             span,
             &format!(
