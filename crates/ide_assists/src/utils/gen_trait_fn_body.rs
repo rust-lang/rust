@@ -361,26 +361,56 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 match variant.field_list() {
                     // => (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
                     Some(ast::FieldList::RecordFieldList(list)) => {
-                        // let mut pats = vec![];
+                        let mut expr = None;
+                        let mut l_fields = vec![];
+                        let mut r_fields = vec![];
                         // let mut fields = vec![];
-                        for field in list.fields() {
-                            // let field_name = field.name()?;
-                            // let pat = make::record_pat(path, pats);
-                            // let pat = make::ident_pat(false, false, field_name.clone());
-                            // pats.push(pat.into());
 
-                            // let path = make::ext::ident_path(&field_name.to_string());
-                            // let method_call = gen_clone_call(make::expr_path(path));
-                            // let name_ref = make::name_ref(&field_name.to_string());
-                            // let field = make::record_expr_field(name_ref, Some(method_call));
-                            // fields.push(field);
+                        // !! make::record_pat_field{list, etc};
+
+                        for field in list.fields() {
+                            let field_name = field.name()?.to_string();
+
+                            let l_name = &format!("l_{}", field_name);
+                            let pat = make::ext::simple_ident_pat(make::name(&l_name));
+                            let name_ref = make::name_ref(&field_name);
+                            let field = make::record_pat_field(name_ref, pat.into());
+                            l_fields.push(field);
+
+                            let r_name = &format!("r_{}", field_name);
+                            let pat = make::ext::simple_ident_pat(make::name(&r_name));
+                            let name_ref = make::name_ref(&field_name);
+                            let field = make::record_pat_field(name_ref, pat.into());
+                            r_fields.push(field);
+
+                            let lhs = make::expr_path(make::ext::ident_path(l_name));
+                            let rhs = make::expr_path(make::ext::ident_path(r_name));
+                            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                            expr = match expr {
+                                Some(expr) => {
+                                    Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp))
+                                }
+                                None => Some(cmp),
+                            };
                         }
-                        // let pat = make::record_pat(variant_name.clone(), pats.into_iter());
-                        // let fields = make::record_expr_field_list(fields);
-                        // let record_expr = make::record_expr(variant_name, fields).into();
-                        // arms.push(make::match_arm(Some(pat.into()), None, record_expr));
-                        todo!("implement tuple record iteration")
+                        let first = make::ext::ident_path("Self");
+                        let second = make::path_from_text(&variant.name()?.to_string());
+                        let record_name = make::path_concat(first, second);
+                        let list = make::record_pat_field_list(l_fields);
+                        let l_record = make::record_pat_with_fields(record_name, list);
+
+                        let first = make::ext::ident_path("Self");
+                        let second = make::path_from_text(&variant.name()?.to_string());
+                        let record_name = make::path_concat(first, second);
+                        let list = make::record_pat_field_list(r_fields);
+                        let r_record = make::record_pat_with_fields(record_name, list);
+
+                        let tuple = make::tuple_pat(vec![l_record.into(), r_record.into()]);
+                        if let Some(expr) = expr {
+                            arms.push(make::match_arm(Some(tuple.into()), None, expr));
+                        }
                     }
+                    // todo!("implement tuple record iteration")
                     Some(ast::FieldList::TupleFieldList(list)) => {
                         todo!("implement tuple enum iteration")
                     }

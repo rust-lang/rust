@@ -752,9 +752,11 @@ enum Foo {
         bin: String,
     },
     Baz {
-        quz: String,
+        qux: String,
         fez: String,
     },
+    Qux {},
+    Bin,
 }
 "#,
             r#"
@@ -763,9 +765,11 @@ enum Foo {
         bin: String,
     },
     Baz {
-        quz: String,
+        qux: String,
         fez: String,
     },
+    Qux {},
+    Bin,
 }
 
 impl PartialEq for Foo {
@@ -773,7 +777,7 @@ impl PartialEq for Foo {
         if core::mem::discriminant(self) == core::mem::discriminant(other) {
             match (self, other) {
                 (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
-                (Self::Baz { qux: l_qux, fez: l_fez }, Self::Bar { qux: r_qux, fez: r_fez }) => l_qux == r_qux && l_fez == r_fez,
+                (Self::Baz { qux: l_qux, fez: l_fez }, Self::Baz { qux: r_qux, fez: r_fez }) => l_qux == r_qux && l_fez == r_fez,
                 _ => true,
             }
         } else {
