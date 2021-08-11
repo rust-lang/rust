@@ -323,7 +323,8 @@ struct CacheAnalysis {
 
                 if (check) {
                   auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
-                  if (SE.isKnownNonNegative(lsub)) {
+                  if (lsub != SE.getCouldNotCompute() &&
+                      SE.isKnownNonNegative(lsub)) {
                     return false;
                   }
                 }
@@ -384,7 +385,8 @@ struct CacheAnalysis {
 
                 if (check) {
                   auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
-                  if (SE.isKnownNonNegative(lsub)) {
+                  if (lsub != SE.getCouldNotCompute() &&
+                      SE.isKnownNonNegative(lsub)) {
                     return false;
                   }
                 }
