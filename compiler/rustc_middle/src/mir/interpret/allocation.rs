@@ -563,21 +563,11 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 
         let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
         let initial = self.init_mask.get(range.start);
-        let mut cur_len = 1;
-        let mut cur = initial;
 
-        for i in 1..range.size.bytes() {
-            // FIXME: optimize to bitshift the current uninitialized block's bits and read the top bit.
-            if self.init_mask.get(range.start + Size::from_bytes(i)) == cur {
-                cur_len += 1;
-            } else {
-                ranges.push(cur_len);
-                cur_len = 1;
-                cur = !cur;
-            }
+        for chunk in self.init_mask.range_as_init_chunks(range.start, range.end()) {
+            let len = chunk.range().end.bytes() - chunk.range().start.bytes();
+            ranges.push(len);
         }
-
-        ranges.push(cur_len);
 
         InitMaskCompressed { ranges, initial }
     }
@@ -830,45 +820,65 @@ impl InitMask {
     }
 }
 
-/// Yields [`InitChunk`]s. See [`InitMask::range_as_init_chunks`].
-pub struct InitChunkIter<'a> {
-    init_mask: &'a InitMask,
-    /// The current byte index into `init_mask`.
-    start: Size,
-    /// The end byte index into `init_mask`.
-    end: Size,
-}
-
 /// A contiguous chunk of initialized or uninitialized memory.
 pub enum InitChunk {
     Init(Range<Size>),
     Uninit(Range<Size>),
 }
 
+impl InitChunk {
+    #[inline]
+    pub fn range(&self) -> Range<Size> {
+        match self {
+            Self::Init(r) => r.clone(),
+            Self::Uninit(r) => r.clone(),
+        }
+    }
+}
+
+/// Yields [`InitChunk`]s. See [`InitMask::range_as_init_chunks`].
+pub struct InitChunkIter<'a> {
+    init_mask: &'a InitMask,
+    /// Whether the last chunk was initialized.
+    is_init: bool,
+    /// The current byte index into `init_mask`.
+    start: Size,
+    /// The end byte index into `init_mask`.
+    end: Size,
+}
+
 impl<'a> InitChunkIter<'a> {
+    #[inline]
     fn new(init_mask: &'a InitMask, start: Size, end: Size) -> Self {
         assert!(start <= end);
         assert!(end <= init_mask.len);
-        Self { init_mask, start, end }
+
+        let is_init = if start < end { init_mask.get(start) } else { false };
+
+        Self { init_mask, is_init, start, end }
     }
 }
 
 impl<'a> Iterator for InitChunkIter<'a> {
     type Item = InitChunk;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.start >= self.end {
             return None;
         }
 
-        let is_init = self.init_mask.get(self.start);
         let end_of_chunk =
-            find_bit(&self.init_mask, self.start, self.end, !is_init).unwrap_or(self.end);
+            find_bit(&self.init_mask, self.start, self.end, !self.is_init).unwrap_or(self.end);
         let range = self.start..end_of_chunk;
 
+        let ret =
+            Some(if self.is_init { InitChunk::Init(range) } else { InitChunk::Uninit(range) });
+
+        self.is_init = !self.is_init;
         self.start = end_of_chunk;
 
-        Some(if is_init { InitChunk::Init(range) } else { InitChunk::Uninit(range) })
+        ret
     }
 }
 
