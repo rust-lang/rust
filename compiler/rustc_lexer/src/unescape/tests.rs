@@ -106,6 +106,10 @@ fn test_unescape_str_warn() {
         assert_eq!(unescaped, expected);
     }
 
+    // Check we can handle escaped newlines at the end of a file.
+    check("\\\n", &[]);
+    check("\\\n ", &[]);
+
     check(
         "\\\n \u{a0} x",
         &[
@@ -115,6 +119,7 @@ fn test_unescape_str_warn() {
             (6..7, Ok('x')),
         ],
     );
+    check("\\\n  \n  x", &[(0..7, Err(EscapeError::MultipleSkippedLinesWarning)), (7..8, Ok('x'))]);
 }
 
 #[test]
