@@ -575,11 +575,11 @@ impl<'a> InferenceContext<'a> {
                     },
                 );
             }
-            Solution::Ambig(guidance) => {
-                if let Guidance::Definite(subst) = guidance {
-                    canonicalized.apply_solution(&mut self.table, subst);
-                }
+            Solution::Ambig(Guidance::Definite(subst)) => {
+                canonicalized.apply_solution(&mut self.table, subst)
             }
+            // FIXME: should we accept ambiguous results here?
+            _ => return Err(TypeError),
         };
         let unsize =
             Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target: to_ty.clone() };

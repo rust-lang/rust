@@ -559,3 +559,16 @@ fn test() {
         "#,
     );
 }
+
+#[test]
+fn coerce_type_var() {
+    check_types(
+        r#"
+//- minicore: from, coerce_unsized
+fn test() {
+    let x = ();
+    let _: &() = &x.into();
+}               //^^^^^^^^ ()
+"#,
+    )
+}
