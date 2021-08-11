@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as ra from './lsp_ext';
+import * as path from 'path';
 
 import { Ctx, Cmd } from './ctx';
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from './snippets';
@@ -472,12 +473,59 @@ export function viewItemTree(ctx: Ctx): Cmd {
 
 function crateGraph(ctx: Ctx, full: boolean): Cmd {
     return async () => {
-        const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two);
+        const nodeModulesPath = vscode.Uri.file(path.join(ctx.extensionPath, "node_modules"));
+
+        const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two, {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+            localResourceRoots: [nodeModulesPath]
+        });
         const params = {
             full: full,
         };
-        const svg = await ctx.client.sendRequest(ra.viewCrateGraph, params);
-        panel.webview.html = svg;
+
+        const dot = await ctx.client.sendRequest(ra.viewCrateGraph, params);
+        const uri = panel.webview.asWebviewUri(nodeModulesPath);
+
+        const html = `
+            <!DOCTYPE html>
+            <meta charset="utf-8">
+            <head>
+                <style>
+                    /* Fill the entire view */
+                    html, body { margin:0; padding:0; overflow:hidden }
+                    svg { position:fixed; top:0; left:0; height:100%; width:100% }
+
+                    /* Disable the graphviz backgroud and fill the polygons */
+                    .graph > polygon { display:none; }
+                    :is(.node,.edge) polygon { fill: white; }
+
+                    /* Invert the line colours for dark themes */
+                    body:not(.vscode-light) .edge path { stroke: white; }
+                </style>
+            </head>
+            <body>
+                <script type="text/javascript" src="${uri}/d3/dist/d3.min.js"></script>
+                <script type="javascript/worker" src="${uri}/@hpcc-js/wasm/dist/index.min.js"></script>
+                <script type="text/javascript" src="${uri}/d3-graphviz/build/d3-graphviz.min.js"></script>
+                <div id="graph"></div>
+                <script>
+                    let graph = d3.select("#graph")
+                                  .graphviz()
+                                  .fit(true)
+                                  .zoomScaleExtent([0.1, Infinity])
+                                  .renderDot(\`${dot}\`);
+
+                    d3.select(window).on("click", (event) => {
+                        if (event.ctrlKey) {
+                            graph.resetZoom(d3.transition().duration(100));
+                        }
+                    });
+                </script>
+            </body>
+            `;
+
+        panel.webview.html = html;
     };
 }
 

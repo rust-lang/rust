@@ -68,6 +68,10 @@ export class Ctx {
         this.pushCleanup(d);
     }
 
+    get extensionPath(): string {
+        return this.extCtx.extensionPath;
+    }
+
     get globalState(): vscode.Memento {
         return this.extCtx.globalState;
     }
