@@ -449,27 +449,17 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 }
             }
 
-            if !arms.is_empty() && case_count > arms.len() {
-                let lhs = make::wildcard_pat().into();
-                arms.push(make::match_arm(Some(lhs), None, make::expr_literal("true").into()));
-            }
-
             let expr = match arms.len() {
                 0 => eq_check,
                 _ => {
-                    let condition = make::condition(eq_check, None);
+                    if case_count > arms.len() {
+                        let lhs = make::wildcard_pat().into();
+                        arms.push(make::match_arm(Some(lhs), None, eq_check));
+                    }
 
                     let match_target = make::expr_tuple(vec![self_name, other_name]);
                     let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-                    let match_expr = Some(make::expr_match(match_target, list));
-                    let then_branch = make::block_expr(None, match_expr);
-                    let then_branch = then_branch.indent(ast::edit::IndentLevel(1));
-
-                    let else_branche = make::expr_literal("false");
-                    let else_branche = make::block_expr(None, Some(else_branche.into()))
-                        .indent(ast::edit::IndentLevel(1));
-
-                    make::expr_if(condition, then_branch, Some(else_branche.into()))
+                    make::expr_match(match_target, list)
                 }
             };
 

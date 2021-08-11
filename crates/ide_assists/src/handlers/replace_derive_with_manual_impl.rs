@@ -726,13 +726,9 @@ enum Foo {
 
 impl PartialEq for Foo {
     $0fn eq(&self, other: &Self) -> bool {
-        if core::mem::discriminant(self) == core::mem::discriminant(other) {
-            match (self, other) {
-                (Self::Bar(l0), Self::Bar(r0)) => l0 == r0,
-                _ => true,
-            }
-        } else {
-            false
+        match (self, other) {
+            (Self::Bar(l0), Self::Bar(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
 }
@@ -774,14 +770,10 @@ enum Foo {
 
 impl PartialEq for Foo {
     $0fn eq(&self, other: &Self) -> bool {
-        if core::mem::discriminant(self) == core::mem::discriminant(other) {
-            match (self, other) {
-                (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
-                (Self::Baz { qux: l_qux, fez: l_fez }, Self::Baz { qux: r_qux, fez: r_fez }) => l_qux == r_qux && l_fez == r_fez,
-                _ => true,
-            }
-        } else {
-            false
+        match (self, other) {
+            (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
+            (Self::Baz { qux: l_qux, fez: l_fez }, Self::Baz { qux: r_qux, fez: r_fez }) => l_qux == r_qux && l_fez == r_fez,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
 }
