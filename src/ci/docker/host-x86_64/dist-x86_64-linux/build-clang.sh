@@ -26,8 +26,9 @@ hide_output \
       -DCMAKE_CXX_COMPILER=/rustroot/bin/g++ \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/rustroot \
+      -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
       -DLLVM_TARGETS_TO_BUILD=X86 \
-      -DLLVM_ENABLE_PROJECTS="clang;lld" \
+      -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" \
       -DC_INCLUDE_DIRS="$INC"
 
 hide_output make -j$(nproc)

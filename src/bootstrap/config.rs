@@ -143,6 +143,8 @@ pub struct Config {
     pub rust_new_symbol_mangling: bool,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
+    pub llvm_profile_use: Option<String>,
+    pub llvm_profile_generate: bool,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -605,6 +607,8 @@ impl Config {
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
+        config.llvm_profile_use = flags.llvm_profile_use;
+        config.llvm_profile_generate = flags.llvm_profile_generate;
 
         if config.dry_run {
             let dir = config.out.join("tmp-dry-run");
