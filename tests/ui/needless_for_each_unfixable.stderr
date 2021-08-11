@@ -13,17 +13,17 @@ LL | |     });
    = note: `-D clippy::needless-for-each` implied by `-D warnings`
 help: try
    |
-LL |     for v in v.iter() {
-LL |         if *v == 10 {
-LL |             return;
-LL |         } else {
-LL |             println!("{}", v);
-LL |         }
+LL ~     for v in v.iter() {
+LL +         if *v == 10 {
+LL +             return;
+LL +         } else {
+LL +             println!("{}", v);
+LL +         }
  ...
 help: ...and replace `return` with `continue`
    |
 LL |             continue;
-   |             ^^^^^^^^
+   |             ~~~~~~~~
 
 error: aborting due to previous error
 

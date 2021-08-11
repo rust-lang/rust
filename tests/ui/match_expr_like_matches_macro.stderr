@@ -123,8 +123,8 @@ LL | |         };
    = note: `-D clippy::match-ref-pats` implied by `-D warnings`
 help: try
    |
-LL |         let _res = match val {
-LL |             Some(ref _a) => true,
+LL ~         let _res = match val {
+LL ~             Some(ref _a) => true,
    |
 
 error: match expression looks like `matches!` macro
@@ -149,8 +149,8 @@ LL | |         };
    |
 help: try
    |
-LL |         let _res = match val {
-LL |             Some(ref _a) => true,
+LL ~         let _res = match val {
+LL ~             Some(ref _a) => true,
    |
 
 error: aborting due to 14 previous errors

@@ -8,7 +8,7 @@ LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
 help: ensure to avoid having uses of it in version control
    |
 LL |     if let Some(n) = n.checked_sub(4) { n } else { n }
-   |                      ^^^^^^^^^^^^^^^^
+   |                      ~~~~~~~~~~~~~~~~
 
 error: `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:8:8
@@ -19,7 +19,7 @@ LL |     if dbg!(n <= 1) {
 help: ensure to avoid having uses of it in version control
    |
 LL |     if n <= 1 {
-   |        ^^^^^^
+   |        ~~~~~~
 
 error: `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:9:9
@@ -52,7 +52,7 @@ LL |     dbg!(42);
 help: ensure to avoid having uses of it in version control
    |
 LL |     42;
-   |     ^^
+   |     ~~
 
 error: `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:17:5
@@ -63,7 +63,7 @@ LL |     dbg!(dbg!(dbg!(42)));
 help: ensure to avoid having uses of it in version control
    |
 LL |     dbg!(dbg!(42));
-   |     ^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~
 
 error: `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:18:14
@@ -74,7 +74,7 @@ LL |     foo(3) + dbg!(factorial(4));
 help: ensure to avoid having uses of it in version control
    |
 LL |     foo(3) + factorial(4);
-   |              ^^^^^^^^^^^^
+   |              ~~~~~~~~~~~~
 
 error: aborting due to 7 previous errors
 

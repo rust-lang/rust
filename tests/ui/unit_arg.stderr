@@ -13,10 +13,10 @@ LL |         1
    |
 help: or move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     {
-LL |         1;
-LL |     };
-LL |     foo(());
+LL ~     {
+LL +         1;
+LL +     };
+LL ~     foo(());
    |
 
 error: passing a unit value to a function
@@ -27,8 +27,8 @@ LL |     foo(foo(1));
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(1);
-LL |     foo(());
+LL ~     foo(1);
+LL ~     foo(());
    |
 
 error: passing a unit value to a function
@@ -46,11 +46,11 @@ LL |         foo(2)
    |
 help: or move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     {
-LL |         foo(1);
-LL |         foo(2);
-LL |     };
-LL |     foo(());
+LL ~     {
+LL +         foo(1);
+LL +         foo(2);
+LL +     };
+LL ~     foo(());
    |
 
 error: passing a unit value to a function
@@ -67,10 +67,10 @@ LL |         1
    |
 help: or move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     {
-LL |         1;
-LL |     };
-LL |     b.bar(());
+LL ~     {
+LL +         1;
+LL +     };
+LL ~     b.bar(());
    |
 
 error: passing unit values to a function
@@ -81,9 +81,9 @@ LL |     taking_multiple_units(foo(0), foo(1));
    |
 help: move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     foo(0);
-LL |     foo(1);
-LL |     taking_multiple_units((), ());
+LL ~     foo(0);
+LL +     foo(1);
+LL ~     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
@@ -101,12 +101,12 @@ LL |         foo(2)
    |
 help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     foo(0);
-LL |     {
-LL |         foo(1);
-LL |         foo(2);
-LL |     };
-LL |     taking_multiple_units((), ());
+LL ~     foo(0);
+LL +     {
+LL +         foo(1);
+LL +         foo(2);
+LL +     };
+LL ~     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
@@ -131,12 +131,12 @@ LL |             foo(3)
    |
 help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
-LL |     {
-LL |         foo(0);
-LL |         foo(1);
-LL |     };
-LL |     {
-LL |         foo(2);
+LL ~     {
+LL +         foo(0);
+LL +         foo(1);
+LL +     };
+LL +     {
+LL +         foo(2);
  ...
 
 error: passing a unit value to a function
@@ -147,10 +147,10 @@ LL |     None.or(Some(foo(2)));
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     None.or({
-LL |         foo(2);
-LL |         Some(())
-LL |     });
+LL ~     None.or({
+LL +         foo(2);
+LL +         Some(())
+LL ~     });
    |
 
 error: passing a unit value to a function
@@ -161,8 +161,8 @@ LL |     foo(foo(()));
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(());
-LL |     foo(());
+LL ~     foo(());
+LL ~     foo(());
    |
 
 error: passing a unit value to a function
@@ -173,8 +173,8 @@ LL |     Some(foo(1))
    |
 help: move the expression in front of the call and replace it with the unit literal `()`
    |
-LL |     foo(1);
-LL |     Some(())
+LL ~     foo(1);
+LL +     Some(())
    |
 
 error: aborting due to 10 previous errors

@@ -7,8 +7,9 @@ LL |     writeln!(&mut v, "{}", "{hello}");
    = note: `-D clippy::write-literal` implied by `-D warnings`
 help: try this
    |
-LL |     writeln!(&mut v, "{{hello}}");
-   |                       ^^^^^^^^^--
+LL -     writeln!(&mut v, "{}", "{hello}");
+LL +     writeln!(&mut v, "{{hello}}");
+   | 
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:10:29
@@ -18,8 +19,9 @@ LL |     writeln!(&mut v, r"{}", r"{hello}");
    |
 help: try this
    |
-LL |     writeln!(&mut v, r"{{hello}}");
-   |                        ^^^^^^^^^--
+LL -     writeln!(&mut v, r"{}", r"{hello}");
+LL +     writeln!(&mut v, r"{{hello}}");
+   | 
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:11:28
@@ -29,8 +31,9 @@ LL |     writeln!(&mut v, "{}", '/'');
    |
 help: try this
    |
-LL |     writeln!(&mut v, "'");
-   |                       ^--
+LL -     writeln!(&mut v, "{}", '/'');
+LL +     writeln!(&mut v, "'");
+   | 
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:12:28
@@ -40,8 +43,9 @@ LL |     writeln!(&mut v, "{}", '"');
    |
 help: try this
    |
-LL |     writeln!(&mut v, "/"");
-   |                       ^^--
+LL -     writeln!(&mut v, "{}", '"');
+LL +     writeln!(&mut v, "/"");
+   | 
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:14:29
@@ -51,8 +55,9 @@ LL |     writeln!(&mut v, r"{}", '/'');
    |
 help: try this
    |
-LL |     writeln!(&mut v, r"'");
-   |                        ^--
+LL -     writeln!(&mut v, r"{}", '/'');
+LL +     writeln!(&mut v, r"'");
+   | 
 
 error: literal with an empty format string
   --> $DIR/write_literal_2.rs:18:9
@@ -63,8 +68,8 @@ LL | |         world!"
    |
 help: try this
    |
-LL |         "some hello /
-LL |         world!"
+LL ~         "some hello /
+LL ~         world!"
    |
 
 error: literal with an empty format string
@@ -75,8 +80,8 @@ LL |         "1", "2", "3",
    |
 help: try this
    |
-LL |         "some 1/
-LL |         {} / {}", "2", "3",
+LL ~         "some 1/
+LL ~         {} / {}", "2", "3",
    |
 
 error: literal with an empty format string
@@ -87,8 +92,8 @@ LL |         "1", "2", "3",
    |
 help: try this
    |
-LL |         2 / {}",
-LL |         "1", "3",
+LL ~         2 / {}",
+LL ~         "1", "3",
    |
 
 error: literal with an empty format string
@@ -99,8 +104,8 @@ LL |         "1", "2", "3",
    |
 help: try this
    |
-LL |         {} / 3",
-LL |         "1", "2",
+LL ~         {} / 3",
+LL ~         "1", "2",
    |
 
 error: aborting due to 9 previous errors

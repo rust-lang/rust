@@ -11,12 +11,12 @@ LL | |     }
    = note: `-D clippy::map-entry` implied by `-D warnings`
 help: try this
    |
-LL |     match m.entry(k) {
-LL |         std::collections::hash_map::Entry::Vacant(e) => {
-LL |             e.insert(v);
-LL |         }
-LL |         std::collections::hash_map::Entry::Occupied(mut e) => {
-LL |             e.insert(v2);
+LL ~     match m.entry(k) {
+LL +         std::collections::hash_map::Entry::Vacant(e) => {
+LL +             e.insert(v);
+LL +         }
+LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
+LL +             e.insert(v2);
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -31,12 +31,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     match m.entry(k) {
-LL |         std::collections::hash_map::Entry::Occupied(mut e) => {
-LL |             e.insert(v);
-LL |         }
-LL |         std::collections::hash_map::Entry::Vacant(e) => {
-LL |             e.insert(v2);
+LL ~     match m.entry(k) {
+LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
+LL +             e.insert(v);
+LL +         }
+LL +         std::collections::hash_map::Entry::Vacant(e) => {
+LL +             e.insert(v2);
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -51,11 +51,11 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
-LL |         e.insert(v);
-LL |     } else {
-LL |         foo();
-LL |     }
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +         e.insert(v);
+LL +     } else {
+LL +         foo();
+LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -70,11 +70,11 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
-LL |         e.insert(v);
-LL |     } else {
-LL |         foo();
-LL |     }
+LL ~     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
+LL +         e.insert(v);
+LL +     } else {
+LL +         foo();
+LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -89,12 +89,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     match m.entry(k) {
-LL |         std::collections::hash_map::Entry::Vacant(e) => {
-LL |             e.insert(v);
-LL |         }
-LL |         std::collections::hash_map::Entry::Occupied(mut e) => {
-LL |             e.insert(v2);
+LL ~     match m.entry(k) {
+LL +         std::collections::hash_map::Entry::Vacant(e) => {
+LL +             e.insert(v);
+LL +         }
+LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
+LL +             e.insert(v2);
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -109,12 +109,12 @@ LL | |     };
    |
 help: try this
    |
-LL |     match m.entry(k) {
-LL |         std::collections::hash_map::Entry::Occupied(mut e) => {
-LL |             if true { Some(e.insert(v)) } else { Some(e.insert(v2)) }
-LL |         }
-LL |         std::collections::hash_map::Entry::Vacant(e) => {
-LL |             e.insert(v);
+LL ~     match m.entry(k) {
+LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
+LL +             if true { Some(e.insert(v)) } else { Some(e.insert(v2)) }
+LL +         }
+LL +         std::collections::hash_map::Entry::Vacant(e) => {
+LL +             e.insert(v);
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -130,12 +130,12 @@ LL | |     };
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
-LL |         foo();
-LL |         Some(e.insert(v))
-LL |     } else {
-LL |         None
-LL |     };
+LL ~     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
+LL +         foo();
+LL +         Some(e.insert(v))
+LL +     } else {
+LL +         None
+LL ~     };
    |
 
 error: aborting due to 7 previous errors

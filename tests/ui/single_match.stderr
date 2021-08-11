@@ -12,9 +12,9 @@ LL | |     };
    = note: `-D clippy::single-match` implied by `-D warnings`
 help: try this
    |
-LL |     if let Some(y) = x {
-LL |         println!("{:?}", y);
-LL |     };
+LL ~     if let Some(y) = x {
+LL +         println!("{:?}", y);
+LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`

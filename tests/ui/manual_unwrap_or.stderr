@@ -41,11 +41,11 @@ LL | |     };
    |
 help: replace with
    |
-LL |     Some(1).unwrap_or({
-LL |         42 + 42
-LL |             + 42 + 42 + 42
-LL |             + 42 + 42 + 42
-LL |     });
+LL ~     Some(1).unwrap_or({
+LL +         42 + 42
+LL +             + 42 + 42 + 42
+LL +             + 42 + 42 + 42
+LL ~     });
    |
 
 error: this pattern reimplements `Option::unwrap_or`
@@ -125,11 +125,11 @@ LL | |     };
    |
 help: replace with
    |
-LL |     Ok::<i32, &str>(1).unwrap_or({
-LL |         42 + 42
-LL |             + 42 + 42 + 42
-LL |             + 42 + 42 + 42
-LL |     });
+LL ~     Ok::<i32, &str>(1).unwrap_or({
+LL +         42 + 42
+LL +             + 42 + 42 + 42
+LL +             + 42 + 42 + 42
+LL ~     });
    |
 
 error: this pattern reimplements `Result::unwrap_or`

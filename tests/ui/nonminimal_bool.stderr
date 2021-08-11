@@ -51,9 +51,9 @@ LL |     let _ = a == b && c == 5 && a == b;
 help: try
    |
 LL |     let _ = a == b && c == 5;
-   |             ^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~
 LL |     let _ = !(a != b || c != 5);
-   |             ^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~
 
 error: this boolean expression can be simplified
   --> $DIR/nonminimal_bool.rs:28:13
@@ -64,9 +64,9 @@ LL |     let _ = a == b || c == 5 || a == b;
 help: try
    |
 LL |     let _ = a == b || c == 5;
-   |             ^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~
 LL |     let _ = !(a != b && c != 5);
-   |             ^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~
 
 error: this boolean expression can be simplified
   --> $DIR/nonminimal_bool.rs:29:13
@@ -77,9 +77,9 @@ LL |     let _ = a == b && c == 5 && b == a;
 help: try
    |
 LL |     let _ = a == b && c == 5;
-   |             ^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~
 LL |     let _ = !(a != b || c != 5);
-   |             ^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~
 
 error: this boolean expression can be simplified
   --> $DIR/nonminimal_bool.rs:30:13
@@ -90,9 +90,9 @@ LL |     let _ = a != b || !(a != b || c == d);
 help: try
    |
 LL |     let _ = a != b || c != d;
-   |             ^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~
 LL |     let _ = !(a == b && c == d);
-   |             ^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~
 
 error: this boolean expression can be simplified
   --> $DIR/nonminimal_bool.rs:31:13
@@ -103,9 +103,9 @@ LL |     let _ = a != b && !(a != b && c == d);
 help: try
    |
 LL |     let _ = a != b && c != d;
-   |             ^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~
 LL |     let _ = !(a == b || c == d);
-   |             ^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 12 previous errors
 
