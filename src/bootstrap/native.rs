@@ -189,6 +189,14 @@ impl Step for Llvm {
             .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
 
+        if builder.config.llvm_profile_generate {
+            cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
+            cfg.define("LLVM_BUILD_RUNTIME", "No");
+        }
+        if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+            cfg.define("LLVM_PROFDATA_FILE", &path);
+        }
+
         if target != "aarch64-apple-darwin" && !target.contains("windows") {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {

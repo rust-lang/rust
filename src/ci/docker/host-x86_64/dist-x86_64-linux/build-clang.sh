@@ -20,14 +20,18 @@ cd clang-build
 # include path, /rustroot/include, to clang's default include path.
 INC="/rustroot/include:/usr/include"
 
+# We need compiler-rt for the profile runtime (used later to PGO the LLVM build)
+# but sanitizers aren't currently building. Since we don't need those, just
+# disable them.
 hide_output \
     cmake ../llvm \
       -DCMAKE_C_COMPILER=/rustroot/bin/gcc \
       -DCMAKE_CXX_COMPILER=/rustroot/bin/g++ \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/rustroot \
+      -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
       -DLLVM_TARGETS_TO_BUILD=X86 \
-      -DLLVM_ENABLE_PROJECTS="clang;lld" \
+      -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" \
       -DC_INCLUDE_DIRS="$INC"
 
 hide_output make -j$(nproc)

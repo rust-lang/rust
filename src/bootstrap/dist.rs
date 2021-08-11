@@ -2157,10 +2157,16 @@ impl Step for ReproducibleArtifacts {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let path = builder.config.rust_profile_use.as_ref()?;
-
+        let mut added_anything = false;
         let tarball = Tarball::new(builder, "reproducible-artifacts", &self.target.triple);
-        tarball.add_file(path, ".", 0o644);
-        Some(tarball.generate())
+        if let Some(path) = builder.config.rust_profile_use.as_ref() {
+            tarball.add_file(path, ".", 0o644);
+            added_anything = true;
+        }
+        if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+            tarball.add_file(path, ".", 0o644);
+            added_anything = true;
+        }
+        if added_anything { Some(tarball.generate()) } else { None }
     }
 }
