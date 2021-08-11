@@ -827,16 +827,21 @@ impl FunctionBody {
             .map(|(var, src)| {
                 let usages = LocalUsages::find_local_usages(ctx, var);
                 let ty = var.ty(ctx.db());
+
+                let defined_outside_parent_loop = container_info
+                    .parent_loop
+                    .as_ref()
+                    .map_or(true, |it| it.text_range().contains_range(src.syntax().text_range()));
+
                 let is_copy = ty.is_copy(ctx.db());
-                Param {
-                    var,
-                    ty,
-                    move_local: container_info.parent_loop.as_ref().map_or(true, |it| {
-                        it.text_range().contains_range(src.syntax().text_range())
-                    }) && !self.has_usages_after_body(&usages),
-                    requires_mut: has_exclusive_usages(ctx, &usages, self),
-                    is_copy,
-                }
+                let has_usages = self.has_usages_after_body(&usages);
+                let requires_mut =
+                    !ty.is_mutable_reference() && has_exclusive_usages(ctx, &usages, self);
+                // We can move the value into the function call if it's not used after the call,
+                // if the var is not used but defined outside a loop we are extracting from we can't move it either
+                // as the function will reuse it in the next iteration.
+                let move_local = !has_usages && defined_outside_parent_loop;
+                Param { var, ty, move_local, requires_mut, is_copy }
             })
             .collect()
     }
@@ -4113,6 +4118,46 @@ fn foo() {
 
 fn $0fun_name(x: &mut i32) {
     *x += 1;
+}
+"#,
+        );
+    }
+
+    // regression test for #9822
+    #[test]
+    fn extract_mut_ref_param_has_no_mut_binding_in_loop() {
+        check_assist(
+            extract_function,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&mut self) {}
+}
+fn foo() {
+    let mut x = Foo;
+    while false {
+        let y = &mut x;
+        $0y.foo();$0
+    }
+    let z = x;
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&mut self) {}
+}
+fn foo() {
+    let mut x = Foo;
+    while false {
+        let y = &mut x;
+        fun_name(y);
+    }
+    let z = x;
+}
+
+fn $0fun_name(y: &mut Foo) {
+    y.foo();
 }
 "#,
         );
