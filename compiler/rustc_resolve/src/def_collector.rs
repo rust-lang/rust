@@ -300,7 +300,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.kind {
-            StmtKind::MacCall(..) => self.visit_macro_invoc(stmt.id),
+            StmtKind::MacCall(..) => self.visit_macro_invoc(stmt.id()),
             _ => visit::walk_stmt(self, stmt),
         }
     }

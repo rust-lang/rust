@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(&attrs.take_for_recovery());
-            self.mk_stmt(lo, StmtKind::Empty)
+            self.mk_stmt(lo, StmtKind::Empty { id: DUMMY_NODE_ID })
         } else if self.token != token::CloseDelim(token::Brace) {
             // Remainder are line-expr stmts.
             let e = if force_collect == ForceCollect::Yes {
@@ -156,7 +156,7 @@ impl<'a> Parser<'a> {
 
         let kind = if delim == token::Brace || self.token == token::Semi || self.token == token::Eof
         {
-            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
+            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None, id: DUMMY_NODE_ID }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
@@ -507,7 +507,7 @@ impl<'a> Parser<'a> {
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Semi(_) => eat_semi = false,
+            StmtKind::Empty { id: _ } | StmtKind::Item(_) | StmtKind::Semi(_) => eat_semi = false,
         }
 
         if eat_semi && self.eat(&token::Semi) {
@@ -522,7 +522,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
-        Stmt { id: DUMMY_NODE_ID, kind, span }
+        Stmt { kind, span }
     }
 
     pub(super) fn mk_stmt_err(&self, span: Span) -> Stmt {

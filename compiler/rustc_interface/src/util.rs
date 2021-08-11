@@ -823,7 +823,6 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             });
 
             ast::Stmt {
-                id: resolver.next_node_id(),
                 kind: ast::StmtKind::Expr(expr),
                 span: rustc_span::DUMMY_SP,
             }
@@ -839,7 +838,6 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         });
 
         let loop_stmt = ast::Stmt {
-            id: self.resolver.next_node_id(),
             span: rustc_span::DUMMY_SP,
             kind: ast::StmtKind::Expr(loop_expr),
         };

@@ -1316,7 +1316,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         if let StmtKind::MacCall(mac) = stmt.kind {
-            let MacCallStmt { mac, style, attrs, tokens: _ } = mac.into_inner();
+            let MacCallStmt { mac, style, attrs, tokens: _, id: _ } = mac.into_inner();
             self.check_attributes(&attrs, &mac);
             let mut placeholder =
                 self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts).make_stmts();

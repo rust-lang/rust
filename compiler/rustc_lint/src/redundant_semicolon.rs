@@ -31,8 +31,8 @@ impl EarlyLintPass for RedundantSemicolons {
         let mut seq = None;
         for stmt in block.stmts.iter() {
             match (&stmt.kind, &mut seq) {
-                (StmtKind::Empty, None) => seq = Some((stmt.span, false)),
-                (StmtKind::Empty, Some(seq)) => *seq = (seq.0.to(stmt.span), true),
+                (StmtKind::Empty { id: _ }, None) => seq = Some((stmt.span, false)),
+                (StmtKind::Empty { id: _ }, Some(seq)) => *seq = (seq.0.to(stmt.span), true),
                 (_, seq) => maybe_lint_redundant_semis(cx, seq),
             }
         }

@@ -135,9 +135,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         //
         // Note that statements get their attributes from
         // the AST struct that they wrap (e.g. an item)
-        self.with_lint_attrs(s.id, s.attrs(), |cx| {
+        self.with_lint_attrs(s.id(), s.attrs(), |cx| {
             run_early_pass!(cx, check_stmt, s);
-            cx.check_id(s.id);
+            cx.check_id(s.id());
         });
         // The visitor for the AST struct wrapped
         // by the statement (e.g. `Item`) will call

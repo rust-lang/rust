@@ -106,7 +106,7 @@ impl AstLike for StmtKind {
             StmtKind::Local(local) => local.attrs(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.attrs(),
             StmtKind::Item(item) => item.attrs(),
-            StmtKind::Empty => &[],
+            StmtKind::Empty { id: _ } => &[],
             StmtKind::MacCall(mac) => &mac.attrs,
         }
     }
@@ -116,7 +116,7 @@ impl AstLike for StmtKind {
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Item(item) => item.visit_attrs(f),
-            StmtKind::Empty => {}
+            StmtKind::Empty { id: _ } => {}
             StmtKind::MacCall(mac) => visit_attrvec(&mut mac.attrs, f),
         }
     }
@@ -125,7 +125,7 @@ impl AstLike for StmtKind {
             StmtKind::Local(local) => &mut local.tokens,
             StmtKind::Item(item) => &mut item.tokens,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => &mut expr.tokens,
-            StmtKind::Empty => return None,
+            StmtKind::Empty { id: _ } => return None,
             StmtKind::MacCall(mac) => &mut mac.tokens,
         })
     }

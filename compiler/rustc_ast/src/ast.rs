@@ -908,18 +908,26 @@ impl UnOp {
 /// A statement
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Stmt {
-    pub id: NodeId,
     pub kind: StmtKind,
     pub span: Span,
 }
 
 impl Stmt {
+    pub fn id(&self) -> NodeId {
+        match self.kind {
+            StmtKind::Local(ref local) => local.id,
+            StmtKind::Item(ref item) => item.id,
+            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.id,
+            StmtKind::Empty { id } => id,
+            StmtKind::MacCall(ref mac) => mac.id,
+        }
+    }
     pub fn tokens(&self) -> Option<&LazyTokenStream> {
         match self.kind {
             StmtKind::Local(ref local) => local.tokens.as_ref(),
             StmtKind::Item(ref item) => item.tokens.as_ref(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.tokens.as_ref(),
-            StmtKind::Empty => None,
+            StmtKind::Empty { id: _ } => None,
             StmtKind::MacCall(ref mac) => mac.tokens.as_ref(),
         }
     }
@@ -943,8 +951,8 @@ impl Stmt {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
             StmtKind::MacCall(mac) => {
-                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens }| {
-                    MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens }
+                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens, id }| {
+                    MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens, id }
                 }))
             }
             kind => kind,
@@ -973,13 +981,14 @@ pub enum StmtKind {
     /// Expr with a trailing semi-colon.
     Semi(P<Expr>),
     /// Just a trailing semi-colon.
-    Empty,
+    Empty { id: NodeId },
     /// Macro.
     MacCall(P<MacCallStmt>),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MacCallStmt {
+    pub id: NodeId,
     pub mac: MacCall,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,

@@ -61,7 +61,6 @@ impl MultiItemModifier for BuiltinDerive {
                         // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
                         // to the function
                         items.push(Annotatable::Stmt(P(ast::Stmt {
-                            id: ast::DUMMY_NODE_ID,
                             kind: ast::StmtKind::Item(a.expect_item()),
                             span,
                         })));

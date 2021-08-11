@@ -104,8 +104,9 @@ pub fn placeholder(
                 style: ast::MacStmtStyle::Braces,
                 attrs: ast::AttrVec::new(),
                 tokens: None,
+                id,
             });
-            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
+            ast::Stmt { span, kind: ast::StmtKind::MacCall(mac) }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),
@@ -297,7 +298,7 @@ impl MutVisitor for PlaceholderExpander {
 
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         let (style, mut stmts) = match stmt.kind {
-            ast::StmtKind::MacCall(mac) => (mac.style, self.remove(stmt.id).make_stmts()),
+            ast::StmtKind::MacCall(ref mac) => (mac.style, self.remove(stmt.id()).make_stmts()),
             _ => return noop_flat_map_stmt(stmt, self),
         };
 
@@ -324,7 +325,7 @@ impl MutVisitor for PlaceholderExpander {
             // FIXME: We will need to preserve the original semicolon token and
             // span as part of #15701
             let empty_stmt =
-                ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Empty, span: DUMMY_SP };
+                ast::Stmt { kind: ast::StmtKind::Empty { id: ast::DUMMY_NODE_ID }, span: DUMMY_SP };
 
             if let Some(stmt) = stmts.pop() {
                 if stmt.has_trailing_semicolon() {

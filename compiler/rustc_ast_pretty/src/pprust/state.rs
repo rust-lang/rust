@@ -1527,7 +1527,7 @@ impl<'a> State<'a> {
                 self.print_expr_outer_attr_style(expr, false);
                 self.s.word(";");
             }
-            ast::StmtKind::Empty => {
+            ast::StmtKind::Empty { id: _ } => {
                 self.space_if_not_bol();
                 self.s.word(";");
             }

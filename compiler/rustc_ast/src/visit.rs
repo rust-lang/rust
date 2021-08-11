@@ -691,9 +691,9 @@ pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {
         StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(ref item) => visitor.visit_item(item),
         StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => visitor.visit_expr(expr),
-        StmtKind::Empty => {}
+        StmtKind::Empty { id: _ } => {}
         StmtKind::MacCall(ref mac) => {
-            let MacCallStmt { ref mac, style: _, ref attrs, tokens: _ } = **mac;
+            let MacCallStmt { ref mac, style: _, ref attrs, tokens: _, id: _ } = **mac;
             visitor.visit_mac_call(mac);
             for attr in attrs.iter() {
                 visitor.visit_attribute(attr);

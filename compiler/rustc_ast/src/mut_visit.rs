@@ -1369,16 +1369,13 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
 }
 
 pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, span, id }: Stmt,
+    Stmt { kind, span }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
-    let mut id = Some(id);
     let res = noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| {
-        let mut new_id = id.take().unwrap_or(DUMMY_NODE_ID);
         let mut new_span = span;
-        vis.visit_id(&mut new_id);
         vis.visit_span(&mut new_span);
-        Stmt { kind, span: new_span, id: new_id }
+        Stmt { kind, span: new_span }
     }).collect();
     tracing::info!("Made new statements: {:?}", res);
     res
@@ -1396,9 +1393,13 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
         StmtKind::Item(item) => vis.flat_map_item(item).into_iter().map(StmtKind::Item).collect(),
         StmtKind::Expr(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Expr).collect(),
         StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
-        StmtKind::Empty => smallvec![StmtKind::Empty],
+        StmtKind::Empty { mut id } => {
+            vis.visit_id(&mut id);
+            smallvec![StmtKind::Empty { id }]
+        },
         StmtKind::MacCall(mut mac) => {
-            let MacCallStmt { mac: mac_, style: _, attrs, tokens } = mac.deref_mut();
+            let MacCallStmt { mac: mac_, style: _, attrs, tokens, id } = mac.deref_mut();
+            vis.visit_id(id);
             vis.visit_mac_call(mac_);
             visit_thin_attrs(attrs, vis);
             visit_lazy_tts(tokens, vis);

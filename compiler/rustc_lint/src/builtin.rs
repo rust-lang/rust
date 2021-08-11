@@ -1037,7 +1037,7 @@ impl EarlyLintPass for UnusedDocComment {
             // Disabled pending discussion in #78306
             ast::StmtKind::Item(..) => return,
             // expressions will be reported by `check_expr`.
-            ast::StmtKind::Empty
+            ast::StmtKind::Empty { id: _ }
             | ast::StmtKind::Semi(_)
             | ast::StmtKind::Expr(_)
             | ast::StmtKind::MacCall(_) => return,

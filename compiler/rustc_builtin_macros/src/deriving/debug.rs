@@ -141,5 +141,5 @@ fn stmt_let_underscore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> as
         attrs: ast::AttrVec::new(),
         tokens: None,
     });
-    ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
+    ast::Stmt { kind: ast::StmtKind::Local(local), span: sp }
 }

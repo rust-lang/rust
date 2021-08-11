@@ -1349,7 +1349,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
         if let ast::StmtKind::MacCall(..) = stmt.kind {
-            self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
+            self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id());
         } else {
             visit::walk_stmt(self, stmt);
         }
