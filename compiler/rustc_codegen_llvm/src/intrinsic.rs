@@ -7,6 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
+use rustc_ast as ast;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -325,6 +326,31 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     let cmp = self.call_intrinsic("memcmp", &[a_ptr, b_ptr, n]);
                     self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
                 }
+            }
+
+            sym::black_box => {
+                args[0].val.store(self, result);
+
+                // We need to "use" the argument in some way LLVM can't introspect, and on
+                // targets that support it we can typically leverage inline assembly to do
+                // this. LLVM's interpretation of inline assembly is that it's, well, a black
+                // box. This isn't the greatest implementation since it probably deoptimizes
+                // more than we want, but it's so far good enough.
+                crate::asm::inline_asm_call(
+                    self,
+                    "",
+                    "r,~{memory}",
+                    &[result.llval],
+                    self.type_void(),
+                    true,
+                    false,
+                    ast::LlvmAsmDialect::Att,
+                    &[span],
+                )
+                .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
+
+                // We have copied the value to `result` already.
+                return;
             }
 
             _ if name_str.starts_with("simd_") => {

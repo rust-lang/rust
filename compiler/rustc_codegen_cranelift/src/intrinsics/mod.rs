@@ -1136,6 +1136,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 };
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         };
+
+        black_box, (c a) {
+            // FIXME implement black_box semantics
+            ret.write_cvalue(fx, a);
+        };
     }
 
     if let Some((_, dest)) = destination {
