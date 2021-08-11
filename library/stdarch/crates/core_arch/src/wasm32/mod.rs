@@ -12,10 +12,15 @@ pub use self::simd128::*;
 mod memory;
 pub use self::memory::*;
 
-/// Generates the trap instruction `UNREACHABLE`
+/// Generates the [`unreachable`] instruction, which causes an unconditional [trap].
+///
+/// This function is safe to call and immediately aborts the execution.
+///
+/// [`unreachable`]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-control
+/// [trap]: https://webassembly.github.io/spec/core/intro/overview.html#trap
 #[cfg_attr(test, assert_instr(unreachable))]
 #[inline]
 #[stable(feature = "unreachable_wasm32", since = "1.37.0")]
-pub unsafe fn unreachable() -> ! {
+pub fn unreachable() -> ! {
     crate::intrinsics::abort()
 }
