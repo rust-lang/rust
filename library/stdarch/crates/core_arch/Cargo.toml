@@ -7,7 +7,6 @@ authors = [
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
 description = "`core::arch` - Rust's core library architecture-specific intrinsics."
-documentation = "https://docs.rs/core_arch"
 homepage = "https://github.com/rust-lang/stdarch"
 repository = "https://github.com/rust-lang/stdarch"
 readme = "README.md"

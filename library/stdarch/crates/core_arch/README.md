@@ -1,9 +1,6 @@
 `core::arch` - Rust's core library architecture-specific intrinsics
 =======
 
-[![core_arch_crate_badge]][core_arch_crate_link] [![core_arch_docs_badge]][core_arch_docs_link]
-
-
 The `core::arch` module implements architecture-dependent intrinsics (e.g. SIMD).
 
 # Usage 
@@ -61,8 +58,3 @@ See LICENSE-APACHE, and LICENSE-MIT for details.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `core_arch` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
-
-[core_arch_crate_badge]: https://img.shields.io/crates/v/core_arch.svg
-[core_arch_crate_link]: https://crates.io/crates/core_arch
-[core_arch_docs_badge]: https://docs.rs/core_arch/badge.svg
-[core_arch_docs_link]: https://docs.rs/core_arch/
