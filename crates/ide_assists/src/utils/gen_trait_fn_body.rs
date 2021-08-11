@@ -339,6 +339,34 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         fn_name
     }
 
+    fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
+        match expr {
+            Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
+            None => Some(cmp),
+        }
+    }
+
+    fn gen_record_pat_field(field_name: &str, pat_name: &str) -> ast::RecordPatField {
+        let pat = make::ext::simple_ident_pat(make::name(&pat_name));
+        let name_ref = make::name_ref(field_name);
+        let field = make::record_pat_field(name_ref, pat.into());
+        field
+    }
+
+    fn gen_record_pat(
+        record_name: ast::Path,
+        r_fields: Vec<ast::RecordPatField>,
+    ) -> ast::RecordPat {
+        let list = make::record_pat_field_list(r_fields);
+        make::record_pat_with_fields(record_name, list)
+    }
+
+    fn gen_variant_path(variant: &ast::Variant) -> Option<ast::Path> {
+        let first = make::ext::ident_path("Self");
+        let second = make::path_from_text(&variant.name()?.to_string());
+        let record_name = make::path_concat(first, second);
+        Some(record_name)
+    }
     // FIXME: return `None` if the trait carries a generic type; we can only
     // generate this code `Self` for the time being.
 
@@ -364,52 +392,31 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let mut expr = None;
                         let mut l_fields = vec![];
                         let mut r_fields = vec![];
-                        // let mut fields = vec![];
-
-                        // !! make::record_pat_field{list, etc};
 
                         for field in list.fields() {
                             let field_name = field.name()?.to_string();
 
                             let l_name = &format!("l_{}", field_name);
-                            let pat = make::ext::simple_ident_pat(make::name(&l_name));
-                            let name_ref = make::name_ref(&field_name);
-                            let field = make::record_pat_field(name_ref, pat.into());
-                            l_fields.push(field);
+                            l_fields.push(gen_record_pat_field(&field_name, &l_name));
 
-                            let r_name = &format!("r_{}", field_name);
-                            let pat = make::ext::simple_ident_pat(make::name(&r_name));
-                            let name_ref = make::name_ref(&field_name);
-                            let field = make::record_pat_field(name_ref, pat.into());
-                            r_fields.push(field);
+                            let r_name = &format!("l_{}", field_name);
+                            r_fields.push(gen_record_pat_field(&field_name, &r_name));
 
                             let lhs = make::expr_path(make::ext::ident_path(l_name));
                             let rhs = make::expr_path(make::ext::ident_path(r_name));
                             let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
-                            expr = match expr {
-                                Some(expr) => {
-                                    Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp))
-                                }
-                                None => Some(cmp),
-                            };
+                            expr = gen_eq_chain(expr, cmp);
                         }
-                        let first = make::ext::ident_path("Self");
-                        let second = make::path_from_text(&variant.name()?.to_string());
-                        let record_name = make::path_concat(first, second);
-                        let list = make::record_pat_field_list(l_fields);
-                        let l_record = make::record_pat_with_fields(record_name, list);
 
-                        let first = make::ext::ident_path("Self");
-                        let second = make::path_from_text(&variant.name()?.to_string());
-                        let record_name = make::path_concat(first, second);
-                        let list = make::record_pat_field_list(r_fields);
-                        let r_record = make::record_pat_with_fields(record_name, list);
-
+                        let l_record = gen_record_pat(gen_variant_path(&variant)?, l_fields);
+                        let r_record = gen_record_pat(gen_variant_path(&variant)?, r_fields);
                         let tuple = make::tuple_pat(vec![l_record.into(), r_record.into()]);
+
                         if let Some(expr) = expr {
                             arms.push(make::match_arm(Some(tuple.into()), None, expr));
                         }
                     }
+
                     // todo!("implement tuple record iteration")
                     Some(ast::FieldList::TupleFieldList(list)) => {
                         todo!("implement tuple enum iteration")
@@ -453,10 +460,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &field.name()?.to_string());
                     let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
-                    expr = match expr {
-                        Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
-                        None => Some(cmp),
-                    };
+                    expr = gen_eq_chain(expr, cmp);
                 }
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
             }
@@ -470,10 +474,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &idx);
                     let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
-                    expr = match expr {
-                        Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
-                        None => Some(cmp),
-                    };
+                    expr = gen_eq_chain(expr, cmp);
                 }
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
             }
