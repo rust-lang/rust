@@ -20,15 +20,17 @@ function getNextStep(content, pos, stop) {
 // will blow up. Template strings are not tested and might also be
 // broken.
 function extractFunction(content, functionName) {
-    var indent = 0;
+    var level = 0;
     var splitter = "function " + functionName + "(";
+    var stop;
+    var pos, start;
 
     while (true) {
-        var start = content.indexOf(splitter);
+        start = content.indexOf(splitter);
         if (start === -1) {
             break;
         }
-        var pos = start;
+        pos = start;
         while (pos < content.length && content[pos] !== ')') {
             pos += 1;
         }
@@ -44,30 +46,33 @@ function extractFunction(content, functionName) {
         }
         while (pos < content.length) {
             // Eat single-line comments
-            if (content[pos] === '/' && pos > 0 && content[pos-1] === '/') {
+            if (content[pos] === '/' && pos > 0 && content[pos - 1] === '/') {
                 do {
                     pos += 1;
                 } while (pos < content.length && content[pos] !== '\n');
 
+            // Eat multiline comment.
+            } else if (content[pos] === '*' && pos > 0 && content[pos - 1] === '/') {
+                do {
+                    pos += 1;
+                } while (pos < content.length && content[pos] !== '/' && content[pos - 1] !== '*');
+
             // Eat quoted strings
             } else if (content[pos] === '"' || content[pos] === "'" || content[pos] === "`") {
-                var stop = content[pos];
-                var is_escaped = false;
+                stop = content[pos];
                 do {
                     if (content[pos] === '\\') {
-                        pos += 2;
-                    } else {
                         pos += 1;
                     }
-                } while (pos < content.length &&
-                         (content[pos] !== stop || content[pos - 1] === '\\'));
+                    pos += 1;
+                } while (pos < content.length && content[pos] !== stop);
 
-            // Otherwise, check for indent
+            // Otherwise, check for block level.
             } else if (content[pos] === '{') {
-                indent += 1;
+                level += 1;
             } else if (content[pos] === '}') {
-                indent -= 1;
-                if (indent === 0) {
+                level -= 1;
+                if (level === 0) {
                     return content.slice(start, pos + 1);
                 }
             }
