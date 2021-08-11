@@ -1080,8 +1080,7 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
 fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String {
     let ret_ty = fun.return_type(ctx);
 
-    let args = fun.params.iter().map(|param| param.to_arg(ctx));
-    let args = make::arg_list(args);
+    let args = make::arg_list(fun.params.iter().map(|param| param.to_arg(ctx)));
     let name = fun.name.clone();
     let call_expr = if fun.self_param.is_some() {
         let self_arg = make::expr_path(make::ext::ident_path("self"));
@@ -1103,12 +1102,12 @@ fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String
         [var] => {
             format_to!(buf, "let {}{} = ", mut_modifier(var), var.local.name(ctx.db()).unwrap())
         }
-        [v0, vs @ ..] => {
+        vars => {
             buf.push_str("let (");
-            format_to!(buf, "{}{}", mut_modifier(v0), v0.local.name(ctx.db()).unwrap());
-            for var in vs {
-                format_to!(buf, ", {}{}", mut_modifier(var), var.local.name(ctx.db()).unwrap());
-            }
+            let bindings = vars.iter().format_with(", ", |local, f| {
+                f(&format_args!("{}{}", mut_modifier(local), local.local.name(ctx.db()).unwrap()))
+            });
+            format_to!(buf, "{}", bindings);
             buf.push_str(") = ");
         }
     }

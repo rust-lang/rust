@@ -1,8 +1,10 @@
 use either::Either;
-use hir::PathResolution;
+use hir::{PathResolution, Semantics};
 use ide_db::{
+    base_db::{FileId, FileRange},
     defs::Definition,
     search::{FileReference, UsageSearchResult},
+    RootDatabase,
 };
 use syntax::{
     ast::{self, AstNode, AstToken, NameOwner},
@@ -31,8 +33,15 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let FileRange { file_id, range } = ctx.frange;
     let InlineData { let_stmt, delete_let, references, target } =
-        inline_let(ctx).or_else(|| inline_usage(ctx))?;
+        if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
+            inline_let(&ctx.sema, let_stmt, range, file_id)
+        } else if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
+            inline_usage(&ctx.sema, path_expr, range, file_id)
+        } else {
+            None
+        }?;
     let initializer_expr = let_stmt.initializer()?;
 
     let delete_range = delete_let.then(|| {
@@ -139,8 +148,12 @@ struct InlineData {
     references: Vec<FileReference>,
 }
 
-fn inline_let(ctx: &AssistContext) -> Option<InlineData> {
-    let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
+fn inline_let(
+    sema: &Semantics<RootDatabase>,
+    let_stmt: ast::LetStmt,
+    range: TextRange,
+    file_id: FileId,
+) -> Option<InlineData> {
     let bind_pat = match let_stmt.pat()? {
         ast::Pat::IdentPat(pat) => pat,
         _ => return None,
@@ -149,14 +162,14 @@ fn inline_let(ctx: &AssistContext) -> Option<InlineData> {
         cov_mark::hit!(test_not_inline_mut_variable);
         return None;
     }
-    if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
+    if !bind_pat.syntax().text_range().contains_range(range) {
         cov_mark::hit!(not_applicable_outside_of_bind_pat);
         return None;
     }
 
-    let local = ctx.sema.to_def(&bind_pat)?;
-    let UsageSearchResult { mut references } = Definition::Local(local).usages(&ctx.sema).all();
-    match references.remove(&ctx.frange.file_id) {
+    let local = sema.to_def(&bind_pat)?;
+    let UsageSearchResult { mut references } = Definition::Local(local).usages(sema).all();
+    match references.remove(&file_id) {
         Some(references) => Some(InlineData {
             let_stmt,
             delete_let: true,
@@ -170,29 +183,37 @@ fn inline_let(ctx: &AssistContext) -> Option<InlineData> {
     }
 }
 
-fn inline_usage(ctx: &AssistContext) -> Option<InlineData> {
-    let path_expr = ctx.find_node_at_offset::<ast::PathExpr>()?;
+fn inline_usage(
+    sema: &Semantics<RootDatabase>,
+    path_expr: ast::PathExpr,
+    range: TextRange,
+    file_id: FileId,
+) -> Option<InlineData> {
     let path = path_expr.path()?;
     let name = path.as_single_name_ref()?;
+    if !name.syntax().text_range().contains_range(range) {
+        cov_mark::hit!(test_not_inline_selection_too_broad);
+        return None;
+    }
 
-    let local = match ctx.sema.resolve_path(&path)? {
+    let local = match sema.resolve_path(&path)? {
         PathResolution::Local(local) => local,
         _ => return None,
     };
-    if local.is_mut(ctx.db()) {
+    if local.is_mut(sema.db) {
         cov_mark::hit!(test_not_inline_mut_variable_use);
         return None;
     }
 
-    let bind_pat = match local.source(ctx.db()).value {
+    let bind_pat = match local.source(sema.db).value {
         Either::Left(ident) => ident,
         _ => return None,
     };
 
     let let_stmt = ast::LetStmt::cast(bind_pat.syntax().parent()?)?;
 
-    let UsageSearchResult { mut references } = Definition::Local(local).usages(&ctx.sema).all();
-    let mut references = references.remove(&ctx.frange.file_id)?;
+    let UsageSearchResult { mut references } = Definition::Local(local).usages(sema).all();
+    let mut references = references.remove(&file_id)?;
     let delete_let = references.len() == 1;
     references.retain(|fref| fref.name.as_name_ref() == Some(&name));
 
@@ -874,6 +895,21 @@ macro_rules! m {
 fn f() {
     let xyz$0 = 0;
     m!(xyz); // replacing it would break the macro
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_not_inline_selection_too_broad() {
+        cov_mark::check!(test_not_inline_selection_too_broad);
+        check_assist_not_applicable(
+            inline_local_variable,
+            r#"
+fn f() {
+    let foo = 0;
+    let bar = 0;
+    $0foo + bar$0;
 }
 "#,
         );
