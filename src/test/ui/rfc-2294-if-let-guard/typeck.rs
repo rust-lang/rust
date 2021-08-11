@@ -1,5 +1,4 @@
 #![feature(if_let_guard)]
-#![allow(incomplete_features)]
 
 fn ok() -> Result<Option<bool>, ()> {
     Ok(Some(true))
