@@ -274,8 +274,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         let method = make::name_ref("hash");
         let arg = make::expr_path(make::ext::ident_path("state"));
         let expr = make::expr_method_call(target, method, make::arg_list(Some(arg)));
-        let stmt = make::expr_stmt(expr);
-        stmt.into()
+        make::expr_stmt(expr).into()
     }
 
     let body = match adt {
@@ -335,8 +334,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         let submodule = make::ext::ident_path("mem");
         let fn_name = make::ext::ident_path("discriminant");
         let fn_name = make::path_concat(submodule, fn_name);
-        let fn_name = make::expr_path(make::path_concat(root, fn_name));
-        fn_name
+        make::expr_path(make::path_concat(root, fn_name))
     }
 
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
@@ -349,15 +347,11 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     fn gen_record_pat_field(field_name: &str, pat_name: &str) -> ast::RecordPatField {
         let pat = make::ext::simple_ident_pat(make::name(&pat_name));
         let name_ref = make::name_ref(field_name);
-        let field = make::record_pat_field(name_ref, pat.into());
-        field
+        make::record_pat_field(name_ref, pat.into())
     }
 
-    fn gen_record_pat(
-        record_name: ast::Path,
-        r_fields: Vec<ast::RecordPatField>,
-    ) -> ast::RecordPat {
-        let list = make::record_pat_field_list(r_fields);
+    fn gen_record_pat(record_name: ast::Path, fields: Vec<ast::RecordPatField>) -> ast::RecordPat {
+        let list = make::record_pat_field_list(fields);
         make::record_pat_with_fields(record_name, list)
     }
 
@@ -371,6 +365,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     fn gen_tuple_field(field_name: &String) -> ast::Pat {
         ast::Pat::IdentPat(make::ident_pat(false, false, make::name(field_name)))
     }
+
     // FIXME: return `None` if the trait carries a generic type; we can only
     // generate this code `Self` for the time being.
 
