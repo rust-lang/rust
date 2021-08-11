@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(rust_2021_incompatible_or_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see issue #84869 <https://github.com/rust-lang/rust/issues/84869>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/or-patterns-macro-rules.html>
 
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
   --> $DIR/macro-or-patterns-back-compat.rs:13:23
@@ -19,7 +19,7 @@ LL | macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} }
    |                       ^^^^^^ help: use pat_param to preserve semantics: `$x:pat_param`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see issue #84869 <https://github.com/rust-lang/rust/issues/84869>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/or-patterns-macro-rules.html>
 
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
   --> $DIR/macro-or-patterns-back-compat.rs:19:21
@@ -28,7 +28,7 @@ LL | macro_rules! ogg { ($x:pat | $y:pat_param) => {} }
    |                     ^^^^^^ help: use pat_param to preserve semantics: `$x:pat_param`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see issue #84869 <https://github.com/rust-lang/rust/issues/84869>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/or-patterns-macro-rules.html>
 
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
   --> $DIR/macro-or-patterns-back-compat.rs:23:26
@@ -37,7 +37,7 @@ LL |     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
    |                          ^^^^^^^^ help: use pat_param to preserve semantics: `$pat:pat_param`
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see issue #84869 <https://github.com/rust-lang/rust/issues/84869>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/or-patterns-macro-rules.html>
 
 error: aborting due to 4 previous errors
 
