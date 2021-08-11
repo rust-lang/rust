@@ -20,6 +20,7 @@ use rustc_attr::is_builtin_attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{
@@ -50,6 +51,7 @@ macro_rules! ast_fragments {
     ) => {
         /// A fragment of AST that can be produced by a single macro expansion.
         /// Can also serve as an input and intermediate result for macro expansion operations.
+        #[derive(Debug)]
         pub enum AstFragment {
             OptExpr(Option<P<ast::Expr>>),
             $($Kind($AstTy),)*
@@ -422,6 +424,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         };
         self.cx.trace_macros_diag();
+        check_ast(&mut krate);
         krate
     }
 
@@ -528,6 +531,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                     let (fragment, collected_invocations) =
                         self.collect_invocations(fragment, &derive_placeholders);
+                    tracing::info!("Collected invocations: {:?}", fragment);
                     // We choose to expand any derive invocations associated with this macro invocation
                     // *before* any macro invocations collected from the output fragment
                     derive_invocations.extend(collected_invocations);
@@ -1626,4 +1630,23 @@ impl<'feat> ExpansionConfig<'feat> {
     fn proc_macro_hygiene(&self) -> bool {
         self.features.map_or(false, |features| features.proc_macro_hygiene)
     }
+}
+
+fn check_ast(krate: &mut ast::Crate) {
+    struct AstChecker {
+        ids: FxHashSet<ast::NodeId>,
+    }
+    impl MutVisitor for AstChecker {
+        fn visit_id(&mut self, id: &mut ast::NodeId) {
+            if *id != ast::DUMMY_NODE_ID && !self.ids.insert(*id) {
+                panic!("Duplicate id: {:?}", id);
+            }
+        }
+        fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+            tracing::info!("Visiting stmt: {:?}", stmt);
+            ast::mut_visit::noop_flat_map_stmt(stmt, self)
+        }
+    }
+    tracing::info!("Full ast: {:?}", krate);
+    //AstChecker { ids: Default::default() }.visit_crate(krate);
 }
