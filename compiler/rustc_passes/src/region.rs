@@ -196,7 +196,6 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     visitor.terminating_scopes.insert(stmt_id);
 
     let prev_parent = visitor.cx.parent;
-    visitor.enter_node_scope_with_dtor(stmt_id);
 
     intravisit::walk_stmt(visitor, stmt);
 
