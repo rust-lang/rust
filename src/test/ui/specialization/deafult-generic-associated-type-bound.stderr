@@ -21,7 +21,7 @@ LL |     default type U<'a> = &'a T;
 help: consider further restricting this bound
    |
 LL | impl<T: 'static + std::cmp::PartialEq> X for T {
-   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |                 +++++++++++++++++++++
 
 error: aborting due to previous error; 1 warning emitted
 

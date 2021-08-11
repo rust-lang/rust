@@ -12,7 +12,7 @@ LL |     X::Entry();
 help: `X::Entry` is a unit variant, you need to write it without the parenthesis
    |
 LL |     X::Entry;
-   |     ^^^^^^^^
+   |     ~~~~~~~~
 
 error[E0618]: expected function, found `i32`
   --> $DIR/E0618.rs:9:5

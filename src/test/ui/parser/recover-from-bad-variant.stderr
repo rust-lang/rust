@@ -27,7 +27,7 @@ LL |         Enum::Bar { a, b } => {}
 help: use the tuple variant pattern syntax instead
    |
 LL |         Enum::Bar(a, b) => {}
-   |                  ^^^^^^
+   |                  ~~~~~~
 
 error: aborting due to 3 previous errors
 

@@ -7,7 +7,7 @@ LL |     let mut async = 1;
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let mut r#async = 1;
-   |             ^^^^^^^
+   |             ~~~~~~~
 
 error: expected identifier, found keyword `async`
   --> $DIR/edition-keywords-2018-2015-parsing.rs:26:13
@@ -18,7 +18,7 @@ LL |     module::async();
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     module::r#async();
-   |             ^^^^^^^
+   |             ~~~~~~~
 
 error: no rules expected the token `r#async`
   --> $DIR/edition-keywords-2018-2015-parsing.rs:20:31

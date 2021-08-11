@@ -31,7 +31,7 @@ LL |     x;
 help: borrow this field in the pattern to avoid moving `x.0.0`
    |
 LL |         (Some(ref y), ()) => {},
-   |               ^^^
+   |               +++
 
 error: aborting due to 3 previous errors
 

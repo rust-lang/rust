@@ -9,7 +9,7 @@ LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
 help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a bound
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
-   |                                          ^^^^
+   |                                          ++++
 
 error: aborting due to previous error
 

@@ -7,7 +7,7 @@ LL |     pub fn break() {}
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     pub fn r#break() {}
-   |            ^^^^^^^
+   |            ~~~~~~~
 
 error: expected identifier, found keyword `let`
   --> $DIR/raw-name-use-suggestion.rs:7:10
@@ -18,7 +18,7 @@ LL |     foo::let();
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     foo::r#let();
-   |          ^^^^^
+   |          ~~~~~
 
 error[E0425]: cannot find function `r#break` in this scope
   --> $DIR/raw-name-use-suggestion.rs:8:5

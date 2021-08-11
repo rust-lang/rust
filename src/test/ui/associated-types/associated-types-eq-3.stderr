@@ -11,7 +11,7 @@ LL |     let _: Bar = x.boo();
 help: consider constraining the associated type `<I as Foo>::A` to `Bar`
    |
 LL | fn foo2<I: Foo<A = Bar>>(x: I) {
-   |               ^^^^^^^^^
+   |               +++++++++
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:38:5

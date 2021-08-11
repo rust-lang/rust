@@ -17,11 +17,11 @@ LL |     fn r#struct(&self) {
 help: disambiguate the associated function for candidate #1
    |
 LL |     async::r#struct(&r#fn {});
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
 LL |     await::r#struct(&r#fn {});
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

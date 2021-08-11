@@ -10,7 +10,7 @@ LL |     foolish: T1
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T1` representable
    |
 LL |     foolish: Box<T1>
-   |              ^^^^  ^
+   |              ++++  +
 
 error: aborting due to previous error
 

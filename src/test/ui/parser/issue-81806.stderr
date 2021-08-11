@@ -11,7 +11,7 @@ LL | }
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | r#impl
-   | ^^^^^^
+   | ~~~~~~
 
 error: aborting due to previous error
 

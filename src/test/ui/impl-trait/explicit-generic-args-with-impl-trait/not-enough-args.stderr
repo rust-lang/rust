@@ -14,7 +14,7 @@ LL | fn f<T: ?Sized, U: ?Sized>(_: impl AsRef<T>, _: impl AsRef<U>) {}
 help: add missing generic argument
    |
 LL |     f::<[u8], U>("a", b"a");
-   |             ^^^
+   |             +++
 
 error: aborting due to previous error
 

@@ -12,7 +12,7 @@ LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
 help: add missing generic argument
    |
 LL |     <String as IntoCow<B>>::into_cow("foo".to_string());
-   |                ^^^^^^^^^^
+   |                ~~~~~~~~~~
 
 error[E0107]: missing generics for trait `IntoCow`
   --> $DIR/ufcs-qpath-missing-params.rs:17:16
@@ -28,7 +28,7 @@ LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
 help: add missing generic argument
    |
 LL |     <String as IntoCow<B>>::into_cow::<str>("foo".to_string());
-   |                ^^^^^^^^^^
+   |                ~~~~~~~~~~
 
 error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/ufcs-qpath-missing-params.rs:17:26

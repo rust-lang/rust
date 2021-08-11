@@ -12,12 +12,13 @@ LL | use foo::self;
    |
 help: consider importing the module directly
    |
-LL | use foo;
-   |       --
+LL - use foo::self;
+LL + use foo;
+   | 
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use foo::{self};
-   |          ^    ^
+   |          +    +
 
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/import-self.rs:6:11
@@ -32,7 +33,7 @@ LL | use foo::{self};
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo::{self as other_foo};
-   |           ^^^^^^^^^^^^^^^^^
+   |           ~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/import-self.rs:12:5
@@ -47,7 +48,7 @@ LL | use foo::self;
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo as other_foo;
-   |     ^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~
 
 error[E0252]: the name `A` is defined multiple times
   --> $DIR/import-self.rs:16:11
@@ -61,7 +62,7 @@ LL | use foo::{self as A};
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo::{self as OtherA};
-   |           ^^^^^^^^^^^^^^
+   |           ~~~~~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

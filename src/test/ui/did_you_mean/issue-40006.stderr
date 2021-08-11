@@ -82,7 +82,7 @@ LL | }
 help: add `fn` here to parse `hello_method` as a public method
    |
 LL |     pub fn hello_method(&self) {
-   |         ^^
+   |         ++
 
 error[E0599]: no method named `hello_method` found for struct `S` in the current scope
   --> $DIR/issue-40006.rs:38:7

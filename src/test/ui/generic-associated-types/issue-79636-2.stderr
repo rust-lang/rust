@@ -12,7 +12,7 @@ LL |     type Wrapped<A>: SomeTrait;
 help: add missing generic argument
    |
 LL |     W: SomeTrait<Wrapped<A> = W>,
-   |                  ^^^^^^^^^^
+   |                  ~~~~~~~~~~
 
 error: aborting due to previous error
 

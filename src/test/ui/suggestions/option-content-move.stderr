@@ -7,7 +7,7 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
 help: consider borrowing the `Option`'s content
    |
 LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
-   |                               ^^^^^^^^^
+   |                               +++++++++
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
   --> $DIR/option-content-move.rs:29:20
@@ -18,7 +18,7 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
 help: consider borrowing the `Result`'s content
    |
 LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
-   |                               ^^^^^^^^^
+   |                               +++++++++
 
 error: aborting due to 2 previous errors
 

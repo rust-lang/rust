@@ -12,7 +12,7 @@ LL |     type Assoc<'a, const N: usize>;
 help: add missing lifetime argument
    |
 LL |     let _: <T as Foo>::Assoc<'a, 3>;
-   |                              ^^^
+   |                              +++
 
 error: aborting due to previous error
 

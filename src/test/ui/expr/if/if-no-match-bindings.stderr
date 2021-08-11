@@ -7,7 +7,7 @@ LL |     if b_ref() {}
 help: consider dereferencing the borrow
    |
 LL |     if *b_ref() {}
-   |        ^
+   |        +
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:19:8
@@ -18,7 +18,7 @@ LL |     if b_mut_ref() {}
 help: consider dereferencing the borrow
    |
 LL |     if *b_mut_ref() {}
-   |        ^
+   |        +
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:20:8
@@ -28,8 +28,9 @@ LL |     if &true {}
    |
 help: consider removing the borrow
    |
-LL |     if true {}
-   |       --
+LL -     if &true {}
+LL +     if true {}
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:21:8
@@ -39,8 +40,9 @@ LL |     if &mut true {}
    |
 help: consider removing the borrow
    |
-LL |     if true {}
-   |       --
+LL -     if &mut true {}
+LL +     if true {}
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:24:11
@@ -51,7 +53,7 @@ LL |     while b_ref() {}
 help: consider dereferencing the borrow
    |
 LL |     while *b_ref() {}
-   |           ^
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:25:11
@@ -62,7 +64,7 @@ LL |     while b_mut_ref() {}
 help: consider dereferencing the borrow
    |
 LL |     while *b_mut_ref() {}
-   |           ^
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:26:11
@@ -72,8 +74,9 @@ LL |     while &true {}
    |
 help: consider removing the borrow
    |
-LL |     while true {}
-   |          --
+LL -     while &true {}
+LL +     while true {}
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:27:11
@@ -83,8 +86,9 @@ LL |     while &mut true {}
    |
 help: consider removing the borrow
    |
-LL |     while true {}
-   |          --
+LL -     while &mut true {}
+LL +     while true {}
+   | 
 
 error: aborting due to 8 previous errors
 

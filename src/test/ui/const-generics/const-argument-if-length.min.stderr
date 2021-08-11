@@ -19,16 +19,17 @@ LL |     value: T,
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | pub struct AtLeastByte<T> {
-   |                        --
+LL - pub struct AtLeastByte<T: ?Sized> {
+LL + pub struct AtLeastByte<T> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
-   |            ^
+   |            +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     value: Box<T>,
-   |            ^^^^ ^
+   |            ++++ +
 
 error: aborting due to 2 previous errors
 

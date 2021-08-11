@@ -9,7 +9,7 @@ LL |     let x: u16 = foo();
 help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     let x: u16 = foo().try_into().unwrap();
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-2.rs:7:18

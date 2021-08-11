@@ -9,7 +9,7 @@ LL |     a * b
 help: consider further restricting this bound
    |
 LL | fn foo<T: MyMul<f64, f64> + std::ops::Mul<Output = f64>>(a: &T, b: f64) -> f64 {
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           +++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

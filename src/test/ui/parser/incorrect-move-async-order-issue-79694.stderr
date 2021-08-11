@@ -7,7 +7,7 @@ LL |     let _ = move async { };
 help: try switching the order
    |
 LL |     let _ = async move { };
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error: aborting due to previous error
 

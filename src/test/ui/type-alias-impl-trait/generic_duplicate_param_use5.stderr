@@ -20,7 +20,7 @@ LL | type Two<T, U> = impl Debug;
 help: consider restricting type parameter `T`
    |
 LL | type Two<T: std::fmt::Debug, U> = impl Debug;
-   |           ^^^^^^^^^^^^^^^^^
+   |           +++++++++++++++++
 
 error[E0277]: `U` doesn't implement `Debug`
   --> $DIR/generic_duplicate_param_use5.rs:8:18
@@ -32,7 +32,7 @@ LL | type Two<T, U> = impl Debug;
 help: consider restricting type parameter `U`
    |
 LL | type Two<T, U: std::fmt::Debug> = impl Debug;
-   |              ^^^^^^^^^^^^^^^^^
+   |              +++++++++++++++++
 
 error: aborting due to 3 previous errors
 

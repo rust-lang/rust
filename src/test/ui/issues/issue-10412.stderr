@@ -61,7 +61,7 @@ LL | impl<'self> Serializable<str> for &'self str {
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Serializable<'self, T: ?Sized> {
-   |                            ^^^^^^^^
+   |                            ++++++++
 
 error: aborting due to 9 previous errors
 

@@ -21,11 +21,11 @@ LL |     let P() = U {};
 help: use `_` to explicitly ignore each field
    |
 LL |     let P(_) = U {};
-   |           ^
+   |           +
 help: use `..` to ignore all fields
    |
 LL |     let P(..) = U {};
-   |           ^^
+   |           ++
 
 error: aborting due to 2 previous errors
 

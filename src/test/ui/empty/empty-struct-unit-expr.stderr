@@ -23,7 +23,7 @@ LL |     let e4 = E::Empty4();
 help: `E::Empty4` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let e4 = E::Empty4;
-   |              ^^^^^^^^^
+   |              ~~~~~~~~~
 
 error[E0618]: expected function, found `empty_struct::XEmpty2`
   --> $DIR/empty-struct-unit-expr.rs:18:15
@@ -44,7 +44,7 @@ LL |     let xe4 = XE::XEmpty4();
 help: `XE::XEmpty4` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let xe4 = XE::XEmpty4;
-   |               ^^^^^^^^^^^
+   |               ~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

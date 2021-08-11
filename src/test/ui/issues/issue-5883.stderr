@@ -9,7 +9,7 @@ LL |     r: dyn A + 'static
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     r: &dyn A + 'static
-   |        ^
+   |        +
 
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/issue-5883.rs:9:6

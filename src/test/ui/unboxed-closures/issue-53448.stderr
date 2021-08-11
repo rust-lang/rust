@@ -9,11 +9,11 @@ LL |     let f: &mut dyn FnMut<(_,), Output = ()> = &mut |_: <() as Lt<'_>>::T| 
 help: consider further restricting the associated type
    |
 LL | fn main() where <() as Lt<'_>>::T: Sized {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ++++++++++++++++++++++++++++++
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     let f: &mut dyn FnMut<(_,), Output = ()> = &mut |_: &<() as Lt<'_>>::T| {};
-   |                                                         ^
+   |                                                         +
 
 error: aborting due to previous error
 

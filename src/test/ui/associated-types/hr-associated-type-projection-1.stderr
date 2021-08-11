@@ -23,7 +23,7 @@ LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
 help: consider further restricting the associated type
    |
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T where for<'b> <T as UnsafeCopy<'b, T>>::Item: Deref {
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                         +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

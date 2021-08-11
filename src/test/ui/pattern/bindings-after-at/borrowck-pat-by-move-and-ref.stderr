@@ -299,7 +299,7 @@ LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
 help: borrow this field in the pattern to avoid moving the value
    |
 LL |         ref a @ Some((ref b @ ref mut c, ref d @ e)) => {}
-   |                               ^^^
+   |                               +++
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-by-move-and-ref.rs:69:38
@@ -314,7 +314,7 @@ LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
 help: borrow this field in the pattern to avoid moving the value
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ ref e)) => {}
-   |                                              ^^^
+   |                                              +++
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-by-move-and-ref.rs:11:11

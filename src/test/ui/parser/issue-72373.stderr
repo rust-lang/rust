@@ -7,7 +7,7 @@ LL |         [h, ref ts..] => foo(c, n - h) + foo(ts, n),
 help: if you meant to bind the contents of the rest of the array pattern into `ts`, use `@`
    |
 LL |         [h, ref ts @ ..] => foo(c, n - h) + foo(ts, n),
-   |                    ^
+   |                    +
 
 error: aborting due to previous error
 

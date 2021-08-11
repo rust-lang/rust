@@ -11,7 +11,7 @@ LL |     foo(s);
 help: borrow this field in the pattern to avoid moving `s.0`
    |
 LL |     if let Some(ref x) = s {
-   |                 ^^^
+   |                 +++
 
 error[E0382]: use of partially moved value: `e`
   --> $DIR/move-in-pattern.rs:23:9
@@ -26,7 +26,7 @@ LL |     bar(e);
 help: borrow this field in the pattern to avoid moving `e.s`
    |
 LL |     let E::V { s: ref x } = e;
-   |                   ^^^
+   |                   +++
 
 error: aborting due to 2 previous errors
 

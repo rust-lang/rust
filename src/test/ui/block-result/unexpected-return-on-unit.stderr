@@ -7,11 +7,11 @@ LL |     foo()
 help: consider using a semicolon here
    |
 LL |     foo();
-   |          ^
+   |          +
 help: try adding a return type
    |
 LL | fn bar() -> usize {
-   |          ^^^^^^^^
+   |          ++++++++
 
 error: aborting due to previous error
 

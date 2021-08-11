@@ -9,7 +9,7 @@ LL | pub fn example(ref s: str) {}
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | pub fn example(ref s: &str) {}
-   |                       ^
+   |                       +
 
 error: aborting due to previous error
 

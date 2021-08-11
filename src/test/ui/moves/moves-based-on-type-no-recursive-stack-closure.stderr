@@ -20,7 +20,7 @@ LL |     f(&mut r, false)
 help: consider further restricting this bound
    |
 LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) + Copy {
-   |                                                          ^^^^^^
+   |                                                          ++++++
 
 error: aborting due to 2 previous errors
 

@@ -7,11 +7,11 @@ LL | #[deprecated = b"test"]
 help: the following are the possible correct uses
    |
 LL | #[deprecated]
-   | ^^^^^^^^^^^^^
+   | ~~~~~~~~~~~~~
 LL | #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 LL | #[deprecated = "reason"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

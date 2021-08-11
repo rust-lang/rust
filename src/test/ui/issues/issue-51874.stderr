@@ -7,7 +7,7 @@ LL |     let a = (1.0).pow(1.0);
 help: you must specify a concrete type for this numeric value, like `f32`
    |
 LL |     let a = (1.0_f32).pow(1.0);
-   |              ^^^^^^^
+   |              ~~~~~~~
 
 error: aborting due to previous error
 

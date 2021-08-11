@@ -28,11 +28,11 @@ LL |     fn m4(&self, arg: &'b isize) { }
 help: consider introducing lifetime `'b` here
    |
 LL | impl<'b, 'a> Foo<'a> {
-   |      ^^^
+   |      +++
 help: consider introducing lifetime `'b` here
    |
 LL |     fn m4<'b>(&self, arg: &'b isize) { }
-   |          ^^^^
+   |          ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:17:12
@@ -44,11 +44,11 @@ LL |     fn m5(&'b self) { }
 help: consider introducing lifetime `'b` here
    |
 LL | impl<'b, 'a> Foo<'a> {
-   |      ^^^
+   |      +++
 help: consider introducing lifetime `'b` here
    |
 LL |     fn m5<'b>(&'b self) { }
-   |          ^^^^
+   |          ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:18:27
@@ -60,11 +60,11 @@ LL |     fn m6(&self, arg: Foo<'b>) { }
 help: consider introducing lifetime `'b` here
    |
 LL | impl<'b, 'a> Foo<'a> {
-   |      ^^^
+   |      +++
 help: consider introducing lifetime `'b` here
    |
 LL |     fn m6<'b>(&self, arg: Foo<'b>) { }
-   |          ^^^^
+   |          ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:26:22
@@ -107,11 +107,11 @@ LL | ...                   &'b isize,
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
-   |            ^^^^
+   |            ++++
 help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL |             b: Box<dyn for<'a, 'b> FnOnce(&'a isize,
-   |                              ^^^^
+   |                              ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:46:36
@@ -124,11 +124,11 @@ LL | ...                   &'b isize)>,
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
-   |            ^^^^
+   |            ++++
 help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL |             b: Box<dyn for<'a, 'b> FnOnce(&'a isize,
-   |                              ^^^^
+   |                              ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:47:17
@@ -151,11 +151,11 @@ LL |     async fn buggy(&self) -> &'a str {
 help: consider introducing lifetime `'a` here
    |
 LL | impl<'a> Bug {
-   |     ^^^^
+   |     ++++
 help: consider introducing lifetime `'a` here
    |
 LL |     async fn buggy<'a>(&self) -> &'a str {
-   |                   ^^^^
+   |                   ++++
 
 error: aborting due to 12 previous errors
 

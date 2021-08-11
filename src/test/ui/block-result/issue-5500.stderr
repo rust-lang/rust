@@ -10,8 +10,9 @@ LL |     &panic!()
               found reference `&_`
 help: consider removing the borrow
    |
-LL |     panic!()
-   |    --
+LL -     &panic!()
+LL +     panic!()
+   | 
 
 error: aborting due to previous error
 

@@ -15,7 +15,7 @@ LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let Ok(_x) = foo() { /* */ }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

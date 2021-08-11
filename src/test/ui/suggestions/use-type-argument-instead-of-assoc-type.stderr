@@ -27,7 +27,7 @@ LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
 help: specify the associated types
    |
 LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,
-   |                                ^^^^^^^^^  ^^^^^^^^^
+   |                                ~~~~~~~~~  ~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

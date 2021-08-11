@@ -9,7 +9,7 @@ LL | trait B<T> = A<T>;
 help: consider restricting type parameter `T`
    |
 LL | trait B<T: Foo> = A<T>;
-   |          ^^^^^
+   |          +++++
 
 error: aborting due to previous error
 

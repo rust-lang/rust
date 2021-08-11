@@ -10,7 +10,7 @@ LL |     type Bar = MySet<T>;
 help: consider restricting type parameter `T`
    |
 LL | impl<T: MyHash> Foo for T {
-   |       ^^^^^^^^
+   |       ++++++++
 
 error: aborting due to previous error
 

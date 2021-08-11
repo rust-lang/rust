@@ -169,15 +169,15 @@ LL | #[cfg(all(not(any(solaris, linux)), freebsd))]
 help: try
    |
 LL | #[cfg(all(not(any(target_os = "solaris", linux)), freebsd))]
-   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |                   ~~~~~~~~~~~~~~~~~~~~~
 help: try
    |
 LL | #[cfg(all(not(any(solaris, target_os = "linux")), freebsd))]
-   |                            ^^^^^^^^^^^^^^^^^^^
+   |                            ~~~~~~~~~~~~~~~~~~~
 help: try
    |
 LL | #[cfg(all(not(any(solaris, linux)), target_os = "freebsd"))]
-   |                                     ^^^^^^^^^^^^^^^^^^^^^
+   |                                     ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 17 previous errors
 

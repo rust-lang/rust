@@ -16,7 +16,7 @@ LL |     identity_u16(y);
 help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     identity_u16(y.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:21:18
@@ -27,7 +27,7 @@ LL |     identity_u16(a);
 help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     identity_u16(a.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

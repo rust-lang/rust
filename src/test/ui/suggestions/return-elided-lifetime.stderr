@@ -8,7 +8,7 @@ LL | fn f1() -> &i32 { loop {} }
 help: consider using the `'static` lifetime
    |
 LL | fn f1() -> &'static i32 { loop {} }
-   |            ^^^^^^^^
+   |            ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:8:14
@@ -20,7 +20,7 @@ LL | fn f1_() -> (&i32, &i32) { loop {} }
 help: consider using the `'static` lifetime
    |
 LL | fn f1_() -> (&'static i32, &i32) { loop {} }
-   |              ^^^^^^^^
+   |              ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:8:20
@@ -32,7 +32,7 @@ LL | fn f1_() -> (&i32, &i32) { loop {} }
 help: consider using the `'static` lifetime
    |
 LL | fn f1_() -> (&i32, &'static i32) { loop {} }
-   |                    ^^^^^^^^
+   |                    ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:12:26
@@ -44,7 +44,7 @@ LL | fn f2(a: i32, b: i32) -> &i32 { loop {} }
 help: consider using the `'static` lifetime
    |
 LL | fn f2(a: i32, b: i32) -> &'static i32 { loop {} }
-   |                          ^^^^^^^^
+   |                          ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:14:28
@@ -56,7 +56,7 @@ LL | fn f2_(a: i32, b: i32) -> (&i32, &i32) { loop {} }
 help: consider using the `'static` lifetime
    |
 LL | fn f2_(a: i32, b: i32) -> (&'static i32, &i32) { loop {} }
-   |                            ^^^^^^^^
+   |                            ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:14:34
@@ -68,7 +68,7 @@ LL | fn f2_(a: i32, b: i32) -> (&i32, &i32) { loop {} }
 help: consider using the `'static` lifetime
    |
 LL | fn f2_(a: i32, b: i32) -> (&i32, &'static i32) { loop {} }
-   |                                  ^^^^^^^^
+   |                                  ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:19:17
@@ -80,7 +80,7 @@ LL | fn f3(s: &S) -> &i32 { loop {} }
 help: consider introducing a named lifetime parameter
    |
 LL | fn f3<'a>(s: &'a S) -> &'a i32 { loop {} }
-   |      ^^^^    ^^^^^     ^^^
+   |      ++++    ~~~~~     ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:21:26
@@ -92,7 +92,7 @@ LL | fn f3_(s: &S, t: &S) -> (&i32, &i32) { loop {} }
 help: consider introducing a named lifetime parameter
    |
 LL | fn f3_<'a>(s: &'a S, t: &'a S) -> (&'a i32, &i32) { loop {} }
-   |       ^^^^    ^^^^^     ^^^^^      ^^^
+   |       ++++    ~~~~~     ~~~~~      ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:21:32
@@ -104,7 +104,7 @@ LL | fn f3_(s: &S, t: &S) -> (&i32, &i32) { loop {} }
 help: consider introducing a named lifetime parameter
    |
 LL | fn f3_<'a>(s: &'a S, t: &'a S) -> (&i32, &'a i32) { loop {} }
-   |       ^^^^    ^^^^^     ^^^^^            ^^^
+   |       ++++    ~~~~~     ~~~~~            ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:25:42
@@ -121,7 +121,7 @@ LL | fn f4<'a, 'b>(a: &'a i32, b: &'b i32) -> &i32 { loop {} }
 help: consider using one of the available lifetimes here
    |
 LL | fn f4<'a, 'b>(a: &'a i32, b: &'b i32) -> &'lifetime i32 { loop {} }
-   |                                          ^^^^^^^^^^
+   |                                          ~~~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:27:44
@@ -138,7 +138,7 @@ LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) { loop {} }
 help: consider using one of the available lifetimes here
    |
 LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&'lifetime i32, &i32) { loop {} }
-   |                                            ^^^^^^^^^^
+   |                                            ~~~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:27:50
@@ -155,7 +155,7 @@ LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) { loop {} }
 help: consider using one of the available lifetimes here
    |
 LL | fn f4_<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &'lifetime i32) { loop {} }
-   |                                                  ^^^^^^^^^^
+   |                                                  ~~~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:31:35
@@ -167,7 +167,7 @@ LL | fn f5<'a>(a: &'a i32, b: &i32) -> &i32 { loop {} }
 help: consider using the `'a` lifetime
    |
 LL | fn f5<'a>(a: &'a i32, b: &i32) -> &'a i32 { loop {} }
-   |                                   ^^^
+   |                                   ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:33:37
@@ -179,7 +179,7 @@ LL | fn f5_<'a>(a: &'a i32, b: &i32) -> (&i32, &i32) { loop {} }
 help: consider using the `'a` lifetime
    |
 LL | fn f5_<'a>(a: &'a i32, b: &i32) -> (&'a i32, &i32) { loop {} }
-   |                                     ^^^
+   |                                     ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/return-elided-lifetime.rs:33:43
@@ -191,7 +191,7 @@ LL | fn f5_<'a>(a: &'a i32, b: &i32) -> (&i32, &i32) { loop {} }
 help: consider using the `'a` lifetime
    |
 LL | fn f5_<'a>(a: &'a i32, b: &i32) -> (&i32, &'a i32) { loop {} }
-   |                                           ^^^
+   |                                           ~~~
 
 error: aborting due to 15 previous errors
 

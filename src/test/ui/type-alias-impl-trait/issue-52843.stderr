@@ -7,7 +7,7 @@ LL | type Foo<T> = impl Default;
 help: consider restricting type parameter `T`
    |
 LL | type Foo<T: std::default::Default> = impl Default;
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
+   |           +++++++++++++++++++++++
 
 error: aborting due to previous error
 

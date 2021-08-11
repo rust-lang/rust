@@ -14,7 +14,7 @@ LL | async fn make_u32() -> u32 {
 help: consider `await`ing on the `Future`
    |
 LL |     take_u32(x.await)
-   |               ^^^^^^
+   |               ++++++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:22:5
@@ -32,11 +32,11 @@ LL | async fn dummy() {}
 help: consider `await`ing on the `Future`
    |
 LL |     dummy().await
-   |            ^^^^^^
+   |            ++++++
 help: consider using a semicolon here
    |
 LL |     dummy();
-   |            ^
+   |            +
 
 error: aborting due to 2 previous errors
 

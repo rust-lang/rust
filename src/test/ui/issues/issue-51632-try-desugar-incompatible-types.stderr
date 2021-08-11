@@ -8,8 +8,9 @@ LL |     missing_discourses()?
               found type `isize`
 help: try removing this `?`
    |
-LL |     missing_discourses()
-   |                        --
+LL -     missing_discourses()?
+LL +     missing_discourses()
+   | 
 help: try using a variant of the expected enum
    |
 LL |     Ok(missing_discourses()?)

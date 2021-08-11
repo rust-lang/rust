@@ -7,7 +7,7 @@ LL |     'nope'
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     "nope"
-   |     ^^^^^^
+   |     ~~~~~~
 
 error: aborting due to previous error
 

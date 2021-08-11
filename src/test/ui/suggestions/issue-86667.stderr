@@ -8,7 +8,7 @@ LL | async fn a(s1: &str, s2: &str) -> &str {
 help: consider introducing a named lifetime parameter
    |
 LL | async fn a<'a>(s1: &'a str, s2: &'a str) -> &'a str {
-   |           ^^^^     ^^^^^^^      ^^^^^^^     ^^^
+   |           ++++     ~~~~~~~      ~~~~~~~     ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-86667.rs:11:29
@@ -20,7 +20,7 @@ LL | fn b(s1: &str, s2: &str) -> &str {
 help: consider introducing a named lifetime parameter
    |
 LL | fn b<'a>(s1: &'a str, s2: &'a str) -> &'a str {
-   |     ^^^^     ^^^^^^^      ^^^^^^^     ^^^
+   |     ++++     ~~~~~~~      ~~~~~~~     ~~~
 
 error: aborting due to 2 previous errors
 

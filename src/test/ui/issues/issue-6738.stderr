@@ -9,7 +9,7 @@ LL |         self.x += v.x;
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::ops::AddAssign> Foo<T> {
-   |       ^^^^^^^^^^^^^^^^^^^^^
+   |       +++++++++++++++++++++
 
 error: aborting due to previous error
 

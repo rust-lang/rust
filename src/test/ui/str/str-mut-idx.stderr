@@ -11,7 +11,7 @@ LL |     s[1..2] = bot();
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn bot<T: ?Sized>() -> T { loop {} }
-   |         ^^^^^^^^
+   |         ++++++++
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-mut-idx.rs:4:5

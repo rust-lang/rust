@@ -11,7 +11,7 @@ LL |         _ => { empty!() }
 help: add `;` to interpret the expansion as a statement
    |
 LL |         _ => { empty!(); }
-   |                        ^
+   |                        +
 
 error: aborting due to previous error
 

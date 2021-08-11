@@ -19,7 +19,7 @@ LL |         S(x) => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         S(x, _) => {}
-   |            ^^^
+   |            +++
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:14:9
@@ -33,11 +33,11 @@ LL |         S(_) => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         S(_, _) => {}
-   |            ^^^
+   |            +++
 help: use `..` to ignore all fields
    |
 LL |         S(..) => {}
-   |           ^^
+   |           ~~
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:20:9
@@ -51,11 +51,11 @@ LL |         S() => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         S(_, _) => {}
-   |           ^^^^
+   |           ++++
 help: use `..` to ignore all fields
    |
 LL |         S(..) => {}
-   |           ^^
+   |           ++
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:27:9
@@ -69,7 +69,7 @@ LL |         E::S(x) => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         E::S(x, _) => {}
-   |               ^^^
+   |               +++
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:32:9
@@ -83,11 +83,11 @@ LL |         E::S(_) => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         E::S(_, _) => {}
-   |               ^^^
+   |               +++
 help: use `..` to ignore all fields
    |
 LL |         E::S(..) => {}
-   |              ^^
+   |              ~~
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:38:9
@@ -101,11 +101,11 @@ LL |         E::S() => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         E::S(_, _) => {}
-   |              ^^^^
+   |              ++++
 help: use `..` to ignore all fields
    |
 LL |         E::S(..) => {}
-   |              ^^
+   |              ++
 
 error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 4 fields
   --> $DIR/pat-tuple-underfield.rs:50:9
@@ -119,11 +119,11 @@ LL |         Point4(   a   ,     _    ) => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         Point4(   a   ,     _    , _, _) => {}
-   |                                  ^^^^^^
+   |                                  ++++++
 help: use `..` to ignore the rest of the fields
    |
 LL |         Point4(   a, ..) => {}
-   |                    ^^^^
+   |                    ~~~~
 
 error: aborting due to 8 previous errors
 

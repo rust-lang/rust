@@ -14,7 +14,7 @@ LL | async fn make_u32() -> u32 {
 help: consider `await`ing on the `Future`
    |
 LL |         take_u32(x.await)
-   |                   ^^^^^^
+   |                   ++++++
 
 error: aborting due to previous error
 

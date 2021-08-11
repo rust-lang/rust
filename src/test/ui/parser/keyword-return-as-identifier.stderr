@@ -7,7 +7,7 @@ LL |     let return = "foo";
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let r#return = "foo";
-   |         ^^^^^^^^
+   |         ~~~~~~~~
 
 error: aborting due to previous error
 

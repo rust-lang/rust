@@ -21,7 +21,7 @@ LL | pub trait Fn<Args>: FnMut<Args> {
 help: add missing generic argument
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Args>)(3));
-   |                                       ^^^^^^^^
+   |                                       ~~~~~~~~
 
 error[E0191]: the value of the associated type `Output` (from trait `FnOnce`) must be specified
   --> $DIR/issue-23024.rs:9:39

@@ -30,7 +30,7 @@ LL |         Some(reference) = cache.data.get(key) {
 help: consider dereferencing the borrow
    |
 LL |         Some(*reference) = cache.data.get(key) {
-   |              ^
+   |              +
 
 error[E0308]: mismatched types
   --> $DIR/ice-6250.rs:12:9

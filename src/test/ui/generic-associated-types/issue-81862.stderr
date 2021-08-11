@@ -12,7 +12,7 @@ LL |     type Item<'a>;
 help: add missing lifetime argument
    |
 LL |     fn next(&mut self) -> Option<Self::Item<'_>>;
-   |                                        ^^^^^^^^
+   |                                        ~~~~~~~~
 
 error: aborting due to previous error
 

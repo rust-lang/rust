@@ -8,7 +8,7 @@ LL |     rb"abc";
 help: use `br` for a raw byte string
    |
 LL |     br"abc";
-   |     ^^
+   |     ~~
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"abc"`
   --> $DIR/raw-byte-string-prefix.rs:6:7

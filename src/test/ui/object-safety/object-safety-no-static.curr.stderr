@@ -14,11 +14,11 @@ LL |     fn foo() {}
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) {}
-   |            ^^^^^
+   |            +++++
 help: alternatively, consider constraining `foo` so it does not apply to trait objects
    |
 LL |     fn foo() where Self: Sized {}
-   |              ^^^^^^^^^^^^^^^^^
+   |              +++++++++++++++++
 
 error: aborting due to previous error
 

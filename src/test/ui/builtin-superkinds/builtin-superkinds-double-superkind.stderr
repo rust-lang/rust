@@ -11,7 +11,7 @@ LL | impl <T: Sync+'static> Foo for (T,) { }
 help: consider further restricting this bound
    |
 LL | impl <T: Sync+'static + std::marker::Send> Foo for (T,) { }
-   |                       ^^^^^^^^^^^^^^^^^^^
+   |                       +++++++++++++++++++
 
 error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/builtin-superkinds-double-superkind.rs:9:16
@@ -26,7 +26,7 @@ LL | impl <T: Send> Foo for (T,T) { }
 help: consider further restricting this bound
    |
 LL | impl <T: Send + std::marker::Sync> Foo for (T,T) { }
-   |               ^^^^^^^^^^^^^^^^^^^
+   |               +++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

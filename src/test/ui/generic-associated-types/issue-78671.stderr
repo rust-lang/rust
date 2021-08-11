@@ -12,7 +12,7 @@ LL |     type Member<T>;
 help: add missing generic argument
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
-   |                                               ^^^^^^^^^
+   |                                               ~~~~~~~~~
 
 error[E0038]: the trait `CollectionFamily` cannot be made into an object
   --> $DIR/issue-78671.rs:7:25

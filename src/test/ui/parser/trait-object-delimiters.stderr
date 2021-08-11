@@ -12,8 +12,9 @@ LL | fn foo2(_: &dyn (Drop + AsRef<str>)) {}
    |
 help: remove the parentheses
    |
-LL | fn foo2(_: &dyn Drop + AsRef<str>) {}
-   |                --               --
+LL - fn foo2(_: &dyn (Drop + AsRef<str>)) {}
+LL + fn foo2(_: &dyn Drop + AsRef<str>) {}
+   | 
 
 error: expected parameter name, found `{`
   --> $DIR/trait-object-delimiters.rs:8:17

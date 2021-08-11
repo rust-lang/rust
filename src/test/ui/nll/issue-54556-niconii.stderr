@@ -16,7 +16,7 @@ LL | }
 help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
    |
 LL |     if let Ok(_) = counter.lock() { };
-   |                                      ^
+   |                                      +
 
 error: aborting due to previous error
 

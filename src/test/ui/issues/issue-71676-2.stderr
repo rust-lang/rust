@@ -11,7 +11,7 @@ LL |     let _: *mut u8 = &a;
 help: consider dereferencing
    |
 LL |     let _: *mut u8 = &mut ***a;
-   |                       ^^^^^^^
+   |                       +++++++
 
 error: aborting due to previous error
 

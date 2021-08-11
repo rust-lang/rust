@@ -10,7 +10,7 @@ LL | use std as issue_45829_b;
 help: you can use `as` to change the binding name of the import
    |
 LL | use std as other_issue_45829_b;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

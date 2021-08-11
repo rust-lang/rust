@@ -10,7 +10,7 @@ LL |     pub struct Pong(SendPacket<Ping>);
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Pong` representable
    |
 LL |     pub struct Pong(Box<SendPacket<Ping>>);
-   |                     ^^^^                ^
+   |                     ++++                +
 
 error: aborting due to previous error
 

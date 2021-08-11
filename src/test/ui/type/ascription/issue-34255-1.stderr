@@ -24,7 +24,7 @@ LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A
 help: add missing generic argument
    |
 LL |         input_cells: Vec<T>::new()
-   |                      ^^^^^^
+   |                      ~~~~~~
 
 error: aborting due to 3 previous errors
 

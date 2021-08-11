@@ -13,7 +13,7 @@ LL |     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 help: consider `await`ing on the `Future`
    |
 LL |     SadGirl {}.call().await?;
-   |                      ^^^^^^
+   |                      ++++++
 
 error: aborting due to previous error
 

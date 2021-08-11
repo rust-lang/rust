@@ -26,7 +26,7 @@ LL | struct Foo {
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     async fn frob(&self) {}
-   |                   ^
+   |                   +
 
 error: aborting due to 3 previous errors
 

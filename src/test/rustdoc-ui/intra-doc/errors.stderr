@@ -96,8 +96,9 @@ LL | /// [type@Vec::into_iter]
    |
 help: to link to the associated function, add parentheses
    |
-LL | /// [Vec::into_iter()]
-   |     --             ^^
+LL - /// [type@Vec::into_iter]
+LL + /// [Vec::into_iter()]
+   | 
 
 error: unresolved link to `S`
   --> $DIR/errors.rs:68:6
@@ -107,8 +108,9 @@ LL | /// [S!]
    |
 help: to link to the struct, prefix with `struct@`
    |
-LL | /// [struct@S]
-   |      ^^^^^^^--
+LL - /// [S!]
+LL + /// [struct@S]
+   | 
 
 error: unresolved link to `S::h`
   --> $DIR/errors.rs:78:6
@@ -118,8 +120,9 @@ LL | /// [type@S::h]
    |
 help: to link to the associated function, add parentheses
    |
-LL | /// [S::h()]
-   |     --   ^^
+LL - /// [type@S::h]
+LL + /// [S::h()]
+   | 
 
 error: unresolved link to `T::g`
   --> $DIR/errors.rs:86:6
@@ -129,8 +132,9 @@ LL | /// [type@T::g]
    |
 help: to link to the associated function, add parentheses
    |
-LL | /// [T::g()]
-   |     --   ^^
+LL - /// [type@T::g]
+LL + /// [T::g()]
+   | 
 
 error: unresolved link to `T::h`
   --> $DIR/errors.rs:91:6
@@ -147,7 +151,7 @@ LL | /// [m()]
 help: to link to the macro, add an exclamation mark
    |
 LL | /// [m!()]
-   |       ^
+   |       +
 
 error: aborting due to 20 previous errors
 

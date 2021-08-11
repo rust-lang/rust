@@ -11,7 +11,7 @@ LL |     assert_sized::<A>();
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn assert_sized<T: ?Sized>() {}
-   |                  ^^^^^^^^
+   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:25:5
@@ -31,7 +31,7 @@ LL | struct Foo {
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn assert_sized<T: ?Sized>() {}
-   |                  ^^^^^^^^
+   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:28:5
@@ -51,7 +51,7 @@ LL | struct Bar<T: ?Sized> {
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn assert_sized<T: ?Sized>() {}
-   |                  ^^^^^^^^
+   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:31:5
@@ -76,7 +76,7 @@ LL | struct Bar<T: ?Sized> {
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn assert_sized<T: ?Sized>() {}
-   |                  ^^^^^^^^
+   |                  ++++++++
 
 error: aborting due to 4 previous errors
 

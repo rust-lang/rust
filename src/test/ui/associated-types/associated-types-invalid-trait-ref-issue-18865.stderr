@@ -7,7 +7,7 @@ LL |     let u: <T as Foo<usize>>::Bar = t.get_bar();
 help: consider further restricting this bound
    |
 LL | fn f<T:Foo<isize> + Foo<usize>>(t: &T) {
-   |                   ^^^^^^^^^^^^
+   |                   ++++++++++++
 
 error: aborting due to previous error
 

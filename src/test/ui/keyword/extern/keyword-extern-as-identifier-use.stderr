@@ -7,7 +7,7 @@ LL | use extern::foo;
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use r#extern::foo;
-   |     ^^^^^^^^
+   |     ~~~~~~~~
 
 error[E0432]: unresolved import `r#extern`
   --> $DIR/keyword-extern-as-identifier-use.rs:1:5

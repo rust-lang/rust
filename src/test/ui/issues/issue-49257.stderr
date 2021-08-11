@@ -9,8 +9,9 @@ LL |     let Point { .., y, } = p;
    |
 help: move the `..` to the end of the field list
    |
-LL |     let Point { y, .. } = p;
-   |                --  ^^^^
+LL -     let Point { .., y, } = p;
+LL +     let Point { y, .. } = p;
+   | 
 
 error: expected `}`, found `,`
   --> $DIR/issue-49257.rs:11:19
@@ -23,8 +24,9 @@ LL |     let Point { .., y } = p;
    |
 help: move the `..` to the end of the field list
    |
-LL |     let Point { y , .. } = p;
-   |                -- ^^^^^^
+LL -     let Point { .., y } = p;
+LL +     let Point { y , .. } = p;
+   | 
 
 error: expected `}`, found `,`
   --> $DIR/issue-49257.rs:12:19

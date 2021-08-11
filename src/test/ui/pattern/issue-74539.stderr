@@ -8,7 +8,7 @@ LL |         E::A(x @ ..) => {
 help: if you don't need to use the contents of x, discard the tuple's remaining fields
    |
 LL |         E::A(..) => {
-   |              ^^
+   |              ~~
 
 error: `..` patterns are not allowed here
   --> $DIR/issue-74539.rs:8:18
@@ -30,7 +30,7 @@ LL |         E::A(x @ ..) => {
 help: use `_` to explicitly ignore each field
    |
 LL |         E::A(x @ .., _) => {
-   |                    ^^^
+   |                    +++
 
 error: aborting due to 3 previous errors
 

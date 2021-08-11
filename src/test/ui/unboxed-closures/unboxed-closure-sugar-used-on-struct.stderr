@@ -18,7 +18,7 @@ LL | struct Bar<A> {
 help: add missing generic argument
    |
 LL | fn foo(b: Box<Bar(A)>) {
-   |                   ^
+   |                   +
 
 error: aborting due to 2 previous errors
 

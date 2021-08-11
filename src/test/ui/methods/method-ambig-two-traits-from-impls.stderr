@@ -17,11 +17,11 @@ LL |     fn foo(self) {}
 help: disambiguate the associated function for candidate #1
    |
 LL |     A::foo(AB {});
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
 LL |     B::foo(AB {});
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

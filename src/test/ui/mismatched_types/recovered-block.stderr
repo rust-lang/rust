@@ -7,7 +7,7 @@ LL |     pub Foo { text }
 help: add `struct` here to parse `Foo` as a public struct
    |
 LL |     pub struct Foo { text }
-   |         ^^^^^^
+   |         ++++++
 
 error: expected one of `(` or `<`, found `{`
   --> $DIR/recovered-block.rs:17:9

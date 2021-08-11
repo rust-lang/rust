@@ -11,7 +11,7 @@ LL | mod A {}
 help: you can use `as` to change the binding name of the import
    |
 LL | use self::A as OtherA;
-   |     ^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `B` is defined multiple times
   --> $DIR/issue-19498.rs:5:1
@@ -26,7 +26,7 @@ LL | pub mod B {}
 help: you can use `as` to change the binding name of the import
    |
 LL | use self::B as OtherB;
-   |     ^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `D` is defined multiple times
   --> $DIR/issue-19498.rs:9:5
@@ -40,7 +40,7 @@ LL |     mod D {}
 help: you can use `as` to change the binding name of the import
    |
 LL |     use C::D as OtherD;
-   |         ^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

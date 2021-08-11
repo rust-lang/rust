@@ -12,8 +12,8 @@ LL | M (§& u8)}
    |
 help: consider introducing a named lifetime parameter
    |
-LL | enum F<'a> {
-LL | M (§&'a  u8)}
+LL ~ enum F<'a> {
+LL ~ M (§&'a  u8)}
    |
 
 error: aborting due to 2 previous errors

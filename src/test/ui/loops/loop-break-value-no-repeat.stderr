@@ -9,7 +9,7 @@ LL |         break 22
 help: use `break` on its own without a value inside this `for` loop
    |
 LL |         break
-   |         ^^^^^
+   |         ~~~~~
 
 error: aborting due to previous error
 

@@ -7,7 +7,7 @@ LL |     Foo.bar().bar().bar().bar().baz();
 help: consider specifying the const argument
    |
 LL |     Foo.bar().bar().bar().bar().baz::<N>();
-   |                                 ^^^^^^^^
+   |                                 ~~~~~~~~
 
 error: aborting due to previous error
 

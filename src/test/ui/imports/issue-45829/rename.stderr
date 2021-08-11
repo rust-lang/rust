@@ -10,7 +10,7 @@ LL | use std as core;
 help: you can use `as` to change the binding name of the import
    |
 LL | use std as other_core;
-   |     ^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

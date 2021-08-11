@@ -45,8 +45,9 @@ LL | fn a() -> A + 'static {
    |           expected this type to be a trait...
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn a() -> A {
-   |           --
+LL - fn a() -> A + 'static {
+LL + fn a() -> A {
+   | 
 
 error[E0404]: expected trait, found enum `Result`
   --> $DIR/not-on-struct.rs:16:34
@@ -63,8 +64,9 @@ LL | fn b<'a,T,E>(iter: Iterator<Item=Result<T,E> + 'a>) {
    |                                  expected this type to be a trait...
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn b<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
-   |                                            --
+LL - fn b<'a,T,E>(iter: Iterator<Item=Result<T,E> + 'a>) {
+LL + fn b<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
+   | 
 
 error[E0404]: expected trait, found struct `A`
   --> $DIR/not-on-struct.rs:19:21
@@ -81,8 +83,9 @@ LL | fn c() -> 'static + A {
    |           ...because of this bound
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn c() -> A {
-   |          --
+LL - fn c() -> 'static + A {
+LL + fn c() -> A {
+   | 
 
 error[E0404]: expected trait, found enum `Result`
   --> $DIR/not-on-struct.rs:22:39
@@ -99,8 +102,9 @@ LL | fn d<'a,T,E>(iter: Iterator<Item='a + Result<T,E>>) {
    |                                  ...because of this bound
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn d<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
-   |                                 --
+LL - fn d<'a,T,E>(iter: Iterator<Item='a + Result<T,E>>) {
+LL + fn d<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
+   | 
 
 error[E0404]: expected trait, found struct `A`
   --> $DIR/not-on-struct.rs:25:21
@@ -117,8 +121,9 @@ LL | fn e() -> 'static + A + 'static {
    |                     expected this type to be a trait...
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn e() -> A {
-   |          ---
+LL - fn e() -> 'static + A + 'static {
+LL + fn e() -> A {
+   | 
 
 error[E0404]: expected trait, found enum `Result`
   --> $DIR/not-on-struct.rs:29:39
@@ -135,8 +140,9 @@ LL | fn f<'a,T,E>(iter: Iterator<Item='a + Result<T,E> + 'a>) {
    |                                       expected this type to be a trait...
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn f<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
-   |                                 --         --
+LL - fn f<'a,T,E>(iter: Iterator<Item='a + Result<T,E> + 'a>) {
+LL + fn f<'a,T,E>(iter: Iterator<Item=Result<T,E>>) {
+   | 
 
 error[E0404]: expected trait, found struct `Traitor`
   --> $DIR/not-on-struct.rs:35:11
@@ -155,12 +161,13 @@ LL | fn g() -> Traitor + 'static {
    |           expected this type to be a trait...
 help: if you meant to use a type and not a trait here, remove the bounds
    |
-LL | fn g() -> Traitor {
-   |                 --
+LL - fn g() -> Traitor + 'static {
+LL + fn g() -> Traitor {
+   | 
 help: a trait with a similar name exists
    |
 LL | fn g() -> Trait + 'static {
-   |           ^^^^^
+   |           ~~~~~
 
 error: aborting due to 11 previous errors
 

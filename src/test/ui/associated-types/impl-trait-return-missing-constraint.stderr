@@ -12,7 +12,7 @@ LL | fn baz() -> impl Bar<Item = i32> {
 help: consider constraining the associated type `<impl Bar as Foo>::Item` to `i32`
    |
 LL | fn bar() -> impl Bar<Item = i32> {
-   |                     ^^^^^^^^^^^^
+   |                     ++++++++++++
 
 error: aborting due to previous error
 

@@ -20,7 +20,7 @@ LL |     type Copy<T>: Copy = Box<T>;
 help: consider restricting type parameter `T`
    |
 LL |     type Copy<T: std::clone::Clone>: Copy = Box<T>;
-   |                ^^^^^^^^^^^^^^^^^^^
+   |                +++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

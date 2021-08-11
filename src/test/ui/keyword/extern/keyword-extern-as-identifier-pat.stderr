@@ -7,7 +7,7 @@ LL |     let extern = 0;
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let r#extern = 0;
-   |         ^^^^^^^^
+   |         ~~~~~~~~
 
 error: aborting due to previous error
 

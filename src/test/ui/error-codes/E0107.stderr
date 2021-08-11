@@ -14,7 +14,7 @@ LL | struct Buzz<'a, 'b>(&'a str, &'b str);
 help: add missing lifetime argument
    |
 LL |     buzz: Buzz<'a, 'a>,
-   |                  ^^^^
+   |                  ++++
 
 error[E0107]: this enum takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/E0107.rs:17:10

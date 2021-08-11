@@ -9,9 +9,9 @@ LL | |     }.hi() {
    |
 help: surround the struct literal with parentheses
    |
-LL |     while || (Foo {
+LL ~     while || (Foo {
 LL |         x: 3
-LL |     }).hi() {
+LL ~     }).hi() {
    |
 
 error[E0308]: mismatched types

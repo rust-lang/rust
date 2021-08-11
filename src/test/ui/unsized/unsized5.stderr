@@ -10,16 +10,17 @@ LL |     f1: X,
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct S1<X> {
-   |           --
+LL - struct S1<X: ?Sized> {
+LL + struct S1<X> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     f1: &X,
-   |         ^
+   |         +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     f1: Box<X>,
-   |         ^^^^ ^
+   |         ++++ +
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized5.rs:10:8
@@ -34,16 +35,17 @@ LL |     g: X,
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct S2<X> {
-   |           --
+LL - struct S2<X: ?Sized> {
+LL + struct S2<X> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     g: &X,
-   |        ^
+   |        +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     g: Box<X>,
-   |        ^^^^ ^
+   |        ++++ +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/unsized5.rs:15:8
@@ -57,11 +59,11 @@ LL |     f: str,
 help: borrowed types always have a statically known size
    |
 LL |     f: &str,
-   |        ^
+   |        +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     f: Box<str>,
-   |        ^^^^   ^
+   |        ++++   +
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/unsized5.rs:20:8
@@ -75,11 +77,11 @@ LL |     f: [u8],
 help: borrowed types always have a statically known size
    |
 LL |     f: &[u8],
-   |        ^
+   |        +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     f: Box<[u8]>,
-   |        ^^^^    ^
+   |        ++++    +
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized5.rs:25:8
@@ -93,16 +95,17 @@ LL |     V1(X, isize),
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | enum E<X> {
-   |        --
+LL - enum E<X: ?Sized> {
+LL + enum E<X> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     V1(&X, isize),
-   |        ^
+   |        +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     V1(Box<X>, isize),
-   |        ^^^^ ^
+   |        ++++ +
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized5.rs:29:12
@@ -116,16 +119,17 @@ LL |     V2{f1: X, f: isize},
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | enum F<X> {
-   |        --
+LL - enum F<X: ?Sized> {
+LL + enum F<X> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     V2{f1: &X, f: isize},
-   |            ^
+   |            +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     V2{f1: Box<X>, f: isize},
-   |            ^^^^ ^
+   |            ++++ +
 
 error: aborting due to 6 previous errors
 

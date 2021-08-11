@@ -53,7 +53,7 @@ LL | |     }
 help: you might have meant to return this value
    |
 LL |         return true;
-   |         ^^^^^^     ^
+   |         ++++++     +
 
 error: aborting due to 5 previous errors
 

@@ -45,11 +45,11 @@ LL |     foo > foo;
 help: you might have forgotten to call this function
    |
 LL |     foo() > foo;
-   |     ^^^^^
+   |     ~~~~~
 help: you might have forgotten to call this function
    |
 LL |     foo > foo();
-   |           ^^^^^
+   |           ~~~~~
 
 error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
   --> $DIR/issue-59488.rs:25:9

@@ -52,7 +52,7 @@ LL | type Test = dyn Add + Sub;
 help: specify the associated types
    |
 LL | type Test = dyn Add<Output = Type> + Sub<Output = Type>;
-   |                 ^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^
+   |                 ~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

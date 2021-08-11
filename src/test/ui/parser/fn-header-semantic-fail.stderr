@@ -113,7 +113,7 @@ LL |         async fn fe1();
 help: remove the qualifiers
    |
 LL |         fn fe1();
-   |         ^^
+   |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:51:19
@@ -127,7 +127,7 @@ LL |         unsafe fn fe2();
 help: remove the qualifiers
    |
 LL |         fn fe2();
-   |         ^^
+   |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:52:18
@@ -141,7 +141,7 @@ LL |         const fn fe3();
 help: remove the qualifiers
    |
 LL |         fn fe3();
-   |         ^^
+   |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:53:23
@@ -155,7 +155,7 @@ LL |         extern "C" fn fe4();
 help: remove the qualifiers
    |
 LL |         fn fe4();
-   |         ^^
+   |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:54:42
@@ -169,7 +169,7 @@ LL |         const async unsafe extern "C" fn fe5();
 help: remove the qualifiers
    |
 LL |         fn fe5();
-   |         ^^
+   |         ~~
 
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:54:9

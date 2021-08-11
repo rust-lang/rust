@@ -17,7 +17,7 @@ LL |     let try_result: Option<_> = try {
 help: use `!` to invoke the macro
    |
 LL |     let try_result: Option<_> = try! {
-   |                                    ^
+   |                                    +
 
 error: aborting due to 2 previous errors
 

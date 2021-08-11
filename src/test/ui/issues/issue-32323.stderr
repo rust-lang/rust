@@ -11,7 +11,7 @@ LL | pub fn f<'a, T: Tr<'a>>() -> <T as Tr<'a>>::Out {}
 help: consider constraining the associated type `<T as Tr<'a>>::Out` to `()`
    |
 LL | pub fn f<'a, T: Tr<'a, Out = ()>>() -> <T as Tr<'a>>::Out {}
-   |                      ^^^^^^^^^^
+   |                      ++++++++++
 
 error: aborting due to previous error
 

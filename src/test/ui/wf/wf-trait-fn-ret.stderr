@@ -10,7 +10,7 @@ LL |     fn bar(&self) -> &Bar<Self>;
 help: consider further restricting `Self`
    |
 LL |     fn bar(&self) -> &Bar<Self> where Self: Eq;
-   |                                 ^^^^^^^^^^^^^^
+   |                                 ++++++++++++++
 
 error: aborting due to previous error
 

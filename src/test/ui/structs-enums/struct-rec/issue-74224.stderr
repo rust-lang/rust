@@ -10,7 +10,7 @@ LL |     y: A<A<T>>,
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `A` representable
    |
 LL |     y: Box<A<A<T>>>,
-   |        ^^^^       ^
+   |        ++++       +
 
 error: aborting due to previous error
 

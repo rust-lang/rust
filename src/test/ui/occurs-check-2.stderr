@@ -7,7 +7,7 @@ LL |     f = box g;
 help: try using a conversion method
    |
 LL |     f = (box g).to_string();
-   |         ^     ^^^^^^^^^^^^^
+   |         +     +++++++++++++
 
 error: aborting due to previous error
 

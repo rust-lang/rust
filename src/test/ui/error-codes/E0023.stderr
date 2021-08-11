@@ -10,7 +10,7 @@ LL |         Fruit::Apple(a) => {},
 help: use `_` to explicitly ignore each field
    |
 LL |         Fruit::Apple(a, _) => {},
-   |                       ^^^
+   |                       +++
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/E0023.rs:12:9
@@ -42,7 +42,7 @@ LL |         Fruit::Orange(a, b) => {},
 help: missing parentheses
    |
 LL |         Fruit::Orange((a, b)) => {},
-   |                       ^    ^
+   |                       +    +
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 1 field
   --> $DIR/E0023.rs:15:9
@@ -56,7 +56,7 @@ LL |         Fruit::Banana() => {},
 help: missing parentheses
    |
 LL |         Fruit::Banana(()) => {},
-   |                      ^  ^
+   |                      +  +
 
 error: aborting due to 5 previous errors
 

@@ -52,11 +52,11 @@ LL |         &(Either::Two(_t), Either::One(_u)) => (),
 help: consider removing the `&`
    |
 LL |         (Either::One(_t), Either::Two(_u)) => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: consider removing the `&`
    |
 LL |         (Either::Two(_t), Either::One(_u)) => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:61:11
@@ -72,10 +72,10 @@ LL |         &(Either::One(_t), Either::Two(_u))
    = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the `&`
    |
-LL |         (Either::One(_t), Either::Two(_u))
-LL |
-LL |
-LL |         | &(Either::Two(_t), Either::One(_u)) => (),
+LL ~         (Either::One(_t), Either::Two(_u))
+LL +
+LL +
+LL ~         | &(Either::Two(_t), Either::One(_u)) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
@@ -162,11 +162,11 @@ LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
 help: consider removing the `&mut`
    |
 LL |         (Either::One(_t), Either::Two(_u)) => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: consider removing the `&mut`
    |
 LL |         (Either::Two(_t), Either::One(_u)) => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:113:11
@@ -182,10 +182,10 @@ LL |         &mut (Either::One(_t), Either::Two(_u))
    = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the `&mut`
    |
-LL |         (Either::One(_t), Either::Two(_u))
-LL |
-LL |
-LL |         | &mut (Either::Two(_t), Either::One(_u)) => (),
+LL ~         (Either::One(_t), Either::Two(_u))
+LL +
+LL +
+LL ~         | &mut (Either::Two(_t), Either::One(_u)) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference

@@ -11,7 +11,7 @@ LL | fn is_send<T:Send>() {
 help: consider further restricting the associated type
    |
 LL | fn bar<T:Trait+Send>() where <T as Trait>::AssocType: Send {
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        +++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

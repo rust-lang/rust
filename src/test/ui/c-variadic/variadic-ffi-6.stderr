@@ -8,7 +8,7 @@ LL | ) -> &usize {
 help: consider using the `'static` lifetime
    |
 LL | ) -> &'static usize {
-   |      ^^^^^^^^
+   |      ~~~~~~~~
 
 error: aborting due to previous error
 

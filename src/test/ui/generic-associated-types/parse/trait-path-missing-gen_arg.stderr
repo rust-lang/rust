@@ -7,7 +7,7 @@ LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |   fn f1<'a>(arg : Box<{ dyn X< : 32 } >>) {}
-   |                       ^             ^
+   |                       +             +
 
 error: expected parameter name, found `>`
   --> $DIR/trait-path-missing-gen_arg.rs:8:36

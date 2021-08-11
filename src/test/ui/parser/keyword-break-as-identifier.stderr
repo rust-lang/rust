@@ -7,7 +7,7 @@ LL |     let break = "foo";
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let r#break = "foo";
-   |         ^^^^^^^
+   |         ~~~~~~~
 
 error: aborting due to previous error
 

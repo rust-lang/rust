@@ -8,7 +8,7 @@ LL |     println!("{:?}", t);
 help: consider further restricting this bound
    |
 LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
-   |                            ^^^^^^^^^^^^^^^^^
+   |                            +++++++++++++++++
 
 error[E0277]: `T` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:15:22
@@ -20,7 +20,7 @@ LL |     println!("{:?}", t);
 help: consider restricting type parameter `T`
    |
 LL | fn test_no_bounds<T: std::fmt::Debug>(t: T) {
-   |                    ^^^^^^^^^^^^^^^^^
+   |                    +++++++++++++++++
 
 error[E0277]: `T` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:21:22
@@ -32,7 +32,7 @@ LL |     println!("{:?}", t);
 help: consider further restricting this bound
    |
 LL | fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
-   |                            ^^^^^^^^^^^^^^^^^
+   |                            +++++++++++++++++
 
 error[E0277]: `Y` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:27:30
@@ -44,7 +44,7 @@ LL |     println!("{:?} {:?}", x, y);
 help: consider further restricting type parameter `Y`
    |
 LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
-   |                                                                   ^^^^^^^^^^^^^^^^^^^^
+   |                                                                   ~~~~~~~~~~~~~~~~~~~~
 
 error[E0277]: `X` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:33:22
@@ -56,7 +56,7 @@ LL |     println!("{:?}", x);
 help: consider further restricting this bound
    |
 LL | fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
-   |                                                 ^^^^^^^^^^^^^^^^^
+   |                                                 +++++++++++++++++
 
 error[E0277]: `X` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:39:22
@@ -68,7 +68,7 @@ LL |     println!("{:?}", x);
 help: consider further restricting type parameter `X`
    |
 LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: std::fmt::Debug {
-   |                                                            ^^^^^^^^^^^^^^^^^^^^
+   |                                                            ++++++++++++++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:44:46
@@ -84,7 +84,7 @@ LL | pub const fn size_of<T>() -> usize {
 help: consider further restricting `Self`
    |
 LL | trait Foo<T>: Sized {
-   |             ^^^^^^^
+   |             +++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:49:46
@@ -100,7 +100,7 @@ LL | pub const fn size_of<T>() -> usize {
 help: consider further restricting `Self`
    |
 LL | trait Bar: std::fmt::Display + Sized {
-   |                              ^^^^^^^
+   |                              +++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:54:46
@@ -116,7 +116,7 @@ LL | pub const fn size_of<T>() -> usize {
 help: consider further restricting `Self`
    |
 LL | trait Baz: Sized where Self: std::fmt::Display {
-   |          ^^^^^^^
+   |          +++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:59:46
@@ -132,7 +132,7 @@ LL | pub const fn size_of<T>() -> usize {
 help: consider further restricting `Self`
    |
 LL | trait Qux<T>: Sized where Self: std::fmt::Display {
-   |             ^^^^^^^
+   |             +++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:64:46
@@ -148,7 +148,7 @@ LL | pub const fn size_of<T>() -> usize {
 help: consider further restricting `Self`
    |
 LL | trait Bat<T>: std::fmt::Display + Sized {
-   |                                 ^^^^^^^
+   |                                 +++++++
 
 error: aborting due to 11 previous errors
 

@@ -18,9 +18,9 @@ LL | |     }.await
    = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |
-LL |         thing_one().await
+LL ~         thing_one().await
 LL |     } else {
-LL |         thing_two().await
+LL ~         thing_two().await
    |
 
 error: aborting due to previous error

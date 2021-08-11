@@ -12,7 +12,7 @@ LL |     where F : for<'tcx> Foo<'tcx>
 help: consider further restricting this bound
    |
 LL |     where F : Foo<'x> + for<'tcx> Foo<'tcx>
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |                       +++++++++++++++++++++
 
 error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
   --> $DIR/hrtb-higher-ranker-supertraits.rs:35:26
@@ -28,7 +28,7 @@ LL |     where B : for<'ccx> Bar<'ccx>
 help: consider further restricting this bound
    |
 LL |     where B : Bar<'x> + for<'ccx> Bar<'ccx>
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |                       +++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

@@ -10,7 +10,7 @@ LL |     demo.example(1);
 help: to call the function stored in `example`, surround the field access with parentheses
    |
 LL |     (demo.example)(1);
-   |     ^            ^
+   |     +            +
 
 error: aborting due to previous error
 

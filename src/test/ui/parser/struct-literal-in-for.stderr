@@ -9,9 +9,9 @@ LL | |     }.hi() {
    |
 help: surround the struct literal with parentheses
    |
-LL |     for x in (Foo {
+LL ~     for x in (Foo {
 LL |         x: 3
-LL |     }).hi() {
+LL ~     }).hi() {
    |
 
 error[E0277]: `bool` is not an iterator

@@ -14,14 +14,14 @@ LL | | }
 help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {
-   |                               ^^^
+   |                               ~~~
 help: ...and then change returning expressions
    |
-LL |         return 42;
+LL ~         return 42;
 LL |     }
 LL |     if a {
 LL |         Some(-1);
-LL |         2
+LL ~         2
 LL |     } else {
  ...
 
@@ -39,12 +39,12 @@ LL | | }
 help: remove `Option` from the return type...
    |
 LL | fn func2(a: bool, b: bool) -> i32 {
-   |                               ^^^
+   |                               ~~~
 help: ...and then change returning expressions
    |
-LL |         return 10;
+LL ~         return 10;
 LL |     }
-LL |     if a { 20 } else { 30 }
+LL ~     if a { 20 } else { 30 }
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
@@ -58,7 +58,7 @@ LL | | }
 help: remove `Option` from the return type...
    |
 LL | fn func5() -> i32 {
-   |               ^^^
+   |               ~~~
 help: ...and then change returning expressions
    |
 LL |     1
@@ -75,7 +75,7 @@ LL | | }
 help: remove `Result` from the return type...
    |
 LL | fn func7() -> i32 {
-   |               ^^^
+   |               ~~~
 help: ...and then change returning expressions
    |
 LL |     1
@@ -92,7 +92,7 @@ LL | |     }
 help: remove `Option` from the return type...
    |
 LL |     fn func12() -> i32 {
-   |                    ^^^
+   |                    ~~~
 help: ...and then change returning expressions
    |
 LL |         1
@@ -113,14 +113,14 @@ LL | | }
 help: remove the return type...
    |
 LL | fn issue_6640_1(a: bool, b: bool) -> Option<()> {
-   |                                      ^^^^^^^^^^
+   |                                      ~~~~~~~~~~
 help: ...and then remove returned values
    |
-LL |         return ;
+LL ~         return ;
 LL |     }
 LL |     if a {
 LL |         Some(());
-LL |         
+LL ~         
 LL |     } else {
  ...
 
@@ -139,15 +139,15 @@ LL | | }
 help: remove the return type...
    |
 LL | fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
-   |                                      ^^^^^^^^^^^^^^^
+   |                                      ~~~~~~~~~~~~~~~
 help: ...and then remove returned values
    |
-LL |         return ;
+LL ~         return ;
 LL |     }
 LL |     if a {
-LL |         
+LL ~         
 LL |     } else {
-LL |         return ;
+LL ~         return ;
    |
 
 error: aborting due to 7 previous errors

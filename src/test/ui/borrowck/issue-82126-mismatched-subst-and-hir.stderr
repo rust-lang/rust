@@ -26,7 +26,7 @@ LL | struct LockedMarket<T>(T);
 help: add missing generic argument
    |
 LL | async fn buy_lock(generator: &Mutex<MarketMultiplier>) -> LockedMarket<'_, T> {
-   |                                                                          ^^^
+   |                                                                          +++
 
 error[E0515]: cannot return value referencing temporary value
   --> $DIR/issue-82126-mismatched-subst-and-hir.rs:19:5

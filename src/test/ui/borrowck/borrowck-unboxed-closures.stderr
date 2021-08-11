@@ -34,7 +34,7 @@ LL |     f(1, 2);
 help: consider further restricting this bound
    |
 LL | fn c<F:FnOnce(isize, isize) -> isize + Copy>(f: F) {
-   |                                      ^^^^^^
+   |                                      ++++++
 
 error: aborting due to 3 previous errors
 

@@ -36,12 +36,12 @@ LL |         &mut [_a,
    |
 help: consider removing the `&mut`
    |
-LL |         [_a,
-LL |
-LL |
-LL |
-LL |             ..
-LL |         ] => {
+LL ~         [_a,
+LL +
+LL +
+LL +
+LL +             ..
+LL ~         ] => {
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
@@ -68,9 +68,9 @@ LL |          _b] => {}
    |
 help: consider removing the `&mut`
    |
-LL |         [
-LL |
-LL |          _b] => {}
+LL ~         [
+LL +
+LL ~          _b] => {}
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice

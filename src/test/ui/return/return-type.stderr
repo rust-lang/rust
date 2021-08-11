@@ -9,11 +9,11 @@ LL |     foo(4 as usize)
 help: consider using a semicolon here
    |
 LL |     foo(4 as usize);
-   |                    ^
+   |                    +
 help: try adding a return type
    |
 LL | fn bar() -> S<usize> {
-   |          ^^^^^^^^^^^
+   |          +++++++++++
 
 error: aborting due to previous error
 

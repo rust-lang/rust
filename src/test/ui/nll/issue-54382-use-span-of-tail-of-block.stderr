@@ -16,7 +16,7 @@ LL |     ;
 help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
    |
 LL |             D("other").next(&_thing1);
-   |                                      ^
+   |                                      +
 
 error: aborting due to previous error
 

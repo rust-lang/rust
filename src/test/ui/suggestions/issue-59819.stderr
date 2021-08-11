@@ -9,7 +9,7 @@ LL |     let y: i32 = x;
 help: consider dereferencing the type
    |
 LL |     let y: i32 = *x;
-   |                  ^
+   |                  +
 
 error[E0308]: mismatched types
   --> $DIR/issue-59819.rs:30:18
@@ -22,7 +22,7 @@ LL |     let b: i32 = a;
 help: consider dereferencing the borrow
    |
 LL |     let b: i32 = *a;
-   |                  ^
+   |                  +
 
 error[E0308]: mismatched types
   --> $DIR/issue-59819.rs:34:21

@@ -7,7 +7,7 @@ LL |     if x == E::I { field1: true, field2: 42 } {}
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::I { field1: true, field2: 42 }) {}
-   |             ^                                 ^
+   |             +                                 +
 
 error: struct literals are not allowed here
   --> $DIR/struct-literal-variant-in-if.rs:15:13
@@ -18,7 +18,7 @@ LL |     if x == E::V { field: false } {}
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::V { field: false }) {}
-   |             ^                     ^
+   |             +                     +
 
 error: struct literals are not allowed here
   --> $DIR/struct-literal-variant-in-if.rs:17:13
@@ -29,7 +29,7 @@ LL |     if x == E::J { field: -42 } {}
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::J { field: -42 }) {}
-   |             ^                   ^
+   |             +                   +
 
 error: struct literals are not allowed here
   --> $DIR/struct-literal-variant-in-if.rs:19:13
@@ -40,7 +40,7 @@ LL |     if x == E::K { field: "" } {}
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::K { field: "" }) {}
-   |             ^                  ^
+   |             +                  +
 
 error[E0423]: expected value, found struct variant `E::V`
   --> $DIR/struct-literal-variant-in-if.rs:10:13
@@ -51,7 +51,7 @@ LL |     if x == E::V { field } {}
 help: surround the struct literal with parentheses
    |
 LL |     if x == (E::V { field }) {}
-   |             ^              ^
+   |             +              +
 
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:10:20

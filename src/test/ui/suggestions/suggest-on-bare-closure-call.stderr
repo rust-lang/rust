@@ -9,7 +9,7 @@ LL |     let _ = ||{}();
 help: if you meant to create this closure and immediately call it, surround the closure with parenthesis
    |
 LL |     let _ = (||{})();
-   |             ^    ^
+   |             +    +
 
 error: aborting due to previous error
 

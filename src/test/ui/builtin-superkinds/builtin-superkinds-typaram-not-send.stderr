@@ -10,7 +10,7 @@ LL | impl <T: Sync+'static> Foo for T { }
 help: consider further restricting this bound
    |
 LL | impl <T: Sync+'static + std::marker::Send> Foo for T { }
-   |                       ^^^^^^^^^^^^^^^^^^^
+   |                       +++++++++++++++++++
 
 error: aborting due to previous error
 

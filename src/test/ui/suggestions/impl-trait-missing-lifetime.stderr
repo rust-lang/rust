@@ -7,7 +7,7 @@ LL | fn f(_: impl Iterator<Item = &'_ ()>) {}
 help: consider introducing a named lifetime parameter
    |
 LL | fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
-   |     ^^^^                          ^^
+   |     ++++                          ~~
 
 error: aborting due to previous error
 

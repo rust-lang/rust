@@ -14,7 +14,7 @@ LL | impl<'b, P> Wrap<'b> for Wrapper<P>
 help: consider further restricting the associated type
    |
 LL | fn push_process<P>(process: P) where P: Process<'static>, <P as Process<'_>>::Item: Iterator {
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                         ++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

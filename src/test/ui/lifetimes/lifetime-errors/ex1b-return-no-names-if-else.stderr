@@ -8,7 +8,7 @@ LL | fn foo(x: &i32, y: &i32) -> &i32 {
 help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
-   |       ^^^^    ^^^^^^^     ^^^^^^^     ^^^
+   |       ++++    ~~~~~~~     ~~~~~~~     ~~~
 
 error: aborting due to previous error
 

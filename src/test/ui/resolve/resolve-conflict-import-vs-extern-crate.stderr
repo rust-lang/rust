@@ -8,7 +8,7 @@ LL | use std::slice as std;
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::slice as other_std;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

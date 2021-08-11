@@ -23,7 +23,7 @@ LL | impl A for Box<dyn A> {}
 help: consider relaxing the implicit `'static` requirement
    |
 LL | impl A for Box<dyn A + '_> {}
-   |                      ^^^^
+   |                      ++++
 
 error: incompatible lifetime on type
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:27:5
@@ -77,11 +77,11 @@ LL | impl E for (Box<dyn A>, Box<dyn A>) {}
 help: consider relaxing the implicit `'static` requirement
    |
 LL | impl E for (Box<dyn A + '_>, Box<dyn A>) {}
-   |                       ^^^^
+   |                       ++++
 help: consider relaxing the implicit `'static` requirement
    |
 LL | impl E for (Box<dyn A>, Box<dyn A + '_>) {}
-   |                                   ^^^^
+   |                                   ++++
 
 error: aborting due to 3 previous errors
 

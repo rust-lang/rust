@@ -6,12 +6,13 @@ LL | use foo::bar::self as abc;
    |
 help: consider importing the module directly
    |
-LL | use foo::bar as abc;
-   |            --
+LL - use foo::bar::self as abc;
+LL + use foo::bar as abc;
+   | 
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use foo::bar::{self as abc};
-   |               ^           ^
+   |               +           +
 
 error: aborting due to previous error
 

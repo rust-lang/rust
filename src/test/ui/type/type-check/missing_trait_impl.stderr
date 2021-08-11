@@ -9,7 +9,7 @@ LL |     let z = x + y;
 help: consider restricting type parameter `T`
    |
 LL | fn foo<T: std::ops::Add<Output = T>>(x: T, y: T) {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         +++++++++++++++++++++++++++
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
   --> $DIR/missing_trait_impl.rs:9:5
@@ -22,7 +22,7 @@ LL |     x += x;
 help: consider restricting type parameter `T`
    |
 LL | fn bar<T: std::ops::AddAssign>(x: T) {
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |         +++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

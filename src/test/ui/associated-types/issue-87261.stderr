@@ -12,7 +12,7 @@ LL |     accepts_trait(a);
 help: consider constraining the associated type `<A as Trait>::Associated` to `()`
    |
 LL |     A: Trait<Associated = ()> + 'static,
-   |             ^^^^^^^^^^^^^^^^^
+   |             +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<B as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:59:5
@@ -42,7 +42,7 @@ LL |     accepts_trait(c);
 help: consider constraining the associated type `<C as Trait>::Associated` to `()`
    |
 LL |     C: Trait<Associated = ()> + Foo,
-   |             ^^^^^^^^^^^^^^^^^
+   |             +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<D as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:65:5
@@ -72,7 +72,7 @@ LL |     accepts_generic_trait(e);
 help: consider constraining the associated type `<E as GenericTrait<()>>::Associated` to `()`
    |
 LL |     E: GenericTrait<(), Associated = ()> + 'static,
-   |                       ^^^^^^^^^^^^^^^^^
+   |                       +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<F as GenericTrait<()>>::Associated == ()`
   --> $DIR/issue-87261.rs:71:5
@@ -88,7 +88,7 @@ LL |     accepts_generic_trait(f);
 help: consider constraining the associated type `<F as GenericTrait<()>>::Associated` to `()`
    |
 LL |     F: GenericTrait<(), Associated = ()> + Foo,
-   |                       ^^^^^^^^^^^^^^^^^
+   |                       +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<G as GenericTrait<()>>::Associated == ()`
   --> $DIR/issue-87261.rs:74:5
@@ -121,7 +121,7 @@ LL |     accepts_trait(returns_opaque());
 help: consider constraining the associated type `<impl Trait as Trait>::Associated` to `()`
    |
 LL | fn returns_opaque() -> impl Trait<Associated = ()> + 'static {
-   |                                  ^^^^^^^^^^^^^^^^^
+   |                                  +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<impl DerivedTrait as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:82:5
@@ -140,7 +140,7 @@ LL |     accepts_trait(returns_opaque_derived());
 help: consider constraining the associated type `<impl DerivedTrait as Trait>::Associated` to `()`
    |
 LL | fn returns_opaque_derived() -> impl DerivedTrait<Associated = ()> + 'static {
-   |                                                 ^^^^^^^^^^^^^^^^^
+   |                                                 +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<impl Trait+Foo as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:85:5
@@ -159,7 +159,7 @@ LL |     accepts_trait(returns_opaque_foo());
 help: consider constraining the associated type `<impl Trait+Foo as Trait>::Associated` to `()`
    |
 LL | fn returns_opaque_foo() -> impl Trait<Associated = ()> + Foo {
-   |                                      ^^^^^^^^^^^^^^^^^
+   |                                      +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<impl DerivedTrait+Foo as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:88:5
@@ -195,7 +195,7 @@ LL |     accepts_generic_trait(returns_opaque_generic());
 help: consider constraining the associated type `<impl GenericTrait<()> as GenericTrait<()>>::Associated` to `()`
    |
 LL | fn returns_opaque_generic() -> impl GenericTrait<(), Associated = ()> + 'static {
-   |                                                    ^^^^^^^^^^^^^^^^^
+   |                                                    +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<impl GenericTrait<()>+Foo as GenericTrait<()>>::Associated == ()`
   --> $DIR/issue-87261.rs:94:5
@@ -214,7 +214,7 @@ LL |     accepts_generic_trait(returns_opaque_generic_foo());
 help: consider constraining the associated type `<impl GenericTrait<()>+Foo as GenericTrait<()>>::Associated` to `()`
    |
 LL | fn returns_opaque_generic_foo() -> impl GenericTrait<(), Associated = ()> + Foo {
-   |                                                        ^^^^^^^^^^^^^^^^^
+   |                                                        +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<impl GenericTrait<()>+GenericTrait<u8> as GenericTrait<()>>::Associated == ()`
   --> $DIR/issue-87261.rs:97:5

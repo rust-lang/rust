@@ -158,11 +158,11 @@ LL |         break foo;
 help: use `break` on its own without a value inside this `while` loop
    |
 LL |         break;
-   |         ^^^^^
+   |         ~~~~~
 help: alternatively, you might have meant to use the available loop label
    |
 LL |         break 'while_loop;
-   |               ^^^^^^^^^^^
+   |               ~~~~~~~~~~~
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/label_misspelled.rs:54:9
@@ -176,11 +176,11 @@ LL |         break foo;
 help: use `break` on its own without a value inside this `while` loop
    |
 LL |         break;
-   |         ^^^^^
+   |         ~~~~~
 help: alternatively, you might have meant to use the available loop label
    |
 LL |         break 'while_let;
-   |               ^^^^^^^^^^
+   |               ~~~~~~~~~~
 
 error[E0571]: `break` with value from a `for` loop
   --> $DIR/label_misspelled.rs:59:9
@@ -194,11 +194,11 @@ LL |         break foo;
 help: use `break` on its own without a value inside this `for` loop
    |
 LL |         break;
-   |         ^^^^^
+   |         ~~~~~
 help: alternatively, you might have meant to use the available loop label
    |
 LL |         break 'for_loop;
-   |               ^^^^^^^^^
+   |               ~~~~~~~~~
 
 error: aborting due to 11 previous errors; 10 warnings emitted
 

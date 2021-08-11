@@ -14,7 +14,7 @@ LL |     type Item<'a> = T;
 help: consider further restricting this bound
    |
 LL | impl<T: Copy + std::ops::Deref + Deref<Target = T>> UnsafeCopy<T> for T {
-   |                                ^^^^^^^^^^^^^^^^^^^
+   |                                +++++++++++++++++++
 
 error: aborting due to previous error
 

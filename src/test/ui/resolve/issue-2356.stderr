@@ -19,7 +19,7 @@ LL |     default();
 help: you might have meant to call the associated function
    |
 LL |     Self::default();
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 help: consider importing this function
    |
 LL | use std::default::default;
@@ -78,7 +78,7 @@ LL |     if self.whiskers > 3 {
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |   fn meow(&self) {
-   |           ^^^^^
+   |           +++++
 
 error[E0425]: cannot find function `grow_older` in this scope
   --> $DIR/issue-2356.rs:72:5

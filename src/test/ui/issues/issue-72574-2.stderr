@@ -8,7 +8,7 @@ LL |         Binder(_a, _x @ ..) => {}
 help: if you don't need to use the contents of _x, discard the tuple's remaining fields
    |
 LL |         Binder(_a, ..) => {}
-   |                    ^^
+   |                    ~~
 
 error: `..` patterns are not allowed here
   --> $DIR/issue-72574-2.rs:6:25
@@ -30,7 +30,7 @@ LL |         Binder(_a, _x @ ..) => {}
 help: use `_` to explicitly ignore each field
    |
 LL |         Binder(_a, _x @ .., _) => {}
-   |                           ^^^
+   |                           +++
 
 error: aborting due to 3 previous errors
 

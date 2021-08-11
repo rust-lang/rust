@@ -8,7 +8,7 @@ LL |     produces_async! {}
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     () => (pub fn r#async() {})
-   |                   ^^^^^^^
+   |                   ~~~~~~~
 
 error: aborting due to previous error
 

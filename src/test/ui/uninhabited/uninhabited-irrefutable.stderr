@@ -19,7 +19,7 @@ LL |       let Foo::D(_y) = x;
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let Foo::D(_y) = x { /* */ }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

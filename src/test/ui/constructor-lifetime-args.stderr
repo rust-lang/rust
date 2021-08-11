@@ -14,7 +14,7 @@ LL | struct S<'a, 'b>(&'a u8, &'b u8);
 help: add missing lifetime argument
    |
 LL |     S::<'static, 'b>(&0, &0);
-   |                ^^^^
+   |                ++++
 
 error[E0107]: this struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/constructor-lifetime-args.rs:19:5
@@ -46,7 +46,7 @@ LL | enum E<'a, 'b> {
 help: add missing lifetime argument
    |
 LL |     E::V::<'static, 'b>(&0);
-   |                   ^^^^
+   |                   ++++
 
 error[E0107]: this enum takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/constructor-lifetime-args.rs:24:8

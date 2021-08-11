@@ -133,7 +133,7 @@ LL | fn foo<X: K<_, _>>(x: X) {}
 help: use type parameters instead
    |
 LL | fn foo<X: K<T, T>, T>(x: X) {}
-   |             ^  ^ ^^^
+   |             ~  ~ +++
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:52:34
@@ -144,7 +144,7 @@ LL | fn bar<F>(_: F) where F: Fn() -> _ {}
 help: use type parameters instead
    |
 LL | fn bar<F, T>(_: F) where F: Fn() -> T {}
-   |         ^^^                         ^
+   |         +++                         ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:55:19
@@ -155,7 +155,7 @@ LL | fn baz<F: Fn() -> _>(_: F) {}
 help: use type parameters instead
    |
 LL | fn baz<F: Fn() -> T, T>(_: F) {}
-   |                   ^^^^
+   |                   ~+++
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:58:33
@@ -166,7 +166,7 @@ LL | struct L<F>(F) where F: Fn() -> _;
 help: use type parameters instead
    |
 LL | struct L<F, T>(F) where F: Fn() -> T;
-   |           ^^^                      ^
+   |           +++                      ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/bad-assoc-ty.rs:60:30
@@ -177,7 +177,7 @@ LL | struct M<F> where F: Fn() -> _ {
 help: use type parameters instead
    |
 LL | struct M<F, T> where F: Fn() -> T {
-   |           ^^^                   ^
+   |           +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for enums
   --> $DIR/bad-assoc-ty.rs:64:28
@@ -188,7 +188,7 @@ LL | enum N<F> where F: Fn() -> _ {
 help: use type parameters instead
    |
 LL | enum N<F, T> where F: Fn() -> T {
-   |         ^^^                   ^
+   |         +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for unions
   --> $DIR/bad-assoc-ty.rs:69:29
@@ -199,7 +199,7 @@ LL | union O<F> where F: Fn() -> _ {
 help: use type parameters instead
    |
 LL | union O<F, T> where F: Fn() -> T {
-   |          ^^^                   ^
+   |          +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for traits
   --> $DIR/bad-assoc-ty.rs:74:29
@@ -210,7 +210,7 @@ LL | trait P<F> where F: Fn() -> _ {
 help: use type parameters instead
    |
 LL | trait P<F, T> where F: Fn() -> T {
-   |          ^^^                   ^
+   |          +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:79:38
@@ -221,7 +221,7 @@ LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
 help: use type parameters instead
    |
 LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
-   |             ^^^                         ^
+   |             +++                         ~
 
 error: aborting due to 28 previous errors
 

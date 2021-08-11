@@ -8,11 +8,11 @@ LL |     a += a + 1;
 help: did you mean `a = a + 1` or `a = a + a + 1`? Consider replacing it with
    |
 LL |     a += 1;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a + a + 1;
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:6:5
@@ -23,11 +23,11 @@ LL |     a += 1 + a;
 help: did you mean `a = a + 1` or `a = a + 1 + a`? Consider replacing it with
    |
 LL |     a += 1;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a + 1 + a;
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:7:5
@@ -38,11 +38,11 @@ LL |     a -= a - 1;
 help: did you mean `a = a - 1` or `a = a - (a - 1)`? Consider replacing it with
    |
 LL |     a -= 1;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a - (a - 1);
-   |     ^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:8:5
@@ -53,11 +53,11 @@ LL |     a *= a * 99;
 help: did you mean `a = a * 99` or `a = a * a * 99`? Consider replacing it with
    |
 LL |     a *= 99;
-   |     ^^^^^^^
+   |     ~~~~~~~
 help: or
    |
 LL |     a = a * a * 99;
-   |     ^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:9:5
@@ -68,11 +68,11 @@ LL |     a *= 42 * a;
 help: did you mean `a = a * 42` or `a = a * 42 * a`? Consider replacing it with
    |
 LL |     a *= 42;
-   |     ^^^^^^^
+   |     ~~~~~~~
 help: or
    |
 LL |     a = a * 42 * a;
-   |     ^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:10:5
@@ -83,11 +83,11 @@ LL |     a /= a / 2;
 help: did you mean `a = a / 2` or `a = a / (a / 2)`? Consider replacing it with
    |
 LL |     a /= 2;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a / (a / 2);
-   |     ^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:11:5
@@ -98,11 +98,11 @@ LL |     a %= a % 5;
 help: did you mean `a = a % 5` or `a = a % (a % 5)`? Consider replacing it with
    |
 LL |     a %= 5;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a % (a % 5);
-   |     ^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:12:5
@@ -113,11 +113,11 @@ LL |     a &= a & 1;
 help: did you mean `a = a & 1` or `a = a & a & 1`? Consider replacing it with
    |
 LL |     a &= 1;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a & a & 1;
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:13:5
@@ -128,11 +128,11 @@ LL |     a *= a * a;
 help: did you mean `a = a * a` or `a = a * a * a`? Consider replacing it with
    |
 LL |     a *= a;
-   |     ^^^^^^
+   |     ~~~~~~
 help: or
    |
 LL |     a = a * a * a;
-   |     ^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~
 
 error: manual implementation of an assign operation
   --> $DIR/assign_ops2.rs:50:5

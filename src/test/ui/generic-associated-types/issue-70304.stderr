@@ -8,7 +8,7 @@ LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
 help: consider using the `'static` lifetime
    |
 LL | fn create_doc() -> impl Document<Cursor<'static> = DocCursorImpl<'_>> {
-   |                                         ^^^^^^^
+   |                                         ~~~~~~~
 
 error: aborting due to previous error
 

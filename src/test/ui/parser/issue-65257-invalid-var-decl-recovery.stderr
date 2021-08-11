@@ -7,7 +7,7 @@ LL |     auto n = 0;
 help: write `let` instead of `auto` to introduce a new variable
    |
 LL |     let n = 0;
-   |     ^^^
+   |     ~~~
 
 error: invalid variable declaration
   --> $DIR/issue-65257-invalid-var-decl-recovery.rs:4:5
@@ -18,7 +18,7 @@ LL |     auto m;
 help: write `let` instead of `auto` to introduce a new variable
    |
 LL |     let m;
-   |     ^^^
+   |     ~~~
 
 error: invalid variable declaration
   --> $DIR/issue-65257-invalid-var-decl-recovery.rs:8:5
@@ -29,7 +29,7 @@ LL |     var n = 0;
 help: write `let` instead of `var` to introduce a new variable
    |
 LL |     let n = 0;
-   |     ^^^
+   |     ~~~
 
 error: invalid variable declaration
   --> $DIR/issue-65257-invalid-var-decl-recovery.rs:10:5
@@ -40,7 +40,7 @@ LL |     var m;
 help: write `let` instead of `var` to introduce a new variable
    |
 LL |     let m;
-   |     ^^^
+   |     ~~~
 
 error: invalid variable declaration
   --> $DIR/issue-65257-invalid-var-decl-recovery.rs:14:5

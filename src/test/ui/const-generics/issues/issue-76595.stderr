@@ -14,7 +14,7 @@ LL | fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: T
 help: add missing generic argument
    |
 LL |     test::<2, P>();
-   |             ^^^
+   |             +++
 
 error: aborting due to previous error
 

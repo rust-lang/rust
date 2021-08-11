@@ -11,7 +11,7 @@ LL |     let _: () = Borrow::borrow(&owned);
 help: consider dereferencing the borrow
    |
 LL |     let _: () = *Borrow::borrow(&owned);
-   |                 ^
+   |                 +
 
 error: aborting due to previous error
 

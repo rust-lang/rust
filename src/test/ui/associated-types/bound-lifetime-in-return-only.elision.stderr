@@ -9,11 +9,11 @@ LL | fn elision(_: fn() -> &i32) {
 help: consider making the type lifetime-generic with a new `'a` lifetime
    |
 LL | fn elision(_: for<'a> fn() -> &'a i32) {
-   |               ^^^^^^^         ^^^
+   |               +++++++         ~~~
 help: consider using the `'static` lifetime
    |
 LL | fn elision(_: fn() -> &'static i32) {
-   |                       ^^^^^^^^
+   |                       ~~~~~~~~
 
 error: aborting due to previous error
 

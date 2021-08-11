@@ -39,7 +39,7 @@ LL |     fn bar(self) {}
 help: change the output type to match the trait
    |
 LL |     fn bar(self) -> Option<()> {}
-   |                  ^^^^^^^^^^^^^
+   |                  +++++++++++++
 
 error: aborting due to 3 previous errors
 

@@ -10,7 +10,7 @@ LL |     type Type2 = (IsCopy<Self::Type1>, bool);
 help: consider further restricting the associated type
    |
 LL | trait SomeTrait where <Self as SomeTrait>::Type1: Copy {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

@@ -7,7 +7,7 @@ LL |     lst.sort_by_key(|&(v, _)| v.iter().sum());
 help: consider specifying the type argument in the method call
    |
 LL |     lst.sort_by_key(|&(v, _)| v.iter().sum::<S>());
-   |                                           ^^^^^
+   |                                           +++++
 
 error: aborting due to previous error
 

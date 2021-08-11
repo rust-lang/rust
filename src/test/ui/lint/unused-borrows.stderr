@@ -12,7 +12,7 @@ LL | #![deny(unused_must_use)]
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = &42;
-   |     ^^^^^^^
+   |     +++++++
 
 error: unused borrow that must be used
   --> $DIR/unused-borrows.rs:9:5
@@ -23,7 +23,7 @@ LL |     &mut foo(42);
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = &mut foo(42);
-   |     ^^^^^^^
+   |     +++++++
 
 error: unused borrow that must be used
   --> $DIR/unused-borrows.rs:12:5
@@ -34,7 +34,7 @@ LL |     &&42;
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = &&42;
-   |     ^^^^^^^
+   |     +++++++
 
 error: unused borrow that must be used
   --> $DIR/unused-borrows.rs:15:5
@@ -45,7 +45,7 @@ LL |     &&mut 42;
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = &&mut 42;
-   |     ^^^^^^^
+   |     +++++++
 
 error: unused borrow that must be used
   --> $DIR/unused-borrows.rs:18:5
@@ -56,7 +56,7 @@ LL |     &mut &42;
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = &mut &42;
-   |     ^^^^^^^
+   |     +++++++
 
 error: unused borrow that must be used
   --> $DIR/unused-borrows.rs:23:5
@@ -67,7 +67,7 @@ LL |     && foo(42);
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = && foo(42);
-   |     ^^^^^^^
+   |     +++++++
 
 error: aborting due to 6 previous errors
 

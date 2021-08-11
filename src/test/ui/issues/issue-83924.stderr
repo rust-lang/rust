@@ -18,7 +18,7 @@ LL |     fn into_iter(self) -> Self::IntoIter;
 help: consider creating a fresh reborrow of `v` here
    |
 LL |     for n in &mut *v {
-   |              ^^^^^^
+   |              ++++++
 
 error: aborting due to previous error
 

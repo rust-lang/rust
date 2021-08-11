@@ -7,7 +7,7 @@ LL |     let _ = x as &dyn Bar<i32>; // FIXME: OK, eventually
 help: consider borrowing the value
    |
 LL |     let _ = &x as &dyn Bar<i32>; // FIXME: OK, eventually
-   |             ^
+   |             +
 
 error[E0605]: non-primitive cast: `&dyn Foo` as `&dyn Bar<u32>`
   --> $DIR/type-checking-test-1.rs:15:13
@@ -18,7 +18,7 @@ LL |     let _ = x as &dyn Bar<u32>; // FIXME: OK, eventually
 help: consider borrowing the value
    |
 LL |     let _ = &x as &dyn Bar<u32>; // FIXME: OK, eventually
-   |             ^
+   |             +
 
 error[E0277]: the trait bound `&dyn Foo: Bar<i32>` is not satisfied
   --> $DIR/type-checking-test-1.rs:12:13
@@ -45,7 +45,7 @@ LL |     let _ = x as &dyn Bar<_>; // Ambiguous
 help: consider borrowing the value
    |
 LL |     let _ = &x as &dyn Bar<_>; // Ambiguous
-   |             ^
+   |             +
 
 error[E0277]: the trait bound `&dyn Foo: Bar<_>` is not satisfied
   --> $DIR/type-checking-test-1.rs:21:13
@@ -64,7 +64,7 @@ LL |     let a = x as &dyn Bar<_>; // FIXME: OK, eventually
 help: consider borrowing the value
    |
 LL |     let a = &x as &dyn Bar<_>; // FIXME: OK, eventually
-   |             ^
+   |             +
 
 error[E0277]: the trait bound `&dyn Foo: Bar<u32>` is not satisfied
   --> $DIR/type-checking-test-1.rs:27:13

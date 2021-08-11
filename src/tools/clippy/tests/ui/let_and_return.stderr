@@ -9,8 +9,8 @@ LL |     x
    = note: `-D clippy::let-and-return` implied by `-D warnings`
 help: return the expression directly
    |
-LL |     
-LL |     5
+LL ~     
+LL ~     5
    |
 
 error: returning the result of a `let` binding from a block
@@ -23,8 +23,8 @@ LL |         x
    |
 help: return the expression directly
    |
-LL |         
-LL |         5
+LL ~         
+LL ~         5
    |
 
 error: returning the result of a `let` binding from a block
@@ -37,8 +37,8 @@ LL |             clone
    |
 help: return the expression directly
    |
-LL |             
-LL |             Arc::clone(&self.foo) as _
+LL ~             
+LL ~             Arc::clone(&self.foo) as _
    |
 
 error: aborting due to 3 previous errors

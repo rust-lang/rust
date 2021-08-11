@@ -8,7 +8,7 @@ LL |     let _ = (vec![1,2,3]).into_iter().sum() as f64;
 help: consider specifying the type argument in the method call
    |
 LL |     let _ = (vec![1,2,3]).into_iter().sum::<S>() as f64;
-   |                                          ^^^^^
+   |                                          +++++
 
 error: aborting due to previous error
 

@@ -22,12 +22,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     m.entry(k).or_insert_with(|| {
-LL |         if true {
-LL |             v
-LL |         } else {
-LL |             v2
-LL |         }
+LL ~     m.entry(k).or_insert_with(|| {
+LL +         if true {
+LL +             v
+LL +         } else {
+LL +             v2
+LL +         }
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -44,12 +44,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     m.entry(k).or_insert_with(|| {
-LL |         if true {
-LL |             v
-LL |         } else {
-LL |             v2
-LL |         }
+LL ~     m.entry(k).or_insert_with(|| {
+LL +         if true {
+LL +             v
+LL +         } else {
+LL +             v2
+LL +         }
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -66,12 +66,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
-LL |         if true {
-LL |             e.insert(v);
-LL |         } else {
-LL |             e.insert(v2);
-LL |             return;
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +         if true {
+LL +             e.insert(v);
+LL +         } else {
+LL +             e.insert(v2);
+LL +             return;
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -85,10 +85,10 @@ LL | |     }
    |
 help: try this
    |
-LL |     m.entry(k).or_insert_with(|| {
-LL |         foo();
-LL |         v
-LL |     });
+LL ~     m.entry(k).or_insert_with(|| {
+LL +         foo();
+LL +         v
+LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -105,12 +105,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     m.entry(k).or_insert_with(|| {
-LL |         match 0 {
-LL |             1 if true => {
-LL |                 v
-LL |             },
-LL |             _ => {
+LL ~     m.entry(k).or_insert_with(|| {
+LL +         match 0 {
+LL +             1 if true => {
+LL +                 v
+LL +             },
+LL +             _ => {
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -127,12 +127,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
-LL |         match 0 {
-LL |             0 => foo(),
-LL |             _ => {
-LL |                 e.insert(v2);
-LL |             },
+LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +         match 0 {
+LL +             0 => foo(),
+LL +             _ => {
+LL +                 e.insert(v2);
+LL +             },
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -149,12 +149,12 @@ LL | |     }
    |
 help: try this
    |
-LL |     m.entry(k).or_insert_with(|| {
-LL |         foo();
-LL |         match 0 {
-LL |             0 if false => {
-LL |                 v
-LL |             },
+LL ~     m.entry(k).or_insert_with(|| {
+LL +         foo();
+LL +         match 0 {
+LL +             0 if false => {
+LL +                 v
+LL +             },
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
@@ -176,10 +176,10 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
-LL |         e.insert(v);
-LL |         foo();
-LL |     }
+LL ~     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
+LL +         e.insert(v);
+LL +         foo();
+LL +     }
    |
 
 error: aborting due to 10 previous errors

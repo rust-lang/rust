@@ -10,7 +10,7 @@ LL |     type This = Self;
 help: consider further restricting `Self`
    |
 LL | trait MyTrait: Sized {
-   |              ^^^^^^^
+   |              +++++++
 
 error: aborting due to previous error
 

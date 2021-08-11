@@ -7,7 +7,7 @@ LL |     let _q: &isize = p as &isize;
 help: consider borrowing the value
    |
 LL |     let _q: &isize = &*p as &isize;
-   |                      ^^
+   |                      ++
 
 error: aborting due to previous error
 

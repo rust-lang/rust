@@ -28,7 +28,7 @@ LL | pub fn drop<T>(_x: T) {}
 help: consider further restricting the associated type
    |
 LL | fn main() where <() as Trait<'_>>::Item: Sized {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

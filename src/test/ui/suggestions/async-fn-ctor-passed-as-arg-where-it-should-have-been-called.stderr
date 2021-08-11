@@ -14,7 +14,7 @@ LL |     bar(foo);
 help: use parentheses to call the function
    |
 LL |     bar(foo());
-   |            ^^
+   |            ++
 
 error[E0277]: `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:36]` is not a future
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:12:9
@@ -31,7 +31,7 @@ LL |     bar(async_closure);
 help: use parentheses to call the closure
    |
 LL |     bar(async_closure());
-   |                      ^^
+   |                      ++
 
 error: aborting due to 2 previous errors
 

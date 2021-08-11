@@ -7,7 +7,7 @@ LL |         E::S { 0, 1 } => {}
 help: use the tuple variant pattern syntax instead
    |
 LL |         E::S(_, _) => {}
-   |             ^^^^^^
+   |             ~~~~~~
 
 error[E0769]: tuple variant `S` written as struct variant
   --> $DIR/struct-tuple-field-names.rs:13:9
@@ -18,7 +18,7 @@ LL |         S { } => {}
 help: use the tuple variant pattern syntax instead
    |
 LL |         S(_, _) => {}
-   |          ^^^^^^
+   |          ~~~~~~
 
 error: aborting due to 2 previous errors
 

@@ -7,7 +7,7 @@ LL |     foo!(true);
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     foo!(r#true);
-   |          ^^^^^^
+   |          ~~~~~~
 
 error: expected type, found keyword `true`
   --> $DIR/issue-44406.rs:8:10

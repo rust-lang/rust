@@ -13,7 +13,7 @@ LL | pub trait Debug {
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::A as Iterator>::Item: Debug {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `<<Self as Foo>::Out as Baz>::Assoc: Default` is not satisfied
   --> $DIR/bounds-on-assoc-in-trait.rs:35:38
@@ -29,7 +29,7 @@ LL | pub trait Default: Sized {
 help: consider further restricting the associated type
    |
 LL | pub trait Foo where <<Self as Foo>::Out as Baz>::Assoc: Default { type Out: Baz<Assoc: Default>; }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               +++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

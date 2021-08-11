@@ -11,7 +11,7 @@ LL | macro_rules! panic { () => {} }
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use std::panic as other_panic;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

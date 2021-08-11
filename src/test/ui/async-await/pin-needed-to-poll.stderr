@@ -15,7 +15,7 @@ LL |     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Outpu
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         Pin::new(&mut self.sleep).poll(cx)
-   |         ^^^^^^^^^^^^^           ^
+   |         +++++++++++++           +
 
 error: aborting due to previous error
 

@@ -14,7 +14,7 @@ LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
 help: add missing lifetime argument
    |
 LL |     S.early::<'static, 'b>();
-   |                      ^^^^
+   |                      ++++
 
 error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/method-call-lifetime-args-fail.rs:18:7
@@ -214,7 +214,7 @@ LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
 help: add missing lifetime argument
    |
 LL |     S::early::<'static, 'b>(S);
-   |                       ^^^^
+   |                       ++++
 
 error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/method-call-lifetime-args-fail.rs:65:8

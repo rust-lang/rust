@@ -179,7 +179,7 @@ LL |     format!(invalid);
 help: you might be missing a string literal to format with
    |
 LL |     format!("{}", invalid);
-   |             ^^^^^
+   |             +++++
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:110:14

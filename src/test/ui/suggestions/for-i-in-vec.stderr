@@ -7,7 +7,7 @@ LL |         for _ in self.v {
 help: consider iterating over a slice of the `Vec<u32>`'s content
    |
 LL |         for _ in &self.v {
-   |                  ^
+   |                  +
 
 error[E0507]: cannot move out of `self.h` which is behind a shared reference
   --> $DIR/for-i-in-vec.rs:13:18
@@ -18,7 +18,7 @@ LL |         for _ in self.h {
 help: consider iterating over a slice of the `HashMap<i32, i32>`'s content
    |
 LL |         for _ in &self.h {
-   |                  ^
+   |                  +
 
 error: aborting due to 2 previous errors
 

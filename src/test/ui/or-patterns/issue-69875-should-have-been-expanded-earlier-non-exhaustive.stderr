@@ -10,7 +10,7 @@ LL |     let (0 | (1 | 2)) = 0;
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let (0 | (1 | 2)) = 0 { /* */ }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0004]: non-exhaustive patterns: `i32::MIN..=-1_i32` and `3_i32..=i32::MAX` not covered
   --> $DIR/issue-69875-should-have-been-expanded-earlier-non-exhaustive.rs:3:11
