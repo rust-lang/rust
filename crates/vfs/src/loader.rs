@@ -136,10 +136,13 @@ impl Entry {
 impl Directories {
     /// Returns `true` if `path` is included in `self`.
     pub fn contains_file(&self, path: &AbsPath) -> bool {
+        // First, check the file extension...
         let ext = path.extension().unwrap_or_default();
         if self.extensions.iter().all(|it| it.as_str() != ext) {
             return false;
         }
+
+        // Then, check for path inclusion...
         self.includes_path(path)
     }
 
@@ -158,25 +161,22 @@ impl Directories {
     ///   - This path is longer than any element in `self.exclude` that is a prefix
     ///     of `path`. In case of equality, exclusion wins.
     fn includes_path(&self, path: &AbsPath) -> bool {
-        let mut include: Option<&AbsPathBuf> = None;
+        let mut include = None::<&AbsPathBuf>;
         for incl in &self.include {
             if path.starts_with(incl) {
                 include = Some(match include {
                     Some(prev) if prev.starts_with(incl) => prev,
                     _ => incl,
-                })
+                });
             }
         }
+
         let include = match include {
             Some(it) => it,
             None => return false,
         };
-        for excl in &self.exclude {
-            if path.starts_with(excl) && excl.starts_with(include) {
-                return false;
-            }
-        }
-        true
+
+        !self.exclude.iter().any(|excl| path.starts_with(excl) && excl.starts_with(include))
     }
 }
 
