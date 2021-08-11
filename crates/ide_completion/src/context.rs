@@ -480,18 +480,30 @@ impl<'a> CompletionContext<'a> {
                         })
                         .unwrap_or((None, None))
                     },
-                    ast::RecordExprFieldList(_it) => {
-                        cov_mark::hit!(expected_type_struct_field_without_leading_char);
+                    ast::RecordExprFieldList(it) => {
                         // wouldn't try {} be nice...
                         (|| {
-                            let expr_field = self.token.prev_sibling_or_token()?
-                                      .into_node()
-                                      .and_then(ast::RecordExprField::cast)?;
-                            let (_, _, ty) = self.sema.resolve_record_field(&expr_field)?;
-                            Some((
-                                Some(ty),
-                                expr_field.field_name().map(NameOrNameRef::NameRef),
-                            ))
+                            if self.token.kind() == T![..]
+                                || self.token.prev_token().map(|t| t.kind()) == Some(T![..])
+                            {
+                                cov_mark::hit!(expected_type_struct_func_update);
+                                let record_expr = it.syntax().parent().and_then(ast::RecordExpr::cast)?;
+                                let ty = self.sema.type_of_expr(&record_expr.into())?;
+                                Some((
+                                    Some(ty.original),
+                                    None
+                                ))
+                            } else {
+                                cov_mark::hit!(expected_type_struct_field_without_leading_char);
+                                let expr_field = self.token.prev_sibling_or_token()?
+                                    .into_node()
+                                    .and_then(ast::RecordExprField::cast)?;
+                                let (_, _, ty) = self.sema.resolve_record_field(&expr_field)?;
+                                Some((
+                                    Some(ty),
+                                    expr_field.field_name().map(NameOrNameRef::NameRef),
+                                ))
+                            }
                         })().unwrap_or((None, None))
                     },
                     ast::RecordExprField(it) => {
@@ -533,6 +545,7 @@ impl<'a> CompletionContext<'a> {
                             .unwrap_or((None, None))
                     },
                     ast::Stmt(_it) => (None, None),
+                    ast::Item(__) => (None, None),
                     _ => {
                         match node.parent() {
                             Some(n) => {
@@ -1089,6 +1102,22 @@ impl<T> S<T> {
 }
 "#,
             expect![[r#"ty: u32, name: t"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_functional_update() {
+        cov_mark::check!(expected_type_struct_func_update);
+        check_expected_type_and_name(
+            r#"
+struct Foo { field: u32 }
+fn foo() {
+    Foo {
+        ..$0
+    }
+}
+"#,
+            expect![[r#"ty: Foo, name: ?"#]],
         );
     }
 }

@@ -179,6 +179,7 @@ fn main() {
             fd ..Default::default()
             fd foo1                 u32
             fd foo2                 u32
+            sn Foo {…}              Foo { foo1: ${1:()}, foo2: ${2:()} }$0
         "#]],
     );
 }
