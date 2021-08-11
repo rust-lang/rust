@@ -15,9 +15,9 @@ struct X;
 
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
-    //~^ ERROR implementation of `FnOnce` is not general enough
 
     fn bar(&self) -> Self::Bar {
+        //~^ ERROR implementation of `FnOnce` is not general enough
         |x| x
     }
 }

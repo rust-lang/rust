@@ -179,54 +179,55 @@ pub(crate) fn type_check<'mir, 'tcx>(
             liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
 
             translate_outlives_facts(&mut cx);
-            let mut opaque_type_values = cx.opaque_type_values;
+            let opaque_type_values = mem::take(&mut infcx.inner.borrow_mut().opaque_types);
 
-            for (_, revealed_ty) in &mut opaque_type_values {
-                *revealed_ty = infcx.resolve_vars_if_possible(*revealed_ty);
-                if revealed_ty.has_infer_types_or_consts() {
-                    infcx.tcx.sess.delay_span_bug(
-                        body.span,
-                        &format!("could not resolve {:#?}", revealed_ty.kind()),
-                    );
-                    *revealed_ty = infcx.tcx.ty_error();
-                }
-            }
-
-            opaque_type_values.retain(|(opaque_type_key, resolved_ty)| {
-                let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
-                    *def_id == opaque_type_key.def_id
-                } else {
-                    false
-                };
-
-                if concrete_is_opaque {
-                    // We're using an opaque `impl Trait` type without
-                    // 'revealing' it. For example, code like this:
-                    //
-                    // type Foo = impl Debug;
-                    // fn foo1() -> Foo { ... }
-                    // fn foo2() -> Foo { foo1() }
-                    //
-                    // In `foo2`, we're not revealing the type of `Foo` - we're
-                    // just treating it as the opaque type.
-                    //
-                    // When this occurs, we do *not* want to try to equate
-                    // the concrete type with the underlying defining type
-                    // of the opaque type - this will always fail, since
-                    // the defining type of an opaque type is always
-                    // some other type (e.g. not itself)
-                    // Essentially, none of the normal obligations apply here -
-                    // we're just passing around some unknown opaque type,
-                    // without actually looking at the underlying type it
-                    // gets 'revealed' into
-                    debug!(
-                        "eq_opaque_type_and_type: non-defining use of {:?}",
-                        opaque_type_key.def_id,
-                    );
-                }
-                !concrete_is_opaque
-            });
             opaque_type_values
+                .into_iter()
+                .filter_map(|(opaque_type_key, decl)| {
+                    let mut revealed_ty = infcx.resolve_vars_if_possible(decl.concrete_ty);
+                    if revealed_ty.has_infer_types_or_consts() {
+                        infcx.tcx.sess.delay_span_bug(
+                            body.span,
+                            &format!("could not resolve {:#?}", revealed_ty.kind()),
+                        );
+                        revealed_ty = infcx.tcx.ty_error();
+                    }
+                    let concrete_is_opaque = if let ty::Opaque(def_id, _) = revealed_ty.kind() {
+                        *def_id == opaque_type_key.def_id
+                    } else {
+                        false
+                    };
+
+                    if concrete_is_opaque {
+                        // We're using an opaque `impl Trait` type without
+                        // 'revealing' it. For example, code like this:
+                        //
+                        // type Foo = impl Debug;
+                        // fn foo1() -> Foo { ... }
+                        // fn foo2() -> Foo { foo1() }
+                        //
+                        // In `foo2`, we're not revealing the type of `Foo` - we're
+                        // just treating it as the opaque type.
+                        //
+                        // When this occurs, we do *not* want to try to equate
+                        // the concrete type with the underlying defining type
+                        // of the opaque type - this will always fail, since
+                        // the defining type of an opaque type is always
+                        // some other type (e.g. not itself)
+                        // Essentially, none of the normal obligations apply here -
+                        // we're just passing around some unknown opaque type,
+                        // without actually looking at the underlying type it
+                        // gets 'revealed' into
+                        debug!(
+                            "eq_opaque_type_and_type: non-defining use of {:?}",
+                            opaque_type_key.def_id,
+                        );
+                        None
+                    } else {
+                        Some((opaque_type_key, revealed_ty))
+                    }
+                })
+                .collect()
         },
     );
 
@@ -865,7 +866,6 @@ struct TypeChecker<'a, 'tcx> {
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
-    opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx> {
@@ -1025,7 +1025,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
             universal_region_relations,
-            opaque_type_values: VecMap::default(),
         };
         checker.check_user_type_annotations();
         checker
@@ -1289,10 +1288,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let body = self.body;
         let mir_def_id = body.source.def_id().expect_local();
 
-        let mut opaque_type_values = VecMap::new();
-
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", mir_def_id);
-        let opaque_type_map = self.fully_perform_op(
+        self.fully_perform_op(
             locations,
             category,
             CustomTypeOp::new(
@@ -1307,20 +1304,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // to `Box<?T>`, returning an `opaque_type_map` mapping `{Foo<T> -> ?T}`.
                     // (Note that the key of the map is both the def-id of `Foo` along with
                     // any generic parameters.)
-                    let (output_ty, opaque_type_map) =
-                        obligations.add(infcx.instantiate_opaque_types(
-                            mir_def_id,
-                            dummy_body_id,
-                            param_env,
-                            anon_ty,
-                            locations.span(body),
-                        ));
+                    let output_ty = obligations.add(infcx.instantiate_opaque_types(
+                        dummy_body_id,
+                        param_env,
+                        anon_ty,
+                        locations.span(body),
+                    ));
                     debug!(
                         "eq_opaque_type_and_type: \
                          instantiated output_ty={:?} \
-                         opaque_type_map={:#?} \
                          revealed_ty={:?}",
-                        output_ty, opaque_type_map, revealed_ty
+                        output_ty, revealed_ty
                     );
 
                     // Make sure that the inferred types are well-formed. I'm
@@ -1338,22 +1332,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
-                    for &(opaque_type_key, opaque_decl) in &opaque_type_map {
-                        opaque_type_values.insert(opaque_type_key, opaque_decl.concrete_ty);
-                    }
-
                     debug!("eq_opaque_type_and_type: equated");
 
-                    Ok(InferOk {
-                        value: Some(opaque_type_map),
-                        obligations: obligations.into_vec(),
-                    })
+                    Ok(InferOk { value: (), obligations: obligations.into_vec() })
                 },
                 || "input_output".to_string(),
             ),
         )?;
-
-        self.opaque_type_values.extend(opaque_type_values);
 
         let universal_region_relations = self.universal_region_relations;
 
@@ -1361,25 +1346,24 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
-        if let Some(opaque_type_map) = opaque_type_map {
-            for (opaque_type_key, opaque_decl) in opaque_type_map {
-                self.fully_perform_op(
-                    locations,
-                    ConstraintCategory::OpaqueType,
-                    CustomTypeOp::new(
-                        |infcx| {
-                            infcx.constrain_opaque_type(
-                                opaque_type_key,
-                                &opaque_decl,
-                                GenerateMemberConstraints::IfNoStaticBound,
-                                universal_region_relations,
-                            );
-                            Ok(InferOk { value: (), obligations: vec![] })
-                        },
-                        || "opaque_type_map".to_string(),
-                    ),
-                )?;
-            }
+        let opaque_type_map = self.infcx.inner.borrow().opaque_types.clone();
+        for (opaque_type_key, opaque_decl) in opaque_type_map {
+            self.fully_perform_op(
+                locations,
+                ConstraintCategory::OpaqueType,
+                CustomTypeOp::new(
+                    |infcx| {
+                        infcx.constrain_opaque_type(
+                            opaque_type_key,
+                            &opaque_decl,
+                            GenerateMemberConstraints::IfNoStaticBound,
+                            universal_region_relations,
+                        );
+                        Ok(InferOk { value: (), obligations: vec![] })
+                    },
+                    || "opaque_type_map".to_string(),
+                ),
+            )?;
         }
         Ok(())
     }

@@ -4,10 +4,12 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 
+use self::opaque_types::OpaqueTypeMap;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
+use hir::def_id::CRATE_DEF_ID;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
@@ -59,6 +61,7 @@ pub mod lattice;
 mod lexical_region_resolve;
 mod lub;
 pub mod nll_relate;
+pub mod opaque_types;
 pub mod outlives;
 pub mod region_constraints;
 pub mod resolve;
@@ -191,6 +194,19 @@ pub struct InferCtxtInner<'tcx> {
     region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
 
     undo_log: InferCtxtUndoLogs<'tcx>,
+
+    // Opaque types found in explicit return types and their
+    // associated fresh inference variable. Writeback resolves these
+    // variables to get the concrete type, which can be used to
+    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
+    pub opaque_types: OpaqueTypeMap<'tcx>,
+
+    /// A map from inference variables created from opaque
+    /// type instantiations (`ty::Infer`) to the actual opaque
+    /// type (`ty::Opaque`). Used during fallback to map unconstrained
+    /// opaque type inference variables to their corresponding
+    /// opaque type.
+    pub opaque_types_vars: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -204,6 +220,8 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
+            opaque_types: Default::default(),
+            opaque_types_vars: Default::default(),
         }
     }
 
@@ -272,6 +290,10 @@ impl<'tcx> InferCtxtInner<'tcx> {
 
 pub struct InferCtxt<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+
+    /// The `DefId` of the item in whose context we are performing inference or typeck.
+    /// It is used to check whether an opaque type use is a defining use.
+    pub defining_use_anchor: LocalDefId,
 
     /// During type-checking/inference of a body, `in_progress_typeck_results`
     /// contains a reference to the typeck results being built up, which are
@@ -531,6 +553,7 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
+    defining_use_anchor: LocalDefId,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -539,15 +562,31 @@ pub trait TyCtxtInferExt<'tcx> {
 
 impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
-        InferCtxtBuilder { tcx: self, fresh_typeck_results: None }
+        InferCtxtBuilder {
+            tcx: self,
+            defining_use_anchor: CRATE_DEF_ID,
+            fresh_typeck_results: None,
+        }
     }
 }
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_typeck_results` with fresh `TypeckResults`.
+    /// Will also change the scope for opaque type defining use checks to the given owner.
     pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: LocalDefId) -> Self {
         self.fresh_typeck_results = Some(RefCell::new(ty::TypeckResults::new(table_owner)));
+        self.with_opaque_type_inference(table_owner)
+    }
+
+    /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,
+    /// you need to call this function. Otherwise the opaque type will be treated opaquely.
+    ///
+    /// It is only meant to be called in two places, for typeck
+    /// (via `with_fresh_in_progress_typeck_results`) and for the inference context used
+    /// in mir borrowck.
+    pub fn with_opaque_type_inference(mut self, defining_use_anchor: LocalDefId) -> Self {
+        self.defining_use_anchor = defining_use_anchor;
         self
     }
 
@@ -575,10 +614,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
-        let InferCtxtBuilder { tcx, ref fresh_typeck_results } = *self;
+        let InferCtxtBuilder { tcx, defining_use_anchor, ref fresh_typeck_results } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
             tcx,
+            defining_use_anchor,
             in_progress_typeck_results,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),

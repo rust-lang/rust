@@ -5,9 +5,9 @@
 #![feature(type_alias_impl_trait)]
 
 type X<A, B> = impl Into<&'static A>;
-//~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied
 
 fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
+    //~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied
     (a, a)
 }
 
