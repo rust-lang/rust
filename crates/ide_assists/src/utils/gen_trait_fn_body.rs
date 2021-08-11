@@ -416,7 +416,6 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         }
                     }
 
-                    // todo!("implement tuple record iteration")
                     Some(ast::FieldList::TupleFieldList(list)) => {
                         let mut expr = None;
                         let mut l_fields = vec![];
