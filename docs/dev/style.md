@@ -950,6 +950,26 @@ At the same time, it is more crowded -- it takes more time to visually scan it.
 **Rationale:** consistency, playing to language's strengths.
 Rust has first-class support for imperative control flow constructs like `for` and `if`, while functions are less first-class due to lack of universal function type, currying, and non-first-class effects (`?`, `.await`).
 
+## Turbofish
+
+Prefer type ascription over the turbofish.
+When ascribing types, avoid `_`
+
+```rust
+// GOOD
+let mutable: Vec<T> = old.into_iter().map(|it| builder.make_mut(it)).collect();
+
+// BAD
+let mutable: Vec<_> = old.into_iter().map(|it| builder.make_mut(it)).collect();
+
+// BAD
+let mutable = old.into_iter().map(|it| builder.make_mut(it)).collect::<Vec<_>>();
+```
+
+**Rationale:** consistency, readability.
+If compiler struggles to infer the type, the human would as well.
+Having the result type specified up-front helps with understanding what the chain of iterator methods is doing.
+
 ## Helper Functions
 
 Avoid creating singe-use helper functions:

@@ -131,7 +131,7 @@ impl AddRewrite for Assists {
         target: TextRange,
     ) -> Option<()> {
         self.add(AssistId("sort_items", AssistKind::RefactorRewrite), label, target, |builder| {
-            let mutable: Vec<_> = old.into_iter().map(|it| builder.make_mut(it)).collect();
+            let mutable: Vec<T> = old.into_iter().map(|it| builder.make_mut(it)).collect();
             mutable
                 .into_iter()
                 .zip(new)
