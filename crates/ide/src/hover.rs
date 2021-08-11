@@ -13,7 +13,7 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, AstToken, Direction,
-    SyntaxKind::*, SyntaxToken, T,
+    SyntaxKind::*, SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
@@ -54,6 +54,25 @@ pub enum HoverAction {
     GoToType(Vec<HoverGotoTypeData>),
 }
 
+impl HoverAction {
+    fn goto_type_from_targets(db: &RootDatabase, targets: Vec<hir::ModuleDef>) -> Self {
+        let targets = targets
+            .into_iter()
+            .filter_map(|it| {
+                Some(HoverGotoTypeData {
+                    mod_path: render_path(
+                        db,
+                        it.module(db)?,
+                        it.name(db).map(|name| name.to_string()),
+                    ),
+                    nav: it.try_to_nav(db)?,
+                })
+            })
+            .collect();
+        HoverAction::GoToType(targets)
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HoverGotoTypeData {
     pub mod_path: String,
@@ -81,28 +100,10 @@ pub(crate) fn hover(
     let sema = hir::Semantics::new(db);
     let file = sema.parse(file_id).syntax().clone();
 
-    let offset = if range.is_empty() {
-        range.start()
-    } else {
-        let expr = file.covering_element(range).ancestors().find_map(|it| {
-            match_ast! {
-                match it {
-                    ast::Expr(expr) => Some(Either::Left(expr)),
-                    ast::Pat(pat) => Some(Either::Right(pat)),
-                    _ => None,
-                }
-            }
-        })?;
-        return hover_type_info(&sema, config, &expr).map(|it| {
-            RangeInfo::new(
-                match expr {
-                    Either::Left(it) => it.syntax().text_range(),
-                    Either::Right(it) => it.syntax().text_range(),
-                },
-                it,
-            )
-        });
-    };
+    if !range.is_empty() {
+        return hover_ranged(&file, range, &sema, config);
+    }
+    let offset = range.start();
 
     let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
@@ -112,8 +113,8 @@ pub(crate) fn hover(
     })?;
     let token = sema.descend_into_macros(token);
 
+    let mut range_override = None;
     let node = token.parent()?;
-    let mut range = None;
     let definition = match_ast! {
         match node {
             // We don't use NameClass::referenced_or_defined here as we do not want to resolve
@@ -129,11 +130,13 @@ pub(crate) fn hover(
                 }
             }),
             ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
-                || NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
-                    NameRefClass::Definition(it) => Some(it),
-                    _ => None,
-                }),
-                |d| d.defined(),
+                || {
+                    NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
+                        NameRefClass::Definition(it) => Some(it),
+                        _ => None,
+                    })
+                },
+                NameClass::defined,
             ),
             _ => {
                 if ast::Comment::cast(token.clone()).is_some() {
@@ -145,7 +148,7 @@ pub(crate) fn hover(
                             let mapped = doc_mapping.map(range)?;
                             (mapped.file_id == file_id.into() && mapped.value.contains(offset)).then(||(mapped.value, link, ns))
                         })?;
-                    range = Some(idl_range);
+                    range_override = Some(idl_range);
                     Some(match resolve_doc_path_for_def(db,def, &link,ns)? {
                         Either::Left(it) => Definition::ModuleDef(it),
                         Either::Right(it) => Definition::Macro(it),
@@ -154,7 +157,7 @@ pub(crate) fn hover(
                     if let res@Some(_) = try_hover_for_lint(&attr, &token) {
                         return res;
                     } else {
-                        range = Some(token.text_range());
+                        range_override = Some(token.text_range());
                         try_resolve_derive_input_at(&sema, &attr, &token).map(Definition::Macro)
                     }
                 } else {
@@ -186,11 +189,11 @@ pub(crate) fn hover(
                 res.actions.push(action);
             }
 
-            if let Some(action) = goto_type_action(db, definition) {
+            if let Some(action) = goto_type_action_for_def(db, definition) {
                 res.actions.push(action);
             }
 
-            let range = range.unwrap_or_else(|| sema.original_range(&node).range);
+            let range = range_override.unwrap_or_else(|| sema.original_range(&node).range);
             return Some(RangeInfo::new(range, res));
         }
     }
@@ -198,6 +201,8 @@ pub(crate) fn hover(
     if let res @ Some(_) = hover_for_keyword(&sema, config, &token) {
         return res;
     }
+
+    // No definition below cursor, fall back to showing type hovers.
 
     let node = token
         .ancestors()
@@ -220,6 +225,30 @@ pub(crate) fn hover(
     Some(RangeInfo::new(range, res))
 }
 
+fn hover_ranged(
+    file: &SyntaxNode,
+    range: syntax::TextRange,
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
+) -> Option<RangeInfo<HoverResult>> {
+    let expr = file.covering_element(range).ancestors().find_map(|it| {
+        match_ast! {
+            match it {
+                ast::Expr(expr) => Some(Either::Left(expr)),
+                ast::Pat(pat) => Some(Either::Right(pat)),
+                _ => None,
+            }
+        }
+    })?;
+    hover_type_info(sema, config, &expr).map(|it| {
+        let range = match expr {
+            Either::Left(it) => it.syntax().text_range(),
+            Either::Right(it) => it.syntax().text_range(),
+        };
+        RangeInfo::new(range, it)
+    })
+}
+
 fn hover_type_info(
     sema: &Semantics<RootDatabase>,
     config: &HoverConfig,
@@ -231,7 +260,16 @@ fn hover_type_info(
     };
 
     let mut res = HoverResult::default();
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    walk_and_push_ty(sema.db, &original, &mut push_new_def);
+
     res.markup = if let Some(adjusted_ty) = adjusted {
+        walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
         let original = original.display(sema.db).to_string();
         let adjusted = adjusted_ty.display(sema.db).to_string();
         format!(
@@ -250,6 +288,7 @@ fn hover_type_info(
             original.display(sema.db).to_string().into()
         }
     };
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
     Some(res)
 }
 
@@ -354,7 +393,7 @@ fn runnable_action(
     }
 }
 
-fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+fn goto_type_action_for_def(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
         if !targets.contains(&item) {
@@ -372,30 +411,28 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
             _ => return None,
         };
 
-        ty.walk(db, |t| {
-            if let Some(adt) = t.as_adt() {
-                push_new_def(adt.into());
-            } else if let Some(trait_) = t.as_dyn_trait() {
-                push_new_def(trait_.into());
-            } else if let Some(traits) = t.as_impl_traits(db) {
-                traits.into_iter().for_each(|it| push_new_def(it.into()));
-            } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
-                push_new_def(trait_.into());
-            }
-        });
+        walk_and_push_ty(db, &ty, &mut push_new_def);
     }
 
-    let targets = targets
-        .into_iter()
-        .filter_map(|it| {
-            Some(HoverGotoTypeData {
-                mod_path: render_path(db, it.module(db)?, it.name(db).map(|name| name.to_string())),
-                nav: it.try_to_nav(db)?,
-            })
-        })
-        .collect();
+    Some(HoverAction::goto_type_from_targets(db, targets))
+}
 
-    Some(HoverAction::GoToType(targets))
+fn walk_and_push_ty(
+    db: &RootDatabase,
+    ty: &hir::Type,
+    push_new_def: &mut dyn FnMut(hir::ModuleDef),
+) {
+    ty.walk(db, |t| {
+        if let Some(adt) = t.as_adt() {
+            push_new_def(adt.into());
+        } else if let Some(trait_) = t.as_dyn_trait() {
+            push_new_def(trait_.into());
+        } else if let Some(traits) = t.as_impl_traits(db) {
+            traits.into_iter().for_each(|it| push_new_def(it.into()));
+        } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+            push_new_def(trait_.into());
+        }
+    });
 }
 
 fn hover_markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Option<Markup> {
@@ -666,14 +703,14 @@ mod tests {
     }
 
     fn check_actions(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = fixture::position(ra_fixture);
+        let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
         let hover = analysis
             .hover(
                 &HoverConfig {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
-                FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
+                FileRange { file_id, range: position.range_or_empty() },
             )
             .unwrap()
             .unwrap();
@@ -4160,6 +4197,39 @@ fn foo() {
                 Type:             &u32
                 Coerced to: *const u32
                 ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_range_shows_type_actions() {
+        check_actions(
+            r#"
+struct Foo;
+fn foo() {
+    let x: &Foo = $0&&&&&Foo$0;
+}
+"#,
+            expect![[r#"
+                [
+                    GoToType(
+                        [
+                            HoverGotoTypeData {
+                                mod_path: "test::Foo",
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..11,
+                                    focus_range: 7..10,
+                                    name: "Foo",
+                                    kind: Struct,
+                                    description: "struct Foo",
+                                },
+                            },
+                        ],
+                    ),
+                ]
             "#]],
         );
     }

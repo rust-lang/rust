@@ -113,6 +113,12 @@ impl RangeOrOffset {
             RangeOrOffset::Offset(_) => panic!("expected a range but got an offset"),
         }
     }
+    pub fn range_or_empty(self) -> TextRange {
+        match self {
+            RangeOrOffset::Range(range) => range,
+            RangeOrOffset::Offset(offset) => TextRange::empty(offset),
+        }
+    }
 }
 
 impl From<RangeOrOffset> for TextRange {
