@@ -576,6 +576,26 @@ impl<T> Cell<[T]> {
     }
 }
 
+impl<T, const N: usize> Cell<[T; N]> {
+    /// Returns a `&[Cell<T>; N]` from a `&Cell<[T; N]>`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_array_of_cells)]
+    /// use std::cell::Cell;
+    ///
+    /// let mut array: [i32; 3] = [1, 2, 3];
+    /// let cell_array: &Cell<[i32; 3]> = Cell::from_mut(&mut array);
+    /// let array_cell: &[Cell<i32>; 3] = cell_array.as_array_of_cells();
+    /// ```
+    #[unstable(feature = "as_array_of_cells", issue = "88248")]
+    pub fn as_array_of_cells(&self) -> &[Cell<T>; N] {
+        // SAFETY: `Cell<T>` has the same memory layout as `T`.
+        unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
+    }
+}
+
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](self) for more.
