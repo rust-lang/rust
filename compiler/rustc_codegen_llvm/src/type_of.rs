@@ -1,5 +1,6 @@
 use crate::abi::FnAbi;
 use crate::common::*;
+use crate::context::TypeLowering;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
@@ -9,6 +10,7 @@ use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
+use smallvec::{smallvec, SmallVec};
 use tracing::debug;
 
 use std::fmt::Write;
@@ -17,6 +19,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
+    field_remapping: &mut Option<SmallVec<[u32; 4]>>,
 ) -> &'a Type {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
@@ -75,7 +78,8 @@ fn uncached_llvm_type<'a, 'tcx>(
         FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
         FieldsShape::Arbitrary { .. } => match name {
             None => {
-                let (llfields, packed) = struct_llfields(cx, layout);
+                let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+                *field_remapping = new_field_remapping;
                 cx.type_struct(&llfields, packed)
             }
             Some(ref name) => {
@@ -90,7 +94,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 fn struct_llfields<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool) {
+) -> (Vec<&'a Type>, bool, Option<SmallVec<[u32; 4]>>) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -98,6 +102,7 @@ fn struct_llfields<'a, 'tcx>(
     let mut offset = Size::ZERO;
     let mut prev_effective_align = layout.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
+    let mut field_remapping = smallvec![0; field_count];
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
@@ -116,33 +121,37 @@ fn struct_llfields<'a, 'tcx>(
         );
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
-        let padding_align = prev_effective_align.min(effective_field_align);
-        assert_eq!(offset.align_to(padding_align) + padding, target_offset);
-        result.push(cx.type_padding_filler(padding, padding_align));
-        debug!("    padding before: {:?}", padding);
-
+        if padding != Size::ZERO {
+            let padding_align = prev_effective_align.min(effective_field_align);
+            assert_eq!(offset.align_to(padding_align) + padding, target_offset);
+            result.push(cx.type_padding_filler(padding, padding_align));
+            debug!("    padding before: {:?}", padding);
+        }
+        field_remapping[i] = result.len() as u32;
         result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
+    let padding_used = result.len() > field_count;
     if !layout.is_unsized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }
         let padding = layout.size - offset;
-        let padding_align = prev_effective_align;
-        assert_eq!(offset.align_to(padding_align) + padding, layout.size);
-        debug!(
-            "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
-            padding, offset, layout.size
-        );
-        result.push(cx.type_padding_filler(padding, padding_align));
-        assert_eq!(result.len(), 1 + field_count * 2);
+        if padding != Size::ZERO {
+            let padding_align = prev_effective_align;
+            assert_eq!(offset.align_to(padding_align) + padding, layout.size);
+            debug!(
+                "struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
+                padding, offset, layout.size
+            );
+            result.push(cx.type_padding_filler(padding, padding_align));
+        }
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-
-    (result, packed)
+    let field_remapping = if padding_used { Some(field_remapping) } else { None };
+    (result, packed, field_remapping)
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
@@ -177,7 +186,7 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
-    fn llvm_field_index(&self, index: usize) -> u64;
+    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
 
@@ -234,8 +243,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Variants::Single { index } => Some(index),
             _ => None,
         };
-        if let Some(&llty) = cx.lltypes.borrow().get(&(self.ty, variant_index)) {
-            return llty;
+        if let Some(ref llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+            return llty.lltype;
         }
 
         debug!("llvm_type({:#?})", self);
@@ -247,6 +256,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         let normal_ty = cx.tcx.erase_regions(self.ty);
 
         let mut defer = None;
+        let mut field_remapping = None;
         let llty = if self.ty != normal_ty {
             let mut layout = cx.layout_of(normal_ty);
             if let Some(v) = variant_index {
@@ -254,17 +264,24 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             }
             layout.llvm_type(cx)
         } else {
-            uncached_llvm_type(cx, *self, &mut defer)
+            uncached_llvm_type(cx, *self, &mut defer, &mut field_remapping)
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.lltypes.borrow_mut().insert((self.ty, variant_index), llty);
+        cx.type_lowering.borrow_mut().insert(
+            (self.ty, variant_index),
+            TypeLowering { lltype: llty, field_remapping: field_remapping },
+        );
 
         if let Some((llty, layout)) = defer {
-            let (llfields, packed) = struct_llfields(cx, layout);
-            cx.set_struct_body(llty, &llfields, packed)
+            let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+            cx.set_struct_body(llty, &llfields, packed);
+            cx.type_lowering
+                .borrow_mut()
+                .get_mut(&(self.ty, variant_index))
+                .unwrap()
+                .field_remapping = new_field_remapping;
         }
-
         llty
     }
 
@@ -340,7 +357,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
 
-    fn llvm_field_index(&self, index: usize) -> u64 {
+    fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64 {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
@@ -354,7 +371,25 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
             FieldsShape::Array { .. } => index as u64,
 
-            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
+            FieldsShape::Arbitrary { .. } => {
+                let variant_index = match self.variants {
+                    Variants::Single { index } => Some(index),
+                    _ => None,
+                };
+
+                // Look up llvm field if indexes do not match memory order due to padding. If
+                // `field_remapping` is `None` no padding was used and the llvm field index
+                // matches the memory index.
+                match cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+                    Some(TypeLowering { field_remapping: Some(ref remap), .. }) => {
+                        remap[index] as u64
+                    }
+                    Some(_) => self.fields.memory_index(index) as u64,
+                    None => {
+                        bug!("TyAndLayout::llvm_field_index({:?}): type info not found", self)
+                    }
+                }
+            }
         }
     }
 
