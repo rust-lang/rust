@@ -9,8 +9,8 @@ LL |     indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>(
    = note: `-D clippy::needless-collect` implied by `-D warnings`
 help: use the original Iterator instead of collecting it and then producing a new one
    |
-LL |     
-LL |     sample.iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
+LL ~     
+LL ~     sample.iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
    |
 
 error: avoid using `collect()` when not needed
@@ -23,8 +23,8 @@ LL |     indirect_len.len();
    |
 help: take the original Iterator's count instead of collecting it and finding the length
    |
-LL |     
-LL |     sample.iter().count();
+LL ~     
+LL ~     sample.iter().count();
    |
 
 error: avoid using `collect()` when not needed
@@ -37,8 +37,8 @@ LL |     indirect_empty.is_empty();
    |
 help: check if the original Iterator has anything instead of collecting it and seeing if it's empty
    |
-LL |     
-LL |     sample.iter().next().is_none();
+LL ~     
+LL ~     sample.iter().next().is_none();
    |
 
 error: avoid using `collect()` when not needed
@@ -51,8 +51,8 @@ LL |     indirect_contains.contains(&&5);
    |
 help: check if the original Iterator contains an element instead of collecting then checking
    |
-LL |     
-LL |     sample.iter().any(|x| x == &5);
+LL ~     
+LL ~     sample.iter().any(|x| x == &5);
    |
 
 error: avoid using `collect()` when not needed
@@ -65,8 +65,8 @@ LL |     non_copy_contains.contains(&a);
    |
 help: check if the original Iterator contains an element instead of collecting then checking
    |
-LL |     
-LL |     sample.into_iter().any(|x| x == a);
+LL ~     
+LL ~     sample.into_iter().any(|x| x == a);
    |
 
 error: avoid using `collect()` when not needed
@@ -79,8 +79,8 @@ LL |         buffer.len()
    |
 help: take the original Iterator's count instead of collecting it and finding the length
    |
-LL |         
-LL |         string.split('/').count()
+LL ~         
+LL ~         string.split('/').count()
    |
 
 error: avoid using `collect()` when not needed
@@ -93,8 +93,8 @@ LL |         indirect_len.len()
    |
 help: take the original Iterator's count instead of collecting it and finding the length
    |
-LL |         
-LL |         sample.iter().count()
+LL ~         
+LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
@@ -107,8 +107,8 @@ LL |         indirect_len.len()
    |
 help: take the original Iterator's count instead of collecting it and finding the length
    |
-LL |         
-LL |         sample.iter().count()
+LL ~         
+LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
@@ -121,8 +121,8 @@ LL |         indirect_len.len()
    |
 help: take the original Iterator's count instead of collecting it and finding the length
    |
-LL |         
-LL |         sample.iter().count()
+LL ~         
+LL ~         sample.iter().count()
    |
 
 error: aborting due to 9 previous errors

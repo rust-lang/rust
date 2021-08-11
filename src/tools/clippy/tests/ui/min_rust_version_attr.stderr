@@ -12,8 +12,8 @@ LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using the `strip_prefix` method
    |
-LL |         if let Some(<stripped>) = s.strip_prefix("hello, ") {
-LL |             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
+LL ~         if let Some(<stripped>) = s.strip_prefix("hello, ") {
+LL ~             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
    |
 
 error: stripping a prefix manually
@@ -29,8 +29,8 @@ LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using the `strip_prefix` method
    |
-LL |         if let Some(<stripped>) = s.strip_prefix("hello, ") {
-LL |             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
+LL ~         if let Some(<stripped>) = s.strip_prefix("hello, ") {
+LL ~             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
    |
 
 error: aborting due to 2 previous errors

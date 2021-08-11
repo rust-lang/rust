@@ -7,8 +7,9 @@ LL |     print!("Hello {}", "world");
    = note: `-D clippy::print-literal` implied by `-D warnings`
 help: try this
    |
-LL |     print!("Hello world");
-   |                   ^^^^^--
+LL -     print!("Hello {}", "world");
+LL +     print!("Hello world");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:26:36
@@ -18,8 +19,9 @@ LL |     println!("Hello {} {}", world, "world");
    |
 help: try this
    |
-LL |     println!("Hello {} world", world);
-   |                        ^^^^^       --
+LL -     println!("Hello {} {}", world, "world");
+LL +     println!("Hello {} world", world);
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:27:26
@@ -29,8 +31,9 @@ LL |     println!("Hello {}", "world");
    |
 help: try this
    |
-LL |     println!("Hello world");
-   |                     ^^^^^--
+LL -     println!("Hello {}", "world");
+LL +     println!("Hello world");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:32:25
@@ -40,8 +43,9 @@ LL |     println!("{0} {1}", "hello", "world");
    |
 help: try this
    |
-LL |     println!("hello {1}", "world");
-   |               ^^^^^    --
+LL -     println!("{0} {1}", "hello", "world");
+LL +     println!("hello {1}", "world");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:32:34
@@ -51,8 +55,9 @@ LL |     println!("{0} {1}", "hello", "world");
    |
 help: try this
    |
-LL |     println!("{0} world", "hello");
-   |                   ^^^^^         --
+LL -     println!("{0} {1}", "hello", "world");
+LL +     println!("{0} world", "hello");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:33:25
@@ -62,8 +67,9 @@ LL |     println!("{1} {0}", "hello", "world");
    |
 help: try this
    |
-LL |     println!("{1} hello", "world");
-   |                   ^^^^^--
+LL -     println!("{1} {0}", "hello", "world");
+LL +     println!("{1} hello", "world");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:33:34
@@ -73,8 +79,9 @@ LL |     println!("{1} {0}", "hello", "world");
    |
 help: try this
    |
-LL |     println!("world {0}", "hello");
-   |               ^^^^^             --
+LL -     println!("{1} {0}", "hello", "world");
+LL +     println!("world {0}", "hello");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:36:29
@@ -84,8 +91,9 @@ LL |     println!("{foo} {bar}", foo = "hello", bar = "world");
    |
 help: try this
    |
-LL |     println!("hello {bar}", bar = "world");
-   |               ^^^^^      --
+LL -     println!("{foo} {bar}", foo = "hello", bar = "world");
+LL +     println!("hello {bar}", bar = "world");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:36:44
@@ -95,8 +103,9 @@ LL |     println!("{foo} {bar}", foo = "hello", bar = "world");
    |
 help: try this
    |
-LL |     println!("{foo} world", foo = "hello");
-   |                     ^^^^^               --
+LL -     println!("{foo} {bar}", foo = "hello", bar = "world");
+LL +     println!("{foo} world", foo = "hello");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:37:29
@@ -106,8 +115,9 @@ LL |     println!("{bar} {foo}", foo = "hello", bar = "world");
    |
 help: try this
    |
-LL |     println!("{bar} hello", bar = "world");
-   |                     ^^^^^--
+LL -     println!("{bar} {foo}", foo = "hello", bar = "world");
+LL +     println!("{bar} hello", bar = "world");
+   | 
 
 error: literal with an empty format string
   --> $DIR/print_literal.rs:37:44
@@ -117,8 +127,9 @@ LL |     println!("{bar} {foo}", foo = "hello", bar = "world");
    |
 help: try this
    |
-LL |     println!("world {foo}", foo = "hello");
-   |               ^^^^^                     --
+LL -     println!("{bar} {foo}", foo = "hello", bar = "world");
+LL +     println!("world {foo}", foo = "hello");
+   | 
 
 error: aborting due to 11 previous errors
 

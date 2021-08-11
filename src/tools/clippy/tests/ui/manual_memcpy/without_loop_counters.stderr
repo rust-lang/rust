@@ -51,8 +51,8 @@ LL | |     }
    |
 help: try replacing the loop by
    |
-LL |     dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)]);
-LL |     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256]);
+LL ~     dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)]);
+LL +     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256]);
    |
 
 error: it looks like you're manually copying between slices

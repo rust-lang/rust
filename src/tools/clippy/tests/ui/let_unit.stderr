@@ -26,12 +26,12 @@ LL | |         .unwrap();
    |
 help: omit the `let` binding
    |
-LL |     v
-LL |         .into_iter()
-LL |         .map(|i| i * 2)
-LL |         .filter(|i| i % 2 == 0)
-LL |         .map(|_| ())
-LL |         .next()
+LL ~     v
+LL +         .into_iter()
+LL +         .map(|i| i * 2)
+LL +         .filter(|i| i % 2 == 0)
+LL +         .map(|_| ())
+LL +         .next()
  ...
 
 error: aborting due to 3 previous errors

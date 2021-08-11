@@ -9,9 +9,9 @@ LL | |     });
    = note: `-D clippy::needless-for-each` implied by `-D warnings`
 help: try
    |
-LL |     for elem in v.iter() {
-LL |         acc += elem;
-LL |     }
+LL ~     for elem in v.iter() {
+LL +         acc += elem;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -24,9 +24,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for elem in v.into_iter() {
-LL |         acc += elem;
-LL |     }
+LL ~     for elem in v.into_iter() {
+LL +         acc += elem;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -39,9 +39,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for elem in [1, 2, 3].iter() {
-LL |         acc += elem;
-LL |     }
+LL ~     for elem in [1, 2, 3].iter() {
+LL +         acc += elem;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -54,9 +54,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for (k, v) in hash_map.iter() {
-LL |         acc += k + v;
-LL |     }
+LL ~     for (k, v) in hash_map.iter() {
+LL +         acc += k + v;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -69,9 +69,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for (k, v) in hash_map.iter_mut() {
-LL |         acc += *k + *v;
-LL |     }
+LL ~     for (k, v) in hash_map.iter_mut() {
+LL +         acc += *k + *v;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -84,9 +84,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for k in hash_map.keys() {
-LL |         acc += k;
-LL |     }
+LL ~     for k in hash_map.keys() {
+LL +         acc += k;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -99,9 +99,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for v in hash_map.values() {
-LL |         acc += v;
-LL |     }
+LL ~     for v in hash_map.values() {
+LL +         acc += v;
+LL +     }
    |
 
 error: needless use of `for_each`
@@ -114,9 +114,9 @@ LL | |     });
    |
 help: try
    |
-LL |     for elem in my_vec().iter() {
-LL |         acc += elem;
-LL |     }
+LL ~     for elem in my_vec().iter() {
+LL +         acc += elem;
+LL +     }
    |
 
 error: aborting due to 8 previous errors

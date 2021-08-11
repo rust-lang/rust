@@ -10,10 +10,10 @@ LL | |             },
    = note: `-D clippy::match-single-binding` implied by `-D warnings`
 help: consider using `let` statement
    |
-LL |             Some((iter, _item)) => {
-LL |                 let (min, max) = iter.size_hint();
-LL |                 (min.saturating_add(1), max.and_then(|max| max.checked_add(1)))
-LL |             },
+LL ~             Some((iter, _item)) => {
+LL +                 let (min, max) = iter.size_hint();
+LL +                 (min.saturating_add(1), max.and_then(|max| max.checked_add(1)))
+LL ~             },
    |
 
 error: this match could be written as a `let` statement
@@ -26,8 +26,8 @@ LL | |             }
    |
 help: consider using `let` statement
    |
-LL |             let (a, b) = get_tup();
-LL |             println!("a {:?} and b {:?}", a, b);
+LL ~             let (a, b) = get_tup();
+LL +             println!("a {:?} and b {:?}", a, b);
    |
 
 error: this match could be replaced by its scrutinee and body
@@ -40,8 +40,8 @@ LL | |     }
    |
 help: consider using the scrutinee and body instead
    |
-LL |     side_effects();
-LL |     println!("Side effects");
+LL ~     side_effects();
+LL +     println!("Side effects");
    |
 
 error: this match could be replaced by its scrutinee and body
@@ -57,11 +57,11 @@ LL | |     }
    |
 help: consider using the scrutinee and body instead
    |
-LL |     match x {
-LL |         0 => 1,
-LL |         _ => 2,
-LL |     };
-LL |     println!("Single branch");
+LL ~     match x {
+LL +         0 => 1,
+LL +         _ => 2,
+LL +     };
+LL +     println!("Single branch");
    |
 
 error: aborting due to 4 previous errors

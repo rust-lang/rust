@@ -32,9 +32,9 @@ LL | |     );
    |
 help: replace with
    |
-LL |     foo.ok_or(&format!(
-LL |         "{}{}{}{}{}{}{}",
-LL |         "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer"));
+LL ~     foo.ok_or(&format!(
+LL +         "{}{}{}{}{}{}{}",
+LL ~         "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer"));
    |
 
 error: aborting due to 4 previous errors

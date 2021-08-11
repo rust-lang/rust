@@ -94,9 +94,9 @@ LL | |     }
    |
 help: add `return` as shown
    |
-LL |     return loop {
-LL |         m!(true);
-LL |     }
+LL ~     return loop {
+LL +         m!(true);
+LL +     }
    |
 
 error: missing `return` statement

@@ -11,10 +11,10 @@ LL | |     }
    = note: `-D clippy::match-single-binding` implied by `-D warnings`
 help: consider using `let` statement
    |
-LL |     let (x, y, z) = (a, b, c);
-LL |     {
-LL |         println!("{} {} {}", x, y, z);
-LL |     }
+LL ~     let (x, y, z) = (a, b, c);
+LL +     {
+LL +         println!("{} {} {}", x, y, z);
+LL +     }
    |
 
 error: this match could be written as a `let` statement
@@ -27,8 +27,8 @@ LL | |     }
    |
 help: consider using `let` statement
    |
-LL |     let (x, y, z) = (a, b, c);
-LL |     println!("{} {} {}", x, y, z);
+LL ~     let (x, y, z) = (a, b, c);
+LL +     println!("{} {} {}", x, y, z);
    |
 
 error: this match could be replaced by its body itself
@@ -52,10 +52,10 @@ LL | |     }
    |
 help: consider using the match body instead
    |
-LL |     {
-LL |         let x = 29;
-LL |         println!("x has a value of {}", x);
-LL |     }
+LL ~     {
+LL +         let x = 29;
+LL +         println!("x has a value of {}", x);
+LL +     }
    |
 
 error: this match could be replaced by its body itself
@@ -72,12 +72,12 @@ LL | |     }
    |
 help: consider using the match body instead
    |
-LL |     {
-LL |         let e = 5 * a;
-LL |         if e >= 5 {
-LL |             println!("e is superior to 5");
-LL |         }
-LL |     }
+LL ~     {
+LL +         let e = 5 * a;
+LL +         if e >= 5 {
+LL +             println!("e is superior to 5");
+LL +         }
+LL +     }
    |
 
 error: this match could be written as a `let` statement
@@ -90,8 +90,8 @@ LL | |     }
    |
 help: consider using `let` statement
    |
-LL |     let Point { x, y } = p;
-LL |     println!("Coords: ({}, {})", x, y);
+LL ~     let Point { x, y } = p;
+LL +     println!("Coords: ({}, {})", x, y);
    |
 
 error: this match could be written as a `let` statement
@@ -104,8 +104,8 @@ LL | |     }
    |
 help: consider using `let` statement
    |
-LL |     let Point { x: x1, y: y1 } = p;
-LL |     println!("Coords: ({}, {})", x1, y1);
+LL ~     let Point { x: x1, y: y1 } = p;
+LL +     println!("Coords: ({}, {})", x1, y1);
    |
 
 error: this match could be written as a `let` statement
@@ -118,8 +118,8 @@ LL | |     }
    |
 help: consider using `let` statement
    |
-LL |     let ref r = x;
-LL |     println!("Got a reference to {}", r);
+LL ~     let ref r = x;
+LL +     println!("Got a reference to {}", r);
    |
 
 error: this match could be written as a `let` statement
@@ -132,8 +132,8 @@ LL | |     }
    |
 help: consider using `let` statement
    |
-LL |     let ref mut mr = x;
-LL |     println!("Got a mutable reference to {}", mr);
+LL ~     let ref mut mr = x;
+LL +     println!("Got a mutable reference to {}", mr);
    |
 
 error: this match could be written as a `let` statement
@@ -146,8 +146,8 @@ LL | |     };
    |
 help: consider using `let` statement
    |
-LL |     let Point { x, y } = coords();
-LL |     let product = x * y;
+LL ~     let Point { x, y } = coords();
+LL +     let product = x * y;
    |
 
 error: this match could be written as a `let` statement
@@ -161,10 +161,10 @@ LL | |         })
    |
 help: consider using `let` statement
    |
-LL |         .map(|i| {
-LL |             let unwrapped = i.unwrap();
-LL |             unwrapped
-LL |         })
+LL ~         .map(|i| {
+LL +             let unwrapped = i.unwrap();
+LL +             unwrapped
+LL ~         })
    |
 
 error: aborting due to 11 previous errors

@@ -7,8 +7,9 @@ LL |     eprint!("Hello/n");
    = note: `-D clippy::print-with-newline` implied by `-D warnings`
 help: use `eprintln!` instead
    |
-LL |     eprintln!("Hello");
-   |     ^^^^^^^^       --
+LL -     eprint!("Hello/n");
+LL +     eprintln!("Hello");
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:6:5
@@ -18,8 +19,9 @@ LL |     eprint!("Hello {}/n", "world");
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!("Hello {}", "world");
-   |     ^^^^^^^^          --
+LL -     eprint!("Hello {}/n", "world");
+LL +     eprintln!("Hello {}", "world");
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:7:5
@@ -29,8 +31,9 @@ LL |     eprint!("Hello {} {}/n", "world", "#2");
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!("Hello {} {}", "world", "#2");
-   |     ^^^^^^^^             --
+LL -     eprint!("Hello {} {}/n", "world", "#2");
+LL +     eprintln!("Hello {} {}", "world", "#2");
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:8:5
@@ -40,8 +43,9 @@ LL |     eprint!("{}/n", 1265);
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!("{}", 1265);
-   |     ^^^^^^^^    --
+LL -     eprint!("{}/n", 1265);
+LL +     eprintln!("{}", 1265);
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:9:5
@@ -51,8 +55,9 @@ LL |     eprint!("/n");
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!();
-   |     ^^^^^^^^ --
+LL -     eprint!("/n");
+LL +     eprintln!();
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:28:5
@@ -62,8 +67,9 @@ LL |     eprint!("//n"); // should fail
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!("/"); // should fail
-   |     ^^^^^^^^    --
+LL -     eprint!("//n"); // should fail
+LL +     eprintln!("/"); // should fail
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:35:5
@@ -76,8 +82,8 @@ LL | |     );
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!(
-LL |         ""
+LL ~     eprintln!(
+LL ~         ""
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
@@ -91,8 +97,8 @@ LL | |     );
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!(
-LL |         r""
+LL ~     eprintln!(
+LL ~         r""
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
@@ -103,8 +109,9 @@ LL |     eprint!("/r/n"); //~ ERROR
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!("/r"); //~ ERROR
-   |     ^^^^^^^^     --
+LL -     eprint!("/r/n"); //~ ERROR
+LL +     eprintln!("/r"); //~ ERROR
+   | 
 
 error: using `eprint!()` with a format string that ends in a single newline
   --> $DIR/eprint_with_newline.rs:48:5
@@ -114,8 +121,9 @@ LL |     eprint!("foo/rbar/n") // ~ ERROR
    |
 help: use `eprintln!` instead
    |
-LL |     eprintln!("foo/rbar") // ~ ERROR
-   |     ^^^^^^^^          --
+LL -     eprint!("foo/rbar/n") // ~ ERROR
+LL +     eprintln!("foo/rbar") // ~ ERROR
+   | 
 
 error: aborting due to 10 previous errors
 
