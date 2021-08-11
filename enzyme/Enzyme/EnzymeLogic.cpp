@@ -195,20 +195,6 @@ struct CacheAnalysis {
       // Pointer operands originating from call instructions that are not
       // malloc/free are conservatively considered uncacheable.
       if (auto obj_op = dyn_cast<CallInst>(obj)) {
-        Function *called = obj_op->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand()))
-#else
-        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue()))
-#endif
-        {
-          if (castinst->isCast()) {
-            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              called = fn;
-            }
-          }
-        }
-
         // If this is a known allocation which is not captured or returned,
         // a caller function cannot overwrite this (since it cannot access).
         // Since we don't currently perform this check, we can instead check

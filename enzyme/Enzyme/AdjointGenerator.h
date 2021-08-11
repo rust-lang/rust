@@ -6487,7 +6487,8 @@ public:
       // may load uncacheable data)
       //    Store and reload it
       if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
-          !orig->doesNotAccessMemory()) {
+          (orig->mayWriteToMemory() ||
+           !gutils->legalRecompute(orig, ValueToValueMapTy(), nullptr))) {
         if (!gutils->unnecessaryIntermediates.count(orig)) {
           gutils->cacheForReverse(BuilderZ, newCall,
                                   getIndex(orig, CacheType::Self));

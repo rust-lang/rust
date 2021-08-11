@@ -816,10 +816,13 @@ public:
         if (Fn->getName().contains("__enzyme_call_inactive")) {
           InactiveCalls.insert(CI);
         }
-        if (F.getName() == "omp_get_max_threads" ||
-            F.getName() == "omp_get_thread_num") {
-          F.addFnAttr(Attribute::ReadOnly);
-          F.addFnAttr(Attribute::InaccessibleMemOnly);
+        if (Fn->getName() == "omp_get_max_threads" ||
+            Fn->getName() == "omp_get_thread_num") {
+          Fn->addFnAttr(Attribute::ReadOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
+          Fn->addFnAttr(Attribute::InaccessibleMemOnly);
+          CI->addAttribute(AttributeList::FunctionIndex,
+                           Attribute::InaccessibleMemOnly);
         }
         if ((Fn->getName() == "cblas_ddot" || Fn->getName() == "cblas_sdot") &&
             Fn->isDeclaration()) {
