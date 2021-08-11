@@ -45,7 +45,7 @@ impl<'tcx> Cx<'tcx> {
             .iter()
             .enumerate()
             .filter_map(|(index, stmt)| {
-                let hir_id = stmt.hir_id;
+                let hir_id = stmt.kind.hir_id();
                 let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id);
                 match stmt.kind {
                     hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {

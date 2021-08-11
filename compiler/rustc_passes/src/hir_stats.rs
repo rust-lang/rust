@@ -145,7 +145,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
-        self.record("Stmt", Id::Node(s.hir_id), s);
+        self.record("Stmt", Id::Node(s.kind.hir_id()), s);
         hir_visit::walk_stmt(self, s)
     }
 

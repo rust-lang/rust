@@ -567,7 +567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
-        self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
+        self.warn_if_unreachable(stmt.kind.hir_id(), stmt.span, "statement");
 
         // Hide the outer diverging and `has_errors` flags.
         let old_diverges = self.diverges.replace(Diverges::Maybe);

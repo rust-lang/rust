@@ -2415,30 +2415,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt<'hir>; 1]> {
-        let (hir_id, kind) = match s.kind {
+        let kind = match s.kind {
             StmtKind::Local(ref l) => {
                 let l = self.lower_local(l);
                 let hir_id = self.lower_node_id(s.id());
                 self.alias_attrs(hir_id, l.hir_id);
                 return smallvec![hir::Stmt {
-                    hir_id,
                     kind: hir::StmtKind::Local(self.arena.alloc(l)),
                     span: s.span,
                 }];
             }
             StmtKind::Item(ref it) => {
-                // Can only use the ID once.
-                let mut id = Some(s.id());
                 return self
                     .lower_item_id(it)
                     .into_iter()
                     .map(|item_id| {
-                        let hir_id = id
-                            .take()
-                            .map(|id| self.lower_node_id(id))
-                            .unwrap_or_else(|| self.next_id());
-
-                        hir::Stmt { hir_id, kind: hir::StmtKind::Item(item_id), span: s.span }
+                        hir::Stmt { kind: hir::StmtKind::Item(item_id), span: s.span }
                     })
                     .collect();
             }
@@ -2446,18 +2438,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let e = self.lower_expr(e);
                 let hir_id = self.lower_node_id(s.id());
                 self.alias_attrs(hir_id, e.hir_id);
-                (hir_id, hir::StmtKind::Expr(e))
+                hir::StmtKind::Expr(e)
             }
             StmtKind::Semi(ref e) => {
                 let e = self.lower_expr(e);
                 let hir_id = self.lower_node_id(s.id());
                 self.alias_attrs(hir_id, e.hir_id);
-                (hir_id, hir::StmtKind::Semi(e))
+                hir::StmtKind::Semi(e)
             }
             StmtKind::Empty { id: _ } => return smallvec![],
             StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         };
-        smallvec![hir::Stmt { hir_id, kind, span: s.span }]
+        smallvec![hir::Stmt { kind, span: s.span }]
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
@@ -2492,7 +2484,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // Helper methods for building HIR.
 
     fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
-        hir::Stmt { span, kind, hir_id: self.next_id() }
+        hir::Stmt { span, kind }
     }
 
     fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {

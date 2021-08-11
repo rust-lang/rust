@@ -1162,7 +1162,6 @@ impl UnOp {
 /// A statement.
 #[derive(Debug, HashStable_Generic)]
 pub struct Stmt<'hir> {
-    pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
     pub span: Span,
 }
@@ -1181,6 +1180,16 @@ pub enum StmtKind<'hir> {
 
     /// An expression with a trailing semi-colon (may have any type).
     Semi(&'hir Expr<'hir>),
+}
+
+impl<'hir> StmtKind<'hir> {
+    pub fn hir_id(&self) -> HirId {
+        match self {
+            StmtKind::Local(local) => local.hir_id,
+            StmtKind::Item(id) => id.hir_id(),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.hir_id,
+        }
+    }
 }
 
 /// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
@@ -3233,7 +3242,6 @@ impl<'hir> Node<'hir> {
             Node::Field(FieldDef { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })
-            | Node::Stmt(Stmt { hir_id, .. })
             | Node::Ty(Ty { hir_id, .. })
             | Node::Binding(Pat { hir_id, .. })
             | Node::Pat(Pat { hir_id, .. })
@@ -3244,6 +3252,7 @@ impl<'hir> Node<'hir> {
             | Node::Param(Param { hir_id, .. })
             | Node::Infer(InferArg { hir_id, .. })
             | Node::GenericParam(GenericParam { hir_id, .. }) => Some(*hir_id),
+            Node::Stmt(stmt) => Some(stmt.kind.hir_id()),
             Node::TraitRef(TraitRef { hir_ref_id, .. }) => Some(*hir_ref_id),
             Node::PathSegment(PathSegment { hir_id, .. }) => *hir_id,
             Node::Variant(Variant { id, .. }) => Some(*id),

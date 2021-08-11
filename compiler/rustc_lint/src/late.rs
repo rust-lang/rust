@@ -180,7 +180,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
         // See `EarlyContextAndPass::visit_stmt` for an explanation
         // of why we call `walk_stmt` outside of `with_lint_attrs`
-        self.with_lint_attrs(s.hir_id, |cx| {
+        self.with_lint_attrs(s.kind.hir_id(), |cx| {
             lint_callback!(cx, check_stmt, s);
         });
         hir_visit::walk_stmt(self, s);
