@@ -367,6 +367,10 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         let record_name = make::path_concat(first, second);
         Some(record_name)
     }
+
+    fn gen_tuple_field(field_name: &String) -> ast::Pat {
+        ast::Pat::IdentPat(make::ident_pat(false, false, make::name(field_name)))
+    }
     // FIXME: return `None` if the trait carries a generic type; we can only
     // generate this code `Self` for the time being.
 
@@ -399,7 +403,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             let l_name = &format!("l_{}", field_name);
                             l_fields.push(gen_record_pat_field(&field_name, &l_name));
 
-                            let r_name = &format!("l_{}", field_name);
+                            let r_name = &format!("r_{}", field_name);
                             r_fields.push(gen_record_pat_field(&field_name, &r_name));
 
                             let lhs = make::expr_path(make::ext::ident_path(l_name));
@@ -408,9 +412,9 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             expr = gen_eq_chain(expr, cmp);
                         }
 
-                        let l_record = gen_record_pat(gen_variant_path(&variant)?, l_fields);
-                        let r_record = gen_record_pat(gen_variant_path(&variant)?, r_fields);
-                        let tuple = make::tuple_pat(vec![l_record.into(), r_record.into()]);
+                        let left = gen_record_pat(gen_variant_path(&variant)?, l_fields);
+                        let right = gen_record_pat(gen_variant_path(&variant)?, r_fields);
+                        let tuple = make::tuple_pat(vec![left.into(), right.into()]);
 
                         if let Some(expr) = expr {
                             arms.push(make::match_arm(Some(tuple.into()), None, expr));
@@ -419,7 +423,32 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
                     // todo!("implement tuple record iteration")
                     Some(ast::FieldList::TupleFieldList(list)) => {
-                        todo!("implement tuple enum iteration")
+                        let mut expr = None;
+                        let mut l_fields = vec![];
+                        let mut r_fields = vec![];
+
+                        for (i, _) in list.fields().enumerate() {
+                            let field_name = format!("{}", i);
+
+                            let l_name = format!("l{}", field_name);
+                            l_fields.push(gen_tuple_field(&l_name));
+
+                            let r_name = format!("r{}", field_name);
+                            r_fields.push(gen_tuple_field(&r_name));
+
+                            let lhs = make::expr_path(make::ext::ident_path(&l_name));
+                            let rhs = make::expr_path(make::ext::ident_path(&r_name));
+                            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                            expr = gen_eq_chain(expr, cmp);
+                        }
+
+                        let left = make::tuple_struct_pat(gen_variant_path(&variant)?, l_fields);
+                        let right = make::tuple_struct_pat(gen_variant_path(&variant)?, r_fields);
+                        let tuple = make::tuple_pat(vec![left.into(), right.into()]);
+
+                        if let Some(expr) = expr {
+                            arms.push(make::match_arm(Some(tuple.into()), None, expr));
+                        }
                     }
                     None => continue,
                 }
