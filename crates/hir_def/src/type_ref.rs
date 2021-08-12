@@ -118,10 +118,18 @@ impl LifetimeRef {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeBound {
-    Path(Path),
+    Path(Path, TraitBoundModifier),
     ForLifetime(Box<[Name]>, Path),
     Lifetime(LifetimeRef),
     Error,
+}
+
+/// A modifier on a bound, currently this is only used for `?Sized`, where the
+/// modifier is `Maybe`.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum TraitBoundModifier {
+    None,
+    Maybe,
 }
 
 impl TypeRef {
@@ -233,7 +241,7 @@ impl TypeRef {
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
                         match bound.as_ref() {
-                            TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => {
+                            TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
                                 go_path(path, f)
                             }
                             TypeBound::Lifetime(_) | TypeBound::Error => (),
@@ -265,7 +273,7 @@ impl TypeRef {
                         }
                         for bound in &binding.bounds {
                             match bound.as_ref() {
-                                TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => {
+                                TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
                                     go_path(path, f)
                                 }
                                 TypeBound::Lifetime(_) | TypeBound::Error => (),
@@ -295,7 +303,13 @@ impl TypeBound {
 
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {
-                lower_path_type(path_type).map(TypeBound::Path).unwrap_or(TypeBound::Error)
+                let m = match node.question_mark_token() {
+                    Some(_) => TraitBoundModifier::Maybe,
+                    None => TraitBoundModifier::None,
+                };
+                lower_path_type(path_type)
+                    .map(|p| TypeBound::Path(p, m))
+                    .unwrap_or(TypeBound::Error)
             }
             ast::TypeBoundKind::ForType(for_type) => {
                 let lt_refs = match for_type.generic_param_list() {
@@ -320,9 +334,10 @@ impl TypeBound {
         }
     }
 
-    pub fn as_path(&self) -> Option<&Path> {
+    pub fn as_path(&self) -> Option<(&Path, &TraitBoundModifier)> {
         match self {
-            TypeBound::Path(p) | TypeBound::ForLifetime(_, p) => Some(p),
+            TypeBound::Path(p, m) => Some((p, m)),
+            TypeBound::ForLifetime(_, p) => Some((p, &TraitBoundModifier::None)),
             TypeBound::Lifetime(_) | TypeBound::Error => None,
         }
     }

@@ -937,7 +937,8 @@ fn bar(worble: ()) ${0:-> ()} {
     fn add_function_with_impl_trait_arg() {
         check_assist(
             generate_function,
-            r"
+            r#"
+//- minicore: sized
 trait Foo {}
 fn foo() -> impl Foo {
     todo!()
@@ -945,8 +946,8 @@ fn foo() -> impl Foo {
 fn baz() {
     $0bar(foo())
 }
-",
-            r"
+"#,
+            r#"
 trait Foo {}
 fn foo() -> impl Foo {
     todo!()
@@ -958,7 +959,7 @@ fn baz() {
 fn bar(foo: impl Foo) ${0:-> ()} {
     todo!()
 }
-",
+"#,
         )
     }
 

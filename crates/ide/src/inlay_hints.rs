@@ -924,9 +924,53 @@ fn main() {
     let foo = foo5();
      // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
     let foo = foo6();
-     // ^^^ impl Fn(f64, f64) -> u32 + Sized
+     // ^^^ impl Fn(f64, f64) -> u32
     let foo = foo7();
-     // ^^^ *const (impl Fn(f64, f64) -> u32 + Sized)
+     // ^^^ *const impl Fn(f64, f64) -> u32
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn fn_hints_ptr_rpit_fn_parentheses() {
+        check_types(
+            r#"
+//- minicore: fn, sized
+trait Trait {}
+
+fn foo1() -> *const impl Fn() { loop {} }
+fn foo2() -> *const (impl Fn() + Sized) { loop {} }
+fn foo3() -> *const (impl Fn() + ?Sized) { loop {} }
+fn foo4() -> *const (impl Sized + Fn()) { loop {} }
+fn foo5() -> *const (impl ?Sized + Fn()) { loop {} }
+fn foo6() -> *const (impl Fn() + Trait) { loop {} }
+fn foo7() -> *const (impl Fn() + Sized + Trait) { loop {} }
+fn foo8() -> *const (impl Fn() + ?Sized + Trait) { loop {} }
+fn foo9() -> *const (impl Fn() -> u8 + ?Sized) { loop {} }
+fn foo10() -> *const (impl Fn() + Sized + ?Sized) { loop {} }
+
+fn main() {
+    let foo = foo1();
+    //  ^^^ *const impl Fn()
+    let foo = foo2();
+    //  ^^^ *const impl Fn()
+    let foo = foo3();
+    //  ^^^ *const (impl Fn() + ?Sized)
+    let foo = foo4();
+    //  ^^^ *const impl Fn()
+    let foo = foo5();
+    //  ^^^ *const (impl Fn() + ?Sized)
+    let foo = foo6();
+    //  ^^^ *const (impl Fn() + Trait)
+    let foo = foo7();
+    //  ^^^ *const (impl Fn() + Trait)
+    let foo = foo8();
+    //  ^^^ *const (impl Fn() + Trait + ?Sized)
+    let foo = foo9();
+    //  ^^^ *const (impl Fn() -> u8 + ?Sized)
+    let foo = foo10();
+    //  ^^^ *const impl Fn()
 }
 "#,
         )

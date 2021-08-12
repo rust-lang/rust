@@ -7,7 +7,7 @@ use hir_def::{
 };
 use hir_ty::display::{
     write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
-    HirFormatter,
+    HirFormatter, SizedByDefault,
 };
 use hir_ty::Interner;
 use syntax::ast::{self, NameOwner};
@@ -93,7 +93,7 @@ impl HirDisplay for Function {
         } else {
             match &*data.ret_type {
                 TypeRef::ImplTrait(bounds) => match bounds[0].as_ref() {
-                    TypeBound::Path(path) => {
+                    TypeBound::Path(path, _) => {
                         path.segments().iter().last().unwrap().args_and_bindings.unwrap().bindings
                             [0]
                         .type_ref
@@ -239,7 +239,8 @@ impl HirDisplay for TypeParam {
         let predicates =
             bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect::<Vec<_>>();
         if !(predicates.is_empty() || f.omit_verbose_types()) {
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
+            let default_sized = SizedByDefault::Sized { anchor: self.module(f.db).krate().id };
+            write_bounds_like_dyn_trait_with_prefix(":", &predicates, default_sized, f)?;
         }
         Ok(())
     }

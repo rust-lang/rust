@@ -1226,7 +1226,9 @@ fn main() {
     #[test]
     fn hover_for_param_with_multiple_traits() {
         check(
-            r#"trait Deref {
+            r#"
+            //- minicore: sized
+            trait Deref {
                 type Target: ?Sized;
             }
             trait DerefMut {
@@ -3417,17 +3419,17 @@ fn foo() {
     fn hover_type_param() {
         check(
             r#"
+//- minicore: sized
 struct Foo<T>(T);
 trait Copy {}
 trait Clone {}
-trait Sized {}
 impl<T: Copy + Clone> Foo<T$0> where T: Sized {}
 "#,
             expect![[r#"
                 *T*
 
                 ```rust
-                T: Copy + Clone + Sized
+                T: Copy + Clone
                 ```
             "#]],
         );
@@ -3457,6 +3459,26 @@ impl<T: 'static> Foo<T$0> {}
                 T
                 ```
                 "#]],
+        );
+    }
+
+    #[test]
+    fn hover_type_param_not_sized() {
+        check(
+            r#"
+//- minicore: sized
+struct Foo<T>(T);
+trait Copy {}
+trait Clone {}
+impl<T: Copy + Clone> Foo<T$0> where T: ?Sized {}
+"#,
+            expect![[r#"
+                *T*
+
+                ```rust
+                T: Copy + Clone + ?Sized
+                ```
+            "#]],
         );
     }
 

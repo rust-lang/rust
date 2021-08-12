@@ -8,6 +8,7 @@ use crate::{
     attr::RawAttrs,
     generics::{WherePredicate, WherePredicateTypeTarget},
     path::GenericArg,
+    type_ref::TraitBoundModifier,
     visibility::RawVisibility,
 };
 
@@ -543,7 +544,13 @@ impl<'a> Printer<'a> {
             }
 
             match bound.as_ref() {
-                TypeBound::Path(path) => self.print_path(path),
+                TypeBound::Path(path, modifier) => {
+                    match modifier {
+                        TraitBoundModifier::None => (),
+                        TraitBoundModifier::Maybe => w!(self, "?"),
+                    }
+                    self.print_path(path)
+                }
                 TypeBound::ForLifetime(lifetimes, path) => {
                     w!(self, "for<{}> ", lifetimes.iter().format(", "));
                     self.print_path(path);

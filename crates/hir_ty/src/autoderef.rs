@@ -14,8 +14,8 @@ use log::{info, warn};
 
 use crate::{
     db::HirDatabase, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
-    DebruijnIndex, Environment, InEnvironment, Interner, ProjectionTyExt, Solution, Substitution,
-    Ty, TyBuilder, TyKind,
+    ConstrainedSubst, DebruijnIndex, Environment, Guidance, InEnvironment, Interner,
+    ProjectionTyExt, Solution, Substitution, Ty, TyBuilder, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
@@ -187,7 +187,8 @@ fn deref_by_trait(
     let solution = db.trait_solve(krate, canonical)?;
 
     match &solution {
-        Solution::Unique(vars) => {
+        Solution::Unique(Canonical { value: ConstrainedSubst { subst, .. }, binders })
+        | Solution::Ambig(Guidance::Definite(Canonical { value: subst, binders })) => {
             // FIXME: vars may contain solutions for any inference variables
             // that happened to be inside ty. To correctly handle these, we
             // would have to pass the solution up to the inference context, but
@@ -203,8 +204,8 @@ fn deref_by_trait(
             // assumptions will be broken. We would need to properly introduce
             // new variables in that case
 
-            for i in 1..vars.binders.len(&Interner) {
-                if vars.value.subst.at(&Interner, i - 1).assert_ty_ref(&Interner).kind(&Interner)
+            for i in 1..binders.len(&Interner) {
+                if subst.at(&Interner, i - 1).assert_ty_ref(&Interner).kind(&Interner)
                     != &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.goal, solution);
@@ -214,13 +215,11 @@ fn deref_by_trait(
             // FIXME: we remove lifetime variables here since they can confuse
             // the method resolution code later
             Some(fixup_lifetime_variables(Canonical {
-                value: vars
-                    .value
-                    .subst
-                    .at(&Interner, vars.value.subst.len(&Interner) - 1)
+                value: subst
+                    .at(&Interner, subst.len(&Interner) - 1)
                     .assert_ty_ref(&Interner)
                     .clone(),
-                binders: vars.binders.clone(),
+                binders: binders.clone(),
             }))
         }
         Solution::Ambig(_) => {

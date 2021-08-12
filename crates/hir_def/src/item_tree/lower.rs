@@ -10,7 +10,7 @@ use syntax::{
 
 use crate::{
     generics::{GenericParams, TypeParamData, TypeParamProvenance},
-    type_ref::{LifetimeRef, TraitRef},
+    type_ref::{LifetimeRef, TraitBoundModifier, TraitRef},
 };
 
 use super::*;
@@ -369,7 +369,7 @@ impl<'a> Ctx<'a> {
         let (ret_type, async_ret_type) = if func.async_token().is_some() {
             let async_ret_type = ret_type.clone();
             let future_impl = desugar_future_path(ret_type);
-            let ty_bound = Interned::new(TypeBound::Path(future_impl));
+            let ty_bound = Interned::new(TypeBound::Path(future_impl, TraitBoundModifier::None));
             (TypeRef::ImplTrait(vec![ty_bound]), Some(async_ret_type))
         } else {
             (ret_type, None)

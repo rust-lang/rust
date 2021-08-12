@@ -412,12 +412,27 @@ pub(crate) fn associated_ty_data_query(
         .with_type_param_mode(crate::lower::TypeParamLoweringMode::Variable);
     let self_ty =
         TyKind::BoundVar(BoundVar::new(crate::DebruijnIndex::INNERMOST, 0)).intern(&Interner);
-    let bounds = type_alias_data
+    let mut bounds: Vec<_> = type_alias_data
         .bounds
         .iter()
         .flat_map(|bound| ctx.lower_type_bound(bound, self_ty.clone(), false))
         .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
         .collect();
+
+    if !ctx.unsized_types.borrow().contains(&self_ty) {
+        let sized_trait = resolver
+            .krate()
+            .and_then(|krate| db.lang_item(krate, "sized".into()))
+            .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+        let sized_bound = sized_trait.into_iter().map(|sized_trait| {
+            let trait_bound =
+                rust_ir::TraitBound { trait_id: sized_trait, args_no_self: Default::default() };
+            let inline_bound = rust_ir::InlineBound::TraitBound(trait_bound);
+            chalk_ir::Binders::empty(&Interner, inline_bound)
+        });
+        bounds.extend(sized_bound);
+        bounds.shrink_to_fit();
+    }
 
     // FIXME: Re-enable where clauses on associated types when an upstream chalk bug is fixed.
     //        (rust-analyzer#9052)

@@ -17,8 +17,8 @@ use crate::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferResult, InferenceContext, OverloadedDeref,
         PointerCast, TypeError, TypeMismatch,
     },
-    static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, InEnvironment, Interner, Solution,
-    Substitution, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner,
+    Solution, Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
 
 pub(crate) type CoerceResult = Result<InferOk<(Vec<Adjustment>, Ty)>, TypeError>;
@@ -541,7 +541,7 @@ impl<'a> InferenceContext<'a> {
             _ => return Err(TypeError),
         };
 
-        let trait_ref = {
+        let coerce_unsized_tref = {
             let b = TyBuilder::trait_ref(self.db, coerce_unsized_trait);
             if b.remaining() != 2 {
                 // The CoerceUnsized trait should have two generic params: Self and T.
@@ -551,7 +551,7 @@ impl<'a> InferenceContext<'a> {
         };
 
         let goal: InEnvironment<DomainGoal> =
-            InEnvironment::new(&self.trait_env.env, trait_ref.cast(&Interner));
+            InEnvironment::new(&self.trait_env.env, coerce_unsized_tref.cast(&Interner));
 
         let canonicalized = self.canonicalize(goal);
 
@@ -575,7 +575,9 @@ impl<'a> InferenceContext<'a> {
                     },
                 );
             }
-            // FIXME: should we accept ambiguous results here?
+            Solution::Ambig(Guidance::Definite(subst)) => {
+                canonicalized.apply_solution(&mut self.table, subst)
+            }
             _ => return Err(TypeError),
         };
         let unsize =

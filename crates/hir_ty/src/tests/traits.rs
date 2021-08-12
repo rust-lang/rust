@@ -43,7 +43,7 @@ fn test() {
 fn infer_desugar_async() {
     check_types(
         r#"
-//- minicore: future
+//- minicore: future, sized
 async fn foo() -> u64 { 128 }
 
 fn test() {
@@ -147,7 +147,7 @@ mod ops {
     pub use self::try_trait::Try;
 }
 
-mov convert {
+mod convert {
     pub trait From<T> {}
     impl<T> From<T> for T {}
 }
@@ -567,8 +567,8 @@ fn deref_trait() {
     check_types(
         r#"
 //- minicore: deref
-struct Arc<T>;
-impl<T> core::ops::Deref for Arc<T> {
+struct Arc<T: ?Sized>;
+impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -589,9 +589,9 @@ fn deref_trait_with_inference_var() {
     check_types(
         r#"
 //- minicore: deref
-struct Arc<T>;
-fn new_arc<T>() -> Arc<T> { Arc }
-impl<T> core::ops::Deref for Arc<T> {
+struct Arc<T: ?Sized>;
+fn new_arc<T: ?Sized>() -> Arc<T> { Arc }
+impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -631,7 +631,7 @@ fn deref_trait_with_question_mark_size() {
     check_types(
         r#"
 //- minicore: deref
-struct Arc<T>;
+struct Arc<T: ?Sized>;
 impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
@@ -646,6 +646,25 @@ fn test(s: Arc<S>) {
 } //^^^^^^^^^^^^^ (S, u128)
 "#,
     );
+}
+
+#[test]
+fn deref_trait_with_implicit_sized_requirement_on_inference_var() {
+    check_types(
+        r#"
+//- minicore: deref
+struct Foo<T>;
+impl<T> core::ops::Deref for Foo<T> {
+    type Target = ();
+}
+fn test() {
+    let foo = Foo;
+    *foo;
+  //^^^^ ()
+    let _: Foo<u8> = foo;
+}
+"#,
+    )
 }
 
 #[test]
@@ -845,6 +864,7 @@ fn test<T: ApplyL>(t: T) {
 fn argument_impl_trait() {
     check_infer_with_mismatches(
         r#"
+//- minicore: sized
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
@@ -902,6 +922,7 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
 fn argument_impl_trait_type_args_1() {
     check_infer_with_mismatches(
         r#"
+//- minicore: sized
 trait Trait {}
 trait Foo {
     // this function has an implicit Self param, an explicit type param,
@@ -967,6 +988,7 @@ fn test() {
 fn argument_impl_trait_type_args_2() {
     check_infer_with_mismatches(
         r#"
+//- minicore: sized
 trait Trait {}
 struct S;
 impl Trait for S {}
@@ -1008,6 +1030,7 @@ fn test() {
 fn argument_impl_trait_to_fn_pointer() {
     check_infer_with_mismatches(
         r#"
+//- minicore: sized
 trait Trait {}
 fn foo(x: impl Trait) { loop {} }
 struct S;
@@ -1032,6 +1055,7 @@ fn test() {
 fn impl_trait() {
     check_infer(
         r#"
+//- minicore: sized
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
@@ -1082,6 +1106,7 @@ fn simple_return_pos_impl_trait() {
     cov_mark::check!(lower_rpit);
     check_infer(
         r#"
+//- minicore: sized
 trait Trait<T> {
     fn foo(&self) -> T;
 }
@@ -1110,6 +1135,7 @@ fn test() {
 fn more_return_pos_impl_trait() {
     check_infer(
         r#"
+//- minicore: sized
 trait Iterator {
     type Item;
     fn next(&mut self) -> Self::Item;
@@ -1168,6 +1194,7 @@ fn test() {
 fn dyn_trait() {
     check_infer(
         r#"
+//- minicore: sized
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
@@ -1217,6 +1244,7 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
 fn dyn_trait_in_impl() {
     check_infer(
         r#"
+//- minicore: sized
 trait Trait<T, U> {
     fn foo(&self) -> (T, U);
 }
@@ -1252,6 +1280,7 @@ fn test(s: S<u32, i32>) {
 fn dyn_trait_bare() {
     check_infer(
         r#"
+//- minicore: sized
 trait Trait {
     fn foo(&self) -> u64;
 }
@@ -1290,6 +1319,7 @@ fn test(x: Trait, y: &Trait) -> u64 {
 fn weird_bounds() {
     check_infer(
         r#"
+//- minicore: sized
 trait Trait {}
 fn test(
     a: impl Trait + 'lifetime,
@@ -1302,11 +1332,11 @@ fn test(
 "#,
         expect![[r#"
             28..29 'a': impl Trait
-            59..60 'b': impl
+            59..60 'b': impl Sized
             82..83 'c': impl Trait
-            103..104 'd': impl
-            128..129 'e': impl
-            148..149 'f': impl Trait
+            103..104 'd': impl Sized
+            128..129 'e': impl ?Sized
+            148..149 'f': impl Trait + ?Sized
             173..175 '{}': ()
         "#]],
     );
@@ -1331,6 +1361,7 @@ fn test(x: (impl Trait + UnknownTrait)) {
 fn assoc_type_bindings() {
     check_infer(
         r#"
+//- minicore: sized
 trait Trait {
     type Type;
 }
@@ -1495,6 +1526,7 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
 fn super_trait_impl_trait_method_resolution() {
     check_infer(
         r#"
+//- minicore: sized
 mod foo {
     trait SuperTrait {
         fn foo(&self) -> u32 {}
@@ -2299,6 +2331,7 @@ impl TokenStream for Rustc {
 fn unify_impl_trait() {
     check_infer_with_mismatches(
         r#"
+//- minicore: sized
 trait Trait<T> {}
 
 fn foo(x: impl Trait<u32>) { loop {} }
@@ -2417,8 +2450,8 @@ fn dyn_trait_through_chalk() {
     check_types(
         r#"
 //- minicore: deref
-struct Box<T> {}
-impl<T> core::ops::Deref for Box<T> {
+struct Box<T: ?Sized> {}
+impl<T: ?Sized> core::ops::Deref for Box<T> {
     type Target = T;
 }
 trait Trait {
@@ -3513,5 +3546,35 @@ fn test() {
     }
 }
 "#,
+    );
+}
+
+#[test]
+fn associated_type_sized_bounds() {
+    check_infer(
+        r#"
+//- minicore: sized
+struct Yes;
+trait IsSized { const IS_SIZED: Yes; }
+impl<T: Sized> IsSized for T { const IS_SIZED: Yes = Yes; }
+
+trait Foo {
+    type Explicit: Sized;
+    type Implicit;
+    type Relaxed: ?Sized;
+}
+fn f<F: Foo>() {
+    F::Explicit::IS_SIZED;
+    F::Implicit::IS_SIZED;
+    F::Relaxed::IS_SIZED;
+}
+"#,
+        expect![[r#"
+            104..107 'Yes': Yes
+            212..295 '{     ...ZED; }': ()
+            218..239 'F::Exp..._SIZED': Yes
+            245..266 'F::Imp..._SIZED': Yes
+            272..292 'F::Rel..._SIZED': {unknown}
+        "#]],
     );
 }

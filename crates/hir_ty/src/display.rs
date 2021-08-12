@@ -4,6 +4,7 @@
 
 use std::fmt::{self, Debug};
 
+use base_db::CrateId;
 use chalk_ir::BoundVar;
 use hir_def::{
     body,
@@ -13,9 +14,9 @@ use hir_def::{
     intern::{Internable, Interned},
     item_scope::ItemInNs,
     path::{Path, PathKind},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    AssocContainerId, Lookup, ModuleId, TraitId,
+    AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
@@ -376,10 +377,20 @@ impl HirDisplay for Ty {
                 }
 
                 // FIXME: all this just to decide whether to use parentheses...
-                let datas;
-                let predicates: Vec<_> = match t.kind(&Interner) {
+                let contains_impl_fn = |bounds: &[QuantifiedWhereClause]| {
+                    bounds.iter().any(|bound| {
+                        if let WhereClause::Implemented(trait_ref) = bound.skip_binders() {
+                            let trait_ = trait_ref.hir_trait_id();
+                            fn_traits(f.db.upcast(), trait_).any(|it| it == trait_)
+                        } else {
+                            false
+                        }
+                    })
+                };
+                let (preds_to_print, has_impl_fn_pred) = match t.kind(&Interner) {
                     TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
-                        dyn_ty.bounds.skip_binders().interned().iter().cloned().collect()
+                        let bounds = dyn_ty.bounds.skip_binders().interned();
+                        (bounds.len(), contains_impl_fn(bounds))
                     }
                     TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
@@ -389,33 +400,54 @@ impl HirDisplay for Ty {
                         let impl_trait_id =
                             f.db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
-                            datas =
+                            let datas =
                                 f.db.return_type_impl_traits(func)
                                     .expect("impl trait id without data");
                             let data = (*datas)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                             let bounds = data.substitute(&Interner, parameters);
-                            bounds.into_value_and_skipped_binders().0
+                            let mut len = bounds.skip_binders().len();
+
+                            // Don't count Sized but count when it absent
+                            // (i.e. when explicit ?Sized bound is set).
+                            let default_sized = SizedByDefault::Sized {
+                                anchor: func.lookup(f.db.upcast()).module(f.db.upcast()).krate(),
+                            };
+                            let sized_bounds = bounds
+                                .skip_binders()
+                                .iter()
+                                .filter(|b| {
+                                    matches!(
+                                        b.skip_binders(),
+                                        WhereClause::Implemented(trait_ref)
+                                            if default_sized.is_sized_trait(
+                                                trait_ref.hir_trait_id(),
+                                                f.db.upcast(),
+                                            ),
+                                    )
+                                })
+                                .count();
+                            match sized_bounds {
+                                0 => len += 1,
+                                _ => {
+                                    len = len.saturating_sub(sized_bounds);
+                                }
+                            }
+
+                            (len, contains_impl_fn(bounds.skip_binders()))
                         } else {
-                            Vec::new()
+                            (0, false)
                         }
                     }
-                    _ => Vec::new(),
+                    _ => (0, false),
                 };
 
-                if let Some(WhereClause::Implemented(trait_ref)) =
-                    predicates.get(0).map(|b| b.skip_binders())
-                {
-                    let trait_ = trait_ref.hir_trait_id();
-                    if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_)
-                        && predicates.len() <= 2
-                    {
-                        return t.hir_fmt(f);
-                    }
+                if has_impl_fn_pred && preds_to_print <= 2 {
+                    return t.hir_fmt(f);
                 }
 
-                if predicates.len() > 1 {
+                if preds_to_print > 1 {
                     write!(f, "(")?;
                     t.hir_fmt(f)?;
                     write!(f, ")")?;
@@ -582,7 +614,13 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.substitute(&Interner, &parameters);
-                        write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
+                        let krate = func.lookup(f.db.upcast()).module(f.db.upcast()).krate();
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            bounds.skip_binders(),
+                            SizedByDefault::Sized { anchor: krate },
+                            f,
+                        )?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
@@ -641,7 +679,13 @@ impl HirDisplay for Ty {
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
-                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds, f)?;
+                        let krate = id.parent.module(f.db.upcast()).krate();
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            &bounds,
+                            SizedByDefault::Sized { anchor: krate },
+                            f,
+                        )?;
                     }
                 }
             }
@@ -650,6 +694,7 @@ impl HirDisplay for Ty {
                 write_bounds_like_dyn_trait_with_prefix(
                     "dyn",
                     dyn_ty.bounds.skip_binders().interned(),
+                    SizedByDefault::NotSized,
                     f,
                 )?;
             }
@@ -664,7 +709,13 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.substitute(&Interner, &opaque_ty.substitution);
-                        write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
+                        let krate = func.lookup(f.db.upcast()).module(f.db.upcast()).krate();
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            bounds.skip_binders(),
+                            SizedByDefault::Sized { anchor: krate },
+                            f,
+                        )?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "{{async block}}")?;
@@ -713,15 +764,37 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
     utils::fn_traits(db, krate)
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SizedByDefault {
+    NotSized,
+    Sized { anchor: CrateId },
+}
+
+impl SizedByDefault {
+    fn is_sized_trait(self, trait_: TraitId, db: &dyn DefDatabase) -> bool {
+        match self {
+            Self::NotSized => false,
+            Self::Sized { anchor } => {
+                let sized_trait =
+                    db.lang_item(anchor, "sized".into()).and_then(|lang_item| lang_item.as_trait());
+                Some(trait_) == sized_trait
+            }
+        }
+    }
+}
+
 pub fn write_bounds_like_dyn_trait_with_prefix(
     prefix: &str,
     predicates: &[QuantifiedWhereClause],
+    default_sized: SizedByDefault,
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     write!(f, "{}", prefix)?;
-    if !predicates.is_empty() {
+    if !predicates.is_empty()
+        || predicates.is_empty() && matches!(default_sized, SizedByDefault::Sized { .. })
+    {
         write!(f, " ")?;
-        write_bounds_like_dyn_trait(predicates, f)
+        write_bounds_like_dyn_trait(predicates, default_sized, f)
     } else {
         Ok(())
     }
@@ -729,6 +802,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
 
 fn write_bounds_like_dyn_trait(
     predicates: &[QuantifiedWhereClause],
+    default_sized: SizedByDefault,
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     // Note: This code is written to produce nice results (i.e.
@@ -740,10 +814,18 @@ fn write_bounds_like_dyn_trait(
     let mut first = true;
     let mut angle_open = false;
     let mut is_fn_trait = false;
+    let mut is_sized = false;
     for p in predicates.iter() {
         match p.skip_binders() {
             WhereClause::Implemented(trait_ref) => {
                 let trait_ = trait_ref.hir_trait_id();
+                if default_sized.is_sized_trait(trait_, f.db.upcast()) {
+                    is_sized = true;
+                    if matches!(default_sized, SizedByDefault::Sized { .. }) {
+                        // Don't print +Sized, but rather +?Sized if absent.
+                        continue;
+                    }
+                }
                 if !is_fn_trait {
                     is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
                 }
@@ -807,6 +889,13 @@ fn write_bounds_like_dyn_trait(
     }
     if angle_open {
         write!(f, ">")?;
+    }
+    if matches!(default_sized, SizedByDefault::Sized { .. }) {
+        if !is_sized {
+            write!(f, "{}?Sized", if first { "" } else { " + " })?;
+        } else if first {
+            write!(f, "Sized")?;
+        }
     }
     Ok(())
 }
@@ -1026,7 +1115,13 @@ impl HirDisplay for TypeRef {
 impl HirDisplay for TypeBound {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
-            TypeBound::Path(path) => path.hir_fmt(f),
+            TypeBound::Path(path, modifier) => {
+                match modifier {
+                    TraitBoundModifier::None => (),
+                    TraitBoundModifier::Maybe => write!(f, "?")?,
+                }
+                path.hir_fmt(f)
+            }
             TypeBound::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
             TypeBound::ForLifetime(lifetimes, path) => {
                 write!(f, "for<{}> ", lifetimes.iter().format(", "))?;

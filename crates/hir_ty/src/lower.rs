@@ -18,13 +18,14 @@ use hir_def::{
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{TraitRef as HirTraitRef, TypeBound, TypeRef},
+    type_ref::{TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
 use la_arena::ArenaMap;
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::impl_from;
 use syntax::ast;
@@ -65,6 +66,8 @@ pub struct TyLoweringContext<'a> {
     /// Splitting this up would be a possible fix.
     opaque_type_data: RefCell<Vec<ReturnTypeImplTrait>>,
     expander: RefCell<Option<Expander>>,
+    /// Tracks types with explicit `?Sized` bounds.
+    pub(crate) unsized_types: RefCell<FxHashSet<Ty>>,
 }
 
 impl<'a> TyLoweringContext<'a> {
@@ -83,6 +86,7 @@ impl<'a> TyLoweringContext<'a> {
             type_param_mode,
             opaque_type_data,
             expander: RefCell::new(None),
+            unsized_types: RefCell::default(),
         }
     }
 
@@ -93,17 +97,20 @@ impl<'a> TyLoweringContext<'a> {
     ) -> T {
         let opaque_ty_data_vec = self.opaque_type_data.replace(Vec::new());
         let expander = self.expander.replace(None);
+        let unsized_types = self.unsized_types.replace(Default::default());
         let new_ctx = Self {
             in_binders: debruijn,
             impl_trait_counter: Cell::new(self.impl_trait_counter.get()),
             opaque_type_data: RefCell::new(opaque_ty_data_vec),
             expander: RefCell::new(expander),
+            unsized_types: RefCell::new(unsized_types),
             ..*self
         };
         let result = f(&new_ctx);
         self.impl_trait_counter.set(new_ctx.impl_trait_counter.get());
         self.opaque_type_data.replace(new_ctx.opaque_type_data.into_inner());
         self.expander.replace(new_ctx.expander.into_inner());
+        self.unsized_types.replace(new_ctx.unsized_types.into_inner());
         result
     }
 
@@ -219,6 +226,10 @@ impl<'a> TyLoweringContext<'a> {
                     ImplTraitLoweringMode::Opaque => {
                         let idx = self.impl_trait_counter.get();
                         self.impl_trait_counter.set(idx + 1);
+                        let func = match self.resolver.generic_def() {
+                            Some(GenericDefId::FunctionId(f)) => f,
+                            _ => panic!("opaque impl trait lowering in non-function"),
+                        };
 
                         assert!(idx as usize == self.opaque_type_data.borrow().len());
                         // this dance is to make sure the data is in the right
@@ -238,14 +249,10 @@ impl<'a> TyLoweringContext<'a> {
                         // away instead of two.
                         let actual_opaque_type_data = self
                             .with_debruijn(DebruijnIndex::INNERMOST, |ctx| {
-                                ctx.lower_impl_trait(bounds)
+                                ctx.lower_impl_trait(bounds, func)
                             });
                         self.opaque_type_data.borrow_mut()[idx as usize] = actual_opaque_type_data;
 
-                        let func = match self.resolver.generic_def() {
-                            Some(GenericDefId::FunctionId(f)) => f,
-                            _ => panic!("opaque impl trait lowering in non-function"),
-                        };
                         let impl_trait_id = ImplTraitId::ReturnTypeImplTrait(func, idx);
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
@@ -776,9 +783,26 @@ impl<'a> TyLoweringContext<'a> {
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let mut bindings = None;
         let trait_ref = match bound {
-            TypeBound::Path(path) => {
+            TypeBound::Path(path, TraitBoundModifier::None) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
                 bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
+            }
+            TypeBound::Path(path, TraitBoundModifier::Maybe) => {
+                let sized_trait = self
+                    .resolver
+                    .krate()
+                    .and_then(|krate| self.db.lang_item(krate, "sized".into()))
+                    .and_then(|lang_item| lang_item.as_trait());
+                // Don't lower associated type bindings as the only possible relaxed trait bound
+                // `?Sized` has no of them.
+                // If we got another trait here ignore the bound completely.
+                let trait_id = self
+                    .lower_trait_ref_from_path(path, Some(self_ty.clone()))
+                    .map(|trait_ref| trait_ref.hir_trait_id());
+                if trait_id == sized_trait {
+                    self.unsized_types.borrow_mut().insert(self_ty);
+                }
+                None
             }
             TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
@@ -802,8 +826,12 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: TraitRef,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let last_segment = match bound {
-            TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => path.segments().last(),
-            TypeBound::Error | TypeBound::Lifetime(_) => None,
+            TypeBound::Path(path, TraitBoundModifier::None) | TypeBound::ForLifetime(_, path) => {
+                path.segments().last()
+            }
+            TypeBound::Path(_, TraitBoundModifier::Maybe)
+            | TypeBound::Error
+            | TypeBound::Lifetime(_) => None,
         };
         last_segment
             .into_iter()
@@ -843,13 +871,39 @@ impl<'a> TyLoweringContext<'a> {
             })
     }
 
-    fn lower_impl_trait(&self, bounds: &[Interned<TypeBound>]) -> ReturnTypeImplTrait {
+    fn lower_impl_trait(
+        &self,
+        bounds: &[Interned<TypeBound>],
+        func: FunctionId,
+    ) -> ReturnTypeImplTrait {
         cov_mark::hit!(lower_rpit);
         let self_ty =
             TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
         let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-            bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)).collect()
+            let mut predicates: Vec<_> = bounds
+                .iter()
+                .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
+                .collect();
+
+            if !ctx.unsized_types.borrow().contains(&self_ty) {
+                let krate = func.lookup(ctx.db.upcast()).module(ctx.db.upcast()).krate();
+                let sized_trait = ctx
+                    .db
+                    .lang_item(krate, "sized".into())
+                    .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+                let sized_clause = sized_trait.map(|trait_id| {
+                    let clause = WhereClause::Implemented(TraitRef {
+                        trait_id,
+                        substitution: Substitution::from1(&Interner, self_ty.clone()),
+                    });
+                    crate::wrap_empty_binders(clause)
+                });
+                predicates.extend(sized_clause.into_iter());
+                predicates.shrink_to_fit();
+            }
+            predicates
         });
+
         ReturnTypeImplTrait { bounds: crate::make_only_type_binders(1, predicates) }
     }
 }
@@ -1008,7 +1062,7 @@ pub(crate) fn trait_environment_query(
                 traits_in_scope
                     .push((tr.self_type_parameter(&Interner).clone(), tr.hir_trait_id()));
             }
-            let program_clause: chalk_ir::ProgramClause<Interner> = pred.clone().cast(&Interner);
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
             clauses.push(program_clause.into_from_env_clause(&Interner));
         }
     }
@@ -1035,6 +1089,15 @@ pub(crate) fn trait_environment_query(
         clauses.push(program_clause.into_from_env_clause(&Interner));
     }
 
+    let subst = generics(db.upcast(), def).type_params_subst(db);
+    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+    let implicitly_sized_clauses =
+        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver).map(|pred| {
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
+            program_clause.into_from_env_clause(&Interner)
+        });
+    clauses.extend(implicitly_sized_clauses);
+
     let krate = def.module(db.upcast()).krate();
 
     let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
@@ -1051,10 +1114,49 @@ pub(crate) fn generic_predicates_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let generics = generics(db.upcast(), def);
-    resolver
+
+    let mut predicates = resolver
         .where_predicates_in_scope()
         .flat_map(|pred| ctx.lower_where_predicate(pred, false).map(|p| make_binders(&generics, p)))
-        .collect()
+        .collect::<Vec<_>>();
+
+    let subst = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
+    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+    let implicitly_sized_predicates =
+        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
+            .map(|p| make_binders(&generics, crate::wrap_empty_binders(p)));
+    predicates.extend(implicitly_sized_predicates);
+    predicates.into()
+}
+
+/// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
+/// Exception is Self of a trait def.
+fn implicitly_sized_clauses<'a>(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    explicitly_unsized_tys: &'a FxHashSet<Ty>,
+    substitution: &'a Substitution,
+    resolver: &Resolver,
+) -> impl Iterator<Item = WhereClause> + 'a {
+    let is_trait_def = matches!(def, GenericDefId::TraitId(..));
+    let generic_args = &substitution.as_slice(&Interner)[is_trait_def as usize..];
+    let sized_trait = resolver
+        .krate()
+        .and_then(|krate| db.lang_item(krate, "sized".into()))
+        .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+
+    sized_trait.into_iter().flat_map(move |sized_trait| {
+        let implicitly_sized_tys = generic_args
+            .iter()
+            .filter_map(|generic_arg| generic_arg.ty(&Interner))
+            .filter(move |&self_ty| !explicitly_unsized_tys.contains(self_ty));
+        implicitly_sized_tys.map(move |self_ty| {
+            WhereClause::Implemented(TraitRef {
+                trait_id: sized_trait,
+                substitution: Substitution::from1(&Interner, self_ty.clone()),
+            })
+        })
+    })
 }
 
 /// Resolve the default type params from generics

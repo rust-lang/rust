@@ -922,6 +922,7 @@ fn test() { foo.call(); }
 fn super_trait_impl_return_trait_method_resolution() {
     check_infer(
         r#"
+        //- minicore: sized
         trait Base {
             fn foo(self) -> usize;
         }
@@ -1310,5 +1311,31 @@ impl<'a, T> IntoIterator for &'a [T] {
     fn into_iter(self) -> Self::Out { loop {} }
 }
     "#,
+    );
+}
+
+#[test]
+fn sized_blanket_impl() {
+    check_infer(
+        r#"
+//- minicore: sized
+trait Foo { fn foo() -> u8; }
+impl<T: Sized> Foo for T {}
+fn f<S: Sized, T, U: ?Sized>() {
+    u32::foo;
+    S::foo;
+    T::foo;
+    U::foo;
+    <[u32]>::foo;
+}
+"#,
+        expect![[r#"
+            89..160 '{     ...foo; }': ()
+            95..103 'u32::foo': fn foo<u32>() -> u8
+            109..115 'S::foo': fn foo<S>() -> u8
+            121..127 'T::foo': fn foo<T>() -> u8
+            133..139 'U::foo': {unknown}
+            145..157 '<[u32]>::foo': {unknown}
+        "#]],
     );
 }
