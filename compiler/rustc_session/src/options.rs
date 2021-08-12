@@ -10,6 +10,7 @@ use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TargetTriple, T
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
+use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 
 use std::collections::BTreeMap;
@@ -203,6 +204,9 @@ top_level_options!(
         json_unused_externs: bool [UNTRACKED],
 
         pretty: Option<PpMode> [UNTRACKED],
+
+        /// The (potentially remapped) working directory
+        working_dir: RealFileName [TRACKED],
     }
 );
 

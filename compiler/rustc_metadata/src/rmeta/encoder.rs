@@ -503,7 +503,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                 // Prepend path of working directory onto potentially
                                 // relative paths, because they could become relative
                                 // to a wrong directory.
-                                let working_dir = &self.tcx.sess.working_dir;
+                                // We include `working_dir` as part of the crate hash,
+                                // so it's okay for us to use it as part of the encoded
+                                // metadata.
+                                let working_dir = &self.tcx.sess.opts.working_dir;
                                 match working_dir {
                                     RealFileName::LocalPath(absolute) => {
                                         // If working_dir has not been remapped, then we emit a

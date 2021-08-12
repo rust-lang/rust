@@ -185,7 +185,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         };
 
         let data = CompilationOptions {
-            directory: self.tcx.sess.working_dir.remapped_path_if_available().into(),
+            directory: self.tcx.sess.opts.working_dir.remapped_path_if_available().into(),
             program,
             arguments,
             output: self.save_ctxt.compilation_output(crate_name),
