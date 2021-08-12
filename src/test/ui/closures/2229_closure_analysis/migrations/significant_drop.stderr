@@ -28,12 +28,12 @@ LL | #![deny(rust_2021_incompatible_closure_captures)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
    |
-LL ~     let c = || { let _ = (&t, &t1, &t2); 
+LL ~     let c = || {
+LL +         let _ = (&t, &t1, &t2);
 LL +
 LL +
 LL +
 LL +         let _t = t.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -57,12 +57,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1` to be fully captured
    |
-LL ~     let c = || { let _ = (&t, &t1); 
+LL ~     let c = || {
+LL +         let _ = (&t, &t1);
 LL +
 LL +
 LL +
 LL +         let _t = t.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -80,12 +80,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
-LL ~     let c = || { let _ = &t; 
+LL ~     let c = || {
+LL +         let _ = &t;
 LL +
 LL +
 LL +
 LL +         let _t = t.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -103,12 +103,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
-LL ~     let c = || { let _ = &t; 
+LL ~     let c = || {
+LL +         let _ = &t;
 LL +
 LL +
 LL +
 LL +         let _t = t.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -126,12 +126,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
-LL ~     let c = || { let _ = &t; 
+LL ~     let c = || {
+LL +         let _ = &t;
 LL +
 LL +
 LL +
 LL +         let _t = t.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -149,12 +149,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
-LL ~     let c = || { let _ = &t; 
+LL ~     let c = || {
+LL +         let _ = &t;
 LL +
 LL +
 LL +
 LL +         let _t = t.1;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -177,12 +177,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t1`, `t` to be fully captured
    |
-LL ~     let c = move || { let _ = (&t1, &t); 
+LL ~     let c = move || {
+LL +         let _ = (&t1, &t);
 LL +
 LL +
 LL +
 LL +         println!("{:?} {:?}", t1.1, t.1);
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -200,12 +200,12 @@ LL |         }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `tuple` to be fully captured
    |
-LL ~             let c = || { let _ = &tuple; 
+LL ~             let c = || {
+LL +                 let _ = &tuple;
 LL +
 LL +
 LL +
 LL +                 tuple.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order
@@ -223,12 +223,12 @@ LL |     };
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `tuple` to be fully captured
    |
-LL ~         let c = || { let _ = &tuple; 
+LL ~         let c = || {
+LL +             let _ = &tuple;
 LL +
 LL +
 LL +
 LL +             tuple.0;
-LL +
  ...
 
 error: aborting due to 9 previous errors

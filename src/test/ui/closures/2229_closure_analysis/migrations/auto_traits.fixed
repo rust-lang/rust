@@ -55,7 +55,8 @@ impl Clone for U {
 
 fn test_clone_trait() {
     let f = U(S(String::from("Hello World")), T(0));
-    let c = || { let _ = &f; 
+    let c = || {
+        let _ = &f;
         //~^ ERROR: `Clone` trait implementation for closure and drop order
         //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f.1` does not implement `Clone`
         //~| NOTE: for more information, see

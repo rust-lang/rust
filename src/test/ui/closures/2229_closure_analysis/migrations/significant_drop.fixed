@@ -22,7 +22,8 @@ fn test1_all_need_migration() {
     let t1 = (Foo(0), Foo(0));
     let t2 = (Foo(0), Foo(0));
 
-    let c = || { let _ = (&t, &t1, &t2); 
+    let c = || {
+        let _ = (&t, &t1, &t2);
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
@@ -47,7 +48,8 @@ fn test2_only_precise_paths_need_migration() {
     let t1 = (Foo(0), Foo(0));
     let t2 = (Foo(0), Foo(0));
 
-    let c = || { let _ = (&t, &t1); 
+    let c = || {
+        let _ = (&t, &t1);
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t`, `t1` to be fully captured
@@ -68,7 +70,8 @@ fn test2_only_precise_paths_need_migration() {
 fn test3_only_by_value_need_migration() {
     let t = (Foo(0), Foo(0));
     let t1 = (Foo(0), Foo(0));
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -88,7 +91,8 @@ fn test3_only_by_value_need_migration() {
 fn test4_type_contains_drop_need_migration() {
     let t = ConstainsDropField(Foo(0), Foo(0));
 
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -106,7 +110,8 @@ fn test4_type_contains_drop_need_migration() {
 fn test5_drop_non_drop_aggregate_need_migration() {
     let t = (Foo(0), Foo(0), 0i32);
 
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -122,7 +127,8 @@ fn test5_drop_non_drop_aggregate_need_migration() {
 fn test6_significant_insignificant_drop_aggregate_need_migration() {
     let t = (Foo(0), String::new());
 
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -140,7 +146,8 @@ fn test7_move_closures_non_copy_types_might_need_migration() {
     let t = (Foo(0), Foo(0));
     let t1 = (Foo(0), Foo(0), Foo(0));
 
-    let c = move || { let _ = (&t1, &t); 
+    let c = move || {
+        let _ = (&t1, &t);
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t1`, `t` to be fully captured
@@ -160,7 +167,8 @@ fn test8_drop_order_and_blocks() {
         let tuple =
           (String::from("foo"), String::from("bar"));
         {
-            let c = || { let _ = &tuple; 
+            let c = || {
+                let _ = &tuple;
                 //~^ ERROR: drop order
                 //~| NOTE: for more information, see
                 //~| HELP: add a dummy let to cause `tuple` to be fully captured
@@ -178,7 +186,8 @@ fn test9_drop_order_and_nested_closures() {
     let tuple =
         (String::from("foo"), String::from("bar"));
     let b = || {
-        let c = || { let _ = &tuple; 
+        let c = || {
+            let _ = &tuple;
             //~^ ERROR: drop order
             //~| NOTE: for more information, see
             //~| HELP: add a dummy let to cause `tuple` to be fully captured

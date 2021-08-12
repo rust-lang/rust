@@ -34,7 +34,8 @@ impl<T> Drop for GenericStruct<T> {
 fn significant_drop_needs_migration() {
     let t = (SigDrop {}, SigDrop {});
 
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -54,7 +55,8 @@ fn generic_struct_with_significant_drop_needs_migration() {
     let t = Wrapper(GenericStruct(SigDrop {}, SigDrop {}), 5);
 
     // move is used to force i32 to be copied instead of being a ref
-    let c = move || { let _ = &t; 
+    let c = move || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
