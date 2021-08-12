@@ -54,11 +54,11 @@ LL |     let z: &Vec<_> = y.clone();
 help: try dereferencing it
    |
 LL |     let z: &Vec<_> = &(*y).clone();
-   |                      ^^^^^^^^^^^^^
+   |                      ~~~~~~~~~~~~~
 help: or try being explicit if you are sure, that you want to clone a reference
    |
 LL |     let z: &Vec<_> = <&std::vec::Vec<i32>>::clone(y);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: using `clone` on type `many_derefs::E` which implements the `Copy` trait
   --> $DIR/unnecessary_clone.rs:84:20
@@ -75,11 +75,11 @@ LL |         let _ = &mut encoded.clone();
 help: try dereferencing it
    |
 LL |         let _ = &mut &(*encoded).clone();
-   |                      ^^^^^^^^^^^^^^^^^^^
+   |                      ~~~~~~~~~~~~~~~~~~~
 help: or try being explicit if you are sure, that you want to clone a reference
    |
 LL |         let _ = &mut <&[u8]>::clone(encoded);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: using `clone` on a double-reference; this will copy the reference of type `&[u8]` instead of cloning the inner type
   --> $DIR/unnecessary_clone.rs:90:18
@@ -90,11 +90,11 @@ LL |         let _ = &encoded.clone();
 help: try dereferencing it
    |
 LL |         let _ = &&(*encoded).clone();
-   |                  ^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~
 help: or try being explicit if you are sure, that you want to clone a reference
    |
 LL |         let _ = &<&[u8]>::clone(encoded);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:108:14

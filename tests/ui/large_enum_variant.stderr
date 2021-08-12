@@ -13,7 +13,7 @@ LL |     A(i32),
 help: consider boxing the large fields to reduce the total size of the enum
    |
 LL |     B(Box<[i32; 8000]>),
-   |       ^^^^^^^^^^^^^^^^
+   |       ~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
   --> $DIR/large_enum_variant.rs:36:5
@@ -29,7 +29,7 @@ LL |     VariantOk(i32, u32),
 help: consider boxing the large fields to reduce the total size of the enum
    |
 LL |     ContainingLargeEnum(Box<LargeEnum>),
-   |                         ^^^^^^^^^^^^^^
+   |                         ~~~~~~~~~~~~~~
 
 error: large size difference between variants
   --> $DIR/large_enum_variant.rs:46:5
@@ -62,7 +62,7 @@ LL |     VariantOk(i32, u32),
 help: consider boxing the large fields to reduce the total size of the enum
    |
 LL |     StructLikeLarge2 { x: Box<[i32; 8000]> },
-   |                           ^^^^^^^^^^^^^^^^
+   |                           ~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

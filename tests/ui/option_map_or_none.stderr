@@ -17,9 +17,9 @@ LL | |                        });
    |
 help: try using `and_then` instead
    |
-LL |     let _ = opt.and_then(|x| {
-LL |                         Some(x + 1)
-LL |                        });
+LL ~     let _ = opt.and_then(|x| {
+LL +                         Some(x + 1)
+LL ~                        });
    |
 
 error: aborting due to 2 previous errors

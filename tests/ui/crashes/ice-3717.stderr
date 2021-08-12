@@ -12,11 +12,11 @@ LL | #![deny(clippy::implicit_hasher)]
 help: consider adding a type parameter
    |
 LL | pub fn ice_3717<S: ::std::hash::BuildHasher + Default>(_: &HashSet<usize, S>) {
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^
+   |                +++++++++++++++++++++++++++++++++++++++     ~~~~~~~~~~~~~~~~~
 help: ...and use generic constructor
    |
 LL |     let _: HashSet<usize> = HashSet::default();
-   |                             ^^^^^^^^^^^^^^^^^^
+   |                             ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

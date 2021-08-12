@@ -29,8 +29,8 @@ LL | |     );
    |
 help: consider using `.to_string()`
    |
-LL |     r##"foo {}
-LL | " bar"##.to_string();
+LL ~     r##"foo {}
+LL + " bar"##.to_string();
    |
 
 error: useless use of `format!`

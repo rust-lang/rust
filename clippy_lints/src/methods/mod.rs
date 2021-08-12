@@ -1930,7 +1930,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             then {
                 // if this impl block implements a trait, lint in trait definition instead
-                if !implements_trait && cx.access_levels.is_exported(impl_item.hir_id()) {
+                if !implements_trait && cx.access_levels.is_exported(impl_item.def_id) {
                     // check missing trait implementations
                     for method_config in &TRAIT_METHODS {
                         if name == method_config.method_name &&
@@ -1962,7 +1962,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
                 if sig.decl.implicit_self.has_implicit_self()
                     && !(self.avoid_breaking_exported_api
-                        && cx.access_levels.is_exported(impl_item.hir_id()))
+                        && cx.access_levels.is_exported(impl_item.def_id))
                 {
                     wrong_self_convention::check(
                         cx,

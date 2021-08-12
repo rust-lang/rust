@@ -10,10 +10,10 @@ LL | |     } {
    = note: `-D clippy::blocks-in-if-conditions` implied by `-D warnings`
 help: try
    |
-LL |     let res = {
-LL |         let x = 3;
-LL |         x == 3
-LL |     }; if res {
+LL ~     let res = {
+LL +         let x = 3;
+LL +         x == 3
+LL ~     }; if res {
    |
 
 error: omit braces around single expression condition

@@ -12,9 +12,9 @@ LL | |     }
    = note: `-D clippy::collapsible-else-if` implied by `-D warnings`
 help: collapse nested if block
    |
-LL |     } else if y == "world" {
-LL |         println!("world!")
-LL |     }
+LL ~     } else if y == "world" {
+LL +         println!("world!")
+LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -30,9 +30,9 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL |     } else if let Some(42) = Some(42) {
-LL |         println!("world!")
-LL |     }
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world!")
+LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -50,12 +50,12 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL |     } else if y == "world" {
-LL |         println!("world")
-LL |     }
-LL |     else {
-LL |         println!("!")
-LL |     }
+LL ~     } else if y == "world" {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -73,12 +73,12 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL |     } else if let Some(42) = Some(42) {
-LL |         println!("world")
-LL |     }
-LL |     else {
-LL |         println!("!")
-LL |     }
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -96,12 +96,12 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL |     } else if let Some(42) = Some(42) {
-LL |         println!("world")
-LL |     }
-LL |     else {
-LL |         println!("!")
-LL |     }
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -119,12 +119,12 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL |     } else if x == "hello" {
-LL |         println!("world")
-LL |     }
-LL |     else {
-LL |         println!("!")
-LL |     }
+LL ~     } else if x == "hello" {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
@@ -142,12 +142,12 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL |     } else if let Some(42) = Some(42) {
-LL |         println!("world")
-LL |     }
-LL |     else {
-LL |         println!("!")
-LL |     }
+LL ~     } else if let Some(42) = Some(42) {
+LL +         println!("world")
+LL +     }
+LL +     else {
+LL +         println!("!")
+LL +     }
    |
 
 error: aborting due to 7 previous errors

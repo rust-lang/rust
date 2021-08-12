@@ -36,10 +36,10 @@ LL | |     };
    |
 help: try
    |
-LL |     let _ = num.as_mut().map_or(&mut 0, |s| {
-LL |         *s += 1;
-LL |         s
-LL |     });
+LL ~     let _ = num.as_mut().map_or(&mut 0, |s| {
+LL +         *s += 1;
+LL +         s
+LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
@@ -62,10 +62,10 @@ LL | |     };
    |
 help: try
    |
-LL |     let _ = num.map_or(0, |mut s| {
-LL |         s += 1;
-LL |         s
-LL |     });
+LL ~     let _ = num.map_or(0, |mut s| {
+LL +         s += 1;
+LL +         s
+LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
@@ -82,10 +82,10 @@ LL | |     };
    |
 help: try
    |
-LL |     let _ = num.as_mut().map_or(&mut 0, |s| {
-LL |         *s += 1;
-LL |         s
-LL |     });
+LL ~     let _ = num.as_mut().map_or(&mut 0, |s| {
+LL +         *s += 1;
+LL +         s
+LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
@@ -101,10 +101,10 @@ LL | |     }
    |
 help: try
    |
-LL |     arg.map_or(13, |x| {
-LL |         let y = x * x;
-LL |         y * y
-LL |     })
+LL ~     arg.map_or(13, |x| {
+LL +         let y = x * x;
+LL +         y * y
+LL +     })
    |
 
 error: use Option::map_or_else instead of an if let/else
@@ -134,12 +134,12 @@ LL | |     };
    |
 help: try
    |
-LL |     let _ = arg.map_or_else(|| {
-LL |         let mut y = 1;
-LL |         y = (y + 2 / y) / 2;
-LL |         y = (y + 2 / y) / 2;
-LL |         y
-LL |     }, |x| x * x * x * x);
+LL ~     let _ = arg.map_or_else(|| {
+LL +         let mut y = 1;
+LL +         y = (y + 2 / y) / 2;
+LL +         y = (y + 2 / y) / 2;
+LL +         y
+LL ~     }, |x| x * x * x * x);
    |
 
 error: use Option::map_or instead of an if let/else

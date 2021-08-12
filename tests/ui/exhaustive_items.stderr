@@ -16,8 +16,8 @@ LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 help: try adding #[non_exhaustive]
    |
-LL |     #[non_exhaustive]
-LL |     pub enum Exhaustive {
+LL ~     #[non_exhaustive]
+LL ~     pub enum Exhaustive {
    |
 
 error: exported enums should not be exhaustive
@@ -33,8 +33,8 @@ LL | |     }
    |
 help: try adding #[non_exhaustive]
    |
-LL |     #[non_exhaustive]
-LL |     pub enum ExhaustiveWithAttrs {
+LL ~     #[non_exhaustive]
+LL ~     pub enum ExhaustiveWithAttrs {
    |
 
 error: exported structs should not be exhaustive
@@ -53,8 +53,8 @@ LL | #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try adding #[non_exhaustive]
    |
-LL |     #[non_exhaustive]
-LL |     pub struct Exhaustive {
+LL ~     #[non_exhaustive]
+LL ~     pub struct Exhaustive {
    |
 
 error: aborting due to 3 previous errors

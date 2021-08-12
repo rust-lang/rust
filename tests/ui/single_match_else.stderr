@@ -13,10 +13,10 @@ LL | |     }
    = note: `-D clippy::single-match-else` implied by `-D warnings`
 help: try this
    |
-LL |     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
-LL |         let x = 5;
-LL |         None
-LL |     }
+LL ~     if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
+LL +         let x = 5;
+LL +         None
+LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
@@ -33,10 +33,10 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let Some(a) = Some(1) { println!("${:?}", a) } else {
-LL |         println!("else block");
-LL |         return
-LL |     }
+LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return
+LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
@@ -53,10 +53,10 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let Some(a) = Some(1) { println!("${:?}", a) } else {
-LL |         println!("else block");
-LL |         return;
-LL |     }
+LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
+LL +         println!("else block");
+LL +         return;
+LL +     }
    |
 
 error: aborting due to 3 previous errors

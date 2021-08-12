@@ -10,9 +10,9 @@ LL | |         }
    = note: `-D clippy::match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
-LL |         match *v {
-LL |             Some(v) => println!("{:?}", v),
-LL |             None => println!("none"),
+LL ~         match *v {
+LL ~             Some(v) => println!("{:?}", v),
+LL ~             None => println!("none"),
    |
 
 error: you don't need to add `&` to all patterns
@@ -26,8 +26,8 @@ LL | |     }
    |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
-LL |     match *tup {
-LL |         (v, 1) => println!("{}", v),
+LL ~     match *tup {
+LL ~         (v, 1) => println!("{}", v),
    |
 
 error: you don't need to add `&` to both the expression and the patterns
@@ -41,9 +41,9 @@ LL | |     }
    |
 help: try
    |
-LL |     match w {
-LL |         Some(v) => println!("{:?}", v),
-LL |         None => println!("none"),
+LL ~     match w {
+LL ~         Some(v) => println!("{:?}", v),
+LL ~         None => println!("none"),
    |
 
 error: redundant pattern matching, consider using `is_none()`
@@ -65,7 +65,7 @@ LL | |     }
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL |     if let None = *a {
-   |            ^^^^   ^^
+   |            ~~~~   ~~
 
 error: redundant pattern matching, consider using `is_none()`
   --> $DIR/match_ref_pats.rs:40:12
@@ -84,7 +84,7 @@ LL | |     }
 help: try
    |
 LL |     if let None = b {
-   |            ^^^^   ^
+   |            ~~~~   ~
 
 error: you don't need to add `&` to all patterns
   --> $DIR/match_ref_pats.rs:67:9
@@ -97,8 +97,8 @@ LL | |         }
    |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
-LL |         match *foo_variant!(0) {
-LL |             Foo::A => println!("A"),
+LL ~         match *foo_variant!(0) {
+LL ~             Foo::A => println!("A"),
    |
 
 error: aborting due to 8 previous errors
