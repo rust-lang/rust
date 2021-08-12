@@ -2378,10 +2378,12 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 trait SpecCloneFrom {
     fn clone_from(this: &mut Self, other: &Self);
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
     default fn clone_from(this: &mut Self, other: &Self) {
         // drop anything that will not be overwritten
@@ -2397,6 +2399,7 @@ impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
     fn clone_from(this: &mut Self, other: &Self) {
         this.clear();
