@@ -1,10 +1,26 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate core as std;
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
 use std::{
     borrow::Borrow,
     cmp::{self, Ordering},
     fmt, hash, iter,
     ops::Deref,
+};
+
+#[cfg(not(feature = "std"))]
+use alloc::{
+    string::{String, ToString},
     sync::Arc,
 };
+
+#[cfg(feature = "std")]
+use std::sync::Arc;
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
