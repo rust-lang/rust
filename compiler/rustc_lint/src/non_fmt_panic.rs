@@ -124,10 +124,10 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             // If this is a &str or String, we can confidently give the `"{}", ` suggestion.
             let is_str = matches!(
                 ty.kind(),
-                ty::Ref(_, r, _) if *r.kind() == ty::Str
+                ty::Ref(_, r, _) if *r.kind() == ty::Str,
             ) || matches!(
-                (ty.ty_adt_def(), cx.tcx.get_diagnostic_item(sym::string_type)),
-                (Some(ty_def), Some(string_type)) if ty_def.did == string_type
+                ty.ty_adt_def(),
+                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::string_type, ty_def.did),
             );
             l.span_suggestion_verbose(
                 arg_span.shrink_to_lo(),
