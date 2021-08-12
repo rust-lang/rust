@@ -569,6 +569,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn is_local_statement(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
-        matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
+        matches!(node, Node::Local(_))
     }
 }
