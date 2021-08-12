@@ -22,13 +22,13 @@ fn test_precise_analysis_drop_paths_not_captured_by_move() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
-        //~^ NOTE: in Rust 2018, closure captures all of `t`, but in Rust 2021, it only captures `t.0`
+        //~^ NOTE: in Rust 2018, this closure captures all of `t`, but in Rust 2021, it will only capture `t.0`
         let _t = &t.1;
     };
 
     c();
 }
-//~^ NOTE: in Rust 2018, `t` would be dropped here, but in Rust 2021, only `t.0` would be dropped here alongside the closure
+//~^ NOTE: in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
 
 struct S;
 impl Drop for S {
@@ -47,18 +47,18 @@ fn test_precise_analysis_long_path_missing() {
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `u` to be fully captured
         let _x = u.0.0;
-        //~^ NOTE: in Rust 2018, closure captures all of `u`, but in Rust 2021, it only captures `u.0.0`
+        //~^ NOTE: in Rust 2018, this closure captures all of `u`, but in Rust 2021, it will only capture `u.0.0`
         let _x = u.0.1;
-        //~^ NOTE: in Rust 2018, closure captures all of `u`, but in Rust 2021, it only captures `u.0.1`
+        //~^ NOTE: in Rust 2018, this closure captures all of `u`, but in Rust 2021, it will only capture `u.0.1`
         let _x = u.1.0;
-        //~^ NOTE: in Rust 2018, closure captures all of `u`, but in Rust 2021, it only captures `u.1.0`
+        //~^ NOTE: in Rust 2018, this closure captures all of `u`, but in Rust 2021, it will only capture `u.1.0`
     };
 
     c();
 }
-//~^ NOTE: in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.0.0` would be dropped here alongside the closure
-//~| NOTE: in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.0.1` would be dropped here alongside the closure
-//~| NOTE: in Rust 2018, `u` would be dropped here, but in Rust 2021, only `u.1.0` would be dropped here alongside the closure
+//~^ NOTE: in Rust 2018, `u` is dropped here, but in Rust 2021, only `u.0.0` will be dropped here as part of the closure
+//~| NOTE: in Rust 2018, `u` is dropped here, but in Rust 2021, only `u.0.1` will be dropped here as part of the closure
+//~| NOTE: in Rust 2018, `u` is dropped here, but in Rust 2021, only `u.1.0` will be dropped here as part of the closure
 
 
 fn main() {

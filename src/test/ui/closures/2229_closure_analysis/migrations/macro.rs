@@ -9,7 +9,7 @@ fn main() {
     let a = ("hey".to_string(), "123".to_string());
     let _ = || dbg!(a.0);
     //~^ ERROR: drop order
-    //~| NOTE: only captures `a.0`
+    //~| NOTE: will only capture `a.0`
     //~| NOTE: for more information, see
     //~| HELP: add a dummy let to cause `a` to be fully captured
 }
