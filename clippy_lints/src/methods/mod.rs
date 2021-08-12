@@ -56,6 +56,7 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
 mod unnecessary_lazy_eval;
+mod unwrap_or_else_default;
 mod unwrap_used;
 mod useless_asref;
 mod utils;
@@ -308,6 +309,31 @@ declare_clippy_lint! {
     pub OK_EXPECT,
     style,
     "using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `_.unwrap_or_else(Default::default)` on `Option` and
+    /// `Result` values.
+    ///
+    /// ### Why is this bad?
+    /// Readability, these can be written as `_.unwrap_or_default`, which is
+    /// simpler and more concise.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// # let x = Some(1);
+    ///
+    /// // Bad
+    /// x.unwrap_or_else(Default::default);
+    /// x.unwrap_or_else(u32::default);
+    ///
+    /// // Good
+    /// x.unwrap_or_default();
+    /// ```
+    pub UNWRAP_OR_ELSE_DEFAULT,
+    style,
+    "using `.unwrap_or_else(Default::default)`, which is more succinctly expressed as `.unwrap_or_default()`"
 }
 
 declare_clippy_lint! {
@@ -1766,6 +1792,7 @@ impl_lint_pass!(Methods => [
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
     OK_EXPECT,
+    UNWRAP_OR_ELSE_DEFAULT,
     MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
@@ -2172,7 +2199,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("unwrap_or_else", [u_arg]) => match method_call!(recv) {
                 Some(("map", [recv, map_arg], _)) if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, msrv) => {},
-                _ => unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or"),
+                _ => {
+                    unwrap_or_else_default::check(cx, expr, recv, u_arg);
+                    unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
+                },
             },
             _ => {},
         }
