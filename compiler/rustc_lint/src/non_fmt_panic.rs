@@ -2,6 +2,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_errors::{pluralize, Applicability};
 use rustc_hir as hir;
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
@@ -74,6 +75,11 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     // The argument is *not* a string literal.
 
     let (span, panic, symbol_str) = panic_call(cx, f);
+
+    if in_external_macro(cx.sess(), span) {
+        // Nothing that can be done about it in the current crate.
+        return;
+    }
 
     // Find the span of the argument to `panic!()`, before expansion in the
     // case of `panic!(some_macro!())`.
@@ -152,6 +158,13 @@ fn check_panic_str<'tcx>(
         return;
     }
 
+    let (span, _, _) = panic_call(cx, f);
+
+    if in_external_macro(cx.sess(), span) && in_external_macro(cx.sess(), arg.span) {
+        // Nothing that can be done about it in the current crate.
+        return;
+    }
+
     let fmt_span = arg.span.source_callsite();
 
     let (snippet, style) = match cx.sess().parse_sess.source_map().span_to_snippet(fmt_span) {
@@ -166,8 +179,6 @@ fn check_panic_str<'tcx>(
     let mut fmt_parser =
         Parser::new(fmt.as_ref(), style, snippet.clone(), false, ParseMode::Format);
     let n_arguments = (&mut fmt_parser).filter(|a| matches!(a, Piece::NextArgument(_))).count();
-
-    let (span, _, _) = panic_call(cx, f);
 
     if n_arguments > 0 && fmt_parser.errors.is_empty() {
         let arg_spans: Vec<_> = match &fmt_parser.arg_places[..] {

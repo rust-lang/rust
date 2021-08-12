@@ -181,15 +181,6 @@ LL |     fancy_panic::fancy_panic!("test {} 123");
    = note: this message is not used as a format string when given without arguments, but will be in Rust 2021
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:29:31
-   |
-LL |     fancy_panic::fancy_panic!(S);
-   |                               ^
-   |
-   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
-
-warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:36:12
    |
 LL |     panic!(a!());
@@ -285,5 +276,5 @@ help: or use std::panic::panic_any instead
 LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~~   ~
 
-warning: 20 warnings emitted
+warning: 19 warnings emitted
 
