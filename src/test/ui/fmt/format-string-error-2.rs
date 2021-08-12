@@ -5,7 +5,7 @@ fn main() {
     a");
     //~^ ERROR invalid format string
     format!("{ \
-
+               \
     b");
     //~^ ERROR invalid format string
     format!(r#"{ \
@@ -38,12 +38,12 @@ fn main() {
     { \
     	\
     b \
-
+      \
     ");
     //~^^^ ERROR invalid format string
     format!(r#"
 raw  { \
-
+       \
     c"#);
     //~^^^ ERROR invalid format string
     format!(r#"

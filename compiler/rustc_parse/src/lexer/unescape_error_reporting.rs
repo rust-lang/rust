@@ -280,6 +280,11 @@ pub(crate) fn emit_unescape_error(
                 format!("non-ASCII whitespace symbol '{}' is not skipped", c.escape_unicode());
             handler.struct_span_warn(span, &msg).span_label(char_span, &msg).emit();
         }
+        EscapeError::MultipleSkippedLinesWarning => {
+            let msg = "multiple lines skipped by escaped newline";
+            let bottom_msg = "skipping everything up to and including this point";
+            handler.struct_span_warn(span, msg).span_label(span, bottom_msg).emit();
+        }
     }
 }
 
