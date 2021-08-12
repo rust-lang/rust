@@ -19,6 +19,8 @@ pub fn target() -> Target {
         max_atomic_width: Some(64),
         panic_strategy: PanicStrategy::Abort,
         emit_debug_gdb_scripts: false,
+        // GCC and Clang default to 8 for arm-none here
+        c_enum_min_bits: 8,
         ..Default::default()
     };
     Target {

@@ -13,6 +13,8 @@ pub fn target() -> Target {
     base.dynamic_linking = true;
     base.executables = true;
 
+    base.c_enum_min_bits = 8;
+
     Target {
         llvm_target: "hexagon-unknown-linux-musl".to_string(),
         pointer_width: 32,
