@@ -172,19 +172,26 @@ struct FunctionTemplate {
     leading_ws: String,
     fn_def: ast::Fn,
     ret_type: ast::RetType,
-    should_render_snippet: bool,
+    should_focus_tail_expr: bool,
     trailing_ws: String,
     file: FileId,
+    tail_expr: ast::Expr,
 }
 
 impl FunctionTemplate {
     fn to_string(&self, cap: Option<SnippetCap>) -> String {
-        let f = match (cap, self.should_render_snippet) {
-            (Some(cap), true) => {
-                render_snippet(cap, self.fn_def.syntax(), Cursor::Replace(self.ret_type.syntax()))
+        let f = match cap {
+            Some(cap) => {
+                let cursor = if self.should_focus_tail_expr {
+                    self.ret_type.syntax()
+                } else {
+                    self.tail_expr.syntax()
+                };
+                render_snippet(cap, self.fn_def.syntax(), Cursor::Replace(cursor))
             }
-            _ => self.fn_def.to_string(),
+            None => self.fn_def.to_string(),
         };
+
         format!("{}{}{}", self.leading_ws, f, self.trailing_ws)
     }
 }
@@ -195,7 +202,7 @@ struct FunctionBuilder {
     type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     ret_type: ast::RetType,
-    should_render_snippet: bool,
+    should_focus_tail_expr: bool,
     file: FileId,
     needs_pub: bool,
     is_async: bool,
@@ -228,7 +235,7 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        // should_render_snippet intends to express a rough level of confidence about
+        // should_focus_tail_expr intends to express a rough level of confidence about
         // the correctness of the return type.
         //
         // If we are able to infer some return type, and that return type is not unit, we
@@ -240,7 +247,7 @@ impl FunctionBuilder {
         // user does in fact intend for this generated function to return some non unit
         // type, but that the current state of their code doesn't allow that return type
         // to be accurately inferred.
-        let (ret_ty, should_render_snippet) = {
+        let (ret_ty, should_focus_tail_expr) = {
             match ctx.sema.type_of_expr(&ast::Expr::CallExpr(call.clone())).map(TypeInfo::original)
             {
                 Some(ty) if ty.is_unknown() || ty.is_unit() => (make::ty_unit(), true),
@@ -262,7 +269,7 @@ impl FunctionBuilder {
             type_params,
             params,
             ret_type,
-            should_render_snippet,
+            should_focus_tail_expr,
             file,
             needs_pub,
             is_async,
@@ -335,7 +342,7 @@ impl FunctionBuilder {
             type_params,
             params,
             ret_type,
-            should_render_snippet,
+            should_focus_tail_expr: should_render_snippet,
             file,
             needs_pub,
             is_async,
@@ -378,8 +385,11 @@ impl FunctionBuilder {
         FunctionTemplate {
             insert_offset,
             leading_ws,
+            // PANIC: we guarantee we always create a function with a return type
             ret_type: fn_def.ret_type().unwrap(),
-            should_render_snippet: self.should_render_snippet,
+            // PANIC: we guarantee we always create a function body with a tail expr
+            tail_expr: fn_def.body().unwrap().tail_expr().unwrap(),
+            should_focus_tail_expr: self.should_focus_tail_expr,
             fn_def,
             trailing_ws,
             file: self.file,
@@ -795,7 +805,7 @@ impl Baz {
 }
 
 fn bar(baz: Baz) -> Baz {
-    todo!()
+    ${0:todo!()}
 }
 ",
         )
@@ -1316,7 +1326,7 @@ fn main() {
 }
 
 fn foo() -> u32 {
-    todo!()
+    ${0:todo!()}
 }
 ",
         )
