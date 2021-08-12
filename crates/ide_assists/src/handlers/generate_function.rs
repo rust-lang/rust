@@ -138,7 +138,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     acc.add(
         AssistId("generate_function", AssistKind::Generate),
-        format!("Generate `{}` function", function_builder.fn_name),
+        format!("Generate `{}` method", function_builder.fn_name),
         target,
         |builder| {
             let function_template = function_builder.render();
