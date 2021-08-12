@@ -1,3 +1,4 @@
+use crate::base::ExtCtxt;
 use crate::expand::{AstFragment, AstFragmentKind};
 
 use rustc_ast as ast;
@@ -174,12 +175,17 @@ pub fn placeholder(
     }
 }
 
-#[derive(Default)]
-pub struct PlaceholderExpander {
+pub struct PlaceholderExpander<'a, 'b> {
     expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
+    cx: &'a mut ExtCtxt<'b>,
+    monotonic: bool,
 }
 
-impl PlaceholderExpander {
+impl<'a, 'b> PlaceholderExpander<'a, 'b> {
+    pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
+        PlaceholderExpander { cx, expanded_fragments: FxHashMap::default(), monotonic }
+    }
+
     pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
         fragment.mut_visit_with(self);
         self.expanded_fragments.insert(id, fragment);
@@ -190,7 +196,7 @@ impl PlaceholderExpander {
     }
 }
 
-impl MutVisitor for PlaceholderExpander {
+impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
     fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
         if arm.is_placeholder {
             self.remove(arm.id).make_arms()
@@ -352,6 +358,17 @@ impl MutVisitor for PlaceholderExpander {
         match ty.kind {
             ast::TyKind::MacCall(_) => *ty = self.remove(ty.id).make_ty(),
             _ => noop_visit_ty(ty, self),
+        }
+    }
+
+    fn visit_block(&mut self, block: &mut P<ast::Block>) {
+        noop_visit_block(block, self);
+
+        for stmt in block.stmts.iter_mut() {
+            if self.monotonic {
+                assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
+                stmt.id = self.cx.resolver.next_node_id();
+            }
         }
     }
 }
