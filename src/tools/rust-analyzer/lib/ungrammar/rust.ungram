@@ -488,7 +488,7 @@ MatchArm =
   Attr* Pat guard:MatchGuard? '=>' Expr ','?
 
 MatchGuard =
-  'if' Expr
+  'if' ('let' Pat '=')? Expr
 
 ReturnExpr =
   Attr* 'return' Expr?
