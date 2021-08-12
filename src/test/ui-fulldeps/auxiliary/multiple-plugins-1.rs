@@ -1,6 +1,4 @@
-// no-prefer-dynamic
-
-#![crate_type = "rlib"]
+#![crate_type = "dylib"]
 #![feature(rustc_private)]
 
 extern crate rustc_middle;

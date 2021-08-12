@@ -375,14 +375,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Fn(..) => {
-                if self.sess.contains_name(&i.attrs[..], sym::plugin_registrar) {
-                    gate_feature_post!(
-                        &self,
-                        plugin_registrar,
-                        i.span,
-                        "compiler plugins are experimental and possibly buggy"
-                    );
-                }
                 if self.sess.contains_name(&i.attrs[..], sym::start) {
                     gate_feature_post!(
                         &self,

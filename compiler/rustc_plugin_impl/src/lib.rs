@@ -12,7 +12,6 @@
 
 use rustc_lint::LintStore;
 
-pub mod build;
 pub mod load;
 
 /// Structure used to register plugins.

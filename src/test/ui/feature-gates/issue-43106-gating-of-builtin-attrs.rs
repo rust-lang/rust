@@ -35,17 +35,10 @@
 
 // check-pass
 
-#![feature(test, plugin_registrar)]
+#![feature(test)]
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here
 //~| NOTE the lint level is defined here
-
-// Exception, a gated and deprecated attribute.
-
-#![plugin_registrar]
-//~^ WARN unused attribute
-//~| WARN use of deprecated attribute
-//~| HELP may be removed in a future compiler version
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -90,6 +83,7 @@
 #![crate_id = "10"]
 //~^ WARN use of deprecated attribute
 //~| HELP remove this attribute
+//~| NOTE `#[warn(deprecated)]` on by default
 
 // FIXME(#44232) we should warn that this isn't used.
 #![feature(rust1)]
@@ -217,35 +211,6 @@ mod macro_export {
 
     #[macro_export] impl S { }
     //~^ WARN unused attribute
-}
-
-#[plugin_registrar]
-//~^ WARN unused attribute
-//~| WARN use of deprecated attribute
-//~| HELP may be removed in a future compiler version
-mod plugin_registrar {
-    mod inner { #![plugin_registrar] }
-    //~^ WARN unused attribute
-    //~| WARN use of deprecated attribute
-    //~| HELP may be removed in a future compiler version
-    //~| NOTE `#[warn(deprecated)]` on by default
-
-    // for `fn f()` case, see gated-plugin_registrar.rs
-
-    #[plugin_registrar] struct S;
-    //~^ WARN unused attribute
-    //~| WARN use of deprecated attribute
-    //~| HELP may be removed in a future compiler version
-
-    #[plugin_registrar] type T = S;
-    //~^ WARN unused attribute
-    //~| WARN use of deprecated attribute
-    //~| HELP may be removed in a future compiler version
-
-    #[plugin_registrar] impl S { }
-    //~^ WARN unused attribute
-    //~| WARN use of deprecated attribute
-    //~| HELP may be removed in a future compiler version
 }
 
 // At time of unit test authorship, if compiling without `--test` then
