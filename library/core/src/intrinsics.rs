@@ -1933,6 +1933,12 @@ extern "rust-intrinsic" {
     /// which is UB if any of their inputs are `undef`.)
     #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
     pub fn raw_eq<T>(a: &T, b: &T) -> bool;
+
+    /// See documentation of [`std::hint::black_box`] for details.
+    ///
+    /// [`std::hint::black_box`]: crate::hint::black_box
+    #[cfg(not(bootstrap))]
+    pub fn black_box<T>(dummy: T) -> T;
 }
 
 // Some functions are defined here because they accidentally got made
