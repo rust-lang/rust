@@ -1,15 +1,16 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, eq_expr_value};
+use clippy_utils::{can_mut_borrow_both, differing_macro_contexts, eq_expr_value};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -70,7 +71,65 @@ impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         check_manual_swap(cx, block);
         check_suspicious_swap(cx, block);
+        check_xor_swap(cx, block);
     }
+}
+
+fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, span: Span, is_xor_based: bool) {
+    let mut applicability = Applicability::MachineApplicable;
+
+    if !can_mut_borrow_both(cx, e1, e2) {
+        if let ExprKind::Index(lhs1, idx1) = e1.kind {
+            if let ExprKind::Index(lhs2, idx2) = e2.kind {
+                if eq_expr_value(cx, lhs1, lhs2) {
+                    let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
+
+                    if matches!(ty.kind(), ty::Slice(_))
+                        || matches!(ty.kind(), ty::Array(_, _))
+                        || is_type_diagnostic_item(cx, ty, sym::vec_type)
+                        || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
+                    {
+                        let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
+                        span_lint_and_sugg(
+                            cx,
+                            MANUAL_SWAP,
+                            span,
+                            &format!("this looks like you are swapping elements of `{}` manually", slice),
+                            "try",
+                            format!(
+                                "{}.swap({}, {})",
+                                slice.maybe_par(),
+                                snippet_with_applicability(cx, idx1.span, "..", &mut applicability),
+                                snippet_with_applicability(cx, idx2.span, "..", &mut applicability),
+                            ),
+                            applicability,
+                        );
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    let first = Sugg::hir_with_applicability(cx, e1, "..", &mut applicability);
+    let second = Sugg::hir_with_applicability(cx, e2, "..", &mut applicability);
+    span_lint_and_then(
+        cx,
+        MANUAL_SWAP,
+        span,
+        &format!("this looks like you are swapping `{}` and `{}` manually", first, second),
+        |diag| {
+            diag.span_suggestion(
+                span,
+                "try",
+                format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
+                applicability,
+            );
+            if !is_xor_based {
+                diag.note("or maybe you should use `std::mem::replace`?");
+            }
+        },
+    );
 }
 
 /// Implementation of the `MANUAL_SWAP` lint.
@@ -96,121 +155,11 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             if eq_expr_value(cx, tmp_init, lhs1);
             if eq_expr_value(cx, rhs1, lhs2);
             then {
-                if let ExprKind::Field(lhs1, _) = lhs1.kind {
-                    if let ExprKind::Field(lhs2, _) = lhs2.kind {
-                        if lhs1.hir_id.owner == lhs2.hir_id.owner {
-                            return;
-                        }
-                    }
-                }
-
-                let mut applicability = Applicability::MachineApplicable;
-
-                let slice = check_for_slice(cx, lhs1, lhs2);
-                let (replace, what, sugg) = if let Slice::NotSwappable = slice {
-                    return;
-                } else if let Slice::Swappable(slice, idx1, idx2) = slice {
-                    if let Some(slice) = Sugg::hir_opt(cx, slice) {
-                        (
-                            false,
-                            format!(" elements of `{}`", slice),
-                            format!(
-                                "{}.swap({}, {})",
-                                slice.maybe_par(),
-                                snippet_with_applicability(cx, idx1.span, "..", &mut applicability),
-                                snippet_with_applicability(cx, idx2.span, "..", &mut applicability),
-                            ),
-                        )
-                    } else {
-                        (false, String::new(), String::new())
-                    }
-                } else if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
-                    (
-                        true,
-                        format!(" `{}` and `{}`", first, second),
-                        format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
-                    )
-                } else {
-                    (true, String::new(), String::new())
-                };
-
                 let span = w[0].span.to(second.span);
-
-                span_lint_and_then(
-                    cx,
-                    MANUAL_SWAP,
-                    span,
-                    &format!("this looks like you are swapping{} manually", what),
-                    |diag| {
-                        if !sugg.is_empty() {
-                            diag.span_suggestion(
-                                span,
-                                "try",
-                                sugg,
-                                applicability,
-                            );
-
-                            if replace {
-                                diag.note("or maybe you should use `std::mem::replace`?");
-                            }
-                        }
-                    }
-                );
+                generate_swap_warning(cx, lhs1, lhs2, span, false);
             }
         }
     }
-}
-
-enum Slice<'a> {
-    /// `slice.swap(idx1, idx2)` can be used
-    ///
-    /// ## Example
-    ///
-    /// ```rust
-    /// # let mut a = vec![0, 1];
-    /// let t = a[1];
-    /// a[1] = a[0];
-    /// a[0] = t;
-    /// // can be written as
-    /// a.swap(0, 1);
-    /// ```
-    Swappable(&'a Expr<'a>, &'a Expr<'a>, &'a Expr<'a>),
-    /// The `swap` function cannot be used.
-    ///
-    /// ## Example
-    ///
-    /// ```rust
-    /// # let mut a = [vec![1, 2], vec![3, 4]];
-    /// let t = a[0][1];
-    /// a[0][1] = a[1][0];
-    /// a[1][0] = t;
-    /// ```
-    NotSwappable,
-    /// Not a slice
-    None,
-}
-
-/// Checks if both expressions are index operations into "slice-like" types.
-fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<'_>) -> Slice<'a> {
-    if let ExprKind::Index(lhs1, idx1) = lhs1.kind {
-        if let ExprKind::Index(lhs2, idx2) = lhs2.kind {
-            if eq_expr_value(cx, lhs1, lhs2) {
-                let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
-
-                if matches!(ty.kind(), ty::Slice(_))
-                    || matches!(ty.kind(), ty::Array(_, _))
-                    || is_type_diagnostic_item(cx, ty, sym::vec_type)
-                    || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
-                {
-                    return Slice::Swappable(lhs1, idx1, idx2);
-                }
-            } else {
-                return Slice::NotSwappable;
-            }
-        }
-    }
-
-    Slice::None
 }
 
 /// Implementation of the `ALMOST_SWAPPED` lint.
@@ -261,4 +210,41 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             }
         }
     }
+}
+
+/// Implementation of the xor case for `MANUAL_SWAP` lint.
+fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
+    for window in block.stmts.windows(3) {
+        if_chain! {
+            if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(&window[0]);
+            if let Some((lhs1, rhs1)) = extract_sides_of_xor_assign(&window[1]);
+            if let Some((lhs2, rhs2)) = extract_sides_of_xor_assign(&window[2]);
+            if eq_expr_value(cx, lhs0, rhs1);
+            if eq_expr_value(cx, lhs2, rhs1);
+            if eq_expr_value(cx, lhs1, rhs0);
+            if eq_expr_value(cx, lhs1, rhs2);
+            then {
+                let span = window[0].span.to(window[2].span);
+                generate_swap_warning(cx, lhs0, rhs0, span, true);
+            }
+        };
+    }
+}
+
+/// Returns the lhs and rhs of an xor assignment statement.  
+fn extract_sides_of_xor_assign<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(&'a Expr<'hir>, &'a Expr<'hir>)> {
+    if let StmtKind::Semi(expr) = stmt.kind {
+        if let ExprKind::AssignOp(
+            Spanned {
+                node: BinOpKind::BitXor,
+                ..
+            },
+            lhs,
+            rhs,
+        ) = expr.kind
+        {
+            return Some((lhs, rhs));
+        }
+    }
+    None
 }

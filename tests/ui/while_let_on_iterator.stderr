@@ -111,10 +111,22 @@ LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:339:5
+  --> $DIR/while_let_on_iterator.rs:341:5
+   |
+LL |     while let Some(x) = it.next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut *it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:352:5
+   |
+LL |     while let Some(x) = it.0.next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in &mut *it.0`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:371:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`
 
-error: aborting due to 19 previous errors
+error: aborting due to 21 previous errors
 

@@ -16,7 +16,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
         //check source object
         if let ExprKind::MethodCall(src_method, _, [drain_vec, drain_arg], _) = &arg.kind;
         if src_method.ident.as_str() == "drain";
-        if let src_ty = cx.typeck_results().expr_ty(drain_vec).peel_refs();
+        let src_ty = cx.typeck_results().expr_ty(drain_vec);
+        //check if actual src type is mutable for code suggestion
+        let immutable = src_ty.is_mutable_ptr();
+        let src_ty = src_ty.peel_refs();
         if is_type_diagnostic_item(cx, src_ty, sym::vec_type);
         //check drain range
         if let src_ty_range = cx.typeck_results().expr_ty(drain_arg).peel_refs();
@@ -30,8 +33,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
                 "use of `extend` instead of `append` for adding the full range of a second vector",
                 "try this",
                 format!(
-                    "{}.append(&mut {})",
+                    "{}.append({}{})",
                     snippet_with_applicability(cx, recv.span, "..", &mut applicability),
+                    if immutable { "" } else { "&mut " },
                     snippet_with_applicability(cx, drain_vec.span, "..", &mut applicability)
                 ),
                 applicability,

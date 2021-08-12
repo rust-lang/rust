@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor as HirVisitor;
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -63,7 +63,7 @@ impl<'ast> ast_visit::Visitor<'ast> for ReturnVisitor {
 
 impl EarlyLintPass for RedundantClosureCall {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess, expr.span) {
             return;
         }
         if_chain! {

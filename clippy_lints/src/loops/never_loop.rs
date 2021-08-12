@@ -1,13 +1,36 @@
+use super::utils::make_iterator_snippet;
 use super::NEVER_LOOP;
-use clippy_utils::diagnostics::span_lint;
-use rustc_hir::{Block, Expr, ExprKind, HirId, InlineAsmOperand, Stmt, StmtKind};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher;
+use clippy_utils::source::snippet;
+use rustc_errors::Applicability;
+use rustc_hir::{Block, Expr, ExprKind, HirId, InlineAsmOperand, LoopSource, Node, Pat, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use std::iter::{once, Iterator};
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Loop(block, _, _, _) = expr.kind {
+    if let ExprKind::Loop(block, _, source, _) = expr.kind {
         match never_loop_block(block, expr.hir_id) {
-            NeverLoopResult::AlwaysBreak => span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
+            NeverLoopResult::AlwaysBreak => {
+                span_lint_and_then(cx, NEVER_LOOP, expr.span, "this loop never actually loops", |diag| {
+                    if_chain! {
+                        if let LoopSource::ForLoop = source;
+                        if let Some((_, Node::Expr(parent_match))) = cx.tcx.hir().parent_iter(expr.hir_id).nth(1);
+                        if let Some((pat, iterator, _, for_span)) = higher::for_loop(parent_match);
+                        then {
+                            // Suggests using an `if let` instead. This is `Unspecified` because the
+                            // loop may (probably) contain `break` statements which would be invalid
+                            // in an `if let`.
+                            diag.span_suggestion_verbose(
+                                for_span.with_hi(iterator.span.hi()),
+                                "if you need the first element of the iterator, try writing",
+                                for_to_if_let_sugg(cx, iterator, pat),
+                                Applicability::Unspecified,
+                            );
+                        }
+                    };
+                });
+            },
             NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
         }
     }
@@ -169,4 +192,15 @@ fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr<'a>>>(es: &mut T, main_lo
 fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr<'a>>>(e: &mut T, main_loop_id: HirId) -> NeverLoopResult {
     e.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::AlwaysBreak, combine_branches)
+}
+
+fn for_to_if_let_sugg(cx: &LateContext<'_>, iterator: &Expr<'_>, pat: &Pat<'_>) -> String {
+    let pat_snippet = snippet(cx, pat.span, "_");
+    let iter_snippet = make_iterator_snippet(cx, iterator, &mut Applicability::Unspecified);
+
+    format!(
+        "if let Some({pat}) = {iter}.next()",
+        pat = pat_snippet,
+        iter = iter_snippet
+    )
 }

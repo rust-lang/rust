@@ -2,9 +2,9 @@ use std::cmp;
 use std::iter;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_self_ty;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
+use clippy_utils::{is_self, is_self_ty};
 use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_errors::Applicability;
@@ -170,7 +170,7 @@ impl<'tcx> PassByRefOrValue {
                         if size <= self.ref_min_size;
                         if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
                         then {
-                            let value_type = if is_self_ty(decl_ty) {
+                            let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
                                 "self".into()
                             } else {
                                 snippet(cx, decl_ty.span, "_").into()

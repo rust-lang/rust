@@ -35,8 +35,6 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// #![feature(or_patterns)]
-    ///
     /// fn main() {
     ///     if let Some(0 | 2) = Some(0) {}
     /// }
