@@ -3,7 +3,7 @@
 use crate::fmt;
 use crate::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign};
 use crate::ops::{BitXor, BitXorAssign, Div, DivAssign};
-use crate::ops::{Mul, MulAssign, Neg, Not};
+use crate::ops::{Mul, MulAssign, Neg, Not, Rem, RemAssign};
 use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -287,6 +287,27 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_op_assign! { impl DivAssign, div_assign for Saturating<$t>, Saturating<$t> }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Rem for Saturating<$t> {
+            type Output = Saturating<$t>;
+
+            #[inline]
+            fn rem(self, other: Saturating<$t>) -> Saturating<$t> {
+                Saturating(self.0.rem(other.0))
+            }
+        }
+        forward_ref_binop! { impl Rem, rem for Saturating<$t>, Saturating<$t>,
+                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl RemAssign for Saturating<$t> {
+            #[inline]
+            fn rem_assign(&mut self, other: Saturating<$t>) {
+                *self = *self % other;
+            }
+        }
+        forward_ref_op_assign! { impl RemAssign, rem_assign for Saturating<$t>, Saturating<$t> }
 
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl Not for Saturating<$t> {
