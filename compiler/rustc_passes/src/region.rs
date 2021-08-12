@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt, HirId};
+use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::query::Providers;
@@ -185,7 +185,7 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
 }
 
 fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
-    let stmt_id = stmt.kind.hir_id().local_id;
+    let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     // Every statement will clean up the temporaries created during
@@ -196,6 +196,7 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     visitor.terminating_scopes.insert(stmt_id);
 
     let prev_parent = visitor.cx.parent;
+    visitor.enter_node_scope_with_dtor(stmt_id);
 
     intravisit::walk_stmt(visitor, stmt);
 
@@ -432,7 +433,6 @@ fn resolve_local<'tcx>(
     visitor: &mut RegionResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
-    local_hir_id: Option<HirId>,
 ) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
@@ -493,10 +493,6 @@ fn resolve_local<'tcx>(
     // Here, the expression `[...]` has an extended lifetime due to rule
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
-
-    if let Some(hir_id) = local_hir_id {
-        visitor.enter_node_scope_with_dtor(hir_id.local_id);
-    }
 
     if let Some(expr) = init {
         record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);
@@ -772,7 +768,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             // (i.e., `'static`), which means that after `g` returns, it drops,
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
-            resolve_local(self, None, Some(&body.value), None);
+            resolve_local(self, None, Some(&body.value));
         }
 
         if body.generator_kind.is_some() {
@@ -799,7 +795,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_expr(self, ex);
     }
     fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
-        resolve_local(self, Some(&l.pat), l.init.as_deref(), Some(l.hir_id));
+        resolve_local(self, Some(&l.pat), l.init.as_deref());
     }
 }
 
