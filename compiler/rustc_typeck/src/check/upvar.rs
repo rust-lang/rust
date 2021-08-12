@@ -649,11 +649,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
                             Ok(s) => {
                                 let trimmed = s.trim_start();
+                                let mut lines = trimmed.lines();
+                                let line1 = lines.next().unwrap_or_default();
 
                                 // If the closure contains a block then replace the opening brace
                                 // with "{ let _ = (..); "
-                                let sugg = if let Some('{') = trimmed.chars().next() {
-                                    format!("{{ {}; {}", migration_string, &trimmed[1..])
+                                let sugg = if line1.trim_end() == "{" {
+                                    // This is a multi-line closure with just a `{` on the first line,
+                                    // so we put the `let` on its own line.
+                                    // We take the indentation from the next non-empty line.
+                                    let line2 = lines.filter(|line| !line.is_empty()).next().unwrap_or_default();
+                                    let indent = line2.split_once(|c: char| !c.is_whitespace()).unwrap_or_default().0;
+                                    format!("{{\n{}{};{}", indent, migration_string, &trimmed[line1.len()..])
+                                } else if line1.starts_with('{') {
+                                    format!("{{ {}; {}", migration_string, &trimmed[1..].trim_start())
                                 } else {
                                     format!("{{ {}; {} }}", migration_string, s)
                                 };

@@ -58,12 +58,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f` to be fully captured
    |
-LL ~     let c = || { let _ = &f; 
+LL ~     let c = || {
+LL +         let _ = &f;
 LL +
 LL +
 LL +
 LL +
-LL +         let f_1 = f.1;
  ...
 
 error: aborting due to 3 previous errors

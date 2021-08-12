@@ -36,6 +36,9 @@ pub struct TargetDataLayout {
     pub vector_align: Vec<(Size, AbiAndPrefAlign)>,
 
     pub instruction_address_space: AddressSpace,
+
+    /// Minimum size of #[repr(C)] enums (default I32 bits)
+    pub c_enum_min_size: Integer,
 }
 
 impl Default for TargetDataLayout {
@@ -60,6 +63,7 @@ impl Default for TargetDataLayout {
                 (Size::from_bits(128), AbiAndPrefAlign::new(align(128))),
             ],
             instruction_address_space: AddressSpace::DATA,
+            c_enum_min_size: Integer::I32,
         }
     }
 }
@@ -172,6 +176,8 @@ impl TargetDataLayout {
                 target.pointer_width
             ));
         }
+
+        dl.c_enum_min_size = Integer::from_size(Size::from_bits(target.c_enum_min_bits))?;
 
         Ok(dl)
     }
@@ -609,6 +615,17 @@ impl Integer {
             }
         }
         I8
+    }
+
+    fn from_size(size: Size) -> Result<Self, String> {
+        match size.bits() {
+            8 => Ok(Integer::I8),
+            16 => Ok(Integer::I16),
+            32 => Ok(Integer::I32),
+            64 => Ok(Integer::I64),
+            128 => Ok(Integer::I128),
+            _ => Err(format!("rust does not support integers with {} bits", size.bits())),
+        }
     }
 }
 
