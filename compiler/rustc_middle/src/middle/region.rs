@@ -84,21 +84,23 @@ use std::fmt;
 #[derive(HashStable)]
 pub struct Scope {
     pub id: hir::ItemLocalId,
+    pub for_stmt: bool,
     pub data: ScopeData,
 }
 
 impl fmt::Debug for Scope {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.data {
-            ScopeData::Node => write!(fmt, "Node({:?})", self.id),
-            ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.id),
-            ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.id),
-            ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.id),
+            ScopeData::Node => write!(fmt, "Node({:?}, {:?})", self.id, self.for_stmt),
+            ScopeData::CallSite => write!(fmt, "CallSite({:?}. {:?})", self.id, self.for_stmt),
+            ScopeData::Arguments => write!(fmt, "Arguments({:?}, {:?})", self.id, self.for_stmt),
+            ScopeData::Destruction => write!(fmt, "Destruction({:?}, {:?})", self.id, self.for_stmt),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
-                "Remainder {{ block: {:?}, first_statement_index: {}}}",
+                "Remainder {{ block: {:?}, first_statement_index: {}, for_stmt: {:?}}}",
                 self.id,
                 fsi.as_u32(),
+                self.for_stmt,
             ),
         }
     }
@@ -223,7 +225,7 @@ pub struct ScopeTree {
     var_map: FxHashMap<hir::ItemLocalId, Scope>,
 
     /// Maps from a `NodeId` to the associated destruction scope (if any).
-    destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
+    destruction_scopes: FxHashMap<(hir::ItemLocalId, bool), Scope>,
 
     /// `rvalue_scopes` includes entries for those expressions whose
     /// cleanup scope is larger than the default. The map goes from the
@@ -331,17 +333,17 @@ impl ScopeTree {
 
         if let Some(p) = parent {
             let prev = self.parent_map.insert(child, p);
-            assert!(prev.is_none());
+            assert!(prev.is_none(), "Scope {:?} with parent {:?} has prev {:?}", child, p, prev);
         }
 
         // Record the destruction scopes for later so we can query them.
         if let ScopeData::Destruction = child.data {
-            self.destruction_scopes.insert(child.item_local_id(), child);
+            assert_eq!(self.destruction_scopes.insert((child.item_local_id(), child.for_stmt), child), None);
         }
     }
 
-    pub fn opt_destruction_scope(&self, n: hir::ItemLocalId) -> Option<Scope> {
-        self.destruction_scopes.get(&n).cloned()
+    pub fn opt_destruction_scope(&self, n: hir::ItemLocalId, for_stmt: bool) -> Option<Scope> {
+        self.destruction_scopes.get(&(n, for_stmt)).cloned()
     }
 
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
@@ -372,7 +374,7 @@ impl ScopeTree {
     }
 
     /// Returns the scope when the temp created by `expr_id` will be cleaned up.
-    pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> Option<Scope> {
+    pub fn temporary_scope(&self, expr_id: hir::ItemLocalId, for_stmt: bool) -> Option<Scope> {
         // Check for a designated rvalue scope.
         if let Some(&s) = self.rvalue_scopes.get(&expr_id) {
             debug!("temporary_scope({:?}) = {:?} [custom]", expr_id, s);
@@ -383,7 +385,7 @@ impl ScopeTree {
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
-        let mut id = Scope { id: expr_id, data: ScopeData::Node };
+        let mut id = Scope { id: expr_id, data: ScopeData::Node, for_stmt };
 
         while let Some(&(p, _)) = self.parent_map.get(&id) {
             match p.data {

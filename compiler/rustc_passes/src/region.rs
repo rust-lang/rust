@@ -67,7 +67,7 @@ struct RegionResolutionVisitor<'tcx> {
     /// arbitrary amounts of stack space. Terminating scopes end
     /// up being contained in a DestructionScope that contains the
     /// destructor's execution.
-    terminating_scopes: FxHashSet<hir::ItemLocalId>,
+    terminating_scopes: FxHashSet<(hir::ItemLocalId, bool)>,
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
@@ -116,7 +116,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
     // `other_argument()` has run and also the call to `quux(..)`
     // itself has returned.
 
-    visitor.enter_node_scope_with_dtor(blk.hir_id.local_id);
+    visitor.enter_node_scope_with_dtor(blk.hir_id.local_id, false);
     visitor.cx.var_parent = visitor.cx.parent;
 
     {
@@ -137,6 +137,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     visitor.enter_scope(Scope {
                         id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
+                        for_stmt: false,
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
                 }
@@ -153,13 +154,13 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
 fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     let prev_cx = visitor.cx;
 
-    visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node });
+    visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node, for_stmt: false });
     visitor.cx.var_parent = visitor.cx.parent;
 
-    visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
+    visitor.terminating_scopes.insert((arm.body.hir_id.local_id, false));
 
     if let Some(hir::Guard::If(ref expr)) = arm.guard {
-        visitor.terminating_scopes.insert(expr.hir_id.local_id);
+        visitor.terminating_scopes.insert((expr.hir_id.local_id, false));
     }
 
     intravisit::walk_arm(visitor, arm);
@@ -168,7 +169,7 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
 }
 
 fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-    visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
+    visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node, for_stmt: false });
 
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
@@ -185,18 +186,25 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
 }
 
 fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
-    let stmt_id = stmt.hir_id.local_id;
-    debug!("resolve_stmt(stmt.id={:?})", stmt_id);
+    debug!("resolve_stmt(stmt.kind.hir_id={:?})", stmt.kind.hir_id());
 
     // Every statement will clean up the temporaries created during
     // execution of that statement. Therefore each statement has an
     // associated destruction scope that represents the scope of the
     // statement plus its destructors, and thus the scope for which
     // regions referenced by the destructors need to survive.
-    visitor.terminating_scopes.insert(stmt_id);
+    //
 
     let prev_parent = visitor.cx.parent;
-    visitor.enter_node_scope_with_dtor(stmt_id);
+
+    match &stmt.kind {
+        kind @ (hir::StmtKind::Local(_) | hir::StmtKind::Expr(_) | hir::StmtKind::Semi(_)) => {
+            let local_id = kind.hir_id().local_id;
+            visitor.terminating_scopes.insert((local_id, true));
+            visitor.enter_node_scope_with_dtor(local_id, true);
+        }
+        hir::StmtKind::Item(_) => {}
+    }
 
     intravisit::walk_stmt(visitor, stmt);
 
@@ -207,12 +215,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
 
     let prev_cx = visitor.cx;
-    visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
+    visitor.enter_node_scope_with_dtor(expr.hir_id.local_id, false);
 
     {
         let terminating_scopes = &mut visitor.terminating_scopes;
         let mut terminating = |id: hir::ItemLocalId| {
-            terminating_scopes.insert(id);
+            terminating_scopes.insert((id, false));
         };
         match expr.kind {
             // Conditional or repeating scopes are always terminating
@@ -401,7 +409,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     if let hir::ExprKind::Yield(_, source) = &expr.kind {
         // Mark this expr's scope and all parent scopes as containing `yield`.
-        let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
+        let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node, for_stmt: false };
         loop {
             let data = YieldData {
                 span: expr.span,
@@ -687,15 +695,15 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         self.cx.parent = Some((child_scope, child_depth));
     }
 
-    fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId) {
+    fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId, for_stmt: bool) {
         // If node was previously marked as a terminating scope during the
         // recursive visit of its parent node in the AST, then we need to
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
-        if self.terminating_scopes.contains(&id) {
-            self.enter_scope(Scope { id, data: ScopeData::Destruction });
+        if self.terminating_scopes.contains(&(id, for_stmt)) {
+            self.enter_scope(Scope { id, data: ScopeData::Destruction, for_stmt });
         }
-        self.enter_scope(Scope { id, data: ScopeData::Node });
+        self.enter_scope(Scope { id, data: ScopeData::Node, for_stmt });
     }
 }
 
@@ -733,10 +741,10 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         // control flow assumptions. This doesn't apply to nested
         // bodies within the `+=` statements. See #69307.
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
-        self.terminating_scopes.insert(body.value.hir_id.local_id);
+        self.terminating_scopes.insert((body.value.hir_id.local_id, false));
 
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite });
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments });
+        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite, for_stmt: false });
+        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments, for_stmt: false });
 
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();

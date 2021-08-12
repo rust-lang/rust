@@ -123,6 +123,15 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::ItemLocalId {
     }
 }
 
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for (hir::ItemLocalId, bool) {
+    type KeyType = (hir::ItemLocalId, bool);
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> (hir::ItemLocalId, bool) {
+        *self
+    }
+}
+
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Body { params, value, generator_kind } = self;

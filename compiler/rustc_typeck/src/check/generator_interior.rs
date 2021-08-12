@@ -337,7 +337,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         self.expr_count += 1;
 
-        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id, false);
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.

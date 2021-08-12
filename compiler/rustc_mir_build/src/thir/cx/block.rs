@@ -13,12 +13,13 @@ impl<'tcx> Cx<'tcx> {
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
         let opt_destruction_scope =
-            self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id);
+            self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id, false);
         Block {
             targeted_by_break: block.targeted_by_break,
             region_scope: region::Scope {
                 id: block.hir_id.local_id,
                 data: region::ScopeData::Node,
+                for_stmt: false,
             },
             opt_destruction_scope,
             span: block.span,
@@ -46,7 +47,7 @@ impl<'tcx> Cx<'tcx> {
             .enumerate()
             .filter_map(|(index, stmt)| {
                 let hir_id = stmt.kind.hir_id();
-                let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id);
+                let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id, true);
                 match stmt.kind {
                     hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
                         let stmt = Stmt {
@@ -54,6 +55,7 @@ impl<'tcx> Cx<'tcx> {
                                 scope: region::Scope {
                                     id: hir_id.local_id,
                                     data: region::ScopeData::Node,
+                                    for_stmt: true,
                                 },
                                 expr: self.mirror_expr(expr),
                             },
@@ -71,6 +73,7 @@ impl<'tcx> Cx<'tcx> {
                             data: region::ScopeData::Remainder(region::FirstStatementIndex::new(
                                 index,
                             )),
+                            for_stmt: false,
                         };
 
                         let mut pattern = self.pattern_from_hir(local.pat);
@@ -101,6 +104,7 @@ impl<'tcx> Cx<'tcx> {
                                 init_scope: region::Scope {
                                     id: hir_id.local_id,
                                     data: region::ScopeData::Node,
+                                    for_stmt: true,
                                 },
                                 pattern,
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
