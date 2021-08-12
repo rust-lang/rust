@@ -377,7 +377,7 @@ impl HirDisplay for Ty {
                 }
 
                 // FIXME: all this just to decide whether to use parentheses...
-                let conains_impl_fn = |bounds: &[QuantifiedWhereClause]| {
+                let contains_impl_fn = |bounds: &[QuantifiedWhereClause]| {
                     bounds.iter().any(|bound| {
                         if let WhereClause::Implemented(trait_ref) = bound.skip_binders() {
                             let trait_ = trait_ref.hir_trait_id();
@@ -390,7 +390,7 @@ impl HirDisplay for Ty {
                 let (preds_to_print, has_impl_fn_pred) = match t.kind(&Interner) {
                     TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
                         let bounds = dyn_ty.bounds.skip_binders().interned();
-                        (bounds.len(), conains_impl_fn(bounds))
+                        (bounds.len(), contains_impl_fn(bounds))
                     }
                     TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
@@ -435,7 +435,7 @@ impl HirDisplay for Ty {
                                 }
                             }
 
-                            (len, conains_impl_fn(bounds.skip_binders()))
+                            (len, contains_impl_fn(bounds.skip_binders()))
                         } else {
                             (0, false)
                         }

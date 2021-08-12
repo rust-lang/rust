@@ -578,7 +578,6 @@ impl<'a> InferenceContext<'a> {
             Solution::Ambig(Guidance::Definite(subst)) => {
                 canonicalized.apply_solution(&mut self.table, subst)
             }
-            // FIXME: should we accept ambiguous results here?
             _ => return Err(TypeError),
         };
         let unsize =

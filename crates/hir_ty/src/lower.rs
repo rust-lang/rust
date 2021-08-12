@@ -881,8 +881,6 @@ impl<'a> TyLoweringContext<'a> {
         cov_mark::hit!(lower_rpit);
         let self_ty =
             TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
-        // XXX(iDawer): Can shifting mess with unsized_types? For now I better reinsure.
-        let outer_unsized_types = self.unsized_types.replace(Default::default());
         let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             let mut predicates: Vec<_> = bounds
                 .iter()
@@ -907,7 +905,6 @@ impl<'a> TyLoweringContext<'a> {
             }
             predicates
         });
-        self.unsized_types.replace(outer_unsized_types);
 
         ReturnTypeImplTrait { bounds: crate::make_only_type_binders(1, predicates) }
     }

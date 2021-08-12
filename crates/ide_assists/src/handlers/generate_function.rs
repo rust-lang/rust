@@ -747,7 +747,7 @@ fn bar(worble: ()) ${0:-> ()} {
         check_assist(
             generate_function,
             r#"
-#[lang = "sized"] trait Sized {}
+//- minicore: sized
 trait Foo {}
 fn foo() -> impl Foo {
     todo!()
@@ -757,7 +757,6 @@ fn baz() {
 }
 "#,
             r#"
-#[lang = "sized"] trait Sized {}
 trait Foo {}
 fn foo() -> impl Foo {
     todo!()
