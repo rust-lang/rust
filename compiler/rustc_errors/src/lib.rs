@@ -283,6 +283,9 @@ impl CodeSuggestion {
                 let mut buf = String::new();
 
                 let mut line_highlight = vec![];
+                // We need to keep track of the difference between the existing code and the added
+                // or deleted code in order to point at the correct column *after* substitution.
+                let mut acc = 0;
                 for part in &substitution.parts {
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {
@@ -290,6 +293,7 @@ impl CodeSuggestion {
                             push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
                         while count > 0 {
                             highlights.push(std::mem::take(&mut line_highlight));
+                            acc = 0;
                             count -= 1;
                         }
                     } else {
@@ -297,6 +301,7 @@ impl CodeSuggestion {
                         let mut count = push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
                         while count > 0 {
                             highlights.push(std::mem::take(&mut line_highlight));
+                            acc = 0;
                             count -= 1;
                         }
                         // push lines between the previous and current span (if any)
@@ -305,6 +310,7 @@ impl CodeSuggestion {
                                 buf.push_str(line.as_ref());
                                 buf.push('\n');
                                 highlights.push(std::mem::take(&mut line_highlight));
+                                acc = 0;
                             }
                         }
                         if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
@@ -316,18 +322,22 @@ impl CodeSuggestion {
                         }
                     }
                     // Add a whole line highlight per line in the snippet.
+                    let len = part.snippet.split('\n').next().unwrap_or(&part.snippet).len();
                     line_highlight.push(SubstitutionHighlight {
-                        start: cur_lo.col.0,
-                        end: cur_lo.col.0
-                            + part.snippet.split('\n').next().unwrap_or(&part.snippet).len(),
+                        start: (cur_lo.col.0 as isize + acc) as usize,
+                        end: (cur_lo.col.0 as isize + acc + len as isize) as usize,
                     });
+                    buf.push_str(&part.snippet);
+                    prev_hi = sm.lookup_char_pos(part.span.hi());
+                    if prev_hi.line == cur_lo.line {
+                        acc += len as isize - (prev_hi.col.0 - cur_lo.col.0) as isize;
+                    }
+                    prev_line = sf.get_line(prev_hi.line - 1);
                     for line in part.snippet.split('\n').skip(1) {
+                        acc = 0;
                         highlights.push(std::mem::take(&mut line_highlight));
                         line_highlight.push(SubstitutionHighlight { start: 0, end: line.len() });
                     }
-                    buf.push_str(&part.snippet);
-                    prev_hi = sm.lookup_char_pos(part.span.hi());
-                    prev_line = sf.get_line(prev_hi.line - 1);
                 }
                 highlights.push(std::mem::take(&mut line_highlight));
                 let only_capitalization = is_case_difference(sm, &buf, bounding_span);
