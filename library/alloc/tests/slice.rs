@@ -994,6 +994,80 @@ fn test_rsplitnator() {
 }
 
 #[test]
+fn test_split_iterators_size_hint() {
+    for len in 0..=2 {
+        let mut v: Vec<u8> = (0..len).collect();
+        fn verify_descending(sequence: &[usize], context: &str) {
+            let len = sequence.len();
+            let target: Vec<usize> = (0..len).rev().collect();
+            assert_eq!(sequence, target, "while testing: {}", context);
+        }
+
+        macro_rules! test_size_hint {
+            ($create_iterator:expr) => {{
+                // with a predicate always returning false, the split*-iterators
+                // become maximally short, so the size_hint lower bounds are correct
+
+                macro_rules! p {
+                    () => {
+                        |_| false
+                    };
+                }
+                let mut short_iterator = $create_iterator;
+                let mut lower_bounds = vec![short_iterator.size_hint().0];
+                while let Some(_) = short_iterator.next() {
+                    lower_bounds.push(short_iterator.size_hint().0);
+                }
+                verify_descending(&lower_bounds, stringify!($create_iterator));
+            }
+            {
+                // with a predicate always returning true, the split*-iterators
+                // become maximally long, so the size_hint upper bounds are correct
+
+                macro_rules! p {
+                    () => {
+                        |_| true
+                    };
+                }
+                let mut long_iterator = $create_iterator;
+                let mut upper_bounds = vec![
+                    long_iterator.size_hint().1.expect("split*-methods have known upper bound"),
+                ];
+                while let Some(_) = long_iterator.next() {
+                    upper_bounds.push(
+                        long_iterator.size_hint().1.expect("split*-methods have known upper bound"),
+                    );
+                }
+                verify_descending(&upper_bounds, stringify!($create_iterator));
+            }};
+        }
+
+        test_size_hint!(v.split(p!()));
+        test_size_hint!(v.split_mut(p!()));
+        test_size_hint!(v.splitn(0, p!()));
+        test_size_hint!(v.splitn(1, p!()));
+        test_size_hint!(v.splitn(2, p!()));
+        test_size_hint!(v.splitn(3, p!()));
+        test_size_hint!(v.splitn_mut(0, p!()));
+        test_size_hint!(v.splitn_mut(1, p!()));
+        test_size_hint!(v.splitn_mut(2, p!()));
+        test_size_hint!(v.splitn_mut(3, p!()));
+        test_size_hint!(v.split_inclusive(p!()));
+        test_size_hint!(v.split_inclusive_mut(p!()));
+        test_size_hint!(v.rsplit(p!()));
+        test_size_hint!(v.rsplit_mut(p!()));
+        test_size_hint!(v.rsplitn(0, p!()));
+        test_size_hint!(v.rsplitn(1, p!()));
+        test_size_hint!(v.rsplitn(2, p!()));
+        test_size_hint!(v.rsplitn(3, p!()));
+        test_size_hint!(v.rsplitn_mut(0, p!()));
+        test_size_hint!(v.rsplitn_mut(1, p!()));
+        test_size_hint!(v.rsplitn_mut(2, p!()));
+        test_size_hint!(v.rsplitn_mut(3, p!()));
+    }
+}
+
+#[test]
 fn test_windowsator() {
     let v = &[1, 2, 3, 4];
 
