@@ -7,9 +7,8 @@ LL | /     bar.call((
 LL | |         &id(()),
    | |          ^^^^^^ creates a temporary which is freed while still in use
 LL | |     ));
-   | |      -
-   | |      |
-   | |______temporary value is freed at the end of this statement
+   | |      -- temporary value is freed at the end of this statement
+   | |______|
    |        argument requires that borrow lasts for `'a`
 
 error: aborting due to previous error

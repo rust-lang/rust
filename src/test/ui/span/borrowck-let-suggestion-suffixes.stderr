@@ -14,7 +14,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:19:14
    |
 LL |     v3.push(&id('x'));           // statement 6
-   |              ^^^^^^^- temporary value is freed at the end of this statement
+   |              ^^^^^^^ - temporary value is freed at the end of this statement
    |              |
    |              creates a temporary which is freed while still in use
 ...
@@ -27,7 +27,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:29:18
    |
 LL |         v4.push(&id('y'));
-   |                  ^^^^^^^- temporary value is freed at the end of this statement
+   |                  ^^^^^^^ - temporary value is freed at the end of this statement
    |                  |
    |                  creates a temporary which is freed while still in use
 ...
@@ -40,7 +40,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:40:14
    |
 LL |     v5.push(&id('z'));
-   |              ^^^^^^^- temporary value is freed at the end of this statement
+   |              ^^^^^^^ - temporary value is freed at the end of this statement
    |              |
    |              creates a temporary which is freed while still in use
 ...

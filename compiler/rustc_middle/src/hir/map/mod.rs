@@ -818,6 +818,22 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 
+    pub fn stmt_span(&self, hir_id: HirId) -> Span {
+        match self.find(hir_id).unwrap() {
+            Node::Local(_) | Node::Item(_) | Node::Expr(_) => {
+                if let Some(Node::Block(block)) = self.find(self.get_parent_node(hir_id)) {
+                    for stmt in block.stmts {
+                        if stmt.kind.hir_id() == hir_id {
+                            return stmt.span;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        self.span(hir_id)
+    }
+
     /// Gets the span of the definition of the specified HIR node.
     /// This is used by `tcx.get_span`
     pub fn span(&self, hir_id: HirId) -> Span {
