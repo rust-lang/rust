@@ -2418,8 +2418,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match s.kind {
             StmtKind::Local(ref l) => {
                 let l = self.lower_local(l);
-                let hir_id = self.lower_node_id(s.id());
-                self.alias_attrs(hir_id, l.hir_id);
                 return smallvec![hir::Stmt {
                     kind: hir::StmtKind::Local(self.arena.alloc(l)),
                     span: s.span,
@@ -2436,14 +2434,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             StmtKind::Expr(ref e) => {
                 let e = self.lower_expr(e);
-                let hir_id = self.lower_node_id(s.id());
-                self.alias_attrs(hir_id, e.hir_id);
                 hir::StmtKind::Expr(e)
             }
             StmtKind::Semi(ref e) => {
                 let e = self.lower_expr(e);
-                let hir_id = self.lower_node_id(s.id());
-                self.alias_attrs(hir_id, e.hir_id);
                 hir::StmtKind::Semi(e)
             }
             StmtKind::Empty { id: _ } => return smallvec![],
