@@ -625,7 +625,7 @@ macro_rules! saturating_int_impl_signed {
             /// #![feature(saturating_int_impl)]
             /// use std::num::Saturating;
             ///
-            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX) / Saturating(4", stringify!($t), ");")]
+            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX >> 2);")]
             ///
             /// assert_eq!(n.leading_zeros(), 3);
             /// ```
@@ -740,7 +740,7 @@ macro_rules! saturating_int_impl_unsigned {
             /// #![feature(saturating_int_impl)]
             /// use std::num::Saturating;
             ///
-            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX) / Saturating(4", stringify!($t), ");")]
+            #[doc = concat!("let n = Saturating(", stringify!($t), "::MAX >> 2);")]
             ///
             /// assert_eq!(n.leading_zeros(), 2);
             /// ```
