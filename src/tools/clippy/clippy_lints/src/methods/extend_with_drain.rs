@@ -7,7 +7,7 @@ use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
-use super::APPEND_INSTEAD_OF_EXTEND;
+use super::EXTEND_WITH_DRAIN;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
@@ -25,7 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
-                APPEND_INSTEAD_OF_EXTEND,
+                EXTEND_WITH_DRAIN,
                 expr.span,
                 "use of `extend` instead of `append` for adding the full range of a second vector",
                 "try this",
