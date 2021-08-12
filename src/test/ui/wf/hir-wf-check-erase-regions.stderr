@@ -1,8 +1,8 @@
 error[E0277]: `&T` is not an iterator
-  --> $DIR/hir-wf-check-erase-regions.rs:7:5
+  --> $DIR/hir-wf-check-erase-regions.rs:7:21
    |
 LL |     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&T` is not an iterator
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&T` is not an iterator
    |
   ::: $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
    |
