@@ -5244,7 +5244,6 @@ public:
         primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, orig, Mode, Seen, oldUnreachable);
       }
-
       if (subretused && primalNeededInReverse) {
         if (normalReturn != newCall) {
           assert(normalReturn->getType() == newCall->getType());
@@ -5255,8 +5254,14 @@ public:
         normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn,
                                                getIndex(orig, CacheType::Self));
       } else {
-        if (!orig->mayWriteToMemory() ||
-            Mode == DerivativeMode::ReverseModeGradient)
+        if (normalReturn && normalReturn != newCall) {
+          assert(normalReturn->getType() == newCall->getType());
+          assert(Mode != DerivativeMode::ReverseModeGradient);
+          gutils->replaceAWithB(newCall, normalReturn);
+          BuilderZ.SetInsertPoint(newCall->getNextNode());
+          gutils->erase(newCall);
+        } else if (!orig->mayWriteToMemory() ||
+                   Mode == DerivativeMode::ReverseModeGradient)
           eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
       return;

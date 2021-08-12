@@ -173,6 +173,11 @@ static inline bool is_use_directly_needed_in_reverse(
       // we still need even if instruction is inactive
       if (F->getName() == "__kmpc_barrier" || F->getName() == "MPI_Barrier")
         return true;
+
+      // Since adjoint of GC preserve is another preserve in reverse
+      // we still need even if instruction is inactive
+      if (F->getName() == "llvm.julia.gc_preserve_begin")
+        return true;
     }
   }
 
