@@ -2184,7 +2184,7 @@ impl<'a> Parser<'a> {
                                     && expr_lines.lines.len() == 2
                                     && this.token == token::FatArrow =>
                             {
-                                // We check whether there's any trailing code in the parse span,
+                                // We check whether there's any trailing comma in the parse span,
                                 // if there isn't, we very likely have the following:
                                 //
                                 // X |     &Y => "y"
