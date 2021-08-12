@@ -611,7 +611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         for (captured_hir_id, captured_name, reasons) in diagnostics_info.iter() {
                             if let Some(captured_hir_id) = captured_hir_id {
                                 let cause_span = self.tcx.hir().span(*captured_hir_id);
-                                diagnostics_builder.span_label(cause_span, format!("in Rust 2018, closure captures all of `{}`, but in Rust 2021, it only captures `{}`",
+                                diagnostics_builder.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
                                     self.tcx.hir().name(*var_hir_id),
                                     captured_name,
                                 ));
@@ -622,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if reasons.contains("drop order") {
                                 let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
 
-                                diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` would be dropped here, but in Rust 2021, only `{}` would be dropped here alongside the closure",
+                                diagnostics_builder.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
                                     self.tcx.hir().name(*var_hir_id),
                                     captured_name,
                                 ));
@@ -632,7 +632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if reasons.contains("trait implementation") {
                                 let missing_trait = &reasons[..reasons.find("trait implementation").unwrap() - 1];
 
-                                diagnostics_builder.span_label(closure_head_span, format!("in Rust 2018, this closure would implement {} as `{}` implements {}, but in Rust 2021, this closure would no longer implement {} as `{}` does not implement {}",
+                                diagnostics_builder.span_label(closure_head_span, format!("in Rust 2018, this closure implements {} as `{}` implements {}, but in Rust 2021, this closure will no longer implement {} as `{}` does not implement {}",
                                     missing_trait,
                                     self.tcx.hir().name(*var_hir_id),
                                     missing_trait,
