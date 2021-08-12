@@ -650,7 +650,7 @@ macro_rules! saturating_int_impl_signed {
             #[doc = concat!("assert_eq!(Saturating(-100", stringify!($t), ").abs(), Saturating(100));")]
             #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN).abs(), Saturating((", stringify!($t), "::MIN + 1).abs()));")]
             #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN).abs(), Saturating(", stringify!($t), "::MIN.saturating_abs()));")]
-            /// assert_eq!(Saturating(-128i8).abs().0 as u8, i8::MAX as u8);
+            #[doc = concat!("assert_eq!(Saturating(", stringify!($t), "::MIN).abs(), Saturating(", stringify!($t), "::MAX));")]
             /// ```
             #[inline]
             #[unstable(feature = "saturating_int_impl", issue = "87920")]
