@@ -11,8 +11,7 @@ use crate::ops::{Sub, SubAssign};
 /// Operations like `+` on `u32` values are intended to never overflow,
 /// and in some debug configurations overflow is detected and results
 /// in a panic. While most arithmetic falls into this category, some
-/// code explicitly expects and relies upon modular arithmetic (e.g.,
-/// hashing).
+/// code explicitly expects and relies upon saturating arithmetic.
 ///
 /// Saturating arithmetic can be achieved either through methods like
 /// `saturating_add`, or through the `Saturating<T>` type, which says that
@@ -93,7 +92,7 @@ macro_rules! saturating_impl {
             }
         }
         forward_ref_binop! { impl Add, add for Saturating<$t>, Saturating<$t>,
-                #[unstable(feature = "saturating_int_impl", issue = "87920")]
+                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
 
         #[unstable(feature = "saturating_int_impl", issue = "87920")]
         impl AddAssign for Saturating<$t> {
