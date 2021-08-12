@@ -30,11 +30,7 @@ help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = (&t, &t1, &t2);
-LL +
-LL +
-LL +
-LL + 
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:41:13
@@ -59,11 +55,7 @@ help: add a dummy let to cause `t`, `t1` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = (&t, &t1);
-LL +
-LL +
-LL +
-LL +         let _t = t.0;
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:62:13
@@ -82,11 +74,7 @@ help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
-LL +
-LL +
-LL +
-LL +         let _t = t.0;
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:83:13
@@ -105,11 +93,7 @@ help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
-LL +
-LL +
-LL +
-LL +         let _t = t.0;
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:104:13
@@ -128,11 +112,7 @@ help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
-LL +
-LL +
-LL +
-LL +         let _t = t.0;
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:122:13
@@ -156,11 +136,7 @@ help: add a dummy let to cause `t1`, `t` to be fully captured
    |
 LL ~     let c = move || {
 LL +         let _ = (&t1, &t);
-LL +
-LL +
-LL +
-LL +         println!("{} {}", t1.1, t.1);
- ...
+   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:142:13
@@ -179,11 +155,7 @@ help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
-LL +
-LL +
-LL +
-LL +         let _t = t.0;
- ...
+   |
 
 error: aborting due to 7 previous errors
 
