@@ -609,6 +609,177 @@ impl Clone for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn add_custom_impl_partial_eq_record_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq
+#[derive(Partial$0Eq)]
+struct Foo {
+    bin: usize,
+    bar: usize,
+}
+"#,
+            r#"
+struct Foo {
+    bin: usize,
+    bar: usize,
+}
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        self.bin == other.bin && self.bar == other.bar
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_tuple_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq
+#[derive(Partial$0Eq)]
+struct Foo(usize, usize);
+"#,
+            r#"
+struct Foo(usize, usize);
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_empty_struct() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq
+#[derive(Partial$0Eq)]
+struct Foo;
+"#,
+            r#"
+struct Foo;
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        true
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq
+#[derive(Partial$0Eq)]
+enum Foo {
+    Bar,
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        core::mem::discriminant(self) == core::mem::discriminant(other)
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_tuple_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq
+#[derive(Partial$0Eq)]
+enum Foo {
+    Bar(String),
+    Baz,
+}
+"#,
+            r#"
+enum Foo {
+    Bar(String),
+    Baz,
+}
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bar(l0), Self::Bar(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_record_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq
+#[derive(Partial$0Eq)]
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz {
+        qux: String,
+        fez: String,
+    },
+    Qux {},
+    Bin,
+}
+"#,
+            r#"
+enum Foo {
+    Bar {
+        bin: String,
+    },
+    Baz {
+        qux: String,
+        fez: String,
+    },
+    Qux {},
+    Bin,
+}
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
+            (Self::Baz { qux: l_qux, fez: l_fez }, Self::Baz { qux: r_qux, fez: r_fez }) => l_qux == r_qux && l_fez == r_fez,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+"#,
+        )
+    }
     #[test]
     fn add_custom_impl_all() {
         check_assist(
