@@ -38,10 +38,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let list = enum_.variant_list()?;
             let mut arms = vec![];
             for variant in list.variants() {
-                let name = variant.name()?;
-                let left = make::ext::ident_path("Self");
-                let right = make::ext::ident_path(&format!("{}", name));
-                let variant_name = make::path_concat(left, right);
+                let variant_name = make_variant_path(&variant)?;
 
                 match variant.field_list() {
                     // => match self { Self::Name { x } => Self::Name { x: x.clone() } }
@@ -151,9 +148,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let mut arms = vec![];
             for variant in list.variants() {
                 let name = variant.name()?;
-                let left = make::ext::ident_path("Self");
-                let right = make::ext::ident_path(&format!("{}", name));
-                let variant_name = make::path_pat(make::path_concat(left, right));
+                let variant_name = make::path_pat(make::path_from_text(&format!("Self::{}", name)));
 
                 let target = make::expr_path(make::ext::ident_path("f").into());
                 let fmt_string = make::expr_literal(&(format!("\"{}\"", name))).into();
@@ -226,10 +221,8 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 /// Generate a `Debug` impl based on the fields and members of the target type.
 fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     fn gen_default_call() -> ast::Expr {
-        let trait_name = make::ext::ident_path("Default");
-        let method_name = make::ext::ident_path("default");
-        let fn_name = make::expr_path(make::path_concat(trait_name, method_name));
-        make::expr_call(fn_name, make::arg_list(None))
+        let fn_name = make::path_from_text(&"Default::default");
+        make::expr_call(make::expr_path(fn_name), make::arg_list(None))
     }
     match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
@@ -283,11 +276,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
         // => std::mem::discriminant(self).hash(state);
         ast::Adt::Enum(_) => {
-            let root = make::ext::ident_path("core");
-            let submodule = make::ext::ident_path("mem");
-            let fn_name = make::ext::ident_path("discriminant");
-            let fn_name = make::path_concat(submodule, fn_name);
-            let fn_name = make::expr_path(make::path_concat(root, fn_name));
+            let fn_name = make_discriminant();
 
             let arg = make::expr_path(make::ext::ident_path("self"));
             let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg)));
@@ -329,14 +318,6 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
 fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    fn gen_discriminant() -> ast::Expr {
-        let root = make::ext::ident_path("core");
-        let submodule = make::ext::ident_path("mem");
-        let fn_name = make::ext::ident_path("discriminant");
-        let fn_name = make::path_concat(submodule, fn_name);
-        make::expr_path(make::path_concat(root, fn_name))
-    }
-
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
             Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
@@ -355,13 +336,6 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         make::record_pat_with_fields(record_name, list)
     }
 
-    fn gen_variant_path(variant: &ast::Variant) -> Option<ast::Path> {
-        let first = make::ext::ident_path("Self");
-        let second = make::path_from_text(&variant.name()?.to_string());
-        let record_name = make::path_concat(first, second);
-        Some(record_name)
-    }
-
     fn gen_tuple_field(field_name: &String) -> ast::Pat {
         ast::Pat::IdentPat(make::ident_pat(false, false, make::name(field_name)))
     }
@@ -370,15 +344,15 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     // generate this code `Self` for the time being.
 
     let body = match adt {
-        // `Hash` cannot be derived for unions, so no default impl can be provided.
+        // `PartialEq` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Union(_) => return None,
 
         ast::Adt::Enum(enum_) => {
             // => std::mem::discriminant(self) == std::mem::discriminant(other)
-            let self_name = make::expr_path(make::ext::ident_path("self"));
-            let lhs = make::expr_call(gen_discriminant(), make::arg_list(Some(self_name.clone())));
-            let other_name = make::expr_path(make::ext::ident_path("other"));
-            let rhs = make::expr_call(gen_discriminant(), make::arg_list(Some(other_name.clone())));
+            let lhs_name = make::expr_path(make::ext::ident_path("self"));
+            let lhs = make::expr_call(make_discriminant(), make::arg_list(Some(lhs_name.clone())));
+            let rhs_name = make::expr_path(make::ext::ident_path("other"));
+            let rhs = make::expr_call(make_discriminant(), make::arg_list(Some(rhs_name.clone())));
             let eq_check = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
 
             let mut case_count = 0;
@@ -407,8 +381,8 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             expr = gen_eq_chain(expr, cmp);
                         }
 
-                        let left = gen_record_pat(gen_variant_path(&variant)?, l_fields);
-                        let right = gen_record_pat(gen_variant_path(&variant)?, r_fields);
+                        let left = gen_record_pat(make_variant_path(&variant)?, l_fields);
+                        let right = gen_record_pat(make_variant_path(&variant)?, r_fields);
                         let tuple = make::tuple_pat(vec![left.into(), right.into()]);
 
                         if let Some(expr) = expr {
@@ -436,8 +410,8 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             expr = gen_eq_chain(expr, cmp);
                         }
 
-                        let left = make::tuple_struct_pat(gen_variant_path(&variant)?, l_fields);
-                        let right = make::tuple_struct_pat(gen_variant_path(&variant)?, r_fields);
+                        let left = make::tuple_struct_pat(make_variant_path(&variant)?, l_fields);
+                        let right = make::tuple_struct_pat(make_variant_path(&variant)?, r_fields);
                         let tuple = make::tuple_pat(vec![left.into(), right.into()]);
 
                         if let Some(expr) = expr {
@@ -456,7 +430,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         arms.push(make::match_arm(Some(lhs), None, eq_check));
                     }
 
-                    let match_target = make::expr_tuple(vec![self_name, other_name]);
+                    let match_target = make::expr_tuple(vec![lhs_name, rhs_name]);
                     let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
                     make::expr_match(match_target, list)
                 }
@@ -492,7 +466,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
             }
 
-            // No fields in the body means there's nothing to hash.
+            // No fields in the body means there's nothing to compare.
             None => {
                 let expr = make::expr_literal("true").into();
                 make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))
@@ -502,4 +476,12 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
     ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
     Some(())
+}
+
+fn make_discriminant() -> ast::Expr {
+    make::expr_path(make::path_from_text("core::mem::discriminant"))
+}
+
+fn make_variant_path(variant: &ast::Variant) -> Option<ast::Path> {
+    Some(make::path_from_text(&format!("Self::{}", &variant.name()?)))
 }
