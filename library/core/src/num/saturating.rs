@@ -4,7 +4,7 @@ use crate::fmt;
 use crate::ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign};
 use crate::ops::{BitXor, BitXorAssign, Div, DivAssign};
 use crate::ops::{Mul, MulAssign, Neg, Not};
-use crate::ops::{Sub, SubAssign};
+use crate::ops::{Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign};
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -78,6 +78,127 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Saturating<T> {
         self.0.fmt(f)
     }
 }
+#[allow(unused_macros)]
+macro_rules! sh_impl_signed {
+    ($t:ident, $f:ident) => {
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Shl<$f> for Saturating<$t> {
+            type Output = Saturating<$t>;
+
+            #[inline]
+            fn shl(self, other: $f) -> Saturating<$t> {
+                if other < 0 {
+                    Saturating(self.0.shr((-other & self::shift_max::$t as $f) as u32))
+                } else {
+                    Saturating(self.0.shl((other & self::shift_max::$t as $f) as u32))
+                }
+            }
+        }
+        forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
+        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl ShlAssign<$f> for Saturating<$t> {
+            #[inline]
+            fn shl_assign(&mut self, other: $f) {
+                *self = *self << other;
+            }
+        }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Shr<$f> for Saturating<$t> {
+            type Output = Saturating<$t>;
+
+            #[inline]
+            fn shr(self, other: $f) -> Saturating<$t> {
+                if other < 0 {
+                    Saturating(self.0.shl((-other & self::shift_max::$t as $f) as u32))
+                } else {
+                    Saturating(self.0.shr((other & self::shift_max::$t as $f) as u32))
+                }
+            }
+        }
+        forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
+        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl ShrAssign<$f> for Saturating<$t> {
+            #[inline]
+            fn shr_assign(&mut self, other: $f) {
+                *self = *self >> other;
+            }
+        }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
+    };
+}
+
+macro_rules! sh_impl_unsigned {
+    ($t:ident, $f:ident) => {
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Shl<$f> for Saturating<$t> {
+            type Output = Saturating<$t>;
+
+            #[inline]
+            fn shl(self, other: $f) -> Saturating<$t> {
+                Saturating(self.0.shl((other & self::shift_max::$t as $f) as u32))
+            }
+        }
+        forward_ref_binop! { impl Shl, shl for Saturating<$t>, $f,
+        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl ShlAssign<$f> for Saturating<$t> {
+            #[inline]
+            fn shl_assign(&mut self, other: $f) {
+                *self = *self << other;
+            }
+        }
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for Saturating<$t>, $f }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Shr<$f> for Saturating<$t> {
+            type Output = Saturating<$t>;
+
+            #[inline]
+            fn shr(self, other: $f) -> Saturating<$t> {
+                Saturating(self.0.shr((other & self::shift_max::$t as $f) as u32))
+            }
+        }
+        forward_ref_binop! { impl Shr, shr for Saturating<$t>, $f,
+        #[unstable(feature = "saturating_int_impl", issue = "87920")] }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl ShrAssign<$f> for Saturating<$t> {
+            #[inline]
+            fn shr_assign(&mut self, other: $f) {
+                *self = *self >> other;
+            }
+        }
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for Saturating<$t>, $f }
+    };
+}
+
+// FIXME (#23545): uncomment the remaining impls
+macro_rules! sh_impl_all {
+    ($($t:ident)*) => ($(
+        //sh_impl_unsigned! { $t, u8 }
+        //sh_impl_unsigned! { $t, u16 }
+        //sh_impl_unsigned! { $t, u32 }
+        //sh_impl_unsigned! { $t, u64 }
+        //sh_impl_unsigned! { $t, u128 }
+        sh_impl_unsigned! { $t, usize }
+
+        //sh_impl_signed! { $t, i8 }
+        //sh_impl_signed! { $t, i16 }
+        //sh_impl_signed! { $t, i32 }
+        //sh_impl_signed! { $t, i64 }
+        //sh_impl_signed! { $t, i128 }
+        //sh_impl_signed! { $t, isize }
+    )*)
+}
+
+sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 // FIXME(30524): impl Op<T> for Saturating<T>, impl OpAssign<T> for Saturating<T>
 macro_rules! saturating_impl {
@@ -774,3 +895,39 @@ macro_rules! saturating_int_impl_unsigned {
 }
 
 saturating_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
+
+mod shift_max {
+    #![allow(non_upper_case_globals)]
+
+    #[cfg(target_pointer_width = "16")]
+    mod platform {
+        pub const usize: u32 = super::u16;
+        pub const isize: u32 = super::i16;
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    mod platform {
+        pub const usize: u32 = super::u32;
+        pub const isize: u32 = super::i32;
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    mod platform {
+        pub const usize: u32 = super::u64;
+        pub const isize: u32 = super::i64;
+    }
+
+    pub const i8: u32 = (1 << 3) - 1;
+    pub const i16: u32 = (1 << 4) - 1;
+    pub const i32: u32 = (1 << 5) - 1;
+    pub const i64: u32 = (1 << 6) - 1;
+    pub const i128: u32 = (1 << 7) - 1;
+    pub use self::platform::isize;
+
+    pub const u8: u32 = i8;
+    pub const u16: u32 = i16;
+    pub const u32: u32 = i32;
+    pub const u64: u32 = i64;
+    pub const u128: u32 = i128;
+    pub use self::platform::usize;
+}
