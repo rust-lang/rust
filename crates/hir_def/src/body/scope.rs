@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     body::Body,
     db::DefDatabase,
-    expr::{Expr, ExprId, LabelId, Pat, PatId, Statement},
+    expr::{Expr, ExprId, LabelId, MatchGuard, Pat, PatId, Statement},
     BlockId, DefWithBodyId,
 };
 
@@ -204,12 +204,21 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         Expr::Match { expr, arms } => {
             compute_expr_scopes(*expr, body, scopes, scope);
             for arm in arms {
-                let scope = scopes.new_scope(scope);
+                let mut scope = scopes.new_scope(scope);
                 scopes.add_bindings(body, scope, arm.pat);
-                if let Some(guard) = arm.guard {
-                    scopes.set_scope(guard, scope);
-                    compute_expr_scopes(guard, body, scopes, scope);
-                }
+                match arm.guard {
+                    Some(MatchGuard::If { expr: guard }) => {
+                        scopes.set_scope(guard, scope);
+                        compute_expr_scopes(guard, body, scopes, scope);
+                    }
+                    Some(MatchGuard::IfLet { pat, expr: guard }) => {
+                        scopes.set_scope(guard, scope);
+                        compute_expr_scopes(guard, body, scopes, scope);
+                        scope = scopes.new_scope(scope);
+                        scopes.add_bindings(body, scope, pat);
+                    }
+                    _ => {}
+                };
                 scopes.set_scope(arm.expr, scope);
                 compute_expr_scopes(arm.expr, body, scopes, scope);
             }

@@ -1,5 +1,5 @@
-SOURCE_FILE@0..58
-  FN@0..57
+SOURCE_FILE@0..92
+  FN@0..91
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -8,17 +8,17 @@ SOURCE_FILE@0..58
       L_PAREN@6..7 "("
       R_PAREN@7..8 ")"
     WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..57
+    BLOCK_EXPR@9..91
       L_CURLY@9..10 "{"
       WHITESPACE@10..15 "\n    "
-      MATCH_EXPR@15..55
+      MATCH_EXPR@15..89
         MATCH_KW@15..20 "match"
         WHITESPACE@20..21 " "
         TUPLE_EXPR@21..23
           L_PAREN@21..22 "("
           R_PAREN@22..23 ")"
         WHITESPACE@23..24 " "
-        MATCH_ARM_LIST@24..55
+        MATCH_ARM_LIST@24..89
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
           MATCH_ARM@34..49
@@ -40,8 +40,36 @@ SOURCE_FILE@0..58
               L_PAREN@46..47 "("
               R_PAREN@47..48 ")"
             COMMA@48..49 ","
-          WHITESPACE@49..54 "\n    "
-          R_CURLY@54..55 "}"
-      WHITESPACE@55..56 "\n"
-      R_CURLY@56..57 "}"
-  WHITESPACE@57..58 "\n"
+          WHITESPACE@49..58 "\n        "
+          MATCH_ARM@58..83
+            WILDCARD_PAT@58..59
+              UNDERSCORE@58..59 "_"
+            WHITESPACE@59..60 " "
+            MATCH_GUARD@60..76
+              IF_KW@60..62 "if"
+              WHITESPACE@62..63 " "
+              LET_KW@63..66 "let"
+              WHITESPACE@66..67 " "
+              IDENT_PAT@67..70
+                NAME@67..70
+                  IDENT@67..70 "foo"
+              WHITESPACE@70..71 " "
+              EQ@71..72 "="
+              WHITESPACE@72..73 " "
+              PATH_EXPR@73..76
+                PATH@73..76
+                  PATH_SEGMENT@73..76
+                    NAME_REF@73..76
+                      IDENT@73..76 "bar"
+            WHITESPACE@76..77 " "
+            FAT_ARROW@77..79 "=>"
+            WHITESPACE@79..80 " "
+            TUPLE_EXPR@80..82
+              L_PAREN@80..81 "("
+              R_PAREN@81..82 ")"
+            COMMA@82..83 ","
+          WHITESPACE@83..88 "\n    "
+          R_CURLY@88..89 "}"
+      WHITESPACE@89..90 "\n"
+      R_CURLY@90..91 "}"
+  WHITESPACE@91..92 "\n"
