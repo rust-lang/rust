@@ -2509,12 +2509,12 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       Vals.push_back(cast<Constant>(
           invertPointerM(CD->getElementAsConstant(i), BuilderM)));
     }
-    return ConstantDataArray::get(CD->getContext(), Vals);
+    return ConstantArray::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
-      Vals.push_back(
-          cast<Constant>(invertPointerM(CD->getOperand(i), BuilderM)));
+      Value *val = invertPointerM(CD->getOperand(i), BuilderM);
+      Vals.push_back(cast<Constant>(val));
     }
     return ConstantArray::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantStruct>(oval)) {

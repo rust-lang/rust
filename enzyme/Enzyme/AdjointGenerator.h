@@ -1014,10 +1014,20 @@ public:
           diffe(&SI, Builder2), "diffe" + op2->getName());
 
     setDiffe(&SI, Constant::getNullValue(SI.getType()), Builder2);
-    if (dif1)
-      addToDiffe(orig_op1, dif1, Builder2, TR.addingType(size, orig_op1));
-    if (dif2)
-      addToDiffe(orig_op2, dif2, Builder2, TR.addingType(size, orig_op2));
+    if (dif1) {
+      Type *addingType = TR.addingType(size, orig_op1);
+      if (addingType || !looseTypeAnalysis)
+        addToDiffe(orig_op1, dif1, Builder2, addingType);
+      else
+        llvm::errs() << " warning: assuming integral for " << SI << "\n";
+    }
+    if (dif2) {
+      Type *addingType = TR.addingType(size, orig_op2);
+      if (addingType || !looseTypeAnalysis)
+        addToDiffe(orig_op2, dif2, Builder2, addingType);
+      else
+        llvm::errs() << " warning: assuming integral for " << SI << "\n";
+    }
   }
 
   void createSelectInstDual(llvm::SelectInst &SI) {
@@ -1710,8 +1720,12 @@ public:
         }
       goto def;
     }
+    case Instruction::Mul:
+    case Instruction::Sub:
     case Instruction::Add: {
       if (looseTypeAnalysis) {
+        llvm::errs() << "warning: binary operator is integer and constant: "
+                     << BO << "\n";
         // if loose type analysis, assume this integer add is constant
         return;
       }
