@@ -41,6 +41,7 @@ pub enum UnsafetyViolationDetails {
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
     CallToFunctionWith,
+    TraitUpcastingCoercionOfRawPointer,
 }
 
 impl UnsafetyViolationDetails {
@@ -101,6 +102,10 @@ impl UnsafetyViolationDetails {
             CallToFunctionWith => (
                 "call to function with `#[target_feature]`",
                 "can only be called if the required target features are available",
+            ),
+            TraitUpcastingCoercionOfRawPointer => (
+                "trait upcasting coercion from raw pointer type",
+                "trait upcasting coercion depends on the validity of the pointer metadata",
             ),
         }
     }

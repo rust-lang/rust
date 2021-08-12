@@ -8,7 +8,7 @@ use rustc_hir::Node;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 
@@ -132,6 +132,24 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.register_violations(&violations, &unsafe_blocks);
                 }
             },
+            Rvalue::Cast(kind, source, mir_cast_ty) => {
+                if let CastKind::Pointer(ty::adjustment::PointerCast::Unsize) = kind {
+                    let mir_source_ty = match *source {
+                        Operand::Copy(ref place) | Operand::Move(ref place) => {
+                            place.as_ref().ty(self.body, self.tcx).ty
+                        }
+                        Operand::Constant(ref constant) => constant.ty(),
+                    };
+
+                    if self.is_trait_upcasting_coercion_from_raw_pointer(mir_source_ty, mir_cast_ty)
+                    {
+                        self.require_unsafe(
+                            UnsafetyViolationKind::General,
+                            UnsafetyViolationDetails::TraitUpcastingCoercionOfRawPointer,
+                        )
+                    }
+                }
+            }
             _ => {}
         }
         self.super_rvalue(rvalue, location);
@@ -368,6 +386,39 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 UnsafetyViolationKind::General,
                 UnsafetyViolationDetails::CallToFunctionWith,
             )
+        }
+    }
+
+    fn is_trait_upcasting_coercion_pointee(&self, source: Ty<'tcx>, target: Ty<'tcx>) -> bool {
+        match (source.kind(), target.kind()) {
+            (&ty::Dynamic(data_a, ..), &ty::Dynamic(data_b, ..)) => {
+                data_a.principal_def_id() != data_b.principal_def_id()
+            }
+            _ => false,
+        }
+    }
+
+    fn is_trait_upcasting_coercion_from_raw_pointer(
+        &self,
+        source: Ty<'tcx>,
+        target: Ty<'tcx>,
+    ) -> bool {
+        match (source.kind(), target.kind()) {
+            (
+                &ty::Ref(_, _a, _),
+                &ty::Ref(_, _b, _) | &ty::RawPtr(ty::TypeAndMut { ty: _b, .. }),
+            ) => false,
+            (
+                &ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
+                &ty::RawPtr(ty::TypeAndMut { ty: b, .. }),
+            ) => {
+                if self.is_trait_upcasting_coercion_pointee(a, b) {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => bug!("is_trait_upcasting_coercion_from_raw_pointer: called on bad types"),
         }
     }
 }

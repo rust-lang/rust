@@ -1,0 +1,11 @@
+error[E0133]: trait upcasting coercion from raw pointer type is unsafe and requires unsafe function or block
+  --> $DIR/unsafe-trait-upcasting-coercion.rs:25:28
+   |
+LL |     let g: * const dyn A = v;
+   |                            ^ trait upcasting coercion from raw pointer type
+   |
+   = note: trait upcasting coercion depends on the validity of the pointer metadata
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0133`.
