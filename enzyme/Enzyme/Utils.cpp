@@ -315,21 +315,22 @@ llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
     /*6 */Type::getInt8Ty(call.getContext())
 #endif
 
-  auto buf = F->arg_begin();
-  buf->setName("buf");
-  Value *count = buf + 1;
+  auto buff = F->arg_begin();
+  buff->setName("buf");
+  Value* buf = buff;
+  Value *count = buff + 1;
   count->setName("count");
-  Value *datatype = buf + 2;
+  Value *datatype = buff + 2;
   datatype->setName("datatype");
-  Value *source = buf + 3;
+  Value *source = buff + 3;
   source->setName("source");
-  Value *tag = buf + 4;
+  Value *tag = buff + 4;
   tag->setName("tag");
-  Value *comm = buf + 5;
+  Value *comm = buff + 5;
   comm->setName("comm");
-  Value *fn = buf + 6;
+  Value *fn = buff + 6;
   fn->setName("fn");
-  Value *d_req = buf + 7;
+  Value *d_req = buff + 7;
   d_req->setName("d_req");
 
   auto isendfn = M.getFunction("MPI_Isend");
@@ -339,6 +340,8 @@ llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
 
   IRBuilder<> B(entry);
   auto arg = isendfn->arg_begin();
+  if (arg->getType()->isIntegerTy())
+    buf = B.CreatePtrToInt(buf, arg->getType());
   arg++;
   count = B.CreateZExtOrTrunc(count, arg->getType());
   arg++;
@@ -349,7 +352,9 @@ llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
   tag = B.CreateZExtOrTrunc(tag, arg->getType());
   arg++;
   comm = B.CreatePointerCast(comm, arg->getType());
-
+  arg++;
+  if (arg->getType()->isIntegerTy())
+    d_req = B.CreatePtrToInt(d_req, arg->getType());
   Value *args[] = {
       buf, count, datatype, source, tag, comm, d_req,
   };

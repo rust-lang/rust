@@ -180,27 +180,15 @@ const std::set<std::string> KnownInactiveFunctions = {
 bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   assert(directions & DOWN);
 
-  if (CI->hasFnAttr("enzyme_inactive")) {
-    return true;
-  }
-
-  Function *F = CI->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-  if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-#else
-  if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-#endif
-  {
-    if (castinst->isCast())
-      if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-        F = fn;
-      }
-  }
-
+  Function *F = getFunctionFromCall(CI);
+  
   // Indirect function calls may actively use the argument
   if (F == nullptr)
     return false;
+  
+  if (F->hasFnAttribute("enzyme_inactive")) {
+    return true;
+  }
 
   auto Name = F->getName();
 
@@ -260,10 +248,10 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   }
 
   // only request is active
-  if (Name == "MPI_Wait")
+  if (Name == "MPI_Wait" || Name == "PMPI_Wait")
     return val != CI->getOperand(0);
 
-  if (Name == "MPI_Waitall")
+  if (Name == "MPI_Waitall" || Name == "PMPI_Waitall")
     return val != CI->getOperand(1);
 
   // TODO interprocedural detection
@@ -981,26 +969,14 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         }
       } else if (auto op = dyn_cast<CallInst>(TmpOrig)) {
-        if (op->hasFnAttr("enzyme_inactive")) {
-          InsertConstantValue(TR, Val);
-          insertConstantsFrom(TR, *UpHypothesis);
-          return true;
-        }
+        Function *called = getFunctionFromCall(op);
 
-        Function *called = op->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-        if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledOperand()))
-#else
-        if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue()))
-#endif
-        {
-          if (castinst->isCast())
-            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              called = fn;
-            }
-        }
         if (called) {
+          if (called->hasFnAttribute("enzyme_inactive")) {
+            InsertConstantValue(TR, Val);
+            insertConstantsFrom(TR, *UpHypothesis);
+            return true;
+          }
           if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
               called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
             InsertConstantValue(TR, Val);
@@ -1162,21 +1138,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
               continue;
           }
 
-          if (CI->hasFnAttr("enzyme_inactive")) {
-            continue;
-          }
-
-          Function *F = CI->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-          if (auto Cst = dyn_cast<CastInst>(CI->getCalledOperand()))
-#else
-          if (auto Cst = dyn_cast<CastInst>(CI->getCalledValue()))
-#endif
-          {
-            F = dyn_cast<Function>(Cst->getOperand(0));
-          }
+          Function *F = getFunctionFromCall(CI);
+          
 
           if (F) {
+	    if (F->hasFnAttribute("enzyme_inactive")) {
+              continue;
+            }
             if (isAllocationFunction(*F, TLI) ||
                 isDeallocationFunction(*F, TLI)) {
               continue;
@@ -1625,26 +1593,18 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     }
   }
 
-  // Calls to print/assert/cxa guard are definitionally inactive
   if (auto op = dyn_cast<CallInst>(inst)) {
-    if (op->hasFnAttr("enzyme_inactive")) {
-      return true;
-    }
-    Function *called = op->getCalledFunction();
-    Value *calledValue;
+  // Calls to print/assert/cxa guard are definitionally inactive
+	llvm::Value* callVal;
 #if LLVM_VERSION_MAJOR >= 11
-    calledValue = op->getCalledOperand();
+        callVal = op->getCalledOperand();
 #else
-    calledValue = op->getCalledValue();
+        callVal = op->getCalledValue();
 #endif
-
-    if (auto castinst = dyn_cast<ConstantExpr>(calledValue)) {
-      if (castinst->isCast())
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          called = fn;
-        }
-    }
-    if (called) {
+    if (Function *called = getFunctionFromCall(op)) {
+      if (called->hasFnAttribute("enzyme_inactive")) {
+        return true;
+      }
       if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
           called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
         return true;
@@ -1678,11 +1638,11 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
                        << *inst << "\n";
         return true;
       }
-    } else if (!isa<Constant>(calledValue) &&
-               isConstantValue(TR, calledValue)) {
+    } else if (!isa<Constant>(callVal) &&
+               isConstantValue(TR, callVal)) {
       if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-constfn "
-                     << *inst << " - " << *calledValue << "\n";
+                     << *inst << " - " << *callVal << "\n";
       return true;
     }
   }
@@ -1752,18 +1712,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     if (EnzymeGlobalActivity) {
       if (!ci->onlyAccessesArgMemory() && !ci->doesNotAccessMemory()) {
 
-        Function *called = ci->getCalledFunction();
-#if LLVM_VERSION_MAJOR >= 11
-        if (auto castinst = dyn_cast<ConstantExpr>(ci->getCalledOperand()))
-#else
-        if (auto castinst = dyn_cast<ConstantExpr>(ci->getCalledValue()))
-#endif
-        {
-          if (castinst->isCast())
-            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              called = fn;
-            }
-        }
+        Function *called = getFunctionFromCall(ci);
         if (!called || (!isCertainPrintMallocOrFree(called) &&
                         !isMemFreeLibMFunction(called->getName()))) {
           if (EnzymePrintActivity)

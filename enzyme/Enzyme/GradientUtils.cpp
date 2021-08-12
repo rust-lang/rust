@@ -3151,8 +3151,8 @@ end:;
   assert(BuilderM.GetInsertBlock()->getParent());
   assert(oval);
 
-  llvm::errs() << *BuilderM.GetInsertBlock()->getParent()->getParent() << "\n";
-  llvm::errs() << "fn:" << *BuilderM.GetInsertBlock()->getParent()
+  llvm::errs() << *newFunc->getParent() << "\n";
+  llvm::errs() << "fn:" << *newFunc
                << "\noval=" << *oval << " icv=" << isConstantValue(oval)
                << "\n";
   for (auto z : invertedPointers) {

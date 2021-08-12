@@ -1955,13 +1955,17 @@ public:
         } else {
           SmallVector<Value *, 4> args;
           auto dsto = gutils->invertPointerM(orig_dst, Builder2);
-          auto dstaddr = cast<PointerType>(dsto->getType())->getAddressSpace();
-          auto secretpt = PointerType::get(secretty, dstaddr);
+	  if (dsto->getType()->isIntegerTy())
+	    dsto = Builder2.CreateIntToPtr(dsto, Type::getInt8PtrTy(dsto->getContext()));
+          unsigned dstaddr = cast<PointerType>(dsto->getType())->getAddressSpace();
+	  auto secretpt = PointerType::get(secretty, dstaddr);
           if (offset != 0)
             dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
           args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
           auto srco = gutils->invertPointerM(orig_src, Builder2);
-          auto srcaddr = cast<PointerType>(srco->getType())->getAddressSpace();
+	  if (srco->getType()->isIntegerTy())
+	    srco = Builder2.CreateIntToPtr(srco, Type::getInt8PtrTy(srco->getContext()));
+          unsigned srcaddr = cast<PointerType>(srco->getType())->getAddressSpace();
           secretpt = PointerType::get(secretty, srcaddr);
           if (offset != 0)
             srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
@@ -3485,13 +3489,18 @@ public:
       if (auto secretty = dt.isFloat()) {
         auto offset = start;
         SmallVector<Value *, 4> args;
-        auto dstaddr = cast<PointerType>(dsto->getType())->getAddressSpace();
+	if (dsto->getType()->isIntegerTy())
+	  dsto = Builder2.CreateIntToPtr(dsto, Type::getInt8PtrTy(dsto->getContext()));
+        unsigned dstaddr = cast<PointerType>(dsto->getType())->getAddressSpace();
         auto secretpt = PointerType::get(secretty, dstaddr);
         if (offset != 0)
           dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
         args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
-        auto srcaddr = cast<PointerType>(srco->getType())->getAddressSpace();
+	if (srco->getType()->isIntegerTy())
+	  srco = Builder2.CreateIntToPtr(srco, Type::getInt8PtrTy(dsto->getContext()));
+        unsigned srcaddr = cast<PointerType>(srco->getType())->getAddressSpace();
         secretpt = PointerType::get(secretty, srcaddr);
+
         if (offset != 0)
           srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
         args.push_back(Builder2.CreatePointerCast(srco, secretpt));
@@ -3534,6 +3543,9 @@ public:
           assert(!gutils->isConstantValue(call.getOperand(0)));
           assert(!gutils->isConstantValue(call.getOperand(6)));
           Value *d_req = gutils->invertPointerM(call.getOperand(6), BuilderZ);
+	  if (d_req->getType()->isIntegerTy()) {
+	    d_req = BuilderZ.CreateIntToPtr(d_req, PointerType::getUnqual(Type::getInt8PtrTy(call.getContext())));	
+	  }
 
           auto i64 = Type::getInt64Ty(call.getContext());
           auto i32 = Type::getInt32Ty(call.getContext());
@@ -3592,8 +3604,10 @@ public:
                 BuilderZ, firstallocation, getIndex(&call, CacheType::Tape));
 
           } else {
-            BuilderZ.CreateStore(
-                gutils->invertPointerM(call.getOperand(0), BuilderZ),
+            Value *ibuf = gutils->invertPointerM(call.getOperand(0), BuilderZ);
+	    if (ibuf->getType()->isIntegerTy())
+	       ibuf = BuilderZ.CreateIntToPtr(ibuf, Type::getInt8PtrTy(call.getContext()));
+            BuilderZ.CreateStore(ibuf,
                 BuilderZ.CreateInBoundsGEP(impialloc,
                                            {c0_64, ConstantInt::get(i32, 0)}));
           }
@@ -3604,9 +3618,12 @@ public:
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 1)}));
 
+	  Value* dataType = gutils->getNewFromOriginal(call.getOperand(2));
+	  if (dataType->getType()->isIntegerTy())
+	    dataType = BuilderZ.CreateIntToPtr(dataType, Type::getInt8PtrTy(dataType->getContext()));
           BuilderZ.CreateStore(
               BuilderZ.CreatePointerCast(
-                  gutils->getNewFromOriginal(call.getOperand(2)), types[2]),
+                  dataType, types[2]),
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 2)}));
 
@@ -3622,9 +3639,11 @@ public:
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 4)}));
 
+	  Value* comm = gutils->getNewFromOriginal(call.getOperand(5));
+	  if (comm->getType()->isIntegerTy())
+	    comm = BuilderZ.CreateIntToPtr(comm, Type::getInt8PtrTy(dataType->getContext()));
           BuilderZ.CreateStore(
-              BuilderZ.CreatePointerCast(
-                  gutils->getNewFromOriginal(call.getOperand(5)), types[5]),
+              BuilderZ.CreatePointerCast(comm, types[5]),
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 5)}));
 
@@ -3640,19 +3659,51 @@ public:
             Mode == DerivativeMode::ReverseModeCombined) {
           IRBuilder<> Builder2(call.getParent());
           getReverseBuilder(Builder2);
-          auto waitFunc = called->getParent()->getFunction("MPI_Wait");
-          assert(waitFunc);
-          auto statusArg = waitFunc->arg_end();
-          statusArg--;
+
+          Type *statusType = nullptr;
+
+          if (Function *recvfn = called->getParent()->getFunction("PMPI_Wait")) {
+            auto statusArg = recvfn->arg_end();
+            statusArg--;
+            if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
+              statusType = PT->getElementType();
+          }
+          if (Function *recvfn = called->getParent()->getFunction("MPI_Wait")) {
+            auto statusArg = recvfn->arg_end();
+            statusArg--;
+            if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
+              statusType = PT->getElementType();
+          }
+          if (statusType == nullptr) {
+            statusType = ArrayType::get(Type::getInt8Ty(call.getContext()), 24);
+            llvm::errs() << " warning could not automatically determine mpi "
+                            "status type, assuming [24 x i8]\n";
+          }
           Value *d_req = gutils->invertPointerM(call.getOperand(6), Builder2);
           Value *args[] = {
               /*req*/ d_req,
               /*status*/ IRBuilder<>(gutils->inversionAllocs)
-                  .CreateAlloca(cast<PointerType>(statusArg->getType())
-                                    ->getElementType())};
+                  .CreateAlloca(statusType)};
+          FunctionCallee waitFunc = nullptr;
+          for (auto name : {"PMPI_Wait", "MPI_Wait"})
+              if (Function *recvfn = called->getParent()->getFunction(name))  {
+                auto statusArg = recvfn->arg_end();
+                statusArg--;
+                args[2] = Builder2.CreateBitCast(args[2], statusArg->getType());
+                break;
+              }
+          if (!waitFunc) {
+            Type *types[sizeof(args) / sizeof(*args)];
+            for (size_t i = 0; i < sizeof(args) / sizeof(*args); i++)
+              types[i] = args[i]->getType();
+            FunctionType *FT = FunctionType::get(call.getType(), types, false);
+            waitFunc = called->getParent()->getOrInsertFunction("MPI_Wait", FT);
+          }
+          assert(waitFunc);
           auto fcall = Builder2.CreateCall(waitFunc, args);
           fcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
-          fcall->setCallingConv(waitFunc->getCallingConv());
+          if (auto F = dyn_cast<Function>(waitFunc.getCallee()))
+            fcall->setCallingConv(F->getCallingConv());
 
           auto len_arg = Builder2.CreateZExtOrTrunc(
               lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
@@ -3671,6 +3722,8 @@ public:
             auto volatile_arg = ConstantInt::getFalse(Builder2.getContext());
             assert(!gutils->isConstantValue(call.getOperand(0)));
             auto dbuf = gutils->invertPointerM(call.getOperand(0), Builder2);
+	    if (dbuf->getType()->isIntegerTy())
+	       dbuf = BuilderZ.CreateIntToPtr(dbuf, Type::getInt8PtrTy(call.getContext()));
 #if LLVM_VERSION_MAJOR == 6
             auto align_arg =
                 ConstantInt::get(Type::getInt32Ty(B.getContext()), 1);
@@ -3720,7 +3773,7 @@ public:
       return;
     }
 
-    if (funcName == "MPI_Wait") {
+    if (funcName == "MPI_Wait" || funcName == "PMPI_Wait") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
@@ -3728,7 +3781,9 @@ public:
 
         assert(!gutils->isConstantValue(call.getOperand(0)));
         Value *d_req = gutils->invertPointerM(call.getOperand(0), Builder2);
-
+	if (d_req->getType()->isIntegerTy()) {
+	  d_req = Builder2.CreateIntToPtr(d_req, PointerType::getUnqual(Type::getInt8PtrTy(call.getContext())));	
+	}
         auto i64 = Type::getInt64Ty(call.getContext());
         Type *types[] = {
             /*0 */ Type::getInt8PtrTy(call.getContext()),
@@ -3744,7 +3799,7 @@ public:
         Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
 
-        Value *isNull = ConstantInt::getFalse(call.getContext());
+        Value *isNull = Builder2.CreateICmpEQ(d_reqp, Constant::getNullValue(d_reqp->getType()));
         if (auto GV = gutils->newFunc->getParent()->getNamedValue(
                 "ompi_request_null")) {
           isNull = Builder2.CreateICmpEQ(
@@ -3791,7 +3846,7 @@ public:
       return;
     }
 
-    if (funcName == "MPI_Waitall") {
+    if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
@@ -3802,6 +3857,9 @@ public:
             lookup(gutils->getNewFromOriginal(call.getOperand(0)), Builder2);
         Value *d_req_orig =
             gutils->invertPointerM(call.getOperand(1), Builder2);
+	if (d_req_orig->getType()->isIntegerTy()) {
+	  d_req_orig = Builder2.CreateIntToPtr(d_req_orig, PointerType::getUnqual(Type::getInt8PtrTy(call.getContext())));	
+	}
 
         BasicBlock *currentBlock = Builder2.GetInsertBlock();
         BasicBlock *loopBlock = gutils->addReverseBlock(
@@ -3827,7 +3885,7 @@ public:
         idx->addIncoming(inc, eloopBlock);
 
         Value *idxs[] = {idx};
-        Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
+	Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
 
         auto i64 = Type::getInt64Ty(call.getContext());
         Type *types[] = {
@@ -3844,7 +3902,7 @@ public:
         Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
 
-        Value *isNull = ConstantInt::getFalse(call.getContext());
+        Value *isNull = Builder2.CreateICmpEQ(d_reqp, Constant::getNullValue(d_reqp->getType()));
         if (auto GV = gutils->newFunc->getParent()->getNamedValue(
                 "ompi_request_null")) {
           isNull = Builder2.CreateICmpEQ(
@@ -5089,26 +5147,7 @@ public:
 
     CallInst *orig = &call;
 
-    Function *called = orig->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand()))
-#else
-    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue()))
-#endif
-      if (castinst->isCast()) {
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          if (isAllocationFunction(*fn, gutils->TLI) ||
-              isDeallocationFunction(*fn, gutils->TLI)) {
-            called = fn;
-          }
-        }
-      }
-
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto alias = dyn_cast<GlobalAlias>(orig->getCalledOperand()))
-      called = dyn_cast<Function>(alias->getAliasee());
-#endif
+    Function *called = getFunctionFromCall(orig);
 
     StringRef funcName = "";
     if (called) {
@@ -5116,20 +5155,6 @@ public:
         funcName = called->getFnAttribute("enzyme_math").getValueAsString();
       else
         funcName = called->getName();
-    } else {
-#if LLVM_VERSION_MAJOR >= 11
-      if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand())) {
-#else
-      if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
-#endif
-        if (castinst->isCast())
-          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-            if (fn->hasFnAttribute("enzyme_math"))
-              funcName = fn->getFnAttribute("enzyme_math").getValueAsString();
-            else
-              funcName = fn->getName();
-          }
-      }
     }
 
     bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
