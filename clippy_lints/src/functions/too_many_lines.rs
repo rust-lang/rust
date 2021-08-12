@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_hir::intravisit::FnKind;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_span::Span;
@@ -8,8 +9,16 @@ use clippy_utils::source::snippet_opt;
 
 use super::TOO_MANY_LINES;
 
-pub(super) fn check_fn(cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'_>, too_many_lines_threshold: u64) {
-    if in_external_macro(cx.sess(), span) {
+pub(super) fn check_fn(
+    cx: &LateContext<'_>,
+    kind: FnKind<'tcx>,
+    span: Span,
+    body: &'tcx hir::Body<'_>,
+    too_many_lines_threshold: u64,
+) {
+    // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
+    // Don't check closures for `too_many_lines` to avoid duplicated lints.
+    if matches!(kind, FnKind::Closure) || in_external_macro(cx.sess(), span) {
         return;
     }
 

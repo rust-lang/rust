@@ -6,11 +6,141 @@ document.
 
 ## Unreleased / In Rust Nightly
 
-[3ae8faf...master](https://github.com/rust-lang/rust-clippy/compare/3ae8faf...master)
+[74d1561...master](https://github.com/rust-lang/rust-clippy/compare/74d1561...master)
+
+## Rust 1.55
+
+Current beta, release 2021-09-09
+
+[3ae8faf...74d1561](https://github.com/rust-lang/rust-clippy/compare/3ae8faf...74d1561)
+
+### Important Changes
+
+* Stabilized `cargo clippy --fix` :tada:
+  [#7405](https://github.com/rust-lang/rust-clippy/pull/7405)
+
+### New Lints
+
+* [`rc_mutex`]
+  [#7316](https://github.com/rust-lang/rust-clippy/pull/7316)
+* [`nonstandard_macro_braces`]
+  [#7299](https://github.com/rust-lang/rust-clippy/pull/7299)
+* [`strlen_on_c_strings`]
+  [#7243](https://github.com/rust-lang/rust-clippy/pull/7243)
+* [`self_named_constructors`]
+  [#7403](https://github.com/rust-lang/rust-clippy/pull/7403)
+* [`disallowed_script_idents`]
+  [#7400](https://github.com/rust-lang/rust-clippy/pull/7400)
+* [`disallowed_type`]
+  [#7315](https://github.com/rust-lang/rust-clippy/pull/7315)
+* [`missing_enforced_import_renames`]
+  [#7300](https://github.com/rust-lang/rust-clippy/pull/7300)
+* [`extend_with_drain`]
+  [#7270](https://github.com/rust-lang/rust-clippy/pull/7270)
+
+### Moves and Deprecations
+
+* Moved [`from_iter_instead_of_collect`] to `pedantic`
+  [#7375](https://github.com/rust-lang/rust-clippy/pull/7375)
+* Added `suspicious` as a new lint group for *code that is most likely wrong or useless*
+  [#7350](https://github.com/rust-lang/rust-clippy/pull/7350)
+  * Moved [`blanket_clippy_restriction_lints`] to `suspicious`
+  * Moved [`empty_loop`] to `suspicious`
+  * Moved [`eval_order_dependence`] to `suspicious`
+  * Moved [`float_equality_without_abs`] to `suspicious`
+  * Moved [`for_loops_over_fallibles`] to `suspicious`
+  * Moved [`misrefactored_assign_op`] to `suspicious`
+  * Moved [`mut_range_bound`] to `suspicious`
+  * Moved [`mutable_key_type`] to `suspicious`
+  * Moved [`suspicious_arithmetic_impl`] to `suspicious`
+  * Moved [`suspicious_assignment_formatting`] to `suspicious`
+  * Moved [`suspicious_else_formatting`] to `suspicious`
+  * Moved [`suspicious_map`] to `suspicious`
+  * Moved [`suspicious_op_assign_impl`] to `suspicious`
+  * Moved [`suspicious_unary_op_formatting`] to `suspicious`
+
+### Enhancements
+
+* [`while_let_on_iterator`]: Now suggests `&mut iter` inside closures
+  [#7262](https://github.com/rust-lang/rust-clippy/pull/7262)
+* [`doc_markdown`]:
+  * Now detects unbalanced ticks
+    [#7357](https://github.com/rust-lang/rust-clippy/pull/7357)
+  * Add `FreeBSD` to the default configuration as an allowed identifier
+    [#7334](https://github.com/rust-lang/rust-clippy/pull/7334)
+* [`wildcard_enum_match_arm`], [`match_wildcard_for_single_variants`]: Now allows wildcards for enums with unstable
+  or hidden variants
+  [#7407](https://github.com/rust-lang/rust-clippy/pull/7407)
+* [`redundant_allocation`]: Now additionally supports the `Arc<>` type
+  [#7308](https://github.com/rust-lang/rust-clippy/pull/7308)
+* [`blacklisted_name`]: Now allows blacklisted names in test code
+  [#7379](https://github.com/rust-lang/rust-clippy/pull/7379)
+* [`redundant_closure`]: Suggests `&mut` for `FnMut`
+  [#7437](https://github.com/rust-lang/rust-clippy/pull/7437)
+* [`disallowed_method`], [`disallowed_type`]: The configuration values `disallowed-method` and `disallowed-type`
+  no longer require fully qualified paths
+  [#7345](https://github.com/rust-lang/rust-clippy/pull/7345)
+* [`zst_offset`]: Fixed lint invocation after it was accidentally suppressed
+  [#7396](https://github.com/rust-lang/rust-clippy/pull/7396)
+
+### False Positive Fixes
+
+* [`default_numeric_fallback`]: No longer lints on float literals as function arguments
+  [#7446](https://github.com/rust-lang/rust-clippy/pull/7446)
+* [`use_self`]: No longer lints on type parameters
+  [#7288](https://github.com/rust-lang/rust-clippy/pull/7288)
+* [`unimplemented`]: Now ignores the `assert` and `debug_assert` macros
+  [#7439](https://github.com/rust-lang/rust-clippy/pull/7439)
+* [`branches_sharing_code`]: Now always checks for block expressions
+  [#7462](https://github.com/rust-lang/rust-clippy/pull/7462)
+* [`field_reassign_with_default`]: No longer triggers in macros
+  [#7160](https://github.com/rust-lang/rust-clippy/pull/7160)
+* [`redundant_clone`]: No longer lints on required clones for borrowed data
+  [#7346](https://github.com/rust-lang/rust-clippy/pull/7346)
+* [`default_numeric_fallback`]: No longer triggers in external macros
+  [#7325](https://github.com/rust-lang/rust-clippy/pull/7325)
+* [`needless_bool`]: No longer lints in macros
+  [#7442](https://github.com/rust-lang/rust-clippy/pull/7442)
+* [`useless_format`]: No longer triggers when additional text is being appended
+  [#7442](https://github.com/rust-lang/rust-clippy/pull/7442)
+* [`assertions_on_constants`]: `cfg!(...)` is no longer considered to be a constant
+  [#7319](https://github.com/rust-lang/rust-clippy/pull/7319)
+
+### Suggestion Fixes/Improvements
+
+* [`needless_collect`]: Now show correct lint messages for shadowed values
+  [#7289](https://github.com/rust-lang/rust-clippy/pull/7289)
+* [`wrong_pub_self_convention`]: The deprecated message now suggest the correct configuration value
+  [#7382](https://github.com/rust-lang/rust-clippy/pull/7382)
+* [`semicolon_if_nothing_returned`]: Allow missing semicolon in blocks with only one expression
+  [#7326](https://github.com/rust-lang/rust-clippy/pull/7326)
+
+### ICE Fixes
+
+* [`zero_sized_map_values`]
+  [#7470](https://github.com/rust-lang/rust-clippy/pull/7470)
+* [`redundant_pattern_matching`]
+  [#7471](https://github.com/rust-lang/rust-clippy/pull/7471)
+* [`modulo_one`]
+  [#7473](https://github.com/rust-lang/rust-clippy/pull/7473)
+* [`use_self`]
+  [#7428](https://github.com/rust-lang/rust-clippy/pull/7428)
+
+### Documentation Improvements
+
+* Reworked Clippy's website:
+  [#7279](https://github.com/rust-lang/rust-clippy/pull/7279)
+  [#7172](https://github.com/rust-lang/rust-clippy/issues/7172)
+  * Added applicability information about lints
+  * Added a link to jump into the implementation
+  * Improved loading times
+  * Adapted some styling
+* Clippy now uses a lint to generate its documentation
+  [#7298](https://github.com/rust-lang/rust-clippy/pull/7298)
 
 ## Rust 1.54
 
-Current beta, release 2021-07-29
+Current stable, released 2021-07-29
 
 [7c7683c...3ae8faf](https://github.com/rust-lang/rust-clippy/compare/7c7683c...3ae8faf)
 
@@ -29,7 +159,7 @@ Current beta, release 2021-07-29
 ### Moves and Deprecations
 
 - Deprecate `pub_enum_variant_names` and `wrong_pub_self_convention` in favor of
-  the new `avoid_breaking_exported_api` config option (see
+  the new `avoid-breaking-exported-api` config option (see
   [Enhancements](#1-54-enhancements))
   [#7187](https://github.com/rust-lang/rust-clippy/pull/7187)
 - Move [`inconsistent_struct_constructor`] to `pedantic`
@@ -51,7 +181,7 @@ Current beta, release 2021-07-29
   [#7163](https://github.com/rust-lang/rust-clippy/pull/7163)
 - [`if_then_some_else_none`]: Now works with the MSRV config
   [#7177](https://github.com/rust-lang/rust-clippy/pull/7177)
-- Add `avoid_breaking_exported_api` config option for the lints
+- Add `avoid-breaking-exported-api` config option for the lints
   [`enum_variant_names`], [`large_types_passed_by_value`],
   [`trivially_copy_pass_by_ref`], [`unnecessary_wraps`],
   [`upper_case_acronyms`], and [`wrong_self_convention`]. We recommend to set
@@ -138,7 +268,7 @@ Current beta, release 2021-07-29
 
 ## Rust 1.53
 
-Current stable, released 2021-06-17
+Released 2021-06-17
 
 [6ed6f1e...7c7683c](https://github.com/rust-lang/rust-clippy/compare/6ed6f1e...7c7683c)
 
@@ -2869,6 +2999,7 @@ Released 2018-09-13
 [`unused_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#unused_unit
 [`unusual_byte_groupings`]: https://rust-lang.github.io/rust-clippy/master/index.html#unusual_byte_groupings
 [`unwrap_in_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_in_result
+[`unwrap_or_else_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_or_else_default
 [`unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
 [`upper_case_acronyms`]: https://rust-lang.github.io/rust-clippy/master/index.html#upper_case_acronyms
 [`use_debug`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_debug

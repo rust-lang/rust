@@ -168,7 +168,7 @@ pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<
     snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
-/// Same as `snippet`, but it adapts the applicability level by following rules:
+/// Same as [`snippet`], but it adapts the applicability level by following rules:
 ///
 /// - Applicability level `Unspecified` will never be changed.
 /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.

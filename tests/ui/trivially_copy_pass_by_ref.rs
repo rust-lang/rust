@@ -58,6 +58,8 @@ impl Foo {
     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {}
 
     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+
+    fn bad_issue7518(self, other: &Self) {}
 }
 
 impl AsRef<u32> for Foo {

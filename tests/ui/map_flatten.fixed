@@ -5,6 +5,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::map_identity)]
 #![allow(clippy::unnecessary_wraps)]
+#![feature(result_flattening)]
 
 fn main() {
     // mapping to Option on Iterator
@@ -23,4 +24,7 @@ fn main() {
 
     // mapping to Option on Option
     let _: Option<_> = (Some(Some(1))).and_then(|x| x);
+
+    // mapping to Result on Result
+    let _: Result<_, &str> = (Ok(Ok(1))).and_then(|x| x);
 }

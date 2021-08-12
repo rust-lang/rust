@@ -195,8 +195,8 @@ pub fn vec_macro<'e>(cx: &LateContext<'_>, expr: &'e hir::Expr<'_>) -> Option<Ve
 /// - `assert!`, `assert_eq!` and `assert_ne!`
 /// - `debug_assert!`, `debug_assert_eq!` and `debug_assert_ne!`
 /// For example:
-/// `assert!(expr)` will return Some([expr])
-/// `debug_assert_eq!(a, b)` will return Some([a, b])
+/// `assert!(expr)` will return `Some([expr])`
+/// `debug_assert_eq!(a, b)` will return `Some([a, b])`
 pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx Expr<'tcx>>> {
     /// Try to match the AST for a pattern that contains a match, for example when two args are
     /// compared
@@ -283,7 +283,7 @@ pub struct FormatArgsExpn<'tcx> {
 
     /// String literal expressions which represent the format string split by "{}"
     pub format_string_parts: &'tcx [Expr<'tcx>],
-    /// Symbols corresponding to [`format_string_parts`]
+    /// Symbols corresponding to [`Self::format_string_parts`]
     pub format_string_symbols: Vec<Symbol>,
     /// Expressions like `ArgumentV1::new(arg0, Debug::fmt)`
     pub args: &'tcx [Expr<'tcx>],

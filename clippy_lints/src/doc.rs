@@ -230,15 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         panic_span: None,
                     };
                     fpu.visit_expr(&body.value);
-                    lint_for_missing_headers(
-                        cx,
-                        item.def_id,
-                        item.span,
-                        sig,
-                        headers,
-                        Some(body_id),
-                        fpu.panic_span,
-                    );
+                    lint_for_missing_headers(cx, item.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(ref impl_) => {
@@ -278,15 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 panic_span: None,
             };
             fpu.visit_expr(&body.value);
-            lint_for_missing_headers(
-                cx,
-                item.def_id,
-                item.span,
-                sig,
-                headers,
-                Some(body_id),
-                fpu.panic_span,
-            );
+            lint_for_missing_headers(cx, item.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }
