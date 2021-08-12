@@ -109,6 +109,12 @@ LL |     5..6;
    |     ^^^^^
 
 error: statement with no effect
+  --> $DIR/no_effect.rs:83:5
+   |
+LL |     5..=6;
+   |     ^^^^^^
+
+error: statement with no effect
   --> $DIR/no_effect.rs:84:5
    |
 LL |     [42, 55];
@@ -150,5 +156,5 @@ error: statement with no effect
 LL |     FooString { s: s };
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 
