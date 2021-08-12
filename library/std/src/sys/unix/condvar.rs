@@ -34,12 +34,23 @@ impl Condvar {
     ))]
     pub unsafe fn init(&mut self) {}
 
+    // NOTE: ESP-IDF's PTHREAD_COND_INITIALIZER support is not released yet
+    // So on that platform, init() should always be called
+    // Moreover, that platform does not have pthread_condattr_setclock support,
+    // hence that initialization should be skipped as well
+    #[cfg(target_os = "espidf")]
+    pub unsafe fn init(&mut self) {
+        let r = libc::pthread_cond_init(self.inner.get(), crate::ptr::null());
+        assert_eq!(r, 0);
+    }
+
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
         target_os = "l4re",
         target_os = "android",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "espidf"
     )))]
     pub unsafe fn init(&mut self) {
         use crate::mem::MaybeUninit;
@@ -76,7 +87,12 @@ impl Condvar {
     // where we configure condition variable to use monotonic clock (instead of
     // default system clock). This approach avoids all problems that result
     // from changes made to the system time.
-    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+    #[cfg(not(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "android",
+        target_os = "espidf"
+    )))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::mem;
 
@@ -103,7 +119,12 @@ impl Condvar {
     // This implementation is modeled after libcxx's condition_variable
     // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
     // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "android",
+        target_os = "espidf"
+    ))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
         use crate::ptr;
         use crate::time::Instant;

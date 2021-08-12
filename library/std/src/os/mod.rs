@@ -80,6 +80,8 @@ mod imp {
     pub mod dragonfly;
     #[cfg(target_os = "emscripten")]
     pub mod emscripten;
+    #[cfg(target_os = "espidf")]
+    pub mod espidf;
     #[cfg(target_os = "freebsd")]
     pub mod freebsd;
     #[cfg(target_os = "fuchsia")]

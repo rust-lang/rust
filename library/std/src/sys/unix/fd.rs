@@ -91,6 +91,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(not(target_os = "espidf"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
@@ -102,9 +103,14 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(target_os = "espidf")]
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        return crate::io::default_read_vectored(|b| self.read(b), bufs);
+    }
+
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        true
+        cfg!(not(target_os = "espidf"))
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -148,6 +154,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(not(target_os = "espidf"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
@@ -159,9 +166,14 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(target_os = "espidf")]
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        return crate::io::default_write_vectored(|b| self.write(b), bufs);
+    }
+
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        true
+        cfg!(not(target_os = "espidf"))
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
@@ -217,7 +229,7 @@ impl FileDesc {
         }
     }
     #[cfg(any(
-        target_env = "newlib",
+        all(target_env = "newlib", not(target_os = "espidf")),
         target_os = "solaris",
         target_os = "illumos",
         target_os = "emscripten",
@@ -237,6 +249,12 @@ impl FileDesc {
             }
             Ok(())
         }
+    }
+    #[cfg(target_os = "espidf")]
+    pub fn set_cloexec(&self) -> io::Result<()> {
+        // FD_CLOEXEC is not supported in ESP-IDF but there's no need to,
+        // because ESP-IDF does not support spawning processes either.
+        Ok(())
     }
 
     #[cfg(target_os = "linux")]
@@ -268,7 +286,17 @@ impl FileDesc {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
         // is a POSIX flag that was added to Linux in 2.6.24.
-        let fd = cvt(unsafe { libc::fcntl(self.raw(), libc::F_DUPFD_CLOEXEC, 0) })?;
+        #[cfg(not(target_os = "espidf"))]
+        let cmd = libc::F_DUPFD_CLOEXEC;
+
+        // For ESP-IDF, F_DUPFD is used instead, because the CLOEXEC semantics
+        // will never be supported, as this is a bare metal framework with
+        // no capabilities for multi-process execution.  While F_DUPFD is also
+        // not supported yet, it might be (currently it returns ENOSYS).
+        #[cfg(target_os = "espidf")]
+        let cmd = libc::F_DUPFD;
+
+        let fd = cvt(unsafe { libc::fcntl(self.raw(), cmd, 0) })?;
         Ok(FileDesc::new(fd))
     }
 }

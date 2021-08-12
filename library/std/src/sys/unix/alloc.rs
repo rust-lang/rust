@@ -57,7 +57,8 @@ cfg_if::cfg_if! {
         target_os = "android",
         target_os = "illumos",
         target_os = "redox",
-        target_os = "solaris"
+        target_os = "solaris",
+        target_os = "espidf"
     ))] {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
