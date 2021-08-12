@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::convert::identity;
+use std::fmt;
 use std::mem;
 use std::panic;
 use std::rc::Rc;
@@ -995,75 +996,65 @@ fn test_rsplitnator() {
 
 #[test]
 fn test_split_iterators_size_hint() {
+    #[derive(Copy, Clone)]
+    enum Bounds {
+        Lower,
+        Upper,
+    }
+    fn assert_precise_size_hints<I: Iterator>(
+        mut it: I,
+        which: Bounds,
+        context: impl fmt::Display,
+    ) {
+        match which {
+            Bounds::Lower => {
+                let mut lower_bounds = vec![it.size_hint().0];
+                while let Some(_) = it.next() {
+                    lower_bounds.push(it.size_hint().0);
+                }
+                let target: Vec<_> = (0..lower_bounds.len()).rev().collect();
+                assert_eq!(lower_bounds, target, "incorrect lower bounds: {}", context);
+            }
+            Bounds::Upper => {
+                let mut upper_bounds = vec![it.size_hint().1];
+                while let Some(_) = it.next() {
+                    upper_bounds.push(it.size_hint().1);
+                }
+                let target: Vec<_> = (0..upper_bounds.len()).map(Some).rev().collect();
+                assert_eq!(upper_bounds, target, "incorrect upper bounds: {}", context);
+            }
+        }
+    }
+
     for len in 0..=2 {
         let mut v: Vec<u8> = (0..len).collect();
-        fn verify_descending(sequence: &[usize], context: &str) {
-            let len = sequence.len();
-            let target: Vec<usize> = (0..len).rev().collect();
-            assert_eq!(sequence, target, "while testing: {}", context);
-        }
 
-        macro_rules! test_size_hint {
-            ($create_iterator:expr) => {{
-                // with a predicate always returning false, the split*-iterators
-                // become maximally short, so the size_hint lower bounds are correct
+        // p: predicate, b: bound selection
+        for (p, b) in [
+            // with a predicate always returning false, the split*-iterators
+            // become maximally short, so the size_hint lower bounds are correct
+            ((|_| false) as fn(&_) -> _, Bounds::Lower),
+            // with a predicate always returning true, the split*-iterators
+            // become maximally long, so the size_hint upper bounds are correct
+            ((|_| true) as fn(&_) -> _, Bounds::Upper),
+        ] {
+            use assert_precise_size_hints as a;
+            use format_args as f;
 
-                macro_rules! p {
-                    () => {
-                        |_| false
-                    };
-                }
-                let mut short_iterator = $create_iterator;
-                let mut lower_bounds = vec![short_iterator.size_hint().0];
-                while let Some(_) = short_iterator.next() {
-                    lower_bounds.push(short_iterator.size_hint().0);
-                }
-                verify_descending(&lower_bounds, stringify!($create_iterator));
+            a(v.split(p), b, "split");
+            a(v.split_mut(p), b, "split_mut");
+            a(v.split_inclusive(p), b, "split_inclusive");
+            a(v.split_inclusive_mut(p), b, "split_inclusive_mut");
+            a(v.rsplit(p), b, "rsplit");
+            a(v.rsplit_mut(p), b, "rsplit_mut");
+
+            for n in 0..=3 {
+                a(v.splitn(n, p), b, f!("splitn, n = {}", n));
+                a(v.splitn_mut(n, p), b, f!("splitn_mut, n = {}", n));
+                a(v.rsplitn(n, p), b, f!("rsplitn, n = {}", n));
+                a(v.rsplitn_mut(n, p), b, f!("rsplitn_mut, n = {}", n));
             }
-            {
-                // with a predicate always returning true, the split*-iterators
-                // become maximally long, so the size_hint upper bounds are correct
-
-                macro_rules! p {
-                    () => {
-                        |_| true
-                    };
-                }
-                let mut long_iterator = $create_iterator;
-                let mut upper_bounds = vec![
-                    long_iterator.size_hint().1.expect("split*-methods have known upper bound"),
-                ];
-                while let Some(_) = long_iterator.next() {
-                    upper_bounds.push(
-                        long_iterator.size_hint().1.expect("split*-methods have known upper bound"),
-                    );
-                }
-                verify_descending(&upper_bounds, stringify!($create_iterator));
-            }};
         }
-
-        test_size_hint!(v.split(p!()));
-        test_size_hint!(v.split_mut(p!()));
-        test_size_hint!(v.splitn(0, p!()));
-        test_size_hint!(v.splitn(1, p!()));
-        test_size_hint!(v.splitn(2, p!()));
-        test_size_hint!(v.splitn(3, p!()));
-        test_size_hint!(v.splitn_mut(0, p!()));
-        test_size_hint!(v.splitn_mut(1, p!()));
-        test_size_hint!(v.splitn_mut(2, p!()));
-        test_size_hint!(v.splitn_mut(3, p!()));
-        test_size_hint!(v.split_inclusive(p!()));
-        test_size_hint!(v.split_inclusive_mut(p!()));
-        test_size_hint!(v.rsplit(p!()));
-        test_size_hint!(v.rsplit_mut(p!()));
-        test_size_hint!(v.rsplitn(0, p!()));
-        test_size_hint!(v.rsplitn(1, p!()));
-        test_size_hint!(v.rsplitn(2, p!()));
-        test_size_hint!(v.rsplitn(3, p!()));
-        test_size_hint!(v.rsplitn_mut(0, p!()));
-        test_size_hint!(v.rsplitn_mut(1, p!()));
-        test_size_hint!(v.rsplitn_mut(2, p!()));
-        test_size_hint!(v.rsplitn_mut(3, p!()));
     }
 }
 
