@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Pat, PatKind};
-use rustc_lint::{EarlyContext, LintContext};
+use rustc_lint::EarlyContext;
 
 use super::UNNEEDED_FIELD_PATTERN;
 
@@ -48,7 +49,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                             match field.pat.kind {
                                 PatKind::Wild => {},
                                 _ => {
-                                    if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
+                                    if let Some(n) = snippet_opt(cx, field.span) {
                                         normal.push(n);
                                     }
                                 },

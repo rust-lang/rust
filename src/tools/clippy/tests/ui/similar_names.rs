@@ -76,6 +76,9 @@ fn main() {
     // names often used in win32 code (for example WindowProc)
     let wparam: i32;
     let lparam: i32;
+
+    let iter: i32;
+    let item: i32;
 }
 
 fn foo() {

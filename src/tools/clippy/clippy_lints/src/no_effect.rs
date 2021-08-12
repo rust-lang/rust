@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
+use rustc_hir::{is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::ops::Deref;
@@ -68,12 +68,14 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = cx.qpath_res(qpath, callee.hir_id);
-                match res {
-                    Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..) => {
-                        !has_drop(cx, cx.typeck_results().expr_ty(expr))
-                            && args.iter().all(|arg| has_no_effect(cx, arg))
-                    },
-                    _ => false,
+                let def_matched = matches!(
+                    res,
+                    Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
+                );
+                if def_matched || is_range_literal(expr) {
+                    !has_drop(cx, cx.typeck_results().expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
+                } else {
+                    false
                 }
             } else {
                 false
