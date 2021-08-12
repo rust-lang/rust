@@ -384,17 +384,6 @@ macro_rules! saturating_impl {
         }
         forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Saturating<$t>, Saturating<$t> }
 
-        #[unstable(feature = "saturating_int_impl", issue = "87920")]
-        impl Neg for Saturating<$t> {
-            type Output = Self;
-            #[inline]
-            fn neg(self) -> Self {
-                Saturating(0) - self
-            }
-        }
-        forward_ref_unop! { impl Neg, neg for Saturating<$t>,
-                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
-
     )*)
 }
 
@@ -864,6 +853,17 @@ macro_rules! saturating_int_impl_signed {
                 self.0.is_negative()
             }
         }
+
+        #[unstable(feature = "saturating_int_impl", issue = "87920")]
+        impl Neg for Saturating<$t> {
+            type Output = Self;
+            #[inline]
+            fn neg(self) -> Self {
+                Saturating(self.0.saturating_neg())
+            }
+        }
+        forward_ref_unop! { impl Neg, neg for Saturating<$t>,
+                #[unstable(feature = "saturating_int_impl", issue = "87920")] }
     )*)
 }
 
