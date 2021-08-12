@@ -89,6 +89,11 @@ impl<T> Bar<T> {
     pub fn baz<U>() {} //~ ERROR functions generic over types or consts must be mangled
 }
 
+impl Bar<i32> {
+    #[no_mangle]
+    pub fn qux() {}
+}
+
 trait Trait3 {
     fn foo();
     extern "C" fn bar();
@@ -121,12 +126,34 @@ trait Trait4 {
     fn bar<'a>(x: &'a i32) -> &i32;
 }
 
+impl Trait4 for Bar<i32> {
+    #[no_mangle]
+    fn foo() {}
+
+    #[no_mangle]
+    fn bar<'b>(x: &'b i32) -> &i32 { x }
+}
+
 impl<'a> Trait4 for Baz<'a> {
     #[no_mangle]
     fn foo() {}
 
     #[no_mangle]
     fn bar<'b>(x: &'b i32) -> &i32 { x }
+}
+
+trait Trait5<T> {
+    fn foo();
+}
+
+impl Trait5<i32> for Foo {
+    #[no_mangle]
+    fn foo() {}
+}
+
+impl Trait5<i32> for Bar<i32> {
+    #[no_mangle]
+    fn foo() {}
 }
 
 fn main() {}
