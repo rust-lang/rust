@@ -4,8 +4,9 @@ error[E0716]: temporary value dropped while borrowed
 LL | fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
    |           ----- has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(state2 as StateMachineFunc);
-   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
-   |     |                |
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |                |                            |
+   |     |                |                            temporary value is freed at the end of this statement
    |     |                creates a temporary which is freed while still in use
    |     assignment requires that borrow lasts for `'1`
 
@@ -15,8 +16,9 @@ error[E0716]: temporary value dropped while borrowed
 LL | fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
    |           ----- has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(state3 as StateMachineFunc);
-   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
-   |     |                |
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |                |                            |
+   |     |                |                            temporary value is freed at the end of this statement
    |     |                creates a temporary which is freed while still in use
    |     assignment requires that borrow lasts for `'1`
 
@@ -26,8 +28,9 @@ error[E0716]: temporary value dropped while borrowed
 LL | fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
    |           ----- has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(finished as StateMachineFunc);
-   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
-   |     |                |
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |                |                              |
+   |     |                |                              temporary value is freed at the end of this statement
    |     |                creates a temporary which is freed while still in use
    |     assignment requires that borrow lasts for `'1`
 
