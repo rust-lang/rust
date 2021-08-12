@@ -18,12 +18,12 @@ LL | #![deny(rust_2021_incompatible_closure_captures)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
-LL ~     let c = || { let _ = &t; 
+LL ~     let c = || {
+LL +         let _ = &t;
 LL +
 LL +
 LL +
 LL +         let _t = t.0;
-LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect drop order

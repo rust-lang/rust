@@ -16,7 +16,8 @@ impl Drop for Foo {
 
 fn closure_contains_block() {
     let t = (Foo(0), Foo(0));
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured

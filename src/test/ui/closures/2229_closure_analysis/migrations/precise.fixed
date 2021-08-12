@@ -17,7 +17,8 @@ struct ConstainsDropField(Foo, Foo);
 fn test_precise_analysis_drop_paths_not_captured_by_move() {
     let t = ConstainsDropField(Foo(10), Foo(20));
 
-    let c = || { let _ = &t; 
+    let c = || {
+        let _ = &t;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `t` to be fully captured
@@ -42,7 +43,8 @@ struct U(T, T);
 fn test_precise_analysis_long_path_missing() {
     let u = U(T(S, S), T(S, S));
 
-    let c = || { let _ = &u; 
+    let c = || {
+        let _ = &u;
         //~^ ERROR: drop order
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `u` to be fully captured
