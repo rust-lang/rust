@@ -458,12 +458,17 @@ fn match_arm(p: &mut Parser) {
 // fn foo() {
 //     match () {
 //         _ if foo => (),
+//         _ if let foo = bar => (),
 //     }
 // }
 fn match_guard(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![if]));
     let m = p.start();
     p.bump(T![if]);
+    if p.eat(T![let]) {
+        patterns::pattern_top(p);
+        p.expect(T![=]);
+    }
     expr(p);
     m.complete(p, MATCH_GUARD)
 }

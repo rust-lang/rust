@@ -229,8 +229,15 @@ pub enum Array {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
     pub pat: PatId,
-    pub guard: Option<ExprId>,
+    pub guard: Option<MatchGuard>,
     pub expr: ExprId,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum MatchGuard {
+    If { expr: ExprId },
+
+    IfLet { pat: PatId, expr: ExprId },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

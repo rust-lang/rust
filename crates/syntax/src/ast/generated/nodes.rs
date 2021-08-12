@@ -1021,6 +1021,9 @@ pub struct MatchGuard {
 }
 impl MatchGuard {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
+    pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

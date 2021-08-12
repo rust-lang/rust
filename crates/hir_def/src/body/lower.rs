@@ -28,8 +28,8 @@ use crate::{
     db::DefDatabase,
     expr::{
         dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Label,
-        LabelId, Literal, LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField,
-        Statement,
+        LabelId, Literal, LogicOp, MatchArm, MatchGuard, Ordering, Pat, PatId, RecordFieldPat,
+        RecordLitField, Statement,
     },
     intern::Interned,
     item_scope::BuiltinShadowMode,
@@ -361,10 +361,15 @@ impl ExprCollector<'_> {
                             self.check_cfg(&arm).map(|()| MatchArm {
                                 pat: self.collect_pat_opt(arm.pat()),
                                 expr: self.collect_expr_opt(arm.expr()),
-                                guard: arm
-                                    .guard()
-                                    .and_then(|guard| guard.expr())
-                                    .map(|e| self.collect_expr(e)),
+                                guard: arm.guard().map(|guard| match guard.pat() {
+                                    Some(pat) => MatchGuard::IfLet {
+                                        pat: self.collect_pat(pat),
+                                        expr: self.collect_expr_opt(guard.expr()),
+                                    },
+                                    None => {
+                                        MatchGuard::If { expr: self.collect_expr_opt(guard.expr()) }
+                                    }
+                                }),
                             })
                         })
                         .collect()
