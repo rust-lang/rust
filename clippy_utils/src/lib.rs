@@ -332,9 +332,9 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
 /// For checking method call expressions instead of path expressions, use
 /// [`is_trait_method`].
 ///
-/// For example, to find if an expression like `u64::default` refers to an item
-/// of the trait `Default`, which is marked `#[rustc_diagnostic_item = "Default"]`,
-/// a `diag_item` of `sym::Default` should be used.
+/// For example, this can be used to find if an expression like `u64::default`
+/// refers to an item of the trait `Default`, which is associated with the
+/// `diag_item` of `sym::Default`.
 pub fn is_trait_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
     if let hir::ExprKind::Path(ref qpath) = expr.kind {
         cx.qpath_res(qpath, expr.hir_id)
