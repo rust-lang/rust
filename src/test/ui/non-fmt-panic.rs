@@ -26,8 +26,8 @@ fn main() {
     fancy_panic::fancy_panic!("test {} 123");
     //~^ WARN panic message contains an unused formatting placeholder
 
-    fancy_panic::fancy_panic!(S);
-    //~^ WARN panic message is not a string literal
+    fancy_panic::fancy_panic!(); // OK
+    fancy_panic::fancy_panic!(S); // OK
 
     macro_rules! a {
         () => { 123 };
