@@ -1,6 +1,7 @@
 use super::Entry::{Occupied, Vacant};
 use super::HashMap;
 use super::RandomState;
+use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
 use rand::{thread_rng, Rng};
 use realstd::collections::TryReserveErrorKind::*;
@@ -821,15 +822,17 @@ fn test_try_reserve() {
 
     const MAX_USIZE: usize = usize::MAX;
 
-    if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE).map_err(|e| e.kind()) {
-    } else {
-        panic!("usize::MAX should trigger an overflow!");
-    }
+    assert_matches!(
+        empty_bytes.try_reserve(MAX_USIZE).map_err(|e| e.kind()),
+        Err(CapacityOverflow),
+        "usize::MAX should trigger an overflow!"
+    );
 
-    if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8).map_err(|e| e.kind()) {
-    } else {
-        panic!("usize::MAX / 8 should trigger an OOM!")
-    }
+    assert_matches!(
+        empty_bytes.try_reserve(MAX_USIZE / 8).map_err(|e| e.kind()),
+        Err(AllocError { .. }),
+        "usize::MAX / 8 should trigger an OOM!"
+    );
 }
 
 #[test]
