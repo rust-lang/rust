@@ -1,5 +1,5 @@
 warning: panic message contains a brace
-  --> $DIR/non-fmt-panic.rs:11:29
+  --> $DIR/non-fmt-panic.rs:13:29
    |
 LL |     panic!("here's a brace: {");
    |                             ^
@@ -12,7 +12,7 @@ LL |     panic!("{}", "here's a brace: {");
    |            +++++
 
 warning: panic message contains a brace
-  --> $DIR/non-fmt-panic.rs:12:31
+  --> $DIR/non-fmt-panic.rs:14:31
    |
 LL |     std::panic!("another one: }");
    |                               ^
@@ -24,7 +24,7 @@ LL |     std::panic!("{}", "another one: }");
    |                 +++++
 
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/non-fmt-panic.rs:13:25
+  --> $DIR/non-fmt-panic.rs:15:25
    |
 LL |     core::panic!("Hello {}");
    |                         ^^
@@ -40,7 +40,7 @@ LL |     core::panic!("{}", "Hello {}");
    |                  +++++
 
 warning: panic message contains unused formatting placeholders
-  --> $DIR/non-fmt-panic.rs:14:21
+  --> $DIR/non-fmt-panic.rs:16:21
    |
 LL |     assert!(false, "{:03x} {test} bla");
    |                     ^^^^^^ ^^^^^^
@@ -56,7 +56,7 @@ LL |     assert!(false, "{}", "{:03x} {test} bla");
    |                    +++++
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:16:20
+  --> $DIR/non-fmt-panic.rs:18:20
    |
 LL |     assert!(false, S);
    |                    ^
@@ -69,7 +69,7 @@ LL |     assert!(false, "{}", S);
    |                    +++++
 
 warning: panic message contains braces
-  --> $DIR/non-fmt-panic.rs:18:27
+  --> $DIR/non-fmt-panic.rs:20:27
    |
 LL |     debug_assert!(false, "{{}} bla");
    |                           ^^^^
@@ -81,7 +81,7 @@ LL |     debug_assert!(false, "{}", "{{}} bla");
    |                          +++++
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:19:12
+  --> $DIR/non-fmt-panic.rs:21:12
    |
 LL |     panic!(C);
    |            ^
@@ -92,13 +92,9 @@ help: add a "{}" format string to Display the message
    |
 LL |     panic!("{}", C);
    |            +++++
-help: or use std::panic::panic_any instead
-   |
-LL |     std::panic::panic_any(C);
-   |     ~~~~~~~~~~~~~~~~~~~~~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:20:12
+  --> $DIR/non-fmt-panic.rs:22:12
    |
 LL |     panic!(S);
    |            ^
@@ -109,13 +105,9 @@ help: add a "{}" format string to Display the message
    |
 LL |     panic!("{}", S);
    |            +++++
-help: or use std::panic::panic_any instead
-   |
-LL |     std::panic::panic_any(S);
-   |     ~~~~~~~~~~~~~~~~~~~~~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:21:17
+  --> $DIR/non-fmt-panic.rs:23:17
    |
 LL |     std::panic!(123);
    |                 ^^^
@@ -132,7 +124,7 @@ LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:22:18
+  --> $DIR/non-fmt-panic.rs:24:18
    |
 LL |     core::panic!(&*"abc");
    |                  ^^^^^^^
@@ -145,7 +137,7 @@ LL |     core::panic!("{}", &*"abc");
    |                  +++++
 
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/non-fmt-panic.rs:23:12
+  --> $DIR/non-fmt-panic.rs:25:12
    |
 LL |     panic!(concat!("{", "}"));
    |            ^^^^^^^^^^^^^^^^^
@@ -161,7 +153,7 @@ LL |     panic!("{}", concat!("{", "}"));
    |            +++++
 
 warning: panic message contains braces
-  --> $DIR/non-fmt-panic.rs:24:5
+  --> $DIR/non-fmt-panic.rs:26:5
    |
 LL |     panic!(concat!("{", "{"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -173,7 +165,7 @@ LL |     panic!("{}", concat!("{", "{"));
    |            +++++
 
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/non-fmt-panic.rs:26:37
+  --> $DIR/non-fmt-panic.rs:28:37
    |
 LL |     fancy_panic::fancy_panic!("test {} 123");
    |                                     ^^
@@ -181,7 +173,7 @@ LL |     fancy_panic::fancy_panic!("test {} 123");
    = note: this message is not used as a format string when given without arguments, but will be in Rust 2021
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:36:12
+  --> $DIR/non-fmt-panic.rs:38:12
    |
 LL |     panic!(a!());
    |            ^^^^
@@ -198,7 +190,7 @@ LL |     std::panic::panic_any(a!());
    |     ~~~~~~~~~~~~~~~~~~~~~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:38:12
+  --> $DIR/non-fmt-panic.rs:40:12
    |
 LL |     panic!(format!("{}", 1));
    |            ^^^^^^^^^^^^^^^^
@@ -213,7 +205,7 @@ LL +     panic!("{}", 1);
    | 
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:39:20
+  --> $DIR/non-fmt-panic.rs:41:20
    |
 LL |     assert!(false, format!("{}", 1));
    |                    ^^^^^^^^^^^^^^^^
@@ -228,7 +220,7 @@ LL +     assert!(false, "{}", 1);
    | 
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:40:26
+  --> $DIR/non-fmt-panic.rs:42:26
    |
 LL |     debug_assert!(false, format!("{}", 1));
    |                          ^^^^^^^^^^^^^^^^
@@ -243,7 +235,7 @@ LL +     debug_assert!(false, "{}", 1);
    | 
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:42:12
+  --> $DIR/non-fmt-panic.rs:44:12
    |
 LL |     panic![123];
    |            ^^^
@@ -260,7 +252,7 @@ LL |     std::panic::panic_any(123);
    |     ~~~~~~~~~~~~~~~~~~~~~~   ~
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:43:12
+  --> $DIR/non-fmt-panic.rs:45:12
    |
 LL |     panic!{123};
    |            ^^^
