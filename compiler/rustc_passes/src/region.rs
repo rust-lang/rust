@@ -169,7 +169,11 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
 }
 
 fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-    visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node, for_stmt: false });
+    visitor.record_child_scope(Scope {
+        id: pat.hir_id.local_id,
+        data: ScopeData::Node,
+        for_stmt: false,
+    });
 
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
@@ -743,8 +747,16 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
         self.terminating_scopes.insert((body.value.hir_id.local_id, false));
 
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite, for_stmt: false });
-        self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments, for_stmt: false });
+        self.enter_scope(Scope {
+            id: body.value.hir_id.local_id,
+            data: ScopeData::CallSite,
+            for_stmt: false,
+        });
+        self.enter_scope(Scope {
+            id: body.value.hir_id.local_id,
+            data: ScopeData::Arguments,
+            for_stmt: false,
+        });
 
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();

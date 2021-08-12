@@ -624,10 +624,16 @@ where
         body.generator_kind,
     );
 
-    let call_site_scope =
-        region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite, for_stmt: false };
-    let arg_scope =
-        region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments, for_stmt: false };
+    let call_site_scope = region::Scope {
+        id: body.value.hir_id.local_id,
+        data: region::ScopeData::CallSite,
+        for_stmt: false,
+    };
+    let arg_scope = region::Scope {
+        id: body.value.hir_id.local_id,
+        data: region::ScopeData::Arguments,
+        for_stmt: false,
+    };
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {

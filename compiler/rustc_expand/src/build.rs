@@ -181,13 +181,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block(
-            expr.span,
-            vec![ast::Stmt {
-                span: expr.span,
-                kind: ast::StmtKind::Expr(expr),
-            }],
-        )
+        self.block(expr.span, vec![ast::Stmt { span: expr.span, kind: ast::StmtKind::Expr(expr) }])
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {

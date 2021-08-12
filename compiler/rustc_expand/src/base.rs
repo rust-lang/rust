@@ -337,12 +337,7 @@ where
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
-        $me.make_expr().map(|e| {
-            smallvec![ast::Stmt {
-                span: e.span,
-                kind: ast::StmtKind::Expr(e),
-            }]
-        })
+        $me.make_expr().map(|e| smallvec![ast::Stmt { span: e.span, kind: ast::StmtKind::Expr(e) }])
     };
 }
 

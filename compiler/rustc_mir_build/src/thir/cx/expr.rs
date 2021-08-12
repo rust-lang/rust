@@ -32,8 +32,11 @@ impl<'tcx> Cx<'tcx> {
 
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         let temp_lifetime = self.region_scope_tree.temporary_scope(hir_expr.hir_id.local_id, false);
-        let expr_scope =
-            region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node, for_stmt: false };
+        let expr_scope = region::Scope {
+            id: hir_expr.hir_id.local_id,
+            data: region::ScopeData::Node,
+            for_stmt: false,
+        };
 
         debug!("Expr::make_mirror(): id={}, span={:?}", hir_expr.hir_id, hir_expr.span);
 
@@ -498,8 +501,9 @@ impl<'tcx> Cx<'tcx> {
                                         expr.kind
                                     ),
                                 };
-                                let temp_lifetime =
-                                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id, false);
+                                let temp_lifetime = self
+                                    .region_scope_tree
+                                    .temporary_scope(expr.hir_id.local_id, false);
                                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                                 let ty;
                                 match res {
@@ -579,14 +583,22 @@ impl<'tcx> Cx<'tcx> {
             }
             hir::ExprKind::Break(dest, ref value) => match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
-                    label: region::Scope { id: target_id.local_id, data: region::ScopeData::Node, for_stmt: false, },
+                    label: region::Scope {
+                        id: target_id.local_id,
+                        data: region::ScopeData::Node,
+                        for_stmt: false,
+                    },
                     value: value.as_ref().map(|value| self.mirror_expr(value)),
                 },
                 Err(err) => bug!("invalid loop id for break: {}", err),
             },
             hir::ExprKind::Continue(dest) => match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
-                    label: region::Scope { id: loop_id.local_id, data: region::ScopeData::Node, for_stmt: false, },
+                    label: region::Scope {
+                        id: loop_id.local_id,
+                        data: region::ScopeData::Node,
+                        for_stmt: false,
+                    },
                 },
                 Err(err) => bug!("invalid loop id for continue: {}", err),
             },
@@ -601,7 +613,8 @@ impl<'tcx> Cx<'tcx> {
             },
             hir::ExprKind::Loop(ref body, ..) => {
                 let block_ty = self.typeck_results().node_type(body.hir_id);
-                let temp_lifetime = self.region_scope_tree.temporary_scope(body.hir_id.local_id, false);
+                let temp_lifetime =
+                    self.region_scope_tree.temporary_scope(body.hir_id.local_id, false);
                 let block = self.mirror_block(body);
                 let body = self.thir.exprs.push(Expr {
                     ty: block_ty,
@@ -837,7 +850,11 @@ impl<'tcx> Cx<'tcx> {
             }),
             body: self.mirror_expr(arm.body),
             lint_level: LintLevel::Explicit(arm.hir_id),
-            scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node, for_stmt: false },
+            scope: region::Scope {
+                id: arm.hir_id.local_id,
+                data: region::ScopeData::Node,
+                for_stmt: false,
+            },
             span: arm.span,
         };
         self.thir.arms.push(arm)
@@ -922,7 +939,8 @@ impl<'tcx> Cx<'tcx> {
             // a constant reference (or constant raw pointer for `static mut`) in MIR
             Res::Def(DefKind::Static, id) => {
                 let ty = self.tcx.static_ptr_ty(id);
-                let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id, false);
+                let temp_lifetime =
+                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id, false);
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
@@ -1026,7 +1044,8 @@ impl<'tcx> Cx<'tcx> {
         closure_expr: &'tcx hir::Expr<'tcx>,
         place: HirPlace<'tcx>,
     ) -> Expr<'tcx> {
-        let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id, false);
+        let temp_lifetime =
+            self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id, false);
         let var_ty = place.base_ty;
 
         // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
@@ -1081,7 +1100,8 @@ impl<'tcx> Cx<'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
         let captured_place_expr =
             self.convert_captured_hir_place(closure_expr, captured_place.place.clone());
-        let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id, false);
+        let temp_lifetime =
+            self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id, false);
 
         match upvar_capture {
             ty::UpvarCapture::ByValue(_) => captured_place_expr,

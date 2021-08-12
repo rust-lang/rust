@@ -822,10 +822,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 tokens: None,
             });
 
-            ast::Stmt {
-                kind: ast::StmtKind::Expr(expr),
-                span: rustc_span::DUMMY_SP,
-            }
+            ast::Stmt { kind: ast::StmtKind::Expr(expr), span: rustc_span::DUMMY_SP }
         }
 
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
@@ -837,10 +834,8 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             tokens: None,
         });
 
-        let loop_stmt = ast::Stmt {
-            span: rustc_span::DUMMY_SP,
-            kind: ast::StmtKind::Expr(loop_expr),
-        };
+        let loop_stmt =
+            ast::Stmt { span: rustc_span::DUMMY_SP, kind: ast::StmtKind::Expr(loop_expr) };
 
         if self.within_static_or_const {
             noop_visit_block(b, self)

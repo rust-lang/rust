@@ -1372,11 +1372,14 @@ pub fn noop_flat_map_stmt<T: MutVisitor>(
     Stmt { kind, span }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
-    let res = noop_flat_map_stmt_kind(kind, vis).into_iter().map(|kind| {
-        let mut new_span = span;
-        vis.visit_span(&mut new_span);
-        Stmt { kind, span: new_span }
-    }).collect();
+    let res = noop_flat_map_stmt_kind(kind, vis)
+        .into_iter()
+        .map(|kind| {
+            let mut new_span = span;
+            vis.visit_span(&mut new_span);
+            Stmt { kind, span: new_span }
+        })
+        .collect();
     tracing::info!("Made new statements: {:?}", res);
     res
 }
@@ -1396,7 +1399,7 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
         StmtKind::Empty { mut id } => {
             vis.visit_id(&mut id);
             smallvec![StmtKind::Empty { id }]
-        },
+        }
         StmtKind::MacCall(mut mac) => {
             let MacCallStmt { mac: mac_, style: _, attrs, tokens, id } = mac.deref_mut();
             vis.visit_id(id);

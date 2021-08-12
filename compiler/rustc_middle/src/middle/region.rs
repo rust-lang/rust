@@ -94,7 +94,9 @@ impl fmt::Debug for Scope {
             ScopeData::Node => write!(fmt, "Node({:?}, {:?})", self.id, self.for_stmt),
             ScopeData::CallSite => write!(fmt, "CallSite({:?}. {:?})", self.id, self.for_stmt),
             ScopeData::Arguments => write!(fmt, "Arguments({:?}, {:?})", self.id, self.for_stmt),
-            ScopeData::Destruction => write!(fmt, "Destruction({:?}, {:?})", self.id, self.for_stmt),
+            ScopeData::Destruction => {
+                write!(fmt, "Destruction({:?}, {:?})", self.id, self.for_stmt)
+            }
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}, for_stmt: {:?}}}",
@@ -175,11 +177,7 @@ impl Scope {
             Some(hir_id) => hir_id,
             None => return DUMMY_SP,
         };
-        let span = if self.for_stmt {
-            tcx.hir().stmt_span(hir_id)
-        } else {
-            tcx.hir().span(hir_id)
-        };
+        let span = if self.for_stmt { tcx.hir().stmt_span(hir_id) } else { tcx.hir().span(hir_id) };
 
         if let ScopeData::Remainder(first_statement_index) = self.data {
             if let Node::Block(ref blk) = tcx.hir().get(hir_id) {
@@ -343,7 +341,10 @@ impl ScopeTree {
 
         // Record the destruction scopes for later so we can query them.
         if let ScopeData::Destruction = child.data {
-            assert_eq!(self.destruction_scopes.insert((child.item_local_id(), child.for_stmt), child), None);
+            assert_eq!(
+                self.destruction_scopes.insert((child.item_local_id(), child.for_stmt), child),
+                None
+            );
         }
     }
 

@@ -2427,9 +2427,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 return self
                     .lower_item_id(it)
                     .into_iter()
-                    .map(|item_id| {
-                        hir::Stmt { kind: hir::StmtKind::Item(item_id), span: s.span }
-                    })
+                    .map(|item_id| hir::Stmt { kind: hir::StmtKind::Item(item_id), span: s.span })
                     .collect();
             }
             StmtKind::Expr(ref e) => {
