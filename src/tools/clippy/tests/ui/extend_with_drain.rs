@@ -1,5 +1,5 @@
 // run-rustfix
-#![warn(clippy::append_instead_of_extend)]
+#![warn(clippy::extend_with_drain)]
 use std::collections::BinaryHeap;
 fn main() {
     //gets linted
