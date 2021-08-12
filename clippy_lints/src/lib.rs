@@ -1840,7 +1840,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box serde_api::SerdeApi);
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     let type_complexity_threshold = conf.type_complexity_threshold;
-    store.register_late_pass(move || box types::Types::new(vec_box_size_threshold, type_complexity_threshold));
+    let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
+    store.register_late_pass(move || box types::Types::new(
+        vec_box_size_threshold,
+        type_complexity_threshold,
+        avoid_breaking_exported_api,
+    ));
     store.register_late_pass(|| box booleans::NonminimalBool);
     store.register_late_pass(|| box needless_bitwise_bool::NeedlessBitwiseBool);
     store.register_late_pass(|| box eq_op::EqOp);
