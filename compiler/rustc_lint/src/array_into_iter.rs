@@ -32,7 +32,7 @@ declare_lint! {
     Warn,
     "detects calling `into_iter` on arrays in Rust 2015 and 2018",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #66145 <https://github.com/rust-lang/rust/issues/66145>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>",
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
     };
 }

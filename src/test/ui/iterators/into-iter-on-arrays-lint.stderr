@@ -6,7 +6,7 @@ LL |     small.into_iter();
    |
    = note: `#[warn(array_into_iter)]` on by default
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     small.iter();
@@ -23,7 +23,7 @@ LL |     [1, 2].into_iter();
    |            ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     [1, 2].iter();
@@ -40,7 +40,7 @@ LL |     big.into_iter();
    |         ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     big.iter();
@@ -57,7 +57,7 @@ LL |     [0u8; 33].into_iter();
    |               ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     [0u8; 33].iter();
@@ -74,7 +74,7 @@ LL |     Box::new(small).into_iter();
    |                     ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new(small).iter();
@@ -91,7 +91,7 @@ LL |     Box::new([1, 2]).into_iter();
    |                      ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new([1, 2]).iter();
@@ -108,7 +108,7 @@ LL |     Box::new(big).into_iter();
    |                   ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new(big).iter();
@@ -125,7 +125,7 @@ LL |     Box::new([0u8; 33]).into_iter();
    |                         ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new([0u8; 33]).iter();
@@ -142,7 +142,7 @@ LL |     Box::new(Box::new(small)).into_iter();
    |                               ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new(Box::new(small)).iter();
@@ -159,7 +159,7 @@ LL |     Box::new(Box::new([1, 2])).into_iter();
    |                                ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new(Box::new([1, 2])).iter();
@@ -176,7 +176,7 @@ LL |     Box::new(Box::new(big)).into_iter();
    |                             ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new(Box::new(big)).iter();
@@ -193,7 +193,7 @@ LL |     Box::new(Box::new([0u8; 33])).into_iter();
    |                                   ^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2021
-   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     Box::new(Box::new([0u8; 33])).iter();
