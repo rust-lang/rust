@@ -655,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         closure_body_span = closure_body_span.parent().unwrap_or(DUMMY_SP);
                     }
 
-                    let (sugg, app) =
+                    let (span, sugg, app) =
                         match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
                             Ok(s) => {
                                 let trimmed = s.trim_start();
@@ -667,9 +667,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     format!("{{ {}; {} }}", migration_string, s)
                                 };
-                                (sugg, Applicability::MachineApplicable)
+                                (closure_body_span, sugg, Applicability::MachineApplicable)
                             }
-                            Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
+                            Err(_) => (closure_span, migration_string.clone(), Applicability::HasPlaceholders),
                         };
 
                     let diagnostic_msg = format!(
@@ -678,7 +678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     diagnostics_builder.span_suggestion(
-                        closure_body_span,
+                        span,
                         &diagnostic_msg,
                         sugg,
                         app,
