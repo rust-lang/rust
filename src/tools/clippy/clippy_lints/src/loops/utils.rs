@@ -256,14 +256,6 @@ pub(super) struct LoopNestVisitor {
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     type Map = Map<'tcx>;
 
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
-        if stmt.hir_id == self.hir_id {
-            self.nesting = LookFurther;
-        } else if self.nesting == Unknown {
-            walk_stmt(self, stmt);
-        }
-    }
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.nesting != Unknown {
             return;

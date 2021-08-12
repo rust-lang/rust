@@ -53,7 +53,7 @@ impl<'a> Stmt<'a> {
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        matches!(self.inner.kind, ast::StmtKind::Empty)
+        matches!(self.inner.kind, ast::StmtKind::Empty { id: _ })
     }
 
     fn is_last_expr(&self) -> bool {
@@ -110,7 +110,7 @@ fn format_stmt(
             let shape = shape.sub_width(suffix.len())?;
             format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
         }
-        ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => None,
+        ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty { id: _ } => None,
     };
     result.and_then(|res| recover_comment_removed(res, stmt.span(), context))
 }

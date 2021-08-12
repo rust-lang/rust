@@ -43,7 +43,7 @@ pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
         ast::StmtKind::Item(ref item) => item.span,
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => expr.span,
         ast::StmtKind::MacCall(ref mac_stmt) => mac_stmt.mac.span(),
-        ast::StmtKind::Empty => stmt.span,
+        ast::StmtKind::Empty { id: _ } => stmt.span,
     }
 }
 

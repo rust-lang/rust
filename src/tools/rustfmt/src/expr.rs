@@ -1138,7 +1138,7 @@ fn block_has_statements(block: &ast::Block) -> bool {
     block
         .stmts
         .iter()
-        .any(|stmt| !matches!(stmt.kind, ast::StmtKind::Empty))
+        .any(|stmt| !matches!(stmt.kind, ast::StmtKind::Empty { id: _ }))
 }
 
 /// Checks whether a block contains no statements, expressions, comments, or

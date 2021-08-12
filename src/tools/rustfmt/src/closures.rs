@@ -148,7 +148,6 @@ fn rewrite_closure_with_block(
 
     let block = ast::Block {
         stmts: vec![ast::Stmt {
-            id: ast::NodeId::root(),
             kind: ast::StmtKind::Expr(ptr::P(body.clone())),
             span: body.span,
         }],

@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
                     len_expr: len_arg,
                 };
 
-                Self::search_initialization(cx, vi, stmt.hir_id);
+                Self::search_initialization(cx, vi, stmt.kind.hir_id());
             }
         }
     }

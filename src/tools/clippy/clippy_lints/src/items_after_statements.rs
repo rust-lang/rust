@@ -63,7 +63,7 @@ impl EarlyLintPass for ItemsAfterStatements {
             .stmts
             .iter()
             .map(|stmt| &stmt.kind)
-            .skip_while(|s| matches!(**s, StmtKind::Item(..) | StmtKind::Empty));
+            .skip_while(|s| matches!(**s, StmtKind::Item(..) | StmtKind::Empty { id: _ }));
 
         // lint on all further items
         for stmt in stmts {
