@@ -32,6 +32,18 @@ pub mod ext {
         path_unqualified(path_segment(name_ref(ident)))
     }
 
+    pub fn path_from_idents<'a>(
+        parts: impl std::iter::IntoIterator<Item = &'a str>,
+    ) -> Option<ast::Path> {
+        let mut iter = parts.into_iter();
+        let base = ext::ident_path(iter.next()?);
+        let path = iter.fold(base, |base, s| {
+            let path = ext::ident_path(s);
+            path_concat(base, path)
+        });
+        Some(path)
+    }
+
     pub fn expr_unreachable() -> ast::Expr {
         expr_from_text("unreachable!()")
     }
