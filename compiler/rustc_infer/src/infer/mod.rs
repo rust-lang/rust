@@ -58,7 +58,7 @@ mod fudge;
 mod glb;
 mod higher_ranked;
 pub mod lattice;
-mod lexical_region_resolve;
+pub mod lexical_region_resolve;
 mod lub;
 pub mod nll_relate;
 pub mod opaque_types;
