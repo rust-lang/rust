@@ -24,6 +24,11 @@ fn try_main() -> Result<()> {
     );
 
     {
+        let _s = Section::new("BUILD_NO_DEFAULT_FEATURES");
+        shell("cargo test --all-features --workspace --no-run --no-default-features")?;
+    }
+
+    {
         let _s = Section::new("BUILD");
         shell("cargo test --all-features --workspace --no-run")?;
     }
