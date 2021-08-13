@@ -1,15 +1,7 @@
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
-#[cfg(any(
-    target_os = "android",
-    target_os = "dragonfly",
-    target_os = "emscripten",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_os = "openbsd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux",))]
 use crate::iter::FromIterator;
 #[cfg(any(
     target_os = "android",
@@ -505,16 +497,19 @@ fn test_send_vectored_fds_unix_stream() {
     assert_eq!(usize, 8);
     assert_eq!(buf1, buf2);
 
-    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
-    assert_eq!(ancillary_data_vec.len(), 1);
-    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
-        let fd_vec = Vec::from_iter(scm_rights);
-        assert_eq!(fd_vec.len(), 1);
-        unsafe {
-            libc::close(fd_vec[0]);
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    {
+        let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+        assert_eq!(ancillary_data_vec.len(), 1);
+        if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
+            let fd_vec = Vec::from_iter(scm_rights);
+            assert_eq!(fd_vec.len(), 1);
+            unsafe {
+                libc::close(fd_vec[0]);
+            }
+        } else {
+            unreachable!("must be ScmRights");
         }
-    } else {
-        unreachable!("must be ScmRights");
     }
 }
 
@@ -626,15 +621,18 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
     assert_eq!(truncated, false);
     assert_eq!(buf1, buf2);
 
-    let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
-    assert_eq!(ancillary_data_vec.len(), 1);
-    if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
-        let fd_vec = Vec::from_iter(scm_rights);
-        assert_eq!(fd_vec.len(), 1);
-        unsafe {
-            libc::close(fd_vec[0]);
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    {
+        let mut ancillary_data_vec = Vec::from_iter(ancillary2.messages());
+        assert_eq!(ancillary_data_vec.len(), 1);
+        if let AncillaryData::ScmRights(scm_rights) = ancillary_data_vec.pop().unwrap().unwrap() {
+            let fd_vec = Vec::from_iter(scm_rights);
+            assert_eq!(fd_vec.len(), 1);
+            unsafe {
+                libc::close(fd_vec[0]);
+            }
+        } else {
+            unreachable!("must be ScmRights");
         }
-    } else {
-        unreachable!("must be ScmRights");
     }
 }
