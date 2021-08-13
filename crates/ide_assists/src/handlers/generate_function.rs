@@ -172,7 +172,7 @@ struct FunctionTemplate {
     leading_ws: String,
     fn_def: ast::Fn,
     ret_type: Option<ast::RetType>,
-    should_focus_tail_expr: bool,
+    should_focus_return_type: bool,
     trailing_ws: String,
     file: FileId,
     tail_expr: ast::Expr,
@@ -182,7 +182,8 @@ impl FunctionTemplate {
     fn to_string(&self, cap: Option<SnippetCap>) -> String {
         let f = match cap {
             Some(cap) => {
-                let cursor = if self.should_focus_tail_expr {
+                let cursor = if self.should_focus_return_type {
+                    // Focus the return type if there is one
                     if let Some(ref ret_type) = self.ret_type {
                         ret_type.syntax()
                     } else {
@@ -206,7 +207,7 @@ struct FunctionBuilder {
     type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     ret_type: Option<ast::RetType>,
-    should_focus_tail_expr: bool,
+    should_focus_return_type: bool,
     file: FileId,
     needs_pub: bool,
     is_async: bool,
@@ -239,7 +240,7 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_tail_expr) =
+        let (ret_type, should_focus_return_type) =
             make_return_type(ctx, &ast::Expr::CallExpr(call.clone()), target_module);
 
         Some(Self {
@@ -248,7 +249,7 @@ impl FunctionBuilder {
             type_params,
             params,
             ret_type,
-            should_focus_tail_expr,
+            should_focus_return_type,
             file,
             needs_pub,
             is_async,
@@ -284,7 +285,7 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_tail_expr) =
+        let (ret_type, should_focus_return_type) =
             make_return_type(ctx, &ast::Expr::MethodCallExpr(call.clone()), target_module);
 
         Some(Self {
@@ -293,7 +294,7 @@ impl FunctionBuilder {
             type_params,
             params,
             ret_type,
-            should_focus_tail_expr,
+            should_focus_return_type,
             file,
             needs_pub,
             is_async,
@@ -336,11 +337,10 @@ impl FunctionBuilder {
         FunctionTemplate {
             insert_offset,
             leading_ws,
-            // PANIC: we guarantee we always create a function with a return type
             ret_type: fn_def.ret_type(),
             // PANIC: we guarantee we always create a function body with a tail expr
             tail_expr: fn_def.body().unwrap().tail_expr().unwrap(),
-            should_focus_tail_expr: self.should_focus_tail_expr,
+            should_focus_return_type: self.should_focus_return_type,
             fn_def,
             trailing_ws,
             file: self.file,
@@ -348,16 +348,25 @@ impl FunctionBuilder {
     }
 }
 
+/// Makes an optional return type along with whether the return type should be focused by the cursor.
+/// If we cannot infer what the return type should be, we create unit as a placeholder.
+///
+/// The rule for whether we focus a return type or not (and thus focus the function body),
+/// is rather simple:
+/// * If we could *not* infer what the return type should be, focus it (so the user can fill-in
+/// the correct return type).
+/// * If we could infer the return type, don't focus it (and thus focus the function body) so the
+/// user can change the `todo!` function body.
 fn make_return_type(
     ctx: &AssistContext,
     call: &ast::Expr,
     target_module: Module,
 ) -> (Option<ast::RetType>, bool) {
-    let (ret_ty, should_focus_tail_expr) = {
+    let (ret_ty, should_focus_return_type) = {
         match ctx.sema.type_of_expr(call).map(TypeInfo::original) {
-            Some(ty) if ty.is_unit() => (None, false),
             Some(ty) if ty.is_unknown() => (Some(make::ty_unit()), true),
             None => (Some(make::ty_unit()), true),
+            Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
                 let rendered = ty.display_source_code(ctx.db(), target_module.into());
                 match rendered {
@@ -368,7 +377,7 @@ fn make_return_type(
         }
     };
     let ret_type = ret_ty.map(|rt| make::ret_type(rt));
-    (ret_type, should_focus_tail_expr)
+    (ret_type, should_focus_return_type)
 }
 
 enum GeneratedFunctionTarget {
