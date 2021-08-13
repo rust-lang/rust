@@ -1,0 +1,58 @@
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:20:22
+   |
+LL |         let value = NonCopy{};
+   |             ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+LL |
+LL |         let _used = value;
+   |                     ----- value moved here
+LL |
+LL |         let _used2 = value;
+   |                      ^^^^^ value used here after move
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:32:26
+   |
+LL |     let value = NonCopy{};
+   |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+...
+LL |         let _used = value;
+   |                     ----- value moved here
+...
+LL |             let _used2 = value;
+   |                          ^^^^^ value used here after move
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:42:21
+   |
+LL |     let value = NonCopy{};
+   |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+...
+LL |         let _used = value;
+   |                     ^^^^^ value moved here, in previous iteration of loop
+
+error[E0382]: use of moved value: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:53:22
+   |
+LL |     let mut value = NonCopy{};
+   |         --------- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
+...
+LL |         let _used2 = value;
+   |                      ^^^^^ value moved here, in previous iteration of loop
+
+error[E0381]: use of possibly-uninitialized variable: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:61:21
+   |
+LL |         let _used = value;
+   |                     ^^^^^ use of possibly-uninitialized `value`
+
+error[E0381]: use of possibly-uninitialized variable: `value`
+  --> $DIR/issue-72649-uninit-in-loop.rs:69:21
+   |
+LL |         let _used = value;
+   |                     ^^^^^ use of possibly-uninitialized `value`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.
