@@ -540,13 +540,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
-            if self
-                .tcx
-                .typeck(def_id)
-                .concrete_opaque_types
-                .any_value_matching(|(key, _)| key.def_id == self.def_id)
-                .is_none()
-            {
+            if !self.tcx.typeck(def_id).concrete_opaque_types.contains(&self.def_id) {
                 debug!("no constraints in typeck results");
                 return;
             }

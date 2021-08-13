@@ -32,7 +32,6 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
-use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -46,7 +45,6 @@ use rustc_hir::{
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::OpaqueTypeKey;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -477,7 +475,7 @@ pub struct TypeckResults<'tcx> {
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
-    pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
+    pub concrete_opaque_types: FxHashSet<DefId>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.

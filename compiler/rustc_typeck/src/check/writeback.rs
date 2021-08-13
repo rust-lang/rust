@@ -552,23 +552,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // in some other location, or we'll end up emitting an error due
             // to the lack of defining usage
             if !skip_add {
-                let old_concrete_ty = self
-                    .typeck_results
-                    .concrete_opaque_types
-                    .insert(opaque_type_key, definition_ty);
-                if let Some(old_concrete_ty) = old_concrete_ty {
-                    if old_concrete_ty != definition_ty {
-                        span_bug!(
-                            span,
-                            "`visit_opaque_types` tried to write different types for the same \
-                                 opaque type: {:?}, {:?}, {:?}, {:?}",
-                            opaque_type_key.def_id,
-                            definition_ty,
-                            opaque_defn,
-                            old_concrete_ty,
-                        );
-                    }
-                }
+                self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id);
             }
         }
     }
