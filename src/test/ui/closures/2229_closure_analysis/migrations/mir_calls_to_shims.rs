@@ -19,11 +19,11 @@ where
     let f = panic::AssertUnwindSafe(f);
     let result = panic::catch_unwind(move || {
         //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure would implement `UnwindSafe`, `RefUnwindSafe` as `f` implements `UnwindSafe`, `RefUnwindSafe`, but in Rust 2021, this closure would no longer implement `UnwindSafe`, `RefUnwindSafe` as `f.0` does not implement `UnwindSafe`, `RefUnwindSafe`
+        //~| NOTE: in Rust 2018, this closure implements `UnwindSafe`, `RefUnwindSafe` as `f` implements `UnwindSafe`, `RefUnwindSafe`, but in Rust 2021, this closure will no longer implement `UnwindSafe`, `RefUnwindSafe` as `f.0` does not implement `UnwindSafe`, `RefUnwindSafe`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f` to be fully captured
         f.0()
-        //~^ NOTE: in Rust 2018, closure captures all of `f`, but in Rust 2021, it only captures `f.0`
+        //~^ NOTE: in Rust 2018, this closure captures all of `f`, but in Rust 2021, it will only capture `f.0`
     });
     if let Ok(..) = result {
         panic!("diverging function returned");

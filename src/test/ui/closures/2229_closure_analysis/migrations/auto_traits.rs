@@ -13,11 +13,11 @@ fn test_send_trait() {
     let fptr = SendPointer(&mut f as *mut i32);
     thread::spawn(move || unsafe {
         //~^ ERROR: `Send` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure would implement `Send` as `fptr` implements `Send`, but in Rust 2021, this closure would no longer implement `Send` as `fptr.0` does not implement `Send`
+        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0` does not implement `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0 = 20;
-        //~^ NOTE: in Rust 2018, closure captures all of `fptr`, but in Rust 2021, it only captures `fptr.0`
+        //~^ NOTE: in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0`
     });
 }
 
@@ -33,11 +33,11 @@ fn test_sync_trait() {
     let fptr = SyncPointer(f);
     thread::spawn(move || unsafe {
         //~^ ERROR: `Sync`, `Send` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure would implement `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure would no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
+        //~| NOTE: in Rust 2018, this closure implements `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure will no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0.0 = 20;
-        //~^ NOTE: in Rust 2018, closure captures all of `fptr`, but in Rust 2021, it only captures `fptr.0.0`
+        //~^ NOTE: in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0.0`
     });
 }
 
@@ -57,11 +57,11 @@ fn test_clone_trait() {
     let f = U(S(String::from("Hello World")), T(0));
     let c = || {
         //~^ ERROR: `Clone` trait implementation for closure and drop order
-        //~| NOTE: in Rust 2018, this closure would implement `Clone` as `f` implements `Clone`, but in Rust 2021, this closure would no longer implement `Clone` as `f.1` does not implement `Clone`
+        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f.1` does not implement `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f` to be fully captured
         let f_1 = f.1;
-        //~^ NOTE: in Rust 2018, closure captures all of `f`, but in Rust 2021, it only captures `f.1`
+        //~^ NOTE: in Rust 2018, this closure captures all of `f`, but in Rust 2021, it will only capture `f.1`
         println!("{:?}", f_1.0);
     };
 
@@ -69,7 +69,7 @@ fn test_clone_trait() {
 
     c_clone();
 }
-//~^ NOTE: in Rust 2018, `f` would be dropped here, but in Rust 2021, only `f.1` would be dropped here alongside the closure
+//~^ NOTE: in Rust 2018, `f` is dropped here, but in Rust 2021, only `f.1` will be dropped here as part of the closure
 
 fn main() {
     test_send_trait();
