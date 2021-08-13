@@ -512,7 +512,7 @@ mod test_par_map {
         where
             H: Hasher,
         {
-            self.k.hash(state)
+            self.k.hash(state);
         }
     }
 
@@ -679,7 +679,7 @@ mod test_par_map {
     fn test_values_mut() {
         let vec = vec![(1, 1), (2, 2), (3, 3)];
         let mut map: HashMap<_, _> = vec.into_par_iter().collect();
-        map.par_values_mut().for_each(|value| *value = (*value) * 2);
+        map.par_values_mut().for_each(|value| *value *= 2);
         let values: Vec<_> = map.par_values().cloned().collect();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&2));
