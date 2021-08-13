@@ -1499,6 +1499,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        if self.session.contains_name(&item.attrs, sym::no_mangle) {
+            self.check_nomangle_item_asciionly(item.ident, item.span);
+        }
+
         if ctxt == AssocCtxt::Trait || !self.in_trait_impl {
             self.check_defaultness(item.span, item.kind.defaultness());
         }

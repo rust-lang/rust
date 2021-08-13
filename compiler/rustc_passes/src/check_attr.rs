@@ -962,6 +962,10 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn is_impl_item(&self, hir_id: HirId) -> bool {
+        matches!(self.tcx.hir().get(hir_id), hir::Node::ImplItem(..))
+    }
+
     /// Checks if `#[export_name]` is applied to a function or static. Returns `true` if valid.
     fn check_export_name(
         &self,
@@ -971,7 +975,8 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            Target::Static | Target::Fn | Target::Method(..) => true,
+            Target::Static | Target::Fn => true,
+            Target::Method(..) if self.is_impl_item(hir_id) => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[export_name]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to to be compatible
@@ -985,9 +990,9 @@ impl CheckAttrVisitor<'tcx> {
                     .sess
                     .struct_span_err(
                         attr.span,
-                        "attribute should be applied to a function or static",
+                        "attribute should be applied to a free function, impl method or static",
                     )
-                    .span_label(*span, "not a function or static")
+                    .span_label(*span, "not a free function, impl method or static")
                     .emit();
                 false
             }
@@ -1169,7 +1174,8 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if `#[no_mangle]` is applied to a function or static.
     fn check_no_mangle(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
         match target {
-            Target::Static | Target::Fn | Target::Method(..) => {}
+            Target::Static | Target::Fn => {}
+            Target::Method(..) if self.is_impl_item(hir_id) => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[no_mangle]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to to be compatible
@@ -1181,14 +1187,16 @@ impl CheckAttrVisitor<'tcx> {
                 // FIXME: #[no_mangle] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("attribute should be applied to a function or static")
-                        .warn(
-                            "this was previously accepted by the compiler but is \
-                             being phased out; it will become a hard error in \
-                             a future release!",
-                        )
-                        .span_label(*span, "not a function or static")
-                        .emit();
+                    lint.build(
+                        "attribute should be applied to a free function, impl method or static",
+                    )
+                    .warn(
+                        "this was previously accepted by the compiler but is \
+                         being phased out; it will become a hard error in \
+                         a future release!",
+                    )
+                    .span_label(*span, "not a free function, impl method or static")
+                    .emit();
                 });
             }
         }

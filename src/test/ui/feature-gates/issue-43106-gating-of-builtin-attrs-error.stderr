@@ -17,31 +17,31 @@ LL |     #[inline = "2100"] fn f() { }
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:109:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:119:1
    |
 LL | #[start]
    | ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:112:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:122:17
    |
 LL |     mod inner { #![start] }
    |                 ^^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:117:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:127:5
    |
 LL |     #[start] struct S;
    |     ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:130:5
    |
 LL |     #[start] type T = S;
    |     ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:123:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:133:5
    |
 LL |     #[start] impl S { }
    |     ^^^^^^^^
@@ -76,7 +76,7 @@ LL | |
 LL | | }
    | |_- not an `extern crate` item
 
-error: attribute should be applied to a function or static
+error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:85:1
    |
 LL |   #[export_name = "2200"]
@@ -87,9 +87,9 @@ LL | |
 LL | |
 LL | |     mod inner { #![export_name="2200"] }
 ...  |
-LL | |
+LL | |     }
 LL | | }
-   | |_- not a function or static
+   | |_- not a free function, impl method or static
 
 error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:25:1
@@ -97,7 +97,7 @@ error: attribute should be applied to an `extern crate` item
 LL | #![no_link]
    | ^^^^^^^^^^^
 
-error: attribute should be applied to a function or static
+error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:27:1
    |
 LL | #![export_name = "2200"]
@@ -199,31 +199,43 @@ error: attribute should be applied to an `extern crate` item
 LL |     #[no_link] impl S { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
-error: attribute should be applied to a function or static
+error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:90:17
    |
 LL |     mod inner { #![export_name="2200"] }
-   |     ------------^^^^^^^^^^^^^^^^^^^^^^-- not a function or static
+   |     ------------^^^^^^^^^^^^^^^^^^^^^^-- not a free function, impl method or static
 
-error: attribute should be applied to a function or static
+error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:96:5
    |
 LL |     #[export_name = "2200"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ --------- not a function or static
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ --------- not a free function, impl method or static
 
-error: attribute should be applied to a function or static
+error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:100:5
    |
 LL |     #[export_name = "2200"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a function or static
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a free function, impl method or static
 
-error: attribute should be applied to a function or static
+error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:104:5
    |
 LL |     #[export_name = "2200"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a function or static
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a free function, impl method or static
 
-error: aborting due to 32 previous errors
+error: attribute should be applied to a free function, impl method or static
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:109:9
+   |
+LL |         #[export_name = "2200"] fn foo();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ --------- not a free function, impl method or static
+
+error: attribute should be applied to a free function, impl method or static
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:113:9
+   |
+LL |         #[export_name = "2200"] fn bar() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a free function, impl method or static
+
+error: aborting due to 34 previous errors
 
 Some errors have detailed explanations: E0518, E0658.
 For more information about an error, try `rustc --explain E0518`.
