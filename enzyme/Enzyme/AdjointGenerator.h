@@ -1929,7 +1929,9 @@ public:
         if (gutils->isConstantValue(orig_src)) {
           SmallVector<Value *, 4> args;
           args.push_back(gutils->invertPointerM(orig_dst, Builder2));
-          args.push_back(
+          if (args[0]->getType()->isIntegerTy())
+              args[0] = Builder2.CreateIntToPtr(args[0], Type::getInt8PtrTy(MTI->getContext()));
+	  args.push_back(
               ConstantInt::get(Type::getInt8Ty(parent->getContext()), 0));
           args.push_back(lookup(length, Builder2));
 #if LLVM_VERSION_MAJOR <= 6
@@ -2016,10 +2018,14 @@ public:
         //  we may omit this copy.
         // no need to update pointers, even if dst is active
         auto dsto = gutils->invertPointerM(orig_dst, BuilderZ);
+        if (dsto->getType()->isIntegerTy())
+           dsto = BuilderZ.CreateIntToPtr(dsto, Type::getInt8PtrTy(MTI->getContext()));
         if (offset != 0)
           dsto = BuilderZ.CreateConstInBoundsGEP1_64(dsto, offset);
         args.push_back(dsto);
         auto srco = gutils->invertPointerM(orig_src, BuilderZ);
+        if (srco->getType()->isIntegerTy())
+           srco = BuilderZ.CreateIntToPtr(srco, Type::getInt8PtrTy(MTI->getContext()));
         if (offset != 0)
           srco = BuilderZ.CreateConstInBoundsGEP1_64(srco, offset);
         args.push_back(srco);
@@ -2068,6 +2074,22 @@ public:
   }
 
   void visitMemTransferInst(llvm::MemTransferInst &MTI) {
+#if LLVM_VERSION_MAJOR >= 7
+    Value *isVolatile = gutils->getNewFromOriginal(MTI.getOperand(3));
+#else
+    Value *isVolatile = gutils->getNewFromOriginal(MTI.getOperand(4));
+#endif
+#if LLVM_VERSION_MAJOR >= 10
+      auto srcAlign = MTI.getSourceAlign();
+      auto dstAlign = MTI.getDestAlign();
+#else
+      auto srcAlign = MTI.getSourceAlignment();
+      auto dstAlign = MTI.getDestAlignment();
+#endif
+    visitMemTransferCommon(MTI.getIntrinsicID(), srcAlign, dstAlign, MTI, isVolatile);
+  }
+
+  void visitMemTransferCommon(Intrinsic::ID ID, MaybeAlign srcAlign, MaybeAlign dstAlign, llvm::CallInst& MTI, Value* isVolatile) {
     if (gutils->isConstantValue(MTI.getOperand(0))) {
       eraseIfUnused(MTI);
       return;
@@ -2081,11 +2103,6 @@ public:
     Value *orig_dst = MTI.getOperand(0);
     Value *orig_src = MTI.getOperand(1);
     Value *new_size = gutils->getNewFromOriginal(MTI.getOperand(2));
-#if LLVM_VERSION_MAJOR >= 7
-    Value *isVolatile = gutils->getNewFromOriginal(MTI.getOperand(3));
-#else
-    Value *isVolatile = gutils->getNewFromOriginal(MTI.getOperand(4));
-#endif
 
     // copying into nullptr is invalid (not sure why it exists here), but we
     // shouldn't do it in reverse pass or shadow
@@ -2100,14 +2117,6 @@ public:
       getForwardBuilder(Builder2);
       auto ddst = gutils->invertPointerM(orig_dst, Builder2);
       auto dsrc = gutils->invertPointerM(orig_src, Builder2);
-
-#if LLVM_VERSION_MAJOR >= 10
-      auto srcAlign = MTI.getSourceAlign();
-      auto dstAlign = MTI.getDestAlign();
-#else
-      auto srcAlign = MTI.getSourceAlignment();
-      auto dstAlign = MTI.getDestAlignment();
-#endif
 
       auto call =
           Builder2.CreateMemCpy(ddst, dstAlign, dsrc, srcAlign, new_size);
@@ -2192,14 +2201,8 @@ public:
     }
   known:;
 
-    unsigned dstalign = 0;
-    if (MTI.paramHasAttr(0, Attribute::Alignment)) {
-      dstalign = MTI.getParamAttr(0, Attribute::Alignment).getValueAsInt();
-    }
-    unsigned srcalign = 0;
-    if (MTI.paramHasAttr(1, Attribute::Alignment)) {
-      srcalign = MTI.getParamAttr(1, Attribute::Alignment).getValueAsInt();
-    }
+    unsigned dstalign = dstAlign.valueOrOne().value();
+    unsigned srcalign = srcAlign.valueOrOne().value();
 
     unsigned start = 0;
 
@@ -2246,7 +2249,7 @@ public:
           srcalign = 1;
         }
       }
-      subTransferHelper(dt.isFloat(), MTI.getParent(), MTI.getIntrinsicID(),
+      subTransferHelper(dt.isFloat(), MTI.getParent(), ID,
                         subdstalign, subsrcalign, /*offset*/ start, orig_dst,
                         orig_src, /*length*/ length, /*volatile*/ isVolatile,
                         &MTI);
@@ -3715,7 +3718,7 @@ public:
               lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
               Type::getInt64Ty(Builder2.getContext()));
           auto tysize =
-              MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
+              MPI_TYPE_SIZE(lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2),
                             Builder2, call.getType());
           len_arg = Builder2.CreateMul(
               len_arg,
@@ -3729,7 +3732,7 @@ public:
             assert(!gutils->isConstantValue(call.getOperand(0)));
             auto dbuf = gutils->invertPointerM(call.getOperand(0), Builder2);
 	    if (dbuf->getType()->isIntegerTy())
-	       dbuf = BuilderZ.CreateIntToPtr(dbuf, Type::getInt8PtrTy(call.getContext()));
+	       dbuf = Builder2.CreateIntToPtr(dbuf, Type::getInt8PtrTy(call.getContext()));
 #if LLVM_VERSION_MAJOR == 6
             auto align_arg =
                 ConstantInt::get(Type::getInt32Ty(B.getContext()), 1);
@@ -6391,7 +6394,14 @@ public:
       eraseIfUnused(*orig);
       return;
     }
-
+    if (funcName == "memcpy") {
+      visitMemTransferCommon(Intrinsic::memcpy, /*srcAlign*/MaybeAlign(1), /*dstAlign*/MaybeAlign(1), *orig, ConstantInt::getFalse(orig->getContext()));
+      return;
+    }
+    if (funcName == "memmove") {
+      visitMemTransferCommon(Intrinsic::memmove, /*srcAlign*/MaybeAlign(1), /*dstAlign*/MaybeAlign(1), *orig, ConstantInt::getFalse(orig->getContext()));
+      return;
+    }
     if (funcName == "posix_memalign") {
       bool constval = gutils->isConstantInstruction(orig);
 

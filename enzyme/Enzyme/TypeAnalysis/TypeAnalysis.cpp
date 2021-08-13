@@ -3656,6 +3656,14 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
     /// END MPI
+    if (funcName == "memcpy" || funcName == "memmove") {
+      // TODO have this call common mem transfer to copy data
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
     if (funcName == "posix_memalign") {
       TypeTree ptrptr;
       ptrptr.insert({-1}, BaseType::Pointer);
