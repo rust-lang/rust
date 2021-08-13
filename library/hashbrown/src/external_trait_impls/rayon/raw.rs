@@ -175,7 +175,7 @@ impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
     {
         // Make sure to modify the iterator in-place so that any remaining
         // elements are processed in our Drop impl.
-        while let Some(item) = self.iter.next() {
+        for item in &mut self.iter {
             folder = folder.consume(unsafe { item.read() });
             if folder.full() {
                 return folder;
@@ -193,7 +193,7 @@ impl<T> Drop for ParDrainProducer<T> {
     fn drop(&mut self) {
         // Drop all remaining elements
         if mem::needs_drop::<T>() {
-            while let Some(item) = self.iter.next() {
+            for item in &mut self.iter {
                 unsafe {
                     item.drop();
                 }
