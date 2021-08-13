@@ -190,7 +190,8 @@ pub(crate) fn type_check<'mir, 'tcx>(
             liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
 
             translate_outlives_facts(&mut cx);
-            let opaque_type_values = mem::take(&mut infcx.inner.borrow_mut().opaque_types);
+            let opaque_type_values =
+                infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
             opaque_type_values
                 .into_iter()
@@ -1315,8 +1316,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
-        let opaque_type_map = self.infcx.inner.borrow().opaque_types.clone();
-        for (opaque_type_key, opaque_decl) in opaque_type_map {
+        for (opaque_type_key, opaque_decl) in self.infcx.opaque_types() {
             self.fully_perform_op(
                 locations,
                 ConstraintCategory::OpaqueType,

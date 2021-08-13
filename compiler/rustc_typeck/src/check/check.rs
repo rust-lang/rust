@@ -647,8 +647,7 @@ fn check_opaque_meets_bounds<'tcx>(
             infcx.instantiate_opaque_types(hir_id, param_env, opaque_ty, span),
         );
 
-        let opaque_type_map = infcx.inner.borrow().opaque_types.clone();
-        for (OpaqueTypeKey { def_id, substs }, opaque_defn) in opaque_type_map {
+        for (OpaqueTypeKey { def_id, substs }, opaque_defn) in infcx.opaque_types() {
             let hidden_type = tcx.type_of(def_id).subst(tcx, substs);
             trace!(?hidden_type);
             match infcx.at(&misc_cause, param_env).eq(opaque_defn.concrete_ty, hidden_type) {

@@ -30,6 +30,11 @@ where
         }
     }
 
+    /// Removes the entry from the map and returns the removed value
+    pub fn remove(&mut self, k: &K) -> Option<V> {
+        self.0.iter().position(|(k2, _)| k2 == k).map(|pos| self.0.remove(pos).1)
+    }
+
     /// Gets a reference to the value in the entry.
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where

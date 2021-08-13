@@ -4,7 +4,7 @@ use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_middle::infer::unify_key::RegionVidKey;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, OpaqueTypeKey};
 
 use crate::{
     infer::{region_constraints, type_variable, InferCtxtInner},
@@ -18,6 +18,7 @@ pub struct Snapshot<'tcx> {
 
 /// Records the "undo" data for a single operation that affects some form of inference variable.
 pub(crate) enum UndoLog<'tcx> {
+    OpaqueTypes(OpaqueTypeKey<'tcx>),
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
@@ -42,6 +43,7 @@ macro_rules! impl_from {
 
 // Upcast from a single kind of "undoable action" to the general enum
 impl_from! {
+    OpaqueTypes(OpaqueTypeKey<'tcx>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     TypeVariables(type_variable::UndoLog<'tcx>),
 
@@ -64,6 +66,7 @@ impl_from! {
 impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
         match undo {
+            UndoLog::OpaqueTypes(key) => self.opaque_type_storage.remove(key),
             UndoLog::TypeVariables(undo) => self.type_variable_storage.reverse(undo),
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),
             UndoLog::IntUnificationTable(undo) => self.int_unification_storage.reverse(undo),

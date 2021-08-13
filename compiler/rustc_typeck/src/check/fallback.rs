@@ -176,7 +176,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .type_var_origin(ty)
             .map(|origin| origin.span)
             .unwrap_or(rustc_span::DUMMY_SP);
-        let oty = self.inner.borrow().opaque_types_vars.get(ty).copied();
+        let oty = self.inner.borrow().opaque_type_storage.get_opaque_type_for_infer_var(ty);
         if let Some(opaque_ty) = oty {
             debug!(
                 "fallback_opaque_type_vars(ty={:?}): falling back to opaque type {:?}",

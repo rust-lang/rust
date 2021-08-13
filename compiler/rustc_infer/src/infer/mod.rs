@@ -5,7 +5,7 @@ pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
 
-use self::opaque_types::OpaqueTypeMap;
+use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
@@ -190,20 +190,10 @@ pub struct InferCtxtInner<'tcx> {
     /// that all type inference variables have been bound and so forth.
     region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
 
+    /// Caches for opaque type inference.
+    pub opaque_type_storage: OpaqueTypeStorage<'tcx>,
+
     undo_log: InferCtxtUndoLogs<'tcx>,
-
-    // Opaque types found in explicit return types and their
-    // associated fresh inference variable. Writeback resolves these
-    // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl outside of type inference.
-    pub opaque_types: OpaqueTypeMap<'tcx>,
-
-    /// A map from inference variables created from opaque
-    /// type instantiations (`ty::Infer`) to the actual opaque
-    /// type (`ty::Opaque`). Used during fallback to map unconstrained
-    /// opaque type inference variables to their corresponding
-    /// opaque type.
-    pub opaque_types_vars: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
@@ -217,8 +207,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
-            opaque_types: Default::default(),
-            opaque_types_vars: Default::default(),
+            opaque_type_storage: Default::default(),
         }
     }
 
@@ -235,6 +224,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     #[inline]
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
+    }
+
+    #[inline]
+    fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+        self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
