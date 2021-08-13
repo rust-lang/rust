@@ -1709,7 +1709,7 @@ impl<K, V, A: Allocator + Clone> DrainFilterInner<'_, K, V, A> {
         F: FnMut(&K, &mut V) -> bool,
     {
         unsafe {
-            while let Some(item) = self.iter.next() {
+            for item in &mut self.iter {
                 let &mut (ref key, ref mut value) = item.as_mut();
                 if f(key, value) {
                     return Some(self.table.remove(item));
