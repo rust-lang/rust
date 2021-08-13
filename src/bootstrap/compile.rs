@@ -806,6 +806,10 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
+        builder.info(&format!(
+            "Building stage{} codegen backend {} ({} -> {})",
+            compiler.stage, backend, &compiler.host, target
+        ));
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
         if builder.config.dry_run {
             return;
