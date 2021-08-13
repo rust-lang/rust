@@ -20,6 +20,17 @@ help: consider iterating over a slice of the `HashMap<i32, i32>`'s content
 LL |         for _ in &self.h {
    |                  +
 
-error: aborting due to 2 previous errors
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/for-i-in-vec.rs:21:19
+   |
+LL |     for loader in *LOADERS {
+   |                   ^^^^^^^^ move occurs because value has type `Vec<&u8>`, which does not implement the `Copy` trait
+   |
+help: consider iterating over a slice of the `Vec<&u8>`'s content
+   |
+LL |     for loader in &*LOADERS {
+   |                   +
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0507`.
