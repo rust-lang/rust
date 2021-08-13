@@ -41,7 +41,12 @@ fn main() {
 
     let mut heap = BinaryHeap::from(vec![1, 3]);
     let mut heap2 = BinaryHeap::from(vec![]);
-    heap2.extend(heap.drain())
+    heap2.extend(heap.drain());
+
+    let mut x = vec![0, 1, 2, 3, 5];
+    let ref_x = &mut x;
+    let mut y = Vec::new();
+    y.extend(ref_x.drain(..));
 }
 
 fn return_vector() -> Vec<u8> {

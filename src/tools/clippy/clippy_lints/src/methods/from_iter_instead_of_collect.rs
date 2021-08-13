@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_expr_path_def_path, paths, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::sym;
 
@@ -43,7 +44,7 @@ fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -
 
     let call_site = expr.span.source_callsite();
     if_chain! {
-        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(call_site);
+        if let Some(snippet) = snippet_opt(cx, call_site);
         let snippet_split = snippet.split("::").collect::<Vec<_>>();
         if let Some((_, elements)) = snippet_split.split_last();
 

@@ -32,13 +32,19 @@ macro_rules! type_pos {
     };
 }
 
+macro_rules! printlnfoo {
+    ($thing:expr) => {
+        println!("{}", $thing)
+    };
+}
+
 #[rustfmt::skip]
 fn main() {
     let _ = vec! {1, 2, 3};
     let _ = format!["ugh {} stop being such a good compiler", "hello"];
     let _ = quote!(let x = 1;);
     let _ = quote::quote!(match match match);
-    let _ = test!();
+    let _ = test!(); // trigger when macro def is inside our own crate
     let _ = vec![1,2,3];
 
     let _ = quote::quote! {true || false};
@@ -49,4 +55,6 @@ fn main() {
     let _: type_pos!(usize) = vec![];
 
     eprint!("test if user config overrides defaults");
+
+    printlnfoo!["test if printlnfoo is triggered by println"];
 }
