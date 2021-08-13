@@ -67,7 +67,7 @@ struct RegionResolutionVisitor<'tcx> {
     /// arbitrary amounts of stack space. Terminating scopes end
     /// up being contained in a DestructionScope that contains the
     /// destructor's execution.
-    terminating_scopes: FxHashSet<(hir::ItemLocalId, bool)>,
+    terminating_scopes: FxHashSet<hir::ItemLocalId>,
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
@@ -116,7 +116,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
     // `other_argument()` has run and also the call to `quux(..)`
     // itself has returned.
 
-    visitor.enter_node_scope_with_dtor(blk.hir_id.local_id, false);
+    visitor.enter_node_scope_with_dtor(blk.hir_id.local_id);
     visitor.cx.var_parent = visitor.cx.parent;
 
     {
@@ -157,10 +157,10 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
     visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node, for_stmt: false });
     visitor.cx.var_parent = visitor.cx.parent;
 
-    visitor.terminating_scopes.insert((arm.body.hir_id.local_id, false));
+    visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
 
     if let Some(hir::Guard::If(ref expr)) = arm.guard {
-        visitor.terminating_scopes.insert((expr.hir_id.local_id, false));
+        visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 
     intravisit::walk_arm(visitor, arm);
@@ -203,9 +203,9 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
 
     match &stmt.kind {
         kind @ (hir::StmtKind::Local(_) | hir::StmtKind::Expr(_) | hir::StmtKind::Semi(_)) => {
-            let local_id = kind.hir_id().local_id;
-            visitor.terminating_scopes.insert((local_id, true));
-            visitor.enter_node_scope_with_dtor(local_id, true);
+            let id = kind.hir_id().local_id;
+            visitor.enter_scope(Scope { id, data: ScopeData::Destruction, for_stmt: true });
+            visitor.enter_scope(Scope { id, data: ScopeData::Node, for_stmt: true });
         }
         hir::StmtKind::Item(_) => {}
     }
@@ -219,12 +219,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
 
     let prev_cx = visitor.cx;
-    visitor.enter_node_scope_with_dtor(expr.hir_id.local_id, false);
+    visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
 
     {
         let terminating_scopes = &mut visitor.terminating_scopes;
         let mut terminating = |id: hir::ItemLocalId| {
-            terminating_scopes.insert((id, false));
+            terminating_scopes.insert(id);
         };
         match expr.kind {
             // Conditional or repeating scopes are always terminating
@@ -699,15 +699,15 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         self.cx.parent = Some((child_scope, child_depth));
     }
 
-    fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId, for_stmt: bool) {
+    fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId) {
         // If node was previously marked as a terminating scope during the
         // recursive visit of its parent node in the AST, then we need to
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
-        if self.terminating_scopes.contains(&(id, for_stmt)) {
-            self.enter_scope(Scope { id, data: ScopeData::Destruction, for_stmt });
+        if self.terminating_scopes.contains(&id) {
+            self.enter_scope(Scope { id, data: ScopeData::Destruction, for_stmt: false });
         }
-        self.enter_scope(Scope { id, data: ScopeData::Node, for_stmt });
+        self.enter_scope(Scope { id, data: ScopeData::Node, for_stmt: false });
     }
 }
 
@@ -745,7 +745,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         // control flow assumptions. This doesn't apply to nested
         // bodies within the `+=` statements. See #69307.
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
-        self.terminating_scopes.insert((body.value.hir_id.local_id, false));
+        self.terminating_scopes.insert(body.value.hir_id.local_id);
 
         self.enter_scope(Scope {
             id: body.value.hir_id.local_id,
