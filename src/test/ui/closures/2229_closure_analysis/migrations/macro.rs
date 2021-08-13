@@ -1,0 +1,16 @@
+// run-rustfix
+
+// See https://github.com/rust-lang/rust/issues/87955
+
+#![deny(rust_2021_incompatible_closure_captures)]
+//~^ NOTE: the lint level is defined here
+
+fn main() {
+    let a = ("hey".to_string(), "123".to_string());
+    let _ = || dbg!(a.0);
+    //~^ ERROR: drop order
+    //~| NOTE: only captures `a.0`
+    //~| NOTE: for more information, see
+    //~| HELP: add a dummy let to cause `a` to be fully captured
+}
+//~^ NOTE: dropped here

@@ -47,7 +47,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::sym;
-use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_span::{MultiSpan, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use rustc_data_structures::stable_map::FxHashMap;
@@ -644,8 +644,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
-                    let closure_body_span = self.tcx.hir().span(body_id.hir_id);
-                    let (sugg, app) =
+
+                    let mut closure_body_span = self.tcx.hir().span(body_id.hir_id);
+
+                    // If the body was entirely expanded from a macro
+                    // invocation, i.e. the body is not contained inside the
+                    // closure span, then we walk up the expansion until we
+                    // find the span before the expansion.
+                    while !closure_body_span.is_dummy() && !closure_span.contains(closure_body_span) {
+                        closure_body_span = closure_body_span.parent().unwrap_or(DUMMY_SP);
+                    }
+
+                    let (span, sugg, app) =
                         match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
                             Ok(s) => {
                                 let trimmed = s.trim_start();
@@ -666,9 +676,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     format!("{{ {}; {} }}", migration_string, s)
                                 };
-                                (sugg, Applicability::MachineApplicable)
+                                (closure_body_span, sugg, Applicability::MachineApplicable)
                             }
-                            Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
+                            Err(_) => (closure_span, migration_string.clone(), Applicability::HasPlaceholders),
                         };
 
                     let diagnostic_msg = format!(
@@ -677,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
 
                     diagnostics_builder.span_suggestion(
-                        closure_body_span,
+                        span,
                         &diagnostic_msg,
                         sugg,
                         app,
