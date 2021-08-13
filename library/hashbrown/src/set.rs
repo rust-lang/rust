@@ -378,7 +378,7 @@ impl<T, S, A: Allocator + Clone> HashSet<T, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear(&mut self) {
-        self.map.clear()
+        self.map.clear();
     }
 }
 
@@ -559,7 +559,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
-        self.map.reserve(additional)
+        self.map.reserve(additional);
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -601,7 +601,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
-        self.map.shrink_to_fit()
+        self.map.shrink_to_fit();
     }
 
     /// Shrinks the capacity of the set with a lower limit. It will drop
@@ -627,7 +627,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.map.shrink_to(min_capacity)
+        self.map.shrink_to(min_capacity);
     }
 
     /// Visits the values representing the difference,

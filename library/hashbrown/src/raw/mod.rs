@@ -59,7 +59,7 @@ fn cold() {}
 #[inline]
 fn likely(b: bool) -> bool {
     if !b {
-        cold()
+        cold();
     }
     b
 }
@@ -67,7 +67,7 @@ fn likely(b: bool) -> bool {
 #[inline]
 fn unlikely(b: bool) -> bool {
     if b {
-        cold()
+        cold();
     }
     b
 }
@@ -502,7 +502,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Deallocates the table without dropping any entries.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn free_buckets(&mut self) {
-        self.table.free_buckets(TableLayout::new::<T>())
+        self.table.free_buckets(TableLayout::new::<T>());
     }
 
     /// Returns pointer to one past last element of data table.
@@ -537,7 +537,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[deprecated(since = "0.8.1", note = "use erase or remove instead")]
     pub unsafe fn erase_no_drop(&mut self, item: &Bucket<T>) {
         let index = self.bucket_index(item);
-        self.table.erase(index)
+        self.table.erase(index);
     }
 
     /// Erases an element from the table, dropping it in place.
@@ -586,7 +586,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Marks all table buckets as empty without dropping their contents.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear_no_drop(&mut self) {
-        self.table.clear_no_drop()
+        self.table.clear_no_drop();
     }
 
     /// Removes all elements from the table without freeing the backing memory.
@@ -631,7 +631,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         if min_buckets < self.buckets() {
             // Fast path if the table is empty
             if self.table.items == 0 {
-                *self = Self::with_capacity_in(min_size, self.table.alloc.clone())
+                *self = Self::with_capacity_in(min_size, self.table.alloc.clone());
             } else {
                 // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
                 if self
@@ -1271,7 +1271,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// the end of the array.
     #[inline]
     unsafe fn set_ctrl_h2(&self, index: usize, hash: u64) {
-        self.set_ctrl(index, h2(hash))
+        self.set_ctrl(index, h2(hash));
     }
 
     #[inline]
@@ -1646,7 +1646,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for RawTable<T, A> {
 
                 self.clone_from_spec(source, |self_| {
                     // We need to leave the table in an empty state.
-                    self_.clear_no_drop()
+                    self_.clear_no_drop();
                 });
             }
         }

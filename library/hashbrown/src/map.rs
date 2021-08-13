@@ -1672,7 +1672,7 @@ pub(super) struct ConsumeAllOnDrop<'a, T: Iterator>(pub &'a mut T);
 impl<T: Iterator> Drop for ConsumeAllOnDrop<'_, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
-        self.0.for_each(drop)
+        self.0.for_each(drop);
     }
 }
 
