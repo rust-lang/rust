@@ -1001,11 +1001,7 @@ fn test_split_iterators_size_hint() {
         Lower,
         Upper,
     }
-    fn assert_precise_size_hints<I: Iterator>(
-        mut it: I,
-        which: Bounds,
-        context: impl fmt::Display,
-    ) {
+    fn assert_precise_size_hints(mut it: impl Iterator, which: Bounds, context: impl fmt::Display) {
         match which {
             Bounds::Lower => {
                 let mut lower_bounds = vec![it.size_hint().0];
