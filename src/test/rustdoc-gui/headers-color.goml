@@ -1,0 +1,46 @@
+// This test check for headers text and background colors for the different themes.
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+
+// This is needed so that the text color is computed.
+show-text: true
+
+// Ayu theme
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-preferred-dark-theme": "ayu", "rustdoc-use-system-theme": "false"}
+reload:
+
+assert-css: (".impl", {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"}, ALL)
+assert-css: (".impl .code-header", {"color": "rgb(230, 225, 207)", "background-color": "rgb(15, 20, 25)"}, ALL)
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl
+assert-css: ("#impl", {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"})
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
+assert-css: ("#method\.must_use", {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"}, ALL)
+
+// Dark theme
+local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+
+assert-css: (".impl", {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"}, ALL)
+assert-css: (".impl .code-header", {"color": "rgb(221, 221, 221)", "background-color": "rgb(53, 53, 53)"}, ALL)
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl
+assert-css: ("#impl", {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"})
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
+assert-css: ("#method\.must_use", {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"}, ALL)
+
+// Light theme
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+reload:
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+
+assert-css: (".impl", {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"}, ALL)
+assert-css: (".impl .code-header", {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"}, ALL)
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl
+assert-css: ("#impl", {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"})
+
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
+assert-css: ("#method\.must_use", {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"}, ALL)
