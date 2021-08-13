@@ -21,7 +21,7 @@ fn test_hashset_insert_remove() {
     // more readable with explicit `true` / `false`
     #[allow(clippy::bool_assert_comparison)]
     for _ in 0..32 {
-        for x in tx.iter() {
+        for x in &tx {
             assert_eq!(m.contains(x), false);
             assert_eq!(m.insert(x.clone()), true);
         }
