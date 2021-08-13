@@ -8,9 +8,12 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::traits;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
+use rustc_hir::lang_items::LangItem;
+
 use std::borrow::Cow;
 
 pub mod abort_unwinding_calls;
@@ -624,4 +627,28 @@ fn promoted_mir<'tcx>(
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
     tcx.arena.alloc(promoted)
+}
+
+pub(crate) fn custom_coerce_unsize_info<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    source_ty: Ty<'tcx>,
+    target_ty: Ty<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> ty::adjustment::CustomCoerceUnsized {
+    let def_id = tcx.require_lang_item(LangItem::CoerceUnsized, None);
+
+    let trait_ref = ty::Binder::dummy(ty::TraitRef {
+        def_id,
+        substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()]),
+    });
+
+    match tcx.codegen_fulfill_obligation((param_env, trait_ref)) {
+        Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {
+            impl_def_id,
+            ..
+        })) => tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap(),
+        impl_source => {
+            bug!("invalid `CoerceUnsized` impl_source: {:?}", impl_source);
+        }
+    }
 }

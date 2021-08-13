@@ -418,6 +418,23 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                     false
                 }
             }
+            (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) => {
+                let custom_coerce_unsized = crate::transform::custom_coerce_unsize_info(
+                    self.tcx,
+                    source,
+                    target,
+                    self.param_env,
+                );
+                match custom_coerce_unsized {
+                    ty::adjustment::CustomCoerceUnsized::Struct(field_idx) => {
+                        assert_eq!(def_a, def_b);
+                        let field = def_a.non_enum_variant().fields.get(field_idx).unwrap();
+                        let field_ty_a = field.ty(self.tcx, substs_a);
+                        let field_ty_b = field.ty(self.tcx, substs_b);
+                        self.is_trait_upcasting_coercion_from_raw_pointer(field_ty_a, field_ty_b)
+                    }
+                }
+            }
             _ => bug!("is_trait_upcasting_coercion_from_raw_pointer: called on bad types"),
         }
     }

@@ -1052,7 +1052,12 @@ fn find_vtable_types_for_unsizing<'tcx>(
             assert_eq!(source_adt_def, target_adt_def);
 
             let CustomCoerceUnsized::Struct(coerce_index) =
-                monomorphize::custom_coerce_unsize_info(tcx, source_ty, target_ty);
+                crate::transform::custom_coerce_unsize_info(
+                    tcx,
+                    source_ty,
+                    target_ty,
+                    ty::ParamEnv::reveal_all(),
+                );
 
             let source_fields = &source_adt_def.non_enum_variant().fields;
             let target_fields = &target_adt_def.non_enum_variant().fields;
