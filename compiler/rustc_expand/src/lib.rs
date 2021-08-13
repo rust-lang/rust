@@ -7,7 +7,6 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_macros;
