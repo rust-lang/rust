@@ -297,7 +297,7 @@ fn test_interior_nul_in_progname_is_error() {
 
 #[test]
 fn test_interior_nul_in_arg_is_error() {
-    match Command::new("echo").arg("has-some-\0\0s-inside").spawn() {
+    match Command::new("rustc").arg("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -305,7 +305,7 @@ fn test_interior_nul_in_arg_is_error() {
 
 #[test]
 fn test_interior_nul_in_args_is_error() {
-    match Command::new("echo").args(&["has-some-\0\0s-inside"]).spawn() {
+    match Command::new("rustc").args(&["has-some-\0\0s-inside"]).spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -313,7 +313,7 @@ fn test_interior_nul_in_args_is_error() {
 
 #[test]
 fn test_interior_nul_in_current_dir_is_error() {
-    match Command::new("echo").current_dir("has-some-\0\0s-inside").spawn() {
+    match Command::new("rustc").current_dir("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
