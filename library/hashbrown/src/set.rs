@@ -1969,7 +1969,7 @@ mod test_set {
         let expected = [3, 5, 11, 77];
         for x in a.intersection(&b) {
             assert!(expected.contains(x));
-            i += 1
+            i += 1;
         }
         assert_eq!(i, expected.len());
     }
@@ -1992,7 +1992,7 @@ mod test_set {
         let expected = [1, 5, 11];
         for x in a.difference(&b) {
             assert!(expected.contains(x));
-            i += 1
+            i += 1;
         }
         assert_eq!(i, expected.len());
     }
@@ -2018,7 +2018,7 @@ mod test_set {
         let expected = [-2, 1, 5, 11, 14, 22];
         for x in a.symmetric_difference(&b) {
             assert!(expected.contains(x));
-            i += 1
+            i += 1;
         }
         assert_eq!(i, expected.len());
     }
@@ -2048,7 +2048,7 @@ mod test_set {
         let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
         for x in a.union(&b) {
             assert!(expected.contains(x));
-            i += 1
+            i += 1;
         }
         assert_eq!(i, expected.len());
     }
@@ -2074,7 +2074,7 @@ mod test_set {
     fn test_from_iter() {
         let xs = [1, 2, 2, 3, 4, 5, 6, 7, 8, 9];
 
-        let set: HashSet<_> = xs.iter().cloned().collect();
+        let set: HashSet<_> = xs.iter().copied().collect();
 
         for x in &xs {
             assert!(set.contains(x));
@@ -2236,7 +2236,7 @@ mod test_set {
     #[test]
     fn test_retain() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut set: HashSet<i32> = xs.iter().cloned().collect();
+        let mut set: HashSet<i32> = xs.iter().copied().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
         assert!(set.contains(&2));
@@ -2278,7 +2278,7 @@ mod test_set {
 
         const EMPTY_SET: HashSet<u32, MyHasher> = HashSet::with_hasher(MyHasher);
 
-        let mut set = EMPTY_SET.clone();
+        let mut set = EMPTY_SET;
         set.insert(19);
         assert!(set.contains(&19));
     }
