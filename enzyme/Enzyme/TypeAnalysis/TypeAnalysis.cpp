@@ -1641,6 +1641,19 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
     updateAnalysis(I.getFalseValue(), getAnalysis(&I).PurgeAnything(), &I);
 
   if (direction & DOWN) {
+    // special case for min/max result is still that operand [even if something is 0]
+    if (auto cmpI = dyn_cast<CmpInst>(I.getCondition())) {
+      if (cmpI->isRelational())
+      if (cmpI->getOperand(0) == I.getTrueValue() && cmpI->getOperand(1) == I.getFalseValue() ||
+		      cmpI->getOperand(1) == I.getTrueValue() && cmpI->getOperand(0) == I.getFalseValue()) {
+        auto vd = getAnalysis(I.getTrueValue()).Inner0();
+	vd &= getAnalysis(I.getFalseValue()).Inner0();
+	if (vd.isKnown()) {
+		updateAnalysis(&I, TypeTree(vd).Only(-1), &I);
+		return;
+	}
+      }
+    }
     // If getTrueValue and getFalseValue are the same type (per the and)
     // it is safe to assume the result is as well
     TypeTree vd = getAnalysis(I.getTrueValue()).PurgeAnything();
