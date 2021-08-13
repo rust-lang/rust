@@ -3943,7 +3943,7 @@ mod test_map {
         let vec = vec![(1, 1), (2, 2), (3, 3)];
         let mut map: HashMap<_, _> = vec.into_iter().collect();
         for value in map.values_mut() {
-            *value = (*value) * 2
+            *value *= 2
         }
         let values: Vec<_> = map.values().cloned().collect();
         assert_eq!(values.len(), 3);
@@ -4327,11 +4327,11 @@ mod test_map {
         let key = "hello there";
         let value = "value goes here";
         assert!(a.is_empty());
-        a.insert(key.clone(), value.clone());
+        a.insert(key, value);
         assert_eq!(a.len(), 1);
         assert_eq!(a[key], value);
 
-        match a.entry(key.clone()) {
+        match a.entry(key) {
             Vacant(_) => panic!(),
             Occupied(e) => assert_eq!(key, *e.key()),
         }
@@ -4346,11 +4346,11 @@ mod test_map {
         let value = "value goes here";
 
         assert!(a.is_empty());
-        match a.entry(key.clone()) {
+        match a.entry(key) {
             Occupied(_) => panic!(),
             Vacant(e) => {
                 assert_eq!(key, *e.key());
-                e.insert(value.clone());
+                e.insert(value);
             }
         }
         assert_eq!(a.len(), 1);
@@ -4876,7 +4876,7 @@ mod test_map {
         const EMPTY_MAP: HashMap<u32, std::string::String, MyHasher> =
             HashMap::with_hasher(MyHasher);
 
-        let mut map = EMPTY_MAP.clone();
+        let mut map = EMPTY_MAP;
         map.insert(17, "seventeen".to_owned());
         assert_eq!("seventeen", map[&17]);
     }

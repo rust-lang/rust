@@ -2278,7 +2278,7 @@ mod test_set {
 
         const EMPTY_SET: HashSet<u32, MyHasher> = HashSet::with_hasher(MyHasher);
 
-        let mut set = EMPTY_SET.clone();
+        let mut set = EMPTY_SET;
         set.insert(19);
         assert!(set.contains(&19));
     }
