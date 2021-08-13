@@ -11,7 +11,7 @@ LL |     type Bar = NonConstAdd;
 help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
 LL | impl const Foo for NonConstAdd where NonConstAdd: Add {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^
+   |                                ++++++++++++++++++++++
 
 error: aborting due to previous error
 
