@@ -62,7 +62,7 @@ impl<'tcx> Cx<'tcx> {
 
         // Finally, create a destruction scope, if any.
         if let Some(region_scope) =
-            self.region_scope_tree.opt_destruction_scope(hir_expr.hir_id.local_id, false)
+            self.region_scope_tree.opt_destruction_scope(hir_expr.hir_id.local_id)
         {
             expr = Expr {
                 temp_lifetime,

@@ -228,7 +228,7 @@ pub struct ScopeTree {
     var_map: FxHashMap<hir::ItemLocalId, Scope>,
 
     /// Maps from a `NodeId` to the associated destruction scope (if any).
-    destruction_scopes: FxHashMap<(hir::ItemLocalId, bool), Scope>,
+    destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
 
     /// `rvalue_scopes` includes entries for those expressions whose
     /// cleanup scope is larger than the default. The map goes from the
@@ -341,15 +341,12 @@ impl ScopeTree {
 
         // Record the destruction scopes for later so we can query them.
         if let ScopeData::Destruction = child.data {
-            assert_eq!(
-                self.destruction_scopes.insert((child.item_local_id(), child.for_stmt), child),
-                None
-            );
+            assert_eq!(self.destruction_scopes.insert(child.item_local_id(), child), None);
         }
     }
 
-    pub fn opt_destruction_scope(&self, n: hir::ItemLocalId, for_stmt: bool) -> Option<Scope> {
-        self.destruction_scopes.get(&(n, for_stmt)).cloned()
+    pub fn opt_destruction_scope(&self, n: hir::ItemLocalId) -> Option<Scope> {
+        self.destruction_scopes.get(&n).cloned()
     }
 
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {

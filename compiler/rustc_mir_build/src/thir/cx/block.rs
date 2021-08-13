@@ -13,7 +13,7 @@ impl<'tcx> Cx<'tcx> {
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
         let opt_destruction_scope =
-            self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id, false);
+            self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id);
         Block {
             targeted_by_break: block.targeted_by_break,
             region_scope: region::Scope {
@@ -47,8 +47,11 @@ impl<'tcx> Cx<'tcx> {
             .enumerate()
             .filter_map(|(index, stmt)| {
                 let hir_id = stmt.kind.hir_id();
-                let opt_dxn_ext =
-                    self.region_scope_tree.opt_destruction_scope(hir_id.local_id, true);
+                let dxn_scope = region::Scope {
+                    id: hir_id.local_id,
+                    data: region::ScopeData::Destruction,
+                    for_stmt: true,
+                };
                 match stmt.kind {
                     hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
                         let stmt = Stmt {
@@ -60,7 +63,7 @@ impl<'tcx> Cx<'tcx> {
                                 },
                                 expr: self.mirror_expr(expr),
                             },
-                            opt_destruction_scope: opt_dxn_ext,
+                            opt_destruction_scope: Some(dxn_scope),
                         };
                         Some(self.thir.stmts.push(stmt))
                     }
@@ -111,7 +114,7 @@ impl<'tcx> Cx<'tcx> {
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
                                 lint_level: LintLevel::Explicit(local.hir_id),
                             },
-                            opt_destruction_scope: opt_dxn_ext,
+                            opt_destruction_scope: Some(dxn_scope),
                         };
                         Some(self.thir.stmts.push(stmt))
                     }
