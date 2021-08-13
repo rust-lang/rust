@@ -3556,6 +3556,7 @@ mod test_map {
         assert_eq!(m.len(), 1);
         assert!(m.insert(2, 4).is_none());
         assert_eq!(m.len(), 2);
+        #[allow(clippy::redundant_clone)]
         let m2 = m.clone();
         assert_eq!(*m2.get(&1).unwrap(), 2);
         assert_eq!(*m2.get(&2).unwrap(), 4);
@@ -4191,6 +4192,7 @@ mod test_map {
         map.insert(2, 1);
         map.insert(3, 4);
 
+        #[allow(clippy::no_effect)] // false positive lint
         map[&4];
     }
 

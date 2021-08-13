@@ -17,14 +17,16 @@ fn test_hashset_insert_remove() {
         .map(|_| (rng.sample_iter(&Alphanumeric).take(32).collect()))
         .collect();
 
+    // more readable with explicit `true` / `false`
+    #[allow(clippy::bool_assert_comparison)]
     for _ in 0..32 {
-        for i in 0..4096 {
-            assert_eq!(m.contains(&tx[i].clone()), false);
-            assert_eq!(m.insert(tx[i].clone()), true);
+        for x in tx.iter() {
+            assert_eq!(m.contains(x), false);
+            assert_eq!(m.insert(x.clone()), true);
         }
-        for i in 0..4096 {
-            println!("removing {} {:?}", i, tx[i]);
-            assert_eq!(m.remove(&tx[i]), true);
+        for (i, x) in tx.iter().enumerate() {
+            println!("removing {} {:?}", i, x);
+            assert_eq!(m.remove(x), true);
         }
     }
 }
