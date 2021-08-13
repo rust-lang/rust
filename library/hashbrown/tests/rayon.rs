@@ -269,20 +269,20 @@ fn map_seq_par_equivalence_existing_empty_extend_empty() {
     let mut map_seq = MAP_EXISTING_EMPTY.clone();
     let mut map_par = MAP_EXISTING_EMPTY.clone();
 
-    map_seq.extend(MAP_EXTENSION_EMPTY.iter().cloned());
-    map_par.par_extend(MAP_EXTENSION_EMPTY.par_iter().cloned());
+    map_seq.extend(MAP_EXTENSION_EMPTY.iter().copied());
+    map_par.par_extend(MAP_EXTENSION_EMPTY.par_iter().copied());
 
     assert_eq3!(map_seq, map_par, expected);
 }
 
 #[test]
 fn map_seq_par_equivalence_existing_empty_extend() {
-    let expected = MAP_EXTENSION.iter().cloned().collect::<HashMap<_, _>>();
+    let expected = MAP_EXTENSION.iter().copied().collect::<HashMap<_, _>>();
     let mut map_seq = MAP_EXISTING_EMPTY.clone();
     let mut map_par = MAP_EXISTING_EMPTY.clone();
 
-    map_seq.extend(MAP_EXTENSION.iter().cloned());
-    map_par.par_extend(MAP_EXTENSION.par_iter().cloned());
+    map_seq.extend(MAP_EXTENSION.iter().copied());
+    map_par.par_extend(MAP_EXTENSION.par_iter().copied());
 
     assert_eq3!(map_seq, map_par, expected);
 }
@@ -293,8 +293,8 @@ fn map_seq_par_equivalence_existing_extend_empty() {
     let mut map_seq = MAP_EXISTING.clone();
     let mut map_par = MAP_EXISTING.clone();
 
-    map_seq.extend(MAP_EXTENSION_EMPTY.iter().cloned());
-    map_par.par_extend(MAP_EXTENSION_EMPTY.par_iter().cloned());
+    map_seq.extend(MAP_EXTENSION_EMPTY.iter().copied());
+    map_par.par_extend(MAP_EXTENSION_EMPTY.par_iter().copied());
 
     assert_eq3!(map_seq, map_par, expected);
 }
@@ -305,8 +305,8 @@ fn map_seq_par_equivalence_existing_extend() {
     let mut map_seq = MAP_EXISTING.clone();
     let mut map_par = MAP_EXISTING.clone();
 
-    map_seq.extend(MAP_EXTENSION.iter().cloned());
-    map_par.par_extend(MAP_EXTENSION.par_iter().cloned());
+    map_seq.extend(MAP_EXTENSION.iter().copied());
+    map_par.par_extend(MAP_EXTENSION.par_iter().copied());
 
     assert_eq3!(map_seq, map_par, expected);
 }
@@ -423,20 +423,20 @@ fn set_seq_par_equivalence_existing_empty_extend_empty() {
     let mut set_seq = SET_EXISTING_EMPTY.clone();
     let mut set_par = SET_EXISTING_EMPTY.clone();
 
-    set_seq.extend(SET_EXTENSION_EMPTY.iter().cloned());
-    set_par.par_extend(SET_EXTENSION_EMPTY.par_iter().cloned());
+    set_seq.extend(SET_EXTENSION_EMPTY.iter().copied());
+    set_par.par_extend(SET_EXTENSION_EMPTY.par_iter().copied());
 
     assert_eq3!(set_seq, set_par, expected);
 }
 
 #[test]
 fn set_seq_par_equivalence_existing_empty_extend() {
-    let expected = SET_EXTENSION.iter().cloned().collect::<HashSet<_>>();
+    let expected = SET_EXTENSION.iter().copied().collect::<HashSet<_>>();
     let mut set_seq = SET_EXISTING_EMPTY.clone();
     let mut set_par = SET_EXISTING_EMPTY.clone();
 
-    set_seq.extend(SET_EXTENSION.iter().cloned());
-    set_par.par_extend(SET_EXTENSION.par_iter().cloned());
+    set_seq.extend(SET_EXTENSION.iter().copied());
+    set_par.par_extend(SET_EXTENSION.par_iter().copied());
 
     assert_eq3!(set_seq, set_par, expected);
 }
@@ -447,8 +447,8 @@ fn set_seq_par_equivalence_existing_extend_empty() {
     let mut set_seq = SET_EXISTING.clone();
     let mut set_par = SET_EXISTING.clone();
 
-    set_seq.extend(SET_EXTENSION_EMPTY.iter().cloned());
-    set_par.par_extend(SET_EXTENSION_EMPTY.par_iter().cloned());
+    set_seq.extend(SET_EXTENSION_EMPTY.iter().copied());
+    set_par.par_extend(SET_EXTENSION_EMPTY.par_iter().copied());
 
     assert_eq3!(set_seq, set_par, expected);
 }
@@ -459,37 +459,37 @@ fn set_seq_par_equivalence_existing_extend() {
     let mut set_seq = SET_EXISTING.clone();
     let mut set_par = SET_EXISTING.clone();
 
-    set_seq.extend(SET_EXTENSION.iter().cloned());
-    set_par.par_extend(SET_EXTENSION.par_iter().cloned());
+    set_seq.extend(SET_EXTENSION.iter().copied());
+    set_par.par_extend(SET_EXTENSION.par_iter().copied());
 
     assert_eq3!(set_seq, set_par, expected);
 }
 
 lazy_static! {
-    static ref SET_A: HashSet<char> = ['a', 'b', 'c', 'd'].iter().cloned().collect();
-    static ref SET_B: HashSet<char> = ['a', 'b', 'e', 'f'].iter().cloned().collect();
-    static ref SET_DIFF_AB: HashSet<char> = ['c', 'd'].iter().cloned().collect();
-    static ref SET_DIFF_BA: HashSet<char> = ['e', 'f'].iter().cloned().collect();
-    static ref SET_SYMM_DIFF_AB: HashSet<char> = ['c', 'd', 'e', 'f'].iter().cloned().collect();
-    static ref SET_INTERSECTION_AB: HashSet<char> = ['a', 'b'].iter().cloned().collect();
+    static ref SET_A: HashSet<char> = ['a', 'b', 'c', 'd'].iter().copied().collect();
+    static ref SET_B: HashSet<char> = ['a', 'b', 'e', 'f'].iter().copied().collect();
+    static ref SET_DIFF_AB: HashSet<char> = ['c', 'd'].iter().copied().collect();
+    static ref SET_DIFF_BA: HashSet<char> = ['e', 'f'].iter().copied().collect();
+    static ref SET_SYMM_DIFF_AB: HashSet<char> = ['c', 'd', 'e', 'f'].iter().copied().collect();
+    static ref SET_INTERSECTION_AB: HashSet<char> = ['a', 'b'].iter().copied().collect();
     static ref SET_UNION_AB: HashSet<char> =
-        ['a', 'b', 'c', 'd', 'e', 'f'].iter().cloned().collect();
+        ['a', 'b', 'c', 'd', 'e', 'f'].iter().copied().collect();
 }
 
 #[test]
 fn set_seq_par_equivalence_difference() {
-    let diff_ab_seq = SET_A.difference(&*SET_B).cloned().collect::<HashSet<_>>();
+    let diff_ab_seq = SET_A.difference(&*SET_B).copied().collect::<HashSet<_>>();
     let diff_ab_par = SET_A
         .par_difference(&*SET_B)
-        .cloned()
+        .copied()
         .collect::<HashSet<_>>();
 
     assert_eq3!(diff_ab_seq, diff_ab_par, *SET_DIFF_AB);
 
-    let diff_ba_seq = SET_B.difference(&*SET_A).cloned().collect::<HashSet<_>>();
+    let diff_ba_seq = SET_B.difference(&*SET_A).copied().collect::<HashSet<_>>();
     let diff_ba_par = SET_B
         .par_difference(&*SET_A)
-        .cloned()
+        .copied()
         .collect::<HashSet<_>>();
 
     assert_eq3!(diff_ba_seq, diff_ba_par, *SET_DIFF_BA);
@@ -499,11 +499,11 @@ fn set_seq_par_equivalence_difference() {
 fn set_seq_par_equivalence_symmetric_difference() {
     let symm_diff_ab_seq = SET_A
         .symmetric_difference(&*SET_B)
-        .cloned()
+        .copied()
         .collect::<HashSet<_>>();
     let symm_diff_ab_par = SET_A
         .par_symmetric_difference(&*SET_B)
-        .cloned()
+        .copied()
         .collect::<HashSet<_>>();
 
     assert_eq3!(symm_diff_ab_seq, symm_diff_ab_par, *SET_SYMM_DIFF_AB);
@@ -511,10 +511,10 @@ fn set_seq_par_equivalence_symmetric_difference() {
 
 #[test]
 fn set_seq_par_equivalence_intersection() {
-    let intersection_ab_seq = SET_A.intersection(&*SET_B).cloned().collect::<HashSet<_>>();
+    let intersection_ab_seq = SET_A.intersection(&*SET_B).copied().collect::<HashSet<_>>();
     let intersection_ab_par = SET_A
         .par_intersection(&*SET_B)
-        .cloned()
+        .copied()
         .collect::<HashSet<_>>();
 
     assert_eq3!(
@@ -526,8 +526,8 @@ fn set_seq_par_equivalence_intersection() {
 
 #[test]
 fn set_seq_par_equivalence_union() {
-    let union_ab_seq = SET_A.union(&*SET_B).cloned().collect::<HashSet<_>>();
-    let union_ab_par = SET_A.par_union(&*SET_B).cloned().collect::<HashSet<_>>();
+    let union_ab_seq = SET_A.union(&*SET_B).copied().collect::<HashSet<_>>();
+    let union_ab_par = SET_A.par_union(&*SET_B).copied().collect::<HashSet<_>>();
 
     assert_eq3!(union_ab_seq, union_ab_par, *SET_UNION_AB);
 }

@@ -134,7 +134,7 @@ impl<T: Send, A: Allocator + Clone> ParallelIterator for RawParDrain<'_, T, A> {
         C: UnindexedConsumer<Self::Item>,
     {
         let _guard = guard(self.table, |table| unsafe {
-            table.as_mut().clear_no_drop()
+            table.as_mut().clear_no_drop();
         });
         let iter = unsafe { self.table.as_ref().iter().iter };
         mem::forget(self);
@@ -146,7 +146,9 @@ impl<T: Send, A: Allocator + Clone> ParallelIterator for RawParDrain<'_, T, A> {
 impl<T, A: Allocator + Clone> Drop for RawParDrain<'_, T, A> {
     fn drop(&mut self) {
         // If drive_unindexed is not called then simply clear the table.
-        unsafe { self.table.as_mut().clear() }
+        unsafe {
+            self.table.as_mut().clear();
+        }
     }
 }
 

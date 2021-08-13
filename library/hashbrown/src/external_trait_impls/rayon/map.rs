@@ -512,7 +512,7 @@ mod test_par_map {
         where
             H: Hasher,
         {
-            self.k.hash(state)
+            self.k.hash(state);
         }
     }
 
