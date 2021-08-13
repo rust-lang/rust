@@ -58,16 +58,6 @@ pub(crate) fn destructure_tuple_binding_impl(
     let ident_pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
     let data = collect_data(ident_pat, ctx)?;
 
-    acc.add(
-        AssistId("destructure_tuple_binding", AssistKind::RefactorRewrite),
-        if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
-        data.range,
-        |builder| {
-            edit_tuple_assignment(&data, builder, ctx, false);
-            edit_tuple_usages(&data, builder, ctx, false);
-        },
-    );
-
     if with_sub_pattern {
         acc.add(
             AssistId("destructure_tuple_binding_in_sub_pattern", AssistKind::RefactorRewrite),
@@ -79,6 +69,16 @@ pub(crate) fn destructure_tuple_binding_impl(
             },
         );
     }
+
+    acc.add(
+        AssistId("destructure_tuple_binding", AssistKind::RefactorRewrite),
+        if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
+        data.range,
+        |builder| {
+            edit_tuple_assignment(&data, builder, ctx, false);
+            edit_tuple_usages(&data, builder, ctx, false);
+        },
+    );
 
     Some(())
 }
