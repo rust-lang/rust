@@ -916,3 +916,20 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn if_let_guards() {
+    check_types(
+        r#"
+fn main() {
+    match (0,) {
+        opt if let (x,) = opt => {
+            x;
+          //^ i32
+        }
+        _ => {}
+    }
+}
+    "#,
+    );
+}

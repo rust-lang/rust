@@ -366,13 +366,21 @@ impl<'a> InferenceContext<'a> {
                 for arm in arms {
                     self.diverges = Diverges::Maybe;
                     let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
-                    if let Some(MatchGuard::If { expr: guard_expr }) = arm.guard {
-                        self.infer_expr(
-                            guard_expr,
-                            &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(&Interner)),
-                        );
+                    match arm.guard {
+                        Some(MatchGuard::If { expr: guard_expr }) => {
+                            self.infer_expr(
+                                guard_expr,
+                                &Expectation::has_type(
+                                    TyKind::Scalar(Scalar::Bool).intern(&Interner),
+                                ),
+                            );
+                        }
+                        Some(MatchGuard::IfLet { expr, pat }) => {
+                            let input_ty = self.infer_expr(expr, &Expectation::none());
+                            let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::default());
+                        }
+                        _ => {}
                     }
-                    // FIXME: infer `if let` guard
 
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);
                     all_arms_diverge &= self.diverges;
