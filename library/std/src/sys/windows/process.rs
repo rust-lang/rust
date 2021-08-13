@@ -15,7 +15,7 @@ use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
 use crate::os::windows::ffi::OsStrExt;
-use crate::os::windows::io::{AsRawHandle, FromRawHandle};
+use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::c;
@@ -371,7 +371,7 @@ impl Stdio {
                 Ok(io) => unsafe {
                     let io = Handle::from_raw_handle(io);
                     let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
-                    io.into_inner();
+                    io.into_raw_handle();
                     ret
                 },
                 Err(..) => unsafe { Ok(Handle::from_raw_handle(c::INVALID_HANDLE_VALUE)) },
