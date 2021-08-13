@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet;
+use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -16,7 +16,10 @@ pub(super) fn check<'tcx>(
     filter_arg: &'tcx hir::Expr<'_>,
 ) {
     // lint if caller of `.filter().next()` is an Iterator
-    if is_trait_method(cx, expr, sym::Iterator) {
+    let recv_impls_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
+        implements_trait(cx, cx.typeck_results().expr_ty(recv), id, &[])
+    });
+    if recv_impls_iterator {
         let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find(..)` instead";
         let filter_snippet = snippet(cx, filter_arg.span, "..");
