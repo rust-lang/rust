@@ -2259,9 +2259,99 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             };
 
-        let mut err = match *sub {
-            ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
-            | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }) => {
+        #[derive(Debug)]
+        enum SubOrigin<'hir> {
+            GAT(&'hir hir::Generics<'hir>),
+            Impl(&'hir hir::Generics<'hir>),
+            Trait(&'hir hir::Generics<'hir>),
+            Fn(&'hir hir::Generics<'hir>),
+            Unknown,
+        }
+        let sub_origin = 'origin: {
+            match *sub {
+                ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. }) => {
+                    let node = self.tcx.hir().get_if_local(def_id).unwrap();
+                    match node {
+                        Node::GenericParam(param) => {
+                            for h in self.tcx.hir().parent_iter(param.hir_id) {
+                                break 'origin match h.1 {
+                                    Node::ImplItem(hir::ImplItem {
+                                        kind: hir::ImplItemKind::TyAlias(..),
+                                        generics,
+                                        ..
+                                    }) => SubOrigin::GAT(generics),
+                                    Node::ImplItem(hir::ImplItem {
+                                        kind: hir::ImplItemKind::Fn(..),
+                                        generics,
+                                        ..
+                                    }) => SubOrigin::Fn(generics),
+                                    Node::TraitItem(hir::TraitItem {
+                                        kind: hir::TraitItemKind::Type(..),
+                                        generics,
+                                        ..
+                                    }) => SubOrigin::GAT(generics),
+                                    Node::TraitItem(hir::TraitItem {
+                                        kind: hir::TraitItemKind::Fn(..),
+                                        generics,
+                                        ..
+                                    }) => SubOrigin::Fn(generics),
+                                    Node::Item(hir::Item {
+                                        kind: hir::ItemKind::Trait(_, _, generics, _, _),
+                                        ..
+                                    }) => SubOrigin::Trait(generics),
+                                    Node::Item(hir::Item {
+                                        kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
+                                        ..
+                                    }) => SubOrigin::Impl(generics),
+                                    Node::Item(hir::Item {
+                                        kind: hir::ItemKind::Fn(_, generics, _),
+                                        ..
+                                    }) => SubOrigin::Fn(generics),
+                                    _ => continue,
+                                };
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+            SubOrigin::Unknown
+        };
+        debug!(?sub_origin);
+
+        let mut err = match (*sub, sub_origin) {
+            // In the case of GATs, we have to be careful. If we a type parameter `T` on an impl,
+            // but a lifetime `'a` on an associated type, then we might need to suggest adding
+            // `where T: 'a`. Importantly, this is on the GAT span, not on the `T` declaration.
+            (ty::ReEarlyBound(ty::EarlyBoundRegion { name: _, .. }), SubOrigin::GAT(generics)) => {
+                // Does the required lifetime have a nice name we can print?
+                let mut err = struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0309,
+                    "{} may not live long enough",
+                    labeled_user_string
+                );
+                let pred = format!("{}: {}", bound_kind, sub);
+                let suggestion = format!(
+                    "{} {}",
+                    if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
+                    pred,
+                );
+                err.span_suggestion(
+                    generics.where_clause.tail_span_for_suggestion(),
+                    "consider adding a where clause".into(),
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+                err
+            }
+            (
+                ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
+                | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }),
+                _,
+            ) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -2278,7 +2368,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err
             }
 
-            ty::ReStatic => {
+            (ty::ReStatic, _) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(
                     self.tcx.sess,
