@@ -333,9 +333,11 @@ llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
   Value *d_req = buff + 7;
   d_req->setName("d_req");
 
-  auto isendfn = M.getFunction("MPI_Isend");
+  auto isendfn = M.getFunction("PMPI_Isend");
+  if (!isendfn) isendfn = M.getFunction("MPI_Isend");
   assert(isendfn);
-  auto irecvfn = M.getFunction("MPI_Irecv");
+  auto irecvfn = M.getFunction("PMPI_Irecv");
+  if (!irecvfn) irecvfn = M.getFunction("MPI_Irecv");
   assert(irecvfn);
 
   IRBuilder<> B(entry);
