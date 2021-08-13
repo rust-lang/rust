@@ -31,6 +31,8 @@ fi
 
 if retry rustup component add clippy ; then
     cargo clippy --all --tests --features serde,rayon,bumpalo -- -D clippy::all -D clippy::pedantic
+    cargo clippy --all --tests --features raw -- -D clippy::all -D clippy::pedantic \
+        -A clippy::missing_safety_docs -A clippy::missing_errors_docs
 fi
 
 if command -v shellcheck ; then
