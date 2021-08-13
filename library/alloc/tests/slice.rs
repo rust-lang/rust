@@ -1001,7 +1001,7 @@ fn test_split_iterators_size_hint() {
         Lower,
         Upper,
     }
-    fn assert_precise_size_hints(mut it: impl Iterator, which: Bounds, context: impl fmt::Display) {
+    fn assert_tight_size_hints(mut it: impl Iterator, which: Bounds, ctx: impl fmt::Display) {
         match which {
             Bounds::Lower => {
                 let mut lower_bounds = vec![it.size_hint().0];
@@ -1009,7 +1009,7 @@ fn test_split_iterators_size_hint() {
                     lower_bounds.push(it.size_hint().0);
                 }
                 let target: Vec<_> = (0..lower_bounds.len()).rev().collect();
-                assert_eq!(lower_bounds, target, "incorrect lower bounds: {}", context);
+                assert_eq!(lower_bounds, target, "lower bounds incorrect or not tight: {}", ctx);
             }
             Bounds::Upper => {
                 let mut upper_bounds = vec![it.size_hint().1];
@@ -1017,7 +1017,7 @@ fn test_split_iterators_size_hint() {
                     upper_bounds.push(it.size_hint().1);
                 }
                 let target: Vec<_> = (0..upper_bounds.len()).map(Some).rev().collect();
-                assert_eq!(upper_bounds, target, "incorrect upper bounds: {}", context);
+                assert_eq!(upper_bounds, target, "upper bounds incorrect or not tight: {}", ctx);
             }
         }
     }
@@ -1028,13 +1028,13 @@ fn test_split_iterators_size_hint() {
         // p: predicate, b: bound selection
         for (p, b) in [
             // with a predicate always returning false, the split*-iterators
-            // become maximally short, so the size_hint lower bounds are correct
+            // become maximally short, so the size_hint lower bounds are tight
             ((|_| false) as fn(&_) -> _, Bounds::Lower),
             // with a predicate always returning true, the split*-iterators
-            // become maximally long, so the size_hint upper bounds are correct
+            // become maximally long, so the size_hint upper bounds are tight
             ((|_| true) as fn(&_) -> _, Bounds::Upper),
         ] {
-            use assert_precise_size_hints as a;
+            use assert_tight_size_hints as a;
             use format_args as f;
 
             a(v.split(p), b, "split");
