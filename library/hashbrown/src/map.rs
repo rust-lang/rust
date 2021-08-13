@@ -4802,13 +4802,13 @@ mod test_map {
 
         let mut rng = rand::thread_rng();
         for n in 0..N {
-            let mut m = HashMap::new();
+            let mut map = HashMap::new();
             for i in 0..n {
-                assert!(m.insert(i, 2 * i).is_none());
+                assert!(map.insert(i, 2 * i).is_none());
             }
-            let hasher = m.hasher().clone();
+            let hash_builder = map.hasher().clone();
 
-            let mut it = unsafe { m.table.iter() };
+            let mut it = unsafe { map.table.iter() };
             assert_eq!(it.len(), n);
 
             let mut i = 0;
@@ -4817,23 +4817,23 @@ mod test_map {
             loop {
                 // occasionally remove some elements
                 if i < n && rng.gen_bool(0.1) {
-                    let mut hsh = hasher.build_hasher();
-                    i.hash(&mut hsh);
-                    let hash = hsh.finish();
+                    let mut hasher = hash_builder.build_hasher();
+                    i.hash(&mut hasher);
+                    let hash_value = hasher.finish();
 
                     unsafe {
-                        let e = m.table.find(hash, |q| q.0.eq(&i));
+                        let e = map.table.find(hash_value, |q| q.0.eq(&i));
                         if let Some(e) = e {
                             it.reflect_remove(&e);
-                            let t = m.table.remove(e);
+                            let t = map.table.remove(e);
                             removed.push(t);
                             left -= 1;
                         } else {
                             assert!(removed.contains(&(i, 2 * i)), "{} not in {:?}", i, removed);
-                            let e = m.table.insert(
-                                hash,
+                            let e = map.table.insert(
+                                hash_value,
                                 (i, 2 * i),
-                                super::make_hasher::<usize, _, usize, _>(&hasher),
+                                super::make_hasher::<usize, _, usize, _>(&hash_builder),
                             );
                             it.reflect_insert(&e);
                             if let Some(p) = removed.iter().position(|e| e == &(i, 2 * i)) {
@@ -4851,14 +4851,14 @@ mod test_map {
                 assert!(i < n);
                 let t = unsafe { e.unwrap().as_ref() };
                 assert!(!removed.contains(t));
-                let (k, v) = t;
-                assert_eq!(*v, 2 * k);
+                let (key, value) = t;
+                assert_eq!(*value, 2 * key);
                 i += 1;
             }
             assert!(i <= n);
 
             // just for safety:
-            assert_eq!(m.table.len(), left);
+            assert_eq!(map.table.len(), left);
         }
     }
 

@@ -557,7 +557,9 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     pub fn erase_entry(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> bool {
         // Avoid `Option::map` because it bloats LLVM IR.
         if let Some(bucket) = self.find(hash, eq) {
-            unsafe { self.erase(bucket) };
+            unsafe {
+                self.erase(bucket);
+            }
             true
         } else {
             false
@@ -600,7 +602,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     }
 
     unsafe fn drop_elements(&mut self) {
-        if mem::needs_drop::<T>() && self.len() != 0 {
+        if mem::needs_drop::<T>() && !self.is_empty() {
             for item in self.iter() {
                 item.drop();
             }
@@ -922,6 +924,12 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[inline]
     pub fn len(&self) -> usize {
         self.table.items
+    }
+
+    /// Returns `true` if the table contains no elements.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Returns the number of buckets in the table.
@@ -1696,7 +1704,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         // to make sure we drop only the elements that have been
         // cloned so far.
         let mut guard = guard((0, &mut *self), |(index, self_)| {
-            if mem::needs_drop::<T>() && self_.len() != 0 {
+            if mem::needs_drop::<T>() && !self_.is_empty() {
                 for i in 0..=*index {
                     if is_full(*self_.table.ctrl(i)) {
                         self_.bucket(i).drop();
