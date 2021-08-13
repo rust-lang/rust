@@ -36,13 +36,13 @@ impl TryConf {
 /// See (rust-clippy#7172)
 macro_rules! define_Conf {
     ($(
-        #[doc = $doc:literal]
+        $(#[doc = $doc:literal])+
         $(#[conf_deprecated($dep:literal)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $(#[doc = $doc] pub $name: $ty,)*
+            $($(#[doc = $doc])+ pub $name: $ty,)*
         }
 
         mod defaults {
@@ -119,7 +119,7 @@ macro_rules! define_Conf {
                                 stringify!($name),
                                 stringify!($ty),
                                 format!("{:?}", super::defaults::$name()),
-                                $doc,
+                                concat!($($doc, '\n',)*),
                                 deprecation_reason,
                             )
                         },
@@ -132,18 +132,30 @@ macro_rules! define_Conf {
 
 // N.B., this macro is parsed by util/lintlib.py
 define_Conf! {
-    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION. Suppress lints whenever the suggested change would cause breakage for other crates.
+    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION.
+    ///
+    /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE. The minimum rust version that the project supports
+    /// Lint: MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE.
+    ///
+    /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
-    /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
+    /// Lint: BLACKLISTED_NAME.
+    ///
+    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
     (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
-    /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
+    /// Lint: COGNITIVE_COMPLEXITY.
+    ///
+    /// The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
-    /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
+    /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
+    ///
+    /// Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
     (cyclomatic_complexity_threshold: Option<u64> = None),
-    /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
+    /// Lint: DOC_MARKDOWN.
+    ///
+    /// The list of words this lint should not consider as identifiers needing ticks
     (doc_valid_idents: Vec<String> = [
         "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
         "DirectX",
@@ -164,55 +176,109 @@ define_Conf! {
         "MinGW",
         "CamelCase",
     ].iter().map(ToString::to_string).collect()),
-    /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
+    /// Lint: TOO_MANY_ARGUMENTS.
+    ///
+    /// The maximum number of argument a function or method can have
     (too_many_arguments_threshold: u64 = 7),
-    /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
+    /// Lint: TYPE_COMPLEXITY.
+    ///
+    /// The maximum complexity a type can have
     (type_complexity_threshold: u64 = 250),
-    /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
+    /// Lint: MANY_SINGLE_CHAR_NAMES.
+    ///
+    /// The maximum number of single char bindings a scope may have
     (single_char_binding_names_threshold: u64 = 4),
-    /// Lint: BOXED_LOCAL, USELESS_VEC. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
+    /// Lint: BOXED_LOCAL, USELESS_VEC.
+    ///
+    /// The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
     (too_large_for_stack: u64 = 200),
-    /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
+    /// Lint: ENUM_VARIANT_NAMES.
+    ///
+    /// The minimum number of enum variants for the lints about variant names to trigger
     (enum_variant_name_threshold: u64 = 3),
-    /// Lint: LARGE_ENUM_VARIANT. The maximum size of a enum's variant to avoid box suggestion
+    /// Lint: LARGE_ENUM_VARIANT.
+    ///
+    /// The maximum size of a enum's variant to avoid box suggestion
     (enum_variant_size_threshold: u64 = 200),
-    /// Lint: VERBOSE_BIT_MASK. The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
+    /// Lint: VERBOSE_BIT_MASK.
+    ///
+    /// The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
     (verbose_bit_mask_threshold: u64 = 1),
-    /// Lint: DECIMAL_LITERAL_REPRESENTATION. The lower bound for linting decimal literals
+    /// Lint: DECIMAL_LITERAL_REPRESENTATION.
+    ///
+    /// The lower bound for linting decimal literals
     (literal_representation_threshold: u64 = 16384),
-    /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
+    /// Lint: TRIVIALLY_COPY_PASS_BY_REF.
+    ///
+    /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit: Option<u64> = None),
-    /// Lint: LARGE_TYPE_PASS_BY_MOVE. The minimum size (in bytes) to consider a type for passing by reference instead of by value.
+    /// Lint: LARGE_TYPE_PASS_BY_MOVE.
+    ///
+    /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     (pass_by_value_size_limit: u64 = 256),
-    /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
+    /// Lint: TOO_MANY_LINES.
+    ///
+    /// The maximum number of lines a function or method can have
     (too_many_lines_threshold: u64 = 100),
-    /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS. The maximum allowed size for arrays on the stack
+    /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS.
+    ///
+    /// The maximum allowed size for arrays on the stack
     (array_size_threshold: u64 = 512_000),
-    /// Lint: VEC_BOX. The size of the boxed type in bytes, where boxing in a `Vec` is allowed
+    /// Lint: VEC_BOX.
+    ///
+    /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed
     (vec_box_size_threshold: u64 = 4096),
-    /// Lint: TYPE_REPETITION_IN_BOUNDS. The maximum number of bounds a trait can have to be linted
+    /// Lint: TYPE_REPETITION_IN_BOUNDS.
+    ///
+    /// The maximum number of bounds a trait can have to be linted
     (max_trait_bounds: u64 = 3),
-    /// Lint: STRUCT_EXCESSIVE_BOOLS. The maximum number of bool fields a struct can have
+    /// Lint: STRUCT_EXCESSIVE_BOOLS.
+    ///
+    /// The maximum number of bool fields a struct can have
     (max_struct_bools: u64 = 3),
-    /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bool parameters a function can have
+    /// Lint: FN_PARAMS_EXCESSIVE_BOOLS.
+    ///
+    /// The maximum number of bool parameters a function can have
     (max_fn_params_bools: u64 = 3),
-    /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
+    /// Lint: WILDCARD_IMPORTS.
+    ///
+    /// Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
-    /// Lint: DISALLOWED_METHOD. The list of disallowed methods, written as fully qualified paths.
+    /// Lint: DISALLOWED_METHOD.
+    ///
+    /// The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods: Vec<String> = Vec::new()),
-    /// Lint: DISALLOWED_TYPE. The list of disallowed types, written as fully qualified paths.
+    /// Lint: DISALLOWED_TYPE.
+    ///
+    /// The list of disallowed types, written as fully qualified paths.
     (disallowed_types: Vec<String> = Vec::new()),
-    /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
+    /// Lint: UNREADABLE_LITERAL.
+    ///
+    /// Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions: bool = true),
-    /// Lint: UPPER_CASE_ACRONYMS. Enables verbose mode. Triggers if there is more than one uppercase char next to each other
+    /// Lint: UPPER_CASE_ACRONYMS.
+    ///
+    /// Enables verbose mode. Triggers if there is more than one uppercase char next to each other
     (upper_case_acronyms_aggressive: bool = false),
-    /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
+    /// Lint: _CARGO_COMMON_METADATA.
+    ///
+    /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     (cargo_ignore_publish: bool = false),
-    /// Lint: NONSTANDARD_MACRO_BRACES. Enforce the named macros always use the braces specified. <br> A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro is could be used with a full path two `MacroMatcher`s have to be added one with the full path `crate_name::macro_name` and one with just the macro name.
+    /// Lint: NONSTANDARD_MACRO_BRACES.
+    ///
+    /// Enforce the named macros always use the braces specified.
+    ///
+    /// A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro
+    /// is could be used with a full path two `MacroMatcher`s have to be added one with the full path
+    /// `crate_name::macro_name` and one with just the macro name.
     (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
-    /// Lint: MISSING_ENFORCED_IMPORT_RENAMES. The list of imports to always rename, a fully qualified path followed by the rename.
+    /// Lint: MISSING_ENFORCED_IMPORT_RENAMES.
+    ///
+    /// The list of imports to always rename, a fully qualified path followed by the rename.
     (enforced_import_renames: Vec<crate::utils::conf::Rename> = Vec::new()),
-    /// Lint: RESTRICTED_SCRIPTS. The list of unicode scripts allowed to be used in the scope.
+    /// Lint: RESTRICTED_SCRIPTS.
+    ///
+    /// The list of unicode scripts allowed to be used in the scope.
     (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
 }
 

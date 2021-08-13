@@ -72,13 +72,13 @@ LL |     let parser: i32;
    |         ^^^^^^
 
 error: binding's name is too similar to existing binding
-  --> $DIR/similar_names.rs:85:16
+  --> $DIR/similar_names.rs:88:16
    |
 LL |         bpple: sprang,
    |                ^^^^^^
    |
 note: existing binding defined here
-  --> $DIR/similar_names.rs:84:16
+  --> $DIR/similar_names.rs:87:16
    |
 LL |         apple: spring,
    |                ^^^^^^

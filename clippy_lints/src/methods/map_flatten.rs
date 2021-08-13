@@ -52,18 +52,32 @@ pub(super) fn check<'tcx>(
         );
     }
 
-    // lint if caller of `.map().flatten()` is an Option
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::option_type) {
-        let func_snippet = snippet(cx, map_arg.span, "..");
-        let hint = format!(".and_then({})", func_snippet);
-        span_lint_and_sugg(
-            cx,
-            MAP_FLATTEN,
-            expr.span.with_lo(recv.span.hi()),
-            "called `map(..).flatten()` on an `Option`",
-            "try using `and_then` instead",
-            hint,
-            Applicability::MachineApplicable,
-        );
-    }
+    // lint if caller of `.map().flatten()` is an Option or Result
+    let caller_type = match cx.typeck_results().expr_ty(recv).kind() {
+        ty::Adt(adt, _) => {
+            if cx.tcx.is_diagnostic_item(sym::option_type, adt.did) {
+                "Option"
+            } else if cx.tcx.is_diagnostic_item(sym::result_type, adt.did) {
+                "Result"
+            } else {
+                return;
+            }
+        },
+        _ => {
+            return;
+        },
+    };
+
+    let func_snippet = snippet(cx, map_arg.span, "..");
+    let hint = format!(".and_then({})", func_snippet);
+    let lint_info = format!("called `map(..).flatten()` on an `{}`", caller_type);
+    span_lint_and_sugg(
+        cx,
+        MAP_FLATTEN,
+        expr.span.with_lo(recv.span.hi()),
+        &lint_info,
+        "try using `and_then` instead",
+        hint,
+        Applicability::MachineApplicable,
+    );
 }

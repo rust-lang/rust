@@ -166,8 +166,8 @@ rustup component add clippy
 ```
 
 > **DO NOT** install using `cargo install --path . --force` since this will overwrite rustup
-[proxies](https://rust-lang.github.io/rustup/concepts/proxies.html). That is, `~/.cargo/bin/cargo-clippy` and
-`~/.cargo/bin/clippy-driver` should be hard or soft links to `~/.cargo/bin/rustup`. You can repair these by running
-`rustup update`.
+> [proxies](https://rust-lang.github.io/rustup/concepts/proxies.html). That is, `~/.cargo/bin/cargo-clippy` and
+> `~/.cargo/bin/clippy-driver` should be hard or soft links to `~/.cargo/bin/rustup`. You can repair these by running
+> `rustup update`.
 
 [glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html

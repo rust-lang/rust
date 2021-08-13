@@ -3,7 +3,7 @@
 
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, UnOp};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -48,7 +48,7 @@ declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
 impl EarlyLintPass for IfNotElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
-        if in_external_macro(cx.sess(), item.span) {
+        if in_external_macro(cx.sess, item.span) {
             return;
         }
         if let ExprKind::If(ref cond, _, Some(ref els)) = item.kind {

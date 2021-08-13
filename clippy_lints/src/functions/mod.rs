@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
-        too_many_lines::check_fn(cx, span, body, self.too_many_lines_threshold);
+        too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
     }
 

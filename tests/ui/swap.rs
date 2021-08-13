@@ -6,6 +6,7 @@
     clippy::no_effect,
     clippy::redundant_clone,
     redundant_semicolons,
+    dead_code,
     unused_assignments
 )]
 
@@ -55,6 +56,7 @@ fn unswappable_slice() {
     foo[1][0] = temp;
 
     // swap(foo[0][1], foo[1][0]) would fail
+    // this could use split_at_mut and mem::swap, but that is not much simpler.
 }
 
 fn vec() {
@@ -66,13 +68,62 @@ fn vec() {
     foo.swap(0, 1);
 }
 
+fn xor_swap_locals() {
+    // This is an xor-based swap of local variables.
+    let mut a = 0;
+    let mut b = 1;
+    a ^= b;
+    b ^= a;
+    a ^= b;
+}
+
+fn xor_field_swap() {
+    // This is an xor-based swap of fields in a struct.
+    let mut bar = Bar { a: 0, b: 1 };
+    bar.a ^= bar.b;
+    bar.b ^= bar.a;
+    bar.a ^= bar.b;
+}
+
+fn xor_slice_swap() {
+    // This is an xor-based swap of a slice
+    let foo = &mut [1, 2];
+    foo[0] ^= foo[1];
+    foo[1] ^= foo[0];
+    foo[0] ^= foo[1];
+}
+
+fn xor_no_swap() {
+    // This is a sequence of xor-assignment statements that doesn't result in a swap.
+    let mut a = 0;
+    let mut b = 1;
+    let mut c = 2;
+    a ^= b;
+    b ^= c;
+    a ^= c;
+    c ^= a;
+}
+
+fn xor_unswappable_slice() {
+    let foo = &mut [vec![1, 2], vec![3, 4]];
+    foo[0][1] ^= foo[1][0];
+    foo[1][0] ^= foo[0][0];
+    foo[0][1] ^= foo[1][0];
+
+    // swap(foo[0][1], foo[1][0]) would fail
+    // this could use split_at_mut and mem::swap, but that is not much simpler.
+}
+
+fn distinct_slice() {
+    let foo = &mut [vec![1, 2], vec![3, 4]];
+    let bar = &mut [vec![1, 2], vec![3, 4]];
+    let temp = foo[0][1];
+    foo[0][1] = bar[1][0];
+    bar[1][0] = temp;
+}
+
 #[rustfmt::skip]
 fn main() {
-    field();
-    array();
-    slice();
-    unswappable_slice();
-    vec();
 
     let mut a = 42;
     let mut b = 1337;

@@ -27,11 +27,15 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// fn fun(_a: &i32) {}
+    ///
     /// // Bad
     /// let x: &i32 = &&&&&&5;
+    /// fun(&x);
     ///
     /// // Good
     /// let x: &i32 = &5;
+    /// fun(x);
     /// ```
     pub NEEDLESS_BORROW,
     style,
