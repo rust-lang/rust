@@ -133,7 +133,7 @@ export async function getRustcId(dir: string): Promise<string> {
 
     // do not memoize the result because the toolchain may change between runs
     const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
-    const rx = /commit-hash:\s(.*)$/m.compile();
+    const rx = /commit-hash:\s(.*)$/m;
 
     return rx.exec(data)![1];
 }
