@@ -5,6 +5,7 @@ use crate::convert::TryFrom;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::os::raw::c_int;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
 use crate::time::Duration;
@@ -115,8 +116,8 @@ impl TcpStream {
     }
 }
 
-impl FromInner<u32> for TcpStream {
-    fn from_inner(fd: u32) -> TcpStream {
+impl FromInner<c_int> for TcpStream {
+    fn from_inner(fd: c_int) -> TcpStream {
         unsafe { TcpStream { fd: WasiFd::from_raw(fd) } }
     }
 }
@@ -181,8 +182,8 @@ impl TcpListener {
     }
 }
 
-impl FromInner<u32> for TcpListener {
-    fn from_inner(fd: u32) -> TcpListener {
+impl FromInner<c_int> for TcpListener {
+    fn from_inner(fd: c_int) -> TcpListener {
         unsafe { TcpListener { fd: WasiFd::from_raw(fd) } }
     }
 }
@@ -331,8 +332,8 @@ impl UdpSocket {
     }
 }
 
-impl FromInner<u32> for UdpSocket {
-    fn from_inner(fd: u32) -> UdpSocket {
+impl FromInner<c_int> for UdpSocket {
+    fn from_inner(fd: c_int) -> UdpSocket {
         unsafe { UdpSocket { fd: WasiFd::from_raw(fd) } }
     }
 }

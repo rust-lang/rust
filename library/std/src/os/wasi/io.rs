@@ -6,11 +6,18 @@
 use crate::fs;
 use crate::io;
 use crate::net;
+use crate::os::raw;
 use crate::sys;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
-pub type RawFd = u32;
+///
+/// This has type `c_int` to ease compatibility with code that also compiles on
+/// Unix configurations, however unlike Unix and POSIX, in WASI negative file
+/// descriptors are valid. Only `-1` is reserved for indicating errors. Code
+/// intending to be portable across Unix platforms and WASI should avoid
+/// assuming that negative file descriptors are invalid.
+pub type RawFd = raw::c_int;
 
 /// A trait to extract the raw WASI file descriptor from an underlying
 /// object.
@@ -161,41 +168,41 @@ impl IntoRawFd for fs::File {
 impl AsRawFd for io::Stdin {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDIN_FILENO as RawFd
+        libc::STDIN_FILENO
     }
 }
 
 impl AsRawFd for io::Stdout {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDOUT_FILENO as RawFd
+        libc::STDOUT_FILENO
     }
 }
 
 impl AsRawFd for io::Stderr {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDERR_FILENO as RawFd
+        libc::STDERR_FILENO
     }
 }
 
 impl<'a> AsRawFd for io::StdinLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDIN_FILENO as RawFd
+        libc::STDIN_FILENO
     }
 }
 
 impl<'a> AsRawFd for io::StdoutLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDOUT_FILENO as RawFd
+        libc::STDOUT_FILENO
     }
 }
 
 impl<'a> AsRawFd for io::StderrLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        libc::STDERR_FILENO as RawFd
+        libc::STDERR_FILENO
     }
 }
