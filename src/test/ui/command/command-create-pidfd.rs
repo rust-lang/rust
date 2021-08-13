@@ -15,7 +15,18 @@ fn has_clone3() -> bool {
     let err = (res == -1)
         .then(|| Error::last_os_error())
         .expect("probe syscall should not succeed");
-    err.raw_os_error() != Some(libc::ENOSYS)
+
+    // If the `clone3` syscall is not implemented in the current kernel version it should return an
+    // `ENOSYS` error. Docker also blocks the whole syscall inside unprivileged containers, and
+    // returns `EPERM` (instead of `ENOSYS`) when a program tries to invoke the syscall. Because of
+    // that we need to check for *both* `ENOSYS` and `EPERM`.
+    //
+    // Note that Docker's behavior is breaking other projects (notably glibc), so they're planning
+    // to update their filtering to return `ENOSYS` in a future release:
+    //
+    //     https://github.com/moby/moby/issues/42680
+    //
+    err.raw_os_error() != Some(libc::ENOSYS) && err.raw_os_error() != Some(libc::EPERM)
 }
 
 fn main() {
