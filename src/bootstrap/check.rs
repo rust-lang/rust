@@ -113,38 +113,35 @@ impl Step for Std {
         // since we initialize with an empty sysroot.
         //
         // Currently only the "libtest" tree of crates does this.
+        let mut cargo = builder.cargo(
+            compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            cargo_subcommand(builder.kind),
+        );
+        cargo.arg("--all-targets");
+        std_cargo(builder, target, compiler.stage, &mut cargo);
 
-        if let Subcommand::Check { all_targets: true, .. } = builder.config.cmd {
-            let mut cargo = builder.cargo(
-                compiler,
-                Mode::Std,
-                SourceType::InTree,
-                target,
-                cargo_subcommand(builder.kind),
-            );
-            std_cargo(builder, target, compiler.stage, &mut cargo);
-            cargo.arg("--all-targets");
-
-            // Explicitly pass -p for all dependencies krates -- this will force cargo
-            // to also check the tests/benches/examples for these crates, rather
-            // than just the leaf crate.
-            for krate in builder.in_tree_crates("test", Some(target)) {
-                cargo.arg("-p").arg(krate.name);
-            }
-
-            builder.info(&format!(
-                "Checking stage{} std test/bench/example targets ({} -> {})",
-                builder.top_stage, &compiler.host, target
-            ));
-            run_cargo(
-                builder,
-                cargo,
-                args(builder),
-                &libstd_test_stamp(builder, compiler, target),
-                vec![],
-                true,
-            );
+        // Explicitly pass -p for all dependencies krates -- this will force cargo
+        // to also check the tests/benches/examples for these crates, rather
+        // than just the leaf crate.
+        for krate in builder.in_tree_crates("test", Some(target)) {
+            cargo.arg("-p").arg(krate.name);
         }
+
+        builder.info(&format!(
+            "Checking stage{} std test/bench/example targets ({} -> {})",
+            builder.top_stage, &compiler.host, target
+        ));
+        run_cargo(
+            builder,
+            cargo,
+            args(builder),
+            &libstd_test_stamp(builder, compiler, target),
+            vec![],
+            true,
+        );
     }
 }
 
@@ -195,9 +192,7 @@ impl Step for Rustc {
             cargo_subcommand(builder.kind),
         );
         rustc_cargo(builder, &mut cargo, target);
-        if let Subcommand::Check { all_targets: true, .. } = builder.config.cmd {
-            cargo.arg("--all-targets");
-        }
+        cargo.arg("--all-targets");
 
         // Explicitly pass -p for all compiler krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
@@ -318,10 +313,7 @@ macro_rules! tool_check_step {
                     $source_type,
                     &[],
                 );
-
-                if let Subcommand::Check { all_targets: true, .. } = builder.config.cmd {
-                    cargo.arg("--all-targets");
-                }
+                cargo.arg("--all-targets");
 
                 // Enable internal lints for clippy and rustdoc
                 // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
