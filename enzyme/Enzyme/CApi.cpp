@@ -389,7 +389,6 @@ EnzymeExtractTapeTypeFromAugmentation(EnzymeAugmentedReturnPtr ret) {
   return wrap(
       cast<StructType>(AR->fn->getReturnType())->getTypeAtIndex(found->second));
 }
-
 void EnzymeExtractReturnInfo(EnzymeAugmentedReturnPtr ret, int64_t *data,
                              uint8_t *existed, size_t len) {
   assert(len == 3);
@@ -443,6 +442,12 @@ const char *EnzymeTypeTreeToString(CTypeTreeRef src) {
   return cstr;
 }
 void EnzymeTypeTreeToStringFree(const char *cstr) { delete[] cstr; }
+
+void EnzymeMoveBefore(LLVMValueRef inst1, LLVMValueRef inst2) {
+	Instruction *I1 = cast<Instruction>(unwrap(inst1));
+	Instruction *I2 = cast<Instruction>(unwrap(inst2));
+	if (I1 != I2) I1->moveBefore(I2);
+}
 
 #if LLVM_VERSION_MAJOR >= 9
 void EnzymeAddAttributorLegacyPass(LLVMPassManagerRef PM) {

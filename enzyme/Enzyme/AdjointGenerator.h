@@ -696,10 +696,11 @@ public:
           llvm::errs() << "cannot deduce type of store " << SI << "\n";
           assert(0 && "cannot deduce");
         }
-      } else
+      } else {
         FT = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ true,
                              /*pointerIntSame*/ true)
                  .isFloat();
+      }
     }
 
     if (FT) {
@@ -3535,7 +3536,8 @@ public:
     BuilderZ.setFastMathFlags(getFast());
 
     // MPI send / recv can only send float/integers
-    if (funcName == "MPI_Isend" || funcName == "MPI_Irecv") {
+    if (funcName == "PMPI_Isend" || funcName == "MPI_Isend" ||
+	funcName == "PMPI_Irecv" || funcName == "MPI_Irecv") {
       Value *firstallocation = nullptr;
       if (!gutils->isConstantInstruction(&call)) {
         if (Mode == DerivativeMode::ReverseModePrimal ||
@@ -3575,7 +3577,7 @@ public:
               d_req, PointerType::getUnqual(impialloc->getType()));
           BuilderZ.CreateStore(impialloc, d_req);
 
-          if (funcName == "MPI_Isend") {
+          if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
             Value *tysize =
                 MPI_TYPE_SIZE(gutils->getNewFromOriginal(call.getOperand(2)),
                               BuilderZ, call.getType());
@@ -3649,7 +3651,7 @@ public:
 
           BuilderZ.CreateStore(
               ConstantInt::get(Type::getInt8Ty(impialloc->getContext()),
-                               (funcName == "MPI_Isend")
+                               (funcName == "MPI_Isend" || funcName == "PMPI_Isend")
                                    ? (int)MPI_CallType::ISEND
                                    : (int)MPI_CallType::IRECV),
               BuilderZ.CreateInBoundsGEP(impialloc,
@@ -3689,7 +3691,11 @@ public:
               if (Function *recvfn = called->getParent()->getFunction(name))  {
                 auto statusArg = recvfn->arg_end();
                 statusArg--;
-                args[2] = Builder2.CreateBitCast(args[2], statusArg->getType());
+		if (statusArg->getType()->isIntegerTy())
+		   args[1] = Builder2.CreatePtrToInt(args[1], statusArg->getType());
+	        else	
+                   args[1] = Builder2.CreateBitCast(args[1], statusArg->getType());
+		waitFunc = recvfn;
                 break;
               }
           if (!waitFunc) {
@@ -3716,7 +3722,7 @@ public:
               Builder2.CreateZExtOrTrunc(
                   tysize, Type::getInt64Ty(Builder2.getContext())),
               "", true, true);
-          if (funcName == "MPI_Irecv") {
+          if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv") {
             auto val_arg =
                 ConstantInt::get(Type::getInt8Ty(Builder2.getContext()), 0);
             auto volatile_arg = ConstantInt::getFalse(Builder2.getContext());
@@ -3739,13 +3745,14 @@ public:
                                           Intrinsic::memset, tys),
                 nargs));
             memset->addParamAttr(0, Attribute::NonNull);
-          } else if (funcName == "MPI_Isend") {
+          } else if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
             assert(!gutils->isConstantValue(call.getOperand(0)));
             Value *shadow =
                 gutils->invertPointerM(call.getOperand(0), Builder2);
-            if (Mode == DerivativeMode::ReverseModeCombined)
+            if (Mode == DerivativeMode::ReverseModeCombined) {
+	      assert(firstallocation);
               firstallocation = lookup(firstallocation, Builder2);
-            else {
+	    } else {
               firstallocation =
                   BuilderZ.CreatePHI(Type::getInt8PtrTy(call.getContext()), 0);
               firstallocation = gutils->lookupM(

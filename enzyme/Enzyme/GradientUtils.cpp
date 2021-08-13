@@ -2965,6 +2965,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *op0 = arg->getOperand(0);
     auto li = bb.CreateLoad(invertPointerM(op0, bb), arg->getName() + "'ipl");
+    li->copyIRFlags(arg);
 #if LLVM_VERSION_MAJOR >= 10
     li->setAlignment(arg->getAlign());
 #else
