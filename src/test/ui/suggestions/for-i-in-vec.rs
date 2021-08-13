@@ -15,4 +15,13 @@ impl Foo {
     }
 }
 
+const LOADERS: &Vec<&'static u8> = &Vec::new();
+
+pub fn break_code() -> Option<&'static u8> {
+    for loader in *LOADERS { //~ ERROR cannot move out of a shared reference
+        return Some(loader);
+    }
+    None
+}
+
 fn main() {}
