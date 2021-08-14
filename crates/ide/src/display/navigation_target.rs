@@ -528,6 +528,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
             ast::Static(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::RecordField(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             ast::Variant(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Union(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             _ => None,
         }
     }

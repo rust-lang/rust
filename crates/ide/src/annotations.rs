@@ -70,14 +70,8 @@ pub(crate) fn annotations(
                 hir::ModuleDef::Trait(trait_) => {
                     trait_.source(db).and_then(|node| name_range(&node, file_id))
                 }
-                hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
-                    strukt.source(db).and_then(|node| name_range(&node, file_id))
-                }
-                hir::ModuleDef::Adt(hir::Adt::Enum(enum_)) => {
-                    enum_.source(db).and_then(|node| name_range(&node, file_id))
-                }
-                hir::ModuleDef::Adt(hir::Adt::Union(union)) => {
-                    union.source(db).and_then(|node| name_range(&node, file_id))
+                hir::ModuleDef::Adt(adt) => {
+                    adt.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 _ => None,
             };
