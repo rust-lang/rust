@@ -3,7 +3,11 @@
 use rowan::WalkEvent;
 
 use crate::{
-    ast::{self, support, AstChildren, AstNode},
+    ast::{
+        self,
+        operators::{PrefixOp, RangeOp},
+        support, AstChildren, AstNode,
+    },
     AstToken,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -193,24 +197,15 @@ impl ast::IfExpr {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum PrefixOp {
-    /// The `*` operator for dereferencing
-    Deref,
-    /// The `!` operator for logical inversion
-    Not,
-    /// The `-` operator for negation
-    Neg,
-}
-
 impl ast::PrefixExpr {
     pub fn op_kind(&self) -> Option<PrefixOp> {
-        match self.op_token()?.kind() {
-            T![*] => Some(PrefixOp::Deref),
-            T![!] => Some(PrefixOp::Not),
-            T![-] => Some(PrefixOp::Neg),
-            _ => None,
-        }
+        let res = match self.op_token()?.kind() {
+            T![*] => PrefixOp::Deref,
+            T![!] => PrefixOp::Not,
+            T![-] => PrefixOp::Neg,
+            _ => return None,
+        };
+        Some(res)
     }
 
     pub fn op_token(&self) -> Option<SyntaxToken> {
@@ -396,14 +391,6 @@ impl std::fmt::Display for BinOp {
             BinOp::BitXorAssign => write!(f, "^="),
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum RangeOp {
-    /// `..`
-    Exclusive,
-    /// `..=`
-    Inclusive,
 }
 
 impl ast::RangeExpr {
