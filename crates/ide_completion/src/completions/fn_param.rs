@@ -7,8 +7,8 @@ use syntax::{
 };
 
 use crate::{
-    context::ParamKind, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
-    Completions,
+    context::{ParamKind, PatternContext},
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
 /// Complete repeated parameters, both name and type. For example, if all
@@ -16,7 +16,8 @@ use crate::{
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
 pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if ctx.is_param != Some(ParamKind::Function) {
+    if !matches!(ctx.pattern_ctx, Some(PatternContext { is_param: Some(ParamKind::Function), .. }))
+    {
         return None;
     }
 
