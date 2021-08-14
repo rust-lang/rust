@@ -884,6 +884,7 @@ to_def_impls![
     (crate::Local, ast::IdentPat, bind_pat_to_def),
     (crate::Local, ast::SelfParam, self_param_to_def),
     (crate::Label, ast::Label, label_to_def),
+    (crate::Adt, ast::Adt, adt_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {

@@ -91,9 +91,9 @@ use hir_def::{
     dyn_map::DynMap,
     expr::{LabelId, PatId},
     keys::{self, Key},
-    ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId, GenericDefId,
-    ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
-    UnionId, VariantId,
+    AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
+    GenericDefId, ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
+    TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroCallId, MacroDefId, MacroDefKind};
 use rustc_hash::FxHashMap;
@@ -200,6 +200,18 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<ast::Variant>,
     ) -> Option<EnumVariantId> {
         self.to_def(src, keys::VARIANT)
+    }
+    pub(super) fn adt_to_def(
+        &mut self,
+        InFile { file_id, value }: InFile<ast::Adt>,
+    ) -> Option<AdtId> {
+        match value {
+            ast::Adt::Enum(it) => self.enum_to_def(InFile::new(file_id, it)).map(AdtId::EnumId),
+            ast::Adt::Struct(it) => {
+                self.struct_to_def(InFile::new(file_id, it)).map(AdtId::StructId)
+            }
+            ast::Adt::Union(it) => self.union_to_def(InFile::new(file_id, it)).map(AdtId::UnionId),
+        }
     }
     pub(super) fn bind_pat_to_def(
         &mut self,

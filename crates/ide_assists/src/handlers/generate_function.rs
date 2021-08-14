@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay, InFile, Module, TypeInfo};
+use hir::{HasSource, HirDisplay, Module, TypeInfo};
 use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::to_lower_snake_case;
@@ -106,31 +106,28 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
-    let fn_name: ast::NameRef = ast::NameRef::cast(
-        call.syntax().children().find(|child| child.kind() == SyntaxKind::NAME_REF)?,
-    )?;
-    let ty = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
+    let fn_name = call.name_ref()?;
+    let adt = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
-    let current_module =
-        ctx.sema.scope(ctx.find_node_at_offset::<ast::MethodCallExpr>()?.syntax()).module()?;
-    let target_module = ty.module(ctx.sema.db);
+    let current_module = ctx.sema.scope(call.syntax()).module()?;
+    let target_module = adt.module(ctx.sema.db);
 
     if current_module.krate() != target_module.krate() {
         return None;
     }
 
-    let (impl_, file) = match ty {
-        hir::Adt::Struct(strukt) => get_impl(strukt.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
-        hir::Adt::Enum(en) => get_impl(en.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
-        hir::Adt::Union(union) => get_impl(union.source(ctx.sema.db)?.syntax(), &fn_name, ctx),
-    }?;
+    let range = adt.source(ctx.sema.db)?.syntax().original_file_range(ctx.sema.db);
+    let file = ctx.sema.parse(range.file_id);
+    let adt_source =
+        ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
+    let impl_ = find_struct_impl(ctx, &adt_source, fn_name.text().as_str())?;
 
     let function_builder = FunctionBuilder::from_method_call(
         ctx,
         &call,
         &fn_name,
         &impl_,
-        file,
+        range.file_id,
         target_module,
         current_module,
     )?;
@@ -145,7 +142,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             builder.edit_file(function_template.file);
             let mut new_fn = function_template.to_string(ctx.config.snippet_cap);
             if impl_.is_none() {
-                new_fn = format!("\nimpl {} {{\n{}\n}}", ty.name(ctx.sema.db), new_fn,);
+                new_fn = format!("\nimpl {} {{\n{}\n}}", adt.name(ctx.sema.db), new_fn,);
             }
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
@@ -153,18 +150,6 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             }
         },
     )
-}
-
-fn get_impl(
-    adt: InFile<&SyntaxNode>,
-    fn_name: &ast::NameRef,
-    ctx: &AssistContext,
-) -> Option<(Option<ast::Impl>, FileId)> {
-    let file = adt.file_id.original_file(ctx.sema.db);
-    let adt = adt.value;
-    let adt = ast::Adt::cast(adt.clone())?;
-    let r = find_struct_impl(ctx, &adt, fn_name.text().as_str())?;
-    Some((r, file))
 }
 
 struct FunctionTemplate {
