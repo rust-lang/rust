@@ -211,21 +211,22 @@ impl<'tcx> ReachableContext<'tcx> {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            if let Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), def_id, .. })
-            | Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(sig, ..),
-                def_id,
-                ..
-            }) = *node
-            {
-                let reachable = sig.header.abi != Abi::Rust;
-                let codegen_attrs = self.tcx.codegen_fn_attrs(*def_id);
-                let is_extern = codegen_attrs.contains_extern_indicator();
-                let std_internal =
-                    codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
-                if reachable || is_extern || std_internal {
-                    self.reachable_symbols.insert(search_item);
-                }
+            let reachable =
+                if let Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })
+                | Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(sig, ..), ..
+                }) = *node
+                {
+                    sig.header.abi != Abi::Rust
+                } else {
+                    false
+                };
+            let codegen_attrs = self.tcx.codegen_fn_attrs(search_item);
+            let is_extern = codegen_attrs.contains_extern_indicator();
+            let std_internal =
+                codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+            if reachable || is_extern || std_internal {
+                self.reachable_symbols.insert(search_item);
             }
         } else {
             // If we are building a library, then reachable symbols will
