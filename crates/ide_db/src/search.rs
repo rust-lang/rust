@@ -246,13 +246,9 @@ impl Definition {
                 hir::GenericDef::Function(it) => {
                     it.source(db).map(|src| src.value.syntax().text_range())
                 }
-                hir::GenericDef::Adt(it) => match it {
-                    hir::Adt::Struct(it) => {
-                        it.source(db).map(|src| src.value.syntax().text_range())
-                    }
-                    hir::Adt::Union(it) => it.source(db).map(|src| src.value.syntax().text_range()),
-                    hir::Adt::Enum(it) => it.source(db).map(|src| src.value.syntax().text_range()),
-                },
+                hir::GenericDef::Adt(it) => {
+                    it.source(db).map(|src| src.value.syntax().text_range())
+                }
                 hir::GenericDef::Trait(it) => {
                     it.source(db).map(|src| src.value.syntax().text_range())
                 }
