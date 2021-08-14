@@ -13,6 +13,7 @@ use syntax::{
     ast::{
         self,
         edit::{self, AstNodeEdit},
+        edit_in_place::AttrsOwnerEdit,
         make, ArgListOwner, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
     },
     ted, AstNode, Direction, SmolStr,
@@ -130,7 +131,7 @@ pub fn add_trait_assoc_items_to_impl(
     let items = items.into_iter().map(|assoc_item| {
         let assoc_item = assoc_item.clone_for_update();
         transform.apply(assoc_item.syntax());
-        edit::remove_attrs_and_docs(&assoc_item);
+        assoc_item.remove_attrs_and_docs();
         assoc_item
     });
 

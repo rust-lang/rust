@@ -34,7 +34,7 @@
 use hir::{self, HasAttrs, HasSource};
 use ide_db::{path_transform::PathTransform, traits::get_missing_assoc_items, SymbolKind};
 use syntax::{
-    ast::{self, edit},
+    ast::{self, edit_in_place::AttrsOwnerEdit},
     display::function_declaration,
     AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, T,
 };
@@ -195,7 +195,7 @@ fn get_transformed_assoc_item(
 
     transform.apply(assoc_item.syntax());
     if let ast::AssocItem::Fn(func) = &assoc_item {
-        edit::remove_attrs_and_docs(func)
+        func.remove_attrs_and_docs()
     }
     Some(assoc_item)
 }
@@ -253,7 +253,7 @@ fn add_const_impl(
 }
 
 fn make_const_compl_syntax(const_: &ast::Const) -> String {
-    edit::remove_attrs_and_docs(const_);
+    const_.remove_attrs_and_docs();
 
     let const_start = const_.syntax().text_range().start();
     let const_end = const_.syntax().text_range().end();
