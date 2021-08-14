@@ -14,10 +14,10 @@ LL | |     };
    = note: `-D clippy::manual-map` implied by `-D warnings`
 help: try this
    |
-LL |     let _ = Some(0).map(|x| {
-LL |             let y = (String::new(), String::new());
-LL |             (x, y.0)
-LL |         });
+LL ~     let _ = Some(0).map(|x| {
+LL +             let y = (String::new(), String::new());
+LL +             (x, y.0)
+LL ~         });
    |
 
 error: manual implementation of `Option::map`
@@ -34,9 +34,9 @@ LL | |     };
    |
 help: try this
    |
-LL |     let _ = s.as_ref().map(|x| {
-LL |             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
-LL |         });
+LL ~     let _ = s.as_ref().map(|x| {
+LL +             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
+LL ~         });
    |
 
 error: aborting due to 2 previous errors
