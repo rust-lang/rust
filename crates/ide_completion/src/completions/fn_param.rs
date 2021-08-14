@@ -6,14 +6,17 @@ use syntax::{
     match_ast, AstNode,
 };
 
-use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
+use crate::{
+    context::ParamKind, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
+    Completions,
+};
 
 /// Complete repeated parameters, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
 pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if !ctx.is_param {
+    if ctx.is_param != Some(ParamKind::Function) {
         return None;
     }
 

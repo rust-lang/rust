@@ -60,6 +60,12 @@ pub(crate) enum CallKind {
     Mac,
     Expr,
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ParamKind {
+    Function,
+    Closure,
+}
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -91,7 +97,7 @@ pub(crate) struct CompletionContext<'a> {
 
     // potentially set if we are completing a name
     pub(super) is_pat_or_const: Option<PatternRefutability>,
-    pub(super) is_param: bool,
+    pub(super) is_param: Option<ParamKind>,
 
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
@@ -158,7 +164,7 @@ impl<'a> CompletionContext<'a> {
             lifetime_allowed: false,
             is_label_ref: false,
             is_pat_or_const: None,
-            is_param: false,
+            is_param: None,
             completion_location: None,
             prev_sibling: None,
             attribute_under_caret: None,
@@ -670,7 +676,17 @@ impl<'a> CompletionContext<'a> {
             self.fill_impl_def();
         }
 
-        self.is_param |= is_node::<ast::Param>(name.syntax());
+        if let Some(param) = name
+            .syntax()
+            .ancestors()
+            .find_map(ast::Param::cast)
+            .filter(|it| it.syntax().text_range() == name.syntax().text_range())
+        {
+            let is_closure_param =
+                param.syntax().ancestors().nth(2).and_then(ast::ClosureExpr::cast).is_some();
+            self.is_param =
+                Some(if is_closure_param { ParamKind::Closure } else { ParamKind::Function });
+        }
     }
 
     fn classify_name_ref(&mut self, original_file: &SyntaxNode, name_ref: ast::NameRef) {
@@ -772,13 +788,6 @@ impl<'a> CompletionContext<'a> {
 
 fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
     syntax.covering_element(range).ancestors().find_map(N::cast)
-}
-
-fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {
-    match node.ancestors().find_map(N::cast) {
-        None => false,
-        Some(n) => n.syntax().text_range() == node.text_range(),
-    }
 }
 
 fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {

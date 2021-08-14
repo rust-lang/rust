@@ -58,11 +58,6 @@ fn render_literal(
         _ => return None,
     };
 
-    if ctx.completion.is_param {
-        literal.push(':');
-        literal.push(' ');
-        literal.push_str(name);
-    }
     if ctx.snippet_cap().is_some() {
         literal.push_str("$0");
     }

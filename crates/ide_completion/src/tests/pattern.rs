@@ -309,3 +309,41 @@ fn outer(Foo { bar$0 }: Foo) {}
         expect![[r#""#]],
     )
 }
+
+#[test]
+fn completes_in_fn_param() {
+    check_empty(
+        r#"
+struct Foo { bar: Bar }
+struct Bar(u32);
+fn foo($0) {}
+"#,
+        expect![[r#"
+            kw mut
+            bn Foo Foo { bar$1 }: Foo$0
+            st Foo
+            bn Bar Bar($1): Bar$0
+            st Bar
+        "#]],
+    )
+}
+
+#[test]
+fn completes_in_closure_param() {
+    check_empty(
+        r#"
+struct Foo { bar: Bar }
+struct Bar(u32);
+fn foo() {
+    |$0| {};
+}
+"#,
+        expect![[r#"
+            kw mut
+            bn Foo Foo { bar$1 }$0
+            st Foo
+            bn Bar Bar($1)$0
+            st Bar
+        "#]],
+    )
+}
