@@ -1,6 +1,6 @@
 //! Collection of assorted algorithms for syntax trees.
 
-use std::{hash::BuildHasherDefault, ops::RangeInclusive};
+use std::hash::BuildHasherDefault;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -292,41 +292,6 @@ fn _insert_children(
         }
     };
 
-    with_children(parent, new_children)
-}
-
-/// Replaces all nodes in `to_delete` with nodes from `to_insert`
-///
-/// This is a type-unsafe low-level editing API, if you need to use it,
-/// prefer to create a type-safe abstraction on top of it instead.
-pub fn replace_children(
-    parent: &SyntaxNode,
-    to_delete: RangeInclusive<SyntaxElement>,
-    to_insert: impl IntoIterator<Item = SyntaxElement>,
-) -> SyntaxNode {
-    let mut to_insert = to_insert.into_iter();
-    _replace_children(parent, to_delete, &mut to_insert)
-}
-
-fn _replace_children(
-    parent: &SyntaxNode,
-    to_delete: RangeInclusive<SyntaxElement>,
-    to_insert: &mut dyn Iterator<Item = SyntaxElement>,
-) -> SyntaxNode {
-    let start = position_of_child(parent, to_delete.start().clone());
-    let end = position_of_child(parent, to_delete.end().clone());
-    let parent_green = parent.green();
-    let mut old_children = parent_green.children().map(|it| match it {
-        NodeOrToken::Token(it) => NodeOrToken::Token(it.to_owned()),
-        NodeOrToken::Node(it) => NodeOrToken::Node(it.to_owned()),
-    });
-
-    let before = old_children.by_ref().take(start).collect::<Vec<_>>();
-    let new_children = before
-        .into_iter()
-        .chain(to_insert.map(to_green_element))
-        .chain(old_children.skip(end + 1 - start))
-        .collect::<Vec<_>>();
     with_children(parent, new_children)
 }
 

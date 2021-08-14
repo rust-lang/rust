@@ -194,10 +194,10 @@ fn get_transformed_assoc_item(
     );
 
     transform.apply(assoc_item.syntax());
-    Some(match assoc_item {
-        ast::AssocItem::Fn(func) => ast::AssocItem::Fn(edit::remove_attrs_and_docs(&func)),
-        _ => assoc_item,
-    })
+    if let ast::AssocItem::Fn(func) = &assoc_item {
+        edit::remove_attrs_and_docs(func)
+    }
+    Some(assoc_item)
 }
 
 fn add_type_alias_impl(
@@ -253,7 +253,7 @@ fn add_const_impl(
 }
 
 fn make_const_compl_syntax(const_: &ast::Const) -> String {
-    let const_ = edit::remove_attrs_and_docs(const_);
+    edit::remove_attrs_and_docs(const_);
 
     let const_start = const_.syntax().text_range().start();
     let const_end = const_.syntax().text_range().end();
