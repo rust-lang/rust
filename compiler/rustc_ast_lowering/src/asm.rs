@@ -27,11 +27,41 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .emit();
         }
 
+        let mut clobber_abi = None;
+        if let Some(asm_arch) = asm_arch {
+            if let Some((abi_name, abi_span)) = asm.clobber_abi {
+                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, abi_name) {
+                    Ok(abi) => clobber_abi = Some((abi, abi_span)),
+                    Err(&[]) => {
+                        self.sess
+                            .struct_span_err(
+                                abi_span,
+                                "`clobber_abi` is not supported on this target",
+                            )
+                            .emit();
+                    }
+                    Err(supported_abis) => {
+                        let mut err =
+                            self.sess.struct_span_err(abi_span, "invalid ABI for `clobber_abi`");
+                        let mut abis = format!("`{}`", supported_abis[0]);
+                        for m in &supported_abis[1..] {
+                            let _ = write!(abis, ", `{}`", m);
+                        }
+                        err.note(&format!(
+                            "the following ABIs are supported on this target: {}",
+                            abis
+                        ));
+                        err.emit();
+                    }
+                }
+            }
+        }
+
         // Lower operands to HIR. We use dummy register classes if an error
         // occurs during lowering because we still need to be able to produce a
         // valid HIR.
         let sess = self.sess;
-        let operands: Vec<_> = asm
+        let mut operands: Vec<_> = asm
             .operands
             .iter()
             .map(|(op, op_sp)| {
@@ -332,6 +362,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             check(&mut used_output_regs, false);
                         }
                     });
+                }
+            }
+        }
+
+        // If a clobber_abi is specified, add the necessary clobbers to the
+        // operands list.
+        if let Some((abi, abi_span)) = clobber_abi {
+            for &clobber in abi.clobbered_regs() {
+                let mut output_used = false;
+                clobber.overlapping_regs(|reg| {
+                    if used_output_regs.contains_key(&reg) {
+                        output_used = true;
+                    }
+                });
+
+                if !output_used {
+                    operands.push((
+                        hir::InlineAsmOperand::Out {
+                            reg: asm::InlineAsmRegOrRegClass::Reg(clobber),
+                            late: true,
+                            expr: None,
+                        },
+                        abi_span,
+                    ));
                 }
             }
         }

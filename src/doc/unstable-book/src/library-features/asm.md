@@ -290,44 +290,41 @@ unsafe {
 assert_eq!(x, 4 * 6);
 ```
 
-## Symbol operands
+## Symbol operands and ABI clobbers
 
 A special operand type, `sym`, allows you to use the symbol name of a `fn` or `static` in inline assembly code.
 This allows you to call a function or access a global variable without needing to keep its address in a register.
 
 ```rust,allow_fail
 #![feature(asm)]
-extern "C" fn foo(arg: i32) {
+extern "C" fn foo(arg: i32) -> i32 {
     println!("arg = {}", arg);
+    arg * 2
 }
 
-fn call_foo(arg: i32) {
+fn call_foo(arg: i32) -> i32 {
     unsafe {
+        let result;
         asm!(
             "call {}",
             sym foo,
-            // 1st argument in rdi, which is caller-saved
-            inout("rdi") arg => _,
-            // All caller-saved registers must be marked as clobbered
-            out("rax") _, out("rcx") _, out("rdx") _, out("rsi") _,
-            out("r8") _, out("r9") _, out("r10") _, out("r11") _,
-            out("xmm0") _, out("xmm1") _, out("xmm2") _, out("xmm3") _,
-            out("xmm4") _, out("xmm5") _, out("xmm6") _, out("xmm7") _,
-            out("xmm8") _, out("xmm9") _, out("xmm10") _, out("xmm11") _,
-            out("xmm12") _, out("xmm13") _, out("xmm14") _, out("xmm15") _,
-            // Also mark AVX-512 registers as clobbered. This is accepted by the
-            // compiler even if AVX-512 is not enabled on the current target.
-            out("xmm16") _, out("xmm17") _, out("xmm18") _, out("xmm19") _,
-            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm23") _,
-            out("xmm24") _, out("xmm25") _, out("xmm26") _, out("xmm27") _,
-            out("xmm28") _, out("xmm29") _, out("xmm30") _, out("xmm31") _,
-        )
+            // 1st argument in rdi
+            in("rdi") arg,
+            // Return value in rax
+            out("rax") result,
+            // Mark all registers which are not preserved by the "C" calling
+            // convention as clobbered.
+            clobber_abi("C"),
+        );
+        result
     }
 }
 ```
 
 Note that the `fn` or `static` item does not need to be public or `#[no_mangle]`:
 the compiler will automatically insert the appropriate mangled symbol name into the assembly code.
+
+By default, `asm!` assumes that any register not specified as an output will have its contents preserved by the assembly code. The [`clobber_abi`](#abi-clobbers) argument to `asm!` tells the compiler to automatically insert the necessary clobber operands according to the given calling convention ABI: any register which is not fully preserved in that ABI will be treated as clobbered.
 
 ## Register template modifiers
 
@@ -456,12 +453,25 @@ reg_spec := <register class> / "<explicit register>"
 operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
 reg_operand := dir_spec "(" reg_spec ")" operand_expr
 operand := reg_operand / "const" const_expr / "sym" path
+clobber_abi := "clobber_abi(" <abi> ")"
 option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "nostack" / "att_syntax" / "raw"
 options := "options(" option *["," option] [","] ")"
-asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," options] [","] ")"
+asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," clobber_abi]  ["," options] [","] ")"
 ```
 
-The macro will initially be supported only on ARM, AArch64, Hexagon, PowerPC, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
+Inline assembly is currently supported on the following architectures:
+- x86 and x86-64
+- ARM
+- AArch64
+- RISC-V
+- NVPTX
+- PowerPC
+- Hexagon
+- MIPS32r2 and MIPS64r2
+- wasm32
+- BPF
+
+Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
 
 [format-syntax]: https://doc.rust-lang.org/std/fmt/#syntax
 
@@ -780,6 +790,24 @@ As stated in the previous section, passing an input value smaller than the regis
 
 [llvm-argmod]: http://llvm.org/docs/LangRef.html#asm-template-argument-modifiers
 
+## ABI clobbers
+
+The `clobber_abi` keyword can be used to apply a default set of clobbers to an `asm` block. This will automatically insert the necessary clobber constraints as needed for calling a function with a particular calling convention: if the calling convention does not fully preserve the value of a register across a call then a `lateout("reg") _` is implicitly added to the operands list.
+
+Generic register class outputs are disallowed by the compiler when `clobber_abi` is used: all outputs must specify an explicit register. Explicit register outputs have precedence over the implicit clobbers inserted by `clobber_abi`: a clobber will only be inserted for a register if that register is not used as an output.
+The following ABIs can be used with `clobber_abi`:
+
+| Architecture | ABI name | Clobbered registers |
+| ------------ | -------- | ------------------- |
+| x86-32 | `"C"`, `"system"`, `"efiapi"`, `"cdecl"`, `"stdcall"`, `"fastcall"` | `ax`, `cx`, `dx`, `xmm[0-7]`, `mm[0-7]`, `st([0-7])` |
+| x86-64 | `"C"`, `"system"` (on Windows), `"efiapi"`, `"win64"` | `ax`, `cx`, `dx`, `r[8-11]`, `xmm[0-31]`, `mm[0-7]`, `st([0-7])` |
+| x86-64 | `"C"`, `"system"` (on non-Windows), `"sysv64"` | `ax`, `cx`, `dx`, `si`, `di`, `r[8-11]`, `xmm[0-31]`, `mm[0-7]`, `st([0-7])` |
+| AArch64 | `"C"`, `"system"`, `"efiapi"` | `x[0-17]`, `x30`, `v[0-31]`, `p[0-15]`, `ffr` |
+| ARM | `"C"`, `"system"`, `"efiapi"`, `"aapcs"` | `r[0-3]`, `r12`, `r14`, `s[0-15]`, `d[0-7]`, `d[16-31]` |
+| RISC-V | `"C"`, `"system"`, `"efiapi"` | `x1`, `x[5-7]`, `x[10-17]`, `x[28-31]`, `f[0-7]`, `f[10-17]`, `f[28-31]`, `v[0-31]` |
+
+The list of clobbered registers for each ABI is updated in rustc as architectures gain new registers: this ensures that `asm` clobbers will continue to be correct when LLVM starts using these new registers in its generated code.
+
 ## Options
 
 Flags are used to further influence the behavior of the inline assembly block.
@@ -842,6 +870,7 @@ The compiler performs some additional checks on options:
     - Floating-point status (`FPSR` register).
   - RISC-V
     - Floating-point exception flags in `fcsr` (`fflags`).
+    - Vector extension state (`vtype`, `vl`, `vcsr`).
 - On x86, the direction flag (DF in `EFLAGS`) is clear on entry to an asm block and must be clear on exit.
   - Behavior is undefined if the direction flag is set on exiting an asm block.
 - The requirement of restoring the stack pointer and non-output registers to their original value only applies when exiting an `asm!` block.

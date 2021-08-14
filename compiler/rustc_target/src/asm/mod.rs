@@ -712,3 +712,185 @@ pub fn allocatable_registers(
         }
     }
 }
+
+#[derive(
+    Copy,
+    Clone,
+    Encodable,
+    Decodable,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Hash,
+    HashStable_Generic
+)]
+pub enum InlineAsmClobberAbi {
+    X86,
+    X86_64Win,
+    X86_64SysV,
+    Arm,
+    AArch64,
+    RiscV,
+}
+
+impl InlineAsmClobberAbi {
+    /// Parses a clobber ABI for the given target, or returns a list of supported
+    /// clobber ABIs for the target.
+    pub fn parse(
+        arch: InlineAsmArch,
+        target: &Target,
+        name: Symbol,
+    ) -> Result<Self, &'static [&'static str]> {
+        let name = &*name.as_str();
+        match arch {
+            InlineAsmArch::X86 => match name {
+                "C" | "system" | "efiapi" | "cdecl" | "stdcall" | "fastcall" => {
+                    Ok(InlineAsmClobberAbi::X86)
+                }
+                _ => Err(&["C", "system", "efiapi", "cdecl", "stdcall", "fastcall"]),
+            },
+            InlineAsmArch::X86_64 => match name {
+                "C" | "system" if !target.is_like_windows => Ok(InlineAsmClobberAbi::X86_64SysV),
+                "C" | "system" if target.is_like_windows => Ok(InlineAsmClobberAbi::X86_64Win),
+                "win64" | "efiapi" => Ok(InlineAsmClobberAbi::X86_64Win),
+                "sysv64" => Ok(InlineAsmClobberAbi::X86_64SysV),
+                _ => Err(&["C", "system", "efiapi", "win64", "sysv64"]),
+            },
+            InlineAsmArch::Arm => match name {
+                "C" | "system" | "efiapi" | "aapcs" => Ok(InlineAsmClobberAbi::Arm),
+                _ => Err(&["C", "system", "efiapi", "aapcs"]),
+            },
+            InlineAsmArch::AArch64 => match name {
+                "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::AArch64),
+                _ => Err(&["C", "system", "efiapi"]),
+            },
+            InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
+                "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::RiscV),
+                _ => Err(&["C", "system", "efiapi"]),
+            },
+            _ => Err(&[]),
+        }
+    }
+
+    /// Returns the set of registers which are clobbered by this ABI.
+    pub fn clobbered_regs(self) -> &'static [InlineAsmReg] {
+        macro_rules! clobbered_regs {
+            ($arch:ident $arch_reg:ident {
+                $(
+                    $reg:ident,
+                )*
+            }) => {
+                &[
+                    $(InlineAsmReg::$arch($arch_reg::$reg),)*
+                ]
+            };
+        }
+        match self {
+            InlineAsmClobberAbi::X86 => clobbered_regs! {
+                X86 X86InlineAsmReg {
+                    ax, cx, dx,
+
+                    xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7,
+
+                    k1, k2, k3, k4, k5, k6, k7,
+
+                    mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
+                    st0, st1, st2, st3, st4, st5, st6, st7,
+                }
+            },
+            InlineAsmClobberAbi::X86_64SysV => clobbered_regs! {
+                X86 X86InlineAsmReg {
+                    ax, cx, dx, si, di, r8, r9, r10, r11,
+
+                    xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7,
+                    xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
+                    zmm16, zmm17, zmm18, zmm19, zmm20, zmm21, zmm22, zmm23,
+                    zmm24, zmm25, zmm26, zmm27, zmm28, zmm29, zmm30, zmm31,
+
+                    k1, k2, k3, k4, k5, k6, k7,
+
+                    mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
+                    st0, st1, st2, st3, st4, st5, st6, st7,
+                }
+            },
+            InlineAsmClobberAbi::X86_64Win => clobbered_regs! {
+                X86 X86InlineAsmReg {
+                    // rdi and rsi are callee-saved on windows
+                    ax, cx, dx, r8, r9, r10, r11,
+
+                    // xmm6-xmm15 are callee-saved on windows, but we need to
+                    // mark them as clobbered anyways because the upper portions
+                    // of ymm6-ymm15 are volatile.
+                    xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7,
+                    xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
+                    zmm16, zmm17, zmm18, zmm19, zmm20, zmm21, zmm22, zmm23,
+                    zmm24, zmm25, zmm26, zmm27, zmm28, zmm29, zmm30, zmm31,
+
+                    k1, k2, k3, k4, k5, k6, k7,
+
+                    mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
+                    st0, st1, st2, st3, st4, st5, st6, st7,
+                }
+            },
+            InlineAsmClobberAbi::AArch64 => clobbered_regs! {
+                AArch64 AArch64InlineAsmReg {
+                    x0, x1, x2, x3, x4, x5, x6, x7,
+                    x8, x9, x10, x11, x12, x13, x14, x15,
+                    // x18 is platform-reserved or temporary, but we exclude it
+                    // here since it is a reserved register.
+                    x16, x17, x30,
+
+                    // Technically the low 64 bits of v8-v15 are preserved, but
+                    // we have no way of expressing this using clobbers.
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    v16, v17, v18, v19, v20, v21, v22, v23,
+                    v24, v25, v26, v27, v28, v29, v30, v31,
+
+                    p0, p1, p2, p3, p4, p5, p6, p7,
+                    p8, p9, p10, p11, p12, p13, p14, p15,
+                    ffr,
+
+                }
+            },
+            InlineAsmClobberAbi::Arm => clobbered_regs! {
+                Arm ArmInlineAsmReg {
+                    // r9 is platform-reserved and is treated as callee-saved.
+                    r0, r1, r2, r3, r12, r14,
+
+                    // The finest-grained register variant is used here so that
+                    // partial uses of larger registers are properly handled.
+                    s0, s1, s2, s3, s4, s5, s6, s7,
+                    s8, s9, s10, s11, s12, s13, s14, s15,
+                    // s16-s31 are callee-saved
+                    d16, d17, d18, d19, d20, d21, d22, d23,
+                    d24, d25, d26, d27, d28, d29, d30, d31,
+                }
+            },
+            InlineAsmClobberAbi::RiscV => clobbered_regs! {
+                RiscV RiscVInlineAsmReg {
+                    // ra
+                    x1,
+                    // t0-t2
+                    x5, x6, x7,
+                    // a0-a7
+                    x10, x11, x12, x13, x14, x15, x16, x17,
+                    // t3-t6
+                    x28, x29, x30, x31,
+                    // ft0-ft7
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    // fa0-fa7
+                    f10, f11, f12, f13, f14, f15, f16, f17,
+                    // ft8-ft11
+                    f28, f29, f30, f31,
+
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    v16, v17, v18, v19, v20, v21, v22, v23,
+                    v24, v25, v26, v27, v28, v29, v30, v31,
+                }
+            },
+        }
+    }
+}
