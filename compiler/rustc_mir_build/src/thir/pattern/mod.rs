@@ -21,7 +21,7 @@ use rustc_middle::mir::UserTypeProjection;
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
-use rustc_middle::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 
 use std::cmp::Ordering;
@@ -545,6 +545,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 hir::ExprKind::ConstBlock(ref anon_const) => {
                     let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
                     let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                    if matches!(value.val, ConstKind::Param(_)) {
+                        let span = self.tcx.hir().span(anon_const.hir_id);
+                        self.errors.push(PatternError::ConstParamInPattern(span));
+                        return PatKind::Wild;
+                    }
                     return *self.const_to_pat(value, expr.hir_id, expr.span, false).kind;
                 }
                 hir::ExprKind::Lit(ref lit) => (lit, false),
