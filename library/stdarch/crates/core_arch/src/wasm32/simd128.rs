@@ -2426,7 +2426,7 @@ pub fn i8x16_popcnt(v: v128) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub use i8x16_popcnt as u8x16_popcnt;
 
-/// Returns true if all lanes are nonzero or false if any lane is nonzero.
+/// Returns true if all lanes are non-zero, false otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.all_true))]
 #[target_feature(enable = "simd128")]
@@ -2720,7 +2720,7 @@ pub fn i16x8_q15mulr_sat(a: v128, b: v128) -> v128 {
     unsafe { llvm_q15mulr(a.as_i16x8(), b.as_i16x8()).v128() }
 }
 
-/// Returns 1 if all lanes are nonzero or 0 if any lane is nonzero.
+/// Returns true if all lanes are non-zero, false otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.all_true))]
 #[target_feature(enable = "simd128")]
@@ -3150,7 +3150,7 @@ pub fn i32x4_neg(a: v128) -> v128 {
     unsafe { simd_mul(a.as_i32x4(), simd::i32x4::splat(-1)).v128() }
 }
 
-/// Returns 1 if all lanes are nonzero or 0 if any lane is nonzero.
+/// Returns true if all lanes are non-zero, false otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.all_true))]
 #[target_feature(enable = "simd128")]
@@ -3484,7 +3484,7 @@ pub fn i64x2_neg(a: v128) -> v128 {
     unsafe { simd_mul(a.as_i64x2(), simd::i64x2::splat(-1)).v128() }
 }
 
-/// Returns 1 if all lanes are nonzero or 0 if any lane is nonzero.
+/// Returns true if all lanes are non-zero, false otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.all_true))]
 #[target_feature(enable = "simd128")]
