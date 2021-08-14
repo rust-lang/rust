@@ -39,7 +39,7 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
     let op_kind = assign_expr.op_kind()?;
-    if op_kind != ast::BinOp::Assignment {
+    if op_kind != (ast::BinaryOp::Assignment { op: None }) {
         cov_mark::hit!(test_cant_pull_non_assignments);
         return None;
     }
@@ -143,7 +143,7 @@ impl<'a> AssignmentsCollector<'a> {
     }
 
     fn collect_expr(&mut self, expr: &ast::BinExpr) -> Option<()> {
-        if expr.op_kind()? == ast::BinOp::Assignment
+        if expr.op_kind()? == (ast::BinaryOp::Assignment { op: None })
             && is_equivalent(self.sema, &expr.lhs()?, &self.common_lhs)
         {
             self.assignments.push((expr.clone(), expr.rhs()?));

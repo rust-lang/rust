@@ -1,4 +1,4 @@
-use syntax::ast::{AstNode, BinExpr, BinOp};
+use syntax::ast::{self, AstNode, BinExpr};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -56,14 +56,19 @@ enum FlipAction {
     DontFlip,
 }
 
-impl From<BinOp> for FlipAction {
-    fn from(op_kind: BinOp) -> Self {
+impl From<ast::BinaryOp> for FlipAction {
+    fn from(op_kind: ast::BinaryOp) -> Self {
         match op_kind {
-            kind if kind.is_assignment() => FlipAction::DontFlip,
-            BinOp::GreaterTest => FlipAction::FlipAndReplaceOp("<"),
-            BinOp::GreaterEqualTest => FlipAction::FlipAndReplaceOp("<="),
-            BinOp::LesserTest => FlipAction::FlipAndReplaceOp(">"),
-            BinOp::LesserEqualTest => FlipAction::FlipAndReplaceOp(">="),
+            ast::BinaryOp::Assignment { .. } => FlipAction::DontFlip,
+            ast::BinaryOp::CmpOp(ast::CmpOp::Ord { ordering, strict }) => {
+                let rev_op = match (ordering, strict) {
+                    (ast::Ordering::Less, true) => ">",
+                    (ast::Ordering::Less, false) => ">=",
+                    (ast::Ordering::Greater, true) => "<",
+                    (ast::Ordering::Greater, false) => "<=",
+                };
+                FlipAction::FlipAndReplaceOp(rev_op)
+            }
             _ => FlipAction::Flip,
         }
     }

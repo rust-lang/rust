@@ -1,7 +1,7 @@
 //! This module contains functions to generate default trait impl function bodies where possible.
 
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner},
+    ast::{self, edit::AstNodeEdit, make, AstNode, BinaryOp, CmpOp, LogicOp, NameOwner},
     ted,
 };
 
@@ -325,7 +325,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
-            Some(expr) => Some(make::expr_op(ast::BinOp::BooleanAnd, expr, cmp)),
+            Some(expr) => Some(make::expr_bin_op(expr, BinaryOp::LogicOp(LogicOp::And), cmp)),
             None => Some(cmp),
         }
     }
@@ -362,7 +362,8 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let lhs = make::expr_call(make_discriminant()?, make::arg_list(Some(lhs_name.clone())));
             let rhs_name = make::expr_path(make::ext::ident_path("other"));
             let rhs = make::expr_call(make_discriminant()?, make::arg_list(Some(rhs_name.clone())));
-            let eq_check = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+            let eq_check =
+                make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
 
             let mut case_count = 0;
             let mut arms = vec![];
@@ -386,7 +387,11 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
                             let lhs = make::expr_path(make::ext::ident_path(l_name));
                             let rhs = make::expr_path(make::ext::ident_path(r_name));
-                            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                            let cmp = make::expr_bin_op(
+                                lhs,
+                                BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
+                                rhs,
+                            );
                             expr = gen_eq_chain(expr, cmp);
                         }
 
@@ -415,7 +420,11 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
                             let lhs = make::expr_path(make::ext::ident_path(&l_name));
                             let rhs = make::expr_path(make::ext::ident_path(&r_name));
-                            let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                            let cmp = make::expr_bin_op(
+                                lhs,
+                                BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
+                                rhs,
+                            );
                             expr = gen_eq_chain(expr, cmp);
                         }
 
@@ -455,7 +464,8 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     let lhs = make::expr_field(lhs, &field.name()?.to_string());
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &field.name()?.to_string());
-                    let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                    let cmp =
+                        make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
                     expr = gen_eq_chain(expr, cmp);
                 }
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
@@ -469,7 +479,8 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                     let lhs = make::expr_field(lhs, &idx);
                     let rhs = make::expr_path(make::ext::ident_path("other"));
                     let rhs = make::expr_field(rhs, &idx);
-                    let cmp = make::expr_op(ast::BinOp::EqualityTest, lhs, rhs);
+                    let cmp =
+                        make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
                     expr = gen_eq_chain(expr, cmp);
                 }
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))

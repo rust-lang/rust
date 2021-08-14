@@ -1,3 +1,9 @@
+//! Defines a bunch of data-less enums for unary and binary operators.
+//!
+//! Types here don't know about AST, this allows re-using them for both AST and
+//! HIR.
+use std::fmt;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RangeOp {
     /// `..`
@@ -8,11 +14,11 @@ pub enum RangeOp {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum UnaryOp {
-    /// The `*` operator for dereferencing
+    /// `*`
     Deref,
-    /// The `!` operator for logical inversion
+    /// `!`
     Not,
-    /// The `-` operator for negation
+    /// `-`
     Neg,
 }
 
@@ -56,47 +62,61 @@ pub enum ArithOp {
     BitAnd,
 }
 
-use crate::ast;
-impl From<ast::BinOp> for BinaryOp {
-    fn from(ast_op: ast::BinOp) -> Self {
-        match ast_op {
-            ast::BinOp::BooleanOr => BinaryOp::LogicOp(LogicOp::Or),
-            ast::BinOp::BooleanAnd => BinaryOp::LogicOp(LogicOp::And),
-            ast::BinOp::EqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
-            ast::BinOp::NegatedEqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: true }),
-            ast::BinOp::LesserEqualTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: false })
+impl fmt::Display for LogicOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let res = match self {
+            LogicOp::And => "&&",
+            LogicOp::Or => "||",
+        };
+        f.write_str(res)
+    }
+}
+
+impl fmt::Display for ArithOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let res = match self {
+            ArithOp::Add => "+",
+            ArithOp::Mul => "*",
+            ArithOp::Sub => "-",
+            ArithOp::Div => "/",
+            ArithOp::Rem => "%",
+            ArithOp::Shl => "<<",
+            ArithOp::Shr => ">>",
+            ArithOp::BitXor => "^",
+            ArithOp::BitOr => "|",
+            ArithOp::BitAnd => "&",
+        };
+        f.write_str(res)
+    }
+}
+
+impl fmt::Display for CmpOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let res = match self {
+            CmpOp::Eq { negated: false } => "==",
+            CmpOp::Eq { negated: true } => "!=",
+            CmpOp::Ord { ordering: Ordering::Less, strict: false } => "<=",
+            CmpOp::Ord { ordering: Ordering::Less, strict: true } => "<",
+            CmpOp::Ord { ordering: Ordering::Greater, strict: false } => ">=",
+            CmpOp::Ord { ordering: Ordering::Greater, strict: true } => ">",
+        };
+        f.write_str(res)
+    }
+}
+
+impl fmt::Display for BinaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BinaryOp::LogicOp(op) => fmt::Display::fmt(op, f),
+            BinaryOp::ArithOp(op) => fmt::Display::fmt(op, f),
+            BinaryOp::CmpOp(op) => fmt::Display::fmt(op, f),
+            BinaryOp::Assignment { op } => {
+                f.write_str("=")?;
+                if let Some(op) = op {
+                    fmt::Display::fmt(op, f)?;
+                }
+                Ok(())
             }
-            ast::BinOp::GreaterEqualTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: false })
-            }
-            ast::BinOp::LesserTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: true })
-            }
-            ast::BinOp::GreaterTest => {
-                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: true })
-            }
-            ast::BinOp::Addition => BinaryOp::ArithOp(ArithOp::Add),
-            ast::BinOp::Multiplication => BinaryOp::ArithOp(ArithOp::Mul),
-            ast::BinOp::Subtraction => BinaryOp::ArithOp(ArithOp::Sub),
-            ast::BinOp::Division => BinaryOp::ArithOp(ArithOp::Div),
-            ast::BinOp::Remainder => BinaryOp::ArithOp(ArithOp::Rem),
-            ast::BinOp::LeftShift => BinaryOp::ArithOp(ArithOp::Shl),
-            ast::BinOp::RightShift => BinaryOp::ArithOp(ArithOp::Shr),
-            ast::BinOp::BitwiseXor => BinaryOp::ArithOp(ArithOp::BitXor),
-            ast::BinOp::BitwiseOr => BinaryOp::ArithOp(ArithOp::BitOr),
-            ast::BinOp::BitwiseAnd => BinaryOp::ArithOp(ArithOp::BitAnd),
-            ast::BinOp::Assignment => BinaryOp::Assignment { op: None },
-            ast::BinOp::AddAssign => BinaryOp::Assignment { op: Some(ArithOp::Add) },
-            ast::BinOp::DivAssign => BinaryOp::Assignment { op: Some(ArithOp::Div) },
-            ast::BinOp::MulAssign => BinaryOp::Assignment { op: Some(ArithOp::Mul) },
-            ast::BinOp::RemAssign => BinaryOp::Assignment { op: Some(ArithOp::Rem) },
-            ast::BinOp::ShlAssign => BinaryOp::Assignment { op: Some(ArithOp::Shl) },
-            ast::BinOp::ShrAssign => BinaryOp::Assignment { op: Some(ArithOp::Shr) },
-            ast::BinOp::SubAssign => BinaryOp::Assignment { op: Some(ArithOp::Sub) },
-            ast::BinOp::BitOrAssign => BinaryOp::Assignment { op: Some(ArithOp::BitOr) },
-            ast::BinOp::BitAndAssign => BinaryOp::Assignment { op: Some(ArithOp::BitAnd) },
-            ast::BinOp::BitXorAssign => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
         }
     }
 }

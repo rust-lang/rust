@@ -210,12 +210,17 @@ pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
 fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => match bin.op_kind()? {
-            ast::BinOp::NegatedEqualityTest => bin.replace_op(T![==]).map(|it| it.into()),
-            ast::BinOp::EqualityTest => bin.replace_op(T![!=]).map(|it| it.into()),
-            ast::BinOp::LesserTest => bin.replace_op(T![>=]).map(|it| it.into()),
-            ast::BinOp::LesserEqualTest => bin.replace_op(T![>]).map(|it| it.into()),
-            ast::BinOp::GreaterTest => bin.replace_op(T![<=]).map(|it| it.into()),
-            ast::BinOp::GreaterEqualTest => bin.replace_op(T![<]).map(|it| it.into()),
+            ast::BinaryOp::CmpOp(op) => {
+                let rev_op = match op {
+                    ast::CmpOp::Eq { negated: false } => T![!=],
+                    ast::CmpOp::Eq { negated: true } => T![==],
+                    ast::CmpOp::Ord { ordering: ast::Ordering::Less, strict: true } => T![>=],
+                    ast::CmpOp::Ord { ordering: ast::Ordering::Less, strict: false } => T![>],
+                    ast::CmpOp::Ord { ordering: ast::Ordering::Greater, strict: true } => T![<=],
+                    ast::CmpOp::Ord { ordering: ast::Ordering::Greater, strict: false } => T![<],
+                };
+                bin.replace_op(rev_op).map(ast::Expr::from)
+            }
             // Parenthesize other expressions before prefixing `!`
             _ => Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
         },

@@ -27,8 +27,8 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
     expr::{
-        dummy_expr_id, Array, BinaryOp, BindingAnnotation, Expr, ExprId, Label, LabelId, Literal,
-        MatchArm, MatchGuard, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, Array, BindingAnnotation, Expr, ExprId, Label, LabelId, Literal, MatchArm,
+        MatchGuard, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     intern::Interned,
     item_scope::BuiltinShadowMode,
@@ -508,7 +508,7 @@ impl ExprCollector<'_> {
             ast::Expr::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
                 let rhs = self.collect_expr_opt(e.rhs());
-                let op = e.op_kind().map(BinaryOp::from);
+                let op = e.op_kind();
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {

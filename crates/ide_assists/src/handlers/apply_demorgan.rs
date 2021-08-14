@@ -26,7 +26,13 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
-    let opposite_op = opposite_logic_op(op)?;
+
+    let opposite_op = match op {
+        ast::BinaryOp::LogicOp(ast::LogicOp::And) => "||",
+        ast::BinaryOp::LogicOp(ast::LogicOp::Or) => "&&",
+        _ => return None,
+    };
+
     let cursor_in_range = op_range.contains_range(ctx.frange.range);
     if !cursor_in_range {
         return None;
@@ -134,15 +140,6 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             }
         },
     )
-}
-
-// Return the opposite text for a given logical operator, if it makes sense
-fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
-    match kind {
-        ast::BinOp::BooleanOr => Some("&&"),
-        ast::BinOp::BooleanAnd => Some("||"),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
