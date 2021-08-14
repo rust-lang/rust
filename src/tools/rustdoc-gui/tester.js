@@ -197,21 +197,28 @@ async function main(argv) {
     }
     status_bar.finish();
 
-    if (debug === false) {
+    if (debug) {
         results.successful.sort(by_filename);
         results.successful.forEach(r => {
             console.log(r.output);
         });
     }
-    results.failed.sort(by_filename);
-    results.failed.forEach(r => {
-        console.log(r.output);
-    });
-    // print run errors on the bottom so developers see them better
-    results.errored.sort(by_filename);
-    results.errored.forEach(r => {
-        console.error(r.output);
-    });
+
+    if (results.failed.length > 0) {
+        console.log("");
+        results.failed.sort(by_filename);
+        results.failed.forEach(r => {
+            console.log(r.output);
+        });
+    }
+    if (results.errored.length > 0) {
+        console.log(os.EOL);
+        // print run errors on the bottom so developers see them better
+        results.errored.sort(by_filename);
+        results.errored.forEach(r => {
+            console.error(r.output);
+        });
+    }
 
     if (failed) {
         process.exit(1);
