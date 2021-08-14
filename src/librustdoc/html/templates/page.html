@@ -31,12 +31,12 @@
     {%- if layout.favicon -%}
         <link rel="shortcut icon" href="{{layout.favicon}}"> {#- -#}
     {%- else -%}
-        <link rel="icon" type="image/svg+xml" {# -#}
-            href="{{static_root_path | safe}}favicon{{page.resource_suffix}}.svg"> {#- -#}
         <link rel="alternate icon" type="image/png" {# -#}
             href="{{static_root_path | safe}}favicon-16x16{{page.resource_suffix}}.png"> {#- -#}
         <link rel="alternate icon" type="image/png" {# -#}
             href="{{static_root_path | safe}}favicon-32x32{{page.resource_suffix}}.png"> {#- -#}
+        <link rel="icon" type="image/svg+xml" {# -#}
+            href="{{static_root_path | safe}}favicon{{page.resource_suffix}}.svg"> {#- -#}
     {%- endif -%}
     {{- layout.external_html.in_header | safe -}}
     <style type="text/css"> {#- -#}
