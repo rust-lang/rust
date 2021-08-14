@@ -5,7 +5,7 @@ use rowan::WalkEvent;
 use crate::{
     ast::{
         self,
-        operators::{PrefixOp, RangeOp},
+        operators::{RangeOp, UnaryOp},
         support, AstChildren, AstNode,
     },
     AstToken,
@@ -198,11 +198,11 @@ impl ast::IfExpr {
 }
 
 impl ast::PrefixExpr {
-    pub fn op_kind(&self) -> Option<PrefixOp> {
+    pub fn op_kind(&self) -> Option<UnaryOp> {
         let res = match self.op_token()?.kind() {
-            T![*] => PrefixOp::Deref,
-            T![!] => PrefixOp::Not,
-            T![-] => PrefixOp::Neg,
+            T![*] => UnaryOp::Deref,
+            T![!] => UnaryOp::Not,
+            T![-] => UnaryOp::Neg,
             _ => return None,
         };
         Some(res)

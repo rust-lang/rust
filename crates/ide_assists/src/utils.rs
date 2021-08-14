@@ -233,7 +233,7 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
             };
             Some(make::expr_method_call(receiver, make::name_ref(method), arg_list))
         }
-        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::PrefixOp::Not => {
+        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => {
             if let ast::Expr::ParenExpr(parexpr) = pe.expr()? {
                 parexpr.expr()
             } else {

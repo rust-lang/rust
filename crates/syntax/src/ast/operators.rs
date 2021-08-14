@@ -1,5 +1,5 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum PrefixOp {
+pub enum UnaryOp {
     /// The `*` operator for dereferencing
     Deref,
     /// The `!` operator for logical inversion

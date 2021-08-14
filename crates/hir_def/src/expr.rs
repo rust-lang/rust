@@ -219,7 +219,7 @@ pub enum ArithOp {
     BitAnd,
 }
 
-pub use syntax::ast::PrefixOp as UnaryOp;
+pub use syntax::ast::UnaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
     ElementList(Vec<ExprId>),

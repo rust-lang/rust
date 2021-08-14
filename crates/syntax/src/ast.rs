@@ -24,7 +24,7 @@ pub use self::{
         AttrKind, AttrsOwnerNode, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind,
         SelfParamKind, SlicePatComponents, StructKind, TypeBoundKind, VisibilityKind,
     },
-    operators::{PrefixOp, RangeOp},
+    operators::{RangeOp, UnaryOp},
     token_ext::{
         CommentKind, CommentPlacement, CommentShape, HasFormatSpecifier, IsString, QuoteOffsets,
         Radix,

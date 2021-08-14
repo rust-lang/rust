@@ -85,7 +85,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                 .and_then(|paren_expr| paren_expr.syntax().parent())
                 .and_then(ast::PrefixExpr::cast)
                 .and_then(|prefix_expr| {
-                    if prefix_expr.op_kind().unwrap() == ast::PrefixOp::Not {
+                    if prefix_expr.op_kind().unwrap() == ast::UnaryOp::Not {
                         Some(prefix_expr)
                     } else {
                         None

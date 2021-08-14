@@ -110,7 +110,7 @@ pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>)
             }
             ast::Expr::ParenExpr(inner) => next_expr = inner.expr(),
             ast::Expr::TryExpr(inner) => next_expr = inner.expr(),
-            ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::PrefixOp::Deref) => {
+            ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::UnaryOp::Deref) => {
                 next_expr = prefix.expr()
             }
             _ => break,
