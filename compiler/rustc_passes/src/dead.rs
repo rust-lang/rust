@@ -15,6 +15,7 @@ use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
+use std::mem;
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -395,8 +396,14 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        // When inline const blocks are used in pattern position, paths
+        // referenced by it should be considered as used.
+        let in_pat = mem::replace(&mut self.in_pat, false);
+
         self.live_symbols.insert(self.tcx.hir().local_def_id(c.hir_id));
         intravisit::walk_anon_const(self, c);
+
+        self.in_pat = in_pat;
     }
 }
 
