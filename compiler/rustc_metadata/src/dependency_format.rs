@@ -55,14 +55,16 @@ use crate::creader::CStore;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_middle::middle::cstore::CrateDepKind;
 use rustc_middle::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
+use rustc_middle::middle::cstore::{CrateDepKind, CrateSource};
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_target::spec::PanicStrategy;
 
 type RevDeps = FxHashMap<(CrateNum, LinkagePreference), Vec<CrateNum>>;
+
+use rustc_data_structures::sync::Lrc;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
@@ -135,7 +137,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                 if tcx.dep_kind(cnum).macros_only() {
                     continue;
                 }
-                let src = tcx.used_crate_source(cnum);
+                let src: Lrc<CrateSource> = tcx.used_crate_source(cnum);
                 if src.rlib.is_some() {
                     continue;
                 }
@@ -160,7 +162,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             continue;
         }
         let name = tcx.crate_name(cnum);
-        let src = tcx.used_crate_source(cnum);
+        let src: Lrc<CrateSource> = tcx.used_crate_source(cnum);
         if src.dylib.is_some() {
             tracing::info!("calculate_type {} adding dylib: {}", tcx.crate_name(LOCAL_CRATE), name);
             add_library(tcx, cnum, RequireDynamic, &mut formats, &mut rev_deps, LOCAL_CRATE);
@@ -194,7 +196,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // If the crate hasn't been included yet and it's not actually required
     // (e.g., it's an allocator) then we skip it here as well.
     for &cnum in tcx.crates(()).iter() {
-        let src = tcx.used_crate_source(cnum);
+        let src: Lrc<CrateSource> = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
             && tcx.dep_kind(cnum) == CrateDepKind::Explicit
@@ -224,7 +226,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // making sure that everything is available in the requested format.
     for (cnum, kind) in ret.iter().enumerate() {
         let cnum = CrateNum::new(cnum + 1);
-        let src = tcx.used_crate_source(cnum);
+        let src: Lrc<CrateSource> = tcx.used_crate_source(cnum);
         match *kind {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static if src.rlib.is_some() => continue,
