@@ -7,9 +7,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_span;
-use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -73,12 +73,30 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
         let span = krate.module().inner;
-        let top_level_module = self.visit_mod_contents(
+        let mut top_level_module = self.visit_mod_contents(
             &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.module(),
             self.cx.tcx.crate_name(LOCAL_CRATE),
         );
+
+        // `#[macro_export] macro_rules!` items are reexported at the top level of the
+        // crate, regardless of where they're defined. We want to document the
+        // top level rexport of the macro, not its original definition, since
+        // the rexport defines the path that a user will actually see. Accordingly,
+        // we add the rexport as an item here, and then skip over the original
+        // definition in `visit_item()` below.
+        for export in self.cx.tcx.module_exports(CRATE_DEF_ID).unwrap_or(&[]) {
+            if let Res::Def(DefKind::Macro(_), def_id) = export.res {
+                if let Some(local_def_id) = def_id.as_local() {
+                    if self.cx.tcx.has_attr(def_id, sym::macro_export) {
+                        let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                        let item = self.cx.tcx.hir().expect_item(hir_id);
+                        top_level_module.items.push((item, None));
+                    }
+                }
+            }
+        }
 
         self.cx.cache.exact_paths = self.exact_paths;
         top_level_module
@@ -210,11 +228,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
 
-        let is_pub = if let hir::ItemKind::Macro { is_exported: true, .. } = item.kind {
-            true
-        } else {
-            item.vis.node.is_pub()
-        };
+        let is_pub = self.cx.tcx.visibility(item.def_id) == Visibility::Public;
 
         if is_pub {
             self.store_path(item.def_id.to_def_id());
@@ -269,8 +283,27 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(&item.vis, item.hir_id(), m, name));
             }
+            hir::ItemKind::Macro { ref macro_def, .. } => {
+                // `#[macro_export] macro_rules!` items are handled seperately in `visit()`,
+                // above, since they need to be documented at the module top level. Accordingly,
+                // we only want to handle macros if one of three conditions holds:
+                //
+                // 1. This macro was defined by `macro`, and thus isn't covered by the case
+                //    above.
+                // 2. This macro isn't marked with `#[macro_export]`, and thus isn't covered
+                //    by the case above.
+                // 3. We're inlining, since a reexport where inlining has been requested
+                //    should be inlined even if it is also documented at the top level.
+
+                let def_id = item.def_id.to_def_id();
+                let is_macro_2_0 = !macro_def.ast.macro_rules;
+                let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
+
+                if is_macro_2_0 || nonexported || self.inlining {
+                    om.items.push((item, renamed));
+                }
+            }
             hir::ItemKind::Fn(..)
-            | hir::ItemKind::Macro { .. }
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)

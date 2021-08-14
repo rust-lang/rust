@@ -1171,10 +1171,17 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
-        let name = if let hir::ItemKind::Impl(impl_) = &item.kind {
-            rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
-        } else {
-            item.ident.to_string()
+        let name = match &item.kind {
+            hir::ItemKind::Macro { is_exported: false, .. } => {
+                // FIXME(#88038): Non exported macros have historically not been tested,
+                // but we really ought to start testing them.
+                intravisit::walk_item(self, item);
+                return;
+            }
+            hir::ItemKind::Impl(impl_) => {
+                rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
+            }
+            _ => item.ident.to_string(),
         };
 
         self.visit_testable(name, item.hir_id(), item.span, |this| {
@@ -1215,15 +1222,6 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         self.visit_testable(f.ident.to_string(), f.hir_id, f.span, |this| {
             intravisit::walk_field_def(this, f);
         });
-    }
-
-    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
-        self.visit_testable(
-            macro_def.ident.to_string(),
-            macro_def.hir_id(),
-            macro_def.span,
-            |_| (),
-        );
     }
 }
 
