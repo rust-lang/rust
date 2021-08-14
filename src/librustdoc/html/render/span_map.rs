@@ -1,4 +1,4 @@
-use crate::clean;
+use crate::clean::{self, PrimitiveType};
 use crate::html::sources;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 crate enum LinkFromSrc {
     Local(clean::Span),
     External(DefId),
+    Primitive(PrimitiveType),
 }
 
 /// This function will do at most two things:
@@ -73,17 +74,20 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 Some(def_id)
             }
             Res::Local(_) => None,
+            Res::PrimTy(p) => {
+                // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
+                let span = path_span.unwrap_or(path.span);
+                self.matches.insert(span, LinkFromSrc::Primitive(PrimitiveType::from(p)));
+                return;
+            }
             Res::Err => return,
             _ => return,
         };
         if let Some(span) = self.tcx.hir().res_span(path.res) {
-            self.matches.insert(
-                path_span.unwrap_or_else(|| path.span),
-                LinkFromSrc::Local(clean::Span::new(span)),
-            );
-        } else if let Some(def_id) = info {
             self.matches
-                .insert(path_span.unwrap_or_else(|| path.span), LinkFromSrc::External(def_id));
+                .insert(path_span.unwrap_or(path.span), LinkFromSrc::Local(clean::Span::new(span)));
+        } else if let Some(def_id) = info {
+            self.matches.insert(path_span.unwrap_or(path.span), LinkFromSrc::External(def_id));
         }
     }
 }
