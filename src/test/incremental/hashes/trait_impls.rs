@@ -62,7 +62,7 @@ impl ChangeMethodBodyTrait for Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeMethodBodyTrait for Foo {
-    #[rustc_clean(except="hir_owner_nodes,typeck,optimized_mir", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner_nodes,typeck", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn method_name() {
         ()
