@@ -13,7 +13,9 @@ use crate::{
         make, GenericParamsOwner,
     },
     ted::{self, Position},
-    AstNode, AstToken, Direction, SyntaxNode,
+    AstNode, AstToken, Direction,
+    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
+    SyntaxNode,
 };
 
 use super::NameOwner;
@@ -195,6 +197,32 @@ fn create_generic_param_list(position: Position) -> ast::GenericParamList {
     ted::insert_raw(position, gpl.syntax());
     gpl
 }
+
+pub trait AttrsOwnerEdit: ast::AttrsOwner + AstNodeEdit {
+    fn remove_attrs_and_docs(&self) {
+        remove_attrs_and_docs(self.syntax());
+
+        fn remove_attrs_and_docs(node: &SyntaxNode) {
+            let mut remove_next_ws = false;
+            for child in node.children_with_tokens() {
+                match child.kind() {
+                    ATTR | COMMENT => {
+                        remove_next_ws = true;
+                        child.detach();
+                        continue;
+                    }
+                    WHITESPACE if remove_next_ws => {
+                        child.detach();
+                    }
+                    _ => (),
+                }
+                remove_next_ws = false;
+            }
+        }
+    }
+}
+
+impl<T: ast::AttrsOwner + AstNodeEdit> AttrsOwnerEdit for T {}
 
 impl ast::GenericParamList {
     pub fn add_generic_param(&self, generic_param: ast::GenericParam) {

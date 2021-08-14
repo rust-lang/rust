@@ -6,9 +6,7 @@ use std::{fmt, iter, ops};
 use crate::{
     algo,
     ast::{self, make, AstNode},
-    ted, AstToken, NodeOrToken, SyntaxElement,
-    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode, SyntaxToken,
+    ted, AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
 
 impl ast::UseTree {
@@ -45,28 +43,6 @@ impl ast::UseTree {
             }
             Some(res)
         }
-    }
-}
-
-pub fn remove_attrs_and_docs<N: ast::AttrsOwner>(node: &N) {
-    remove_attrs_and_docs_inner(node.syntax())
-}
-
-fn remove_attrs_and_docs_inner(node: &SyntaxNode) {
-    let mut remove_next_ws = false;
-    for child in node.children_with_tokens() {
-        match child.kind() {
-            ATTR | COMMENT => {
-                remove_next_ws = true;
-                child.detach();
-                continue;
-            }
-            WHITESPACE if remove_next_ws => {
-                child.detach();
-            }
-            _ => (),
-        }
-        remove_next_ws = false;
     }
 }
 
