@@ -7,10 +7,10 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
-use rustc_session::lint;
+use rustc_session::lint::{self, BuiltinLintDiagnostics};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{InnerSpan, Span};
+use rustc_span::{InnerSpan, MultiSpan, Span};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 
@@ -397,7 +397,11 @@ fn parse_reg<'a>(
     Ok(result)
 }
 
-fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::InlineAsm> {
+fn expand_preparsed_asm(
+    ecx: &mut ExtCtxt<'_>,
+    args: AsmArgs,
+    is_local_asm: bool,
+) -> Option<ast::InlineAsm> {
     let mut template = vec![];
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
@@ -465,6 +469,72 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
                     "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
+                );
+            }
+        }
+
+        // Lint against the use of named labels in inline `asm!` but not `global_asm!`
+        if is_local_asm {
+            let find_label_span = |needle: &str| -> Option<Span> {
+                if let Some(snippet) = &template_snippet {
+                    if let Some(pos) = snippet.find(needle) {
+                        let end = pos
+                            + &snippet[pos..]
+                                .find(|c| c == ':')
+                                .unwrap_or(snippet[pos..].len() - 1);
+                        let inner = InnerSpan::new(pos, end);
+                        return Some(template_sp.from_inner(inner));
+                    }
+                }
+
+                None
+            };
+
+            let mut found_labels = Vec::new();
+
+            // A semicolon might not actually be specified as a separator for all targets, but it seems like LLVM accepts it always
+            let statements = template_str.split(|c| matches!(c, '\n' | ';'));
+            for statement in statements {
+                // If there's a comment, trim it from the statement
+                let statement = statement.find("//").map_or(statement, |idx| &statement[..idx]);
+                let mut start_idx = 0;
+                for (idx, _) in statement.match_indices(':') {
+                    let possible_label = statement[start_idx..idx].trim();
+                    let mut chars = possible_label.chars();
+                    if let Some(c) = chars.next() {
+                        // A label starts with an alphabetic character or . or _ and continues with alphanumeric characters, _, or $
+                        if (c.is_alphabetic() || matches!(c, '.' | '_'))
+                            && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '$'))
+                        {
+                            found_labels.push(possible_label);
+                        } else {
+                            // If we encounter a non-label, there cannot be any further labels, so stop checking
+                            break;
+                        }
+                    } else {
+                        // Empty string means a leading ':' in this section, which is not a label
+                        break;
+                    }
+
+                    start_idx = idx + 1;
+                }
+            }
+
+            if found_labels.len() > 0 {
+                let spans =
+                    found_labels.into_iter().filter_map(find_label_span).collect::<Vec<Span>>();
+                // If there were labels but we couldn't find a span, combine the warnings and use the template span
+                let target_spans: MultiSpan =
+                    if spans.len() > 0 { spans.into() } else { template_sp.into() };
+                ecx.parse_sess().buffer_lint_with_diagnostic(
+                    lint::builtin::NAMED_ASM_LABELS,
+                    target_spans,
+                    ecx.current_expansion.lint_node_id,
+                    "avoid using named labels in inline assembly",
+                    BuiltinLintDiagnostics::NamedAsmLabel(
+                        "only local labels of the form `<number>:` should be used in inline asm"
+                            .to_string(),
+                    ),
                 );
             }
         }
@@ -670,7 +740,7 @@ pub fn expand_asm<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     match parse_args(ecx, sp, tts, false) {
         Ok(args) => {
-            let expr = if let Some(inline_asm) = expand_preparsed_asm(ecx, args) {
+            let expr = if let Some(inline_asm) = expand_preparsed_asm(ecx, args, true) {
                 P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::InlineAsm(P(inline_asm)),
@@ -697,7 +767,7 @@ pub fn expand_global_asm<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     match parse_args(ecx, sp, tts, true) {
         Ok(args) => {
-            if let Some(inline_asm) = expand_preparsed_asm(ecx, args) {
+            if let Some(inline_asm) = expand_preparsed_asm(ecx, args, false) {
                 MacEager::items(smallvec![P(ast::Item {
                     ident: Ident::invalid(),
                     attrs: Vec::new(),

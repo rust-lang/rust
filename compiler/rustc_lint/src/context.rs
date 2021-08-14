@@ -758,6 +758,10 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable
                     );
                 }
+                BuiltinLintDiagnostics::NamedAsmLabel(help) => {
+                    db.help(&help);
+                    db.note("see the asm section of the unstable book <https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#labels> for more information");
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

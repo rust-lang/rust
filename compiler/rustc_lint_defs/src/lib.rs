@@ -305,6 +305,7 @@ pub enum BuiltinLintDiagnostics {
     ReservedPrefix(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
+    NamedAsmLabel(String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
