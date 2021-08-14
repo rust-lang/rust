@@ -1,8 +1,8 @@
 error: unused logical operation that must be used
-  --> $DIR/issue-85913.rs:4:5
+  --> $DIR/issue-85913.rs:17:5
    |
-LL |     function() && return 1;
-   |     ^^^^^^^^^^^^^^^^^^^^^^ the logical operation produces a value
+LL |     is_missiles_ready() && fire_missiles();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the logical operation produces a value
    |
 note: the lint level is defined here
   --> $DIR/issue-85913.rs:1:9
@@ -11,8 +11,47 @@ LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 help: use `let _ = ...` to ignore the resulting value
    |
-LL |     let _ = function() && return 1;
+LL |     let _ = is_missiles_ready() && fire_missiles();
    |     +++++++
 
-error: aborting due to previous error
+error: unused logical operation that must be used
+  --> $DIR/issue-85913.rs:19:5
+   |
+LL |     !is_missiles_ready() || fire_missiles();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the logical operation produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = !is_missiles_ready() || fire_missiles();
+   |     +++++++
+
+error: unused logical operation that must be used
+  --> $DIR/issue-85913.rs:28:5
+   |
+LL |     !is_missiles_ready() || fire_missiles() && panic!("booom");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the logical operation produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = !is_missiles_ready() || fire_missiles() && panic!("booom");
+   |     +++++++
+
+error: unused logical operation that must be used
+  --> $DIR/issue-85913.rs:35:5
+   |
+LL | /     !is_missiles_ready() || {
+LL | |
+LL | |         if fire_missiles() {
+LL | |             panic!("booom");
+...  |
+LL | |         false
+LL | |     };
+   | |_____^ the logical operation produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = !is_missiles_ready() || {
+   |     +++++++
+
+error: aborting due to 4 previous errors
 

@@ -89,6 +89,59 @@ declare_lint! {
 }
 
 declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
+#[derive(Debug)]
+enum LogicPredicts {
+    Unknown,
+    True,
+    False,
+    Diverging,
+}
+
+fn is_never_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
+    if cx.typeck_results().expr_ty(e).is_never() {
+        return true;
+    }
+    match e.kind {
+        rustc_hir::ExprKind::Block(ref inner, _) => {
+            if let Some(ein) = inner.expr {
+                return is_never_expr(cx, ein);
+            }
+            return false;
+        }
+        _ => false,
+    }
+}
+
+fn predicte_logic_operation(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> LogicPredicts {
+    if is_never_expr(cx, e) {
+        return LogicPredicts::Diverging;
+    }
+    let result = match e.kind {
+        hir::ExprKind::Binary(bin_op, e1, e2) => match bin_op.node {
+            hir::BinOpKind::And => match predicte_logic_operation(cx, e1) {
+                LogicPredicts::False => LogicPredicts::False,
+                LogicPredicts::True => predicte_logic_operation(cx, e2),
+                LogicPredicts::Diverging => LogicPredicts::Diverging,
+                LogicPredicts::Unknown => match predicte_logic_operation(cx, e2) {
+                    LogicPredicts::Diverging | LogicPredicts::False => LogicPredicts::False,
+                    _ => LogicPredicts::Unknown,
+                },
+            },
+            hir::BinOpKind::Or => match predicte_logic_operation(cx, e1) {
+                LogicPredicts::True => LogicPredicts::True,
+                LogicPredicts::False => predicte_logic_operation(cx, e2),
+                LogicPredicts::Diverging => LogicPredicts::Diverging,
+                LogicPredicts::Unknown => match predicte_logic_operation(cx, e2) {
+                    LogicPredicts::Diverging | LogicPredicts::True => LogicPredicts::True,
+                    _ => LogicPredicts::Unknown,
+                },
+            },
+            _ => LogicPredicts::Unknown,
+        },
+        _ => LogicPredicts::Unknown,
+    };
+    result
+}
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
@@ -147,7 +200,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 | hir::BinOpKind::Div
                 | hir::BinOpKind::Mul
                 | hir::BinOpKind::Rem => Some("arithmetic operation"),
-                hir::BinOpKind::And | hir::BinOpKind::Or => Some("logical operation"),
+                hir::BinOpKind::And | hir::BinOpKind::Or => {
+                    match predicte_logic_operation(cx, expr) {
+                        LogicPredicts::Unknown => Some("logical operation"),
+                        _ => None,
+                    }
+                }
                 hir::BinOpKind::BitXor
                 | hir::BinOpKind::BitAnd
                 | hir::BinOpKind::BitOr
