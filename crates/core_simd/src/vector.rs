@@ -336,6 +336,11 @@ mod sealed {
 use sealed::Sealed;
 
 /// Marker trait for types that may be used as SIMD vector elements.
+/// SAFETY: This trait, when implemented, asserts the compiler can monomorphize
+/// `#[repr(simd)]` structs with the marked type as an element.
+/// Strictly, it is valid to impl if the vector will not be miscompiled.
+/// Practically, it is user-unfriendly to impl it if the vector won't compile,
+/// even when no soundness guarantees are broken by allowing the user to try.
 pub unsafe trait SimdElement: Sealed + Copy {
     /// The mask element type corresponding to this element type.
     type Mask: MaskElement;
