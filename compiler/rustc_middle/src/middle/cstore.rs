@@ -58,7 +58,7 @@ impl CrateDepKind {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable)]
+#[derive(Copy, Debug, PartialEq, Eq, Clone, Encodable, Decodable, Hash, HashStable)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,

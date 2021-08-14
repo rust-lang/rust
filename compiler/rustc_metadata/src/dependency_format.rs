@@ -54,13 +54,15 @@
 use crate::creader::CStore;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::CrateNum;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::cstore::CrateDepKind;
 use rustc_middle::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_target::spec::PanicStrategy;
+
+type RevDeps = FxHashMap<(CrateNum, LinkagePreference), Vec<CrateNum>>;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
@@ -148,6 +150,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     }
 
     let mut formats = FxHashMap::default();
+    let mut rev_deps: RevDeps = FxHashMap::default();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
@@ -159,12 +162,18 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let name = tcx.crate_name(cnum);
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_some() {
-            tracing::info!("adding dylib: {}", name);
-            add_library(tcx, cnum, RequireDynamic, &mut formats);
+            tracing::info!("calculate_type {} adding dylib: {}", tcx.crate_name(LOCAL_CRATE), name);
+            add_library(tcx, cnum, RequireDynamic, &mut formats, &mut rev_deps, LOCAL_CRATE);
             let deps = tcx.dylib_dependency_formats(cnum);
             for &(depnum, style) in deps.iter() {
-                tracing::info!("adding {:?}: {}", style, tcx.crate_name(depnum));
-                add_library(tcx, depnum, style, &mut formats);
+                tracing::info!(
+                    "calculate_type {} adding dep of {}, {:?}: {}",
+                    tcx.crate_name(LOCAL_CRATE),
+                    name,
+                    style,
+                    tcx.crate_name(depnum)
+                );
+                add_library(tcx, depnum, style, &mut formats, &mut rev_deps, cnum);
             }
         }
     }
@@ -192,7 +201,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
             tracing::info!("adding staticlib: {}", tcx.crate_name(cnum));
-            add_library(tcx, cnum, RequireStatic, &mut formats);
+            add_library(tcx, cnum, RequireStatic, &mut formats, &mut rev_deps, LOCAL_CRATE);
             ret[cnum.as_usize() - 1] = Linkage::Static;
         }
     }
@@ -243,7 +252,10 @@ fn add_library(
     cnum: CrateNum,
     link: LinkagePreference,
     m: &mut FxHashMap<CrateNum, LinkagePreference>,
+    rev_deps: &mut RevDeps,
+    parent_cnum: CrateNum,
 ) {
+    rev_deps.entry((cnum, link)).or_insert(Vec::new()).push(parent_cnum);
     match m.get(&cnum) {
         Some(&link2) => {
             // If the linkages differ, then we'd have two copies of the library
@@ -254,11 +266,44 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
+                let parent_names = |link| {
+                    let mut names = String::new();
+                    let mut saw_one = false;
+                    for name in rev_deps[&(cnum, link)].iter().map(|pcnum| tcx.crate_name(*pcnum)) {
+                        if saw_one {
+                            names.push_str(", ");
+                        }
+                        names.push_str(&format!("`{}`", name));
+                        saw_one = true;
+                    }
+                    names
+                };
+                let link_parent_names = parent_names(link);
+                let link2_parent_names = parent_names(link2);
+
+                let details = match (link2, link) {
+                    (RequireDynamic, RequireStatic) => format!(
+                        "previously required dynamic, via [{}], \
+                         and now also requires static, via [{}]",
+                        link2_parent_names, link_parent_names
+                    ),
+                    (RequireStatic, RequireDynamic) => format!(
+                        "previously required static, via [{}], \
+                         and now also requires dynamic, via [{}]",
+                        link2_parent_names, link_parent_names
+                    ),
+                    (RequireStatic, RequireStatic) => format!(
+                        "two static copies from multiple different locations, via [{}]",
+                        link_parent_names
+                    ),
+                    (RequireDynamic, RequireDynamic) => unreachable!("not a problem"),
+                };
                 tcx.sess
                     .struct_err(&format!(
                         "cannot satisfy dependencies so `{}` only \
-                                              shows up once",
-                        tcx.crate_name(cnum)
+                                              shows up once ({})",
+                        tcx.crate_name(cnum),
+                        details,
                     ))
                     .help(
                         "having upstream crates all available in one format \
