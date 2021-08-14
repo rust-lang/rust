@@ -8,7 +8,7 @@ use rustc_session::config::{build_configuration, build_session_options, to_crate
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{
-    Externs, OutputType, OutputTypes, SymbolManglingVersion, WasiExecModel,
+    Externs, OutputType, OutputTypes, PreferDynamicSet, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -582,7 +582,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(overflow_checks, Some(true));
     tracked!(panic, Some(PanicStrategy::Abort));
     tracked!(passes, vec![String::from("1"), String::from("2")]);
-    tracked!(prefer_dynamic, true);
+    tracked!(prefer_dynamic, PreferDynamicSet::every_crate());
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
@@ -590,6 +590,16 @@ fn test_codegen_options_tracking_hash() {
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
     tracked!(target_cpu, Some(String::from("abc")));
     tracked!(target_feature, String::from("all the features, all of them"));
+
+    // Check that changes to the ordering of input to `-C prefer-dynamic=crate,...`
+    // does not cause the dependency tracking hash to change.
+    {
+        let mut v1 = Options::default();
+        let mut v2 = Options::default();
+        v1.cg.prefer_dynamic = PreferDynamicSet::subset(["a", "b"].iter());
+        v2.cg.prefer_dynamic = PreferDynamicSet::subset(["b", "a"].iter());
+        assert_same_hash(&v1, &v2);
+    }
 }
 
 #[test]
