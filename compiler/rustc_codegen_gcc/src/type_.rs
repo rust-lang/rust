@@ -293,6 +293,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
         }
 
+        // NOTE: see note above. Some other test uses usize::MAX.
+        if len == u64::MAX {
+            len = 0;
+        }
+
         let len: i32 = len.try_into().expect("array len");
 
         self.context.new_array_type(None, ty, len)

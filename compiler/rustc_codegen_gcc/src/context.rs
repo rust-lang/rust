@@ -14,7 +14,6 @@ use gccjit::{
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
-    BaseTypeMethods,
     MiscMethods,
 };
 use rustc_data_structures::base_n;
@@ -349,12 +348,15 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 .unwrap().unwrap(),
             ),
             _ => {
-                let name = if wants_msvc_seh(self.sess()) {
+                let _name = if wants_msvc_seh(self.sess()) {
                     "__CxxFrameHandler3"
                 } else {
                     "rust_eh_personality"
                 };
-                self.declare_func(name, self.type_i32(), &[], true)
+                //let func = self.declare_func(name, self.type_i32(), &[], true);
+                // FIXME: this hack should not be needed. That will probably be removed when
+                // unwinding support is added.
+                self.context.new_rvalue_from_int(self.int_type, 0)
             }
         };
         //attributes::apply_target_cpu_attr(self, llfn);

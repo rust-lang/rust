@@ -25,6 +25,7 @@ use rustc_codegen_ssa::traits::{
     BuilderMethods,
     ConstMethods,
     DerivedTypeMethods,
+    LayoutTypeMethods,
     HasCodegen,
     OverflowOp,
     StaticBuilderMethods,
@@ -514,8 +515,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.expect("block").end_with_switch(None, value, default_block, &gcc_cases);
     }
 
-    fn invoke(&mut self, _func: RValue<'gcc>, _args: &[RValue<'gcc>], _then: Block<'gcc>, _catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        unimplemented!();
+    fn invoke(&mut self, _typ: Type<'gcc>, _func: RValue<'gcc>, _args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        let condition = self.context.new_rvalue_from_int(self.bool_type, 0);
+        self.llbb().end_with_conditional(None, condition, then, catch);
+        self.context.new_rvalue_from_int(self.int_type, 0)
+
+        // TODO
         /*debug!("invoke {:?} with args ({:?})", func, args);
 
         let args = self.check_call("invoke", func, args);
@@ -1001,9 +1006,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
             else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
                 let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+                let pair_type = place.layout.gcc_type(self, false);
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
-                    let llptr = self.struct_gep(place.llval, i as u64);
+                    let llptr = self.struct_gep(pair_type, place.llval, i as u64);
                     let load = self.load(llptr.get_type(), llptr, align);
                     scalar_load_metadata(self, load, scalar);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
@@ -1044,7 +1050,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(&mut body_bx, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(current.to_rvalue(), &[self.const_usize(1)]);
+        let next = body_bx.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
         body_bx.llbb().add_assignment(None, current, next);
         body_bx.br(header_bx.llbb());
 
@@ -1130,7 +1136,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .add_eval(None, self.context.new_call(None, atomic_store, &[ptr, value, ordering]));
     }
 
-    fn gep(&mut self, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+    fn gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
         let mut result = ptr;
         for index in indices {
             result = self.context.new_array_access(None, result, *index).get_address(None).to_rvalue();
@@ -1138,7 +1144,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         result
     }
 
-    fn inbounds_gep(&mut self, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
+    fn inbounds_gep(&mut self, _typ: Type<'gcc>, ptr: RValue<'gcc>, indices: &[RValue<'gcc>]) -> RValue<'gcc> {
         // FIXME: would be safer if doing the same thing (loop) as gep.
         // TODO: specify inbounds somehow.
         match indices.len() {
@@ -1153,11 +1159,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
     }
 
-    fn struct_gep(&mut self, ptr: RValue<'gcc>, idx: u64) -> RValue<'gcc> {
+    fn struct_gep(&mut self, value_type: Type<'gcc>, ptr: RValue<'gcc>, idx: u64) -> RValue<'gcc> {
         // FIXME: it would be better if the API only called this on struct, not on arrays.
         assert_eq!(idx as usize as u64, idx);
         let value = ptr.dereference(None).to_rvalue();
-        let value_type = value.get_type();
 
         if value_type.is_array().is_some() {
             let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
@@ -1449,14 +1454,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>, _num_clauses: usize) -> RValue<'gcc> {
-        unimplemented!();
+        let field1 = self.context.new_field(None, self.u8_type, "landing_pad_field_1");
+        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
+        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
+        self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
+            .to_rvalue()
+        // TODO
         /*unsafe {
             llvm::LLVMBuildLandingPad(self.llbuilder, ty, pers_fn, num_clauses as c_uint, UNNAMED)
         }*/
     }
 
     fn set_cleanup(&mut self, _landing_pad: RValue<'gcc>) {
-        unimplemented!();
+        // TODO
         /*unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }*/
@@ -1527,7 +1537,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
-        unimplemented!();
+        // TODO
         /*unsafe {
             llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }*/
@@ -1620,7 +1630,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         //self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
-    fn call(&mut self, func: RValue<'gcc>, args: &[RValue<'gcc>], funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn call(&mut self, _typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], funclet: Option<&Funclet>) -> RValue<'gcc> {
         // FIXME: remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute(func) };
         if self.functions.borrow().values().find(|value| **value == gcc_func).is_some() {
