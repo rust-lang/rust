@@ -14,7 +14,7 @@ extern crate rustc_macros;
 
 pub use emitter::ColorConfig;
 
-use tracing::debug;
+use tracing::{debug, info};
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
@@ -349,6 +349,7 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
+                info!(?buf, ?highlights);
                 Some((buf, substitution.parts, highlights, only_capitalization))
             })
             .collect()

@@ -1679,27 +1679,19 @@ impl EmitterWriter {
                 // Colorize addition/replacements with green.
                 for &SubstitutionHighlight { start, end } in highlight_parts {
                     // Account for tabs when highlighting (#87972).
-                    let start: usize = line
-                        .chars()
-                        .take(start)
-                        .map(|ch| match ch {
-                            '\t' => 4,
-                            _ => 1,
-                        })
-                        .sum();
-
-                    let end: usize = line
-                        .chars()
-                        .take(end)
-                        .map(|ch| match ch {
-                            '\t' => 4,
-                            _ => 1,
-                        })
-                        .sum();
+                    // let tabs: usize = line
+                    //     .chars()
+                    //     .take(start)
+                    //     .map(|ch| match ch {
+                    //         '\t' => 3,
+                    //         _ => 0,
+                    //     })
+                    //     .sum();
+                    let tabs = 0;
                     buffer.set_style_range(
                         row_num,
-                        max_line_num_len + 3 + start,
-                        max_line_num_len + 3 + end,
+                        max_line_num_len + 3 + start + tabs,
+                        max_line_num_len + 3 + end + tabs,
                         Style::Addition,
                         true,
                     );
