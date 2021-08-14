@@ -198,28 +198,28 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                bar();
-                if$0 true {
-                    foo();
+fn main() {
+    bar();
+    if$0 true {
+        foo();
 
-                    // comment
-                    bar();
-                }
-            }
-            "#,
+        // comment
+        bar();
+    }
+}
+"#,
             r#"
-            fn main() {
-                bar();
-                if false {
-                    return;
-                }
-                foo();
+fn main() {
+    bar();
+    if false {
+        return;
+    }
+    foo();
 
-                // comment
-                bar();
-            }
-            "#,
+    // comment
+    bar();
+}
+"#,
         );
     }
 
@@ -228,29 +228,29 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main(n: Option<String>) {
-                bar();
-                if$0 let Some(n) = n {
-                    foo(n);
+fn main(n: Option<String>) {
+    bar();
+    if$0 let Some(n) = n {
+        foo(n);
 
-                    // comment
-                    bar();
-                }
-            }
-            "#,
+        // comment
+        bar();
+    }
+}
+"#,
             r#"
-            fn main(n: Option<String>) {
-                bar();
-                let n = match n {
-                    Some(it) => it,
-                    _ => return,
-                };
-                foo(n);
+fn main(n: Option<String>) {
+    bar();
+    let n = match n {
+        Some(it) => it,
+        _ => return,
+    };
+    foo(n);
 
-                // comment
-                bar();
-            }
-            "#,
+    // comment
+    bar();
+}
+"#,
         );
     }
 
@@ -259,21 +259,21 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                if$0 let Ok(x) = Err(92) {
-                    foo(x);
-                }
-            }
-            "#,
+fn main() {
+    if$0 let Ok(x) = Err(92) {
+        foo(x);
+    }
+}
+"#,
             r#"
-            fn main() {
-                let x = match Err(92) {
-                    Ok(it) => it,
-                    _ => return,
-                };
-                foo(x);
-            }
-            "#,
+fn main() {
+    let x = match Err(92) {
+        Ok(it) => it,
+        _ => return,
+    };
+    foo(x);
+}
+"#,
         );
     }
 
@@ -282,29 +282,29 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main(n: Option<String>) {
-                bar();
-                if$0 let Some(n) = n {
-                    foo(n);
+fn main(n: Option<String>) {
+    bar();
+    if$0 let Some(n) = n {
+        foo(n);
 
-                    // comment
-                    bar();
-                }
-            }
-            "#,
+        // comment
+        bar();
+    }
+}
+"#,
             r#"
-            fn main(n: Option<String>) {
-                bar();
-                let n = match n {
-                    Some(it) => it,
-                    _ => return,
-                };
-                foo(n);
+fn main(n: Option<String>) {
+    bar();
+    let n = match n {
+        Some(it) => it,
+        _ => return,
+    };
+    foo(n);
 
-                // comment
-                bar();
-            }
-            "#,
+    // comment
+    bar();
+}
+"#,
         );
     }
 
@@ -313,29 +313,29 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main(n: Option<String>) {
-                bar();
-                if$0 let Some(mut n) = n {
-                    foo(n);
+fn main(n: Option<String>) {
+    bar();
+    if$0 let Some(mut n) = n {
+        foo(n);
 
-                    // comment
-                    bar();
-                }
-            }
-            "#,
+        // comment
+        bar();
+    }
+}
+"#,
             r#"
-            fn main(n: Option<String>) {
-                bar();
-                let mut n = match n {
-                    Some(it) => it,
-                    _ => return,
-                };
-                foo(n);
+fn main(n: Option<String>) {
+    bar();
+    let mut n = match n {
+        Some(it) => it,
+        _ => return,
+    };
+    foo(n);
 
-                // comment
-                bar();
-            }
-            "#,
+    // comment
+    bar();
+}
+"#,
         );
     }
 
@@ -344,29 +344,29 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main(n: Option<&str>) {
-                bar();
-                if$0 let Some(ref n) = n {
-                    foo(n);
+fn main(n: Option<&str>) {
+    bar();
+    if$0 let Some(ref n) = n {
+        foo(n);
 
-                    // comment
-                    bar();
-                }
-            }
-            "#,
+        // comment
+        bar();
+    }
+}
+"#,
             r#"
-            fn main(n: Option<&str>) {
-                bar();
-                let ref n = match n {
-                    Some(it) => it,
-                    _ => return,
-                };
-                foo(n);
+fn main(n: Option<&str>) {
+    bar();
+    let ref n = match n {
+        Some(it) => it,
+        _ => return,
+    };
+    foo(n);
 
-                // comment
-                bar();
-            }
-            "#,
+    // comment
+    bar();
+}
+"#,
         );
     }
 
@@ -375,26 +375,26 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                while true {
-                    if$0 true {
-                        foo();
-                        bar();
-                    }
-                }
-            }
-            "#,
+fn main() {
+    while true {
+        if$0 true {
+            foo();
+            bar();
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                while true {
-                    if false {
-                        continue;
-                    }
-                    foo();
-                    bar();
-                }
-            }
-            "#,
+fn main() {
+    while true {
+        if false {
+            continue;
+        }
+        foo();
+        bar();
+    }
+}
+"#,
         );
     }
 
@@ -403,27 +403,27 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                while true {
-                    if$0 let Some(n) = n {
-                        foo(n);
-                        bar();
-                    }
-                }
-            }
-            "#,
+fn main() {
+    while true {
+        if$0 let Some(n) = n {
+            foo(n);
+            bar();
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                while true {
-                    let n = match n {
-                        Some(it) => it,
-                        _ => continue,
-                    };
-                    foo(n);
-                    bar();
-                }
-            }
-            "#,
+fn main() {
+    while true {
+        let n = match n {
+            Some(it) => it,
+            _ => continue,
+        };
+        foo(n);
+        bar();
+    }
+}
+"#,
         );
     }
 
@@ -432,26 +432,26 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                loop {
-                    if$0 true {
-                        foo();
-                        bar();
-                    }
-                }
-            }
-            "#,
+fn main() {
+    loop {
+        if$0 true {
+            foo();
+            bar();
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                loop {
-                    if false {
-                        continue;
-                    }
-                    foo();
-                    bar();
-                }
-            }
-            "#,
+fn main() {
+    loop {
+        if false {
+            continue;
+        }
+        foo();
+        bar();
+    }
+}
+"#,
         );
     }
 
@@ -460,27 +460,27 @@ mod tests {
         check_assist(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                loop {
-                    if$0 let Some(n) = n {
-                        foo(n);
-                        bar();
-                    }
-                }
-            }
-            "#,
+fn main() {
+    loop {
+        if$0 let Some(n) = n {
+            foo(n);
+            bar();
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                loop {
-                    let n = match n {
-                        Some(it) => it,
-                        _ => continue,
-                    };
-                    foo(n);
-                    bar();
-                }
-            }
-            "#,
+fn main() {
+    loop {
+        let n = match n {
+            Some(it) => it,
+            _ => continue,
+        };
+        foo(n);
+        bar();
+    }
+}
+"#,
         );
     }
 
@@ -489,12 +489,12 @@ mod tests {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                if$0 true {
-                    return;
-                }
-            }
-            "#,
+fn main() {
+    if$0 true {
+        return;
+    }
+}
+"#,
         );
     }
 
@@ -503,14 +503,14 @@ mod tests {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                loop {
-                    if$0 true {
-                        continue;
-                    }
-                }
-            }
-            "#,
+fn main() {
+    loop {
+        if$0 true {
+            continue;
+        }
+    }
+}
+"#,
         );
     }
 
@@ -519,12 +519,12 @@ mod tests {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                if$0 true {
-                    return
-                }
-            }
-            "#,
+fn main() {
+    if$0 true {
+        return
+    }
+}
+"#,
         );
     }
 
@@ -533,14 +533,14 @@ mod tests {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                if$0 true {
-                    foo();
-                } else {
-                    bar()
-                }
-            }
-            "#,
+fn main() {
+    if$0 true {
+        foo();
+    } else {
+        bar()
+    }
+}
+"#,
         );
     }
 
@@ -549,13 +549,13 @@ mod tests {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                if$0 true {
-                    foo();
-                }
-                bar();
-            }
-            "#,
+fn main() {
+    if$0 true {
+        foo();
+    }
+    bar();
+}
+"#,
         );
     }
 
@@ -564,14 +564,14 @@ mod tests {
         check_assist_not_applicable(
             convert_to_guarded_return,
             r#"
-            fn main() {
-                if false {
-                    if$0 true {
-                        foo();
-                    }
-                }
-            }
-            "#,
+fn main() {
+    if false {
+        if$0 true {
+            foo();
+        }
+    }
+}
+"#,
         );
     }
 }
