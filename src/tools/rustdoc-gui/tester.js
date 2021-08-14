@@ -5,6 +5,7 @@
 // ```
 const fs = require("fs");
 const path = require("path");
+const os = require('os');
 const {Options, runTest} = require('browser-ui-test');
 
 function showHelp() {
@@ -78,7 +79,7 @@ function char_printer(n_tests) {
         successful: function() {
             current += 1;
             if (current % max_per_line === 0) {
-                process.stdout.write(`. (${current}/${n_tests})\n`);
+                process.stdout.write(`. (${current}/${n_tests})${os.EOL}`);
             } else {
                 process.stdout.write(".");
             }
@@ -86,10 +87,14 @@ function char_printer(n_tests) {
         erroneous: function() {
             current += 1;
             if (current % max_per_line === 0) {
-                process.stderr.write(`F (${current}/${n_tests})\n`);
+                process.stderr.write(`F (${current}/${n_tests})${os.EOL}`);
             } else {
                 process.stderr.write("F");
             }
+        },
+        finish: function() {
+            const spaces = " ".repeat(max_per_line - (current % max_per_line));
+            process.stdout.write(`${spaces} (${current}/${n_tests})${os.EOL}${os.EOL}`);
         },
     };
 }
@@ -187,9 +192,10 @@ async function main(argv) {
             await tests[i];
         }
     }
-    await Promise.all(tests);
-    // final \n after the tests
-    console.log("\n");
+    if (!no_headless) {
+        await Promise.all(tests);
+    }
+    status_bar.finish();
 
     if (debug === false) {
         results.successful.sort(by_filename);
