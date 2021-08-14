@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -26,44 +26,44 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
 }
 
 impl ItemLowerer<'_, '_, '_> {
-    fn with_trait_impl_ref<T>(
-        &mut self,
-        impl_ref: &Option<TraitRef>,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    fn with_trait_impl_ref(&mut self, impl_ref: &Option<TraitRef>, f: impl FnOnce(&mut Self)) {
         let old = self.lctx.is_in_trait_impl;
         self.lctx.is_in_trait_impl = impl_ref.is_some();
-        let ret = f(self);
+        f(self);
         self.lctx.is_in_trait_impl = old;
-        ret
     }
 }
 
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     fn visit_item(&mut self, item: &'a Item) {
-        let hir_item = self.lctx.with_hir_id_owner(item.id, |lctx| {
-            lctx.without_in_scope_lifetime_defs(|lctx| lctx.lower_item(item))
+        let mut item_hir_id = None;
+        self.lctx.with_hir_id_owner(item.id, |lctx| {
+            lctx.without_in_scope_lifetime_defs(|lctx| {
+                if let Some(hir_item) = lctx.lower_item(item) {
+                    let id = lctx.insert_item(hir_item);
+                    item_hir_id = Some(id);
+                }
+            })
         });
-        let force_top_level = self.lctx.check_force_top_level(item);
-        let hir_id = self.lctx.insert_item(hir_item, force_top_level);
 
-        let was_at_top_level = mem::replace(&mut self.lctx.is_at_top_level, false);
-        self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
-            let this = &mut ItemLowerer { lctx: this };
-            match item.kind {
-                ItemKind::Mod(..) => {
-                    let def_id = this.lctx.lower_node_id(item.id).expect_owner();
-                    let old_current_module = mem::replace(&mut this.lctx.current_module, def_id);
-                    visit::walk_item(this, item);
-                    this.lctx.current_module = old_current_module;
+        if let Some(hir_id) = item_hir_id {
+            self.lctx.with_parent_item_lifetime_defs(hir_id, |this| {
+                let this = &mut ItemLowerer { lctx: this };
+                match item.kind {
+                    ItemKind::Mod(..) => {
+                        let def_id = this.lctx.lower_node_id(item.id).expect_owner();
+                        let old_current_module =
+                            mem::replace(&mut this.lctx.current_module, def_id);
+                        visit::walk_item(this, item);
+                        this.lctx.current_module = old_current_module;
+                    }
+                    ItemKind::Impl(box ImplKind { ref of_trait, .. }) => {
+                        this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
+                    }
+                    _ => visit::walk_item(this, item),
                 }
-                ItemKind::Impl(box ImplKind { ref of_trait, .. }) => {
-                    this.with_trait_impl_ref(of_trait, |this| visit::walk_item(this, item));
-                }
-                _ => visit::walk_item(this, item),
-            }
-        });
-        self.lctx.is_at_top_level = was_at_top_level;
+            });
+        }
     }
 
     fn visit_fn(&mut self, fk: FnKind<'a>, sp: Span, _: NodeId) {
@@ -113,7 +113,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn with_parent_item_lifetime_defs<T>(
         &mut self,
         parent_hir_id: hir::ItemId,
-        f: impl FnOnce(&mut Self) -> T,
+        f: impl FnOnce(&mut LoweringContext<'_, '_>) -> T,
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
@@ -137,7 +137,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // Clears (and restores) the `in_scope_lifetimes` field. Used when
     // visiting nested items, which never inherit in-scope lifetimes
     // from their surrounding environment.
-    fn without_in_scope_lifetime_defs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn without_in_scope_lifetime_defs<T>(
+        &mut self,
+        f: impl FnOnce(&mut LoweringContext<'_, '_>) -> T,
+    ) -> T {
         let old_in_scope_lifetimes = mem::replace(&mut self.in_scope_lifetimes, vec![]);
 
         // this vector is only used when walking over impl headers,
@@ -154,23 +157,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_mod(&mut self, items: &[P<Item>], inner: Span) -> hir::Mod<'hir> {
-        let mut items: Vec<_> = items
-            .iter()
-            .filter_map(|x| {
-                if self.check_force_top_level(&x) { None } else { Some(self.lower_item_id(&x)) }
-            })
-            .flatten()
-            .collect();
-
-        if self.current_hir_id_owner.0 == CRATE_DEF_ID {
-            let top_level_items = self.top_level_items.clone();
-            for item in top_level_items {
-                let id = self.lower_item_id(&item)[0];
-                items.push(id);
-            }
+        hir::Mod {
+            inner,
+            item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_id(x))),
         }
-
-        hir::Mod { inner, item_ids: self.arena.alloc_from_iter(items.into_iter()) }
     }
 
     pub(super) fn lower_item_id(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
@@ -218,15 +208,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub fn lower_item(&mut self, i: &Item) -> hir::Item<'hir> {
-        let was_at_top_level = mem::replace(&mut self.is_at_top_level, false);
+    pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item<'hir>> {
         let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis, None);
         let hir_id = self.lower_node_id(i.id);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, &mut vis, &i.kind);
-        self.is_at_top_level = was_at_top_level;
-        hir::Item { def_id: hir_id.expect_owner(), ident, kind, vis, span: i.span }
+        Some(hir::Item { def_id: hir_id.expect_owner(), ident, kind, vis, span: i.span })
     }
 
     fn lower_item_kind(
@@ -297,8 +285,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Mod(_, ref mod_kind) => match mod_kind {
                 ModKind::Loaded(items, _, inner_span) => {
-                    let module = self.lower_mod(items, *inner_span);
-                    hir::ItemKind::Mod(module)
+                    hir::ItemKind::Mod(self.lower_mod(items, *inner_span))
                 }
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
             },
@@ -550,10 +537,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.attrs.insert(new_id, attrs);
                         }
 
-                        this.insert_item(
-                            hir::Item { def_id: new_id.expect_owner(), ident, kind, vis, span },
-                            false,
-                        );
+                        this.insert_item(hir::Item {
+                            def_id: new_id.expect_owner(),
+                            ident,
+                            kind,
+                            vis,
+                            span,
+                        });
                     });
                 }
 
@@ -621,16 +611,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.attrs.insert(new_hir_id, attrs);
                         }
 
-                        this.insert_item(
-                            hir::Item {
-                                def_id: new_hir_id.expect_owner(),
-                                ident,
-                                kind,
-                                vis,
-                                span: use_tree.span,
-                            },
-                            false,
-                        );
+                        this.insert_item(hir::Item {
+                            def_id: new_hir_id.expect_owner(),
+                            ident,
+                            kind,
+                            vis,
+                            span: use_tree.span,
+                        });
                     });
                 }
 
