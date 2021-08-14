@@ -1,11 +1,14 @@
 //! Completes constants and paths in patterns.
 
-use crate::{context::PatternRefutability, CompletionContext, Completions};
+use crate::{
+    context::{PatternContext, PatternRefutability},
+    CompletionContext, Completions,
+};
 
 /// Completes constants and paths in patterns.
 pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    let refutable = match ctx.is_pat_or_const {
-        Some(it) => it == PatternRefutability::Refutable,
+    let refutable = match ctx.pattern_ctx {
+        Some(PatternContext { refutability, .. }) => refutability == PatternRefutability::Refutable,
         None => return,
     };
 

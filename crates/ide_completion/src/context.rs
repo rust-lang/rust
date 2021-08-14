@@ -54,6 +54,12 @@ pub(crate) struct PathCompletionContext {
     pub(super) in_loop_body: bool,
 }
 
+#[derive(Debug)]
+pub(super) struct PatternContext {
+    pub(super) refutability: PatternRefutability,
+    pub(super) is_param: Option<ParamKind>,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum CallKind {
     Pat,
@@ -95,15 +101,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) lifetime_allowed: bool,
     pub(super) is_label_ref: bool,
 
-    // potentially set if we are completing a name
-    pub(super) is_pat_or_const: Option<PatternRefutability>,
-    pub(super) is_param: Option<ParamKind>,
-
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
     pub(super) attribute_under_caret: Option<ast::Attr>,
     pub(super) previous_token: Option<SyntaxToken>,
 
+    pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) path_context: Option<PathCompletionContext>,
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) locals: Vec<(String, Local)>,
@@ -163,8 +166,7 @@ impl<'a> CompletionContext<'a> {
             lifetime_param_syntax: None,
             lifetime_allowed: false,
             is_label_ref: false,
-            is_pat_or_const: None,
-            is_param: None,
+            pattern_ctx: None,
             completion_location: None,
             prev_sibling: None,
             attribute_under_caret: None,
@@ -642,50 +644,51 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name(&mut self, name: ast::Name) {
+        self.fill_impl_def();
+
         if let Some(bind_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
-            self.is_pat_or_const = Some(PatternRefutability::Refutable);
-            if !bind_pat.is_simple_ident() {
-                self.is_pat_or_const = None;
-            } else {
-                let irrefutable_pat = bind_pat.syntax().ancestors().find_map(|node| {
-                    match_ast! {
-                        match node {
-                            ast::LetStmt(it) => Some(it.pat()),
-                            ast::Param(it) => Some(it.pat()),
-                            _ => None,
-                        }
-                    }
-                });
-                if let Some(Some(pat)) = irrefutable_pat {
-                    // This check is here since we could be inside a pattern in the initializer expression of the let statement.
-                    if pat.syntax().text_range().contains_range(bind_pat.syntax().text_range()) {
-                        self.is_pat_or_const = Some(PatternRefutability::Irrefutable);
-                    }
-                }
-
-                let is_name_in_field_pat = bind_pat
-                    .syntax()
-                    .parent()
-                    .and_then(ast::RecordPatField::cast)
-                    .map_or(false, |pat_field| pat_field.name_ref().is_none());
-                if is_name_in_field_pat {
-                    self.is_pat_or_const = None;
-                }
+            let is_name_in_field_pat = bind_pat
+                .syntax()
+                .parent()
+                .and_then(ast::RecordPatField::cast)
+                .map_or(false, |pat_field| pat_field.name_ref().is_none());
+            if is_name_in_field_pat {
+                return;
             }
-
-            self.fill_impl_def();
-        }
-
-        if let Some(param) = name
-            .syntax()
-            .ancestors()
-            .find_map(ast::Param::cast)
-            .filter(|it| it.syntax().text_range() == name.syntax().text_range())
-        {
-            let is_closure_param =
-                param.syntax().ancestors().nth(2).and_then(ast::ClosureExpr::cast).is_some();
-            self.is_param =
-                Some(if is_closure_param { ParamKind::Closure } else { ParamKind::Function });
+            if bind_pat.is_simple_ident() {
+                let mut is_param = None;
+                let refutability = bind_pat
+                    .syntax()
+                    .ancestors()
+                    .skip_while(|it| ast::Pat::can_cast(it.kind()))
+                    .next()
+                    .map_or(PatternRefutability::Irrefutable, |node| {
+                        match_ast! {
+                            match node {
+                                ast::LetStmt(__) => PatternRefutability::Irrefutable,
+                                ast::Param(param) => {
+                                    let is_closure_param = param
+                                        .syntax()
+                                        .ancestors()
+                                        .nth(2)
+                                        .and_then(ast::ClosureExpr::cast)
+                                        .is_some();
+                                    is_param = Some(if is_closure_param {
+                                        ParamKind::Closure
+                                    } else {
+                                        ParamKind::Function
+                                    });
+                                    PatternRefutability::Irrefutable
+                                },
+                                ast::MatchArm(__) => PatternRefutability::Refutable,
+                                ast::Condition(__) => PatternRefutability::Refutable,
+                                ast::ForExpr(__) => PatternRefutability::Irrefutable,
+                                _ => PatternRefutability::Irrefutable,
+                            }
+                        }
+                    });
+                self.pattern_ctx = Some(PatternContext { refutability, is_param });
+            }
         }
     }
 
