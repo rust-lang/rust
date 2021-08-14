@@ -5,12 +5,8 @@ mod gen_trait_fn_body;
 
 use std::ops;
 
-use hir::{Adt, HasSource, Semantics};
-use ide_db::{
-    helpers::{FamousDefs, SnippetCap},
-    path_transform::PathTransform,
-    RootDatabase,
-};
+use hir::{Adt, HasSource};
+use ide_db::{helpers::SnippetCap, path_transform::PathTransform, RootDatabase};
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
@@ -207,31 +203,19 @@ pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
         .unwrap_or_else(|| node.text_range().start())
 }
 
-pub(crate) fn invert_boolean_expression(
-    sema: &Semantics<RootDatabase>,
-    expr: ast::Expr,
-) -> ast::Expr {
-    invert_special_case(sema, &expr).unwrap_or_else(|| make::expr_prefix(T![!], expr))
+pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
+    invert_special_case(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr))
 }
 
-fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<ast::Expr> {
+fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => match bin.op_kind()? {
             ast::BinOp::NegatedEqualityTest => bin.replace_op(T![==]).map(|it| it.into()),
             ast::BinOp::EqualityTest => bin.replace_op(T![!=]).map(|it| it.into()),
-            // Swap `<` with `>=`, `<=` with `>`, ... if operands `impl Ord`
-            ast::BinOp::LesserTest if bin_impls_ord(sema, bin) => {
-                bin.replace_op(T![>=]).map(|it| it.into())
-            }
-            ast::BinOp::LesserEqualTest if bin_impls_ord(sema, bin) => {
-                bin.replace_op(T![>]).map(|it| it.into())
-            }
-            ast::BinOp::GreaterTest if bin_impls_ord(sema, bin) => {
-                bin.replace_op(T![<=]).map(|it| it.into())
-            }
-            ast::BinOp::GreaterEqualTest if bin_impls_ord(sema, bin) => {
-                bin.replace_op(T![<]).map(|it| it.into())
-            }
+            ast::BinOp::LesserTest => bin.replace_op(T![>=]).map(|it| it.into()),
+            ast::BinOp::LesserEqualTest => bin.replace_op(T![>]).map(|it| it.into()),
+            ast::BinOp::GreaterTest => bin.replace_op(T![<=]).map(|it| it.into()),
+            ast::BinOp::GreaterEqualTest => bin.replace_op(T![<]).map(|it| it.into()),
             // Parenthesize other expressions before prefixing `!`
             _ => Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
         },
@@ -264,22 +248,6 @@ fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Opti
             _ => None,
         },
         _ => None,
-    }
-}
-
-fn bin_impls_ord(sema: &Semantics<RootDatabase>, bin: &ast::BinExpr) -> bool {
-    match (
-        bin.lhs().and_then(|lhs| sema.type_of_expr(&lhs)).map(hir::TypeInfo::adjusted),
-        bin.rhs().and_then(|rhs| sema.type_of_expr(&rhs)).map(hir::TypeInfo::adjusted),
-    ) {
-        (Some(lhs_ty), Some(rhs_ty)) if lhs_ty == rhs_ty => {
-            let krate = sema.scope(bin.syntax()).module().map(|it| it.krate());
-            let ord_trait = FamousDefs(sema, krate).core_cmp_Ord();
-            ord_trait.map_or(false, |ord_trait| {
-                lhs_ty.autoderef(sema.db).any(|ty| ty.impls_trait(sema.db, ord_trait, &[]))
-            })
-        }
-        _ => false,
     }
 }
 

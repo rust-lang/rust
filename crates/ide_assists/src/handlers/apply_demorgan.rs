@@ -19,7 +19,7 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 // ->
 // ```
 // fn main() {
-//     if !(x == 4 && !(y < 3.14)) {}
+//     if !(x == 4 && y >= 3.14) {}
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -99,7 +99,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             if let Some(paren_expr) = paren_expr {
                 for term in terms {
                     let range = term.syntax().text_range();
-                    let not_term = invert_boolean_expression(&ctx.sema, term);
+                    let not_term = invert_boolean_expression(term);
 
                     edit.replace(range, not_term.syntax().text());
                 }
@@ -114,21 +114,21 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             } else {
                 if let Some(lhs) = terms.pop_front() {
                     let lhs_range = lhs.syntax().text_range();
-                    let not_lhs = invert_boolean_expression(&ctx.sema, lhs);
+                    let not_lhs = invert_boolean_expression(lhs);
 
                     edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
                 }
 
                 if let Some(rhs) = terms.pop_back() {
                     let rhs_range = rhs.syntax().text_range();
-                    let not_rhs = invert_boolean_expression(&ctx.sema, rhs);
+                    let not_rhs = invert_boolean_expression(rhs);
 
                     edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
                 }
 
                 for term in terms {
                     let term_range = term.syntax().text_range();
-                    let not_term = invert_boolean_expression(&ctx.sema, term);
+                    let not_term = invert_boolean_expression(term);
                     edit.replace(term_range, not_term.syntax().text());
                 }
             }
@@ -156,40 +156,12 @@ mod tests {
         check_assist(
             apply_demorgan,
             r#"
-//- minicore: ord, derive
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct S;
-
-fn f() {
-    S < S &&$0 S <= S
-}
-"#,
-            r#"
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct S;
-
-fn f() {
-    !(S >= S || S > S)
-}
-"#,
-        );
-
-        check_assist(
-            apply_demorgan,
-            r#"
-//- minicore: ord, derive
-struct S;
-
-fn f() {
-    S < S &&$0 S <= S
-}
+fn f() { S < S &&$0 S <= S }
 "#,
             r#"
 struct S;
-
-fn f() {
-    !(!(S < S) || !(S <= S))
-}
+fn f() { !(S >= S || S > S) }
 "#,
         );
     }
@@ -199,39 +171,12 @@ fn f() {
         check_assist(
             apply_demorgan,
             r#"
-//- minicore: ord, derive
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct S;
-
-fn f() {
-    S > S &&$0 S >= S
-}
-"#,
-            r#"
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct S;
-
-fn f() {
-    !(S <= S || S < S)
-}
-"#,
-        );
-        check_assist(
-            apply_demorgan,
-            r#"
-//- minicore: ord, derive
-struct S;
-
-fn f() {
-    S > S &&$0 S >= S
-}
+fn f() { S > S &&$0 S >= S }
 "#,
             r#"
 struct S;
-
-fn f() {
-    !(!(S > S) || !(S >= S))
-}
+fn f() { !(S <= S || S < S) }
 "#,
         );
     }
