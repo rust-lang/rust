@@ -3,10 +3,12 @@ use crate::hir::place::{
 };
 use crate::{mir, ty};
 
+use std::fmt::Write;
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use super::{Ty, TyCtxt};
 
@@ -159,6 +161,43 @@ impl CapturedPlace<'tcx> {
         place_to_string_for_capture(tcx, &self.place)
     }
 
+    /// Returns a symbol of the captured upvar, which looks like `name__field1__field2`.
+    fn to_symbol(&self, tcx: TyCtxt<'tcx>) -> Symbol {
+        let hir_id = match self.place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            base => bug!("Expected an upvar, found {:?}", base),
+        };
+        let mut symbol = tcx.hir().name(hir_id).as_str().to_string();
+
+        let mut ty = self.place.base_ty;
+        for proj in self.place.projections.iter() {
+            match proj.kind {
+                HirProjectionKind::Field(idx, variant) => match ty.kind() {
+                    ty::Tuple(_) => write!(&mut symbol, "__{}", idx).unwrap(),
+                    ty::Adt(def, ..) => {
+                        write!(
+                            &mut symbol,
+                            "__{}",
+                            def.variants[variant].fields[idx as usize].ident.name.as_str(),
+                        )
+                        .unwrap();
+                    }
+                    ty => {
+                        bug!("Unexpected type {:?} for `Field` projection", ty)
+                    }
+                },
+
+                // Ignore derefs for now, as they are likely caused by
+                // autoderefs that don't appear in the original code.
+                HirProjectionKind::Deref => {}
+                proj => bug!("Unexpected projection {:?} in captured place", proj),
+            }
+            ty = proj.ty;
+        }
+
+        Symbol::intern(&symbol)
+    }
+
     /// Returns the hir-id of the root variable for the captured place.
     /// e.g., if `a.b.c` was captured, would return the hir-id for `a`.
     pub fn get_root_variable(&self) -> hir::HirId {
@@ -207,6 +246,15 @@ impl CapturedPlace<'tcx> {
                 .span
         }
     }
+}
+
+fn symbols_for_closure_captures<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: (LocalDefId, DefId),
+) -> Vec<Symbol> {
+    let typeck_results = tcx.typeck(def_id.0);
+    let captures = typeck_results.closure_min_captures_flattened(def_id.1);
+    captures.into_iter().map(|captured_place| captured_place.to_symbol(tcx)).collect()
 }
 
 /// Return true if the `proj_possible_ancestor` represents an ancestor path
@@ -391,4 +439,8 @@ impl BorrowKind {
             UniqueImmBorrow => hir::Mutability::Mut,
         }
     }
+}
+
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers { symbols_for_closure_captures, ..*providers }
 }
