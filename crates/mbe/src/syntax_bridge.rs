@@ -705,8 +705,8 @@ mod tests {
     use crate::tests::parse_macro;
     use parser::TokenSource;
     use syntax::{
-        algo::{insert_children, InsertPosition},
-        ast::AstNode,
+        ast::{make, AstNode},
+        ted,
     };
     use test_utils::assert_eq_text;
 
@@ -772,42 +772,26 @@ mod tests {
 
     #[test]
     fn test_token_tree_last_child_is_white_space() {
-        let source_file = ast::SourceFile::parse("f!({} );").ok().unwrap();
+        let source_file = ast::SourceFile::parse("f!{}").ok().unwrap();
         let macro_call = source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
         let token_tree = macro_call.token_tree().unwrap();
 
         // Token Tree now is :
         // TokenTree
-        // - T!['(']
         // - TokenTree
         //   - T!['{']
         //   - T!['}']
-        // - WHITE_SPACE
-        // - T![')']
 
-        let rbrace =
-            token_tree.syntax().descendants_with_tokens().find(|it| it.kind() == T!['}']).unwrap();
-        let space = token_tree
-            .syntax()
-            .descendants_with_tokens()
-            .find(|it| it.kind() == SyntaxKind::WHITESPACE)
-            .unwrap();
-
-        // reorder th white space, such that the white is inside the inner token-tree.
-        let token_tree = insert_children(
-            &rbrace.parent().unwrap(),
-            InsertPosition::Last,
-            std::iter::once(space),
-        );
-
+        let token_tree = token_tree.clone_for_update();
+        ted::append_child(token_tree.syntax(), make::tokens::single_space());
+        let token_tree = token_tree.clone_subtree();
         // Token Tree now is :
         // TokenTree
         // - T!['{']
         // - T!['}']
         // - WHITE_SPACE
-        let token_tree = ast::TokenTree::cast(token_tree).unwrap();
-        let tt = syntax_node_to_token_tree(token_tree.syntax()).0;
 
+        let tt = syntax_node_to_token_tree(token_tree.syntax()).0;
         assert_eq!(tt.delimiter_kind(), Some(tt::DelimiterKind::Brace));
     }
 
