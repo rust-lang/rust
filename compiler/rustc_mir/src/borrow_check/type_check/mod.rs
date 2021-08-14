@@ -1084,11 +1084,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         span_mirbug!(
                             self,
                             user_annotation,
-                            "bad user type AscribeUserType({:?}, {:?} {:?}): {:?}",
+                            "bad user type AscribeUserType({:?}, {:?} {:?}, type_of={:?}): {:?}",
                             inferred_ty,
                             def_id,
                             user_substs,
-                            terr
+                            self.tcx().type_of(def_id),
+                            terr,
                         );
                     }
                 }
@@ -2688,10 +2689,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) {
         self.prove_predicates(
-            Some(ty::PredicateKind::Trait(
-                ty::TraitPredicate { trait_ref },
-                hir::Constness::NotConst,
-            )),
+            Some(ty::PredicateKind::Trait(ty::TraitPredicate {
+                trait_ref,
+                constness: hir::Constness::NotConst,
+            })),
             locations,
             category,
         );

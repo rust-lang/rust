@@ -277,7 +277,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(trait_predicate, _) => {
+                    ty::PredicateKind::Trait(trait_predicate) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
@@ -518,8 +518,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 );
                                 trait_pred
                             });
-                            let unit_obligation =
-                                obligation.with(predicate.without_const().to_predicate(tcx));
+                            let unit_obligation = obligation.with(predicate.to_predicate(tcx));
                             if self.predicate_may_hold(&unit_obligation) {
                                 err.note("this trait is implemented for `()`.");
                                 err.note(
@@ -1148,7 +1147,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         // FIXME: It should be possible to deal with `ForAll` in a cleaner way.
         let bound_error = error.kind();
         let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
-            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error, _)) => {
+            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error)) => {
                 (cond, bound_error.rebind(error))
             }
             _ => {
@@ -1159,7 +1158,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
             let bound_predicate = obligation.predicate.kind();
-            if let ty::PredicateKind::Trait(implication, _) = bound_predicate.skip_binder() {
+            if let ty::PredicateKind::Trait(implication) = bound_predicate.skip_binder() {
                 let error = error.to_poly_trait_ref();
                 let implication = bound_predicate.rebind(implication.trait_ref);
                 // FIXME: I'm just not taking associated types at all here.
@@ -1536,7 +1535,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data, _) => {
+            ty::PredicateKind::Trait(data) => {
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
                 debug!("trait_ref {:?}", trait_ref);
 
@@ -1803,7 +1802,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             match (obligation.predicate.kind().skip_binder(), obligation.cause.code.peel_derives())
             {
                 (
-                    ty::PredicateKind::Trait(pred, _),
+                    ty::PredicateKind::Trait(pred),
                     &ObligationCauseCode::BindingObligation(item_def_id, span),
                 ) => (pred, item_def_id, span),
                 _ => return,

@@ -714,7 +714,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
-        if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
+        if let Err(errors) = self
+            .fulfillment_cx
+            .borrow_mut()
+            .select_all_with_constness_or_error(&self, self.inh.constness)
+        {
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
@@ -725,7 +729,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        let result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
+        let result = self
+            .fulfillment_cx
+            .borrow_mut()
+            .select_with_constness_where_possible(self, self.inh.constness);
         if let Err(mut errors) = result {
             mutate_fulfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
@@ -796,7 +803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         bound_predicate.rebind(data).required_poly_trait_ref(self.tcx),
                         obligation,
                     )),
-                    ty::PredicateKind::Trait(data, _) => {
+                    ty::PredicateKind::Trait(data) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateKind::Subtype(..) => None,

@@ -23,6 +23,10 @@
 #![feature(slice_partition_dedup)]
 #![feature(vec_spare_capacity)]
 #![feature(string_remove_matches)]
+#![feature(const_btree_new)]
+#![feature(const_trait_impl)]
+// FIXME remove this when const_trait_impl is not incomplete anymore
+#![allow(incomplete_features)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -32,6 +36,7 @@ mod binary_heap;
 mod borrow;
 mod boxed;
 mod btree_set_hash;
+mod const_fns;
 mod cow_str;
 mod fmt;
 mod heap;

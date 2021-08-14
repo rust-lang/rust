@@ -366,7 +366,10 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
         _ if predicate.is_global() => (),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
+        ty::PredicateKind::Trait(ty::TraitPredicate {
+            trait_ref,
+            constness: hir::Constness::NotConst,
+        }) => {
             if !matches!(
                 trait_predicate_kind(tcx, predicate),
                 Some(TraitSpecializationKind::Marker)
@@ -376,7 +379,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                         span,
                         &format!(
                             "cannot specialize on trait `{}`",
-                            tcx.def_path_str(pred.def_id()),
+                            tcx.def_path_str(trait_ref.def_id),
                         ),
                     )
                     .emit()
@@ -394,10 +397,11 @@ fn trait_predicate_kind<'tcx>(
     predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
-            Some(tcx.trait_def(pred.def_id()).specialization_kind)
-        }
-        ty::PredicateKind::Trait(_, hir::Constness::Const)
+        ty::PredicateKind::Trait(ty::TraitPredicate {
+            trait_ref,
+            constness: hir::Constness::NotConst,
+        }) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
+        ty::PredicateKind::Trait(_)
         | ty::PredicateKind::RegionOutlives(_)
         | ty::PredicateKind::TypeOutlives(_)
         | ty::PredicateKind::Projection(_)

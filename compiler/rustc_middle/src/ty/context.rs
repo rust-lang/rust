@@ -2169,7 +2169,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let generic_predicates = self.super_predicates_of(trait_did);
 
             for (predicate, _) in generic_predicates.predicates {
-                if let ty::PredicateKind::Trait(data, _) = predicate.kind().skip_binder() {
+                if let ty::PredicateKind::Trait(data) = predicate.kind().skip_binder() {
                     if set.insert(data.def_id()) {
                         stack.push(data.def_id());
                     }

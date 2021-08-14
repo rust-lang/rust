@@ -1,0 +1,18 @@
+error[E0277]: cannot add `NonConstAdd` to `NonConstAdd`
+  --> $DIR/assoc-type.rs:21:5
+   |
+LL |     type Bar: std::ops::Add;
+   |               ------------- required by this bound in `Foo::Bar`
+...
+LL |     type Bar = NonConstAdd;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `NonConstAdd + NonConstAdd`
+   |
+   = help: the trait `Add` is not implemented for `NonConstAdd`
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+   |
+LL | impl const Foo for NonConstAdd where NonConstAdd: Add {
+   |                                ++++++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
