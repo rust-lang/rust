@@ -97,7 +97,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
                 e => e,
             };
 
-            let cond = if invert_cond { invert_boolean_expression(&ctx.sema, cond) } else { cond };
+            let cond = if invert_cond { invert_boolean_expression(cond) } else { cond };
             let arg_list = make::arg_list(Some(make::expr_closure(None, closure_body)));
             let mcall = make::expr_method_call(cond, make::name_ref("then"), arg_list);
             builder.replace(target, mcall.to_string());

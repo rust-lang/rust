@@ -892,7 +892,7 @@ fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Optio
     let parent = expr.syntax().parent()?;
 
     if let Some(bin_expr) = ast::BinExpr::cast(parent.clone()) {
-        if bin_expr.op_kind()?.is_assignment() {
+        if matches!(bin_expr.op_kind()?, ast::BinaryOp::Assignment { .. }) {
             return Some(bin_expr.lhs()?.syntax() == expr.syntax());
         }
         return Some(false);

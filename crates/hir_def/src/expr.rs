@@ -14,7 +14,6 @@
 
 use hir_expand::name::Name;
 use la_arena::{Idx, RawIdx};
-use syntax::ast::RangeOp;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
@@ -23,6 +22,8 @@ use crate::{
     type_ref::{Mutability, Rawness, TypeRef},
     BlockId,
 };
+
+pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
 pub type ExprId = Idx<Expr>;
 pub(crate) fn dummy_expr_id() -> ExprId {
@@ -179,47 +180,6 @@ pub enum Expr {
     Literal(Literal),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum BinaryOp {
-    LogicOp(LogicOp),
-    ArithOp(ArithOp),
-    CmpOp(CmpOp),
-    Assignment { op: Option<ArithOp> },
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum LogicOp {
-    And,
-    Or,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum CmpOp {
-    Eq { negated: bool },
-    Ord { ordering: Ordering, strict: bool },
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Ordering {
-    Less,
-    Greater,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ArithOp {
-    Add,
-    Mul,
-    Sub,
-    Div,
-    Rem,
-    Shl,
-    Shr,
-    BitXor,
-    BitOr,
-    BitAnd,
-}
-
-pub use syntax::ast::PrefixOp as UnaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
     ElementList(Vec<ExprId>),

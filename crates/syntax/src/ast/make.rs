@@ -276,7 +276,8 @@ pub fn expr_path(path: ast::Path) -> ast::Expr {
 pub fn expr_continue() -> ast::Expr {
     expr_from_text("continue")
 }
-pub fn expr_op(op: ast::BinOp, lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
+// Consider `op: SyntaxKind` instead for nicer syntax at the call-site?
+pub fn expr_bin_op(lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("{} {} {}", lhs, op, rhs))
 }
 pub fn expr_break(expr: Option<ast::Expr>) -> ast::Expr {

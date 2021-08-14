@@ -126,7 +126,7 @@ pub(super) fn element(
                 let ty = sema.type_of_expr(&expr)?.original;
                 if ty.is_raw_ptr() {
                     HlTag::Operator(HlOperator::Other) | HlMod::Unsafe
-                } else if let Some(ast::PrefixOp::Deref) = prefix_expr.op_kind() {
+                } else if let Some(ast::UnaryOp::Deref) = prefix_expr.op_kind() {
                     HlOperator::Other.into()
                 } else {
                     HlPunct::Other.into()

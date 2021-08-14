@@ -19,14 +19,20 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 // ->
 // ```
 // fn main() {
-//     if !(x == 4 && !(y < 3.14)) {}
+//     if !(x == 4 && y >= 3.14) {}
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
-    let opposite_op = opposite_logic_op(op)?;
+
+    let opposite_op = match op {
+        ast::BinaryOp::LogicOp(ast::LogicOp::And) => "||",
+        ast::BinaryOp::LogicOp(ast::LogicOp::Or) => "&&",
+        _ => return None,
+    };
+
     let cursor_in_range = op_range.contains_range(ctx.frange.range);
     if !cursor_in_range {
         return None;
@@ -85,7 +91,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                 .and_then(|paren_expr| paren_expr.syntax().parent())
                 .and_then(ast::PrefixExpr::cast)
                 .and_then(|prefix_expr| {
-                    if prefix_expr.op_kind().unwrap() == ast::PrefixOp::Not {
+                    if prefix_expr.op_kind().unwrap() == ast::UnaryOp::Not {
                         Some(prefix_expr)
                     } else {
                         None
@@ -99,7 +105,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             if let Some(paren_expr) = paren_expr {
                 for term in terms {
                     let range = term.syntax().text_range();
-                    let not_term = invert_boolean_expression(&ctx.sema, term);
+                    let not_term = invert_boolean_expression(term);
 
                     edit.replace(range, not_term.syntax().text());
                 }
@@ -114,35 +120,26 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             } else {
                 if let Some(lhs) = terms.pop_front() {
                     let lhs_range = lhs.syntax().text_range();
-                    let not_lhs = invert_boolean_expression(&ctx.sema, lhs);
+                    let not_lhs = invert_boolean_expression(lhs);
 
                     edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
                 }
 
                 if let Some(rhs) = terms.pop_back() {
                     let rhs_range = rhs.syntax().text_range();
-                    let not_rhs = invert_boolean_expression(&ctx.sema, rhs);
+                    let not_rhs = invert_boolean_expression(rhs);
 
                     edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
                 }
 
                 for term in terms {
                     let term_range = term.syntax().text_range();
-                    let not_term = invert_boolean_expression(&ctx.sema, term);
+                    let not_term = invert_boolean_expression(term);
                     edit.replace(term_range, not_term.syntax().text());
                 }
             }
         },
     )
-}
-
-// Return the opposite text for a given logical operator, if it makes sense
-fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
-    match kind {
-        ast::BinOp::BooleanOr => Some("&&"),
-        ast::BinOp::BooleanAnd => Some("||"),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
@@ -156,40 +153,12 @@ mod tests {
         check_assist(
             apply_demorgan,
             r#"
-//- minicore: ord, derive
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct S;
-
-fn f() {
-    S < S &&$0 S <= S
-}
-"#,
-            r#"
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct S;
-
-fn f() {
-    !(S >= S || S > S)
-}
-"#,
-        );
-
-        check_assist(
-            apply_demorgan,
-            r#"
-//- minicore: ord, derive
-struct S;
-
-fn f() {
-    S < S &&$0 S <= S
-}
+fn f() { S < S &&$0 S <= S }
 "#,
             r#"
 struct S;
-
-fn f() {
-    !(!(S < S) || !(S <= S))
-}
+fn f() { !(S >= S || S > S) }
 "#,
         );
     }
@@ -199,39 +168,12 @@ fn f() {
         check_assist(
             apply_demorgan,
             r#"
-//- minicore: ord, derive
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct S;
-
-fn f() {
-    S > S &&$0 S >= S
-}
-"#,
-            r#"
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct S;
-
-fn f() {
-    !(S <= S || S < S)
-}
-"#,
-        );
-        check_assist(
-            apply_demorgan,
-            r#"
-//- minicore: ord, derive
-struct S;
-
-fn f() {
-    S > S &&$0 S >= S
-}
+fn f() { S > S &&$0 S >= S }
 "#,
             r#"
 struct S;
-
-fn f() {
-    !(!(S > S) || !(S >= S))
-}
+fn f() { !(S <= S || S < S) }
 "#,
         );
     }

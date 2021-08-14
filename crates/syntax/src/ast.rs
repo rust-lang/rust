@@ -5,6 +5,7 @@ mod traits;
 mod token_ext;
 mod node_ext;
 mod expr_ext;
+mod operators;
 pub mod edit;
 pub mod edit_in_place;
 pub mod make;
@@ -17,14 +18,21 @@ use crate::{
 };
 
 pub use self::{
-    expr_ext::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
+    expr_ext::{ArrayExprKind, Effect, ElseBranch, LiteralKind},
     generated::{nodes::*, tokens::*},
     node_ext::{
         AttrKind, AttrsOwnerNode, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind,
         SelfParamKind, SlicePatComponents, StructKind, TypeBoundKind, VisibilityKind,
     },
-    token_ext::*,
-    traits::*,
+    operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
+    token_ext::{
+        CommentKind, CommentPlacement, CommentShape, FormatSpecifier, HasFormatSpecifier, IsString,
+        QuoteOffsets, Radix,
+    },
+    traits::{
+        ArgListOwner, AttrsOwner, CommentIter, DocCommentsOwner, GenericParamsOwner, LoopBodyOwner,
+        ModuleItemOwner, NameOwner, TypeBoundsOwner, VisibilityOwner,
+    },
 };
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The

@@ -3,7 +3,11 @@
 use rowan::WalkEvent;
 
 use crate::{
-    ast::{self, support, AstChildren, AstNode},
+    ast::{
+        self,
+        operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
+        support, AstChildren, AstNode,
+    },
     AstToken,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -193,24 +197,15 @@ impl ast::IfExpr {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum PrefixOp {
-    /// The `*` operator for dereferencing
-    Deref,
-    /// The `!` operator for logical inversion
-    Not,
-    /// The `-` operator for negation
-    Neg,
-}
-
 impl ast::PrefixExpr {
-    pub fn op_kind(&self) -> Option<PrefixOp> {
-        match self.op_token()?.kind() {
-            T![*] => Some(PrefixOp::Deref),
-            T![!] => Some(PrefixOp::Not),
-            T![-] => Some(PrefixOp::Neg),
-            _ => None,
-        }
+    pub fn op_kind(&self) -> Option<UnaryOp> {
+        let res = match self.op_token()?.kind() {
+            T![*] => UnaryOp::Deref,
+            T![!] => UnaryOp::Not,
+            T![-] => UnaryOp::Neg,
+            _ => return None,
+        };
+        Some(res)
     }
 
     pub fn op_token(&self) -> Option<SyntaxToken> {
@@ -218,127 +213,51 @@ impl ast::PrefixExpr {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum BinOp {
-    /// The `||` operator for boolean OR
-    BooleanOr,
-    /// The `&&` operator for boolean AND
-    BooleanAnd,
-    /// The `==` operator for equality testing
-    EqualityTest,
-    /// The `!=` operator for equality testing
-    NegatedEqualityTest,
-    /// The `<=` operator for lesser-equal testing
-    LesserEqualTest,
-    /// The `>=` operator for greater-equal testing
-    GreaterEqualTest,
-    /// The `<` operator for comparison
-    LesserTest,
-    /// The `>` operator for comparison
-    GreaterTest,
-    /// The `+` operator for addition
-    Addition,
-    /// The `*` operator for multiplication
-    Multiplication,
-    /// The `-` operator for subtraction
-    Subtraction,
-    /// The `/` operator for division
-    Division,
-    /// The `%` operator for remainder after division
-    Remainder,
-    /// The `<<` operator for left shift
-    LeftShift,
-    /// The `>>` operator for right shift
-    RightShift,
-    /// The `^` operator for bitwise XOR
-    BitwiseXor,
-    /// The `|` operator for bitwise OR
-    BitwiseOr,
-    /// The `&` operator for bitwise AND
-    BitwiseAnd,
-    /// The `=` operator for assignment
-    Assignment,
-    /// The `+=` operator for assignment after addition
-    AddAssign,
-    /// The `/=` operator for assignment after division
-    DivAssign,
-    /// The `*=` operator for assignment after multiplication
-    MulAssign,
-    /// The `%=` operator for assignment after remainders
-    RemAssign,
-    /// The `>>=` operator for assignment after shifting right
-    ShrAssign,
-    /// The `<<=` operator for assignment after shifting left
-    ShlAssign,
-    /// The `-=` operator for assignment after subtraction
-    SubAssign,
-    /// The `|=` operator for assignment after bitwise OR
-    BitOrAssign,
-    /// The `&=` operator for assignment after bitwise AND
-    BitAndAssign,
-    /// The `^=` operator for assignment after bitwise XOR
-    BitXorAssign,
-}
-
-impl BinOp {
-    pub fn is_assignment(self) -> bool {
-        matches!(
-            self,
-            BinOp::Assignment
-                | BinOp::AddAssign
-                | BinOp::DivAssign
-                | BinOp::MulAssign
-                | BinOp::RemAssign
-                | BinOp::ShrAssign
-                | BinOp::ShlAssign
-                | BinOp::SubAssign
-                | BinOp::BitOrAssign
-                | BinOp::BitAndAssign
-                | BinOp::BitXorAssign
-        )
-    }
-}
-
 impl ast::BinExpr {
-    pub fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
+    pub fn op_details(&self) -> Option<(SyntaxToken, BinaryOp)> {
         self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| {
+            #[rustfmt::skip]
             let bin_op = match c.kind() {
-                T![||] => BinOp::BooleanOr,
-                T![&&] => BinOp::BooleanAnd,
-                T![==] => BinOp::EqualityTest,
-                T![!=] => BinOp::NegatedEqualityTest,
-                T![<=] => BinOp::LesserEqualTest,
-                T![>=] => BinOp::GreaterEqualTest,
-                T![<] => BinOp::LesserTest,
-                T![>] => BinOp::GreaterTest,
-                T![+] => BinOp::Addition,
-                T![*] => BinOp::Multiplication,
-                T![-] => BinOp::Subtraction,
-                T![/] => BinOp::Division,
-                T![%] => BinOp::Remainder,
-                T![<<] => BinOp::LeftShift,
-                T![>>] => BinOp::RightShift,
-                T![^] => BinOp::BitwiseXor,
-                T![|] => BinOp::BitwiseOr,
-                T![&] => BinOp::BitwiseAnd,
-                T![=] => BinOp::Assignment,
-                T![+=] => BinOp::AddAssign,
-                T![/=] => BinOp::DivAssign,
-                T![*=] => BinOp::MulAssign,
-                T![%=] => BinOp::RemAssign,
-                T![>>=] => BinOp::ShrAssign,
-                T![<<=] => BinOp::ShlAssign,
-                T![-=] => BinOp::SubAssign,
-                T![|=] => BinOp::BitOrAssign,
-                T![&=] => BinOp::BitAndAssign,
-                T![^=] => BinOp::BitXorAssign,
+                T![||] => BinaryOp::LogicOp(LogicOp::Or),
+                T![&&] => BinaryOp::LogicOp(LogicOp::And),
+
+                T![==] => BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
+                T![!=] => BinaryOp::CmpOp(CmpOp::Eq { negated: true }),
+                T![<=] => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less,    strict: false }),
+                T![>=] => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: false }),
+                T![<]  => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less,    strict: true }),
+                T![>]  => BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: true }),
+
+                T![+]  => BinaryOp::ArithOp(ArithOp::Add),
+                T![*]  => BinaryOp::ArithOp(ArithOp::Mul),
+                T![-]  => BinaryOp::ArithOp(ArithOp::Sub),
+                T![/]  => BinaryOp::ArithOp(ArithOp::Div),
+                T![%]  => BinaryOp::ArithOp(ArithOp::Rem),
+                T![<<] => BinaryOp::ArithOp(ArithOp::Shl),
+                T![>>] => BinaryOp::ArithOp(ArithOp::Shr),
+                T![^]  => BinaryOp::ArithOp(ArithOp::BitXor),
+                T![|]  => BinaryOp::ArithOp(ArithOp::BitOr),
+                T![&]  => BinaryOp::ArithOp(ArithOp::BitAnd),
+
+                T![=]   => BinaryOp::Assignment { op: None },
+                T![+=]  => BinaryOp::Assignment { op: Some(ArithOp::Add) },
+                T![*=]  => BinaryOp::Assignment { op: Some(ArithOp::Mul) },
+                T![-=]  => BinaryOp::Assignment { op: Some(ArithOp::Sub) },
+                T![/=]  => BinaryOp::Assignment { op: Some(ArithOp::Div) },
+                T![%=]  => BinaryOp::Assignment { op: Some(ArithOp::Rem) },
+                T![<<=] => BinaryOp::Assignment { op: Some(ArithOp::Shl) },
+                T![>>=] => BinaryOp::Assignment { op: Some(ArithOp::Shr) },
+                T![^=]  => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
+                T![|=]  => BinaryOp::Assignment { op: Some(ArithOp::BitOr) },
+                T![&=]  => BinaryOp::Assignment { op: Some(ArithOp::BitAnd) },
+
                 _ => return None,
             };
             Some((c, bin_op))
         })
     }
 
-    pub fn op_kind(&self) -> Option<BinOp> {
+    pub fn op_kind(&self) -> Option<BinaryOp> {
         self.op_details().map(|t| t.1)
     }
 
@@ -360,50 +279,6 @@ impl ast::BinExpr {
         let second = children.next();
         (first, second)
     }
-}
-
-impl std::fmt::Display for BinOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BinOp::BooleanOr => write!(f, "||"),
-            BinOp::BooleanAnd => write!(f, "&&"),
-            BinOp::EqualityTest => write!(f, "=="),
-            BinOp::NegatedEqualityTest => write!(f, "!="),
-            BinOp::LesserEqualTest => write!(f, "<="),
-            BinOp::GreaterEqualTest => write!(f, ">="),
-            BinOp::LesserTest => write!(f, "<"),
-            BinOp::GreaterTest => write!(f, ">"),
-            BinOp::Addition => write!(f, "+"),
-            BinOp::Multiplication => write!(f, "*"),
-            BinOp::Subtraction => write!(f, "-"),
-            BinOp::Division => write!(f, "/"),
-            BinOp::Remainder => write!(f, "%"),
-            BinOp::LeftShift => write!(f, "<<"),
-            BinOp::RightShift => write!(f, ">>"),
-            BinOp::BitwiseXor => write!(f, "^"),
-            BinOp::BitwiseOr => write!(f, "|"),
-            BinOp::BitwiseAnd => write!(f, "&"),
-            BinOp::Assignment => write!(f, "="),
-            BinOp::AddAssign => write!(f, "+="),
-            BinOp::DivAssign => write!(f, "/="),
-            BinOp::MulAssign => write!(f, "*="),
-            BinOp::RemAssign => write!(f, "%="),
-            BinOp::ShrAssign => write!(f, ">>="),
-            BinOp::ShlAssign => write!(f, "<<="),
-            BinOp::SubAssign => write!(f, "-"),
-            BinOp::BitOrAssign => write!(f, "|="),
-            BinOp::BitAndAssign => write!(f, "&="),
-            BinOp::BitXorAssign => write!(f, "^="),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum RangeOp {
-    /// `..`
-    Exclusive,
-    /// `..=`
-    Inclusive,
 }
 
 impl ast::RangeExpr {
