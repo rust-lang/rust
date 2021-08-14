@@ -454,7 +454,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
 
             let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
-            match parent_node {
+            let ty = match parent_node {
                 Node::Ty(&Ty { kind: TyKind::Array(_, ref constant), .. })
                 | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
                     if constant.hir_id == hir_id =>
@@ -497,7 +497,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     DUMMY_SP,
                     &format!("unexpected const parent in type_of(): {:?}", x),
                 ),
-            }
+            };
+
+            // Typeck doesn't expect erased regions to be returned from `type_of`.
+            tcx.fold_regions(ty, &mut false, |r, _| match r {
+                ty::ReErased => tcx.lifetimes.re_static,
+                _ => r,
+            })
         }
 
         Node::GenericParam(param) => match &param.kind {

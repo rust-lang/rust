@@ -35,9 +35,26 @@ impl<'tcx> Const<'tcx> {
         Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
     }
 
+    /// Similar to `from_anon_const`, but with regions erased (suitable for MIR).
+    pub fn from_anon_const_erased(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
+        Self::from_opt_const_arg_anon_const_maybe_erase(
+            tcx,
+            ty::WithOptConstParam::unknown(def_id),
+            true,
+        )
+    }
+
     pub fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
+    ) -> &'tcx Self {
+        Self::from_opt_const_arg_anon_const_maybe_erase(tcx, def, false)
+    }
+
+    fn from_opt_const_arg_anon_const_maybe_erase(
+        tcx: TyCtxt<'tcx>,
+        def: ty::WithOptConstParam<LocalDefId>,
+        erase: bool,
     ) -> &'tcx Self {
         debug!("Const::from_anon_const(def={:?})", def);
 
@@ -53,7 +70,10 @@ impl<'tcx> Const<'tcx> {
 
         let expr = &tcx.hir().body(body_id).value;
 
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let mut ty = tcx.type_of(def.def_id_for_type_of());
+        if erase {
+            ty = tcx.erase_regions_ty(ty);
+        }
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),

@@ -544,7 +544,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             let (lit, neg) = match expr.kind {
                 hir::ExprKind::ConstBlock(ref anon_const) => {
                     let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-                    let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                    let value = ty::Const::from_anon_const_erased(self.tcx, anon_const_def_id);
                     return *self.const_to_pat(value, expr.hir_id, expr.span, false).kind;
                 }
                 hir::ExprKind::Lit(ref lit) => (lit, false),
