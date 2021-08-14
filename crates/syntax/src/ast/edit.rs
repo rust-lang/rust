@@ -48,22 +48,26 @@ impl ast::UseTree {
     }
 }
 
-#[must_use]
-pub fn remove_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
-    N::cast(remove_attrs_and_docs_inner(node.syntax().clone())).unwrap()
+pub fn remove_attrs_and_docs<N: ast::AttrsOwner>(node: &N) {
+    remove_attrs_and_docs_inner(node.syntax())
 }
 
-fn remove_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
-    while let Some(start) =
-        node.children_with_tokens().find(|it| it.kind() == ATTR || it.kind() == COMMENT)
-    {
-        let end = match &start.next_sibling_or_token() {
-            Some(el) if el.kind() == WHITESPACE => el.clone(),
-            Some(_) | None => start.clone(),
-        };
-        node = algo::replace_children(&node, start..=end, &mut iter::empty());
+fn remove_attrs_and_docs_inner(node: &SyntaxNode) {
+    let mut remove_next_ws = false;
+    for child in node.children_with_tokens() {
+        match child.kind() {
+            ATTR | COMMENT => {
+                remove_next_ws = true;
+                child.detach();
+                continue;
+            }
+            WHITESPACE if remove_next_ws => {
+                child.detach();
+            }
+            _ => (),
+        }
+        remove_next_ws = false;
     }
-    node
 }
 
 #[derive(Debug, Clone, Copy)]

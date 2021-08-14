@@ -130,7 +130,8 @@ pub fn add_trait_assoc_items_to_impl(
     let items = items.into_iter().map(|assoc_item| {
         let assoc_item = assoc_item.clone_for_update();
         transform.apply(assoc_item.syntax());
-        edit::remove_attrs_and_docs(&assoc_item).clone_subtree().clone_for_update()
+        edit::remove_attrs_and_docs(&assoc_item);
+        assoc_item
     });
 
     let res = impl_.clone_for_update();
