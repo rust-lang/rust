@@ -548,6 +548,9 @@ impl InitMaskCompressed {
 /// Transferring the initialization mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a run-length encoding of the initialization mask.
+    ///
+    /// This is essentially a more space-efficient version of
+    /// `InitMask::range_as_init_chunks(...).collect::<Vec<_>>()`.
     pub fn compress_uninit_range(&self, range: AllocRange) -> InitMaskCompressed {
         // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
         // a naive initialization mask copying algorithm would repeatedly have to read the initialization mask from
@@ -723,6 +726,12 @@ impl InitMask {
 
     /// Returns an iterator, yielding a range of byte indexes for each contiguous region
     /// of initialized or uninitialized bytes inside the range `start..end` (end-exclusive).
+    ///
+    /// The iterator guarantees the following:
+    /// - Chunks are nonempty.
+    /// - Chunks are adjacent (each range's start is equal to the previous range's end).
+    /// - Chunks span exactly `start..end` (the first starts at `start`, the last ends at `end`).
+    /// - Chunks alternate between [`InitChunk::Init`] and [`InitChunk::Uninit`].
     #[inline]
     pub fn range_as_init_chunks(&self, start: Size, end: Size) -> InitChunkIter<'_> {
         InitChunkIter::new(self, start, end)
@@ -839,7 +848,7 @@ impl InitChunk {
 /// Yields [`InitChunk`]s. See [`InitMask::range_as_init_chunks`].
 pub struct InitChunkIter<'a> {
     init_mask: &'a InitMask,
-    /// Whether the last chunk was initialized.
+    /// Whether the next chunk we will return is initialized.
     is_init: bool,
     /// The current byte index into `init_mask`.
     start: Size,
@@ -884,18 +893,45 @@ impl<'a> Iterator for InitChunkIter<'a> {
 
 /// Returns the index of the first bit in `start..end` (end-exclusive) that is equal to is_init.
 fn find_bit(init_mask: &InitMask, start: Size, end: Size, is_init: bool) -> Option<Size> {
+    /// A fast implementation of `find_bit`,
+    /// which skips over an entire block at a time if it's all 0s (resp. 1s),
+    /// and finds the first 1 (resp. 0) bit inside a block using `trailing_zeros` instead of a loop.
+    ///
+    /// Note that all examples below are written with 8 (instead of 64) bit blocks for simplicity,
+    /// and with the least significant bit (and lowest block) first:
+    ///
+    ///          00000000|00000000
+    ///          ^      ^ ^      ^
+    ///   index: 0      7 8      15
+    ///
+    /// Also, if not stated, assume that `is_init = true`, that is, we are searching for the first 1 bit.
     fn find_bit_fast(init_mask: &InitMask, start: Size, end: Size, is_init: bool) -> Option<Size> {
+        /// Search one block, returning the index of the first bit equal to `is_init`.
         fn search_block(
             bits: Block,
             block: usize,
             start_bit: usize,
             is_init: bool,
         ) -> Option<Size> {
-            // invert bits so we're always looking for the first set bit
+            // For the following examples, assume this function was called with:
+            //   bits = 11011100
+            //   start_bit = 3
+            //   is_init = false
+            // Note again that the least significant bit is written first,
+            // which is backwards compared to how we normally write numbers.
+
+            // Invert bits so we're always looking for the first set bit.
+            //        ! 11011100
+            //   bits = 00100011
             let bits = if is_init { bits } else { !bits };
-            // mask off unused start bits
+            // Mask off unused start bits.
+            //          00100011
+            //        & 00011111
+            //   bits = 00000011
             let bits = bits & (!0 << start_bit);
-            // find set bit, if any
+            // Find set bit, if any.
+            //   bit = trailing_zeros(00000011)
+            //   bit = 6
             if bits == 0 {
                 None
             } else {
@@ -908,31 +944,83 @@ fn find_bit(init_mask: &InitMask, start: Size, end: Size, is_init: bool) -> Opti
             return None;
         }
 
+        // Convert `start` and `end` to block indexes and bit indexes within each block.
+        // We must convert `end` to an inclusive bound to handle block boundaries correctly.
+        //
+        // For example:
+        //
+        //   (a) 00000000|00000000    (b) 00000000|
+        //       ^~~~~~~~~~~^             ^~~~~~~~~^
+        //     start       end          start     end
+        //
+        // In both cases, the block index of `end` is 1.
+        // But we do want to search block 1 in (a), and we don't in (b).
+        //
+        // If we subtract 1 from both end positions to make them inclusive:
+        //
+        //   (a) 00000000|00000000    (b) 00000000|
+        //       ^~~~~~~~~~^              ^~~~~~~^
+        //     start    end_inclusive   start end_inclusive
+        //
+        // For (a), the block index of `end_inclusive` is 1, and for (b), it's 0.
+        // This provides the desired behavior of searching blocks 0 and 1 for (a),
+        // and searching only block 0 for (b).
         let (start_block, start_bit) = bit_index(start);
-        let (end_block, end_bit) = bit_index(end);
+        let end_inclusive = Size::from_bytes(end.bytes() - 1);
+        let (end_block_inclusive, _) = bit_index(end_inclusive);
 
-        // handle first block: need to skip `start_bit` bits
+        // Handle first block: need to skip `start_bit` bits.
+        //
+        // We need to handle the first block separately,
+        // because there may be bits earlier in the block that should be ignored,
+        // such as the bit marked (1) in this example:
+        //
+        //       (1)
+        //       -|------
+        //   (c) 01000000|00000000|00000001
+        //          ^~~~~~~~~~~~~~~~~~^
+        //        start              end
         if let Some(i) =
             search_block(init_mask.blocks[start_block], start_block, start_bit, is_init)
         {
             if i < end {
                 return Some(i);
             } else {
-                // if the range is less than a block, we may find a matching bit after `end`
+                // If the range is less than a block, we may find a matching bit after `end`.
+                //
+                // For example, we shouldn't successfully find bit (2), because it's after `end`:
+                //
+                //             (2)
+                //       -------|
+                //   (d) 00000001|00000000|00000001
+                //        ^~~~~^
+                //      start end
+                //
+                // An alternative would be to mask off end bits in the same way as we do for start bits,
+                // but performing this check afterwards is faster and simpler to implement.
                 return None;
             }
         }
 
-        let one_block_past_the_end = if end_bit > 0 {
-            // if `end_bit` > 0, then the range overlaps `end_block`
-            end_block + 1
-        } else {
-            end_block
-        };
-
-        // handle remaining blocks
-        if start_block < one_block_past_the_end {
-            for (&bits, block) in init_mask.blocks[start_block + 1..one_block_past_the_end]
+        // Handle remaining blocks.
+        //
+        // We can skip over an entire block at once if it's all 0s (resp. 1s).
+        // The block marked (3) in this example is the first block that will be handled by this loop,
+        // and it will be skipped for that reason:
+        //
+        //                   (3)
+        //                --------
+        //   (e) 01000000|00000000|00000001
+        //          ^~~~~~~~~~~~~~~~~~^
+        //        start              end
+        if start_block < end_block_inclusive {
+            // This loop is written in a specific way for performance.
+            // Notably: `..end_block_inclusive + 1` is used for an inclusive range instead of `..=end_block_inclusive`,
+            // and `.zip(start_block + 1..)` is used to track the index instead of `.enumerate().skip().take()`,
+            // because both alternatives result in significantly worse codegen.
+            // `end_block_inclusive + 1` is guaranteed not to wrap, because `end_block_inclusive <= end / BLOCK_SIZE`,
+            // and `BLOCK_SIZE` (the number of bits per block) will always be at least 8 (1 byte).
+            for (&bits, block) in init_mask.blocks[start_block + 1..end_block_inclusive + 1]
                 .iter()
                 .zip(start_block + 1..)
             {
@@ -940,7 +1028,19 @@ fn find_bit(init_mask: &InitMask, start: Size, end: Size, is_init: bool) -> Opti
                     if i < end {
                         return Some(i);
                     } else {
-                        // if this is the last block, we may find a matching bit after `end`
+                        // If this is the last block, we may find a matching bit after `end`.
+                        //
+                        // For example, we shouldn't successfully find bit (4), because it's after `end`:
+                        //
+                        //                               (4)
+                        //                         -------|
+                        //   (f) 00000001|00000000|00000001
+                        //          ^~~~~~~~~~~~~~~~~~^
+                        //        start              end
+                        //
+                        // As above with example (d), we could handle the end block separately and mask off end bits,
+                        // but unconditionally searching an entire block at once and performing this check afterwards
+                        // is faster and much simpler to implement.
                         return None;
                     }
                 }
