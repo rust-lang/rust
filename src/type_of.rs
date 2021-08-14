@@ -363,4 +363,10 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
         //ty.gcc_type(self)
     }
+
+    fn fn_decl_backend_type(&self, _fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
+        // FIXME: return correct type.
+        self.type_void()
+        //fn_abi.gcc_type(self)
+    }
 }
