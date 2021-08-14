@@ -1,15 +1,14 @@
-use std::{iter::once, ops::RangeInclusive};
+use std::iter::once;
 
 use syntax::{
-    algo::replace_children,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    AstNode,
-    SyntaxKind::{FN, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
-    SyntaxNode,
+    ted, AstNode,
+    SyntaxKind::{FN, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
+    T,
 };
 
 use crate::{
@@ -53,17 +52,16 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
         None => None, // No IfLet, supported.
         Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
             let path = pat.path()?;
-            match path.qualifier() {
-                None => {
-                    let bound_ident = pat.fields().next().unwrap();
-                    if ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
-                        Some((path, bound_ident))
-                    } else {
-                        return None;
-                    }
-                }
-                Some(_) => return None,
+            if path.qualifier().is_some() {
+                return None;
             }
+
+            let bound_ident = pat.fields().next().unwrap();
+            if !ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
+                return None;
+            }
+
+            Some((path, bound_ident))
         }
         Some(_) => return None, // Unsupported IfLet.
     };
@@ -96,11 +94,11 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
         _ => return None,
     };
 
-    if then_block.syntax().first_child_or_token().map(|t| t.kind() == L_CURLY).is_none() {
+    if then_block.syntax().first_child_or_token().map(|t| t.kind() == T!['{']).is_none() {
         return None;
     }
 
-    then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
+    then_block.syntax().last_child_or_token().filter(|t| t.kind() == T!['}'])?;
 
     let target = if_expr.syntax().text_range();
     acc.add(
@@ -108,8 +106,9 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
         "Convert to guarded return",
         target,
         |edit| {
+            let if_expr = edit.make_mut(if_expr);
             let if_indent_level = IndentLevel::from_node(if_expr.syntax());
-            let new_block = match if_let_pat {
+            let replacement = match if_let_pat {
                 None => {
                     // If.
                     let new_expr = {
@@ -119,7 +118,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         make::expr_if(make::condition(cond, None), then_branch, None)
                             .indent(if_indent_level)
                     };
-                    replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
+                    new_expr.syntax().clone_for_update()
                 }
                 Some((path, bound_ident)) => {
                     // If-let.
@@ -148,41 +147,32 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
                     let let_stmt = make::let_stmt(bound_ident, None, Some(match_expr));
                     let let_stmt = let_stmt.indent(if_indent_level);
-                    replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
+                    let_stmt.syntax().clone_for_update()
                 }
             };
-            edit.replace_ast(parent_block, ast::BlockExpr::cast(new_block).unwrap());
 
-            fn replace(
-                new_expr: &SyntaxNode,
-                then_block: &ast::BlockExpr,
-                parent_block: &ast::BlockExpr,
-                if_expr: &ast::IfExpr,
-            ) -> SyntaxNode {
-                let then_block_items = then_block.dedent(IndentLevel(1));
-                let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
-                let end_of_then =
-                    if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
-                        end_of_then.prev_sibling_or_token().unwrap()
-                    } else {
-                        end_of_then
-                    };
-                let mut then_statements = new_expr.children_with_tokens().chain(
+            let then_block_items = then_block.dedent(IndentLevel(1)).clone_for_update();
+
+            let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
+            let end_of_then =
+                if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
+                    end_of_then.prev_sibling_or_token().unwrap()
+                } else {
+                    end_of_then
+                };
+
+            let then_statements = replacement
+                .children_with_tokens()
+                .chain(
                     then_block_items
                         .syntax()
                         .children_with_tokens()
                         .skip(1)
                         .take_while(|i| *i != end_of_then),
-                );
-                replace_children(
-                    parent_block.syntax(),
-                    RangeInclusive::new(
-                        if_expr.clone().syntax().clone().into(),
-                        if_expr.syntax().clone().into(),
-                    ),
-                    &mut then_statements,
                 )
-            }
+                .collect();
+
+            ted::replace_with_many(if_expr.syntax(), then_statements)
         },
     )
 }
