@@ -1,6 +1,7 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::visitors::LocalUsedVisitor;
 use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -37,16 +38,18 @@ pub(super) fn check<'tcx>(
         if_chain! {
             if let Some(inner_expr) = inner_expr;
             if let ExprKind::Match(
-                match_expr, match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
+                match_expr, [true_arm, _else_arm], MatchSource::IfLetDesugar{ contains_else_clause: false }
             ) = inner_expr.kind;
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
             if path_to_local_id(match_expr, pat_hir_id);
             // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
-            if let PatKind::TupleStruct(ref qpath, _, _) = match_arms[0].pat.kind;
+            if let PatKind::TupleStruct(ref qpath, _, _) = true_arm.pat.kind;
             let some_ctor = is_lang_ctor(cx, qpath, OptionSome);
             let ok_ctor = is_lang_ctor(cx, qpath, ResultOk);
             if some_ctor || ok_ctor;
+            // Ensure epxr in `if let` is not used afterwards
+            if !LocalUsedVisitor::new(cx, pat_hir_id).check_arm(true_arm);
             then {
                 let if_let_type = if some_ctor { "Some" } else { "Ok" };
                 // Prepare the error message
