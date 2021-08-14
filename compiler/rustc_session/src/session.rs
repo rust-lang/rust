@@ -1379,7 +1379,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // when compiling for LLD ThinLTO. This way we can validly just not generate
     // the `dllimport` attributes and `__imp_` symbols in that case.
     if sess.opts.cg.linker_plugin_lto.enabled()
-        && sess.opts.cg.prefer_dynamic
+        && sess.opts.cg.prefer_dynamic.is_non_empty()
         && sess.target.is_like_windows
     {
         sess.err(

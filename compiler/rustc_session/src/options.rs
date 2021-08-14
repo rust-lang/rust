@@ -376,6 +376,8 @@ mod desc {
         "one of supported relocation models (`rustc --print relocation-models`)";
     pub const parse_code_model: &str = "one of supported code models (`rustc --print code-models`)";
     pub const parse_tls_model: &str = "one of supported TLS models (`rustc --print tls-models`)";
+    pub const parse_prefer_dynamic: &str =
+        "one of `y`, `yes`, `on`, `n`, `no`, `off`, or a comma separated list of crates";
     pub const parse_target_feature: &str = parse_string;
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
@@ -835,6 +837,38 @@ mod parse {
         true
     }
 
+    crate fn parse_prefer_dynamic(slot: &mut PreferDynamicSet, v: Option<&str>) -> bool {
+        let s = match v {
+            // Note: n/no/off do *not* map to an empty-set of crates.
+            //
+            // This is to continue supporting rustc's historical behavior where it attempts to
+            // link everything statically, but failing that, then greedily link as many crates
+            // dynamically as it can.
+            //
+            // If these options mapped to an empty set, then that would denote that no dynamic
+            // linkage should be given preference over static, which would not correspond to
+            // historical meaning of `-C prefer-dynamic=no`.
+            //
+            // (One requests an empty set by writing `-C prefer-dynamic=`, with an empty string
+            // as the value.)
+            Some("n") | Some("no") | Some("off") => PreferDynamicSet::unset(),
+
+            // `-C prefer-dynamic` gives all crates preferred dynamic linkage.
+            // `-C prefer-dynamic=...` with `y`/`yes`/`on` is a synonym, for backwards
+            // compatibility.
+            Some("y") | Some("yes") | Some("on") | None => PreferDynamicSet::every_crate(),
+
+            // `-C prefer-dynamic=crate1,crate2,...` gives *just* crate1, crate2, ... preferred
+            // dynamic linkage.
+            Some(s) => {
+                let v = s.split(',').map(|s| s.to_string()).collect();
+                PreferDynamicSet::Set(v)
+            }
+        };
+        *slot = s;
+        return true;
+    }
+
     crate fn parse_src_file_hash(
         slot: &mut Option<SourceFileHashAlgorithm>,
         v: Option<&str>,
@@ -962,7 +996,7 @@ options! {
         "panic strategy to compile crate with"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of extra LLVM passes to run (space separated)"),
-    prefer_dynamic: bool = (false, parse_bool, [TRACKED],
+    prefer_dynamic: PreferDynamicSet = (PreferDynamicSet::unset(), parse_prefer_dynamic, [TRACKED],
         "prefer dynamic linking to static linking (default: no)"),
     profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [TRACKED],

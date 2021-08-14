@@ -402,6 +402,13 @@ linkage. This flag takes one of the following values:
 
 * `y`, `yes`, `on`, or no value: use dynamic linking.
 * `n`, `no`, or `off`: use static linking (the default).
+* A comma-separated list of crate names `crate1,crate2,...`: prefer dynamic
+  linking, but solely for the indicated crates. For example, to statically link
+  everything except `std`, use `-C prefer-dynamic=std`.
+
+Note that the explicit list of crate names variant of this flag is gated behind
+`-Zprefer-dynamic-subset`; as a special case, one can enable the handling of
+the single crate `std` as shown in the example above via `-Zprefer-dynamic-std`.
 
 ## profile-generate
 

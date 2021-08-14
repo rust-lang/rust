@@ -1950,7 +1950,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     assert!(
         !(tcx.sess.opts.cg.linker_plugin_lto.enabled()
             && tcx.sess.target.is_like_windows
-            && tcx.sess.opts.cg.prefer_dynamic)
+            && tcx.sess.opts.cg.prefer_dynamic.is_non_empty())
     );
 
     tcx.sess.target.is_like_windows &&

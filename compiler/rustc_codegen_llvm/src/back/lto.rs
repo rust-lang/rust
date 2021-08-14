@@ -77,7 +77,7 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        if cgcx.opts.cg.prefer_dynamic {
+        if cgcx.opts.cg.prefer_dynamic.is_non_empty() {
             diag_handler
                 .struct_err("cannot prefer dynamic linking when performing LTO")
                 .note(

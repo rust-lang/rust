@@ -63,6 +63,68 @@ pub enum CFGuard {
     Checks,
 }
 
+/// Handle `-C prefer-dynamic` flag: either its all, or its some explicit
+/// subset (potentially the empty set).
+#[derive(Clone, PartialEq, Hash, Debug)]
+pub enum PreferDynamicSet {
+    /// Specified by the absence of `-C prefer-dynamic`, or via an explicit `-C prefer-dynamic=...`
+    /// with value `n`, `no`, or `off`.
+    ///
+    /// Under this (default) behavior, the compiler first optimistically attempts to statically
+    /// link everything, but if that fails, then attempts to dynamically link *everything* with a
+    /// dylib path available.
+    Unset,
+
+    /// Specified via `-C prefer-dynamic` with no value. For backwards-compatibility, also
+    /// specified via `-C prefer-dynamic=...` with value `y`, `yes`, or `on`.
+    All,
+
+    /// Specified via `-C prefer-dynamic=crate,...`.
+    Set(BTreeSet<String>),
+}
+
+impl PreferDynamicSet {
+    pub fn unset() -> Self {
+        PreferDynamicSet::Unset
+    }
+
+    pub fn every_crate() -> Self {
+        PreferDynamicSet::All
+    }
+
+    pub fn subset(crates: impl Iterator<Item = impl ToString>) -> Self {
+        PreferDynamicSet::Set(crates.map(|x| x.to_string()).collect())
+    }
+
+    pub fn is_unset(&self) -> bool {
+        if let PreferDynamicSet::Unset = *self { true } else { false }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            PreferDynamicSet::Unset => true,
+            PreferDynamicSet::All => false,
+            PreferDynamicSet::Set(s) => s.len() == 0,
+        }
+    }
+
+    pub fn is_non_empty(&self) -> bool {
+        match self {
+            PreferDynamicSet::Unset => false,
+            PreferDynamicSet::All => true,
+            PreferDynamicSet::Set(s) => s.len() > 0,
+        }
+    }
+
+    pub fn contains_crate(&self, crate_name: Symbol) -> bool {
+        match self {
+            PreferDynamicSet::Unset => false,
+            PreferDynamicSet::All => true,
+            PreferDynamicSet::Set(s) => s.iter().any(|s| s == &*crate_name.as_str()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum OptLevel {
     No,         // -O0
@@ -2420,8 +2482,8 @@ crate mod dep_tracking {
     use super::LdImpl;
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
-        LtoCli, OptLevel, OutputType, OutputTypes, Passes, SourceFileHashAlgorithm,
-        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
+        LtoCli, OptLevel, OutputType, OutputTypes, Passes, PreferDynamicSet,
+        SourceFileHashAlgorithm, SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2510,6 +2572,7 @@ crate mod dep_tracking {
         TrimmedDefPaths,
         Option<LdImpl>,
         OutputType,
+        PreferDynamicSet,
         RealFileName,
     );
 

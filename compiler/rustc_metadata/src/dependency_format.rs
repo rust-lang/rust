@@ -85,23 +85,43 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         return Vec::new();
     }
 
-    let preferred_linkage = match ty {
-        // Generating a dylib without `-C prefer-dynamic` means that we're going
-        // to try to eagerly statically link all dependencies. This is normally
-        // done for end-product dylibs, not intermediate products.
-        //
-        // Treat cdylibs similarly. If `-C prefer-dynamic` is set, the caller may
-        // be code-size conscious, but without it, it makes sense to statically
-        // link a cdylib.
-        CrateType::Dylib | CrateType::Cdylib if !sess.opts.cg.prefer_dynamic => Linkage::Static,
-        CrateType::Dylib | CrateType::Cdylib => Linkage::Dynamic,
+    let prefer_dynamic = &sess.opts.cg.prefer_dynamic;
 
-        // If the global prefer_dynamic switch is turned off, or the final
-        // executable will be statically linked, prefer static crate linkage.
-        CrateType::Executable if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) => {
-            Linkage::Static
+    // traverses all crates to see if any are in the prefer-dynamic set.
+    let prefer_dynamic_for_any_crate = || {
+        if prefer_dynamic.is_empty() {
+            // skip traversal if we know it cannot ever bear fruit.
+            false
+        } else {
+            tcx.crates(()).iter().any(|cnum| prefer_dynamic.contains_crate(tcx.crate_name(*cnum)))
         }
-        CrateType::Executable => Linkage::Dynamic,
+    };
+
+    let preferred_linkage = match ty {
+        // If `-C prefer-dynamic` is not set for any crate, then means that we're
+        // going to try to eagerly statically link all dependencies into the dylib.
+        // This is normally done for end-product dylibs, not intermediate products.
+        //
+        // Treat cdylibs similarly. If `-C prefer-dynamic` is set for any given
+        // crate, the caller may be code-size conscious, but without it, it
+        // makes sense to statically link a cdylib.
+        CrateType::Dylib | CrateType::Cdylib => {
+            if prefer_dynamic_for_any_crate() {
+                Linkage::Dynamic
+            } else {
+                Linkage::Static
+            }
+        }
+
+        // If `prefer_dynamic` is not set for any crate, or the final
+        // executable will be statically linked, prefer static crate linkage.
+        CrateType::Executable => {
+            if !prefer_dynamic_for_any_crate() || sess.crt_static(Some(ty)) {
+                Linkage::Static
+            } else {
+                Linkage::Dynamic
+            }
+        }
 
         // proc-macro crates are mostly cdylibs, but we also need metadata.
         CrateType::ProcMacro => Linkage::Static,
@@ -148,6 +168,11 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                 ));
             }
             return Vec::new();
+        } else {
+            tracing::info!(
+                "calculate_type {} attempt_static failed; falling through to dynamic linkage",
+                tcx.crate_name(LOCAL_CRATE)
+            );
         }
     }
 
@@ -163,7 +188,14 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         }
         let name = tcx.crate_name(cnum);
         let src: Lrc<CrateSource> = tcx.used_crate_source(cnum);
-        if src.dylib.is_some() {
+        // We should prefer the dylib, when available, if either:
+        // 1. the user has requested that dylib (or all dylibs) via `-C prefer-dynamic`, or
+        // 2. for backwards compatibility: if the prefer-dynamic subset is unset, then we *still*
+        //    favor dylibs here. This way, if static linking fails above, we might still hope to
+        //    succeed at linking here.
+        let prefer_dylib =
+            |name| -> bool { prefer_dynamic.is_unset() || prefer_dynamic.contains_crate(name) };
+        if src.dylib.is_some() && prefer_dylib(name) {
             tracing::info!("calculate_type {} adding dylib: {}", tcx.crate_name(LOCAL_CRATE), name);
             add_library(tcx, cnum, RequireDynamic, &mut formats, &mut rev_deps, LOCAL_CRATE);
             let deps = tcx.dylib_dependency_formats(cnum);
@@ -196,13 +228,16 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // If the crate hasn't been included yet and it's not actually required
     // (e.g., it's an allocator) then we skip it here as well.
     for &cnum in tcx.crates(()).iter() {
+        let name = tcx.crate_name(cnum);
         let src: Lrc<CrateSource> = tcx.used_crate_source(cnum);
-        if src.dylib.is_none()
-            && !formats.contains_key(&cnum)
-            && tcx.dep_kind(cnum) == CrateDepKind::Explicit
-        {
+        let static_available = src.rlib.is_some() || src.rmeta.is_some();
+        let prefer_static =
+            src.dylib.is_none() || (static_available && !prefer_dynamic.contains_crate(name));
+        let missing = !formats.contains_key(&cnum);
+        let actually_required = tcx.dep_kind(cnum) == CrateDepKind::Explicit;
+        if prefer_static && missing && actually_required {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
-            tracing::info!("adding staticlib: {}", tcx.crate_name(cnum));
+            tracing::info!("adding staticlib: {}", name);
             add_library(tcx, cnum, RequireStatic, &mut formats, &mut rev_deps, LOCAL_CRATE);
             ret[cnum.as_usize() - 1] = Linkage::Static;
         }
