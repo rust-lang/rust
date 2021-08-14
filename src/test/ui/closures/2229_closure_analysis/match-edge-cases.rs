@@ -5,7 +5,7 @@ const PATTERN_REF: &str = "Hello World";
 const NUMBER: i32 = 30;
 const NUMBER_POINTER: *const i32 = &NUMBER;
 
-pub fn multi_variant_ref(event: &str) {
+pub fn edge_case_ref(event: &str) {
     let _ = || {
         match event {
             PATTERN_REF => (),
@@ -14,7 +14,7 @@ pub fn multi_variant_ref(event: &str) {
     };
 }
 
-pub fn multi_variant_str(event: String) {
+pub fn edge_case_str(event: String) {
     let _ = || {
         match event.as_str() {
             "hello" => (),
@@ -23,7 +23,7 @@ pub fn multi_variant_str(event: String) {
     };
 }
 
-pub fn multi_variant_raw_ptr(event: *const i32) {
+pub fn edge_case_raw_ptr(event: *const i32) {
     let _ = || {
         match event {
             NUMBER_POINTER => (),
@@ -32,7 +32,7 @@ pub fn multi_variant_raw_ptr(event: *const i32) {
     };
 }
 
-pub fn multi_variant_char(event: char) {
+pub fn edge_case_char(event: char) {
     let _ = || {
         match event {
             'a' => (),

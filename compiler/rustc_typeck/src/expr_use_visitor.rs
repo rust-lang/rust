@@ -266,7 +266,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                         needs_to_be_read = true;
                                     }
                                 } else {
-                                    // If it is not ty::Adt, then it is a MultiVariant
+                                    // If it is not ty::Adt, then it should be read
                                     needs_to_be_read = true;
                                 }
                             }
