@@ -10,7 +10,7 @@ use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
-#[cfg(all(doc, not(target_os = "linux"), not(target_os = "android")))]
+#[cfg(all(doc, not(target_os = "linux"), not(target_os = "android"), not(target_os = "netbsd")))]
 #[allow(non_camel_case_types)]
 mod libc {
     pub use libc::c_int;
@@ -177,13 +177,24 @@ impl<'a, T> Iterator for AncillaryDataIter<'a, T> {
     }
 }
 
+#[cfg(all(doc, not(target_os = "android"), not(target_os = "linux"), not(target_os = "netbsd")))]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+#[derive(Clone)]
+pub struct SocketCred(());
+
 /// Unix credential.
-#[cfg(any(doc, target_os = "android", target_os = "linux",))]
+#[cfg(any(target_os = "android", target_os = "linux",))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 #[derive(Clone)]
 pub struct SocketCred(libc::ucred);
 
-#[cfg(any(doc, target_os = "android", target_os = "linux",))]
+#[cfg(target_os = "netbsd")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+#[derive(Clone)]
+pub struct SocketCred(libc::sockcred);
+
+#[doc(cfg(any(target_os = "android", target_os = "linux")))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 impl SocketCred {
     /// Create a Unix credential struct.
     ///
@@ -234,6 +245,61 @@ impl SocketCred {
     }
 }
 
+#[cfg(target_os = "netbsd")]
+impl SocketCred {
+    /// Create a Unix credential struct.
+    ///
+    /// PID, UID and GID is set to 0.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn new() -> SocketCred {
+        SocketCred(libc::sockcred {
+            sc_pid: 0,
+            sc_uid: 0,
+            sc_euid: 0,
+            sc_gid: 0,
+            sc_egid: 0,
+            sc_ngroups: 0,
+            sc_groups: [0u32; 1],
+        })
+    }
+
+    /// Set the PID.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn set_pid(&mut self, pid: libc::pid_t) {
+        self.0.sc_pid = pid;
+    }
+
+    /// Get the current PID.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn get_pid(&self) -> libc::pid_t {
+        self.0.sc_pid
+    }
+
+    /// Set the UID.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn set_uid(&mut self, uid: libc::uid_t) {
+        self.0.sc_uid = uid;
+    }
+
+    /// Get the current UID.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn get_uid(&self) -> libc::uid_t {
+        self.0.sc_uid
+    }
+
+    /// Set the GID.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn set_gid(&mut self, gid: libc::gid_t) {
+        self.0.sc_gid = gid;
+    }
+
+    /// Get the current GID.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn get_gid(&self) -> libc::gid_t {
+        self.0.sc_gid
+    }
+}
+
 /// This control message contains file descriptors.
 ///
 /// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_RIGHTS`.
@@ -249,14 +315,22 @@ impl<'a> Iterator for ScmRights<'a> {
     }
 }
 
+#[cfg(all(doc, not(target_os = "android"), not(target_os = "linux"), not(target_os = "netbsd")))]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+pub struct ScmCredentials<'a>(AncillaryDataIter<'a, ()>);
+
 /// This control message contains unix credentials.
 ///
 /// The level is equal to `SOL_SOCKET` and the type is equal to `SCM_CREDENTIALS` or `SCM_CREDS`.
-#[cfg(any(doc, target_os = "android", target_os = "linux",))]
+#[cfg(any(target_os = "android", target_os = "linux",))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::ucred>);
 
-#[cfg(any(doc, target_os = "android", target_os = "linux",))]
+#[cfg(target_os = "netbsd")]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+pub struct ScmCredentials<'a>(AncillaryDataIter<'a, libc::sockcred>);
+
+#[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 impl<'a> Iterator for ScmCredentials<'a> {
     type Item = SocketCred;
@@ -278,7 +352,7 @@ pub enum AncillaryError {
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     ScmCredentials(ScmCredentials<'a>),
 }
 
@@ -300,8 +374,8 @@ impl<'a> AncillaryData<'a> {
     /// # Safety
     ///
     /// `data` must contain a valid control message and the control message must be type of
-    /// `SOL_SOCKET` and level of `SCM_CREDENTIALS` or `SCM_CREDENTIALS`.
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    /// `SOL_SOCKET` and level of `SCM_CREDENTIALS` or `SCM_CREDS`.
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     unsafe fn as_credentials(data: &'a [u8]) -> Self {
         let ancillary_data_iter = AncillaryDataIter::new(data);
         let scm_credentials = ScmCredentials(ancillary_data_iter);
@@ -320,6 +394,8 @@ impl<'a> AncillaryData<'a> {
                     libc::SCM_RIGHTS => Ok(AncillaryData::as_rights(data)),
                     #[cfg(any(target_os = "android", target_os = "linux",))]
                     libc::SCM_CREDENTIALS => Ok(AncillaryData::as_credentials(data)),
+                    #[cfg(target_os = "netbsd")]
+                    libc::SCM_CREDS => Ok(AncillaryData::as_credentials(data)),
                     cmsg_type => {
                         Err(AncillaryError::Unknown { cmsg_level: libc::SOL_SOCKET, cmsg_type })
                     }
@@ -531,7 +607,7 @@ impl<'a> SocketAncillary<'a> {
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
     /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
     ///
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
         self.truncated = false;
@@ -540,7 +616,10 @@ impl<'a> SocketAncillary<'a> {
             &mut self.length,
             creds,
             libc::SOL_SOCKET,
+            #[cfg(not(target_os = "netbsd"))]
             libc::SCM_CREDENTIALS,
+            #[cfg(target_os = "netbsd")]
+            libc::SCM_CREDS,
         )
     }
 
