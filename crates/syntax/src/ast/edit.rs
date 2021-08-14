@@ -1,27 +1,15 @@
 //! This module contains functions for editing syntax trees. As the trees are
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
-use std::{
-    fmt, iter,
-    ops::{self, RangeInclusive},
-};
+use std::{fmt, iter, ops};
 
 use crate::{
     algo,
     ast::{self, make, AstNode},
-    ted, AstToken, NodeOrToken, SyntaxElement, SyntaxKind,
+    ted, AstToken, NodeOrToken, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
 };
-
-impl ast::BinExpr {
-    #[must_use]
-    pub fn replace_op(&self, op: SyntaxKind) -> Option<ast::BinExpr> {
-        let op_node: SyntaxElement = self.op_details()?.0.into();
-        let to_insert: Option<SyntaxElement> = Some(make::token(op).into());
-        Some(self.replace_children(single_node(op_node), to_insert))
-    }
-}
 
 impl ast::UseTree {
     /// Splits off the given prefix, making it the path component of the use tree, appending the rest of the path to all UseTreeList items.
@@ -191,15 +179,6 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
 }
 
 pub trait AstNodeEdit: AstNode + Clone + Sized {
-    #[must_use]
-    fn replace_children(
-        &self,
-        to_replace: RangeInclusive<SyntaxElement>,
-        to_insert: impl IntoIterator<Item = SyntaxElement>,
-    ) -> Self {
-        let new_syntax = algo::replace_children(self.syntax(), to_replace, to_insert);
-        Self::cast(new_syntax).unwrap()
-    }
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
     }
@@ -219,11 +198,6 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
 }
 
 impl<N: AstNode + Clone> AstNodeEdit for N {}
-
-fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElement> {
-    let element = element.into();
-    element.clone()..=element
-}
 
 #[test]
 fn test_increase_indent() {

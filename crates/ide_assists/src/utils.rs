@@ -209,21 +209,22 @@ pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {
 
 fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
-        ast::Expr::BinExpr(bin) => match bin.op_kind()? {
-            ast::BinaryOp::CmpOp(op) => {
-                let rev_op = match op {
-                    ast::CmpOp::Eq { negated: false } => T![!=],
-                    ast::CmpOp::Eq { negated: true } => T![==],
-                    ast::CmpOp::Ord { ordering: ast::Ordering::Less, strict: true } => T![>=],
-                    ast::CmpOp::Ord { ordering: ast::Ordering::Less, strict: false } => T![>],
-                    ast::CmpOp::Ord { ordering: ast::Ordering::Greater, strict: true } => T![<=],
-                    ast::CmpOp::Ord { ordering: ast::Ordering::Greater, strict: false } => T![<],
-                };
-                bin.replace_op(rev_op).map(ast::Expr::from)
-            }
-            // Parenthesize other expressions before prefixing `!`
-            _ => Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
-        },
+        ast::Expr::BinExpr(bin) => {
+            let bin = bin.clone_for_update();
+            let op_token = bin.op_token()?;
+            let rev_token = match op_token.kind() {
+                T![==] => T![!=],
+                T![!=] => T![==],
+                T![<] => T![>=],
+                T![<=] => T![>],
+                T![>] => T![<=],
+                T![>=] => T![<],
+                // Parenthesize other expressions before prefixing `!`
+                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
+            };
+            ted::replace(op_token, make::token(rev_token));
+            Some(bin.into())
+        }
         ast::Expr::MethodCallExpr(mce) => {
             let receiver = mce.receiver()?;
             let method = mce.name_ref()?;
