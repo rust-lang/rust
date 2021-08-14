@@ -119,6 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             hir::ItemKind::Const(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Mod(..)
+            | hir::ItemKind::Macro { .. }
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::TraitAlias(..)

@@ -408,6 +408,19 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         },
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
+        hir::ItemKind::Macro { ref macro_def, .. } => {
+            if macro_def.ast.macro_rules {
+                if macro_def.is_exported {
+                    println!("exported macro introduced by `macro_rules!`");
+                } else {
+                    println!("nonexported macro introduced by `macro_rules!`");
+                }
+            } else {
+                // There's no point in distinguishing exported and nonexported `macro`
+                // macros. That's defined their visibility, which was printed above.
+                println!("macro introduced by `macro`");
+            }
+        }
         hir::ItemKind::GlobalAsm(asm) => println!("global asm: {:?}", asm),
         hir::ItemKind::TyAlias(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
