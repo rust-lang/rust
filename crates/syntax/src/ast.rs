@@ -24,10 +24,10 @@ pub use self::{
         AttrKind, AttrsOwnerNode, FieldKind, Macro, NameLike, NameOrNameRef, PathSegmentKind,
         SelfParamKind, SlicePatComponents, StructKind, TypeBoundKind, VisibilityKind,
     },
-    operators::{RangeOp, UnaryOp},
+    operators::{ArithOp, BinaryOp, CmpOp, LogicOp, RangeOp, UnaryOp, Ordering},
     token_ext::{
-        CommentKind, CommentPlacement, CommentShape, HasFormatSpecifier, IsString, QuoteOffsets,
-        Radix,
+        CommentKind, CommentPlacement, CommentShape, FormatSpecifier, HasFormatSpecifier, IsString,
+        QuoteOffsets, Radix,
     },
     traits::{
         ArgListOwner, AttrsOwner, CommentIter, DocCommentsOwner, GenericParamsOwner, LoopBodyOwner,
