@@ -2168,6 +2168,36 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     }
 
+    if !debugging_opts.unstable_options {
+        // if the user hasn't specified `-Z unstable-options`, then they need to have opted into
+        // certain unstable variants of `-C prefer-dynamic` explicitly
+        if let PreferDynamicSet::Set(s) = &cg.prefer_dynamic {
+            if s.len() == 1 && s.iter().next().map(|s| s.as_str()) == Some("std") {
+                // as a special case, `-C prefer-dynamic=std` gets its own `-Z` flag (because it is
+                // on a shorter-term stabilization path).
+                if debugging_opts.prefer_dynamic_std {
+                    // okay, user opted-into `-C prefer-dynamic=std` via `-Z prefer-dynamic-std`
+                } else if debugging_opts.prefer_dynamic_subset {
+                    // okay, user opted-into arbitrary `-C prefer-dynamic=...` via `-Z prefer-dynamic-subset`
+                } else {
+                    early_error(
+                        error_format,
+                        "`-C prefer-dynamic=std` is unstable: set `-Z prefer-dynamic-std`",
+                    );
+                }
+            } else {
+                if debugging_opts.prefer_dynamic_subset {
+                    // okay, user opted-into arbitrary `-C prefer-dynamic=...` via `-Z prefer-dynamic-subset`
+                } else {
+                    early_error(
+                        error_format,
+                        "`-C prefer-dynamic=crate,...` is unstable: set `-Z prefer-dynamic-subset`",
+                    );
+                }
+            }
+        }
+    }
+
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let tmp_buf;

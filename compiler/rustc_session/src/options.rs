@@ -1238,6 +1238,10 @@ options! {
         "use a more precise version of drop elaboration for matches on enums (default: yes). \
         This results in better codegen, but has caused miscompilations on some tier 2 platforms. \
         See #77382 and #74551."),
+    prefer_dynamic_std: bool = (false, parse_bool, [UNTRACKED],
+        "enable use of unstable `-C prefer-dynamic=std` variant"),
+    prefer_dynamic_subset: bool = (false, parse_bool, [UNTRACKED],
+        "enable use of unstable `-C prefer-dynamic=crate1,crate2,...` variant"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make rustc print the total optimization fuel used by a crate"),
     print_link_args: bool = (false, parse_bool, [UNTRACKED],
