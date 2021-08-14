@@ -5,7 +5,7 @@ mod gen_trait_fn_body;
 
 use std::ops;
 
-use hir::{Adt, HasSource};
+use hir::HasSource;
 use ide_db::{helpers::SnippetCap, path_transform::PathTransform, RootDatabase};
 use itertools::Itertools;
 use stdx::format_to;
@@ -290,19 +290,13 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
 // FIXME: this partially overlaps with `find_impl_block_*`
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext,
-    strukt: &ast::Adt,
+    adt: &ast::Adt,
     name: &str,
 ) -> Option<Option<ast::Impl>> {
     let db = ctx.db();
-    let module = strukt.syntax().ancestors().find(|node| {
-        ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
-    })?;
+    let module = adt.syntax().parent()?;
 
-    let struct_def = match strukt {
-        ast::Adt::Enum(e) => Adt::Enum(ctx.sema.to_def(e)?),
-        ast::Adt::Struct(s) => Adt::Struct(ctx.sema.to_def(s)?),
-        ast::Adt::Union(u) => Adt::Union(ctx.sema.to_def(u)?),
-    };
+    let struct_def = ctx.sema.to_def(adt)?;
 
     let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {
         let blk = ctx.sema.to_def(&impl_blk)?;
